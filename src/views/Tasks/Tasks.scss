@@ -1,0 +1,464 @@
+@use '../../styles/variables' as *;
+
+.tasks {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+    position: sticky;
+    top: 0;
+    z-index: $z-nav;
+  }
+
+  &__back {
+    background: transparent;
+    border: 1px solid $color-border;
+    color: $color-text-muted;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-sm;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover {
+      color: $color-text;
+      border-color: $color-text-muted;
+    }
+  }
+
+  &__title {
+    font-size: $font-lg;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+  }
+
+  &__slots-badge {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 8px;
+    border-radius: $radius-sm;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  // Active tasks container (multiple)
+  &__active-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-md $spacing-md 0;
+  }
+
+  // Active task banner
+  &__active {
+    background: $color-bg-card;
+    border: 1px solid $color-accent;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+
+    &--mastery {
+      border-color: #9c27b0;
+      background: linear-gradient(135deg, rgba(#9c27b0, 0.1) 0%, $color-bg-card 60%);
+    }
+  }
+
+  &__active-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__active-label {
+    font-size: $font-xs;
+    color: $color-accent;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+
+  &__cancel-btn {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-md;
+    padding: 0 $spacing-xs;
+    line-height: 1;
+
+    &:hover { color: $color-accent; }
+  }
+
+  &__active-title {
+    font-size: $font-md;
+    font-weight: 600;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__active-progress-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__active-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  &__active-bar--mastery {
+    background: rgba(#9c27b0, 0.15);
+  }
+
+  &__active-bar-fill {
+    height: 100%;
+    background: $color-accent;
+    border-radius: 4px;
+    transition: width $transition-normal;
+
+    &--mastery {
+      background: linear-gradient(90deg, #9c27b0, #e040fb);
+    }
+  }
+
+  &__active-count {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    white-space: nowrap;
+  }
+
+  &__active-reward {
+    font-size: $font-sm;
+    color: $color-legendary;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__claim-btn {
+    width: 100%;
+    background: $color-accent;
+    color: white;
+    border: none;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $radius-md;
+    font-size: $font-md;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background $transition-fast;
+    animation: pulse 1.5s infinite;
+
+    &:hover { background: $color-accent-hover; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
+
+  // Tabs
+  &__tabs {
+    display: flex;
+    border-bottom: 1px solid $color-border;
+    margin: 0 $spacing-md;
+  }
+
+  &__tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    padding: $spacing-sm $spacing-md;
+    cursor: pointer;
+    font-size: $font-sm;
+    border-bottom: 2px solid transparent;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &--active {
+      color: $color-accent;
+      border-bottom-color: $color-accent;
+    }
+
+    &:hover:not(&--active) {
+      color: $color-text;
+    }
+  }
+
+  // Task list
+  &__list {
+    padding: $spacing-sm;
+  }
+
+  &__monster-group {
+    margin-bottom: $spacing-md;
+    background: $color-bg-secondary;
+    border-radius: $radius-md;
+    overflow: hidden;
+    border: 1px solid $color-border;
+
+    &--taken {
+      border-color: rgba($color-accent, 0.4);
+    }
+
+    // When preceded by an inline mastery bar, flatten the top corners
+    .tasks__monster-group-wrap > & {
+      margin-bottom: 0;
+    }
+
+    .tasks__monster-group-wrap > .tasks__inline-mastery + & {
+      border-radius: 0 0 $radius-md $radius-md;
+      border-top: none;
+    }
+
+    .tasks__monster-group-wrap > .tasks__inline-mastery--max + & {
+      border-left-width: 2px;
+      border-right-width: 2px;
+      border-bottom-width: 2px;
+      border-color: #9c27b0;
+
+      &.tasks__monster-group--taken {
+        border-color: #9c27b0;
+      }
+    }
+  }
+
+  &__monster-active-badge {
+    font-size: $font-xs;
+    color: $color-accent;
+    margin-left: $spacing-sm;
+    font-weight: 600;
+  }
+
+  &__monster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm $spacing-md;
+    background: $color-bg-card;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__monster-name {
+    font-weight: 700;
+    font-size: $font-md;
+  }
+
+  &__monster-level {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+  }
+
+  &__threshold-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1px;
+    background: $color-border;
+  }
+
+  &__threshold-btn {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    background: $color-bg-secondary;
+    border: none;
+    color: $color-text;
+    padding: $spacing-sm;
+    cursor: pointer;
+    text-align: left;
+    transition: background $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $color-bg-card;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &--active {
+      background: rgba(233, 69, 96, 0.15);
+      border-left: 3px solid $color-accent;
+    }
+
+    &--done {
+      background: rgba(33, 150, 243, 0.15);
+    }
+  }
+
+  &__threshold-kills {
+    font-size: $font-sm;
+    font-weight: 600;
+  }
+
+  &__threshold-reward {
+    font-size: $font-xs;
+    color: $color-legendary;
+  }
+
+  &__threshold-done {
+    font-size: $font-xs;
+    color: $color-rare;
+    font-weight: 700;
+  }
+
+  // ── Monster group wrapper (mastery bar + card together) ──────────────────
+  &__monster-group-wrap {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: $spacing-md;
+  }
+
+  // Override bottom margin on group itself when inside wrapper
+  &__monster-group-wrap > &__monster-group {
+    margin-bottom: 0;
+  }
+
+  // ── Inline mastery bar (above each monster card) ───────────────────────
+  &__inline-mastery {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: 4px $spacing-md;
+    background: rgba(#9c27b0, 0.08);
+    border: 1px solid rgba(#9c27b0, 0.25);
+    border-bottom: none;
+    border-radius: $radius-md $radius-md 0 0;
+
+    &--max {
+      background: linear-gradient(90deg, rgba(#9c27b0, 0.18) 0%, rgba(#9c27b0, 0.08) 100%);
+      border-color: #9c27b0;
+      border-width: 2px;
+      border-bottom: none;
+    }
+  }
+
+  &__inline-mastery-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #ce93d8;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &--max {
+      color: #e040fb;
+    }
+  }
+
+  &__inline-mastery-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__inline-mastery-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  &__inline-mastery-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #9c27b0, #e040fb);
+    border-radius: 2px;
+    transition: width 0.4s ease-out;
+  }
+
+  &__inline-mastery-kills {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  // Empty state
+  &__empty {
+    text-align: center;
+    color: $color-text-muted;
+    padding: $spacing-xl;
+  }
+
+  // History
+  &__history {
+    padding: $spacing-sm;
+  }
+
+  &__history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm $spacing-md;
+    background: $color-bg-secondary;
+    border-radius: $radius-sm;
+    margin-bottom: $spacing-xs;
+    border: 1px solid $color-border;
+  }
+
+  &__history-name {
+    font-size: $font-sm;
+    color: $color-text;
+    flex: 1;
+  }
+
+  &__history-reward {
+    font-size: $font-sm;
+    color: $color-legendary;
+    margin: 0 $spacing-sm;
+  }
+
+  &__history-date {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+}
+
+// Responsive
+@media (min-width: 768px) {
+  .tasks {
+    &__threshold-list {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+}
+
+.tasks {
+  &__monster-group-wrap--locked {
+    opacity: 0.5;
+    filter: grayscale(0.6);
+  }
+
+  &__monster-group--locked {
+    position: relative;
+  }
+
+  &__monster-locked-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #ffc107;
+    color: #ffd54f;
+    margin-left: 6px;
+  }
+}

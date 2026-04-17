@@ -1,0 +1,274 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// Death Notification — epic fullscreen death animation
+// ══════════════════════════════════════════════════════════════════════════════
+
+.death {
+  position: fixed;
+  z-index: 10001; // above level-up
+  pointer-events: auto;
+
+  &--epic {
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(60, 0, 0, 0.96) 0%,
+      rgba(20, 0, 0, 0.98) 50%,
+      rgba(0, 0, 0, 0.99) 100%
+    );
+    animation: death-epic-in 0.6s ease-out, death-epic-out 0.8s ease-in 5.2s forwards;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  // ── Blood drip particles falling from top ─────────────────────────────────
+  &__drips {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  &__drip {
+    position: absolute;
+    top: -10px;
+    left: var(--d-x);
+    width: var(--d-size);
+    height: calc(var(--d-size) * 2.5);
+    border-radius: 0 0 50% 50%;
+    background: linear-gradient(
+      to bottom,
+      rgba(180, 20, 20, 0.9),
+      rgba(120, 0, 0, 0.6)
+    );
+    box-shadow: 0 0 4px rgba(200, 30, 30, 0.5);
+    animation: death-drip-fall var(--d-duration) ease-in var(--d-delay) infinite;
+    opacity: 0;
+  }
+
+  // ── Dark rings expanding from center ──────────────────────────────────────
+  &__rings {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  &__ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    margin: -30px 0 0 -30px;
+    border: 2px solid rgba(200, 30, 30, 0.5);
+    border-radius: 50%;
+    animation: death-ring-expand 3.5s ease-out infinite;
+
+    &--1 { animation-delay: 0s; }
+    &--2 { animation-delay: 0.8s; border-color: rgba(150, 0, 0, 0.4); }
+    &--3 { animation-delay: 1.6s; border-color: rgba(100, 0, 0, 0.3); }
+  }
+
+  // ── Soul particles drifting upwards ───────────────────────────────────────
+  &__souls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  &__soul {
+    position: absolute;
+    left: var(--s-x);
+    top: var(--s-y);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(180, 180, 255, 0.8) 0%,
+      rgba(100, 100, 200, 0.4) 50%,
+      transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(150, 150, 255, 0.5);
+    animation: death-soul-rise var(--s-duration) ease-out var(--s-delay) infinite;
+    opacity: 0;
+  }
+
+  // ── Center content ────────────────────────────────────────────────────────
+  &__center {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: death-center-in 0.8s ease-out 0.2s both;
+  }
+
+  &__skull {
+    font-size: 80px;
+    filter: drop-shadow(0 0 30px rgba(200, 30, 30, 0.8))
+            drop-shadow(0 0 60px rgba(150, 0, 0, 0.4));
+    animation: death-skull-in 0.8s ease-out 0.2s both,
+               death-skull-float 2.5s ease-in-out 1s infinite;
+  }
+
+  &__label {
+    font-size: 28px;
+    font-weight: 900;
+    color: #ef5350;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    text-shadow:
+      0 0 20px rgba(200, 30, 30, 0.8),
+      0 0 50px rgba(150, 0, 0, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.6);
+    animation: death-label-in 0.7s ease-out 0.6s both;
+  }
+
+  &__killer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    animation: death-info-in 0.5s ease-out 1s both;
+  }
+
+  &__killer-text {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.7);
+
+    strong {
+      color: #ef9a9a;
+      text-shadow: 0 0 8px rgba(200, 30, 30, 0.4);
+    }
+  }
+
+  &__killer-level {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  &__penalties {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  &__penalty {
+    font-size: 16px;
+    font-weight: 700;
+    animation: death-penalty-pop 0.5s ease-out both;
+
+    &--level {
+      color: #ef5350;
+      text-shadow: 0 0 12px rgba(239, 83, 80, 0.5);
+      animation-delay: 1.3s;
+    }
+
+    &--xp {
+      color: #ef5350;
+      text-shadow: 0 0 12px rgba(239, 83, 80, 0.5);
+      animation-delay: 1.3s;
+    }
+
+    &--skill {
+      color: #ff9800;
+      text-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+      animation-delay: 1.6s;
+    }
+
+    &--protected {
+      color: #66bb6a;
+      text-shadow: 0 0 12px rgba(102, 187, 106, 0.5);
+      animation-delay: 1.3s;
+    }
+  }
+
+  &__tap-hint {
+    margin-top: 24px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.25);
+    animation: death-hint-in 0.5s ease-out 3s both;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Keyframes
+// ══════════════════════════════════════════════════════════════════════════════
+
+@keyframes death-epic-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes death-epic-out {
+  from { opacity: 1; }
+  to   { opacity: 0; pointer-events: none; }
+}
+
+@keyframes death-drip-fall {
+  0%   { opacity: 0; transform: translateY(0) scaleY(0.5); }
+  10%  { opacity: 0.8; transform: scaleY(1); }
+  100% { opacity: 0; transform: translateY(110vh) scaleY(1.5); }
+}
+
+@keyframes death-ring-expand {
+  0% {
+    width: 40px; height: 40px; margin: -20px 0 0 -20px;
+    opacity: 0.7; border-width: 3px;
+  }
+  100% {
+    width: 800px; height: 800px; margin: -400px 0 0 -400px;
+    opacity: 0; border-width: 1px;
+  }
+}
+
+@keyframes death-soul-rise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  20%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(-40vh) scale(0.2); }
+}
+
+@keyframes death-center-in {
+  from { opacity: 0; transform: scale(0.5) translateY(40px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes death-skull-in {
+  0%   { opacity: 0; transform: scale(0) rotate(-30deg); }
+  50%  { opacity: 1; transform: scale(1.4) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes death-skull-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes death-label-in {
+  from { opacity: 0; transform: translateY(15px); letter-spacing: 0.8em; }
+  to   { opacity: 1; transform: translateY(0); letter-spacing: 0.3em; }
+}
+
+@keyframes death-info-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes death-penalty-pop {
+  0%   { opacity: 0; transform: scale(0.5) translateY(10px); }
+  70%  { transform: scale(1.1) translateY(-3px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes death-hint-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

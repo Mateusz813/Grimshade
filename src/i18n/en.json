@@ -1,0 +1,211 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "back_to_town": "← Town",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "refresh": "↻",
+    "copy": "Copy",
+    "copied": "✓ Copied",
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Syncing...",
+    "sync_now": "Sync",
+    "last_synced": "Sync: {{time}}",
+    "never_synced": "Never synced",
+    "level": "Lvl",
+    "gold": "💰 {{amount}}"
+  },
+  "town": {
+    "title": "Town",
+    "logout": "Logout",
+    "loading": "Loading...",
+    "stat_points": "+{{count}} stat points to spend",
+    "nav": {
+      "combat": "Combat",
+      "inventory": "Inventory",
+      "skills": "Skills",
+      "shop": "Shop",
+      "dungeon": "Dungeon",
+      "boss": "Boss",
+      "party": "Party",
+      "leaderboard": "Rankings"
+    },
+    "stats": {
+      "hp": "HP",
+      "mp": "MP",
+      "xp": "XP"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Grimshade",
+      "subtitle": "Log in to play",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log In",
+      "register_link": "No account? Register",
+      "forgot_link": "Forgot password",
+      "error_invalid": "Invalid email or password.",
+      "error_generic": "Login error. Please try again."
+    },
+    "register": {
+      "title": "New Account",
+      "email": "Email",
+      "password": "Password (min. 6 chars)",
+      "submit": "Register",
+      "login_link": "Already have an account? Log in",
+      "success": "Account created! You can now log in.",
+      "error_taken": "Email is already taken.",
+      "error_generic": "Registration error. Please try again."
+    },
+    "forgot": {
+      "title": "Reset Password",
+      "email": "Email",
+      "submit": "Send link",
+      "back_login": "Back to login",
+      "success": "Password reset link sent to your email.",
+      "error_generic": "Error. Check email and try again."
+    }
+  },
+  "character": {
+    "create": {
+      "title": "Create Character",
+      "name_label": "Character name",
+      "name_placeholder": "Enter name...",
+      "class_label": "Choose class",
+      "submit": "Create character",
+      "error_name": "Name must be 3–20 characters.",
+      "error_generic": "Error creating character."
+    },
+    "classes": {
+      "Knight": "Knight – Tank, block, high HP",
+      "Mage": "Mage – Spells, scales with Magic Level",
+      "Cleric": "Cleric – Healing, support",
+      "Archer": "Archer – Crits, range",
+      "Rogue": "Rogue – Dual wield, poison, evasion",
+      "Necromancer": "Necromancer – Summons, curses",
+      "Bard": "Bard – Party buffs, enemy debuffs"
+    }
+  },
+  "combat": {
+    "title": "Combat",
+    "speed": "Speed: {{speed}}",
+    "skill_mode_auto": "Skills: Auto",
+    "skill_mode_manual": "Skills: Manual",
+    "player_dead": "You died!",
+    "enemy_dead": "You defeated {{name}}!",
+    "loot": "Loot",
+    "no_loot": "No loot",
+    "death_penalty": "-10% XP, -5% Skill XP",
+    "return_town": "Return to town"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "equipment": "Equipment",
+    "backpack": "Backpack",
+    "empty_slot": "Empty slot",
+    "sell": "Sell",
+    "equip": "Equip",
+    "unequip": "Unequip",
+    "no_items": "Backpack is empty.",
+    "gold": "💰 {{amount}} gold"
+  },
+  "skills": {
+    "title": "Skills",
+    "tab_combat": "Combat",
+    "tab_active": "Active",
+    "tab_training": "Training",
+    "level": "Level {{level}}",
+    "xp_progress": "{{current}} / {{needed}} XP",
+    "damage_bonus": "+{{pct}}% DMG",
+    "equip": "Equip",
+    "unequip": "Unequip",
+    "active_slots": "Active skills (max 4)",
+    "offline_training": "Offline training",
+    "training_skill": "Training: {{skill}}",
+    "collect_xp": "Collect XP",
+    "no_training": "No active training",
+    "select_skill": "Select skill to train:"
+  },
+  "shop": {
+    "title": "Shop",
+    "tab_items": "Items",
+    "tab_elixirs": "Elixirs",
+    "tab_settings": "Settings",
+    "buy": "Buy",
+    "owned": "Owned: {{count}}",
+    "level_req": "Required level: {{level}}",
+    "no_gold": "Not enough gold!",
+    "bought": "Purchased!",
+    "too_low_level": "Level too low!",
+    "auto_potion": "Auto-potion",
+    "auto_sell": "Auto-sell",
+    "hp_threshold": "HP threshold: {{pct}}%",
+    "mp_threshold": "MP threshold: {{pct}}%",
+    "sell_common": "Sell Common",
+    "sell_rare": "Sell Rare"
+  },
+  "dungeon": {
+    "title": "Dungeons",
+    "enter": "Enter",
+    "cooldown": "Cooldown: {{time}}",
+    "level_req": "Required level: {{level}}",
+    "waves": "Waves: {{count}}",
+    "running": "Battle in progress...",
+    "wave": "Wave {{current}} / {{total}}",
+    "victory": "Victory!",
+    "defeat": "Defeat!",
+    "rewards": "Rewards",
+    "xp_gained": "+{{xp}} XP",
+    "gold_gained": "+{{gold}} 💰",
+    "item_drop": "Found: {{item}}",
+    "return": "Return"
+  },
+  "boss": {
+    "title": "Bosses",
+    "challenge": "Fight",
+    "cooldown": "Cooldown: {{time}}",
+    "level_req": "Required level: {{level}}",
+    "enraged": "ENRAGED!",
+    "victory": "Boss defeated!",
+    "defeat": "You were defeated!",
+    "unique_drop": "Unique: {{item}}",
+    "return": "Return",
+    "recommended_level": "Recommended level: {{level}}"
+  },
+  "party": {
+    "title": "Party",
+    "no_party": "You are not in a party. Create a new one or join an existing one.",
+    "create": "+ Create new party",
+    "join_placeholder": "Enter party ID (e.g. AB1C23)",
+    "join": "Join",
+    "join_error": "Enter a valid party ID.",
+    "id_label": "Party ID:",
+    "copy_id": "Copy",
+    "copied_id": "✓ Copied",
+    "drop_x": "Drop ×",
+    "difficulty_x": "Difficulty ×",
+    "avg_level": "Avg level",
+    "bot_prompt": "Need more players for boss?",
+    "add_bot": "+ Add Bot Helper",
+    "add_bot_alt": "+ Add Bot Helper",
+    "empty_slot": "— empty slot —",
+    "you": "You",
+    "bot": "Bot",
+    "kick": "Kick",
+    "leave": "Leave party",
+    "disband": "Disband party",
+    "chat_title": "Party chat ({{id}})"
+  },
+  "leaderboard": {
+    "title": "Rankings",
+    "my_rank": "Your rank: #{{rank}} — {{name}}",
+    "tab_level": "Level",
+    "tab_gold": "Gold",
+    "empty": "No players in ranking.",
+    "error": "Failed to load rankings. Check connection."
+  }
+}

@@ -1,0 +1,235 @@
+// ── Shared class-specific attack animations ─────────────────────────────────
+// Used by Combat.scss, Dungeon.scss, Boss.scss
+
+// Knight: aggressive horizontal slash with red flash
+@keyframes attack-slash {
+  0%   { transform: translateX(0) rotate(0deg); box-shadow: inset 0 0 0 rgba(229, 57, 53, 0); }
+  20%  { transform: translateX(10px) rotate(4deg); box-shadow: inset 60px 0 30px -20px rgba(229, 57, 53, 0.35), 0 0 18px rgba(229, 57, 53, 0.4); }
+  40%  { transform: translateX(-6px) rotate(-3deg); box-shadow: inset -60px 0 30px -20px rgba(229, 57, 53, 0.2); }
+  60%  { transform: translateX(4px) rotate(1deg); }
+  100% { transform: translateX(0) rotate(0deg); box-shadow: inset 0 0 0 rgba(229, 57, 53, 0); }
+}
+
+@keyframes slash-overlay {
+  0%   { opacity: 0; transform: scaleX(0) rotate(-15deg); }
+  25%  { opacity: 1; transform: scaleX(1) rotate(-15deg); }
+  60%  { opacity: 0.6; transform: scaleX(1.2) rotate(-15deg); }
+  100% { opacity: 0; transform: scaleX(0) rotate(-15deg); }
+}
+
+// Mage: magical glow radial pulse
+@keyframes attack-cast {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(123, 31, 162, 0); filter: brightness(1); }
+  30%  { transform: scale(1.06); box-shadow: 0 0 25px 8px rgba(123, 31, 162, 0.45), inset 0 0 20px rgba(156, 39, 176, 0.25); filter: brightness(1.25); }
+  60%  { transform: scale(0.97); box-shadow: 0 0 40px 12px rgba(123, 31, 162, 0.2); filter: brightness(1.15); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(123, 31, 162, 0); filter: brightness(1); }
+}
+
+@keyframes cast-glow-ring {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  30%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+}
+
+// Cleric: golden holy glow variant
+@keyframes attack-cast-cleric {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); filter: brightness(1); }
+  30%  { transform: scale(1.06); box-shadow: 0 0 25px 8px rgba(255, 193, 7, 0.4), inset 0 0 20px rgba(255, 215, 0, 0.2); filter: brightness(1.3); }
+  60%  { transform: scale(0.97); box-shadow: 0 0 35px 10px rgba(255, 193, 7, 0.15); filter: brightness(1.1); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); filter: brightness(1); }
+}
+
+// Archer: forward projectile lunge with green trail
+@keyframes attack-shoot {
+  0%   { transform: translateX(0); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+  15%  { transform: translateX(-8px); }
+  40%  { transform: translateX(14px); box-shadow: -30px 0 25px -8px rgba(76, 175, 80, 0.5), 0 0 12px rgba(76, 175, 80, 0.3); }
+  70%  { transform: translateX(6px); box-shadow: -15px 0 15px -5px rgba(76, 175, 80, 0.2); }
+  100% { transform: translateX(0); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+@keyframes arrow-trail {
+  0%   { opacity: 0; transform: translateX(-100%); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(150%); }
+}
+
+// Rogue: rapid double stab with dark flash
+@keyframes attack-stab {
+  0%   { transform: translateX(0) scale(1); filter: brightness(1); }
+  15%  { transform: translateX(10px) scale(1.03); filter: brightness(0.7); box-shadow: 0 0 15px rgba(66, 66, 66, 0.6); }
+  30%  { transform: translateX(2px) scale(0.98); filter: brightness(1.2); }
+  50%  { transform: translateX(12px) scale(1.03); filter: brightness(0.7); box-shadow: 0 0 15px rgba(66, 66, 66, 0.6); }
+  65%  { transform: translateX(2px) scale(0.98); filter: brightness(1.1); }
+  100% { transform: translateX(0) scale(1); filter: brightness(1); box-shadow: none; }
+}
+
+@keyframes stab-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  50%  { opacity: 0.3; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+// Necromancer: dark energy swirl with eerie glow
+@keyframes attack-dark {
+  0%   { transform: scale(1) rotate(0deg); filter: brightness(1) hue-rotate(0deg); box-shadow: 0 0 0 rgba(121, 85, 72, 0); }
+  25%  { transform: scale(1.05) rotate(-2deg); filter: brightness(0.65) hue-rotate(15deg); box-shadow: 0 0 30px 10px rgba(121, 85, 72, 0.5), inset 0 0 25px rgba(80, 40, 20, 0.4); }
+  50%  { transform: scale(0.96) rotate(2deg); filter: brightness(0.8) hue-rotate(-10deg); box-shadow: 0 0 20px 5px rgba(100, 50, 30, 0.3); }
+  75%  { transform: scale(1.02) rotate(-1deg); filter: brightness(1.15); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1) hue-rotate(0deg); box-shadow: 0 0 0 rgba(121, 85, 72, 0); }
+}
+
+@keyframes dark-swirl {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+  30%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2) rotate(180deg); }
+}
+
+// Bard: musical wave with orange ripple
+@keyframes attack-strum {
+  0%   { transform: rotate(0deg) scale(1); box-shadow: 0 0 0 rgba(255, 152, 0, 0); }
+  20%  { transform: rotate(-4deg) scale(1.03); box-shadow: 0 0 20px 6px rgba(255, 152, 0, 0.35); }
+  40%  { transform: rotate(4deg) scale(0.98); box-shadow: 0 0 15px 4px rgba(255, 152, 0, 0.2); }
+  60%  { transform: rotate(-2deg) scale(1.01); box-shadow: 0 0 25px 8px rgba(255, 152, 0, 0.3); }
+  80%  { transform: rotate(1deg) scale(0.99); }
+  100% { transform: rotate(0deg) scale(1); box-shadow: 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+@keyframes musical-wave {
+  0%   { opacity: 0; transform: translateX(-50%) scaleX(0.3); }
+  30%  { opacity: 0.8; transform: translateX(-50%) scaleX(1); }
+  100% { opacity: 0; transform: translateX(-50%) scaleX(2); }
+}
+
+// ── Reusable class animation mixin ──────────────────────────────────────────
+// Pass a BEM prefix (e.g. "dungeon__combat-card", "boss__combat-card", "combat__card")
+@mixin class-attack-animations($prefix) {
+  .#{$prefix}--attack-Knight {
+    animation: attack-slash 0.35s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 30%;
+      left: 10%;
+      width: 80%;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, rgba(229, 57, 53, 0.8), rgba(255, 100, 80, 0.9), rgba(229, 57, 53, 0.8), transparent);
+      border-radius: 2px;
+      animation: slash-overlay 0.35s ease-out forwards;
+      pointer-events: none;
+      box-shadow: 0 0 8px rgba(229, 57, 53, 0.6);
+    }
+  }
+
+  .#{$prefix}--attack-Mage {
+    animation: attack-cast 0.4s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(156, 39, 176, 0.5) 0%, rgba(123, 31, 162, 0.2) 50%, transparent 70%);
+      animation: cast-glow-ring 0.4s ease-out forwards;
+      pointer-events: none;
+    }
+  }
+
+  .#{$prefix}--attack-Cleric {
+    animation: attack-cast-cleric 0.4s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 215, 0, 0.5) 0%, rgba(255, 193, 7, 0.2) 50%, transparent 70%);
+      animation: cast-glow-ring 0.4s ease-out forwards;
+      pointer-events: none;
+    }
+  }
+
+  .#{$prefix}--attack-Archer {
+    animation: attack-shoot 0.3s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 45%;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent 0%, rgba(76, 175, 80, 0.7) 30%, rgba(129, 199, 132, 0.9) 60%, transparent 100%);
+      border-radius: 2px;
+      animation: arrow-trail 0.3s ease-out forwards;
+      pointer-events: none;
+      box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+    }
+  }
+
+  .#{$prefix}--attack-Rogue {
+    animation: attack-stab 0.25s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 70% 50%, rgba(30, 30, 30, 0.5) 0%, transparent 60%);
+      border-radius: inherit;
+      animation: stab-flash 0.25s ease-out forwards;
+      pointer-events: none;
+    }
+  }
+
+  .#{$prefix}--attack-Necromancer {
+    animation: attack-dark 0.45s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(80, 40, 20, 0.4) 0%, rgba(121, 85, 72, 0.2) 40%, transparent 70%);
+      border: 1px solid rgba(121, 85, 72, 0.3);
+      animation: dark-swirl 0.45s ease-out forwards;
+      pointer-events: none;
+    }
+  }
+
+  .#{$prefix}--attack-Bard {
+    animation: attack-strum 0.4s ease-out;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, transparent, rgba(255, 152, 0, 0.6), rgba(255, 183, 77, 0.8), rgba(255, 152, 0, 0.6), transparent);
+      border-radius: 3px;
+      animation: musical-wave 0.4s ease-out forwards;
+      pointer-events: none;
+      box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+    }
+  }
+}

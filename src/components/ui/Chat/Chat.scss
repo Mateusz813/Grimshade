@@ -1,0 +1,258 @@
+@use '../../../styles/variables' as *;
+
+.chat {
+  background: $color-bg-secondary;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  overflow: hidden;
+
+  // ── Header (collapsible) ────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm $spacing-md;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid $color-border;
+    transition: background $transition-fast;
+
+    &:hover { background: $color-bg-card; }
+  }
+
+  &__title {
+    font-size: $font-sm;
+    font-weight: 600;
+    color: $color-text-muted;
+  }
+
+  &__toggle {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  // ── Message list ───────────────────────────────────────────────────────────
+  &__messages {
+    position: relative;
+    overflow-y: auto;
+    padding: $spacing-sm $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    // Custom scrollbar
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: $color-border; border-radius: 2px; }
+  }
+
+  &__empty {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    text-align: center;
+    margin: $spacing-sm 0;
+  }
+
+  &__msg {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    font-size: $font-xs;
+    line-height: 1.4;
+    padding: 2px 0;
+  }
+
+  &__msg--me &__msg-name {
+    color: $color-legendary;
+  }
+
+  &__msg-icon {
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  &__msg-time {
+    color: $color-border;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__msg-level {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 16px;
+    padding: 0 4px;
+    background: rgba(255, 193, 7, 0.18);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.45);
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  &__msg-name {
+    color: $color-accent;
+    font-weight: 600;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+
+    &--friend {
+      color: #ffc107;
+    }
+  }
+
+  &__msg-name-star {
+    display: inline-block;
+    margin-right: 2px;
+    font-size: 10px;
+  }
+
+  &__msg-text {
+    color: $color-text;
+    word-break: break-word;
+    flex: 1;
+  }
+
+  // ── Context menu ───────────────────────────────────────────────────────────
+  &__menu {
+    position: absolute;
+    z-index: 20;
+    min-width: 200px;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    padding: $spacing-xs 0;
+    display: flex;
+    flex-direction: column;
+    animation: chatMenuIn 0.12s ease;
+  }
+
+  &__menu-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: $spacing-xs $spacing-sm;
+    border-bottom: 1px solid $color-border;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__menu-icon { font-size: 14px; }
+
+  &__menu-name {
+    flex: 1;
+    font-weight: 700;
+    font-size: $font-sm;
+    color: $color-text;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__menu-level {
+    background: rgba(255, 193, 7, 0.18);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.45);
+    border-radius: 8px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  &__menu-item {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: $color-text;
+    text-align: left;
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-xs;
+    cursor: pointer;
+    transition: background $transition-fast;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+
+    &:hover { background: $color-bg-card; }
+
+    &--danger {
+      color: #f44336;
+
+      &:hover {
+        background: rgba(244, 67, 54, 0.12);
+      }
+    }
+  }
+
+  @keyframes chatMenuIn {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  // ── Error ──────────────────────────────────────────────────────────────────
+  &__error {
+    font-size: $font-xs;
+    color: $color-accent;
+    padding: 0 $spacing-md;
+    margin: 0;
+  }
+
+  // ── Input ──────────────────────────────────────────────────────────────────
+  &__input-row {
+    display: flex;
+    gap: $spacing-xs;
+    padding: $spacing-sm $spacing-md;
+    border-top: 1px solid $color-border;
+  }
+
+  &__input {
+    flex: 1;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text;
+    font-size: $font-xs;
+    padding: $spacing-xs $spacing-sm;
+    outline: none;
+    transition: border-color $transition-fast;
+
+    &::placeholder { color: $color-text-muted; }
+    &:focus { border-color: $color-accent; }
+    &:disabled { opacity: 0.5; }
+  }
+
+  &__send {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-sm;
+    color: white;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-sm;
+    min-width: 36px;
+    transition: background $transition-fast;
+
+    &:hover:not(:disabled) { background: $color-accent-hover; }
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+  }
+}

@@ -1,0 +1,183 @@
+@use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
+
+.leaderboard {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    flex: 1;
+    color: $color-accent;
+    font-size: $font-xl;
+    margin: 0;
+  }
+
+  &__refresh {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-md;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+    &:hover { border-color: $color-accent; color: $color-accent; }
+  }
+
+  // ── My rank ────────────────────────────────────────────────────────────────
+  &__my-rank {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    text-align: center;
+    padding: $spacing-sm $spacing-md;
+    background: rgba(#e94560, 0.08);
+    border-bottom: 1px solid $color-border;
+    strong { color: $color-accent; }
+  }
+
+  // ── Tabs (scrollable) ─────────────────────────────────────────────────────
+  &__tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+      height: 3px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: $color-border;
+      border-radius: 2px;
+    }
+
+    @include desktop {
+      justify-content: center;
+    }
+  }
+
+  &__tab {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: 11px;
+    padding: $spacing-xs $spacing-sm;
+    white-space: nowrap;
+    min-width: 48px;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover { color: $color-text; }
+    &--active { color: $color-accent; border-bottom-color: $color-accent; }
+  }
+
+  &__tab-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  &__tab-label {
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  // ── Info banner ────────────────────────────────────────────────────────────
+  &__info {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    text-align: center;
+    padding: $spacing-xs $spacing-md;
+    background: rgba(#ffc107, 0.08);
+    border-bottom: 1px solid $color-border;
+    font-style: italic;
+  }
+
+  // ── States ─────────────────────────────────────────────────────────────────
+  &__loading, &__error, &__empty {
+    text-align: center;
+    padding: $spacing-xl $spacing-md;
+    color: $color-text-muted;
+    font-size: $font-sm;
+  }
+
+  &__error { color: $color-accent; }
+
+  // ── List ───────────────────────────────────────────────────────────────────
+  &__list {
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    transition: border-color $transition-fast;
+
+    &--me      { border-color: $color-accent; background: rgba(#e94560, 0.08); }
+    &--top1    { border-color: #ffd700; }
+    &--top2    { border-color: #c0c0c0; }
+    &--top3    { border-color: #cd7f32; }
+  }
+
+  &__rank  { font-size: $font-lg; min-width: 32px; text-align: center; flex-shrink: 0; }
+  &__icon  { font-size: $font-lg; flex-shrink: 0; }
+
+  &__info-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: $font-md;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__class { font-size: $font-xs; color: $color-text-muted; }
+  &__value { flex-shrink: 0; text-align: right; }
+
+  &__level { font-size: $font-md; font-weight: 700; color: $color-accent; }
+}

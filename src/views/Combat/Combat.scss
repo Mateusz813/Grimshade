@@ -1,0 +1,2874 @@
+@use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
+
+// ── Layout ───────────────────────────────────────────────────────────────────
+.combat {
+  background: transparent;
+  color: $color-text;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh; // dynamic viewport height (accounts for mobile address bar)
+  overflow: hidden; // page itself never scrolls — arena scrolls internally
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  &__header {
+    align-items: center;
+    border-bottom: 1px solid $color-border;
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: $spacing-xs;
+    column-gap: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    position: sticky;
+    top: 0;
+    background: $color-bg;
+    z-index: $z-nav;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs;
+    transition: color $transition-fast;
+
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    color: $color-accent;
+    flex: 0 0 auto;
+    font-size: $font-lg;
+    margin: 0;
+  }
+
+  &__header-task {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: $radius-sm;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__header-task-icon {
+    font-size: $font-sm;
+  }
+
+  &__header-task-text {
+    font-size: $font-xs;
+    font-weight: 700;
+    color: #ffc107;
+  }
+
+  &__header-quests {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  &__header-quest {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(156, 39, 176, 0.1);
+    border: 1px solid rgba(156, 39, 176, 0.3);
+    border-radius: $radius-sm;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__header-quest-icon {
+    font-size: $font-sm;
+  }
+
+  &__header-quest-text {
+    font-size: $font-xs;
+    font-weight: 700;
+    color: #ce93d8;
+  }
+
+  &__header-controls {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+    row-gap: $spacing-xs;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  &__speed-btn {
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 700;
+    min-width: 52px;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &--x1  { background: #1e3a1e; border-color: #4caf50; color: #4caf50; }
+    &--x2  { background: #1e2e3a; border-color: #2196f3; color: #2196f3; }
+    &--x4  { background: #2e1e3a; border-color: $color-epic; color: $color-epic; }
+    &--SKIP { background: #3a1e1e; border-color: $color-accent; color: $color-accent; }
+
+    &:hover { opacity: 0.8; }
+  }
+
+  &__mode-btn {
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &--auto   { background: $color-bg-card; border-color: $color-legendary; color: $color-legendary; }
+    &--manual { background: $color-bg-card; border-color: $color-accent; color: $color-accent; }
+  }
+
+  &__toggle-btn {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &--active {
+      background: #4caf50;
+      border-color: #4caf50;
+      color: #fff;
+    }
+
+    &:hover {
+      border-color: $color-accent;
+    }
+  }
+
+  // ── XP bar toggle button in header ─────────────────────────────────────────
+  &__xp-toggle {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs;
+    line-height: 1;
+    transition: all $transition-fast;
+
+    &--active {
+      border-color: #ffc107;
+      color: #ffc107;
+    }
+
+    &:hover {
+      border-color: #ffc107;
+    }
+  }
+
+  // ── Stat points badge in header ────────────────────────────────────────────
+  &__stat-points-badge {
+    background: rgba(#ffc107, 0.15);
+    border: 1px solid rgba(#ffc107, 0.5);
+    border-radius: $radius-sm;
+    color: #ffc107;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: 2px 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all $transition-fast;
+    animation: stat-points-pulse 2s ease-in-out infinite;
+
+    &:hover {
+      background: rgba(#ffc107, 0.25);
+      border-color: #ffc107;
+    }
+  }
+
+  @keyframes stat-points-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(#ffc107, 0.4); }
+    50% { box-shadow: 0 0 8px 2px rgba(#ffc107, 0.3); }
+  }
+
+  // ── XP progress bar (collapsible) ──────────────────────────────────────────
+  // Wrapper always reserves space so toggling XP bar does not cause layout shift
+  &__xp-bar-placeholder {
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    overflow: hidden;
+  }
+
+  &__xp-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: 2px 0;
+    height: 24px;
+  }
+
+  &__xp-label {
+    color: #ffc107;
+    font-size: $font-xs;
+    font-weight: 700;
+    width: 22px;
+    text-align: right;
+  }
+
+  &__xp-bar {
+    flex: 1;
+    background: rgba(#ffc107, 0.12);
+    border-radius: 3px;
+    height: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  &__xp-bar-fill {
+    background: linear-gradient(90deg, #ffc107, #ffca28);
+    border-radius: 3px;
+    height: 100%;
+    min-width: 0;
+  }
+
+  &__xp-text {
+    color: #ffc107;
+    font-size: $font-xs;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  &__xp-rate {
+    color: #80deea;
+    font-weight: 700;
+    margin-left: 2px;
+  }
+
+  // ── Monster select ──────────────────────────────────────────────────────────
+  &__select {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0; // allow flex child to shrink below content size
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  &__select-title {
+    color: $color-text-muted;
+    font-size: $font-sm;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin: $spacing-md $spacing-md $spacing-xs;
+    text-transform: uppercase;
+  }
+
+  // Pre-fight wave size picker — lets the solo player bump the wave size
+  // before starting the fight. Reuses the same +/− button look as the
+  // in-fight &__wave-footer controls.
+  &__wave-picker {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin: 0 $spacing-md $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    background: rgba(255, 193, 7, 0.05);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    border-radius: $radius-md;
+    flex-wrap: wrap;
+  }
+
+  &__wave-picker-label {
+    font-size: $font-xs;
+    font-weight: 700;
+    color: #ffc107;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__wave-picker-count {
+    font-size: $font-sm;
+    font-weight: 700;
+    color: $color-text;
+    padding: 4px 14px;
+    border-radius: $radius-sm;
+    background: rgba(255, 255, 255, 0.08);
+    min-width: 48px;
+    text-align: center;
+  }
+
+  &__wave-picker-hint {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    font-style: italic;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__monster-list {
+    padding: 0 $spacing-md $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+
+    @media (min-width: 768px) {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: $spacing-sm;
+    }
+
+    @media (min-width: 1024px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (min-width: 1440px) {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  &__monster-card {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    overflow: hidden;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $color-accent;
+    }
+
+    &--locked {
+      opacity: 0.45;
+      filter: grayscale(0.6);
+
+      &:hover {
+        border-color: $color-border;
+      }
+    }
+
+    &--task {
+      border-color: rgba(#ffc107, 0.5);
+      box-shadow: 0 0 8px rgba(#ffc107, 0.15), inset 0 0 20px rgba(#ffc107, 0.04);
+      background: linear-gradient(135deg, rgba(#ffc107, 0.06) 0%, $color-bg-secondary 40%);
+
+      .combat__monster-row {
+        position: relative;
+
+        &::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 3px;
+          height: 100%;
+          background: #ffc107;
+          border-radius: 3px 0 0 3px;
+        }
+      }
+    }
+
+    &--quest {
+      border-left: 3px solid rgba(156, 39, 176, 0.5);
+    }
+
+    &--mastery-max {
+      border-color: rgba(#9c27b0, 0.6);
+      box-shadow: 0 0 8px rgba(#9c27b0, 0.2);
+      background: linear-gradient(135deg, rgba(#9c27b0, 0.08) 0%, $color-bg-secondary 50%);
+
+      &:hover {
+        border-color: #9c27b0;
+      }
+    }
+  }
+
+  &__mastery-badge {
+    font-size: 10px;
+    color: #ce93d8;
+    background: rgba(#9c27b0, 0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+
+    &--max {
+      color: #e040fb;
+      background: rgba(#9c27b0, 0.22);
+    }
+  }
+
+  &__mastery-task-badge {
+    font-size: 10px;
+    color: #ce93d8;
+    background: rgba(#9c27b0, 0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  &__monster-row {
+    align-items: center;
+    display: flex;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+  }
+
+  &__monster-sprite {
+    font-size: 24px;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  &__monster-name-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__monster-name {
+    font-size: $font-sm;
+    font-weight: 600;
+    color: $color-text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__monster-level {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__monster-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 $spacing-md 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    padding-top: 4px;
+  }
+
+  &__unlock-badge {
+    font-size: 10px;
+    color: $color-text-muted;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  &__task-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffc107;
+    background: rgba(#ffc107, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  &__quest-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ce93d8;
+    background: rgba(156, 39, 176, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__monster-stats {
+    display: flex;
+    gap: $spacing-xs;
+    font-size: $font-xs;
+    color: $color-text-muted;
+    flex-shrink: 0;
+
+    @media (max-width: 400px) {
+      display: none;
+    }
+  }
+
+  &__monster-xp {
+    font-size: $font-xs;
+    color: $color-legendary;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__monster-xp-bonus {
+    color: #ffb74d;
+    font-weight: 700;
+    text-shadow: 0 0 4px rgba(255, 152, 0, 0.5);
+    cursor: help;
+  }
+
+  &__monster-arrow {
+    font-size: 10px;
+    color: $color-text-muted;
+    flex-shrink: 0;
+    transition: transform $transition-fast;
+
+    &--open {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__fight-btn {
+    background: rgba(76, 175, 80, 0.15);
+    border: 1px solid #4caf50;
+    border-radius: $radius-sm;
+    color: #4caf50;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: $font-sm;
+    line-height: 1;
+    padding: $spacing-xs;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba(76, 175, 80, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+  }
+
+  &__monster-drops {
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid $color-border;
+    padding: $spacing-sm $spacing-md;
+  }
+
+  &__drops-header {
+    display: flex;
+    gap: $spacing-md;
+    font-size: $font-xs;
+    color: $color-text-muted;
+    margin-bottom: $spacing-xs;
+
+    span {
+      font-weight: 600;
+    }
+  }
+
+  &__drops-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    @media (min-width: 768px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-xs;
+    }
+  }
+
+  &__drop-item {
+    align-items: center;
+    display: flex;
+    font-size: $font-xs;
+    gap: $spacing-xs;
+  }
+
+  &__drop-dot {
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    height: 8px;
+    width: 8px;
+  }
+
+  &__drop-name {
+    color: $color-text;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__drop-chance {
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  &__drops-empty {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-style: italic;
+  }
+
+  &__drops-info {
+    color: $color-text;
+    font-size: $font-sm;
+    font-weight: 600;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__drops-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__drops-rarity {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    font-size: $font-xs;
+    margin-bottom: $spacing-xs;
+    align-items: center;
+  }
+
+  &__drops-rarity-title {
+    color: $color-text-muted;
+    font-weight: 600;
+    margin-right: $spacing-xs;
+  }
+
+  &__drops-chance {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-style: italic;
+  }
+
+  &__drops-variants {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  &__variant {
+    display: grid;
+    grid-template-columns: 80px 40px 1fr;
+    gap: 4px 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 11px;
+    align-items: center;
+
+    &--strong { border-left: 2px solid #2196f3; }
+    &--epic { border-left: 2px solid #4caf50; }
+    &--legendary { border-left: 2px solid #f44336; }
+    &--boss { border-left: 2px solid #ffc107; }
+  }
+
+  &__variant-name { font-weight: 700; }
+  &__variant-chance { color: rgba(255, 255, 255, 0.5); font-size: 10px; }
+  &__variant-stats { color: rgba(255, 255, 255, 0.7); grid-column: 1 / -1; font-size: 10px; }
+
+  &__variant-drops {
+    grid-column: 1 / -1;
+    padding: 4px 0 2px;
+  }
+
+  &__variant-rolls {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+  }
+
+  &__variant-tier {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0;
+    font-size: 10px;
+  }
+
+  &__tier-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &__tier-name {
+    font-weight: 600;
+    min-width: 70px;
+  }
+
+  &__tier-chance {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &__variant-stone {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+  }
+
+  &__drops-potions {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  &__drops-potions-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 4px;
+  }
+
+  &__monster-sprite {
+    font-size: 24px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+
+  &__monster-meta {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__monster-name {
+    color: $color-text;
+    font-size: $font-sm;
+    font-weight: 600;
+  }
+
+  &__monster-level {
+    color: $color-text-muted;
+    font-size: $font-xs;
+  }
+
+  &__task-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffc107;
+    background: rgba(255, 193, 7, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  &__quest-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ce93d8;
+    background: rgba(156, 39, 176, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+    margin-left: 4px;
+  }
+
+  &__monster-card--quest {
+    border-left: 3px solid rgba(156, 39, 176, 0.5);
+  }
+
+  &__unlock-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffb74d;
+    background: rgba(255, 152, 0, 0.12);
+    padding: 2px 7px;
+    border-radius: 8px;
+    white-space: nowrap;
+    margin-top: 2px;
+    border: 1px solid rgba(255, 152, 0, 0.35);
+  }
+
+  &__monster-stats {
+    display: flex;
+    gap: $spacing-sm;
+    flex-shrink: 0;
+
+    span {
+      color: $color-text-muted;
+      font-size: $font-xs;
+    }
+  }
+
+  &__monster-xp {
+    color: $color-legendary;
+    font-size: $font-xs;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  // (merged into the main &__select block above)
+
+  // ── Arena ───────────────────────────────────────────────────────────────────
+  &__arena {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-width: none;
+    width: 100%;
+    // Absolute-positioned victory/defeat popup (`combat__result-slot`) anchors
+    // against the arena — prevents any layout shift when the fight ends.
+    position: relative;
+    // Keep the top of the arena (monster/player cards) visible.
+    // The log at the bottom scrolls internally via its own overflow-y.
+    -webkit-overflow-scrolling: touch;
+
+    @media (min-width: 1024px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+      align-items: start;
+
+      .combat__card {
+        width: 100%;
+      }
+
+      .combat__rarity-badge {
+        grid-column: 1 / -1;
+      }
+
+      .combat__skill-slots,
+      .combat__potions,
+      .combat__loot-bar,
+      .combat__action-btns,
+      .combat__log,
+      .combat__xp-bar-placeholder {
+        grid-column: 1 / -1;
+      }
+
+      // ── Point 1: On wide screens the wave (monsters, left) and the
+      // battlefield (party, right) sit side-by-side in a 2-column grid.
+      // The XP bar + skill slots + log still span the full row below.
+      .combat__wave {
+        grid-column: 1;
+        align-self: stretch;
+      }
+
+      .combat__battlefield {
+        grid-column: 2;
+        align-self: stretch;
+      }
+
+      .combat__action-btns {
+        justify-self: stretch;
+      }
+    }
+  }
+
+  // ── Wave strip (multi-monster) ──────────────────────────────────────────────
+  &__wave {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-xs $spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    min-height: 400px;
+  }
+
+  &__wave-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__wave-title {
+    font-size: $font-xs;
+    font-weight: 700;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__wave-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  &__wave-btn {
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: 4px 10px;
+    transition: all $transition-fast;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: $color-text;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    &--remove {
+      background: rgba(244, 67, 54, 0.1);
+      border-color: rgba(244, 67, 54, 0.4);
+      color: #f44336;
+
+      &:hover:not(:disabled) {
+        background: rgba(244, 67, 54, 0.2);
+        border-color: #f44336;
+      }
+    }
+  }
+
+  &__wave-add-btn {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 193, 7, 0.2);
+      border-color: #ffc107;
+    }
+  }
+
+  &__wave-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__wave-slot {
+    background: $color-bg;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    transition: all $transition-fast;
+    min-height: 72px;
+    max-height: 82px;
+    width: 100%;
+    overflow: hidden; // prevent attack ::after pseudo-elements from growing layout
+
+    &--empty {
+      opacity: 0.3;
+      justify-content: center;
+    }
+
+    /** Slot is part of the planned wave but not yet spawned (between waves). */
+    &--reserved {
+      opacity: 0.55;
+      border-style: dashed;
+      border-color: rgba(255, 193, 7, 0.35);
+      background: rgba(255, 193, 7, 0.03);
+      justify-content: center;
+
+      .combat__wave-slot-placeholder {
+        animation: wave-reserved-pulse 1.4s ease-in-out infinite;
+      }
+    }
+
+    // Point 6: no visual decoration on the active target — the 🎯 crosshair
+    // icon in the corner is enough. Borders/backgrounds are reserved for the
+    // persistent rarity colors (strong/epic/legendary/boss) so they stay
+    // readable even after a monster dies.
+    &--active {
+      // intentionally empty
+    }
+
+    // Point 6: dead monsters still keep their rarity border/label visible so
+    // the player can see "that was a Legendary" after the fact. Only dim the
+    // sprite + HP text, not the whole card.
+    &--dead {
+      opacity: 0.75;
+
+      .combat__wave-slot-sprite {
+        filter: grayscale(1) brightness(0.55);
+      }
+
+      .combat__wave-slot-hp,
+      .combat__wave-slot-bar,
+      .combat__wave-slot-aggro {
+        opacity: 0.55;
+      }
+    }
+  }
+
+  @keyframes wave-reserved-pulse {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 0.9; }
+  }
+
+  &__wave-slot-target {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    font-size: 14px;
+    background: #ffc107;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.8);
+    animation: wave-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes wave-pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.15); }
+  }
+
+  &__wave-slot-sprite {
+    font-size: 36px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  &__wave-slot-placeholder {
+    color: $color-text-muted;
+    font-size: $font-sm;
+  }
+
+  &__wave-slot-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__wave-slot-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: $color-text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__wave-slot-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  &__wave-slot-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f44336, #ff9800);
+    transition: width 0.2s ease-out;
+  }
+
+  &__wave-slot-hp {
+    font-size: 11px;
+    color: $color-text-muted;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  // ── Rarity tinting on wave slots (so the 4 stacked monsters are distinct) ─
+  &__wave-slot--strong {
+    border-color: #2196f3;
+    background: rgba(33, 150, 243, 0.06);
+  }
+  &__wave-slot--epic {
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.07);
+  }
+  &__wave-slot--legendary {
+    border-color: #f44336;
+    background: rgba(244, 67, 54, 0.07);
+  }
+  &__wave-slot--boss {
+    border-color: #ffc107;
+    background: rgba(255, 193, 7, 0.08);
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.35);
+  }
+
+  // Hit / attacking reactions on the active wave slot (mirrors &__card--hit)
+  &__wave-slot--hit {
+    animation: card-shake 0.3s ease-out;
+  }
+
+  &__wave-slot--attacking {
+    animation: card-pulse 0.3s ease-out;
+  }
+
+  // Compact +/− footer below the stacked wave slots (replaces old wave-header)
+  &__wave-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-sm;
+    margin-top: auto;
+  }
+
+  &__wave-footer-count {
+    font-size: $font-xs;
+    font-weight: 700;
+    color: $color-text-muted;
+    padding: 2px 10px;
+    border-radius: $radius-sm;
+    background: rgba(255, 255, 255, 0.06);
+    min-width: 42px;
+    text-align: center;
+  }
+
+  &__wave-slot-rarity {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    color: #fff;
+
+    &--strong    { background: #2196f3; }
+    &--epic      { background: #4caf50; }
+    &--legendary { background: #f44336; }
+    &--boss      { background: #ffc107; color: #000; }
+  }
+
+  // Per-monster aggro line — shows who this monster is currently attacking
+  &__wave-slot-aggro {
+    font-size: 9px;
+    font-weight: 700;
+    color: #ff6b6b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+    padding: 1px 4px;
+    background: rgba(244, 67, 54, 0.12);
+    border-radius: 3px;
+    max-width: 100%;
+  }
+
+  // ── Party bot panel ─────────────────────────────────────────────────────
+  &__bots {
+    background: rgba(255, 193, 7, 0.04);
+    border: 1px solid rgba(255, 193, 7, 0.25);
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__bots-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__bots-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffc107;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  // Party cards render as full-width stacked cards matching the player card.
+  &__bots-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__bot-card {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    width: 100%;
+    min-width: 0;
+
+    &--dead {
+      opacity: 0.4;
+      filter: grayscale(1);
+    }
+  }
+
+  &__bot-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: $radius-sm;
+  }
+
+  &__bot-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__bot-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: $color-text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__bot-sub {
+    font-size: 11px;
+    color: $color-text-muted;
+    font-weight: 600;
+  }
+
+  &__bot-bar {
+    height: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 3px;
+  }
+
+  &__bot-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+    transition: width 0.25s ease-out;
+  }
+
+  &__bot-hp {
+    font-size: 11px;
+    color: $color-text-muted;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  // ── Cards (monster & player) ────────────────────────────────────────────────
+  &__card {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    position: relative;
+    overflow: hidden; // clip attack animation ::after pseudo-elements (arrow-trail, etc.)
+
+    &--monster { border-color: $color-accent; }
+    &--player  { border-color: $color-border; }
+  }
+
+  &__card-header {
+    align-items: center;
+    display: flex;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__player-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+  }
+
+  &__player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  &__player-avatar-lvl {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: $color-accent;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 3px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  &__sprite {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  &__card-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__card-name {
+    font-size: $font-md;
+    font-weight: 600;
+  }
+
+  &__card-sub {
+    color: $color-text-muted;
+    font-size: $font-xs;
+  }
+
+  &__hp-text {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    white-space: nowrap;
+  }
+
+  // ── Bars ────────────────────────────────────────────────────────────────────
+  &__bar {
+    background: $color-bg;
+    border-radius: 99px;
+    flex: 1;
+    height: 8px;
+    overflow: hidden;
+
+    &--enemy .combat__bar-fill { background: $color-accent; }
+    &--hp    .combat__bar-fill { background: #4caf50; }
+    &--mp    .combat__bar-fill { background: #2196f3; }
+  }
+
+  &__bar-fill {
+    border-radius: 99px;
+    height: 100%;
+  }
+
+  &__stat-row {
+    align-items: center;
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-xs;
+  }
+
+  &__stat-label {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 700;
+    width: 22px;
+    text-align: right;
+  }
+
+  // ── 4 active skill slots ────────────────────────────────────────────────────
+  &__skill-slots {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $spacing-xs;
+    min-height: 64px; // reserve fixed height even when --hidden
+  }
+
+  &__skill-slot {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: $font-xs;
+    padding: $spacing-xs;
+    min-height: 48px;
+    transition: all $transition-fast;
+    position: relative;
+    overflow: hidden;
+
+    &--empty {
+      border-style: dashed;
+      cursor: default;
+      opacity: 0.4;
+    }
+
+    &--filled {
+      border-color: $color-epic;
+      color: $color-text;
+
+      &:not(:disabled):hover {
+        background: $color-bg-card;
+        border-color: $color-accent;
+      }
+    }
+
+    &--auto { border-color: $color-legendary; cursor: default; }
+
+    &--on-cooldown {
+      opacity: 0.7;
+    }
+
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  // LoL-style ghost timer overlay for skills (sweeps from top to bottom)
+  &__skill-cd-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    transition: height 100ms linear;
+    border-radius: $radius-sm $radius-sm 0 0;
+    z-index: 0;
+  }
+
+  &__skill-slot-name {
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    word-break: break-word;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__skill-slot-badge {
+    font-size: 10px;
+    color: $color-text-muted;
+    background: $color-bg;
+    border-radius: 2px;
+    padding: 0 3px;
+    position: relative;
+    z-index: 1;
+  }
+
+  // ── Potion quick-use ────────────────────────────────────────────────────────
+  &__potions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    min-height: 40px; // reserve fixed height even when --hidden
+  }
+
+  &__potion-btn {
+    align-items: center;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    display: flex;
+    font-size: $font-xs;
+    font-weight: 600;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+    position: relative;
+    overflow: hidden;
+
+    &--hp {
+      background: rgba(#e53935, 0.1);
+      border-color: #e53935;
+      color: #ef9a9a;
+
+      &:hover:not(:disabled) { background: rgba(#e53935, 0.2); }
+    }
+
+    &--mp {
+      background: rgba(#1e88e5, 0.1);
+      border-color: #1e88e5;
+      color: #90caf9;
+
+      &:hover:not(:disabled) { background: rgba(#1e88e5, 0.2); }
+    }
+
+    &--pct-hp {
+      background: rgba(#ff7043, 0.1);
+      border-color: #ff7043;
+      color: #ffab91;
+
+      &:hover:not(:disabled) { background: rgba(#ff7043, 0.2); }
+    }
+
+    &--pct-mp {
+      background: rgba(#42a5f5, 0.1);
+      border-color: #42a5f5;
+      color: #bbdefb;
+
+      &:hover:not(:disabled) { background: rgba(#42a5f5, 0.2); }
+    }
+
+    &--cooldown {
+      opacity: 0.6;
+    }
+
+    &--empty {
+      opacity: 0.35;
+    }
+  }
+
+  &__potion-cd-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+    transition: height 100ms linear;
+    border-radius: $radius-sm $radius-sm 0 0;
+    z-index: 0;
+  }
+
+  &__potion-label {
+    position: relative;
+    z-index: 1;
+  }
+
+  &__potion-count {
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    padding: 0 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__potion-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+
+    &:hover { background: transparent; }
+  }
+
+  // ── Persistent loot bar — always visible, no modal ──────────────────────────
+  &__loot-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px $spacing-sm;
+    border-radius: $radius-sm;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    min-height: 36px;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+
+    &--victory {
+      background: rgba(76, 175, 80, 0.15);
+      border-color: rgba(76, 175, 80, 0.5);
+      box-shadow: 0 0 12px rgba(76, 175, 80, 0.2);
+      animation: loot-bar-flash 1.2s ease-out;
+    }
+
+    &--dead {
+      background: rgba(233, 69, 96, 0.12);
+      border-color: rgba(233, 69, 96, 0.4);
+    }
+  }
+
+  @keyframes loot-bar-flash {
+    0%   { background: rgba(76, 175, 80, 0.35); box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); }
+    30%  { background: rgba(76, 175, 80, 0.2); }
+    100% { background: rgba(76, 175, 80, 0.15); box-shadow: 0 0 12px rgba(76, 175, 80, 0.2); }
+  }
+
+  &__loot-bar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__loot-bar-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+
+    &--drop {
+      white-space: normal;
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  &__loot-bar-val {
+    font-weight: 700;
+    &--xp { color: #ffc107; }
+    &--gold { color: #ffd54f; }
+  }
+
+  &__loot-bar-drops {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: center;
+  }
+
+  &__loot-bar-drop-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+  }
+
+  &__loot-bar-sold {
+    font-size: 8px;
+    color: #ffc107;
+    font-weight: 600;
+  }
+
+  &__loot-bar-skip {
+    font-size: 10px;
+    color: #ff9800;
+    opacity: 0.85;
+  }
+
+  &__loot-bar-auto {
+    font-size: 10px;
+    color: #4caf50;
+    font-style: italic;
+  }
+
+  // ── Action buttons (always visible, disabled when not applicable) ───────────
+  &__action-btns {
+    display: flex;
+    gap: $spacing-xs;
+    flex-wrap: wrap;
+  }
+
+  &__action-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 6px $spacing-sm;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    background: transparent;
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all $transition-fast;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      border-color: $color-text-muted;
+      color: $color-text;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+
+    &--fight {
+      color: #4caf50;
+      border-color: rgba(76, 175, 80, 0.3);
+      &:hover:not(:disabled) { background: rgba(76, 175, 80, 0.1); border-color: #4caf50; }
+    }
+
+    &--change {
+      color: #64b5f6;
+      border-color: rgba(100, 181, 246, 0.3);
+      &:hover:not(:disabled) { background: rgba(100, 181, 246, 0.1); border-color: #64b5f6; }
+    }
+
+    &--flee {
+      color: #ef5350;
+      border-color: rgba(239, 83, 80, 0.3);
+      &:hover:not(:disabled) { background: rgba(239, 83, 80, 0.1); border-color: #ef5350; }
+    }
+  }
+
+  // ── Epic death overlay ──────────────────────────────────────────────────────
+  &__death-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(60, 0, 0, 0.92) 0%, rgba(10, 0, 0, 0.96) 80%);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  &__death-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    text-align: center;
+    z-index: 1;
+  }
+
+  &__death-icon {
+    font-size: 64px;
+    animation: death-icon-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes death-icon-pulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(233, 69, 96, 0.5)); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 20px rgba(233, 69, 96, 0.8)); }
+  }
+
+  &__death-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #ef5350;
+    text-shadow: 0 0 20px rgba(233, 69, 96, 0.6);
+    margin: 0;
+  }
+
+  &__death-penalty {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: $font-md;
+    margin: 0;
+  }
+
+  &__death-btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 700;
+    padding: $spacing-sm $spacing-xl;
+    transition: background $transition-fast, transform $transition-fast;
+    margin-top: $spacing-sm;
+
+    &:hover { background: $color-accent-hover; transform: scale(1.05); }
+  }
+
+  &__death-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef5350;
+    box-shadow: 0 0 6px rgba(233, 69, 96, 0.6);
+    pointer-events: none;
+  }
+
+  // (Old result overlay styles removed — replaced by loot-bar + death-overlay)
+
+  // ── Out-of-combat state: visible but non-interactive (no layout shifts) ────
+  &__skill-slots--hidden,
+  &__potions--hidden {
+    pointer-events: none;
+    opacity: 0.55;
+    filter: grayscale(0.4);
+  }
+
+  // ── Session kills counter ───────────────────────────────────────────────────
+  &__session-kills {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    font-size: $font-xs;
+  }
+
+  &__session-kills-title {
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+
+  &__session-kills-total {
+    background: $color-accent;
+    color: #fff;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  &__session-kills-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 800;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  &__session-kills-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  // ── Combat log ──────────────────────────────────────────────────────────────
+  &__log {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    flex: 0 0 auto;
+    min-height: 200px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: $spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__log-entry {
+    font-size: $font-xs;
+    line-height: 1.45;
+    padding: 1px 0;
+
+    &--player    { color: #81c784; }
+    &--monster   { color: #ef9a9a; }
+    &--crit      { color: $color-legendary; font-weight: 700; }
+    &--system    { color: $color-text-muted; font-style: italic; }
+    &--loot      { color: $color-legendary; }
+    &--block     { color: #64b5f6; font-weight: 600; }
+    &--dodge     { color: #ce93d8; font-weight: 600; font-style: italic; }
+    &--dualwield { color: #a5d6a7; }
+  }
+
+  // ── Combat animations ──────────────────────────────────────────────────────
+  &__card--hit {
+    animation: card-shake 0.3s ease-out;
+  }
+
+  &__card--attacking {
+    animation: card-pulse 0.3s ease-out;
+  }
+
+  &__floating-dmg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: $font-lg;
+    font-weight: 900;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+
+    &--player {
+      color: #81c784;
+    }
+
+    &--monster {
+      color: #ef9a9a;
+    }
+
+    &--crit {
+      color: $color-legendary;
+      font-size: 1.6rem;
+    }
+
+    &--heal {
+      color: #4caf50;
+    }
+
+    &--block {
+      color: #64b5f6;
+      font-size: 1.3rem;
+    }
+
+    &--dodge {
+      color: #ce93d8;
+      font-size: 1.3rem;
+      font-style: italic;
+    }
+
+    // Rogue dual wield: left/right variants (positioned via framer-motion x offset)
+    &--left,
+    &--right {
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+  }
+
+  // ── Monster rarity badge ────────────────────────────────────────────────────
+  &__rarity-badge {
+    text-align: center;
+    font-weight: 700;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: $spacing-sm;
+
+    &--strong {
+      color: #2196f3;
+      border: 1px solid rgba(33, 150, 243, 0.4);
+      background: rgba(33, 150, 243, 0.08);
+    }
+
+    &--epic {
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      background: rgba(76, 175, 80, 0.08);
+    }
+
+    &--legendary {
+      color: #f44336;
+      border: 1px solid rgba(244, 67, 54, 0.4);
+      background: rgba(244, 67, 54, 0.08);
+    }
+
+    &--boss {
+      color: #ffc107;
+      border: 1px solid rgba(255, 193, 7, 0.4);
+      background: rgba(255, 193, 7, 0.08);
+      animation: boss-glow 2s ease-in-out infinite;
+    }
+  }
+
+  &__card {
+    position: relative;
+    overflow: visible;
+  }
+}
+
+// ── Keyframes ────────────────────────────────────────────────────────────────
+@keyframes card-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-6px); }
+  30%  { transform: translateX(6px); }
+  45%  { transform: translateX(-4px); }
+  60%  { transform: translateX(4px); }
+  75%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes card-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.02); box-shadow: 0 0 12px rgba(255, 255, 255, 0.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes boss-glow {
+  0%   { box-shadow: 0 0 4px rgba(255, 193, 7, 0.3); }
+  50%  { box-shadow: 0 0 16px rgba(255, 193, 7, 0.6); }
+  100% { box-shadow: 0 0 4px rgba(255, 193, 7, 0.3); }
+}
+
+// ── Class-specific attack animations ─────────────────────────────────────────
+
+// Knight: aggressive horizontal slash with red flash
+@keyframes attack-slash {
+  0%   { transform: translateX(0) rotate(0deg); box-shadow: inset 0 0 0 rgba(229, 57, 53, 0); }
+  20%  { transform: translateX(10px) rotate(4deg); box-shadow: inset 60px 0 30px -20px rgba(229, 57, 53, 0.35), 0 0 18px rgba(229, 57, 53, 0.4); }
+  40%  { transform: translateX(-6px) rotate(-3deg); box-shadow: inset -60px 0 30px -20px rgba(229, 57, 53, 0.2); }
+  60%  { transform: translateX(4px) rotate(1deg); }
+  100% { transform: translateX(0) rotate(0deg); box-shadow: inset 0 0 0 rgba(229, 57, 53, 0); }
+}
+
+@keyframes slash-overlay {
+  0%   { opacity: 0; transform: scaleX(0) rotate(-15deg); }
+  25%  { opacity: 1; transform: scaleX(1) rotate(-15deg); }
+  60%  { opacity: 0.6; transform: scaleX(1.2) rotate(-15deg); }
+  100% { opacity: 0; transform: scaleX(0) rotate(-15deg); }
+}
+
+// Mage/Cleric: magical glow radial pulse
+@keyframes attack-cast {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(123, 31, 162, 0); filter: brightness(1); }
+  30%  { transform: scale(1.06); box-shadow: 0 0 25px 8px rgba(123, 31, 162, 0.45), inset 0 0 20px rgba(156, 39, 176, 0.25); filter: brightness(1.25); }
+  60%  { transform: scale(0.97); box-shadow: 0 0 40px 12px rgba(123, 31, 162, 0.2); filter: brightness(1.15); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(123, 31, 162, 0); filter: brightness(1); }
+}
+
+@keyframes cast-glow-ring {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  30%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+}
+
+// Cleric: golden holy glow variant
+@keyframes attack-cast-cleric {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); filter: brightness(1); }
+  30%  { transform: scale(1.06); box-shadow: 0 0 25px 8px rgba(255, 193, 7, 0.4), inset 0 0 20px rgba(255, 215, 0, 0.2); filter: brightness(1.3); }
+  60%  { transform: scale(0.97); box-shadow: 0 0 35px 10px rgba(255, 193, 7, 0.15); filter: brightness(1.1); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); filter: brightness(1); }
+}
+
+// Archer: forward projectile lunge with green trail
+@keyframes attack-shoot {
+  0%   { transform: translateX(0); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+  15%  { transform: translateX(-8px); }
+  40%  { transform: translateX(14px); box-shadow: -30px 0 25px -8px rgba(76, 175, 80, 0.5), 0 0 12px rgba(76, 175, 80, 0.3); }
+  70%  { transform: translateX(6px); box-shadow: -15px 0 15px -5px rgba(76, 175, 80, 0.2); }
+  100% { transform: translateX(0); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+@keyframes arrow-trail {
+  0%   { opacity: 0; transform: translateX(-100%); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(150%); }
+}
+
+// Rogue: rapid double stab with dark flash
+@keyframes attack-stab {
+  0%   { transform: translateX(0) scale(1); filter: brightness(1); }
+  15%  { transform: translateX(10px) scale(1.03); filter: brightness(0.7); box-shadow: 0 0 15px rgba(66, 66, 66, 0.6); }
+  30%  { transform: translateX(2px) scale(0.98); filter: brightness(1.2); }
+  50%  { transform: translateX(12px) scale(1.03); filter: brightness(0.7); box-shadow: 0 0 15px rgba(66, 66, 66, 0.6); }
+  65%  { transform: translateX(2px) scale(0.98); filter: brightness(1.1); }
+  100% { transform: translateX(0) scale(1); filter: brightness(1); box-shadow: none; }
+}
+
+// Necromancer: dark energy swirl with eerie glow
+@keyframes attack-dark {
+  0%   { transform: scale(1) rotate(0deg); filter: brightness(1) hue-rotate(0deg); box-shadow: 0 0 0 rgba(121, 85, 72, 0); }
+  25%  { transform: scale(1.05) rotate(-2deg); filter: brightness(0.65) hue-rotate(15deg); box-shadow: 0 0 30px 10px rgba(121, 85, 72, 0.5), inset 0 0 25px rgba(80, 40, 20, 0.4); }
+  50%  { transform: scale(0.96) rotate(2deg); filter: brightness(0.8) hue-rotate(-10deg); box-shadow: 0 0 20px 5px rgba(100, 50, 30, 0.3); }
+  75%  { transform: scale(1.02) rotate(-1deg); filter: brightness(1.15); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1) hue-rotate(0deg); box-shadow: 0 0 0 rgba(121, 85, 72, 0); }
+}
+
+@keyframes dark-swirl {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+  30%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2) rotate(180deg); }
+}
+
+// Bard: musical wave with orange ripple
+@keyframes attack-strum {
+  0%   { transform: rotate(0deg) scale(1); box-shadow: 0 0 0 rgba(255, 152, 0, 0); }
+  20%  { transform: rotate(-4deg) scale(1.03); box-shadow: 0 0 20px 6px rgba(255, 152, 0, 0.35); }
+  40%  { transform: rotate(4deg) scale(0.98); box-shadow: 0 0 15px 4px rgba(255, 152, 0, 0.2); }
+  60%  { transform: rotate(-2deg) scale(1.01); box-shadow: 0 0 25px 8px rgba(255, 152, 0, 0.3); }
+  80%  { transform: rotate(1deg) scale(0.99); }
+  100% { transform: rotate(0deg) scale(1); box-shadow: 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+@keyframes musical-wave {
+  0%   { opacity: 0; transform: translateX(-50%) scaleX(0.3); }
+  30%  { opacity: 0.8; transform: translateX(-50%) scaleX(1); }
+  100% { opacity: 0; transform: translateX(-50%) scaleX(2); }
+}
+
+// ── Class animation application with overlay pseudo-elements ─────────────────
+
+.combat__card--attack-Knight {
+  animation: attack-slash 0.35s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 30%;
+    left: 10%;
+    width: 80%;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, rgba(229, 57, 53, 0.8), rgba(255, 100, 80, 0.9), rgba(229, 57, 53, 0.8), transparent);
+    border-radius: 2px;
+    animation: slash-overlay 0.35s ease-out forwards;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(229, 57, 53, 0.6);
+  }
+}
+
+.combat__card--attack-Mage {
+  animation: attack-cast 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(156, 39, 176, 0.5) 0%, rgba(123, 31, 162, 0.2) 50%, transparent 70%);
+    animation: cast-glow-ring 0.4s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__card--attack-Cleric {
+  animation: attack-cast-cleric 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.5) 0%, rgba(255, 193, 7, 0.2) 50%, transparent 70%);
+    animation: cast-glow-ring 0.4s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__card--attack-Archer {
+  animation: attack-shoot 0.3s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 45%;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, rgba(76, 175, 80, 0.7) 30%, rgba(129, 199, 132, 0.9) 60%, transparent 100%);
+    border-radius: 2px;
+    animation: arrow-trail 0.3s ease-out forwards;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+  }
+}
+
+.combat__card--attack-Rogue {
+  animation: attack-stab 0.25s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 70% 50%, rgba(30, 30, 30, 0.5) 0%, transparent 60%);
+    border-radius: inherit;
+    animation: stab-flash 0.25s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+@keyframes stab-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  50%  { opacity: 0.3; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.combat__card--attack-Necromancer {
+  animation: attack-dark 0.45s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(80, 40, 20, 0.4) 0%, rgba(121, 85, 72, 0.2) 40%, transparent 70%);
+    border: 1px solid rgba(121, 85, 72, 0.3);
+    animation: dark-swirl 0.45s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__card--attack-Bard {
+  animation: attack-strum 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, rgba(255, 152, 0, 0.6), rgba(255, 183, 77, 0.8), rgba(255, 152, 0, 0.6), transparent);
+    border-radius: 3px;
+    animation: musical-wave 0.4s ease-out forwards;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+  }
+}
+
+// ── Wave slot attack animations (mirror card attack animations) ─────────────
+// Applied to the active wave slot when the player is attacking, so that a
+// class-specific overlay (slash, cast ring, arrow trail…) fires on the monster
+// the player is currently focused on.
+
+.combat__wave-slot--attack-Knight {
+  animation: attack-slash 0.35s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 30%;
+    left: 10%;
+    width: 80%;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, rgba(229, 57, 53, 0.8), rgba(255, 100, 80, 0.9), rgba(229, 57, 53, 0.8), transparent);
+    border-radius: 2px;
+    animation: slash-overlay 0.35s ease-out forwards;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(229, 57, 53, 0.6);
+  }
+}
+
+.combat__wave-slot--attack-Mage {
+  animation: attack-cast 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(156, 39, 176, 0.5) 0%, rgba(123, 31, 162, 0.2) 50%, transparent 70%);
+    animation: cast-glow-ring 0.4s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__wave-slot--attack-Cleric {
+  animation: attack-cast-cleric 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.5) 0%, rgba(255, 193, 7, 0.2) 50%, transparent 70%);
+    animation: cast-glow-ring 0.4s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__wave-slot--attack-Archer {
+  animation: attack-shoot 0.3s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 45%;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, rgba(76, 175, 80, 0.7) 30%, rgba(129, 199, 132, 0.9) 60%, transparent 100%);
+    border-radius: 2px;
+    animation: arrow-trail 0.3s ease-out forwards;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+  }
+}
+
+.combat__wave-slot--attack-Rogue {
+  animation: attack-stab 0.25s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 70% 50%, rgba(30, 30, 30, 0.5) 0%, transparent 60%);
+    border-radius: inherit;
+    animation: stab-flash 0.25s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__wave-slot--attack-Necromancer {
+  animation: attack-dark 0.45s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(80, 40, 20, 0.4) 0%, rgba(121, 85, 72, 0.2) 40%, transparent 70%);
+    border: 1px solid rgba(121, 85, 72, 0.3);
+    animation: dark-swirl 0.45s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+.combat__wave-slot--attack-Bard {
+  animation: attack-strum 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, rgba(255, 152, 0, 0.6), rgba(255, 183, 77, 0.8), rgba(255, 152, 0, 0.6), transparent);
+    border-radius: 3px;
+    animation: musical-wave 0.4s ease-out forwards;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+  }
+}
+
+// ── Class-colored left border on player card ─────────────────────────────────
+.combat__card--player {
+  &[data-class="Knight"]      { border-left: 3px solid #e53935; }
+  &[data-class="Mage"]        { border-left: 3px solid #7b1fa2; }
+  &[data-class="Cleric"]      { border-left: 3px solid #ffc107; }
+  &[data-class="Archer"]      { border-left: 3px solid #4caf50; }
+  &[data-class="Rogue"]       { border-left: 3px solid #424242; }
+  &[data-class="Necromancer"] { border-left: 3px solid #795548; }
+  &[data-class="Bard"]        { border-left: 3px solid #ff9800; }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── Battlefield layout: monsters TOP, player list BELOW, XP bar BELOW THAT ──
+// Single vertical column at every breakpoint so everything stacks and the XP
+// bar always sits directly under the player list (not beside it).
+// ═════════════════════════════════════════════════════════════════════════════
+.combat {
+  &__battlefield {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    width: 100%;
+  }
+
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    min-width: 0;
+    width: 100%;
+
+    &--monsters {
+      // Monsters row (stacked cards)
+    }
+
+    &--party {
+      // Player + party cards, stacked vertically
+    }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── Aggro indicators ─────────────────────────────────────────────────────────
+// Red glowing border + badge on whoever a monster is targeting, so the player
+// always sees who's being attacked at a glance.
+// ═════════════════════════════════════════════════════════════════════════════
+@keyframes pulse-aggro {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(244, 67, 54, 0.6);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 14px rgba(244, 67, 54, 0.9);
+  }
+}
+
+.combat__bot-card {
+  position: relative;
+
+  &--targeted {
+    border-color: #f44336 !important;
+    box-shadow: 0 0 12px rgba(244, 67, 54, 0.55);
+  }
+}
+
+.combat__bot-aggro-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #f44336;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+  animation: pulse-aggro 1.5s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+.combat__card--targeted {
+  border-color: #f44336 !important;
+  box-shadow: 0 0 16px rgba(244, 67, 54, 0.55);
+}
+
+.combat__player-aggro-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #f44336;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  animation: pulse-aggro 1.5s ease-in-out infinite;
+  z-index: 3;
+  white-space: nowrap;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── Skill Animation Overlays ─────────────────────────────────────────────────
+// Each overlay is absolutely positioned over the monster card and shows a
+// category-specific CSS animation + emoji when a skill fires.
+// ═════════════════════════════════════════════════════════════════════════════
+
+.combat__skill-anim-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.combat__skill-anim-emoji {
+  font-size: 2.4rem;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+  z-index: 2;
+  position: relative;
+}
+
+// ── Fire ──────────────────────────────────────────────────────────────────────
+@keyframes skill-fire-burst {
+  0%   { opacity: 0; transform: scale(0.3); }
+  20%  { opacity: 1; transform: scale(1.1); }
+  50%  { opacity: 0.8; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+@keyframes skill-fire-emoji {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-15deg); }
+  15%  { opacity: 1; transform: scale(1.2) rotate(5deg); }
+  50%  { opacity: 1; transform: scale(1.0) rotate(-3deg); }
+  100% { opacity: 0; transform: scale(0.6) rotate(10deg) translateY(-20px); }
+}
+
+.skill-anim--fire {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 87, 34, 0.5) 0%, rgba(255, 152, 0, 0.25) 40%, transparent 70%);
+    animation: skill-fire-burst 0.9s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-fire-emoji 0.9s ease-out forwards;
+    filter: drop-shadow(0 0 10px rgba(255, 87, 34, 0.8));
+  }
+}
+
+// ── Ice ───────────────────────────────────────────────────────────────────────
+@keyframes skill-ice-shatter {
+  0%   { opacity: 0; transform: scale(0.5); filter: hue-rotate(0deg); }
+  25%  { opacity: 1; transform: scale(1.0); }
+  60%  { opacity: 0.7; transform: scale(1.15); filter: hue-rotate(15deg); }
+  100% { opacity: 0; transform: scale(1.5); filter: hue-rotate(0deg); }
+}
+@keyframes skill-ice-emoji {
+  0%   { opacity: 0; transform: scale(0.3) rotate(10deg); }
+  20%  { opacity: 1; transform: scale(1.15) rotate(-5deg); }
+  60%  { opacity: 0.9; transform: scale(1.0) rotate(3deg); }
+  100% { opacity: 0; transform: scale(0.5) rotate(-15deg); }
+}
+
+.skill-anim--ice {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(41, 182, 246, 0.45) 0%, rgba(129, 212, 250, 0.2) 45%, transparent 70%);
+    animation: skill-ice-shatter 0.8s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-ice-emoji 0.8s ease-out forwards;
+    filter: drop-shadow(0 0 8px rgba(41, 182, 246, 0.8));
+  }
+}
+
+// ── Lightning ─────────────────────────────────────────────────────────────────
+@keyframes skill-lightning-flash {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; background: rgba(255, 235, 59, 0.35); }
+  16%  { opacity: 0.2; }
+  24%  { opacity: 0.9; background: rgba(255, 235, 59, 0.25); }
+  40%  { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+@keyframes skill-lightning-emoji {
+  0%   { opacity: 0; transform: translateY(-30px) scale(1.5); }
+  15%  { opacity: 1; transform: translateY(0) scale(1.1); }
+  30%  { opacity: 0.5; transform: translateY(2px) scale(0.95); }
+  45%  { opacity: 1; transform: translateY(-2px) scale(1.05); }
+  100% { opacity: 0; transform: translateY(10px) scale(0.7); }
+}
+
+.skill-anim--lightning {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    animation: skill-lightning-flash 0.6s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-lightning-emoji 0.6s ease-out forwards;
+    filter: drop-shadow(0 0 12px rgba(255, 235, 59, 0.9));
+  }
+}
+
+// ── Holy ──────────────────────────────────────────────────────────────────────
+@keyframes skill-holy-glow {
+  0%   { opacity: 0; transform: scale(0.5); }
+  30%  { opacity: 0.9; transform: scale(1.0); }
+  60%  { opacity: 0.6; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes skill-holy-emoji {
+  0%   { opacity: 0; transform: translateY(15px) scale(0.5); }
+  25%  { opacity: 1; transform: translateY(-5px) scale(1.15); }
+  60%  { opacity: 0.9; transform: translateY(-10px) scale(1.0); }
+  100% { opacity: 0; transform: translateY(-25px) scale(0.7); }
+}
+
+.skill-anim--holy {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255, 213, 79, 0.45) 0%, rgba(255, 241, 118, 0.2) 45%, transparent 70%);
+    animation: skill-holy-glow 1.0s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-holy-emoji 1.0s ease-out forwards;
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.9));
+  }
+}
+
+// ── Dark ──────────────────────────────────────────────────────────────────────
+@keyframes skill-dark-swirl {
+  0%   { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  30%  { opacity: 0.9; transform: scale(1.0) rotate(60deg); }
+  60%  { opacity: 0.6; transform: scale(1.2) rotate(120deg); }
+  100% { opacity: 0; transform: scale(1.5) rotate(200deg); }
+}
+@keyframes skill-dark-emoji {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+  20%  { opacity: 1; transform: scale(1.1) rotate(10deg); }
+  60%  { opacity: 0.8; transform: scale(1.0) rotate(-5deg); }
+  100% { opacity: 0; transform: scale(0.5) rotate(15deg); }
+}
+
+.skill-anim--dark {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(123, 31, 162, 0.4) 0%, rgba(74, 20, 140, 0.2) 40%, transparent 70%);
+    animation: skill-dark-swirl 1.0s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-dark-emoji 1.0s ease-out forwards;
+    filter: drop-shadow(0 0 10px rgba(123, 31, 162, 0.8));
+  }
+}
+
+// ── Physical ──────────────────────────────────────────────────────────────────
+@keyframes skill-physical-impact {
+  0%   { opacity: 0; transform: scale(0.6); }
+  15%  { opacity: 1; transform: scale(1.1); }
+  30%  { opacity: 0.5; transform: scale(0.95); }
+  50%  { opacity: 0.8; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes skill-physical-emoji {
+  0%   { opacity: 0; transform: translateX(-15px) scale(0.6); }
+  20%  { opacity: 1; transform: translateX(5px) scale(1.2); }
+  40%  { opacity: 0.9; transform: translateX(-2px) scale(1.0); }
+  100% { opacity: 0; transform: translateX(0) scale(0.7); }
+}
+
+.skill-anim--physical {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(ellipse at 55% 45%, rgba(255, 255, 255, 0.35) 0%, rgba(200, 200, 200, 0.15) 40%, transparent 65%);
+    animation: skill-physical-impact 0.7s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-physical-emoji 0.7s ease-out forwards;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7));
+  }
+}
+
+// ── Arrow ─────────────────────────────────────────────────────────────────────
+@keyframes skill-arrow-fly {
+  0%   { opacity: 0; transform: translateX(-60px); }
+  25%  { opacity: 1; transform: translateX(-10px); }
+  50%  { opacity: 0.9; transform: translateX(5px); }
+  100% { opacity: 0; transform: translateX(40px); }
+}
+@keyframes skill-arrow-trail {
+  0%   { opacity: 0; width: 0; }
+  30%  { opacity: 0.7; width: 70%; }
+  100% { opacity: 0; width: 100%; }
+}
+
+.skill-anim--arrow {
+  &::before {
+    content: '';
+    position: absolute;
+    top: 48%;
+    left: 5%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(102, 187, 106, 0.6), rgba(129, 199, 132, 0.8), transparent);
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(102, 187, 106, 0.5);
+    animation: skill-arrow-trail 0.7s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-arrow-fly 0.7s ease-out forwards;
+    filter: drop-shadow(0 0 6px rgba(102, 187, 106, 0.7));
+  }
+}
+
+// ── Music ─────────────────────────────────────────────────────────────────────
+@keyframes skill-music-wave {
+  0%   { opacity: 0; transform: scaleX(0.3) scaleY(0.8); }
+  30%  { opacity: 0.8; transform: scaleX(1.0) scaleY(1.0); }
+  60%  { opacity: 0.5; transform: scaleX(1.3) scaleY(1.1); }
+  100% { opacity: 0; transform: scaleX(1.8) scaleY(1.3); }
+}
+@keyframes skill-music-emoji {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5) rotate(-10deg); }
+  20%  { opacity: 1; transform: translateY(-5px) scale(1.15) rotate(5deg); }
+  50%  { opacity: 0.9; transform: translateY(-3px) scale(1.0) rotate(-3deg); }
+  75%  { opacity: 0.6; transform: translateY(-10px) scale(0.9) rotate(5deg); }
+  100% { opacity: 0; transform: translateY(-20px) scale(0.6) rotate(-8deg); }
+}
+
+.skill-anim--music {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(ellipse at 50% 60%, rgba(255, 152, 0, 0.35) 0%, rgba(255, 183, 77, 0.15) 45%, transparent 70%);
+    animation: skill-music-wave 1.0s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-music-emoji 1.0s ease-out forwards;
+    filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.8));
+  }
+}
+
+// ── Arcane ─────────────────────────────────────────────────────────────────────
+@keyframes skill-arcane-pulse {
+  0%   { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  25%  { opacity: 0.9; transform: scale(1.0) rotate(30deg); }
+  50%  { opacity: 0.7; transform: scale(1.15) rotate(60deg); }
+  75%  { opacity: 0.4; transform: scale(1.3) rotate(90deg); }
+  100% { opacity: 0; transform: scale(1.6) rotate(120deg); }
+}
+@keyframes skill-arcane-emoji {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-30deg); }
+  20%  { opacity: 1; transform: scale(1.2) rotate(0deg); }
+  55%  { opacity: 0.8; transform: scale(1.0) rotate(15deg); }
+  100% { opacity: 0; transform: scale(0.5) rotate(30deg); }
+}
+
+.skill-anim--arcane {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(206, 147, 216, 0.4) 0%, rgba(156, 39, 176, 0.2) 40%, transparent 65%);
+    animation: skill-arcane-pulse 0.9s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-arcane-emoji 0.9s ease-out forwards;
+    filter: drop-shadow(0 0 10px rgba(206, 147, 216, 0.8));
+  }
+}
+
+// ── Poison ────────────────────────────────────────────────────────────────────
+@keyframes skill-poison-spread {
+  0%   { opacity: 0; transform: scale(0.4); }
+  20%  { opacity: 0.8; transform: scale(0.9); }
+  50%  { opacity: 0.6; transform: scale(1.1); }
+  80%  { opacity: 0.3; transform: scale(1.25); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+@keyframes skill-poison-emoji {
+  0%   { opacity: 0; transform: scale(0.4) rotate(5deg); }
+  25%  { opacity: 1; transform: scale(1.1) rotate(-3deg); }
+  60%  { opacity: 0.8; transform: scale(1.0) rotate(2deg); }
+  100% { opacity: 0; transform: scale(0.6) rotate(-5deg); }
+}
+
+.skill-anim--poison {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(105, 240, 174, 0.35) 0%, rgba(76, 175, 80, 0.15) 45%, transparent 70%);
+    animation: skill-poison-spread 0.8s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-poison-emoji 0.8s ease-out forwards;
+    filter: drop-shadow(0 0 8px rgba(105, 240, 174, 0.8));
+  }
+}
+
+// ── Buff ──────────────────────────────────────────────────────────────────────
+@keyframes skill-buff-shine {
+  0%   { opacity: 0; transform: scale(0.5); }
+  30%  { opacity: 0.7; transform: scale(1.0); }
+  60%  { opacity: 0.4; transform: scale(1.15); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+@keyframes skill-buff-emoji {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.4); }
+  25%  { opacity: 1; transform: translateY(-5px) scale(1.15); }
+  60%  { opacity: 0.8; transform: translateY(-8px) scale(1.0); }
+  100% { opacity: 0; transform: translateY(-20px) scale(0.6); }
+}
+
+.skill-anim--buff {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(79, 195, 247, 0.3) 0%, rgba(41, 182, 246, 0.15) 40%, transparent 65%);
+    animation: skill-buff-shine 0.8s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-buff-emoji 0.8s ease-out forwards;
+    filter: drop-shadow(0 0 8px rgba(79, 195, 247, 0.7));
+  }
+}
+
+// ── Summon ────────────────────────────────────────────────────────────────────
+@keyframes skill-summon-rise {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.3); }
+  30%  { opacity: 0.8; transform: translateY(-5px) scale(1.0); }
+  60%  { opacity: 0.6; transform: translateY(-8px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-15px) scale(1.3); }
+}
+@keyframes skill-summon-emoji {
+  0%   { opacity: 0; transform: translateY(25px) scale(0.3); }
+  25%  { opacity: 1; transform: translateY(-3px) scale(1.2); }
+  55%  { opacity: 0.9; transform: translateY(-5px) scale(1.0); }
+  100% { opacity: 0; transform: translateY(-20px) scale(0.6); }
+}
+
+.skill-anim--summon {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(ellipse at 50% 70%, rgba(121, 85, 72, 0.35) 0%, rgba(93, 64, 55, 0.15) 45%, transparent 70%);
+    animation: skill-summon-rise 1.0s ease-out forwards;
+  }
+  .combat__skill-anim-emoji {
+    animation: skill-summon-emoji 1.0s ease-out forwards;
+    filter: drop-shadow(0 0 8px rgba(121, 85, 72, 0.7));
+  }
+}

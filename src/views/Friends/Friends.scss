@@ -1,0 +1,394 @@
+@use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
+
+.friends {
+    min-height: 100dvh;
+    padding: 16px 12px 120px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+
+    @include tablet {
+        padding: 24px 24px 140px;
+    }
+
+    &__loading {
+        text-align: center;
+        padding: 48px 0;
+        color: $color-text-muted;
+    }
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    &__back-btn {
+        padding: 8px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: $color-text;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    &__title {
+        font-size: 24px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0;
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+    &__tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 0;
+        overflow-x: auto;
+    }
+
+    &__tab {
+        appearance: none;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: $color-text-muted;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: color 120ms ease, border-color 120ms ease;
+        white-space: nowrap;
+        font-family: inherit;
+
+        &:hover:not(:disabled) { color: $color-text; }
+
+        &--active {
+            color: $color-accent;
+            border-color: $color-accent;
+        }
+
+        &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+
+    // ── Add friend section ────────────────────────────────────────────────────
+    &__add {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    &__section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    &__muted {
+        color: $color-text-muted;
+        font-weight: 400;
+        text-transform: none;
+        font-size: 12px;
+    }
+
+    &__add-row {
+        display: flex;
+        gap: 8px;
+
+        @media (max-width: 480px) {
+            flex-direction: column;
+        }
+    }
+
+    &__add-input {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        color: $color-text;
+        font-size: 14px;
+        padding: 10px 12px;
+        outline: none;
+        transition: border-color 120ms ease;
+
+        &::placeholder { color: $color-text-muted; }
+        &:focus { border-color: $color-accent; }
+    }
+
+    &__add-btn {
+        padding: 10px 16px;
+        background: $color-accent;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 120ms ease;
+
+        &:hover:not(:disabled) { background: $color-accent-hover; }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
+    &__error {
+        margin: 8px 0 0;
+        font-size: 13px;
+        color: #f44336;
+    }
+
+    &__lookup-result {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 12px;
+        background: rgba(76, 175, 80, 0.08);
+        border: 1px solid rgba(76, 175, 80, 0.35);
+        border-radius: 10px;
+
+        @media (max-width: 480px) {
+            flex-wrap: wrap;
+        }
+    }
+
+    &__lookup-icon {
+        font-size: 28px;
+        flex-shrink: 0;
+    }
+
+    &__lookup-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    &__lookup-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: $color-text;
+    }
+
+    &__lookup-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: $color-text-muted;
+    }
+
+    &__lookup-add {
+        padding: 8px 14px;
+        background: #4caf50;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 120ms ease;
+
+        &:hover { background: #43a047; }
+    }
+
+    // ── List ──────────────────────────────────────────────────────────────────
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        transition: background 120ms ease;
+
+        &:hover { background: rgba(255, 255, 255, 0.06); }
+
+        @media (max-width: 480px) {
+            flex-wrap: wrap;
+        }
+
+        &--blocked {
+            background: rgba(244, 67, 54, 0.06);
+            border-color: rgba(244, 67, 54, 0.25);
+        }
+    }
+
+    &__row-star {
+        background: transparent;
+        border: none;
+        color: #555;
+        font-size: 20px;
+        padding: 0 4px;
+        cursor: pointer;
+        transition: color 120ms ease, transform 120ms ease;
+        line-height: 1;
+
+        &:hover { transform: scale(1.15); }
+
+        &--on { color: #ffc107; }
+    }
+
+    &__row-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+
+    &__row-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    &__row-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: $color-text;
+    }
+
+    &__row-meta {
+        font-size: 12px;
+        color: $color-text-muted;
+    }
+
+    &__row-status {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: $color-text-muted;
+        flex-shrink: 0;
+
+        &--online { color: #4caf50; font-weight: 600; }
+    }
+
+    &__dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 2px;
+
+        &--online {
+            background: #4caf50;
+            box-shadow: 0 0 6px rgba(76, 175, 80, 0.7);
+        }
+
+        &--offline { background: #555; }
+    }
+
+    &__row-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    &__action {
+        appearance: none;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-size: 14px;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: background 120ms ease, transform 120ms ease;
+        color: $color-text;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        &--pm:hover { background: rgba(33, 150, 243, 0.2); }
+        &--block:hover { background: rgba(244, 67, 54, 0.18); }
+        &--remove:hover { background: rgba(244, 67, 54, 0.18); }
+        &--unblock {
+            background: rgba(76, 175, 80, 0.18);
+            border-color: rgba(76, 175, 80, 0.35);
+            color: #4caf50;
+            font-weight: 700;
+
+            &:hover { background: rgba(76, 175, 80, 0.28); }
+        }
+    }
+
+    // ── Empty state ───────────────────────────────────────────────────────────
+    &__empty-list {
+        padding: 24px 20px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    &__empty-list-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+        margin-bottom: 6px;
+    }
+
+    &__empty-list-hint {
+        font-size: 12px;
+        color: $color-text-muted;
+    }
+
+    // ── PM view ───────────────────────────────────────────────────────────────
+    &__pm {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(33, 150, 243, 0.25);
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    &__pm-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    &__pm-icon { font-size: 18px; }
+
+    &__pm-title {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+    }
+
+    &__pm-close {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        color: $color-text-muted;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 12px;
+
+        &:hover {
+            color: $color-text;
+            background: rgba(255, 255, 255, 0.06);
+        }
+    }
+}

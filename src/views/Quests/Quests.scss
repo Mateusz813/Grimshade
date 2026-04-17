@@ -1,0 +1,774 @@
+@use '../../styles/variables' as *;
+
+.quests {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+    position: sticky;
+    top: 0;
+    z-index: $z-nav;
+  }
+
+  &__back {
+    background: transparent;
+    border: 1px solid $color-border;
+    color: $color-text-muted;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-sm;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover {
+      color: $color-text;
+      border-color: $color-text-muted;
+    }
+  }
+
+  &__title {
+    font-size: $font-lg;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  &__tabs {
+    display: flex;
+    gap: $spacing-xs;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__tab {
+    flex: 1;
+    background: transparent;
+    border: 1px solid $color-border;
+    color: $color-text-muted;
+    padding: $spacing-sm;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 600;
+    transition: all $transition-fast;
+    position: relative;
+
+    &--active {
+      border-color: $color-accent;
+      color: $color-accent;
+      background: rgba(233, 69, 96, 0.12);
+    }
+
+    &--claimable {
+      border-color: rgba(76, 175, 80, 0.7);
+      animation: quests-tab-glow 1.8s ease-in-out infinite;
+    }
+
+    &--claimable#{&}--active {
+      border-color: #4caf50;
+      background: rgba(76, 175, 80, 0.15);
+      color: #4caf50;
+    }
+
+    &:hover:not(&--active) {
+      color: $color-text;
+      border-color: $color-text-muted;
+    }
+  }
+
+  @keyframes quests-tab-glow {
+    0%, 100% { box-shadow: 0 0 4px rgba(76, 175, 80, 0.2); }
+    50%      { box-shadow: 0 0 14px rgba(76, 175, 80, 0.5); }
+  }
+
+  &__tab-badge {
+    margin-left: 6px;
+    font-size: 14px;
+    filter: drop-shadow(0 0 4px rgba(76, 175, 80, 0.7));
+    animation: quests-badge-bounce 2s ease-in-out infinite;
+  }
+
+  @keyframes quests-badge-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+  }
+
+  // --- Daily quest styles ---
+
+  &__daily-locked {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-xl;
+    text-align: center;
+  }
+
+  &__daily-locked-icon {
+    font-size: 48px;
+  }
+
+  &__daily-locked-sub {
+    color: $color-text-muted;
+    font-size: $font-sm;
+  }
+
+  &__daily-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+  }
+
+  &__daily-quest {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    transition: all $transition-normal;
+
+    &--completed {
+      border-color: #4caf50;
+      background: rgba(76, 175, 80, 0.06);
+    }
+
+    &--claimed {
+      opacity: 0.5;
+      border-color: $color-border;
+      background: $color-bg-secondary;
+    }
+  }
+
+  &__daily-quest-header {
+    align-items: center;
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__daily-quest-name {
+    color: $color-text;
+    flex: 1;
+    font-size: $font-md;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  &__daily-badge {
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: 2px $spacing-sm;
+    text-transform: uppercase;
+
+    &--ready {
+      background: rgba(76, 175, 80, 0.15);
+      border: 1px solid #4caf50;
+      color: #4caf50;
+    }
+
+    &--claimed {
+      background: rgba(158, 158, 158, 0.15);
+      border: 1px solid $color-text-muted;
+      color: $color-text-muted;
+    }
+  }
+
+  &__daily-quest-desc {
+    color: $color-text-muted;
+    font-size: $font-sm;
+    margin: 0;
+  }
+
+  &__daily-progress {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__daily-progress-bar {
+    background: $color-bg;
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+  }
+
+  &__daily-progress-fill {
+    background: $color-accent;
+    border-radius: 99px;
+    height: 100%;
+    transition: width $transition-normal;
+  }
+
+  &__daily-progress-text {
+    color: $color-text-muted;
+    font-size: $font-xs;
+  }
+
+  &__daily-rewards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+
+  &__daily-reward {
+    background: $color-bg;
+    border-radius: $radius-sm;
+    color: $color-legendary;
+    font-size: $font-xs;
+    font-weight: 600;
+    padding: 2px $spacing-sm;
+  }
+
+  &__daily-claim-btn {
+    background: #4caf50;
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 600;
+    padding: $spacing-sm;
+    transition: opacity $transition-fast;
+    width: 100%;
+
+    &:hover { opacity: 0.85; }
+  }
+
+  // ── Bulk action buttons ──
+
+  &__bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__bulk-btn {
+    flex: 1 1 auto;
+    min-width: 140px;
+    border: none;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-sm;
+    transition: opacity $transition-fast;
+    white-space: nowrap;
+
+    &:hover { opacity: 0.85; }
+
+    &--claim {
+      background: #4caf50;
+      color: #fff;
+    }
+
+    &--accept {
+      background: rgba(33, 150, 243, 0.2);
+      color: #2196f3;
+      border: 1px solid rgba(33, 150, 243, 0.4);
+    }
+
+    &--abandon {
+      background: rgba(244, 67, 54, 0.15);
+      color: #ef5350;
+      border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+  }
+
+  &__filters {
+    display: flex;
+    gap: $spacing-xs;
+    padding: $spacing-sm $spacing-md;
+    overflow-x: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  &__filter-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid $color-border;
+    color: $color-text-muted;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-xs;
+    white-space: nowrap;
+    transition: all $transition-fast;
+
+    &--active {
+      border-color: $color-accent;
+      color: $color-accent;
+      background: rgba(233, 69, 96, 0.12);
+    }
+
+    &:hover:not(&--active) {
+      color: $color-text;
+      border-color: $color-text-muted;
+    }
+  }
+
+  &__list {
+    padding: $spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__empty {
+    text-align: center;
+    color: $color-text-muted;
+    padding: $spacing-xl;
+  }
+
+  &__card {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+
+    &--active {
+      border-color: $color-accent;
+      background: rgba(233, 69, 96, 0.06);
+    }
+
+    &--completed {
+      opacity: 0.6;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    &--locked {
+      opacity: 0.5;
+    }
+  }
+
+  &__card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__card-title-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__check {
+    color: $color-rare;
+    font-weight: 700;
+    font-size: $font-md;
+  }
+
+  &__lock {
+    font-size: $font-sm;
+  }
+
+  &__card-name {
+    font-size: $font-md;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  &__card-level {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px $spacing-xs;
+    border-radius: $radius-sm;
+    white-space: nowrap;
+  }
+
+  &__card-desc {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    margin: 0 0 $spacing-sm;
+    line-height: 1.4;
+  }
+
+  &__goals {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__goal {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: $radius-sm;
+    padding: $spacing-xs $spacing-sm;
+
+    &--done {
+      background: rgba(33, 150, 243, 0.1);
+    }
+  }
+
+  &__goal-text {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: $font-sm;
+    flex-wrap: wrap;
+  }
+
+  &__goal-type {
+    color: $color-text-muted;
+  }
+
+  &__goal-target {
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__goal-count {
+    margin-left: auto;
+    color: $color-text-muted;
+    font-size: $font-xs;
+  }
+
+  &__goal-check {
+    color: $color-rare;
+    font-weight: 700;
+  }
+
+  &__goal-bar {
+    margin-top: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  &__goal-bar-fill {
+    height: 100%;
+    background: $color-accent;
+    border-radius: 2px;
+    transition: width $transition-normal;
+  }
+
+  &__rewards {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__rewards-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    margin-right: $spacing-xs;
+  }
+
+  &__reward-tag {
+    font-size: $font-xs;
+    background: rgba(255, 193, 7, 0.12);
+    color: $color-legendary;
+    padding: 2px $spacing-xs;
+    border-radius: $radius-sm;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+  }
+
+  &__reward-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(255, 193, 7, 0.12);
+    border: 1px solid rgba(255, 193, 7, 0.25);
+    border-radius: 999px;
+    color: $color-legendary;
+    font-size: $font-xs;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  &__reward-chip-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  &__reward-chip-text {
+    color: $color-text;
+    font-weight: 700;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__action-btn {
+    padding: $spacing-xs $spacing-md;
+    border-radius: $radius-sm;
+    border: none;
+    font-size: $font-sm;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &--start {
+      background: $color-bg-card;
+      color: $color-text;
+      border: 1px solid $color-border;
+
+      &:hover {
+        background: lighten(#0f3460, 5%);
+        border-color: $color-text-muted;
+      }
+    }
+
+    &--claim {
+      background: $color-accent;
+      color: white;
+      animation: pulse 1.5s infinite;
+
+      &:hover { background: $color-accent-hover; }
+    }
+
+    &--abandon {
+      background: rgba(244, 67, 54, 0.15);
+      color: #ef5350;
+      border: 1px solid rgba(244, 67, 54, 0.4);
+
+      &:hover {
+        background: rgba(244, 67, 54, 0.25);
+        border-color: #ef5350;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      filter: grayscale(0.8);
+
+      &:hover {
+        background: $color-bg-card;
+        border-color: $color-border;
+      }
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
+
+  &__in-progress {
+    font-size: $font-xs;
+    color: $color-accent;
+    font-style: italic;
+  }
+
+  &__completed-label {
+    font-size: $font-xs;
+    color: $color-rare;
+    font-weight: 600;
+  }
+
+  &__locked-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  // ── Claim summary modal ──
+
+  &__overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: $z-modal;
+    padding: $spacing-md;
+  }
+
+  &__claim-modal {
+    background: $color-bg-secondary;
+    border: 1px solid $color-accent;
+    border-radius: $radius-lg;
+    max-width: 420px;
+    max-height: 80vh;
+    width: 100%;
+    padding: $spacing-lg;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    overflow: hidden;
+  }
+
+  &__claim-modal-title {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: #4caf50;
+    text-align: center;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  &__claim-modal-quest {
+    font-size: $font-md;
+    font-weight: 600;
+    color: $color-text;
+    text-align: center;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  &__claim-modal-rewards {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  &__claim-modal-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    background: rgba(255, 255, 255, 0.04);
+    padding: $spacing-sm $spacing-md;
+    border-radius: $radius-sm;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  &__claim-modal-icon {
+    font-size: $font-lg;
+    flex-shrink: 0;
+  }
+
+  &__claim-modal-label {
+    font-size: $font-sm;
+    color: $color-text;
+    font-weight: 500;
+  }
+
+  &__claim-modal-btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 700;
+    padding: $spacing-sm $spacing-lg;
+    transition: opacity $transition-fast;
+    width: 100%;
+    flex-shrink: 0;
+
+    &:hover { opacity: 0.85; }
+  }
+
+  // ── Abandon confirmation modal ──
+
+  &__abandon-modal {
+    background: $color-bg-secondary;
+    border: 1px solid #ef5350;
+    border-radius: $radius-lg;
+    max-width: 380px;
+    width: 100%;
+    padding: $spacing-lg;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-sm;
+    text-align: center;
+  }
+
+  &__abandon-modal-icon {
+    font-size: 40px;
+  }
+
+  &__abandon-modal-title {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: #ef5350;
+    margin: 0;
+  }
+
+  &__abandon-modal-quest {
+    font-size: $font-md;
+    font-weight: 600;
+    color: $color-text;
+    margin: 0;
+  }
+
+  &__abandon-modal-warn {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    margin: 0;
+  }
+
+  &__abandon-modal-actions {
+    display: flex;
+    gap: $spacing-sm;
+    width: 100%;
+    margin-top: $spacing-sm;
+  }
+
+  &__abandon-modal-btn {
+    flex: 1;
+    border: none;
+    border-radius: $radius-md;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 700;
+    padding: $spacing-sm $spacing-md;
+    transition: opacity $transition-fast;
+
+    &:hover { opacity: 0.85; }
+
+    &--cancel {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid $color-border;
+      color: $color-text;
+    }
+
+    &--confirm {
+      background: #ef5350;
+      color: #fff;
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .quests {
+    &__daily-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    &__list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .quests {
+    &__daily-list {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    &__list {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}

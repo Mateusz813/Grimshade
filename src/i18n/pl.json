@@ -1,0 +1,211 @@
+{
+  "common": {
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "back_to_town": "← Miasto",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "confirm": "Potwierdź",
+    "refresh": "↻",
+    "copy": "Kopiuj",
+    "copied": "✓ Skopiowano",
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Synchronizuję...",
+    "sync_now": "Synchronizuj",
+    "last_synced": "Sync: {{time}}",
+    "never_synced": "Nie zsync.",
+    "level": "Lvl",
+    "gold": "💰 {{amount}}"
+  },
+  "town": {
+    "title": "Miasto",
+    "logout": "Wyloguj",
+    "loading": "Ładowanie...",
+    "stat_points": "+{{count}} pkt. statystyk do rozdania",
+    "nav": {
+      "combat": "Walka",
+      "inventory": "Plecak",
+      "skills": "Skille",
+      "shop": "Sklep",
+      "dungeon": "Dungeon",
+      "boss": "Boss",
+      "party": "Party",
+      "leaderboard": "Rankingi"
+    },
+    "stats": {
+      "hp": "HP",
+      "mp": "MP",
+      "xp": "XP"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Grimshade",
+      "subtitle": "Zaloguj się do gry",
+      "email": "Email",
+      "password": "Hasło",
+      "submit": "Zaloguj",
+      "register_link": "Nie masz konta? Zarejestruj się",
+      "forgot_link": "Zapomniałem hasła",
+      "error_invalid": "Nieprawidłowy email lub hasło.",
+      "error_generic": "Błąd logowania. Spróbuj ponownie."
+    },
+    "register": {
+      "title": "Nowe konto",
+      "email": "Email",
+      "password": "Hasło (min. 6 znaków)",
+      "submit": "Zarejestruj",
+      "login_link": "Masz już konto? Zaloguj się",
+      "success": "Konto utworzone! Możesz się zalogować.",
+      "error_taken": "Email jest już zajęty.",
+      "error_generic": "Błąd rejestracji. Spróbuj ponownie."
+    },
+    "forgot": {
+      "title": "Reset hasła",
+      "email": "Email",
+      "submit": "Wyślij link",
+      "back_login": "Wróć do logowania",
+      "success": "Link do resetu hasła wysłany na podany email.",
+      "error_generic": "Błąd. Sprawdź email i spróbuj ponownie."
+    }
+  },
+  "character": {
+    "create": {
+      "title": "Stwórz postać",
+      "name_label": "Nazwa postaci",
+      "name_placeholder": "Wprowadź nazwę...",
+      "class_label": "Wybierz klasę",
+      "submit": "Stwórz postać",
+      "error_name": "Nazwa musi mieć 3–20 znaków.",
+      "error_generic": "Błąd tworzenia postaci."
+    },
+    "classes": {
+      "Knight": "Rycerz – Tank, blok, wysokie HP",
+      "Mage": "Mag – Zaklęcia, skalowanie z Magic Level",
+      "Cleric": "Kleryk – Leczenie, wsparcie",
+      "Archer": "Łucznik – Krytyki, dystans",
+      "Rogue": "Łotr – Dual wield, trucizny, uniki",
+      "Necromancer": "Nekromanta – Przywołania, klątwy",
+      "Bard": "Bard – Buffy party, debuff wrogów"
+    }
+  },
+  "combat": {
+    "title": "Walka",
+    "speed": "Prędkość: {{speed}}",
+    "skill_mode_auto": "Skille: Auto",
+    "skill_mode_manual": "Skille: Manual",
+    "player_dead": "Zginąłeś!",
+    "enemy_dead": "Pokonałeś {{name}}!",
+    "loot": "Zdobyty łup",
+    "no_loot": "Brak łupu",
+    "death_penalty": "-10% XP, -5% Skill XP",
+    "return_town": "Wróć do miasta"
+  },
+  "inventory": {
+    "title": "Plecak",
+    "equipment": "Ekwipunek",
+    "backpack": "Plecak",
+    "empty_slot": "Pusty slot",
+    "sell": "Sprzedaj",
+    "equip": "Załóż",
+    "unequip": "Zdejmij",
+    "no_items": "Plecak jest pusty.",
+    "gold": "💰 {{amount}} sztuk złota"
+  },
+  "skills": {
+    "title": "Skille",
+    "tab_combat": "Walka",
+    "tab_active": "Aktywne",
+    "tab_training": "Trening",
+    "level": "Poziom {{level}}",
+    "xp_progress": "{{current}} / {{needed}} XP",
+    "damage_bonus": "+{{pct}}% DMG",
+    "equip": "Wyposaż",
+    "unequip": "Zdejmij",
+    "active_slots": "Aktywne skille (max 4)",
+    "offline_training": "Trening offline",
+    "training_skill": "Trenujesz: {{skill}}",
+    "collect_xp": "Zbierz XP",
+    "no_training": "Brak aktywnego treningu",
+    "select_skill": "Wybierz skill do trenowania:"
+  },
+  "shop": {
+    "title": "Sklep",
+    "tab_items": "Itemy",
+    "tab_elixirs": "Eliksiry",
+    "tab_settings": "Ustawienia",
+    "buy": "Kup",
+    "owned": "Posiadasz: {{count}}",
+    "level_req": "Wymagany poziom: {{level}}",
+    "no_gold": "Za mało złota!",
+    "bought": "Kupiono!",
+    "too_low_level": "Za niski poziom!",
+    "auto_potion": "Auto-potion",
+    "auto_sell": "Auto-sell",
+    "hp_threshold": "HP próg: {{pct}}%",
+    "mp_threshold": "MP próg: {{pct}}%",
+    "sell_common": "Sprzedawaj Common",
+    "sell_rare": "Sprzedawaj Rare"
+  },
+  "dungeon": {
+    "title": "Dungeony",
+    "enter": "Wejdź",
+    "cooldown": "Cooldown: {{time}}",
+    "level_req": "Wymagany poziom: {{level}}",
+    "waves": "Fale: {{count}}",
+    "running": "Walka w toku...",
+    "wave": "Fala {{current}} / {{total}}",
+    "victory": "Zwycięstwo!",
+    "defeat": "Porażka!",
+    "rewards": "Nagrody",
+    "xp_gained": "+{{xp}} XP",
+    "gold_gained": "+{{gold}} 💰",
+    "item_drop": "Znaleziono: {{item}}",
+    "return": "Wróć"
+  },
+  "boss": {
+    "title": "Bossowie",
+    "challenge": "Walcz",
+    "cooldown": "Cooldown: {{time}}",
+    "level_req": "Wymagany poziom: {{level}}",
+    "enraged": "WŚCIEKŁY!",
+    "victory": "Boss pokonany!",
+    "defeat": "Zostałeś pokonany!",
+    "unique_drop": "Unikalne: {{item}}",
+    "return": "Wróć",
+    "recommended_level": "Zalecany poziom: {{level}}"
+  },
+  "party": {
+    "title": "Party",
+    "no_party": "Nie jesteś w żadnym party. Stwórz nowe lub dołącz do istniejącego.",
+    "create": "+ Stwórz nowe party",
+    "join_placeholder": "Wpisz ID party (np. AB1C23)",
+    "join": "Dołącz",
+    "join_error": "Wpisz prawidłowe ID party.",
+    "id_label": "ID Party:",
+    "copy_id": "Kopiuj",
+    "copied_id": "✓ Skopiowano",
+    "drop_x": "Drop ×",
+    "difficulty_x": "Trudność ×",
+    "avg_level": "Śr. poziom",
+    "bot_prompt": "Brakuje graczy do bossa?",
+    "add_bot": "+ Dodaj Bota Pomocnika",
+    "add_bot_alt": "+ Dodaj Bota Pomocnika",
+    "empty_slot": "— wolne miejsce —",
+    "you": "Ty",
+    "bot": "Bot",
+    "kick": "Wyrzuć",
+    "leave": "Opuść party",
+    "disband": "Rozwiąż party",
+    "chat_title": "Chat party ({{id}})"
+  },
+  "leaderboard": {
+    "title": "Rankingi",
+    "my_rank": "Twoja pozycja: #{{rank}} — {{name}}",
+    "tab_level": "Poziom",
+    "tab_gold": "Złoto",
+    "empty": "Brak graczy w rankingu.",
+    "error": "Nie udało się załadować rankingu. Sprawdź połączenie."
+  }
+}

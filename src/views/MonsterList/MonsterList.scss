@@ -1,0 +1,571 @@
+@use '../../styles/variables' as *;
+
+.monster-list {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+    position: sticky;
+    top: 0;
+    z-index: $z-nav;
+  }
+
+  &__back {
+    background: transparent;
+    border: 1px solid $color-border;
+    color: $color-text-muted;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: $font-sm;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover {
+      color: $color-text;
+      border-color: $color-text-muted;
+    }
+  }
+
+  &__title {
+    font-size: $font-lg;
+    font-weight: 700;
+    margin: 0;
+    color: $color-text;
+  }
+
+  &__count {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    padding: $spacing-xs $spacing-md;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__grid {
+    padding: $spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__card {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    overflow: hidden;
+    transition: border-color $transition-normal, box-shadow $transition-normal;
+
+    &--task {
+      border-color: rgba(#ffc107, 0.5);
+      box-shadow: 0 0 8px rgba(#ffc107, 0.15), inset 0 0 20px rgba(#ffc107, 0.04);
+      background: linear-gradient(135deg, rgba(#ffc107, 0.06) 0%, $color-bg-secondary 40%);
+
+      .monster-list__card-main::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 3px;
+        height: 100%;
+        background: #ffc107;
+        border-radius: 3px 0 0 3px;
+      }
+
+      .monster-list__card-main {
+        position: relative;
+      }
+    }
+
+    &--task-done {
+      border-color: rgba(#4caf50, 0.6);
+      box-shadow: 0 0 12px rgba(#4caf50, 0.2), inset 0 0 20px rgba(#4caf50, 0.04);
+      background: linear-gradient(135deg, rgba(#4caf50, 0.08) 0%, $color-bg-secondary 40%);
+      animation: task-done-pulse 2s ease-in-out infinite;
+
+      .monster-list__card-main::before {
+        background: #4caf50;
+      }
+    }
+  }
+
+  @keyframes task-done-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(#4caf50, 0.15); }
+    50% { box-shadow: 0 0 16px rgba(#4caf50, 0.3); }
+  }
+
+  &__card-main {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:hover {
+      background: $color-bg-card;
+    }
+  }
+
+  &__sprite {
+    font-size: 24px;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: $font-sm;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__level-badge {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__task-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffc107;
+    background: rgba(#ffc107, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+    animation: task-badge-in 0.3s ease-out;
+  }
+
+  @keyframes task-badge-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  &__quest-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ce93d8;
+    background: rgba(156, 39, 176, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+    animation: task-badge-in 0.3s ease-out;
+  }
+
+  &__card--quest {
+    border-left: 3px solid rgba(156, 39, 176, 0.5);
+  }
+
+  &__stats {
+    display: flex;
+    gap: $spacing-xs;
+    font-size: $font-xs;
+    color: $color-text-muted;
+    flex-wrap: wrap;
+
+    @media (max-width: 400px) {
+      display: none;
+    }
+  }
+
+  &__xp {
+    font-size: $font-xs;
+    color: $color-legendary;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__arrow {
+    font-size: 10px;
+    color: $color-text-muted;
+    flex-shrink: 0;
+    transition: transform $transition-fast;
+
+    &--open {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__details {
+    border-top: 1px solid $color-border;
+    padding: $spacing-sm $spacing-md;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  &__gold {
+    font-size: $font-sm;
+    color: $color-legendary;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__drops-summary {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__potion-drops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs $spacing-md;
+    margin-bottom: $spacing-sm;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    border-left: 2px solid rgba(255, 255, 255, 0.08);
+  }
+
+  &__potion-drop {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    white-space: nowrap;
+  }
+
+  &__variants {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__variant {
+    display: grid;
+    grid-template-columns: 80px 40px 1fr;
+    gap: 4px 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 11px;
+    align-items: center;
+
+    &--strong { border-left: 2px solid #2196f3; }
+    &--epic { border-left: 2px solid #4caf50; }
+    &--legendary { border-left: 2px solid #f44336; }
+    &--boss { border-left: 2px solid #ffc107; }
+  }
+
+  &__variant-name { font-weight: 700; }
+  &__variant-chance { color: rgba(255, 255, 255, 0.5); font-size: 10px; }
+  &__variant-stats { color: rgba(255, 255, 255, 0.7); grid-column: 1 / -1; font-size: 10px; }
+  &__variant-xp { color: #ffc107; grid-column: 1 / -1; font-size: 10px; font-weight: 600; }
+
+  &__variant-drops {
+    grid-column: 1 / -1;
+    padding: 4px 0 2px;
+  }
+
+  &__variant-tier {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0;
+    font-size: 10px;
+  }
+
+  &__tier-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &__tier-name {
+    font-weight: 600;
+    min-width: 70px;
+  }
+
+  &__tier-chance {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &__variant-stone {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+  }
+
+  &__task-progress {
+    margin-top: $spacing-sm;
+    margin-bottom: $spacing-xs;
+    background: rgba(#ffc107, 0.06);
+    border: 1px solid rgba(#ffc107, 0.15);
+    border-radius: $radius-sm;
+    padding: $spacing-xs $spacing-sm;
+  }
+
+  &__task-progress-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  &__task-progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__task-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #ffc107, #ff9800);
+    transition: width 0.5s ease-out;
+
+    &--done {
+      background: linear-gradient(90deg, #4caf50, #66bb6a);
+      animation: progress-done-shimmer 1.5s ease-in-out infinite;
+    }
+  }
+
+  @keyframes progress-done-shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  // ── Mastery card modifier ───────────────────────────────────────────────
+  &__card--mastery-max {
+    border-color: rgba(#9c27b0, 0.6);
+    box-shadow: 0 0 12px rgba(#9c27b0, 0.25), inset 0 0 20px rgba(#9c27b0, 0.06);
+    background: linear-gradient(135deg, rgba(#9c27b0, 0.08) 0%, $color-bg-secondary 40%);
+
+    .monster-list__card-main::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: #9c27b0;
+      border-radius: 3px 0 0 3px;
+    }
+
+    .monster-list__card-main {
+      position: relative;
+    }
+  }
+
+  // ── Mastery XP/Gold bonus inline chip ─────────────────────────────────────
+  &__mastery-xp-bonus {
+    color: #ffb74d;
+    font-weight: 700;
+    text-shadow: 0 0 4px rgba(#ff9800, 0.5);
+    cursor: help;
+  }
+
+  // ── Mastery badge ─────────────────────────────────────────────────────────
+  &__mastery-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ce93d8;
+    background: rgba(#9c27b0, 0.12);
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+
+    &--max {
+      color: #e040fb;
+      background: rgba(#9c27b0, 0.22);
+      animation: mastery-max-glow 2s ease-in-out infinite;
+    }
+  }
+
+  @keyframes mastery-max-glow {
+    0%, 100% { box-shadow: 0 0 4px rgba(#9c27b0, 0.3); }
+    50% { box-shadow: 0 0 10px rgba(#9c27b0, 0.6); }
+  }
+
+  // ── Mastery section in details ────────────────────────────────────────────
+  &__mastery {
+    margin-top: $spacing-sm;
+    margin-bottom: $spacing-xs;
+    background: rgba(#9c27b0, 0.06);
+    border: 1px solid rgba(#9c27b0, 0.15);
+    border-radius: $radius-sm;
+    padding: $spacing-xs $spacing-sm;
+
+    &--max {
+      border-color: rgba(#9c27b0, 0.4);
+      background: rgba(#9c27b0, 0.1);
+    }
+  }
+
+  &__mastery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: $font-xs;
+    font-weight: 600;
+    color: #ce93d8;
+    margin-bottom: 4px;
+  }
+
+  &__mastery-level {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 400;
+  }
+
+  &__mastery-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  &__mastery-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__mastery-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #9c27b0, #e040fb);
+    transition: width 0.5s ease-out;
+  }
+
+  &__mastery-kills {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__mastery-bonuses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 2px;
+
+    span {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+  }
+
+  &__fight-btn {
+    background: $color-accent;
+    color: white;
+    border: none;
+    padding: $spacing-xs $spacing-md;
+    border-radius: $radius-sm;
+    font-size: $font-sm;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-fast;
+    width: 100%;
+    margin-top: $spacing-xs;
+
+    &:hover { background: $color-accent-hover; }
+  }
+}
+
+@media (min-width: 768px) {
+  .monster-list {
+    &__grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .monster-list {
+    &__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
+@media (min-width: 1440px) {
+  .monster-list {
+    &__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+}
+
+.monster-list {
+  &__card--locked {
+    opacity: 0.55;
+    filter: grayscale(0.6);
+    position: relative;
+
+    .monster-list__sprite {
+      filter: grayscale(1);
+    }
+  }
+
+  &__lock-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #666;
+    color: #fff;
+    margin-left: 4px;
+
+    &--level {
+      border-color: #f44336;
+      color: #ff7961;
+    }
+
+    &--mastery {
+      border-color: #ffc107;
+      color: #ffd54f;
+    }
+  }
+
+  &__fight-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #444 !important;
+    color: #bbb !important;
+  }
+
+  &__unlock-progress {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffb74d;
+    background: rgba(255, 152, 0, 0.12);
+    padding: 2px 7px;
+    border-radius: 8px;
+    margin-top: 2px;
+    border: 1px solid rgba(255, 152, 0, 0.35);
+  }
+}

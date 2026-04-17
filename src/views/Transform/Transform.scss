@@ -1,0 +1,1172 @@
+@use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
+@use '../../styles/combat-animations' as *;
+@use '../../styles/skill-animations';
+
+.transform {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    flex: 1;
+    color: $color-accent;
+    font-size: $font-xl;
+    margin: 0;
+  }
+
+  // ── List view ───────────────────────────────────────────────────────────────
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+
+    @include desktop {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: $spacing-lg;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    @include wide {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  // ── Card ────────────────────────────────────────────────────────────────────
+  &__card {
+    background: $color-bg-secondary;
+    border: 2px solid $color-border;
+    border-radius: $radius-lg;
+    padding: $spacing-md;
+    transition: all $transition-normal;
+    position: relative;
+    overflow: hidden;
+
+    // Accent glow on left side
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--transform-gradient, var(--transform-color, $color-border));
+      border-radius: $radius-lg 0 0 $radius-lg;
+    }
+
+    // Constant shimmer overlay using transform color
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        120deg,
+        transparent 20%,
+        color-mix(in srgb, var(--transform-color, transparent) 12%, transparent) 40%,
+        color-mix(in srgb, var(--transform-color, transparent) 20%, transparent) 50%,
+        color-mix(in srgb, var(--transform-color, transparent) 12%, transparent) 60%,
+        transparent 80%
+      );
+      background-size: 250% 100%;
+      animation: transform-shimmer 2.5s ease-in-out infinite;
+      border-radius: $radius-lg;
+    }
+
+    // Make all card children above the shimmer
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    &--locked {
+      opacity: 0.5;
+      filter: grayscale(0.5);
+
+      &::after { display: none; }
+    }
+
+    &--available {
+      border-color: var(--transform-color, $color-accent);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
+
+      &:hover {
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+      }
+    }
+
+    &--in_progress {
+      border-color: var(--transform-color, $color-accent);
+      box-shadow: 0 0 16px color-mix(in srgb, var(--transform-color) 25%, transparent);
+      animation: transform-card-pulse 2s infinite;
+    }
+
+    &--completed {
+      border-color: var(--transform-color, #4caf50);
+      background: linear-gradient(135deg, $color-bg-secondary, color-mix(in srgb, var(--transform-color, #4caf50) 8%, transparent));
+    }
+  }
+
+  @keyframes transform-shimmer {
+    0% { background-position: 250% 0; }
+    100% { background-position: -250% 0; }
+  }
+
+  @keyframes transform-card-pulse {
+    0%, 100% { box-shadow: 0 0 12px color-mix(in srgb, var(--transform-color, #ffc107) 15%, transparent); }
+    50% { box-shadow: 0 0 24px color-mix(in srgb, var(--transform-color, #ffc107) 35%, transparent); }
+  }
+
+  &__card-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__card-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: $font-md;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+  }
+
+  &__card-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__card-name {
+    font-weight: 700;
+    font-size: $font-md;
+    color: $color-text;
+  }
+
+  &__card-level {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__card-status {
+    font-size: 20px;
+  }
+
+  &__status-icon {
+    font-size: 20px;
+  }
+
+  &__card-bonuses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-xs;
+
+    span {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px $spacing-xs;
+      border-radius: $radius-sm;
+      font-size: $font-xs;
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.2);
+    }
+  }
+
+  &__card-monsters {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    margin-bottom: $spacing-sm;
+  }
+
+  // ── Progress bar (in-progress quest) ────────────────────────────────────────
+  &__progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__progress-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  &__progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  &__progress-text {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    white-space: nowrap;
+  }
+
+  // ── Completed avatar preview ────────────────────────────────────────────────
+  &__card-avatar {
+    display: flex;
+    justify-content: center;
+    margin: $spacing-sm 0;
+  }
+
+  &__card-avatar-img {
+    width: 60px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: $radius-sm;
+    border: 2px solid var(--transform-color, $color-border);
+  }
+
+  // ── Action buttons ──────────────────────────────────────────────────────────
+  &__card-actions {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__btn {
+    border: none;
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    font-weight: 700;
+    font-size: $font-sm;
+    cursor: pointer;
+    transition: all $transition-fast;
+    color: #fff;
+    width: 100%;
+    text-align: center;
+
+    &--start {
+      background: $color-accent;
+      &:hover { background: $color-accent-hover; transform: translateY(-1px); }
+    }
+
+    &--resume {
+      background: #ff9800;
+      &:hover { background: #f57c00; transform: translateY(-1px); }
+    }
+
+    &--abandon {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid rgba(244, 67, 54, 0.4);
+      color: #f44336;
+      margin-top: $spacing-md;
+      &:hover { background: rgba(244, 67, 54, 0.3); }
+    }
+
+    &--rewards {
+      background: linear-gradient(135deg, #ffc107, #ff9800);
+      font-size: $font-lg;
+      padding: $spacing-md $spacing-lg;
+      margin-top: $spacing-lg;
+      &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(255, 193, 7, 0.3); }
+    }
+
+    &--transform {
+      font-size: $font-lg;
+      padding: $spacing-md $spacing-lg;
+      margin-top: $spacing-lg;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      overflow: hidden;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+          45deg,
+          transparent 30%,
+          rgba(255, 255, 255, 0.15) 50%,
+          transparent 70%
+        );
+        animation: transform-btn-shine 2s infinite;
+      }
+
+      &:hover { transform: translateY(-2px); filter: brightness(1.15); }
+    }
+
+    &--continue {
+      background: linear-gradient(135deg, #4caf50, #2e7d32);
+      font-size: $font-lg;
+      padding: $spacing-md $spacing-lg;
+      margin-top: $spacing-lg;
+      &:hover { transform: translateY(-2px); }
+    }
+
+    &--back {
+      background: $color-bg-card;
+      border: 1px solid $color-border;
+      margin-top: $spacing-lg;
+      &:hover { border-color: $color-accent; color: $color-accent; }
+    }
+  }
+
+  @keyframes transform-btn-shine {
+    0% { transform: translateX(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) rotate(45deg); }
+  }
+
+  // ── Combat view ─────────────────────────────────────────────────────────────
+  &__combat {
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    position: relative; // anchor for &__victory-overlay
+
+    @include desktop {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+  }
+
+  // Point N6: absolute claim-reward overlay — covers the combat view without
+  // causing layout shift. Appears only when `victoryReady === true`.
+  &__victory-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 10, 20, 0.72);
+    backdrop-filter: blur(6px) saturate(1.2);
+    -webkit-backdrop-filter: blur(6px) saturate(1.2);
+    z-index: 50;
+    padding: $spacing-lg;
+  }
+
+  &__victory-panel {
+    background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.98));
+    border: 2px solid rgba(255, 193, 7, 0.55);
+    border-radius: 16px;
+    padding: $spacing-lg $spacing-lg;
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.55),
+      0 0 60px rgba(255, 193, 7, 0.35);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    text-align: center;
+    max-width: 420px;
+    width: 100%;
+  }
+
+  &__victory-panel-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #ffc107;
+    margin: 0;
+    text-shadow:
+      0 0 12px rgba(255, 193, 7, 0.7),
+      0 0 24px rgba(255, 193, 7, 0.3);
+  }
+
+  &__victory-panel-subtitle {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  &__victory-panel-actions {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    width: 100%;
+  }
+
+  &__btn--claim {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: #1a1a2e;
+    font-weight: 700;
+    padding: $spacing-sm $spacing-md;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(255, 193, 7, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(255, 193, 7, 0.6);
+    }
+
+    &:active {
+      transform: translateY(1px);
+    }
+  }
+
+  &__combat-progress {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__combat-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__combat-progress-fill {
+    height: 100%;
+    background: #ffc107;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  // ── Monster card ────────────────────────────────────────────────────────────
+  &__monster-card {
+    background: $color-bg-card;
+    border: 2px solid #f44336;
+    border-radius: $radius-lg;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-sm;
+    transition: all 0.15s ease;
+
+    &--hit {
+      background: rgba(244, 67, 54, 0.15);
+      border-color: #ff5722;
+    }
+  }
+
+  &__monster-sprite {
+    font-size: 48px;
+    line-height: 1;
+  }
+
+  &__monster-info {
+    text-align: center;
+  }
+
+  &__monster-name {
+    display: block;
+    font-weight: 700;
+    font-size: $font-lg;
+    color: #f44336;
+  }
+
+  &__monster-level {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  // ── Player card ─────────────────────────────────────────────────────────────
+  &__player-card {
+    background: $color-bg-card;
+    border: 2px solid $color-border;
+    border-radius: $radius-lg;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-xs;
+    transition: all 0.15s ease;
+
+    &--hit {
+      background: rgba(233, 69, 96, 0.1);
+      border-color: $color-accent;
+    }
+  }
+
+  &__player-info--centered {
+    justify-content: center;
+    text-align: center;
+  }
+
+  &__player-icon {
+    font-size: 28px;
+    text-align: center;
+  }
+
+  &__player-info {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__player-name {
+    font-weight: 700;
+    font-size: $font-md;
+  }
+
+  &__player-level {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  // ── HP / MP bars ────────────────────────────────────────────────────────────
+  &__bar {
+    position: relative;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  &__bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+
+    &--hp {
+      background: linear-gradient(90deg, #c62828, #e53935);
+    }
+
+    &--mp {
+      background: linear-gradient(90deg, #1565c0, #2196f3);
+    }
+  }
+
+  &__bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: $font-xs;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+  }
+
+  // ── Combat log ──────────────────────────────────────────────────────────────
+  &__log {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm;
+    max-height: 200px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  &__log-entry {
+    font-size: $font-xs;
+    line-height: 1.5;
+    padding: 1px 0;
+    font-family: monospace;
+
+    &--player { color: #4caf50; }
+    &--monster { color: #f44336; }
+    &--crit { color: #ffc107; font-weight: 700; }
+    &--system { color: #64b5f6; }
+    &--block { color: #90caf9; }
+    &--dodge { color: #81d4fa; }
+    &--dualwield { color: #ce93d8; }
+  }
+
+  // ── Victory / rewards ───────────────────────────────────────────────────────
+  &__victory {
+    padding: $spacing-lg;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    @include desktop {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  }
+
+  &__victory-title {
+    font-size: calc(#{$font-xxl} * 1.6);
+    color: #ffc107;
+    margin: $spacing-md 0 $spacing-xs;
+    text-shadow:
+      0 0 20px rgba(255, 193, 7, 0.9),
+      0 0 40px rgba(255, 193, 7, 0.6),
+      0 0 80px rgba(255, 193, 7, 0.3);
+    animation: victory-title-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes victory-title-pulse {
+    0%, 100% { filter: brightness(1) saturate(1); }
+    50% { filter: brightness(1.3) saturate(1.4); }
+  }
+
+  &__victory-subtitle {
+    color: $color-text-muted;
+    font-size: $font-lg;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__rewards {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    padding: $spacing-lg;
+    border-radius: $radius-lg;
+    background: linear-gradient(
+      145deg,
+      rgba(20, 20, 40, 0.9),
+      rgba(10, 10, 20, 0.95)
+    );
+    border: 2px solid var(--tf-color1, #ffc107);
+    box-shadow:
+      0 0 30px rgba(255, 193, 7, 0.25),
+      inset 0 0 30px rgba(255, 193, 7, 0.05);
+    overflow: hidden;
+  }
+
+  &__rewards-halo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 120%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+      circle,
+      var(--tf-color1, #ffc107) 0%,
+      transparent 60%
+    );
+    filter: blur(60px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &__rewards-title {
+    position: relative;
+    font-size: calc(#{$font-lg} * 1.3);
+    color: var(--tf-color1, #ffc107);
+    margin-bottom: $spacing-md;
+    text-align: center;
+    text-shadow: 0 0 16px var(--tf-color1, rgba(255, 193, 7, 0.8));
+    z-index: 1;
+  }
+
+  &__rewards-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+    z-index: 1;
+  }
+
+  &__reward-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: $spacing-sm;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid var(--tf-color1, #4caf50);
+    border-radius: $radius-sm;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-md;
+    color: #e0f4e0;
+    backdrop-filter: blur(4px);
+
+    &--weapon {
+      color: #fff3c0;
+      border-left-color: #ffc107;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 193, 7, 0.12),
+        rgba(255, 193, 7, 0.02)
+      );
+      box-shadow: 0 0 20px rgba(255, 193, 7, 0.2);
+    }
+  }
+
+  &__reward-icon {
+    font-size: calc(#{$font-md} * 1.4);
+    line-height: 1;
+  }
+
+  &__reward-label {
+    font-weight: 600;
+    color: #cfd8dc;
+    letter-spacing: 0.02em;
+  }
+
+  &__reward-value {
+    font-weight: 700;
+    color: #a5d6a7;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // ── Transform Animation Overlay ─────────────────────────────────────────────
+  &__animation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: $z-modal + 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.9);
+    overflow: hidden;
+  }
+
+  &__animation-border {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    border: 4px solid transparent;
+    border-radius: $radius-lg;
+    animation: transform-border-rotate 2s linear infinite;
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+      conic-gradient(
+        from 0deg,
+        var(--tf-color1),
+        var(--tf-color2),
+        var(--tf-color1),
+        var(--tf-color2),
+        var(--tf-color1)
+      );
+  }
+
+  @keyframes transform-border-rotate {
+    0% {
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        conic-gradient(from 0deg, var(--tf-color1), var(--tf-color2), var(--tf-color1), var(--tf-color2), var(--tf-color1));
+    }
+    100% {
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        conic-gradient(from 360deg, var(--tf-color1), var(--tf-color2), var(--tf-color1), var(--tf-color2), var(--tf-color1));
+    }
+  }
+
+  &__animation-sweep {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0) 30%,
+      var(--tf-color1) 50%,
+      rgba(255, 255, 255, 0) 70%,
+      transparent 100%
+    );
+    background-size: 300% 300%;
+    animation: transform-bg-sweep 3s ease-in-out infinite;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  @keyframes transform-bg-sweep {
+    0% { background-position: 0% 100%; }
+    50% { background-position: 100% 0%; }
+    100% { background-position: 0% 100%; }
+  }
+
+  // ── Particles ───────────────────────────────────────────────────────────────
+  &__particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  &__particle {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: var(--size);
+    height: var(--size);
+    background: var(--tf-color1);
+    border-radius: 50%;
+    animation: transform-particle-float 3s ease-in-out infinite;
+    animation-delay: var(--delay);
+    opacity: 0;
+    box-shadow: 0 0 8px var(--tf-color1);
+  }
+
+  @keyframes transform-particle-float {
+    0% { opacity: 0; transform: translateY(20px) scale(0); }
+    30% { opacity: 0.8; }
+    70% { opacity: 0.6; }
+    100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+  }
+
+  // ── Fullscreen avatar reveal ────────────────────────────────────────────────
+  &__fullscreen-avatar {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: $spacing-xl;
+  }
+
+  &__fullscreen-avatar-img {
+    max-width: 80vw;
+    max-height: 50vh;
+    object-fit: contain;
+    border-radius: $radius-lg;
+    box-shadow:
+      0 0 40px var(--tf-color1),
+      0 0 80px rgba(0, 0, 0, 0.5);
+
+    @include desktop {
+      max-width: 400px;
+      max-height: 500px;
+    }
+  }
+
+  &__congratulations {
+    font-size: clamp(24px, 6vw, 48px);
+    color: #fff;
+    text-align: center;
+    margin-top: $spacing-lg;
+    text-shadow:
+      0 0 20px var(--tf-color1),
+      0 0 40px var(--tf-color2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  &__bonuses-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+
+    span {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-sm;
+      font-size: $font-sm;
+      color: #4caf50;
+    }
+  }
+
+  // ── Complete screen ─────────────────────────────────────────────────────────
+  &__complete {
+    padding: $spacing-xl;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    @include desktop {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  }
+
+  &__complete-avatar {
+    margin-bottom: $spacing-lg;
+
+    img {
+      width: 150px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: $radius-lg;
+      border: 3px solid #ffc107;
+      box-shadow: 0 0 30px rgba(255, 193, 7, 0.3);
+    }
+  }
+
+  &__complete-title {
+    font-size: $font-xl;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__complete-text {
+    color: $color-text-muted;
+    font-size: $font-md;
+    margin-bottom: $spacing-lg;
+  }
+
+  // ── Player avatar in combat ───────────────────────────────────────────────
+  &__player-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+
+    &--big {
+      width: 140px;
+      height: 140px;
+      margin: 6px auto 10px;
+    }
+  }
+
+  &__player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+
+    &--big {
+      width: 140px;
+      height: 140px;
+      border-radius: 14px;
+      border: 3px solid rgba(255, 193, 7, 0.6);
+      box-shadow: 0 0 18px rgba(255, 193, 7, 0.35);
+    }
+  }
+
+  &__player-avatar-wrap--class-border &__player-avatar--big {
+    border-color: var(--class-color, #ffc107);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--class-color, #ffc107) 55%, transparent);
+  }
+
+  &__player-class-icon {
+    display: inline-block;
+    margin-right: 6px;
+    font-size: 1.1em;
+    vertical-align: middle;
+  }
+
+  &__player-avatar-lvl {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #ffc107;
+    color: #1a1a2e;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 3px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  // ── Combat toggles ────────────────────────────────────────────────────────
+  &__combat-toggles {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  &__toggle-btn {
+    flex: 1;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 5px 8px;
+    font-size: $font-xs;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-fast, border-color $transition-fast;
+
+    &--auto {
+      background: rgba(#4caf50, 0.12);
+      border-color: rgba(#4caf50, 0.3);
+      color: #4caf50;
+    }
+
+    &--manual {
+      background: rgba(#ff9800, 0.12);
+      border-color: rgba(#ff9800, 0.3);
+      color: #ff9800;
+    }
+
+    &--potion {
+      background: rgba(#2196f3, 0.12);
+      border-color: rgba(#2196f3, 0.3);
+      color: #2196f3;
+    }
+
+    &--speed {
+      background: rgba(#03a9f4, 0.1);
+      border-color: rgba(#03a9f4, 0.5);
+      color: #03a9f4;
+    }
+
+    &--speed-x2 {
+      background: rgba(#ffc107, 0.15);
+      border-color: rgba(#ffc107, 0.6);
+      color: #ffc107;
+    }
+
+    &--speed-x4 {
+      background: rgba(#f44336, 0.18);
+      border-color: rgba(#f44336, 0.7);
+      color: #f44336;
+    }
+
+    &--off {
+      background: rgba(#9e9e9e, 0.08);
+      border-color: rgba(#9e9e9e, 0.2);
+      color: $color-text-muted;
+    }
+  }
+
+  // ── Skill slots ──────────────────────────────────────────────────────────
+  &__skill-slots {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  &__skill-slot {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 40px;
+    justify-content: center;
+    color: inherit;
+    font-family: inherit;
+    cursor: default;
+
+    &:not(:disabled) { cursor: pointer; }
+
+    &--empty { opacity: 0.35; }
+    &--filled { border-color: rgba(#4caf50, 0.3); }
+    &--on-cooldown { opacity: 0.6; border-color: rgba(#9e9e9e, 0.3); }
+    &--manual {
+      border-color: rgba(#ffc107, 0.6);
+      box-shadow: 0 0 8px rgba(#ffc107, 0.25);
+      &:hover:not(:disabled) { background: rgba(#ffc107, 0.12); }
+    }
+  }
+
+  &__skill-cd-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    transition: height 0.2s linear;
+  }
+
+  &__skill-slot-name {
+    font-size: 9px;
+    font-weight: 600;
+    color: $color-text;
+    text-align: center;
+    line-height: 1.1;
+    z-index: 1;
+  }
+
+  &__skill-slot-badge {
+    font-size: 8px;
+    color: $color-text-muted;
+    z-index: 1;
+  }
+
+  // ── Potions ──────────────────────────────────────────────────────────────
+  &__potions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  &__potion-btn {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background $transition-fast;
+    font-size: $font-xs;
+
+    &--hp { background: rgba(#f44336, 0.08); border-color: rgba(#f44336, 0.25); color: #f44336; }
+    &--mp { background: rgba(#2196f3, 0.08); border-color: rgba(#2196f3, 0.25); color: #2196f3; }
+    &--pct-hp { background: rgba(#ff5722, 0.08); border-color: rgba(#ff5722, 0.25); color: #ff5722; }
+    &--pct-mp { background: rgba(#00bcd4, 0.08); border-color: rgba(#00bcd4, 0.25); color: #00bcd4; }
+    &--cooldown { opacity: 0.5; }
+    &--empty { opacity: 0.4; }
+    &:disabled { cursor: not-allowed; opacity: 0.4; }
+  }
+
+  &__potion-cd-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    transition: height 0.2s linear;
+  }
+
+  &__potion-label { z-index: 1; font-weight: 600; }
+  &__potion-count { z-index: 1; font-size: 10px; opacity: 0.7; }
+}
+
+// Per-class attack animations on the monster card (shared mixin from combat-animations)
+@include class-attack-animations('transform__monster-card');

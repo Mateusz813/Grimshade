@@ -1,0 +1,103 @@
+@use '../../../styles/variables' as *;
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: $spacing-md;
+
+  &__card {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    padding: $spacing-xl;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  &__title {
+    color: $color-accent;
+    font-size: $font-xxl;
+    text-align: center;
+    margin: 0 0 $spacing-xl;
+    letter-spacing: 2px;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__label {
+    color: $color-text-muted;
+    font-size: $font-sm;
+  }
+
+  &__input {
+    background: $color-bg;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    color: $color-text;
+    font-size: $font-md;
+    padding: $spacing-sm $spacing-md;
+    outline: none;
+    transition: border-color $transition-fast;
+
+    &:focus {
+      border-color: $color-accent;
+    }
+  }
+
+  &__error {
+    color: $color-accent;
+    font-size: $font-xs;
+  }
+
+  &__button {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 600;
+    margin-top: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    transition: background $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $color-accent-hover;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__links {
+    display: flex;
+    justify-content: space-between;
+    margin-top: $spacing-lg;
+
+    a {
+      color: $color-text-muted;
+      font-size: $font-sm;
+      text-decoration: none;
+      transition: color $transition-fast;
+
+      &:hover {
+        color: $color-accent;
+      }
+    }
+  }
+}

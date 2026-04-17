@@ -1,0 +1,414 @@
+@use '../../styles/variables' as *;
+
+.shop {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &__loading {
+    text-align: center;
+    margin-top: $spacing-xl;
+    color: $color-text-muted;
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    flex: 1;
+    color: $color-accent;
+    font-size: $font-xl;
+    margin: 0;
+  }
+
+  &__gold {
+    font-size: $font-sm;
+    font-weight: 700;
+    color: $color-legendary;
+    background: $color-bg-card;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  &__tabs {
+    display: flex;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-sm $spacing-md;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover { color: $color-text; }
+
+    &--active {
+      color: $color-accent;
+      border-bottom-color: $color-accent;
+    }
+  }
+
+  // ── Panel ─────────────────────────────────────────────────────────────────
+  &__panel {
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  // ── Item card ──────────────────────────────────────────────────────────────
+  &__item {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+
+    &--locked {
+      opacity: 0.55;
+    }
+  }
+
+  &__item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__item-name {
+    font-size: $font-md;
+    font-weight: 600;
+  }
+
+  &__item-rarity {
+    font-size: $font-xs;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    font-size: $font-xs;
+    color: $color-text-muted;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__item-level--locked {
+    color: $color-accent;
+    font-weight: 600;
+  }
+
+  &__item-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__item-price {
+    font-size: $font-sm;
+    color: $color-legendary;
+    font-weight: 700;
+  }
+
+  &__buy-btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-sm;
+    color: white;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 600;
+    padding: $spacing-xs $spacing-md;
+    transition: background $transition-fast;
+
+    &:hover:not(:disabled) { background: $color-accent-hover; }
+
+    &:disabled {
+      background: $color-border;
+      color: $color-text-muted;
+      cursor: not-allowed;
+    }
+  }
+
+  // ── Elixir card ────────────────────────────────────────────────────────────
+  &__elixir {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__elixir-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+
+  &__elixir-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__elixir-name {
+    font-size: $font-md;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  &__elixir-desc {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__elixir--locked {
+    opacity: 0.5;
+  }
+
+  &__elixir-locked-info {
+    font-size: $font-xs;
+    color: #f44336;
+    margin-top: 2px;
+    font-weight: 600;
+  }
+
+  &__elixir-owned {
+    font-size: $font-xs;
+    color: #4caf50;
+    margin-top: 2px;
+  }
+
+  &__elixir-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+  }
+
+  &__elixir-qty-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__qty-preset {
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: $radius-sm;
+    color: $color-legendary;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba(255, 193, 7, 0.22);
+      border-color: $color-legendary;
+    }
+  }
+
+  &__qty-input {
+    width: 56px;
+    background: $color-bg;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text;
+    font-size: $font-sm;
+    padding: 2px $spacing-xs;
+    text-align: center;
+
+    &:focus {
+      border-color: $color-accent;
+      outline: none;
+    }
+
+    /* Hide spin buttons on Chrome/Safari */
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    /* Hide spin buttons on Firefox */
+    -moz-appearance: textfield;
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  &__section {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__section-title {
+    font-size: $font-lg;
+    color: $color-accent;
+    margin: 0;
+  }
+
+  &__section-desc {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    margin: 0;
+  }
+
+  &__setting-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__setting-label {
+    flex: 1;
+    font-size: $font-sm;
+    color: $color-text;
+  }
+
+  &__slider {
+    flex: 2;
+    accent-color: $color-accent;
+  }
+
+  &__setting-value {
+    min-width: 36px;
+    text-align: right;
+    font-size: $font-sm;
+    color: $color-accent;
+    font-weight: 700;
+  }
+
+  &__consumable-status {
+    display: flex;
+    gap: $spacing-md;
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__toggle-label {
+    font-size: $font-sm;
+    font-weight: 600;
+  }
+
+  &__toggle {
+    background: $color-border;
+    border: none;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-md;
+    min-width: 52px;
+    transition: background $transition-fast, color $transition-fast;
+
+    &--on {
+      background: $color-accent;
+      color: white;
+    }
+  }
+
+  // ── Market redirect ────────────────────────────────────────────────────────
+  &__market-redirect {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-xl;
+    gap: $spacing-md;
+    text-align: center;
+    color: $color-text-muted;
+  }
+
+  &__market-btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 600;
+    padding: $spacing-md $spacing-xl;
+    transition: background $transition-fast;
+
+    &:hover {
+      background: $color-accent-hover;
+    }
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  &__toast {
+    position: fixed;
+    bottom: $spacing-lg;
+    left: 50%;
+    transform: translateX(-50%);
+    background: $color-bg-card;
+    border: 1px solid $color-accent;
+    border-radius: $radius-md;
+    color: $color-text;
+    font-size: $font-sm;
+    padding: $spacing-sm $spacing-lg;
+    z-index: $z-modal;
+    white-space: nowrap;
+  }
+
+  &__select {
+    background: $color-bg;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text;
+    font-size: $font-xs;
+    padding: $spacing-xs $spacing-sm;
+    flex: 1;
+    min-width: 0;
+
+    &:focus {
+      border-color: $color-accent;
+      outline: none;
+    }
+
+    option {
+      background: $color-bg;
+      color: $color-text;
+    }
+  }
+}

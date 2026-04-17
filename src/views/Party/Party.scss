@@ -1,0 +1,561 @@
+@use '../../styles/variables' as *;
+
+.party {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &__loading {
+    text-align: center;
+    margin-top: $spacing-xl;
+    color: $color-text-muted;
+  }
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    flex: 1;
+    color: $color-accent;
+    font-size: $font-xl;
+    margin: 0;
+  }
+
+  &__size {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    background: $color-bg-card;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    font-weight: 700;
+  }
+
+  // ── Content ────────────────────────────────────────────────────────────────
+  &__content {
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  // ── No party ───────────────────────────────────────────────────────────────
+  &__no-party {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-xl $spacing-md;
+  }
+
+  &__no-party-msg {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    text-align: center;
+    margin: 0;
+  }
+
+  &__create-btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-md;
+    color: white;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 600;
+    padding: $spacing-sm $spacing-xl;
+    transition: background $transition-fast;
+    &:hover { background: $color-accent-hover; }
+  }
+
+  &__join-row {
+    display: flex;
+    gap: $spacing-sm;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  &__join-input {
+    flex: 1;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text;
+    font-size: $font-sm;
+    font-family: monospace;
+    letter-spacing: 0.1em;
+    padding: $spacing-sm;
+    outline: none;
+    text-transform: uppercase;
+    transition: border-color $transition-fast;
+    &::placeholder { color: $color-text-muted; text-transform: none; letter-spacing: 0; }
+    &:focus { border-color: $color-accent; }
+  }
+
+  &__join-btn {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-sm $spacing-md;
+    transition: border-color $transition-fast;
+    &:hover { border-color: $color-accent; }
+  }
+
+  &__join-error {
+    font-size: $font-xs;
+    color: $color-accent;
+    margin: 0;
+  }
+
+  // ── Create / Edit form ─────────────────────────────────────────────────────
+  &__create-form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+
+    > span {
+      font-size: $font-xs;
+      color: $color-text-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+
+    > input[type='text'],
+    > input:not([type]) {
+      background: $color-bg-card;
+      border: 1px solid $color-border;
+      border-radius: $radius-sm;
+      color: $color-text;
+      font-size: $font-sm;
+      padding: $spacing-sm;
+      outline: none;
+      transition: border-color $transition-fast;
+
+      &::placeholder { color: $color-text-muted; }
+      &:focus        { border-color: $color-accent; }
+    }
+
+    &--checkbox {
+      flex-direction: row;
+      align-items: center;
+      gap: $spacing-sm;
+
+      > input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: $color-accent;
+      }
+
+      > span {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 400;
+        font-size: $font-sm;
+        color: $color-text;
+      }
+    }
+  }
+
+  &__form-actions {
+    display: flex;
+    gap: $spacing-sm;
+    justify-content: flex-end;
+    margin-top: $spacing-xs;
+  }
+
+  // ── Public browser feed ────────────────────────────────────────────────────
+  &__browser {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__browser-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    transition: border-color $transition-fast;
+
+    &:hover { border-color: $color-accent; }
+  }
+
+  &__browser-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__browser-name {
+    font-size: $font-sm;
+    font-weight: 700;
+    color: $color-accent;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__browser-desc {
+    font-size: $font-xs;
+    color: $color-text;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__browser-meta {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__browser-classes {
+    font-size: $font-md;
+    letter-spacing: 0.15em;
+    line-height: 1;
+  }
+
+  // ── Party ID row ───────────────────────────────────────────────────────────
+  &__id-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: $spacing-sm $spacing-md;
+  }
+
+  &__id-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    flex-shrink: 0;
+  }
+
+  &__id-code {
+    flex: 1;
+    font-family: monospace;
+    font-size: $font-md;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: $color-accent;
+  }
+
+  &__copy-btn {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-xs;
+    padding: 2px $spacing-sm;
+    transition: all $transition-fast;
+    &:hover { border-color: $color-accent; color: $color-accent; }
+  }
+
+  // ── Summary row ────────────────────────────────────────────────────────────
+  &__summary {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__summary-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: $spacing-sm;
+    gap: 2px;
+  }
+
+  &__summary-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__summary-value {
+    font-size: $font-md;
+    font-weight: 700;
+    color: $color-accent;
+  }
+
+  // ── Bot suggestion ─────────────────────────────────────────────────────────
+  &__bot-suggest {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(#ffc107, 0.08);
+    border: 1px solid $color-legendary;
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-sm;
+    gap: $spacing-sm;
+  }
+
+  &__bot-btn {
+    background: $color-legendary;
+    border: none;
+    border-radius: $radius-sm;
+    color: #1a1a2e;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-md;
+    white-space: nowrap;
+    transition: opacity $transition-fast;
+    &:hover { opacity: 0.85; }
+  }
+
+  &__bot-btn-alt {
+    background: transparent;
+    border: 1px dashed $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-xs;
+    padding: $spacing-xs $spacing-sm;
+    transition: border-color $transition-fast, color $transition-fast;
+    align-self: flex-start;
+    &:hover { border-color: $color-legendary; color: $color-legendary; }
+  }
+
+  // ── Members grid ───────────────────────────────────────────────────────────
+  &__grid {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__member {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    transition: border-color $transition-fast;
+
+    &--me  { border-color: $color-accent; }
+    &--bot { border-color: $color-legendary; background: rgba(#ffc107, 0.04); }
+
+    &--empty {
+      background: transparent;
+      border-style: dashed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: $spacing-md;
+    }
+  }
+
+  &__member-top {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__member-icon { font-size: $font-lg; flex-shrink: 0; }
+
+  &__member-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__member-name  { font-size: $font-sm; font-weight: 700; }
+  &__member-class { font-size: $font-xs; color: $color-text-muted; }
+
+  &__me-badge {
+    font-size: $font-xs;
+    background: $color-accent;
+    color: white;
+    padding: 1px 6px;
+    border-radius: $radius-sm;
+    flex-shrink: 0;
+  }
+
+  &__bot-badge {
+    font-size: $font-xs;
+    background: $color-legendary;
+    color: #1a1a2e;
+    padding: 1px 6px;
+    border-radius: $radius-sm;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__kick-btn {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-xs;
+    padding: 0 $spacing-xs;
+    transition: all $transition-fast;
+    flex-shrink: 0;
+    &:hover { border-color: $color-accent; color: $color-accent; }
+  }
+
+  &__hp-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__hp-bar {
+    flex: 1;
+    height: 6px;
+    background: $color-border;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__hp-fill {
+    height: 100%;
+    background: #e53935;
+    border-radius: 3px;
+    transition: width $transition-normal;
+  }
+
+  &__hp-val {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    min-width: 60px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  &__empty-label {
+    font-size: $font-xs;
+    color: $color-border;
+  }
+
+  // ── Party Buffs ────────────────────────────────────────────────────────────
+  &__buffs {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin-top: $spacing-md;
+    padding: $spacing-md;
+  }
+
+  &__section-title {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin: 0 0 $spacing-xs;
+    text-transform: uppercase;
+  }
+
+  &__buff {
+    align-items: center;
+    background: $color-bg;
+    border-radius: $radius-sm;
+    display: flex;
+    gap: $spacing-sm;
+    padding: $spacing-xs $spacing-sm;
+  }
+
+  &__buff-name {
+    color: $color-accent;
+    font-size: $font-sm;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  &__buff-effect {
+    color: #4caf50;
+    font-size: $font-xs;
+    font-weight: 600;
+  }
+
+  &__buff-source {
+    color: $color-text-muted;
+    font-size: $font-xs;
+  }
+
+  &__no-buffs {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    text-align: center;
+    padding: $spacing-xs 0;
+  }
+
+  &__comp-bonus {
+    background: rgba(#ffc107, 0.08);
+    border: 1px solid rgba(#ffc107, 0.3);
+    border-radius: $radius-sm;
+    color: $color-legendary;
+    font-size: $font-sm;
+    font-weight: 600;
+    margin-top: $spacing-xs;
+    padding: $spacing-sm;
+    text-align: center;
+  }
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+    justify-content: flex-end;
+  }
+
+  &__leave-btn, &__disband-btn {
+    background: transparent;
+    border: 1px solid $color-accent;
+    border-radius: $radius-sm;
+    color: $color-accent;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-md;
+    transition: all $transition-fast;
+    &:hover { background: rgba(#e94560, 0.12); }
+  }
+}
