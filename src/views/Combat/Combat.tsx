@@ -215,7 +215,29 @@ const Combat = () => {
     const activeTasks = useTaskStore((s) => s.activeTasks);
     const activeQuests = useQuestStore((s) => s.activeQuests);
     const completedTransforms = useTransformStore((s) => s.completedTransforms);
+    const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
+    const transformColor = getHighestTransformColor();
     const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
+
+    // Derive an accent color from the active transform tier (solid or first stop
+    // of the gradient). Falls back to the class color if no transform unlocked.
+    const classColorFallbackMap: Record<string, string> = {
+        Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
+        Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
+    };
+    const playerAccent = (() => {
+        if (transformColor?.solid) return transformColor.solid;
+        if (transformColor?.gradient?.[0]) return transformColor.gradient[0];
+        return character ? (classColorFallbackMap[character.class] ?? '#e94560') : '#e94560';
+    })();
+    const playerAccentRgb = (() => {
+        const hex = playerAccent.replace('#', '');
+        if (hex.length !== 6) return '233, 69, 96';
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return `${r}, ${g}, ${b}`;
+    })();
 
     // Calculate effective stats (base character + equipment bonuses) for display.
     // Use the SAME engine helper the combat system uses so the displayed max_hp /
@@ -1179,6 +1201,10 @@ const Combat = () => {
                     <div
                         className={`combat__card combat__card--player${playerHit ? ' combat__card--hit' : ''}${playerTargetedCount > 0 ? ' combat__card--targeted' : ''}`}
                         data-class={character.class}
+                        style={{
+                            '--player-accent': playerAccent,
+                            '--player-accent-rgb': playerAccentRgb,
+                        } as React.CSSProperties}
                     >
                         {playerTargetedCount > 0 && (
                             <span className="combat__player-aggro-badge">🎯 AGGRO x{playerTargetedCount}</span>

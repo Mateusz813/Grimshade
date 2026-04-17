@@ -156,11 +156,11 @@ const Deposit = () => {
 
     return (
         <div className="deposit">
-            <header className="deposit__header">
-                <button className="deposit__back" onClick={() => navigate('/')}>
+            <header className="deposit__header page-header">
+                <button className="deposit__back page-back-btn" onClick={() => navigate('/')}>
                     ← Powrót
                 </button>
-                <h1 className="deposit__title">🏦 Depozyt</h1>
+                <h1 className="deposit__title page-title">🏦 Depozyt</h1>
                 <p className="deposit__subtitle">
                     Przedmioty w depozycie nigdy nie zostaną utracone przy śmierci.
                 </p>

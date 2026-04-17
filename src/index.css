@@ -81,3 +81,92 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.2;
 }
+
+/* ── Shared page header / tab styling (matches Friends view) ──────────────
+   Use these classes on any subpage so look stays consistent. Wire them up
+   alongside (or instead of) a view-local class name. !important keeps them
+   authoritative over each view's BEM block styles, which are loaded later
+   in the bundle and would otherwise win on specificity. */
+
+.page-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.page-back-btn {
+  padding: 8px 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #e0e0e0 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  font-family: inherit !important;
+  transition: background 120ms ease !important;
+}
+
+.page-back-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.page-back-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-title {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #e0e0e0 !important;
+  margin: 0 !important;
+  background: none !important;
+  text-shadow: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: #e0e0e0 !important;
+}
+
+.page-spacer { flex: 1; }
+
+.page-tabs {
+  display: flex !important;
+  gap: 8px !important;
+  margin-bottom: 16px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 0 0 0 0 !important;
+  overflow-x: auto;
+  background: transparent !important;
+}
+
+.page-tab {
+  appearance: none;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  color: #888 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  padding: 10px 14px !important;
+  cursor: pointer;
+  font-family: inherit !important;
+  transition: color 120ms ease, border-color 120ms ease !important;
+  white-space: nowrap;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.page-tab:hover:not(:disabled) { color: #e0e0e0 !important; }
+
+.page-tab--active {
+  color: #e94560 !important;
+  border-bottom-color: #e94560 !important;
+  background: transparent !important;
+}
+
+.page-tab:disabled { opacity: 0.4; cursor: not-allowed; }

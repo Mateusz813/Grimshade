@@ -883,6 +883,9 @@
 
   &__nav-icon {
     font-size: 28px;
+    opacity: 0;
+    transform: translateY(6px) scale(0.85);
+    transition: opacity 180ms ease, transform 220ms ease;
 
     &--avatar {
       width: 52px;
@@ -893,7 +896,16 @@
       overflow: hidden;
       border-radius: 8px;
       background: rgba(#fff, 0.04);
+      // Character tile uses the avatar as background; keep its label spot icon visible.
+      opacity: 1;
+      transform: none;
     }
+  }
+
+  // Reveal the centered emoji only on hover — tiles show clean gradient by default.
+  &__nav-tile:hover .town__nav-icon:not(.town__nav-icon--avatar) {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 
   &__nav-avatar-img {
@@ -1157,9 +1169,10 @@
       top: 18%;
       left: 0;
       font-size: 14px;
-      opacity: 0.12;
+      opacity: 0;
       animation: tile-scroll 14s linear infinite;
       animation-play-state: paused;
+      transition: opacity 220ms ease;
     }
 
     // Layer 2 — bigger, lower
@@ -1167,10 +1180,11 @@
       bottom: 25%;
       left: 0;
       font-size: 20px;
-      opacity: 0.1;
+      opacity: 0;
       animation: tile-scroll 20s linear infinite;
       animation-delay: -6s;
       animation-play-state: paused;
+      transition: opacity 220ms ease;
     }
 
     // Hover: start the scroll + brighten + glow border
