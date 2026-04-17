@@ -161,10 +161,10 @@ const Deposit = () => {
                     ← Powrót
                 </button>
                 <h1 className="deposit__title page-title">🏦 Depozyt</h1>
-                <p className="deposit__subtitle">
-                    Przedmioty w depozycie nigdy nie zostaną utracone przy śmierci.
-                </p>
             </header>
+            <p className="deposit__subtitle">
+                Przedmioty w depozycie nigdy nie zostaną utracone przy śmierci.
+            </p>
 
             <div className="deposit__controls">
                 <input
