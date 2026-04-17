@@ -1,0 +1,1445 @@
+@use '../../styles/variables' as *;
+@use '../../styles/combat-animations' as *;
+@use '../../styles/skill-animations';
+
+.boss {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  // When fighting, lock viewport so the page doesn't scroll
+  &--fighting {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+
+  &__loading {
+    text-align: center;
+    margin-top: $spacing-xl;
+    color: $color-text-muted;
+  }
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    flex: 1;
+    color: $color-accent;
+    font-size: $font-xl;
+    margin: 0;
+  }
+
+  &__score {
+    font-size: $font-sm;
+    color: #ffc107;
+    font-weight: 700;
+    background: rgba(#ffc107, 0.1);
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    border: 1px solid rgba(#ffc107, 0.25);
+    white-space: nowrap;
+  }
+
+  &__fighting-badge {
+    font-size: $font-sm;
+    color: $color-accent;
+    font-weight: 700;
+    background: $color-bg-card;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+  }
+
+  // ── Panel ──────────────────────────────────────────────────────────────────
+  &__panel {
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+
+    // Inside fighting mode, panel must fill remaining space
+    .boss--fighting & {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+
+  // ── Boss card ──────────────────────────────────────────────────────────────
+  &__card {
+    --h: var(--card-hue, 0);
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        ellipse at 10% 15%,
+        hsla(var(--h), 70%, 30%, 0.55) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse at 90% 85%,
+        hsla(calc(var(--h) + 40), 55%, 20%, 0.4) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 50% 50%,
+        hsla(var(--h), 40%, 12%, 0.2) 0%,
+        transparent 70%
+      ),
+      linear-gradient(
+        155deg,
+        hsla(var(--h), 55%, 16%, 0.65) 0%,
+        hsla(var(--h), 40%, 10%, 0.35) 30%,
+        $color-bg-card 70%
+      );
+    border: 1px solid hsla(var(--h), 50%, 45%, 0.4);
+    border-left: 4px solid hsla(var(--h), 65%, 50%, 0.75);
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 3px 18px hsla(var(--h), 55%, 25%, 0.25),
+                0 0 1px hsla(var(--h), 65%, 50%, 0.35),
+                inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.12);
+
+    // Animated shimmer sweep
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        hsla(var(--h), 65%, 60%, 0.07),
+        transparent
+      );
+      animation: boss-card-shimmer 5s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    // Glowing top edge
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        transparent 5%,
+        hsla(var(--h), 75%, 55%, 0.5) 30%,
+        hsla(calc(var(--h) + 20), 80%, 65%, 0.6) 50%,
+        hsla(var(--h), 75%, 55%, 0.5) 70%,
+        transparent 95%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    & > * { position: relative; z-index: 1; }
+
+    &:hover:not(&--blocked) {
+      border-color: hsla(var(--h), 65%, 55%, 0.7);
+      box-shadow: 0 8px 32px hsla(var(--h), 55%, 30%, 0.4),
+                  0 0 3px hsla(var(--h), 65%, 50%, 0.6),
+                  inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.2);
+      transform: translateY(-2px);
+    }
+
+    &--blocked { opacity: 0.6; }
+
+    &--all-done {
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(76, 175, 80, 0.18) 0%, transparent 50%),
+        linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, $color-bg-card 60%);
+      border-color: rgba(76, 175, 80, 0.3);
+      border-left-color: rgba(76, 175, 80, 0.5);
+      opacity: 0.7;
+
+      &::before { animation: none; }
+    }
+  }
+
+  @keyframes boss-card-shimmer {
+    0%, 100% { left: -100%; opacity: 0; }
+    35% { opacity: 1; }
+    75% { left: 200%; opacity: 0; }
+  }
+
+  &__card-top {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__sprite {
+    font-size: 48px;
+    flex-shrink: 0;
+  }
+
+  &__card-info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__card-name {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: $color-accent;
+  }
+
+  &__card-level {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__card-desc {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    margin: 0;
+  }
+
+  &__card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__card-party-note {
+    font-size: $font-xs;
+    color: #ff9800;
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  // ── Unique drops list ──────────────────────────────────────────────────────
+  &__unique-drops {
+    background: $color-bg-secondary;
+    border-radius: $radius-sm;
+    padding: $spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__unique-title {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__unique-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: $font-sm;
+    color: $color-heroic;
+    font-weight: 600;
+  }
+
+  &__drop-chance {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  // ── Drop table toggle & content ─────────────────────────────────────────────
+  &__drop-toggle {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-xs;
+    padding: $spacing-xs $spacing-sm;
+    text-align: left;
+    transition: background $transition-fast, border-color $transition-fast;
+    width: 100%;
+
+    &:hover { background: rgba(255, 255, 255, 0.08); border-color: $color-accent; }
+    &--open { border-color: $color-accent; color: $color-text; }
+  }
+
+  &__drop-table {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-sm;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+  }
+
+  &__drop-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  &__drop-section-title {
+    font-size: 10px;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+    font-weight: 600;
+  }
+
+  &__drop-info {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 1px 0;
+  }
+
+  &__drop-tier {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0;
+    font-size: 10px;
+  }
+
+  &__drop-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &__drop-tier-name {
+    font-weight: 600;
+    min-width: 90px;
+  }
+
+  &__drop-tier-chance {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &__drop-note {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  &__card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+  }
+
+  &__attempts {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__attempts-bar {
+    width: 50px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  &__attempts-bar-fill {
+    height: 100%;
+    background: #4caf50;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+
+    &--full {
+      background: $color-accent;
+    }
+  }
+
+  &__cooldown, &__locked {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__challenge-btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-sm;
+    color: white;
+    cursor: pointer;
+    font-size: $font-sm;
+    font-weight: 600;
+    padding: $spacing-sm $spacing-lg;
+    transition: background $transition-fast;
+    &:hover { background: $color-accent-hover; }
+  }
+
+  // ── Speed button ────────────────────────────────────────────────────────────
+  &__speed-btn {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-sm;
+    transition: border-color $transition-fast, background $transition-fast;
+
+    &:hover { border-color: $color-accent; }
+    &--x2 { color: #4caf50; }
+    &--x4 { color: #ffc107; }
+    &--SKIP { color: #f44336; background: rgba(#f44336, 0.1); }
+  }
+
+  // ── Abilities tags ────────────────────────────────────────────────────────
+  &__abilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    align-items: center;
+  }
+
+  &__abilities-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__ability-tag {
+    font-size: 10px;
+    background: rgba(#f44336, 0.1);
+    color: #f44336;
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+    border: 1px solid rgba(#f44336, 0.2);
+  }
+
+  // ── Arena (real combat view) ──────────────────────────────────────────────
+  &__arena {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+  }
+
+  &__combat-card {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    position: relative;
+    overflow: visible;
+    transition: border-color 0.2s, transform 0.15s;
+
+    &--monster {
+      border-color: #e53935;
+      &.boss__combat-card--hit {
+        animation: boss-shake 0.3s ease;
+      }
+      &.boss__combat-card--enraged {
+        border-color: #f44336;
+        background: rgba(#f44336, 0.05);
+        box-shadow: 0 0 20px rgba(#f44336, 0.2);
+      }
+    }
+
+    &--player {
+      border-color: $color-accent;
+      &.boss__combat-card--hit {
+        animation: boss-shake 0.3s ease;
+      }
+    }
+
+    &--targeted {
+      background: linear-gradient(135deg, rgba(#f44336, 0.28), rgba(#b71c1c, 0.18)) !important;
+      border-color: #f44336 !important;
+      box-shadow: 0 0 18px rgba(#f44336, 0.55), inset 0 0 12px rgba(#f44336, 0.25);
+      animation: boss-aggro-pulse 1.2s ease-in-out infinite;
+    }
+  }
+
+  &__aggro-label {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 10px;
+    background: #f44336;
+    color: white;
+    padding: 2px 8px;
+    border-radius: $radius-sm;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 8px rgba(#f44336, 0.8);
+    animation: pulse 0.9s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  @keyframes boss-aggro-pulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(#f44336, 0.55), inset 0 0 12px rgba(#f44336, 0.25); }
+    50% { box-shadow: 0 0 28px rgba(#f44336, 0.85), inset 0 0 20px rgba(#f44336, 0.45); }
+  }
+
+  &__enraged-combat-badge {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 10px;
+    background: #f44336;
+    color: white;
+    padding: 2px 8px;
+    border-radius: $radius-sm;
+    font-weight: 700;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  &__combat-card-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__player-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+  }
+
+  &__player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  &__player-avatar-lvl {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #ffc107;
+    color: #1a1a2e;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 3px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  &__combat-sprite {
+    font-size: 48px;
+    display: inline-block;
+    filter: drop-shadow(0 0 12px rgba(#e94560, 0.4));
+  }
+
+  &__combat-card-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__combat-card-name {
+    font-size: $font-md;
+    font-weight: 700;
+    color: $color-accent;
+  }
+
+  &__combat-card-sub {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__combat-hp-text {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    font-weight: 600;
+    min-width: 80px;
+    text-align: right;
+  }
+
+  &__combat-stat-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-top: 4px;
+  }
+
+  &__combat-stat-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    width: 24px;
+    font-weight: 600;
+  }
+
+  // ── HP bars (combat-style) ─────────────────────────────────────────────────
+  &__combat-bar {
+    flex: 1;
+    height: 14px;
+    background: $color-border;
+    border-radius: 7px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  &__combat-bar-fill {
+    height: 100%;
+    border-radius: 7px;
+    transition: width 0.18s ease-out;
+  }
+
+  &__combat-bar--hp .boss__combat-bar-fill { background: linear-gradient(90deg, #c62828, #e53935); }
+  &__combat-bar--mp .boss__combat-bar-fill { background: linear-gradient(90deg, #1565c0, #42a5f5); }
+  &__combat-bar--enemy .boss__combat-bar-fill { background: linear-gradient(90deg, #b71c1c, #ff5252); }
+  &__combat-bar--boss-enraged .boss__combat-bar-fill { background: linear-gradient(90deg, #f44336, #ff7043); }
+
+  // ── Floating damage numbers ────────────────────────────────────────────────
+  &__floating-dmg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: 900;
+    font-size: 22px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+    z-index: 10;
+
+    &--player { color: #ffc107; }
+    &--monster { color: #f44336; }
+    &--heal { color: #4caf50; }
+    &--crit { color: #ff9100; font-size: 28px; }
+  }
+
+  // ── Combat toggles ────────────────────────────────────────────────────────
+  &__combat-toggles {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  &__toggle-btn {
+    flex: 1;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 5px 8px;
+    font-size: $font-xs;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-fast, border-color $transition-fast;
+
+    &--auto {
+      background: rgba(#4caf50, 0.12);
+      border-color: rgba(#4caf50, 0.3);
+      color: #4caf50;
+    }
+
+    &--manual {
+      background: rgba(#ff9800, 0.12);
+      border-color: rgba(#ff9800, 0.3);
+      color: #ff9800;
+    }
+
+    &--potion {
+      background: rgba(#2196f3, 0.12);
+      border-color: rgba(#2196f3, 0.3);
+      color: #2196f3;
+    }
+
+    &--speed {
+      background: rgba(#03a9f4, 0.1);
+      border-color: rgba(#03a9f4, 0.5);
+      color: #03a9f4;
+    }
+
+    &--speed-x2 {
+      background: rgba(#ffc107, 0.15);
+      border-color: rgba(#ffc107, 0.6);
+      color: #ffc107;
+    }
+
+    &--speed-x4 {
+      background: rgba(#f44336, 0.18);
+      border-color: rgba(#f44336, 0.7);
+      color: #f44336;
+    }
+
+    &--off {
+      background: rgba(#9e9e9e, 0.08);
+      border-color: rgba(#9e9e9e, 0.2);
+      color: $color-text-muted;
+    }
+  }
+
+  // ── Skill slots ──────────────────────────────────────────────────────────
+  &__skill-slots {
+    display: flex;
+    gap: 4px;
+  }
+
+  &__skill-slot {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 40px;
+    justify-content: center;
+    color: inherit;
+    font-family: inherit;
+    cursor: default;
+
+    &:not(:disabled) { cursor: pointer; }
+
+    &--empty { opacity: 0.35; }
+    &--filled { border-color: rgba(#4caf50, 0.3); }
+    &--on-cooldown { opacity: 0.6; border-color: rgba(#9e9e9e, 0.3); }
+    &--manual {
+      border-color: rgba(#ffc107, 0.6);
+      box-shadow: 0 0 8px rgba(#ffc107, 0.25);
+      &:hover:not(:disabled) { background: rgba(#ffc107, 0.12); }
+    }
+  }
+
+  &__skill-cd-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    transition: height 0.2s linear;
+  }
+
+  &__skill-slot-name {
+    font-size: 9px;
+    font-weight: 600;
+    color: $color-text;
+    text-align: center;
+    line-height: 1.1;
+    z-index: 1;
+  }
+
+  &__skill-slot-badge {
+    font-size: 8px;
+    color: $color-text-muted;
+    z-index: 1;
+  }
+
+  // ── Potions ──────────────────────────────────────────────────────────────
+  &__potions {
+    display: flex;
+    gap: 6px;
+  }
+
+  &__potion-btn {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background $transition-fast;
+    font-size: $font-xs;
+
+    &--hp { background: rgba(#f44336, 0.08); border-color: rgba(#f44336, 0.25); color: #f44336; }
+    &--mp { background: rgba(#2196f3, 0.08); border-color: rgba(#2196f3, 0.25); color: #2196f3; }
+    &--cooldown { opacity: 0.5; }
+    &:disabled { cursor: not-allowed; opacity: 0.4; }
+  }
+
+  &__potion-cd-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    transition: height 0.2s linear;
+  }
+
+  &__potion-label { z-index: 1; font-weight: 600; }
+  &__potion-count { z-index: 1; font-size: 10px; opacity: 0.7; }
+
+  // ── Flee button ────────────────────────────────────────────────────────────
+  &__flee-btn {
+    background: rgba(#f44336, 0.1);
+    border: 1px solid rgba(#f44336, 0.3);
+    border-radius: $radius-sm;
+    color: #f44336;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-md;
+    transition: background $transition-fast;
+    align-self: center;
+
+    &:hover { background: rgba(#f44336, 0.2); }
+  }
+
+  // ── Combat log ─────────────────────────────────────────────────────────────
+  &__combat-log {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm;
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__combat-log-entry {
+    font-size: 11px;
+    padding: 2px $spacing-sm;
+    border-radius: $radius-sm;
+    line-height: 1.4;
+
+    &--player { color: #4caf50; }
+    &--monster { color: #f44336; }
+    &--crit { color: #ff9100; font-weight: 600; }
+    &--system { color: $color-accent; }
+    &--boss-spell {
+      color: #9c27b0;
+      font-weight: 600;
+      background: rgba(#9c27b0, 0.05);
+    }
+  }
+
+  @keyframes boss-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
+  }
+
+  // ── Result ─────────────────────────────────────────────────────────────────
+  &__result {
+    background: $color-bg-card;
+    border: 2px solid $color-border;
+    border-radius: $radius-lg;
+    padding: $spacing-lg;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    text-align: center;
+
+    &--win  {
+      border-color: #ffc107;
+      box-shadow: 0 0 16px rgba(#ffc107, 0.15);
+    }
+    &--loss { border-color: $color-accent; }
+  }
+
+  &__result-sprite { font-size: 64px; }
+  &__result-title  { font-size: $font-xxl; font-weight: 700; }
+
+  &__result--win  .boss__result-title { color: #ffc107; }
+  &__result--loss .boss__result-title { color: $color-accent; }
+  &__result-boss   { font-size: $font-md; color: $color-text-muted; }
+
+  &__rewards {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__reward-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: $font-md;
+    font-weight: 600;
+    background: rgba(#ffc107, 0.06);
+    border: 1px solid rgba(#ffc107, 0.15);
+    padding: $spacing-sm $spacing-md;
+    border-radius: $radius-sm;
+    color: #ffc107;
+  }
+
+  &__drops-result {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    text-align: left;
+  }
+
+  &__drops-result-title {
+    font-size: $font-sm;
+    color: #ffc107;
+    font-weight: 600;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__drops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: $spacing-xs;
+    justify-items: center;
+  }
+
+  &__drop-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    max-width: 64px;
+  }
+
+  &__drop-item-name {
+    font-size: 9px;
+    font-weight: 600;
+    text-align: center;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
+  &__no-drops {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__fail-msg {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    margin: 0;
+  }
+
+  &__back-btn {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    color: $color-text;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-sm $spacing-lg;
+    transition: border-color $transition-fast;
+    &:hover { border-color: $color-accent; }
+  }
+
+  &__result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  &__retry-btn {
+    background: linear-gradient(135deg, #2e7d32, #43a047);
+    border: 1px solid #4caf50;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 600;
+    padding: $spacing-sm $spacing-lg;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+    text-align: center;
+
+    &:hover {
+      background: linear-gradient(135deg, #388e3c, #4caf50);
+      box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+// ── Class-specific attack animations for boss combat ─────────────────────────
+@include class-attack-animations('boss__combat-card');
+
+// ── Bot companion styles ────────────────────────────────────────────────────
+.boss {
+  &__bot-party {
+    background: rgba(#1a1a2e, 0.6);
+    border: 1px solid rgba($color-border, 0.5);
+    border-radius: $radius-md;
+    padding: $spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__bot-party-title {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: $spacing-xs;
+    font-weight: 600;
+  }
+
+  &__bot-card {
+    position: relative;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: $spacing-xs $spacing-sm;
+    transition: border-color $transition-fast, opacity $transition-fast, background $transition-fast, box-shadow $transition-fast;
+
+    &--dead {
+      opacity: 0.4;
+      border-color: rgba(#f44336, 0.3);
+      background: rgba(#f44336, 0.05);
+    }
+
+    &--targeted {
+      background: linear-gradient(135deg, rgba(#f44336, 0.28), rgba(#b71c1c, 0.18)) !important;
+      border-color: #f44336 !important;
+      box-shadow: 0 0 18px rgba(#f44336, 0.55), inset 0 0 12px rgba(#f44336, 0.25);
+      animation: boss-aggro-pulse 1.2s ease-in-out infinite;
+    }
+  }
+
+  &__bot-card-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-bottom: 4px;
+  }
+
+  &__bot-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  &__bot-name {
+    font-size: $font-xs;
+    font-weight: 600;
+    color: $color-text;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__bot-level {
+    font-size: 10px;
+    color: $color-text-muted;
+    flex-shrink: 0;
+  }
+
+  &__bot-hp-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__bot-hp-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(#fff, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__bot-hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #66bb6a);
+    border-radius: 3px;
+    transition: width 0.18s ease-out;
+
+    &--dead {
+      background: #f44336;
+    }
+  }
+
+  &__bot-hp-text {
+    font-size: 10px;
+    color: $color-text-muted;
+    min-width: 60px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // ── Pre-fight bot picker modal ──────────────────────────────────────────
+  &__prefight-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: $spacing-md;
+  }
+
+  &__prefight-modal {
+    background: linear-gradient(180deg, #1e1e2e 0%, #141420 100%);
+    border: 2px solid rgba(#ffc107, 0.4);
+    border-radius: 12px;
+    padding: $spacing-lg;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  &__prefight-header {
+    text-align: center;
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid rgba(#fff, 0.08);
+
+    h2 {
+      margin: 0 0 4px 0;
+      font-size: 20px;
+      color: #ffc107;
+    }
+
+    p {
+      margin: 0;
+      color: $color-text-muted;
+      font-size: 14px;
+    }
+  }
+
+  &__prefight-section {
+    margin-bottom: $spacing-md;
+
+    h3 {
+      margin: 0 0 $spacing-sm 0;
+      font-size: 14px;
+      color: $color-text-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  &__prefight-size {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__prefight-size-btn {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    background: rgba(#fff, 0.05);
+    border: 1px solid rgba(#fff, 0.12);
+    border-radius: 6px;
+    color: $color-text;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: rgba(#fff, 0.1);
+    }
+
+    &--active {
+      background: rgba(#ffc107, 0.2);
+      border-color: #ffc107;
+      color: #ffc107;
+    }
+  }
+
+  &__prefight-bots {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__prefight-bot-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm;
+    background: rgba(#fff, 0.03);
+    border-radius: 6px;
+  }
+
+  &__prefight-bot-label {
+    flex-shrink: 0;
+    min-width: 50px;
+    font-size: 12px;
+    color: $color-text-muted;
+    font-weight: 600;
+  }
+
+  &__prefight-bot-classes {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  &__prefight-class-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: rgba(#fff, 0.05);
+    border: 1px solid rgba(#fff, 0.12);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: rgba(#fff, 0.1);
+      transform: scale(1.08);
+    }
+
+    &--active {
+      background: rgba(#ffc107, 0.25);
+      border-color: #ffc107;
+      box-shadow: 0 0 10px rgba(#ffc107, 0.4);
+    }
+  }
+
+  &__prefight-actions {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px solid rgba(#fff, 0.08);
+  }
+
+  &__prefight-cancel {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    background: rgba(#fff, 0.05);
+    border: 1px solid rgba(#fff, 0.15);
+    border-radius: 6px;
+    color: $color-text-muted;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(#fff, 0.1);
+      color: $color-text;
+    }
+  }
+
+  &__prefight-start {
+    flex: 2;
+    padding: $spacing-sm $spacing-md;
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    border: none;
+    border-radius: 6px;
+    color: #1a1a2e;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(#ffc107, 0.4);
+    }
+  }
+
+  // ── Epic boss entry (doors slide open) ────────────────────────────────────
+  // Note: the overlay itself has a dark background so when the doors slide
+  // off the screen the player sees a proper boss-arena backdrop behind them
+  // — NOT a momentary flash of the boss list view that was on screen before.
+  &__entry-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at center, rgba(60, 10, 10, 0.95) 0%, rgba(10, 0, 0, 0.98) 55%, #000 100%);
+  }
+
+  // Subtle vignette / floor-fog layer that gives the reveal some depth.
+  &__entry-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 50% 75%, rgba(255, 87, 34, 0.22) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 30%, rgba(244, 67, 54, 0.18) 0%, transparent 55%);
+  }
+
+  &__entry-door {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    z-index: 4;
+    background:
+      // iron-plate feel: horizontal metal bands + rivets via radial
+      linear-gradient(180deg,
+        rgba(30, 30, 40, 0.98) 0%,
+        rgba(10, 10, 20, 1) 50%,
+        rgba(30, 30, 40, 0.98) 100%),
+      repeating-linear-gradient(180deg,
+        rgba(255, 255, 255, 0.02) 0,
+        rgba(255, 255, 255, 0.02) 2px,
+        transparent 2px, transparent 8px);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.8);
+    will-change: transform;
+
+    &::before, &::after {
+      // Rivets: top + bottom rows along the seam edge
+      content: '';
+      position: absolute;
+      background-image: radial-gradient(circle, #2a2a3a 0, #2a2a3a 4px, transparent 5px);
+      background-size: 22px 22px;
+      background-repeat: repeat-x;
+      height: 22px;
+      left: 0;
+      right: 0;
+      opacity: 0.6;
+    }
+    &::before { top: 0; }
+    &::after  { bottom: 0; }
+
+    &--left {
+      left: 0;
+      // Slight inward shadow hints at the crack
+      border-right: 1px solid rgba(255, 180, 40, 0.5);
+    }
+
+    &--right {
+      right: 0;
+      border-left: 1px solid rgba(255, 180, 40, 0.5);
+    }
+  }
+
+  // Glowing vertical seam of light down the middle as the doors part.
+  &__entry-seam {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 6px;
+    margin-left: -3px;
+    transform-origin: center;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      #ffc107 10%,
+      #fff 50%,
+      #ffc107 90%,
+      transparent 100%);
+    box-shadow:
+      0 0 30px 8px rgba(255, 193, 7, 0.8),
+      0 0 60px 20px rgba(255, 100, 40, 0.6);
+    z-index: 2;
+  }
+
+  // Boss name/sprite reveal in the center
+  &__entry-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    filter: drop-shadow(0 0 24px rgba(255, 100, 40, 0.9));
+  }
+
+  &__entry-sprite {
+    font-size: 96px;
+    line-height: 1;
+  }
+
+  &__entry-name {
+    font-size: 36px;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-shadow:
+      0 0 12px #ff5722,
+      0 0 24px rgba(244, 67, 54, 0.8),
+      0 2px 4px #000;
+  }
+
+  &__entry-level {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffc107;
+    letter-spacing: 0.2em;
+    text-shadow: 0 0 8px rgba(255, 193, 7, 0.9);
+  }
+
+  // Expanding shockwave ring from the seam as doors open
+  &__entry-shock {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120px;
+    height: 120px;
+    margin: -60px 0 0 -60px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 193, 7, 0.9);
+    box-shadow: 0 0 40px rgba(255, 152, 0, 0.8);
+    z-index: 1;
+    will-change: transform, opacity;
+  }
+}

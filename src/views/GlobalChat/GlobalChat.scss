@@ -1,0 +1,68 @@
+@use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
+
+.global-chat {
+    min-height: 100dvh;
+    padding: 16px 12px 120px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+
+    @include tablet {
+        padding: 24px 24px 140px;
+    }
+
+    &__loading {
+        text-align: center;
+        color: $color-text-muted;
+        padding: 40px;
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    &__back-btn {
+        padding: 8px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: $color-text;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    &__title {
+        font-size: 22px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0;
+
+        @include tablet {
+            font-size: 26px;
+        }
+    }
+
+    &__hint {
+        font-size: 13px;
+        color: $color-text-muted;
+        margin: 0 0 16px;
+        line-height: 1.5;
+    }
+
+    &__chat-wrap {
+        background: rgba(15, 15, 25, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 8px;
+    }
+}

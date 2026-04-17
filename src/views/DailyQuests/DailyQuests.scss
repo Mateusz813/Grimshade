@@ -1,0 +1,287 @@
+@use '../../styles/variables' as *;
+
+.daily-quests {
+    min-height: 100vh;
+    background: transparent;
+    color: $color-text;
+
+    &__header {
+        align-items: center;
+        background: $color-bg-secondary;
+        border-bottom: 1px solid $color-border;
+        display: flex;
+        gap: $spacing-md;
+        padding: $spacing-md;
+        position: sticky;
+        top: 0;
+        z-index: $z-nav;
+    }
+
+    &__back {
+        background: transparent;
+        border: 1px solid $color-border;
+        color: $color-text-muted;
+        cursor: pointer;
+        font-size: $font-sm;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $radius-sm;
+        transition: color $transition-fast, border-color $transition-fast;
+        &:hover {
+            color: $color-text;
+            border-color: $color-text-muted;
+        }
+    }
+
+    &__title {
+        color: $color-accent;
+        flex: 1;
+        font-size: $font-lg;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    &__locked {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-md;
+        padding: $spacing-xl;
+        text-align: center;
+    }
+
+    &__locked-icon {
+        font-size: 48px;
+    }
+
+    &__locked-sub {
+        color: $color-text-muted;
+        font-size: $font-sm;
+    }
+
+    // Summary bar at top
+    &__summary {
+        align-items: center;
+        background: $color-bg-secondary;
+        border-bottom: 1px solid $color-border;
+        display: flex;
+        gap: $spacing-md;
+        padding: $spacing-sm $spacing-md;
+    }
+
+    &__counter {
+        align-items: baseline;
+        display: flex;
+        gap: 2px;
+        flex-shrink: 0;
+    }
+
+    &__counter-done {
+        color: #4caf50;
+        font-size: $font-lg;
+        font-weight: 700;
+    }
+
+    &__counter-sep {
+        color: $color-text-muted;
+        font-size: $font-md;
+    }
+
+    &__counter-total {
+        color: $color-text;
+        font-size: $font-md;
+        font-weight: 600;
+    }
+
+    &__counter-label {
+        color: $color-text-muted;
+        font-size: $font-xs;
+        margin-left: $spacing-xs;
+    }
+
+    &__summary-bar {
+        background: $color-bg;
+        border-radius: 99px;
+        flex: 1;
+        height: 6px;
+        overflow: hidden;
+    }
+
+    &__summary-fill {
+        background: #4caf50;
+        border-radius: 99px;
+        height: 100%;
+        transition: width $transition-normal;
+    }
+
+    &__summary-text {
+        color: $color-text-muted;
+        font-size: $font-xs;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+
+    // Quest list
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+        padding: $spacing-md;
+    }
+
+    &__quest {
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $radius-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+        padding: $spacing-sm $spacing-md;
+        transition: all $transition-normal;
+
+        &--completed {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.06);
+        }
+
+        &--claimed {
+            opacity: 0.45;
+            border-color: $color-border;
+            background: $color-bg-secondary;
+        }
+    }
+
+    &__quest-header {
+        align-items: center;
+        display: flex;
+        gap: $spacing-xs;
+    }
+
+    &__quest-icon {
+        font-size: $font-md;
+        flex-shrink: 0;
+    }
+
+    &__quest-name {
+        color: $color-text;
+        flex: 1;
+        font-size: $font-sm;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    &__badge {
+        border-radius: $radius-sm;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px $spacing-xs;
+        text-transform: uppercase;
+        flex-shrink: 0;
+
+        &--ready {
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid #4caf50;
+            color: #4caf50;
+        }
+
+        &--claimed {
+            background: rgba(158, 158, 158, 0.15);
+            border: 1px solid $color-text-muted;
+            color: $color-text-muted;
+        }
+    }
+
+    &__quest-desc {
+        color: $color-text-muted;
+        font-size: $font-xs;
+        margin: 0;
+    }
+
+    &__progress {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    &__progress-bar {
+        background: $color-bg;
+        border-radius: 99px;
+        height: 6px;
+        overflow: hidden;
+    }
+
+    &__progress-fill {
+        background: $color-accent;
+        border-radius: 99px;
+        height: 100%;
+        transition: width $transition-normal;
+    }
+
+    &__progress-text {
+        color: $color-text-muted;
+        font-size: 10px;
+    }
+
+    &__rewards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-xs;
+    }
+
+    &__reward {
+        background: $color-bg;
+        border-radius: $radius-sm;
+        color: $color-legendary;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px $spacing-xs;
+    }
+
+    &__claim-btn {
+        background: #4caf50;
+        border: none;
+        border-radius: $radius-sm;
+        color: #fff;
+        cursor: pointer;
+        font-size: $font-xs;
+        font-weight: 600;
+        padding: $spacing-xs $spacing-sm;
+        transition: opacity $transition-fast;
+        width: 100%;
+        margin-top: $spacing-xs;
+
+        &:hover { opacity: 0.85; }
+    }
+
+    &__empty {
+        color: $color-text-muted;
+        font-size: $font-sm;
+        padding: $spacing-xl;
+        text-align: center;
+    }
+}
+
+@media (min-width: 768px) {
+    .daily-quests {
+        &__list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: $spacing-sm;
+        }
+    }
+}
+
+@media (min-width: 1024px) {
+    .daily-quests {
+        &__list {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+}
+
+@media (min-width: 1440px) {
+    .daily-quests {
+        &__list {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+}

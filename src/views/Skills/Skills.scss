@@ -1,0 +1,1148 @@
+@use '../../styles/variables' as *;
+
+.skills {
+  min-height: 100vh;
+  background: transparent;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &__loading {
+    text-align: center;
+    margin-top: $spacing-xl;
+    color: $color-text-muted;
+  }
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    border-bottom: 1px solid $color-border;
+    background: $color-bg-secondary;
+  }
+
+  &__back {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-xs $spacing-sm;
+    &:hover { color: $color-accent; }
+  }
+
+  &__title {
+    flex: 1;
+    color: $color-accent;
+    font-size: $font-xl;
+    margin: 0;
+  }
+
+  &__class {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    background: $color-bg-card;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+  }
+
+  // ── Tabs ────────────────────────────────────────────────────────────────────
+  &__tabs {
+    display: flex;
+    border-bottom: 1px solid $color-border;
+    background: $color-bg-secondary;
+  }
+
+  &__tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-sm;
+    padding: $spacing-sm $spacing-md;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover { color: $color-text; }
+
+    &--active {
+      color: $color-accent;
+      border-bottom-color: $color-accent;
+    }
+  }
+
+  // ── Panel ───────────────────────────────────────────────────────────────────
+  &__panel {
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  // ── Weapon skill card ────────────────────────────────────────────────────────
+  &__weapon-card {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__weapon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__weapon-name {
+    font-size: $font-md;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__weapon-level {
+    font-size: $font-sm;
+    color: $color-accent;
+    font-weight: 700;
+  }
+
+  &__weapon-desc {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__xp-bar-wrap {
+    height: 6px;
+    background: $color-border;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__xp-bar {
+    height: 100%;
+    background: #ffc107;
+    border-radius: 3px;
+    transition: width $transition-normal;
+  }
+
+  &__xp-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__bonus {
+    color: #4caf50;
+    font-weight: 600;
+  }
+
+  // ── Active skill slots ───────────────────────────────────────────────────────
+  &__slots {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $spacing-sm;
+  }
+
+  &__slot {
+    background: $color-bg-secondary;
+    border: 2px dashed $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-sm;
+    text-align: center;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+
+    &--filled {
+      border-style: solid;
+      border-color: $color-accent;
+      background: rgba(#e94560, 0.08);
+    }
+  }
+
+  &__slot-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__slot-skill {
+    font-size: $font-xs;
+    color: $color-accent;
+    font-weight: 600;
+    text-align: center;
+    word-break: break-word;
+  }
+
+  &__slot-empty {
+    font-size: $font-md;
+    color: $color-border;
+  }
+
+  &__slots-hint {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    text-align: center;
+    margin: 0;
+  }
+
+  // ── Active skill list ────────────────────────────────────────────────────────
+  &__active-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__active-card {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    cursor: pointer;
+    transition: border-color $transition-fast, background $transition-fast;
+
+    &:hover:not(&--locked) {
+      border-color: $color-accent;
+    }
+
+    &--equipped {
+      border-color: $color-accent;
+      background: rgba(#e94560, 0.1);
+    }
+
+    &--locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__active-top {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__active-name {
+    flex: 1;
+    font-size: $font-md;
+    font-weight: 600;
+  }
+
+  &__active-badge {
+    font-size: $font-xs;
+    background: $color-accent;
+    color: white;
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+  }
+
+  &__active-lock {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__active-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: $font-xs;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #43a047, #2e7d32);
+    padding: 4px 10px;
+    border-radius: 99px;
+    box-shadow: 0 2px 6px rgba(67, 160, 71, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: transform $transition-fast, box-shadow $transition-fast;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(67, 160, 71, 0.55);
+    }
+  }
+
+  &__active-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__active-bonus {
+    color: #4caf50;
+    font-weight: 600;
+  }
+
+  &__active-description {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: $spacing-sm;
+    padding: $spacing-sm;
+    background: rgba(255, 255, 255, 0.04);
+    border-left: 3px solid rgba(255, 255, 255, 0.18);
+    border-radius: $radius-sm;
+  }
+
+  &__active-desc-line {
+    font-size: $font-xs;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.82);
+
+    strong {
+      color: #fff;
+      font-weight: 600;
+    }
+  }
+
+  // ── Upgrade badge & panel ──────────────────────────────────────────────────
+  &__upgrade-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-xs;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    padding: 1px 6px;
+    border-radius: $radius-sm;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  &__upgrade-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: $spacing-sm;
+  }
+
+  &__upgrade-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    border: none;
+    color: #1a1a2e;
+    font-size: $font-xs;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+    cursor: pointer;
+    transition: transform $transition-fast, box-shadow $transition-fast, filter $transition-fast;
+
+    &::before {
+      content: '⚒';
+      font-size: $font-sm;
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.6);
+      filter: brightness(1.08);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  &__unlock-row {
+    display: flex;
+    justify-content: stretch;
+    margin-top: $spacing-sm;
+  }
+
+  &__unlock-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #7b1fa2, #4a148c);
+    border: none;
+    color: #fff;
+    font-size: $font-xs;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 8px 14px;
+    border-radius: 99px;
+    box-shadow: 0 2px 8px rgba(123, 31, 162, 0.4);
+    cursor: pointer;
+    transition: transform $transition-fast, box-shadow $transition-fast, filter $transition-fast;
+
+    &::before {
+      content: '🔓';
+    }
+
+    &:hover:not(&--disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(123, 31, 162, 0.6);
+      filter: brightness(1.1);
+    }
+
+    &--disabled {
+      background: linear-gradient(135deg, #555, #333);
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.7;
+
+      &::before {
+        content: '🔒';
+      }
+    }
+  }
+
+  &__unlock-result {
+    margin-top: $spacing-xs;
+    padding: 6px 10px;
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    font-weight: 600;
+    text-align: center;
+
+    &--success {
+      background: rgba(76, 175, 80, 0.18);
+      border: 1px solid #4caf50;
+      color: #81c784;
+    }
+
+    &--fail {
+      background: rgba(244, 67, 54, 0.18);
+      border: 1px solid #f44336;
+      color: #ef9a9a;
+    }
+  }
+
+  &__upgrade-info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin-top: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    background: rgba(#1a1a2e, 0.6);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    overflow: hidden;
+  }
+
+  &__upgrade-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__upgrade-info-val {
+    font-weight: 600;
+    color: $color-text;
+
+    &--insufficient {
+      color: #f44336;
+    }
+  }
+
+  &__upgrade-confirm {
+    margin-top: $spacing-xs;
+    width: 100%;
+    padding: $spacing-sm;
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-sm;
+    color: #fff;
+    font-size: $font-sm;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:hover:not(&--disabled) {
+      background: $color-accent-hover;
+    }
+
+    &--disabled {
+      background: $color-border;
+      color: $color-text-muted;
+      cursor: not-allowed;
+    }
+  }
+
+  &__upgrade-result {
+    margin-top: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    font-weight: 600;
+    text-align: center;
+
+    &--success {
+      background: rgba(#4caf50, 0.15);
+      color: #4caf50;
+      border: 1px solid rgba(#4caf50, 0.3);
+    }
+
+    &--fail {
+      background: rgba(#f44336, 0.15);
+      color: #f44336;
+      border: 1px solid rgba(#f44336, 0.3);
+    }
+  }
+
+  // ── Offline training tab ─────────────────────────────────────────────────────
+  &__training-avatar {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    border-radius: $radius-md;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.25));
+    border: 2px solid var(--class-color, $color-accent);
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    margin-bottom: $spacing-md;
+  }
+
+  &__training-avatar-img {
+    width: 96px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: $radius-sm;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  &__training-avatar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__training-avatar-name {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: var(--class-color, $color-accent);
+    line-height: 1.1;
+  }
+
+  &__training-avatar-meta {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__offline-session {
+    background: $color-bg-card;
+    border: 1px solid $color-accent;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-sm;
+
+    &--paused {
+      border-color: rgba(255, 152, 0, 0.55);
+      background: rgba(255, 152, 0, 0.08);
+    }
+  }
+
+  &__offline-session-label {
+    font-size: $font-xs;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__offline-session-note {
+    font-size: 11px;
+    color: #ff9800;
+    margin-top: $spacing-xs;
+    line-height: 1.4;
+  }
+
+  &__offline-session-skill {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: $color-accent;
+  }
+
+  &__offline-session-time {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__offline-session-paused {
+    font-size: $font-sm;
+    color: #ffc107;
+    font-weight: 600;
+    padding: $spacing-xs $spacing-sm;
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: $radius-sm;
+  }
+
+  &__offline-session-accumulated {
+    font-size: $font-xs;
+    color: $color-text-muted;
+  }
+
+  &__offline-hint {
+    font-size: $font-sm;
+    color: $color-text-muted;
+    text-align: center;
+    margin: 0;
+  }
+
+  &__offline-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+
+    &--locked {
+      opacity: 0.55;
+      pointer-events: auto; // keep hover tooltip working
+    }
+  }
+
+  &__offline-card {
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    transition: border-color $transition-fast;
+
+    &:hover { border-color: $color-accent; }
+
+    &--active {
+      border-color: $color-accent;
+      background: rgba(#e94560, 0.08);
+    }
+
+    &--locked {
+      cursor: not-allowed;
+      filter: grayscale(0.6);
+
+      &:hover { border-color: $color-border; }
+    }
+  }
+
+  &__offline-card-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__offline-card-name {
+    flex: 1;
+    font-size: $font-md;
+    font-weight: 600;
+  }
+
+  &__offline-card-level {
+    font-size: $font-sm;
+    color: $color-text-muted;
+  }
+
+  &__offline-card-badge {
+    font-size: $font-xs;
+    background: $color-accent;
+    color: white;
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+  }
+
+  // ── Section title separator ──────────────────────────────────────────────────
+  &__section-title {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-top: $spacing-sm;
+    padding: $spacing-xs 0;
+    text-transform: uppercase;
+    border-top: 1px solid $color-border;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UPGRADE MODAL OVERLAY
+// ══════════════════════════════════════════════════════════════════════════════
+
+.upgrade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: $z-modal;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-md;
+}
+
+.upgrade-modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: $color-bg-secondary;
+  border: 2px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+
+  // ── Success state ────────────────────────────────────────────────────────
+  &--success {
+    border-color: #4caf50;
+    box-shadow: 0 0 30px rgba(#4caf50, 0.4), 0 0 60px rgba(#4caf50, 0.15);
+    animation: modal-shake-success 0.5s ease;
+  }
+
+  // ── Failure state ────────────────────────────────────────────────────────
+  &--failure {
+    border-color: #f44336;
+    box-shadow: 0 0 30px rgba(#f44336, 0.4), 0 0 60px rgba(#f44336, 0.15);
+    animation: modal-shake-failure 0.5s ease;
+  }
+
+  // ── Header ───────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-md;
+  }
+
+  &__title {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: $color-accent;
+    margin: 0;
+  }
+
+  &__close {
+    background: transparent;
+    border: 1px solid $color-border;
+    color: $color-text-muted;
+    font-size: $font-md;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color $transition-fast, border-color $transition-fast;
+
+    &:hover:not(:disabled) {
+      color: $color-text;
+      border-color: $color-text-muted;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  // ── Skill name + badge ───────────────────────────────────────────────────
+  &__skill-name {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: rgba($color-bg-card, 0.6);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+  }
+
+  &__skill-label {
+    flex: 1;
+    font-size: $font-md;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-md;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    padding: 2px 10px;
+    border-radius: $radius-sm;
+    min-width: 36px;
+    text-align: center;
+    transition: transform 0.2s ease;
+
+    &--flash {
+      animation: badge-flash 0.6s ease;
+    }
+  }
+
+  // ── Info rows ────────────────────────────────────────────────────────────
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-md;
+  }
+
+  &__info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: $font-sm;
+    color: $color-text-muted;
+    padding: 3px 0;
+  }
+
+  &__info-val {
+    font-weight: 600;
+    color: $color-text;
+
+    &--chance {
+      color: #ffc107;
+    }
+
+    &--insufficient {
+      color: #f44336;
+    }
+  }
+
+  // ── Progress bar ─────────────────────────────────────────────────────────
+  &__progress-wrap {
+    height: 8px;
+    background: $color-border;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: $spacing-md;
+  }
+
+  &__progress-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ffc107, #ff9800);
+    transition: none;
+
+    &--filling {
+      background: linear-gradient(
+        90deg,
+        #ffc107 0%,
+        #ffeb3b 40%,
+        #ff9800 60%,
+        #ffc107 100%
+      );
+      background-size: 200% 100%;
+      animation: upgrade-fill var(--progress-duration, 1500ms) cubic-bezier(0.4, 0, 0.2, 1) forwards,
+                 upgrade-fill-shimmer 0.8s linear infinite;
+    }
+
+    &--success {
+      width: 100%;
+      background: linear-gradient(90deg, #4caf50, #66bb6a);
+      transition: background 0.3s ease;
+    }
+
+    &--failure {
+      width: 100%;
+      background: linear-gradient(90deg, #f44336, #ef5350);
+      transition: background 0.3s ease;
+      animation: progress-crack 0.4s ease;
+    }
+  }
+
+  // ── Result text ──────────────────────────────────────────────────────────
+  &__result {
+    text-align: center;
+    font-size: $font-md;
+    font-weight: 700;
+    padding: $spacing-sm;
+    border-radius: $radius-sm;
+    margin-bottom: $spacing-md;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &--success {
+      color: #4caf50;
+      background: rgba(#4caf50, 0.12);
+      border: 1px solid rgba(#4caf50, 0.3);
+      animation: upgrade-success 1.5s ease;
+    }
+
+    &--failure {
+      color: #f44336;
+      background: rgba(#f44336, 0.12);
+      border: 1px solid rgba(#f44336, 0.3);
+      animation: upgrade-fail 0.5s ease;
+    }
+
+    &--progress {
+      color: #ffc107;
+      background: rgba(#ffc107, 0.08);
+      border: 1px solid rgba(#ffc107, 0.2);
+      animation: pulse-text 1s ease infinite;
+    }
+  }
+
+  // ── Result icon (checkmark / cross) ──────────────────────────────────────
+  &__result-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: $font-lg;
+    font-weight: 900;
+    margin-right: $spacing-xs;
+    flex-shrink: 0;
+
+    &--success {
+      background: rgba(#4caf50, 0.2);
+      color: #4caf50;
+      text-shadow: 0 0 8px rgba(#4caf50, 0.6);
+      animation: icon-pop-success 0.6s ease;
+    }
+
+    &--failure {
+      background: rgba(#f44336, 0.2);
+      color: #f44336;
+      text-shadow: 0 0 8px rgba(#f44336, 0.6);
+      animation: icon-shake-failure 0.5s ease;
+    }
+  }
+
+  // ── Last result reminder ─────────────────────────────────────────────────
+  &__last-result {
+    text-align: center;
+    font-size: $font-xs;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    margin-bottom: $spacing-sm;
+
+    &--success {
+      color: #4caf50;
+      background: rgba(#4caf50, 0.08);
+    }
+
+    &--fail {
+      color: #f44336;
+      background: rgba(#f44336, 0.08);
+    }
+  }
+
+  // ── Action button ────────────────────────────────────────────────────────
+  &__action {
+    width: 100%;
+    padding: $spacing-md;
+    background: linear-gradient(135deg, $color-accent, $color-accent-hover);
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    font-size: $font-md;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform $transition-fast, box-shadow $transition-fast, opacity $transition-fast;
+    position: relative;
+    overflow: hidden;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba($color-accent, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    &--busy {
+      background: linear-gradient(135deg, #ffc107, #ff9800);
+      cursor: not-allowed;
+      animation: pulse-btn 1s ease infinite;
+    }
+
+    &--disabled {
+      background: $color-border;
+      color: $color-text-muted;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════════════════════════════════════════
+
+.upgrade-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 10;
+
+  &__particle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 18px;
+    animation: particle-burst 1.2s ease-out forwards;
+    animation-delay: var(--delay, 0s);
+    opacity: 0;
+
+    &--success {
+      // Green sparkle particles
+    }
+
+    &--failure {
+      font-size: 14px;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// KEYFRAME ANIMATIONS
+// ══════════════════════════════════════════════════════════════════════════════
+
+@keyframes modal-shake-success {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-4px) rotate(-0.5deg); }
+  20% { transform: translateX(4px) rotate(0.5deg); }
+  30% { transform: translateX(-3px) rotate(-0.3deg); }
+  40% { transform: translateX(3px) rotate(0.3deg); }
+  50% { transform: translateX(-2px); }
+  60% { transform: translateX(2px); }
+  70% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+
+@keyframes modal-shake-failure {
+  0%, 100% { transform: translateX(0); }
+  8% { transform: translateX(-6px) rotate(-1deg); }
+  16% { transform: translateX(6px) rotate(1deg); }
+  24% { transform: translateX(-5px) rotate(-0.8deg); }
+  32% { transform: translateX(5px) rotate(0.8deg); }
+  40% { transform: translateX(-4px) rotate(-0.5deg); }
+  48% { transform: translateX(4px) rotate(0.5deg); }
+  56% { transform: translateX(-3px); }
+  64% { transform: translateX(3px); }
+  72% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
+@keyframes badge-flash {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.4); box-shadow: 0 0 16px rgba(#4caf50, 0.8); }
+  50% { transform: scale(1.1); }
+  70% { transform: scale(1.25); box-shadow: 0 0 12px rgba(#4caf50, 0.5); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+
+@keyframes progress-crack {
+  0% { transform: scaleX(1); }
+  15% { transform: scaleX(1.02) scaleY(1.3); }
+  30% { transform: scaleX(0.98) scaleY(0.7); }
+  50% { transform: scaleX(1.01) scaleY(1.15); }
+  70% { transform: scaleX(0.99) scaleY(0.9); }
+  100% { transform: scaleX(1) scaleY(1); }
+}
+
+// Success: green glow + scale-up
+@keyframes upgrade-success {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+  25% { transform: scale(1.05); box-shadow: 0 0 20px rgba(76, 175, 80, 0.6); }
+  50% { transform: scale(1.02); box-shadow: 0 0 30px rgba(76, 175, 80, 0.4); }
+  75% { transform: scale(1.04); box-shadow: 0 0 15px rgba(76, 175, 80, 0.3); }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+// Failure: red shake
+@keyframes upgrade-fail {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+// Success icon pop-in
+@keyframes icon-pop-success {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.4); opacity: 1; }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+// Failure icon shake
+@keyframes icon-shake-failure {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-12deg); }
+  30% { transform: rotate(10deg); }
+  45% { transform: rotate(-8deg); }
+  60% { transform: rotate(6deg); }
+  75% { transform: rotate(-3deg); }
+  90% { transform: rotate(1deg); }
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-btn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes particle-burst {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateY(0);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateY(-120px);
+  }
+}
+
+// Progress bar fill animation
+@keyframes upgrade-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+// Shimmer effect on the progress bar while filling
+@keyframes upgrade-fill-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

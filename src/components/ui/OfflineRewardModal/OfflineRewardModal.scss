@@ -1,0 +1,69 @@
+@use '../../../styles/variables' as *;
+
+.offline-reward-modal {
+  align-items: center;
+  background: $color-bg-secondary;
+  border: 2px solid $color-accent;
+  border-radius: $radius-lg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  left: 50%;
+  max-width: 320px;
+  padding: $spacing-xl $spacing-lg;
+  position: fixed;
+  text-align: center;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  z-index: $z-modal;
+
+  &__overlay {
+    background: rgba(0, 0, 0, 0.65);
+    bottom: 0;
+    left: 0;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: $z-overlay;
+  }
+
+  &__icon {
+    font-size: 48px;
+    line-height: 1;
+  }
+
+  &__title {
+    color: $color-accent;
+    font-size: $font-lg;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  &__text {
+    color: $color-text;
+    font-size: $font-sm;
+    margin: 0;
+  }
+
+  &__xp {
+    color: $color-legendary;
+    font-size: $font-lg;
+    font-weight: 700;
+  }
+
+  &__btn {
+    background: $color-accent;
+    border: none;
+    border-radius: $radius-md;
+    color: #fff;
+    cursor: pointer;
+    font-size: $font-md;
+    font-weight: 600;
+    padding: $spacing-sm $spacing-xl;
+    transition: opacity $transition-fast;
+    width: 100%;
+
+    &:hover { opacity: 0.85; }
+  }
+}

@@ -1,0 +1,241 @@
+@use '../../../styles/variables' as *;
+
+.item-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--item-rarity-color, #9e9e9e);
+    border-radius: 8px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    flex-shrink: 0;
+
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--item-rarity-color) 40%, transparent);
+    }
+
+    &--selected {
+        box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(255, 255, 255, 0.3);
+    }
+
+    // Sizes
+    &--sm {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+
+        .item-icon__emoji { font-size: 18px; }
+        .item-icon__upgrade { font-size: 8px; padding: 0 2px; }
+        .item-icon__quantity { font-size: 8px; }
+        .item-icon__level { font-size: 7px; padding: 0 2px; }
+    }
+
+    &--md {
+        width: 48px;
+        height: 48px;
+
+        .item-icon__emoji { font-size: 24px; }
+        .item-icon__upgrade { font-size: 9px; padding: 1px 3px; }
+        .item-icon__quantity { font-size: 9px; }
+        .item-icon__level { font-size: 8px; padding: 1px 3px; }
+    }
+
+    &--lg {
+        width: 64px;
+        height: 64px;
+        border-radius: 10px;
+
+        .item-icon__emoji { font-size: 32px; }
+        .item-icon__upgrade { font-size: 10px; padding: 1px 4px; }
+        .item-icon__quantity { font-size: 10px; }
+        .item-icon__level { font-size: 9px; padding: 1px 4px; }
+    }
+
+    &__emoji {
+        position: relative;
+        z-index: 1;
+        line-height: 1;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+    }
+
+    &__upgrade {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: #ffc107;
+        color: #1a1a2e;
+        font-weight: 800;
+        border-radius: 3px;
+        line-height: 1;
+        z-index: 2;
+    }
+
+    &__quantity {
+        position: absolute;
+        bottom: 1px;
+        right: 2px;
+        color: #fff;
+        font-weight: 700;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        z-index: 2;
+    }
+
+    &__level {
+        position: absolute;
+        bottom: 1px;
+        left: 2px;
+        background: rgba(0, 0, 0, 0.82);
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 700;
+        border-radius: 3px;
+        line-height: 1;
+        z-index: 2;
+        letter-spacing: -0.3px;
+    }
+
+    &__glow {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        opacity: 0.7;
+        z-index: 1;
+    }
+
+    // ── Enhancement shimmer (+5/+7/+9/+12/+15/+20) ──────────────────────────
+    &__shimmer {
+        position: absolute;
+        inset: -30%;
+        z-index: 0;
+        pointer-events: none;
+        background: conic-gradient(
+            from 0deg,
+            transparent 0%,
+            var(--enhancement-color, transparent) 22%,
+            var(--enhancement-color-alt, transparent) 38%,
+            transparent 55%,
+            transparent 100%
+        );
+        filter: blur(6px);
+        animation: item-enhancement-spin 3.2s linear infinite;
+        mix-blend-mode: screen;
+
+        &--alt {
+            animation-duration: 5s;
+            animation-direction: reverse;
+            opacity: 0.55;
+            filter: blur(9px);
+        }
+    }
+
+    &--enhanced {
+        box-shadow:
+            0 0 10px color-mix(in srgb, var(--enhancement-color, #ffffff) 65%, transparent),
+            0 0 24px color-mix(in srgb, var(--enhancement-color, #ffffff) 40%, transparent),
+            inset 0 0 8px color-mix(in srgb, var(--enhancement-color, #ffffff) 40%, transparent);
+        animation: item-enhancement-pulse 2.4s ease-in-out infinite;
+    }
+
+    &--enhanced-red {
+        --enhancement-color: #ff3b3b;
+        --enhancement-color-alt: #ff9090;
+        border-color: #ff3b3b !important;
+    }
+
+    &--enhanced-yellow {
+        --enhancement-color: #ffd400;
+        --enhancement-color-alt: #fff7a8;
+        border-color: #ffd400 !important;
+    }
+
+    &--enhanced-blue {
+        --enhancement-color: #2196f3;
+        --enhancement-color-alt: #8ed4ff;
+        border-color: #2196f3 !important;
+    }
+
+    &--enhanced-purple {
+        --enhancement-color: #b026ff;
+        --enhancement-color-alt: #e69bff;
+        border-color: #b026ff !important;
+    }
+
+    &--enhanced-black {
+        --enhancement-color: #111;
+        --enhancement-color-alt: #6b6b6b;
+        border-color: #111 !important;
+        box-shadow:
+            0 0 12px rgba(0, 0, 0, 0.95),
+            0 0 26px rgba(120, 120, 120, 0.55),
+            inset 0 0 10px rgba(0, 0, 0, 0.85);
+    }
+
+    &--enhanced-goldblack {
+        --enhancement-color: #ffd700;
+        --enhancement-color-alt: #000000;
+        border-color: #ffd700 !important;
+        box-shadow:
+            0 0 14px rgba(255, 215, 0, 0.85),
+            0 0 30px rgba(255, 215, 0, 0.45),
+            0 0 18px rgba(0, 0, 0, 0.9),
+            inset 0 0 12px rgba(0, 0, 0, 0.85);
+
+        .item-icon__shimmer {
+            background: conic-gradient(
+                from 0deg,
+                transparent 0%,
+                #ffd700 18%,
+                #000000 30%,
+                #ffd700 45%,
+                transparent 60%,
+                #ffd700 78%,
+                transparent 100%
+            );
+        }
+    }
+
+    &__tooltip {
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        color: #fff;
+        font-size: 11px;
+        line-height: 1.3;
+        padding: 6px 10px;
+        white-space: nowrap;
+        z-index: 100;
+        pointer-events: none;
+
+        &::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.92);
+        }
+    }
+}
+
+@keyframes item-enhancement-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes item-enhancement-pulse {
+    0%, 100% {
+        filter: brightness(1.0) saturate(1.0);
+    }
+    50% {
+        filter: brightness(1.25) saturate(1.3);
+    }
+}

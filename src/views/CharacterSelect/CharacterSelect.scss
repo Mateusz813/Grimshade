@@ -1,0 +1,268 @@
+@use '../../styles/variables' as *;
+
+.char-select {
+  min-height: 100vh;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem 4rem;
+
+  &__header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  &__title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: $color-accent;
+    margin: 0 0 0.25rem;
+  }
+
+  &__subtitle {
+    color: $color-text-muted;
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  &__loading,
+  &__empty {
+    color: $color-text-muted;
+    text-align: center;
+    margin-top: 3rem;
+    font-size: 1rem;
+  }
+
+  &__error {
+    color: $color-mythic;
+    background: rgba(244, 67, 54, 0.12);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: $radius-md;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  &__list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  &__card {
+    background:
+      linear-gradient(
+        135deg,
+        rgba(var(--class-color-rgb, 233,69,96), 0.15) 0%,
+        rgba(var(--class-color-rgb, 233,69,96), 0.04) 50%,
+        $color-bg-secondary 100%
+      );
+    border: 1px solid rgba(var(--class-color-rgb, 233,69,96), 0.3);
+    border-left: 4px solid var(--class-color, #e94560);
+    border-radius: $radius-lg;
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: border-color $transition-normal, box-shadow $transition-normal;
+    box-shadow: 0 2px 8px rgba(var(--class-color-rgb, 233,69,96), 0.08);
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+      border-color: var(--class-color, $color-accent);
+      box-shadow: 0 4px 16px rgba(var(--class-color-rgb, 233,69,96), 0.15);
+    }
+  }
+
+  &__card-left {
+    flex-shrink: 0;
+  }
+
+  &__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid var(--class-color, $color-border);
+    box-shadow: 0 2px 8px rgba(var(--class-color-rgb, 233,69,96), 0.25);
+  }
+
+  &__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__card-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__card-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: $color-text;
+    margin-bottom: 0.2rem;
+  }
+
+  &__card-meta {
+    color: $color-text-muted;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+
+  &__bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &__bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__bar-label {
+    font-size: 0.7rem;
+    color: $color-text-muted;
+    width: 2rem;
+    flex-shrink: 0;
+  }
+
+  &__bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+
+    &--hp { background: rgba(76, 175, 80, 0.15); }
+    &--mp { background: rgba(33, 150, 243, 0.15); }
+  }
+
+  &__bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+
+    .char-select__bar--hp & { background: #4caf50; }
+    .char-select__bar--mp & { background: #2196f3; }
+  }
+
+  &__bar-value {
+    font-size: 0.7rem;
+    color: $color-text-muted;
+    white-space: nowrap;
+  }
+
+  &__card-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  &__select-btn {
+    background: $color-accent;
+    color: #fff;
+    border: none;
+    border-radius: $radius-md;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity $transition-fast;
+
+    &:hover { opacity: 0.85; }
+  }
+
+  &__delete-btn {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 0.25rem 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    color: $color-text-muted;
+    transition: border-color $transition-fast, color $transition-fast;
+
+    &:hover {
+      border-color: $color-mythic;
+      color: $color-mythic;
+    }
+  }
+
+  &__confirm-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+  }
+
+  &__confirm-label {
+    font-size: 0.75rem;
+    color: $color-mythic;
+  }
+
+  &__delete-confirm-btn {
+    background: $color-mythic;
+    color: #fff;
+    border: none;
+    border-radius: $radius-sm;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+
+    &:disabled { opacity: 0.6; }
+  }
+
+  &__cancel-btn {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    color: $color-text-muted;
+    cursor: pointer;
+  }
+
+  &__create-btn {
+    background: transparent;
+    border: 2px dashed $color-accent;
+    border-radius: $radius-lg;
+    color: $color-accent;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 1rem;
+    transition: background $transition-normal;
+
+    &:hover { background: rgba(233, 69, 96, 0.08); }
+  }
+
+  &__logout-btn {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    color: $color-text-muted;
+    font-size: 0.85rem;
+    padding: 0.5rem 1.5rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: color $transition-fast;
+
+    &:hover { color: $color-text; }
+  }
+}

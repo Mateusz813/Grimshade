@@ -1,0 +1,172 @@
+@use '../../../styles/variables' as *;
+
+.task-tracker {
+    position: fixed;
+    top: 0;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 10px;
+    pointer-events: none;
+
+    // ── Individual task item ──
+    &__item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(26, 26, 46, 0.92);
+        border: 1px solid rgba(#ffc107, 0.35);
+        border-radius: 12px;
+        padding: 6px 12px 6px 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+        max-width: 220px;
+        overflow: hidden;
+        position: relative;
+        pointer-events: auto;
+
+        &:hover {
+            border-color: rgba(#ffc107, 0.6);
+            box-shadow: 0 2px 16px rgba(#ffc107, 0.2);
+            transform: translateY(-1px);
+        }
+
+        &--done {
+            border-color: rgba(#4caf50, 0.6);
+            animation: tracker-done-pulse 1.5s ease-in-out infinite;
+
+            &:hover {
+                border-color: rgba(#4caf50, 0.8);
+                box-shadow: 0 2px 16px rgba(#4caf50, 0.3);
+            }
+        }
+
+        &--bump {
+            animation: tracker-bump 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+    }
+
+    // ── Icon ──
+    &__icon {
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    // ── Info block ──
+    &__info {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+    }
+
+    &__name {
+        font-size: 9px;
+        color: rgba(255, 255, 255, 0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.2;
+    }
+
+    &__counter {
+        display: flex;
+        align-items: baseline;
+        gap: 1px;
+        font-weight: 700;
+        font-size: 14px;
+        line-height: 1.1;
+    }
+
+    &__number {
+        color: #ffc107;
+        font-variant-numeric: tabular-nums;
+        transition: color 0.3s;
+
+        .task-tracker__item--done & {
+            color: #4caf50;
+        }
+
+        &--pop {
+            animation: number-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+    }
+
+    &__separator {
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 12px;
+    }
+
+    &__total {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+    }
+
+    // ── Progress bar ──
+    &__bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    &__bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ffc107, #ff9800);
+        transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        border-radius: 0 1px 1px 0;
+
+        &--done {
+            background: linear-gradient(90deg, #4caf50, #66bb6a);
+        }
+    }
+
+    // ── Kill flash ──
+    &__kill-flash {
+        position: absolute;
+        top: -2px;
+        right: 8px;
+        font-size: 11px;
+        font-weight: 800;
+        color: #ffc107;
+        animation: kill-flash 0.6s ease-out forwards;
+        pointer-events: none;
+        text-shadow: 0 0 6px rgba(#ffc107, 0.5);
+    }
+}
+
+// ── Animations ──
+@keyframes tracker-bump {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.06); }
+    60% { transform: scale(0.97); }
+    100% { transform: scale(1); }
+}
+
+@keyframes tracker-done-pulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(#4caf50, 0.15); }
+    50% { box-shadow: 0 2px 16px rgba(#4caf50, 0.35); }
+}
+
+@keyframes number-pop {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.4); color: #fff; }
+    100% { transform: scale(1); }
+}
+
+@keyframes kill-flash {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-18px) scale(0.7);
+    }
+}

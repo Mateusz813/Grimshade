@@ -1,0 +1,82 @@
+.floating-nav {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+
+  &__btn {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    background: rgba(26, 26, 46, 0.95);
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    backdrop-filter: blur(8px);
+
+    &:hover {
+      transform: scale(1.1);
+      background: rgba(40, 40, 70, 0.95);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &--home {
+      border-color: rgba(76, 175, 80, 0.4);
+    }
+
+    &--chat {
+      border-color: rgba(33, 150, 243, 0.4);
+    }
+
+    &--switch {
+      border-color: rgba(156, 39, 176, 0.4);
+    }
+  }
+
+  &__badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #f44336;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    border: 1.5px solid rgba(26, 26, 46, 0.95);
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-nav {
+    bottom: 12px;
+    right: 12px;
+
+    &__btn {
+      width: 42px;
+      height: 42px;
+      font-size: 1.1rem;
+    }
+  }
+}

@@ -1,0 +1,405 @@
+@use '../../styles/variables' as *;
+
+.market {
+    min-height: 100vh;
+    background: transparent;
+    color: $color-text;
+    padding-bottom: $spacing-xl;
+
+    &__header {
+        align-items: center;
+        background: $color-bg-secondary;
+        border-bottom: 1px solid $color-border;
+        display: flex;
+        gap: $spacing-sm;
+        padding: $spacing-sm $spacing-md;
+        position: sticky;
+        top: 0;
+        z-index: $z-nav;
+    }
+
+    &__back {
+        background: transparent;
+        border: none;
+        color: $color-text-muted;
+        cursor: pointer;
+        font-size: $font-sm;
+        padding: $spacing-xs;
+        transition: color $transition-fast;
+        &:hover { color: $color-accent; }
+    }
+
+    &__title {
+        color: $color-accent;
+        flex: 1;
+        font-size: $font-lg;
+        margin: 0;
+    }
+
+    &__gold {
+        color: $color-legendary;
+        font-size: $font-sm;
+        font-weight: 700;
+        background: $color-bg-card;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $radius-sm;
+    }
+
+    // Tabs
+    &__tabs {
+        display: flex;
+        background: $color-bg-secondary;
+        border-bottom: 1px solid $color-border;
+    }
+
+    &__tab {
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: $color-text-muted;
+        cursor: pointer;
+        flex: 1;
+        font-size: $font-sm;
+        font-weight: 600;
+        padding: $spacing-sm $spacing-md;
+        transition: color $transition-fast, border-color $transition-fast;
+
+        &:hover { color: $color-text; }
+
+        &--active {
+            border-bottom-color: $color-accent;
+            color: $color-accent;
+        }
+    }
+
+    // Loading & error
+    &__loading {
+        color: $color-text-muted;
+        font-size: $font-sm;
+        padding: $spacing-md;
+        text-align: center;
+    }
+
+    &__error {
+        align-items: center;
+        background: rgba(244, 67, 54, 0.1);
+        border: 1px solid rgba(244, 67, 54, 0.3);
+        border-radius: $radius-sm;
+        color: #ef9a9a;
+        display: flex;
+        font-size: $font-sm;
+        gap: $spacing-sm;
+        justify-content: space-between;
+        margin: $spacing-sm $spacing-md;
+        padding: $spacing-sm $spacing-md;
+
+        button {
+            background: none;
+            border: none;
+            color: #ef9a9a;
+            cursor: pointer;
+            font-size: $font-md;
+        }
+    }
+
+    // Filters
+    &__filters {
+        display: flex;
+        gap: $spacing-sm;
+        padding: $spacing-sm $spacing-md;
+        flex-wrap: wrap;
+    }
+
+    &__select {
+        background: $color-bg;
+        border: 1px solid $color-border;
+        border-radius: $radius-sm;
+        color: $color-text;
+        font-size: $font-xs;
+        padding: $spacing-xs $spacing-sm;
+        flex: 1;
+        min-width: 0;
+        outline: none;
+
+        &:focus { border-color: $color-accent; }
+
+        option {
+            background: $color-bg;
+            color: $color-text;
+        }
+    }
+
+    // Listing grid
+    &__listing-grid {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+        padding: $spacing-sm $spacing-md;
+
+        @media (min-width: 768px) {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        @media (min-width: 1024px) {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    &__listing {
+        align-items: center;
+        background: $color-bg-card;
+        border: 1px solid var(--rarity-color, $color-border);
+        border-radius: $radius-md;
+        display: flex;
+        gap: $spacing-sm;
+        padding: $spacing-sm $spacing-md;
+        transition: background $transition-fast;
+
+        &:hover {
+            background: lighten($color-bg-card, 3%);
+        }
+    }
+
+    &__listing-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+        width: 32px;
+        text-align: center;
+    }
+
+    &__listing-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+    }
+
+    &__listing-name {
+        font-size: $font-sm;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__listing-meta {
+        color: $color-text-muted;
+        font-size: $font-xs;
+    }
+
+    &__listing-seller {
+        color: $color-text-muted;
+        font-size: 10px;
+    }
+
+    &__listing-price-wrap {
+        align-items: flex-end;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        gap: $spacing-xs;
+    }
+
+    &__listing-price {
+        color: $color-legendary;
+        font-size: $font-sm;
+        font-weight: 700;
+    }
+
+    &__buy-btn, &__cancel-btn {
+        border: none;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-size: $font-xs;
+        font-weight: 600;
+        padding: $spacing-xs $spacing-sm;
+        transition: opacity $transition-fast;
+
+        &:hover:not(:disabled) { opacity: 0.85; }
+        &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+
+    &__buy-btn {
+        background: #4caf50;
+        color: #fff;
+    }
+
+    &__cancel-btn {
+        background: $color-accent;
+        color: #fff;
+    }
+
+    // Empty state
+    &__empty {
+        color: $color-text-muted;
+        font-size: $font-sm;
+        padding: $spacing-xl;
+        text-align: center;
+    }
+
+    // Sell tab
+    &__sell {
+        padding: $spacing-md;
+    }
+
+    &__sell-info {
+        color: $color-text-muted;
+        font-size: $font-sm;
+        margin: 0 0 $spacing-md;
+    }
+
+    &__sell-selected {
+        background: $color-bg-card;
+        border: 1px solid $color-border;
+        border-radius: $radius-md;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-md;
+    }
+
+    &__sell-item {
+        border-left: 3px solid var(--rarity-color, $color-border);
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+        padding-left: $spacing-sm;
+
+        span:first-child {
+            font-size: $font-md;
+            font-weight: 600;
+        }
+    }
+
+    &__sell-rarity {
+        color: $color-text-muted;
+        font-size: $font-xs;
+    }
+
+    &__sell-form {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+    }
+
+    &__sell-input {
+        background: $color-bg;
+        border: 1px solid $color-border;
+        border-radius: $radius-md;
+        color: $color-text;
+        font-size: $font-md;
+        padding: $spacing-sm;
+        outline: none;
+        width: 100%;
+
+        &:focus { border-color: $color-accent; }
+    }
+
+    &__sell-tax {
+        color: $color-text-muted;
+        font-size: $font-xs;
+    }
+
+    &__sell-actions {
+        display: flex;
+        gap: $spacing-sm;
+    }
+
+    &__sell-btn {
+        background: #4caf50;
+        border: none;
+        border-radius: $radius-md;
+        color: #fff;
+        cursor: pointer;
+        flex: 1;
+        font-size: $font-sm;
+        font-weight: 600;
+        padding: $spacing-sm;
+        transition: opacity $transition-fast;
+
+        &:hover:not(:disabled) { opacity: 0.85; }
+        &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+
+    &__cancel-select-btn {
+        background: transparent;
+        border: 1px solid $color-border;
+        border-radius: $radius-md;
+        color: $color-text-muted;
+        cursor: pointer;
+        font-size: $font-sm;
+        padding: $spacing-sm;
+        transition: all $transition-fast;
+
+        &:hover {
+            border-color: $color-accent;
+            color: $color-accent;
+        }
+    }
+
+    // Sell bag grid
+    &__sell-bag-grid {
+        display: grid;
+        gap: $spacing-xs;
+        grid-template-columns: repeat(4, 1fr);
+
+        @media (min-width: 600px) {
+            grid-template-columns: repeat(6, 1fr);
+        }
+
+        @media (min-width: 1024px) {
+            grid-template-columns: repeat(8, 1fr);
+        }
+    }
+
+    &__sell-bag-item {
+        background: $color-bg-card;
+        border: 1px solid var(--rarity-color, $color-border);
+        border-radius: $radius-sm;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: $spacing-xs;
+        transition: opacity $transition-fast;
+
+        &:hover { opacity: 0.85; }
+    }
+
+    &__sell-bag-icon {
+        font-size: 20px;
+    }
+
+    &__sell-bag-name {
+        font-size: 8px;
+        font-weight: 600;
+        overflow: hidden;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 100%;
+    }
+
+    // My listings
+    &__my {
+        padding: 0;
+    }
+
+    // Toast
+    &__toast {
+        position: fixed;
+        bottom: $spacing-lg;
+        left: 50%;
+        transform: translateX(-50%);
+        background: $color-bg-card;
+        border: 1px solid $color-accent;
+        border-radius: $radius-md;
+        color: $color-text;
+        font-size: $font-sm;
+        padding: $spacing-sm $spacing-lg;
+        z-index: $z-modal;
+        white-space: nowrap;
+    }
+}

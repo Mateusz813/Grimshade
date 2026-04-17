@@ -1,0 +1,145 @@
+@use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
+
+.guild {
+    min-height: 100dvh;
+    padding: 16px 12px 120px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+
+    @include tablet {
+        padding: 24px 24px 140px;
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    &__back-btn {
+        padding: 8px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: $color-text;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    &__title {
+        font-size: 24px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0;
+    }
+
+    &__card {
+        background: linear-gradient(180deg, rgba(156, 39, 176, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%);
+        border: 2px solid rgba(156, 39, 176, 0.3);
+        border-radius: 16px;
+        padding: 32px 20px;
+        text-align: center;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+
+        @include tablet {
+            padding: 48px 40px;
+        }
+    }
+
+    &__icon {
+        font-size: 72px;
+        margin-bottom: 12px;
+
+        @include tablet {
+            font-size: 96px;
+        }
+    }
+
+    &__card-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0 0 12px;
+
+        @include tablet {
+            font-size: 28px;
+        }
+    }
+
+    &__card-text {
+        font-size: 14px;
+        line-height: 1.6;
+        color: $color-text-muted;
+        max-width: 480px;
+        margin: 0 auto 24px;
+
+        @include tablet {
+            font-size: 16px;
+        }
+    }
+
+    &__features {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin: 24px 0;
+
+        @media (min-width: $bp-sm) {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    &__feature {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        text-align: left;
+    }
+
+    &__feature-icon {
+        font-size: 28px;
+        flex-shrink: 0;
+    }
+
+    &__feature-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    &__feature-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+    }
+
+    &__feature-desc {
+        font-size: 12px;
+        color: $color-text-muted;
+    }
+
+    &__player-info {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 13px;
+        color: $color-text-muted;
+
+        strong {
+            color: $color-text;
+        }
+    }
+}
