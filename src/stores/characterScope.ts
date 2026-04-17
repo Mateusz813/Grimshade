@@ -921,7 +921,6 @@ const syncWeaponSkillsToSupabase = async (charId: string): Promise<void> => {
 
   // All skill IDs that should be synced to the leaderboard table
   const skillIds = Object.keys(levels);
-  if (skillIds.length === 0) return;
 
   const now = new Date().toISOString();
   const rows = skillIds.map((skillName) => ({
@@ -932,6 +931,24 @@ const syncWeaponSkillsToSupabase = async (charId: string): Promise<void> => {
     hits_count: 0,
     updated_at: now,
   }));
+
+  // Also sync boss_score (from bossScoreStore) as a pseudo-skill so the
+  // leaderboard can rank it alongside weapon/training skills.
+  const bossScoreState = useBossScoreStore.getState();
+  const bossKillCount = Object.values(bossScoreState.bossKills).reduce(
+    (acc, entry) => acc + (entry?.count ?? 0),
+    0,
+  );
+  rows.push({
+    character_id: charId,
+    skill_name: 'boss_score',
+    skill_level: bossScoreState.totalScore,
+    skill_xp: bossKillCount,
+    hits_count: 0,
+    updated_at: now,
+  });
+
+  if (rows.length === 0) return;
 
   // Delete existing rows for this character, then insert fresh ones
   await supabase

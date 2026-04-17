@@ -1278,11 +1278,11 @@ const Boss = () => {
 
     return (
         <div className={`boss${phase === 'fighting' ? ' boss--fighting' : ''}`}>
-            <header className="boss__header">
-                <button className="boss__back" onClick={() => { setPhase('list'); navigate('/'); }}>
+            <header className="boss__header page-header">
+                <button className="boss__back page-back-btn" onClick={() => { setPhase('list'); navigate('/'); }}>
                     ← Miasto
                 </button>
-                <h1 className="boss__title">Bossowie</h1>
+                <h1 className="boss__title page-title">Bossowie</h1>
                 <span className="boss__score">🏆 Boss Score: {getTotalScore().toLocaleString('pl-PL')}</span>
                 {phase === 'fighting' && activeBoss && (
                     <span className="boss__fighting-badge">⚔️ Walka</span>
