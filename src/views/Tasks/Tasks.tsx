@@ -115,9 +115,9 @@ const Tasks = () => {
 
   return (
     <div className="tasks">
-      <header className="tasks__header">
-        <button className="tasks__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="tasks__title">📋 Taski</h1>
+      <header className="tasks__header page-header">
+        <button className="tasks__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="tasks__title page-title">📋 Taski</h1>
         <span className="tasks__slots-badge">
           {activeTasks.length}/{MAX_ACTIVE_TASKS}
         </span>
@@ -171,15 +171,15 @@ const Tasks = () => {
         </div>
       )}
 
-      <div className="tasks__tabs">
+      <div className="tasks__tabs page-tabs">
         <button
-          className={`tasks__tab${tab === 'available' ? ' tasks__tab--active' : ''}`}
+          className={`tasks__tab page-tab${tab === 'available' ? ' tasks__tab--active page-tab--active' : ''}`}
           onClick={() => setTab('available')}
         >
           Dostepne taski
         </button>
         <button
-          className={`tasks__tab${tab === 'history' ? ' tasks__tab--active' : ''}`}
+          className={`tasks__tab page-tab${tab === 'history' ? ' tasks__tab--active page-tab--active' : ''}`}
           onClick={() => setTab('history')}
         >
           Historia ({completedTasks.length})

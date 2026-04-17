@@ -425,18 +425,18 @@ const Skills = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="skills">
-      <header className="skills__header">
-        <button className="skills__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="skills__title">Skille</h1>
+      <header className="skills__header page-header">
+        <button className="skills__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="skills__title page-title">Skille</h1>
         <span className="skills__class">{CLASS_ICONS[character.class] ?? '?'}</span>
       </header>
 
       {/* Tabs */}
-      <nav className="skills__tabs">
+      <nav className="skills__tabs page-tabs">
         {(['weapon', 'active', 'offline'] as Tab[]).map((tab) => (
           <button
             key={tab}
-            className={`skills__tab${activeTab === tab ? ' skills__tab--active' : ''}`}
+            className={`skills__tab page-tab${activeTab === tab ? ' skills__tab--active page-tab--active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
             {tab === 'weapon' && '⚔️ Walka'}

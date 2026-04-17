@@ -87,18 +87,18 @@ const Shop = () => {
   return (
     <div className="shop">
       {/* Header */}
-      <header className="shop__header">
-        <button className="shop__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="shop__title">Sklep</h1>
+      <header className="shop__header page-header">
+        <button className="shop__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="shop__title page-title">Sklep</h1>
         <span className="shop__gold">💰 {gold.toLocaleString('pl-PL')}</span>
       </header>
 
       {/* Tabs */}
-      <nav className="shop__tabs">
+      <nav className="shop__tabs page-tabs">
         {(['items', 'elixirs', 'market'] as Tab[]).map((tab) => (
           <button
             key={tab}
-            className={`shop__tab${activeTab === tab ? ' shop__tab--active' : ''}`}
+            className={`shop__tab page-tab${activeTab === tab ? ' shop__tab--active page-tab--active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
             {tab === 'items' && '⚔️ Itemy'}

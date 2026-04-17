@@ -996,11 +996,11 @@ const Dungeon = () => {
 
     return (
         <div className="dungeon">
-            <header className="dungeon__header">
-                <button className="dungeon__back" onClick={() => { setPhase('list'); navigate('/'); }}>
+            <header className="dungeon__header page-header">
+                <button className="dungeon__back page-back-btn" onClick={() => { setPhase('list'); navigate('/'); }}>
                     ← Miasto
                 </button>
-                <h1 className="dungeon__title">Dungeony</h1>
+                <h1 className="dungeon__title page-title">Dungeony</h1>
                 {phase === 'running' && activeDungeon && (
                     <span className="dungeon__wave-counter">
                         Fala {currentWave + 1}/{totalWaves}

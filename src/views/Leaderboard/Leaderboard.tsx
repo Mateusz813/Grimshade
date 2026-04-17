@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../api/v1/axiosInstance';
 import { useCharacterStore } from '../../stores/characterStore';
-import { useSkillStore } from '../../stores/skillStore';
 import './Leaderboard.scss';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -49,12 +48,10 @@ interface ITabDef {
   key: LeaderboardTab;
   label: string;
   icon: string;
-  /** 'characters' = query characters table, 'weapon_skill' = query character_weapon_skills, 'local' = local only, 'placeholder' = not yet implemented */
-  source: 'characters' | 'weapon_skill' | 'local' | 'placeholder';
+  /** 'characters' = query characters table, 'weapon_skill' = query character_weapon_skills */
+  source: 'characters' | 'weapon_skill';
   /** For weapon_skill tabs – the skill_name value in the DB */
   skillName?: string;
-  /** For local tabs – the key in skillStore.skillLevels */
-  localSkillId?: string;
   /** Label shown next to value */
   valueLabel: string;
 }
@@ -67,14 +64,14 @@ const TABS: ITabDef[] = [
   { key: 'distance_fighting', label: 'Dist',    icon: '🏹', source: 'weapon_skill',  skillName: 'distance_fighting', valueLabel: 'Dist' },
   { key: 'bard_level',        label: 'Bard',    icon: '🎵', source: 'weapon_skill',  skillName: 'bard_level',        valueLabel: 'Bard' },
   { key: 'shielding',         label: 'Shield',  icon: '🛡️', source: 'weapon_skill',  skillName: 'shielding',         valueLabel: 'Shield' },
-  { key: 'attack_speed',      label: 'AS',      icon: '⚡', source: 'local',         localSkillId: 'attack_speed',   valueLabel: 'AS' },
-  { key: 'max_hp',            label: 'HP',      icon: '❤️', source: 'local',         localSkillId: 'max_hp',         valueLabel: 'HP' },
-  { key: 'max_mp',            label: 'MP',      icon: '💧', source: 'local',         localSkillId: 'max_mp',         valueLabel: 'MP' },
-  { key: 'hp_regen',          label: 'HP Reg',  icon: '💗', source: 'local',         localSkillId: 'hp_regen',       valueLabel: 'HP Reg' },
-  { key: 'mp_regen',          label: 'MP Reg',  icon: '💎', source: 'local',         localSkillId: 'mp_regen',       valueLabel: 'MP Reg' },
-  { key: 'defense',           label: 'DEF',     icon: '🛡️', source: 'local',         localSkillId: 'defense',        valueLabel: 'DEF' },
-  { key: 'crit_chance',       label: 'Crit',    icon: '🎯', source: 'local',         localSkillId: 'crit_chance',    valueLabel: 'Crit' },
-  { key: 'boss_score',        label: 'Boss',    icon: '👹', source: 'placeholder',   valueLabel: 'Boss' },
+  { key: 'attack_speed',      label: 'AS',      icon: '⚡', source: 'weapon_skill',  skillName: 'attack_speed',      valueLabel: 'AS' },
+  { key: 'max_hp',            label: 'HP',      icon: '❤️', source: 'weapon_skill',  skillName: 'max_hp',            valueLabel: 'HP' },
+  { key: 'max_mp',            label: 'MP',      icon: '💧', source: 'weapon_skill',  skillName: 'max_mp',            valueLabel: 'MP' },
+  { key: 'hp_regen',          label: 'HP Reg',  icon: '💗', source: 'weapon_skill',  skillName: 'hp_regen',          valueLabel: 'HP Reg' },
+  { key: 'mp_regen',          label: 'MP Reg',  icon: '💎', source: 'weapon_skill',  skillName: 'mp_regen',          valueLabel: 'MP Reg' },
+  { key: 'defense',           label: 'DEF',     icon: '🛡️', source: 'weapon_skill',  skillName: 'defense',           valueLabel: 'DEF' },
+  { key: 'crit_chance',       label: 'Crit',    icon: '🎯', source: 'weapon_skill',  skillName: 'crit_chance',       valueLabel: 'Crit' },
+  { key: 'boss_score',        label: 'Boss',    icon: '👹', source: 'weapon_skill',  skillName: 'boss_score',        valueLabel: 'Boss' },
 ];
 
 const CLASS_ICONS: Record<string, string> = {
@@ -89,14 +86,11 @@ const RANK_MEDALS = ['🥇', '🥈', '🥉'];
 const Leaderboard = () => {
   const navigate   = useNavigate();
   const character  = useCharacterStore((s) => s.character);
-  const skillLevels = useSkillStore((s) => s.skillLevels);
-  const skillXp     = useSkillStore((s) => s.skillXp);
 
   const [tab, setTab]           = useState<LeaderboardTab>('level');
   const [entries, setEntries]   = useState<ILeaderboardEntry[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
-  const [infoMsg, setInfoMsg]   = useState<string | null>(null);
 
   const activeTabDef = TABS.find((t) => t.key === tab)!;
 
@@ -104,35 +98,6 @@ const Leaderboard = () => {
     const tabDef = TABS.find((t) => t.key === currentTab)!;
     setLoading(true);
     setError(null);
-    setInfoMsg(null);
-
-    // ── Placeholder tabs ──────────────────────────────────────────────────────
-    if (tabDef.source === 'placeholder') {
-      setEntries([]);
-      setInfoMsg('Wkrotce...');
-      setLoading(false);
-      return;
-    }
-
-    // ── Local-only tabs (training stats) ──────────────────────────────────────
-    if (tabDef.source === 'local') {
-      if (character && tabDef.localSkillId) {
-        const lvl = skillLevels[tabDef.localSkillId] ?? 0;
-        const xp  = skillXp[tabDef.localSkillId] ?? 0;
-        setEntries([{
-          id: character.id,
-          name: character.name,
-          class: character.class,
-          value: lvl,
-          secondaryValue: xp,
-        }]);
-      } else {
-        setEntries([]);
-      }
-      setInfoMsg('Ranking lokalny - wymaga synchronizacji z serwerem');
-      setLoading(false);
-      return;
-    }
 
     // ── Server-fetched tabs ───────────────────────────────────────────────────
     try {
@@ -203,9 +168,9 @@ const Leaderboard = () => {
 
   return (
     <div className="leaderboard">
-      <header className="leaderboard__header">
-        <button className="leaderboard__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="leaderboard__title">Rankingi</h1>
+      <header className="leaderboard__header page-header">
+        <button className="leaderboard__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="leaderboard__title page-title">Rankingi</h1>
         <button className="leaderboard__refresh" onClick={() => fetchLeaderboard(tab)}>
           ↻
         </button>
@@ -219,11 +184,11 @@ const Leaderboard = () => {
       )}
 
       {/* Tabs – scrollable */}
-      <nav className="leaderboard__tabs">
+      <nav className="leaderboard__tabs page-tabs">
         {TABS.map((t) => (
           <button
             key={t.key}
-            className={`leaderboard__tab${tab === t.key ? ' leaderboard__tab--active' : ''}`}
+            className={`leaderboard__tab page-tab${tab === t.key ? ' leaderboard__tab--active page-tab--active' : ''}`}
             onClick={() => setTab(t.key)}
           >
             <span className="leaderboard__tab-icon">{t.icon}</span>
@@ -231,11 +196,6 @@ const Leaderboard = () => {
           </button>
         ))}
       </nav>
-
-      {/* Info message */}
-      {infoMsg && !loading && (
-        <div className="leaderboard__info">{infoMsg}</div>
-      )}
 
       {/* Content */}
       {loading && <div className="leaderboard__loading">Ladowanie...</div>}
@@ -251,7 +211,7 @@ const Leaderboard = () => {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
           >
-            {entries.length === 0 && !infoMsg && (
+            {entries.length === 0 && (
               <p className="leaderboard__empty">Brak graczy w rankingu.</p>
             )}
             {entries.map((entry, i) => {

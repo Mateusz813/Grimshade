@@ -83,8 +83,13 @@ class ChatApi extends BaseApi {
         channel: string,
         onMessage: (msg: IMessage) => void,
     ): (() => void) => {
+        // Use a unique channel name per subscription to avoid the
+        // "cannot add postgres_changes callbacks after subscribe()" error that
+        // happens when Supabase's internal channel registry returns an existing
+        // (already-subscribed) channel of the same name on re-mount.
+        const uniqueName = `chat:${channel}:${Math.random().toString(36).slice(2, 10)}:${Date.now()}`;
         const sub = supabase
-            .channel(`chat:${channel}`)
+            .channel(uniqueName)
             .on(
                 'postgres_changes',
                 {

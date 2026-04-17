@@ -160,11 +160,11 @@ const Market = ({ embedded = false }: IMarketProps) => {
     return (
         <div className={`market${embedded ? ' market--embedded' : ''}`}>
             {!embedded && (
-                <header className="market__header">
-                    <button className="market__back" onClick={() => navigate('/')}>
+                <header className="market__header page-header">
+                    <button className="market__back page-back-btn" onClick={() => navigate('/')}>
                         &larr; Miasto
                     </button>
-                    <h1 className="market__title">Market</h1>
+                    <h1 className="market__title page-title">Market</h1>
                     <span className="market__gold">
                         {gold.toLocaleString('pl-PL')}g
                     </span>
