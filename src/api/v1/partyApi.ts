@@ -447,8 +447,9 @@ class PartyApi extends BaseApi {
         const refresh = () => {
             this.getPartyWithMembers(partyId).then(onChange).catch(() => onChange(null));
         };
+        const uniqueName = `party:${partyId}:${Math.random().toString(36).slice(2, 10)}:${Date.now()}`;
         const sub = supabase
-            .channel(`party:${partyId}`)
+            .channel(uniqueName)
             .on(
                 'postgres_changes',
                 {
@@ -483,13 +484,23 @@ class PartyApi extends BaseApi {
      * Subscribe to the public parties feed. Every insert/delete/update on
      * `parties` reruns the listPublicParties query so the browser stays live.
      */
-    subscribePublicFeed = (onChange: (parties: IPartyWithMembers[]) => void): (() => void) => {
+    subscribePublicFeed = (
+        onChange: (parties: IPartyWithMembers[]) => void,
+        onError?: (err: unknown) => void,
+    ): (() => void) => {
         const refresh = () => {
-            this.listPublicParties().then(onChange).catch(() => {});
+            this.listPublicParties()
+                .then(onChange)
+                .catch((err) => {
+                    // eslint-disable-next-line no-console
+                    console.warn('[partyApi] subscribePublicFeed refresh failed:', err);
+                    if (onError) onError(err);
+                });
         };
         refresh();
+        const uniqueName = `parties:feed:${Math.random().toString(36).slice(2, 10)}:${Date.now()}`;
         const sub = supabase
-            .channel('parties:feed')
+            .channel(uniqueName)
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'parties' },

@@ -85,6 +85,9 @@ interface IPartyStore {
   /** Start streaming the public parties feed (cleanup when browser unmounts). */
   subscribePublicFeed: () => () => void;
 
+  /** Manually re-fetch the public parties list (used by refresh button). */
+  refreshPublicParties: () => Promise<void>;
+
   /** Start streaming updates for whichever party the user is currently in. */
   subscribeToActiveParty: () => () => void;
 }
@@ -219,10 +222,25 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   },
 
   subscribePublicFeed: () => {
-    const unsub = partyApi.subscribePublicFeed((parties) => {
-      set({ publicParties: parties });
-    });
+    const unsub = partyApi.subscribePublicFeed(
+      (parties) => set({ publicParties: parties, error: null }),
+      (err) => {
+        const msg = err instanceof Error ? err.message : 'Nie udało się pobrać listy party.';
+        set({ error: msg });
+      },
+    );
     return unsub;
+  },
+
+  refreshPublicParties: async () => {
+    set({ loading: true });
+    try {
+      const rows = await partyApi.listPublicParties();
+      set({ publicParties: rows, loading: false, error: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nie udało się pobrać listy party.';
+      set({ loading: false, error: msg });
+    }
   },
 
   subscribeToActiveParty: () => {

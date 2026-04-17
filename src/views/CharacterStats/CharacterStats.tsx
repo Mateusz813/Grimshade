@@ -286,9 +286,9 @@ const CharacterStats = () => {
 
   return (
     <div className="char-stats">
-      <header className="char-stats__header">
-        <button className="char-stats__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="char-stats__title">Postac</h1>
+      <header className="char-stats__header page-header">
+        <button className="char-stats__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="char-stats__title page-title">Postac</h1>
       </header>
 
       {/* Character identity */}

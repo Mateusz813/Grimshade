@@ -806,21 +806,21 @@ const Quests = () => {
 
   return (
     <div className="quests">
-      <header className="quests__header">
-        <button className="quests__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="quests__title">📜 Questy</h1>
+      <header className="quests__header page-header">
+        <button className="quests__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="quests__title page-title">📜 Questy</h1>
       </header>
 
-      <div className="quests__tabs">
+      <div className="quests__tabs page-tabs">
         <button
-          className={`quests__tab${mainTab === 'daily' ? ' quests__tab--active' : ''}${dailyActiveQuests.some((a) => a.completed && !a.claimed) ? ' quests__tab--claimable' : ''}`}
+          className={`quests__tab page-tab${mainTab === 'daily' ? ' quests__tab--active page-tab--active' : ''}${dailyActiveQuests.some((a) => a.completed && !a.claimed) ? ' quests__tab--claimable' : ''}`}
           onClick={() => setMainTab('daily')}
         >
           📅 Dzienne
           {dailyActiveQuests.some((a) => a.completed && !a.claimed) && <span className="quests__tab-badge">🎁</span>}
         </button>
         <button
-          className={`quests__tab${mainTab === 'quests' ? ' quests__tab--active' : ''}${claimableQuests.length > 0 ? ' quests__tab--claimable' : ''}`}
+          className={`quests__tab page-tab${mainTab === 'quests' ? ' quests__tab--active page-tab--active' : ''}${claimableQuests.length > 0 ? ' quests__tab--claimable' : ''}`}
           onClick={() => setMainTab('quests')}
         >
           📜 Questy
