@@ -1341,7 +1341,9 @@
     border-radius: 6px;
     object-fit: cover;
     display: block;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    // Border + glow uses the active transform color (falls back to class color).
+    border: 2px solid var(--player-accent, rgba(255, 255, 255, 0.15));
+    box-shadow: 0 0 8px rgba(var(--player-accent-rgb, 255, 255, 255), 0.45);
   }
 
   &__player-avatar-lvl {

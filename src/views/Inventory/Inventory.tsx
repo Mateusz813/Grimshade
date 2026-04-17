@@ -43,6 +43,7 @@ import {
 } from '../../systems/itemSystem';
 import { useSkillStore } from '../../stores/skillStore';
 import { getTrainingBonuses } from '../../systems/skillSystem';
+import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combatEngine';
 import { statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
 // TCharacterClass used for class-based filtering
 import type { Rarity } from '../../systems/lootSystem';
@@ -1452,18 +1453,17 @@ const Inventory = () => {
 
   return (
     <div className="inventory">
-      <header className="inventory__header">
-        <button className="inventory__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="inventory__title">Ekwipunek</h1>
+      <header className="inventory__header page-header">
+        <button className="inventory__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="inventory__title page-title">Ekwipunek</h1>
         <span className="inventory__gold">💰 {gold}g</span>
       </header>
 
       {/* ── Paperdoll: avatar + equipment overlay ─────────────────────── */}
       {character && (() => {
-          const eqS = getTotalEquipmentStats(equipment, ALL_ITEMS);
-          const tb = getTrainingBonuses(useSkillStore.getState().skillLevels, character.class);
-          const effMaxHp = character.max_hp + (eqS.hp ?? 0) + (tb.max_hp ?? 0);
-          const effMaxMp = character.max_mp + (eqS.mp ?? 0) + (tb.max_mp ?? 0);
+          const eff = engineGetEffectiveChar(character);
+          const effMaxHp = eff?.max_hp ?? character.max_hp;
+          const effMaxMp = eff?.max_mp ?? character.max_mp;
           const hpPct = Math.max(0, Math.min(100, (character.hp / Math.max(1, effMaxHp)) * 100));
           const mpPct = Math.max(0, Math.min(100, (character.mp / Math.max(1, effMaxMp)) * 100));
           return (
@@ -1876,10 +1876,9 @@ const Inventory = () => {
                   if (isHpPotion || isMpPotion) {
                     const char = useCharacterStore.getState().character;
                     if (char) {
-                      const eqS = getTotalEquipmentStats(equipment, ALL_ITEMS);
-                      const tb = getTrainingBonuses(useSkillStore.getState().skillLevels, char.class);
-                      const effMaxHp = char.max_hp + (eqS.hp ?? 0) + (tb.max_hp ?? 0);
-                      const effMaxMp = char.max_mp + (eqS.mp ?? 0) + (tb.max_mp ?? 0);
+                      const eff = engineGetEffectiveChar(char);
+                      const effMaxHp = eff?.max_hp ?? char.max_hp;
+                      const effMaxMp = eff?.max_mp ?? char.max_mp;
                       const isFull = isHpPotion ? char.hp >= effMaxHp : char.mp >= effMaxMp;
                       disabled = isFull || count <= 0;
                       title = isFull
@@ -1888,10 +1887,9 @@ const Inventory = () => {
                       onUse = () => {
                         const freshChar = useCharacterStore.getState().character;
                         if (!freshChar) return;
-                        const eqS2 = getTotalEquipmentStats(equipment, ALL_ITEMS);
-                        const tb2 = getTrainingBonuses(useSkillStore.getState().skillLevels, freshChar.class);
-                        const curMaxHp = freshChar.max_hp + (eqS2.hp ?? 0) + (tb2.max_hp ?? 0);
-                        const curMaxMp = freshChar.max_mp + (eqS2.mp ?? 0) + (tb2.max_mp ?? 0);
+                        const eff2 = engineGetEffectiveChar(freshChar);
+                        const curMaxHp = eff2?.max_hp ?? freshChar.max_hp;
+                        const curMaxMp = eff2?.max_mp ?? freshChar.max_mp;
                         if (isHpPotion) {
                           const flatMatch = effect.match(/^heal_hp_(\d+)$/);
                           const pctMatch = effect.match(/^heal_hp_pct_(\d+)$/);

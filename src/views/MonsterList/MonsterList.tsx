@@ -119,9 +119,9 @@ const MonsterList = () => {
 
   return (
     <div className="monster-list">
-      <header className="monster-list__header">
-        <button className="monster-list__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="monster-list__title">🗺️ Lista Potworów</h1>
+      <header className="monster-list__header page-header">
+        <button className="monster-list__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="monster-list__title page-title">🗺️ Lista Potworów</h1>
       </header>
 
       <div className="monster-list__count">

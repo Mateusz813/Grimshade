@@ -313,9 +313,9 @@ const OfflineHunt = () => {
     return (
         <div className="oh">
             {/* Header */}
-            <header className="oh__header">
-                <button className="oh__back" onClick={() => navigate('/')}>← Miasto</button>
-                <h1 className="oh__title">🎯 Offline Hunt</h1>
+            <header className="oh__header page-header">
+                <button className="oh__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+                <h1 className="oh__title page-title">🎯 Offline Hunt</h1>
             </header>
 
             {/* Epic claim FX overlay */}
