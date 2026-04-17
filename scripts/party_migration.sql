@@ -1,5 +1,5 @@
 -- ============================================================================
--- Tibia Mobile — Party multiplayer migration
+-- Grimshade Mobile — Party multiplayer migration
 -- ----------------------------------------------------------------------------
 -- Run this ONCE in the Supabase SQL Editor (Dashboard → SQL Editor → New query)
 -- so the party browser, create/join/password flow, and Realtime subscriptions
