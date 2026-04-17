@@ -5,6 +5,7 @@ import { useSkillStore } from '../stores/skillStore';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { getTrainingBonuses } from '../systems/skillSystem';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
+import { getEffectiveChar } from '../systems/combatEngine';
 import itemsRaw from '../data/items.json';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -55,8 +56,17 @@ export const useMpRegen = (): void => {
             /* ignore */
         }
 
-        const effectiveMaxHp = Math.max(1, char.max_hp + eqHp + tb.max_hp);
-        const effectiveMaxMp = Math.max(1, char.max_mp + eqMp + tb.max_mp);
+        // Include transform % multiplier via the shared engine helper so
+        // regen caps at the same value the combat/inventory views display.
+        const engineEff = getEffectiveChar(char);
+        const effectiveMaxHp = Math.max(
+            1,
+            engineEff?.max_hp ?? (char.max_hp + eqHp + tb.max_hp),
+        );
+        const effectiveMaxMp = Math.max(
+            1,
+            engineEff?.max_mp ?? (char.max_mp + eqMp + tb.max_mp),
+        );
 
         // Flat regen from base stat + training + equipment
         const hpRegenFlat = (char.hp_regen ?? 0) + (tb.hp_regen ?? 0);

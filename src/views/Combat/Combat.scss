@@ -1397,7 +1397,7 @@
     overflow: hidden;
 
     &--enemy .combat__bar-fill { background: $color-accent; }
-    &--hp    .combat__bar-fill { background: #4caf50; }
+    &--hp    .combat__bar-fill { background: var(--player-accent, #4caf50); }
     &--mp    .combat__bar-fill { background: #2196f3; }
   }
 

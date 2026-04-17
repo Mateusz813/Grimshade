@@ -232,15 +232,21 @@ export const useCombatStore = create<ICombatStore>((set) => ({
         set({ monsterCurrentHp: Math.max(0, monsterHp), playerCurrentHp: Math.max(0, playerHp) }),
 
     healPlayerHp: (amount, maxHp) =>
-        set((s) => ({
-            // Always clamp to maxHp — even if playerCurrentHp was somehow already above max
-            playerCurrentHp: Math.min(maxHp, Math.max(0, Math.min(s.playerCurrentHp, maxHp) + amount)),
-        })),
+        set((s) => {
+            // If player is already at or above the passed cap (e.g. a transform
+            // increased effective max but this caller is passing raw), don't
+            // yank HP down — let the higher cap win.
+            const base = Math.max(0, s.playerCurrentHp);
+            if (base >= maxHp) return { playerCurrentHp: base };
+            return { playerCurrentHp: Math.min(maxHp, base + amount) };
+        }),
 
     healPlayerMp: (amount, maxMp) =>
-        set((s) => ({
-            playerCurrentMp: Math.min(maxMp, Math.max(0, Math.min(s.playerCurrentMp, maxMp) + amount)),
-        })),
+        set((s) => {
+            const base = Math.max(0, s.playerCurrentMp);
+            if (base >= maxMp) return { playerCurrentMp: base };
+            return { playerCurrentMp: Math.min(maxMp, base + amount) };
+        }),
 
     spendPlayerMp: (cost) =>
         set((s) => ({ playerCurrentMp: Math.max(0, s.playerCurrentMp - cost) })),

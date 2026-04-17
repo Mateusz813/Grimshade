@@ -82,7 +82,9 @@ const Chat = ({
             .catch(() => setError('Błąd ładowania wiadomości.'));
     }, [channel]);
 
-    // Subscribe to Realtime
+    // Subscribe to Realtime + poll as a fallback in case the `messages` table
+    // isn't in the supabase_realtime publication on this instance. Both paths
+    // dedupe by id, so having them run together is safe.
     useEffect(() => {
         const unsub = chatApi.subscribe(channel, (msg) => {
             setMessages((prev) => {
@@ -90,7 +92,21 @@ const Chat = ({
                 return [...prev, msg];
             });
         });
-        return unsub;
+        const pollId = setInterval(() => {
+            chatApi.getMessages(channel)
+                .then((fresh) => {
+                    setMessages((prev) => {
+                        const seen = new Set(prev.map((m) => m.id));
+                        const merged = [...prev];
+                        for (const m of fresh) {
+                            if (!seen.has(m.id)) merged.push(m);
+                        }
+                        return merged;
+                    });
+                })
+                .catch(() => { /* offline – skip tick */ });
+        }, 4000);
+        return () => { unsub(); clearInterval(pollId); };
     }, [channel]);
 
     // Auto-scroll to bottom

@@ -45,11 +45,21 @@ const isSchemaMissingError = (err: unknown): boolean => {
     if (status !== 400 && status !== 404 && status !== 406 && status !== 422) return false;
     const data = err.response?.data as { code?: string; message?: string; details?: string } | undefined;
     const msg = `${data?.message ?? ''} ${data?.details ?? ''}`.toLowerCase();
-    return (
+    if (
         data?.code === '42703' ||
         data?.code === 'PGRST204' ||
-        msg.includes('column') && (msg.includes('does not exist') || msg.includes('schema cache'))
-    );
+        (msg.includes('column') && (msg.includes('does not exist') || msg.includes('schema cache')))
+    ) {
+        return true;
+    }
+    // Broader net: any 400/404 on a /rest/v1/parties request while the
+    // extended-columns flag is still set almost certainly means the migration
+    // hasn't been run. Fall back to the minimal schema rather than error the UI.
+    const url = (err.config?.url ?? '').toLowerCase();
+    if ((status === 400 || status === 404) && url.includes('/rest/v1/parties')) {
+        return true;
+    }
+    return false;
 };
 
 /**
@@ -198,14 +208,46 @@ const FULL_PARTY_SELECT =
 const MIN_PARTY_SELECT =
     'id,leader_id,name,max_members,created_at,' +
     'party_members(id,party_id,character_id,character_name,character_class,character_level,role,joined_at)';
+const NO_EMBED_PARTY_SELECT =
+    'id,leader_id,name,max_members,created_at';
 const FULL_PARTY_SINGLE_SELECT = 'id,leader_id,name,description,max_members,is_public,password,created_at';
 const MIN_PARTY_SINGLE_SELECT  = 'id,leader_id,name,max_members,created_at';
+
+/**
+ * Fallback when PostgREST can't embed `party_members` (missing FK between
+ * parties.id and party_members.party_id, or party_members table missing).
+ * Fetches parties without the embed, then fetches all members in a single
+ * follow-up query filtered by the party IDs we just retrieved.
+ */
+const hydrateMembersSeparately = async (
+    parties: IRawPartyRow[],
+    api: BaseApi,
+): Promise<IRawPartyRowWithMembers[]> => {
+    if (parties.length === 0) return [];
+    const ids = parties.map((p) => `"${p.id}"`).join(',');
+    let members: IPartyMemberRow[] = [];
+    try {
+        members = await api.get<IPartyMemberRow[]>({
+            url:
+                `/rest/v1/party_members?select=id,party_id,character_id,character_name,character_class,character_level,role,joined_at` +
+                `&party_id=in.(${ids})`,
+        });
+    } catch {
+        // party_members table probably doesn't exist yet — show parties with empty rosters
+        members = [];
+    }
+    const byParty = new Map<string, IPartyMemberRow[]>();
+    for (const m of members) {
+        const arr = byParty.get(m.party_id) ?? [];
+        arr.push(m);
+        byParty.set(m.party_id, arr);
+    }
+    return parties.map((p) => ({ ...p, party_members: byParty.get(p.id) ?? [] }));
+};
 
 class PartyApi extends BaseApi {
     /** Fetch all public parties with their member counts, for the party browser. */
     listPublicParties = async (): Promise<IPartyWithMembers[]> => {
-        // On un-migrated schemas the `is_public` filter doesn't exist, so we
-        // drop it and just show every party in fallback mode.
         const fetchRows = async (select: string, filter: string): Promise<IRawPartyRowWithMembers[]> =>
             this.get<IRawPartyRowWithMembers[]>({
                 url:
@@ -215,6 +257,7 @@ class PartyApi extends BaseApi {
                     '&order=created_at.desc' +
                     '&limit=50',
             });
+        // Try the full schema first.
         try {
             if (hasExtendedPartyCols) {
                 const rows = await fetchRows(FULL_PARTY_SELECT, 'is_public=eq.true');
@@ -227,9 +270,25 @@ class PartyApi extends BaseApi {
                 throw err;
             }
         }
-        // Fallback: no extended columns. Use the minimal schema.
-        const rows = await fetchRows(MIN_PARTY_SELECT, '');
-        return rows.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] }));
+        // Fallback #1: minimal schema with embed.
+        try {
+            const rows = await fetchRows(MIN_PARTY_SELECT, '');
+            return rows.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] }));
+        } catch (err) {
+            if (!axios.isAxiosError(err) || (err.response?.status !== 400 && err.response?.status !== 404)) {
+                throw err;
+            }
+            // eslint-disable-next-line no-console
+            console.warn('[partyApi] embed fallback failed, hydrating members separately:', err);
+        }
+        // Fallback #2: no embed — hydrate party_members in a second query.
+        const plainRows = await this.get<IRawPartyRow[]>({
+            url:
+                '/rest/v1/parties?select=' + NO_EMBED_PARTY_SELECT +
+                '&order=created_at.desc&limit=50',
+        });
+        const hydrated = await hydrateMembersSeparately(plainRows, this);
+        return hydrated.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] }));
     };
 
     /** Fetch a single party including its members (used after create/join). */
@@ -254,9 +313,26 @@ class PartyApi extends BaseApi {
                 throw err;
             }
         }
-        const rows = await fetchOne(MIN_PARTY_SELECT);
-        if (!rows.length) return null;
-        return { ...sanitize(rows[0]), members: rows[0].party_members ?? [] };
+        try {
+            const rows = await fetchOne(MIN_PARTY_SELECT);
+            if (!rows.length) return null;
+            return { ...sanitize(rows[0]), members: rows[0].party_members ?? [] };
+        } catch (err) {
+            if (!axios.isAxiosError(err) || (err.response?.status !== 400 && err.response?.status !== 404)) {
+                throw err;
+            }
+            // eslint-disable-next-line no-console
+            console.warn('[partyApi] embed fallback failed on single fetch, hydrating members separately:', err);
+        }
+        const plainRows = await this.get<IRawPartyRow[]>({
+            url:
+                `/rest/v1/parties?id=eq.${encodeURIComponent(partyId)}` +
+                `&select=${NO_EMBED_PARTY_SELECT}&limit=1`,
+        });
+        if (!plainRows.length) return null;
+        const hydrated = await hydrateMembersSeparately(plainRows, this);
+        const row = hydrated[0];
+        return { ...sanitize(row), members: row.party_members ?? [] };
     };
 
     /** Create a new party and insert the leader as the first member in one flow. */

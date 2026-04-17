@@ -40,7 +40,14 @@
     &__subtitle {
         font-size: 13px;
         color: #9e9e9e;
-        margin: 0;
+        margin: 0 0 16px;
+        padding: 0 20px;
+    }
+
+    @media (min-width: 768px) {
+        &__subtitle {
+            padding: 0 28px;
+        }
     }
 
     &__controls {

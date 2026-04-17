@@ -597,20 +597,20 @@ const Combat = () => {
         <div className="combat">
 
             {/* ── Header ─────────────────────────────────────────────────────── */}
-            <header className="combat__header">
-                <button className="combat__back" onClick={() => {
+            <header className="combat__header page-header">
+                <button className="combat__back page-back-btn" onClick={() => {
                     if (phase === 'fighting' || phase === 'victory') {
                         useCombatStore.getState().setBackgroundActive(true);
                     }
                     navigate('/');
                 }}>← Miasto</button>
                 {(phase === 'fighting' || phase === 'victory') && (
-                    <button className="combat__back combat__back--stop" onClick={() => {
+                    <button className="combat__back combat__back--stop page-back-btn" onClick={() => {
                         stopCombat();
                         navigate('/');
                     }}>⏹ Zakończ</button>
                 )}
-                <h1 className="combat__title">Walka</h1>
+                <h1 className="combat__title page-title">Walka</h1>
                 {(phase === 'fighting' || phase === 'victory' || phase === 'dead') && monster && (() => {
                     const monsterTask = activeTasks.find((t) => t.monsterId === monster.id);
                     if (!monsterTask) return null;
