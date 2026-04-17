@@ -6,6 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   server: {
     port: 5170,
+    strictPort: true,
+  },
+  preview: {
+    port: 5170,
+    strictPort: true,
   },
   plugins: [
     react(),
@@ -35,6 +40,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
