@@ -1751,9 +1751,9 @@ const Transform = () => {
 
   return (
     <div className="transform">
-      <header className="transform__header">
+      <header className="transform__header page-header">
         <button
-          className="transform__back"
+          className="transform__back page-back-btn"
           onClick={() => {
             if (phase === 'list') navigate('/');
             else if (phase === 'fighting') handleAbandon();
@@ -1764,7 +1764,7 @@ const Transform = () => {
         >
           ← Wroc
         </button>
-        <h1 className="transform__title">🔄 Transform</h1>
+        <h1 className="transform__title page-title">🔄 Transform</h1>
       </header>
 
       {phase === 'list' && renderList()}

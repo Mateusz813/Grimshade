@@ -59,11 +59,11 @@ const DailyQuests = () => {
 
     return (
         <div className="daily-quests">
-            <header className="daily-quests__header">
-                <button className="daily-quests__back" onClick={() => navigate('/')}>
+            <header className="daily-quests__header page-header">
+                <button className="daily-quests__back page-back-btn" onClick={() => navigate('/')}>
                     \u2190 Miasto
                 </button>
-                <h1 className="daily-quests__title">Questy Dzienne</h1>
+                <h1 className="daily-quests__title page-title">Questy Dzienne</h1>
             </header>
 
             {isLocked ? (

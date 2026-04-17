@@ -92,9 +92,9 @@ const Deaths = () => {
 
     return (
         <div className="deaths">
-            <header className="deaths__header">
-                <button className="deaths__back" onClick={() => navigate('/')}>← Wróć</button>
-                <h1 className="deaths__title">💀 Księga Śmierci</h1>
+            <header className="deaths__header page-header">
+                <button className="deaths__back page-back-btn" onClick={() => navigate('/')}>← Wróć</button>
+                <h1 className="deaths__title page-title">💀 Księga Śmierci</h1>
                 <button className="deaths__refresh" onClick={() => void loadDeaths()} disabled={loading}>
                     {loading ? '⟳' : '↻'}
                 </button>

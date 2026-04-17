@@ -43,6 +43,7 @@ const Party = () => {
     removeMember,
     subscribePublicFeed,
     subscribeToActiveParty,
+    refreshPublicParties,
   } = usePartyStore();
 
   // ── Local form state ─────────────────────────────────────────────────────
@@ -150,9 +151,9 @@ const Party = () => {
 
   return (
     <div className="party">
-      <header className="party__header">
-        <button className="party__back" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="party__title">Party</h1>
+      <header className="party__header page-header">
+        <button className="party__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
+        <h1 className="party__title page-title">Party</h1>
         {party && (
           <span className="party__size">{party.members.length}/{party.maxMembers ?? MAX_PARTY_SIZE}</span>
         )}
@@ -234,9 +235,21 @@ const Party = () => {
             </AnimatePresence>
 
             {/* Public browser feed */}
-            <h3 className="party__section-title">Otwarte drużyny ({browsable.length})</h3>
+            <div className="party__section-header">
+              <h3 className="party__section-title">Otwarte drużyny ({browsable.length})</h3>
+              <button
+                className="party__refresh-btn"
+                onClick={() => void refreshPublicParties()}
+                disabled={loading}
+                title="Odśwież listę party"
+              >
+                {loading ? '⏳' : '🔄'} Odśwież
+              </button>
+            </div>
             {browsable.length === 0 && (
-              <p className="party__no-buffs">Brak otwartych party. Załóż własne!</p>
+              <p className="party__no-buffs">
+                Brak otwartych party. Załóż własne lub kliknij Odśwież.
+              </p>
             )}
             <div className="party__browser">
               {browsable.map((p) => {

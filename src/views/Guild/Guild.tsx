@@ -16,15 +16,15 @@ const Guild = () => {
 
     return (
         <div className="guild">
-            <header className="guild__header">
+            <header className="guild__header page-header">
                 <button
                     type="button"
-                    className="guild__back-btn"
+                    className="guild__back-btn page-back-btn"
                     onClick={() => navigate('/')}
                 >
                     ← Powrót
                 </button>
-                <h1 className="guild__title">🏛️ Gildia</h1>
+                <h1 className="guild__title page-title">🏛️ Gildia</h1>
             </header>
 
             <div className="guild__card">

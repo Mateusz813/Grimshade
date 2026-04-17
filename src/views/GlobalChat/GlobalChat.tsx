@@ -21,15 +21,15 @@ const GlobalChat = () => {
 
     return (
         <div className="global-chat">
-            <header className="global-chat__header">
+            <header className="global-chat__header page-header">
                 <button
                     type="button"
-                    className="global-chat__back-btn"
+                    className="global-chat__back-btn page-back-btn"
                     onClick={() => navigate('/')}
                 >
                     ← Powrót
                 </button>
-                <h1 className="global-chat__title">💬 Chat miasta</h1>
+                <h1 className="global-chat__title page-title">💬 Chat miasta</h1>
             </header>
 
             <p className="global-chat__hint">
