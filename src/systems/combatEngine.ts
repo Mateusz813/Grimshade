@@ -802,10 +802,13 @@ export const doPlayerAttackTick = (): void => {
 
     // Auto-potion
     const freshAfterAtk = useCombatStore.getState();
-    tryAutoPotion(
-        freshAfterAtk.playerCurrentHp, char.max_hp,
-        freshAfterAtk.playerCurrentMp, char.max_mp,
-    );
+    {
+        const effAfterAtk = getEffectiveChar(char);
+        tryAutoPotion(
+            freshAfterAtk.playerCurrentHp, effAfterAtk?.max_hp ?? char.max_hp,
+            freshAfterAtk.playerCurrentMp, effAfterAtk?.max_mp ?? char.max_mp,
+        );
+    }
 
     // Track damage for daily quests
     if (totalDamage > 0) useDailyQuestStore.getState().addProgress('deal_damage', totalDamage);
@@ -939,7 +942,11 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
 
     // Auto-potion after damage
     if (newPHp > 0) {
-        tryAutoPotion(newPHp, char.max_hp, useCombatStore.getState().playerCurrentMp, char.max_mp);
+        const effAfterHit = getEffectiveChar(char);
+        tryAutoPotion(
+            newPHp, effAfterHit?.max_hp ?? char.max_hp,
+            useCombatStore.getState().playerCurrentMp, effAfterHit?.max_mp ?? char.max_mp,
+        );
     }
 
     if (newPHp <= 0) {
