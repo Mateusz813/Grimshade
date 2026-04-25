@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useFriendsStore } from '../../stores/friendsStore';
-import { friendsApi, buildPmChannel, type IFriendCharacterInfo } from '../../api/v1/friendsApi';
-import Chat from '../../components/ui/Chat/Chat';
+import { useChatTabsStore } from '../../stores/chatTabsStore';
+import { friendsApi, type IFriendCharacterInfo } from '../../api/v1/friendsApi';
 import './Friends.scss';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ const CLASS_ICONS: Record<string, string> = {
     Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
 };
 
-type TTab = 'friends' | 'blocked' | 'pm';
+type TTab = 'friends' | 'blocked';
 
 /**
  * Friends screen — social hub for each character.
@@ -31,8 +31,8 @@ type TTab = 'friends' | 'blocked' | 'pm';
  */
 const Friends = () => {
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
     const character = useCharacterStore((s) => s.character);
+    const openPmTab = useChatTabsStore((s) => s.openPm);
 
     const friends = useFriendsStore((s) => s.friends);
     const favorites = useFriendsStore((s) => s.favorites);
@@ -52,8 +52,6 @@ const Friends = () => {
 
     const [infoByName, setInfoByName] = useState<Record<string, IFriendCharacterInfo>>({});
     const [loadingInfo, setLoadingInfo] = useState(false);
-    const [pmTarget, setPmTarget] = useState<string | null>(null);
-    const openPmFromQuery = useRef(searchParams.get('pm'));
 
     // ── Load character info for all friends on mount / friends change ─────────
 
@@ -81,20 +79,6 @@ const Friends = () => {
         const id = setInterval(() => { void refreshFriendsInfo(); }, 60000);
         return () => clearInterval(id);
     }, [refreshFriendsInfo]);
-
-    // ── Deep-link: ?pm=Nick → open PM tab for that nick ───────────────────────
-
-    useEffect(() => {
-        const nick = openPmFromQuery.current;
-        if (!nick) return;
-        openPmFromQuery.current = null;
-        setPmTarget(nick);
-        setTab('pm');
-        // Clear the param so back/forward doesn't re-open automatically.
-        const next = new URLSearchParams(searchParams);
-        next.delete('pm');
-        setSearchParams(next, { replace: true });
-    }, [searchParams, setSearchParams]);
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -140,8 +124,9 @@ const Friends = () => {
     };
 
     const openPm = (name: string) => {
-        setPmTarget(name);
-        setTab('pm');
+        if (!character) return;
+        openPmTab(character.name, name);
+        navigate('/chat');
     };
 
     const sortedFriends = useMemo(() => {
@@ -164,21 +149,19 @@ const Friends = () => {
         );
     }
 
-    const pmChannel = pmTarget ? buildPmChannel(character.name, pmTarget) : null;
-
     // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <div className="friends">
-            <header className="friends__header">
+            <header className="friends__header page-header">
                 <button
                     type="button"
-                    className="friends__back-btn"
+                    className="friends__back-btn page-back-btn"
                     onClick={() => navigate('/')}
                 >
-                    ← Powrót
+                    ← Miasto
                 </button>
-                <h1 className="friends__title">👥 Znajomi</h1>
+                <h1 className="friends__title page-title">👥 Znajomi</h1>
             </header>
 
             <div className="friends__tabs">
@@ -195,14 +178,6 @@ const Friends = () => {
                     onClick={() => setTab('blocked')}
                 >
                     Zablokowani ({blocked.length})
-                </button>
-                <button
-                    type="button"
-                    className={`friends__tab${tab === 'pm' ? ' friends__tab--active' : ''}`}
-                    onClick={() => setTab('pm')}
-                    disabled={!pmTarget}
-                >
-                    💌 PM {pmTarget ? `(${pmTarget})` : ''}
                 </button>
             </div>
 
@@ -360,41 +335,6 @@ const Friends = () => {
                 </section>
             )}
 
-            {tab === 'pm' && pmTarget && pmChannel && (
-                <section className="friends__pm">
-                    <div className="friends__pm-header">
-                        <span className="friends__pm-icon">💌</span>
-                        <div className="friends__pm-title">Prywatna wiadomość — {pmTarget}</div>
-                        <button
-                            type="button"
-                            className="friends__pm-close"
-                            onClick={() => { setPmTarget(null); setTab('friends'); }}
-                        >
-                            ✖
-                        </button>
-                    </div>
-                    <Chat
-                        channel={pmChannel}
-                        characterName={character.name}
-                        characterClass={character.class}
-                        characterLevel={character.level}
-                        title={`Czat z ${pmTarget}`}
-                        maxHeight={480}
-                        disableContextMenu
-                    />
-                </section>
-            )}
-
-            {tab === 'pm' && !pmTarget && (
-                <section className="friends__list">
-                    <div className="friends__empty-list">
-                        <div className="friends__empty-list-title">Wybierz rozmówcę</div>
-                        <div className="friends__empty-list-hint">
-                            Kliknij 💌 przy znajomym, żeby otworzyć prywatny czat.
-                        </div>
-                    </div>
-                </section>
-            )}
         </div>
     );
 };

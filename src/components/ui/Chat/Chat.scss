@@ -6,6 +6,19 @@
   border-radius: $radius-md;
   overflow: hidden;
 
+  // Full-height mode (used by GlobalChat tabs). Let the message list flex-grow
+  // to fill remaining space while the header/input stay at natural height.
+  &--fill {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    .chat__messages {
+      flex: 1;
+      min-height: 0;
+    }
+  }
+
   // ── Header (collapsible) ────────────────────────────────────────────────────
   &__header {
     display: flex;

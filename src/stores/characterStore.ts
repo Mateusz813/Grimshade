@@ -84,6 +84,28 @@ const countMilestonesCrossed = (prevHighest: number, newHighest: number): number
     return Math.floor(newHighest / MILESTONE_INTERVAL) - Math.floor(prevHighest / MILESTONE_INTERVAL);
 };
 
+/**
+ * Gold milestone schedule: levels 10, 20, 30, 40, 50, then 100, 150, 200, …
+ * (every 50 from 100 onward, forever). Reward: 10000 × level.
+ *
+ * Gated on highest_level so re-leveling after death never re-awards gold.
+ */
+const GOLD_MILESTONE_REWARD_PER_LEVEL = 10000;
+const isGoldMilestoneLevel = (level: number): boolean => {
+    if (level <= 0) return false;
+    if (level === 10 || level === 20 || level === 30 || level === 40 || level === 50) return true;
+    if (level >= 100 && level % 50 === 0) return true;
+    return false;
+};
+const collectGoldMilestones = (prevHighest: number, newHighest: number): number[] => {
+    if (newHighest <= prevHighest) return [];
+    const out: number[] = [];
+    for (let lv = prevHighest + 1; lv <= newHighest; lv++) {
+        if (isGoldMilestoneLevel(lv)) out.push(lv);
+    }
+    return out;
+};
+
 interface ICharacterState {
   character: ICharacter | null;
   isLoading: boolean;
@@ -142,10 +164,19 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const milestoneAtk = milestonesCrossed * milestoneBonus.attack;
     const milestoneDef = milestonesCrossed * milestoneBonus.defense;
 
+    // Gold milestone rewards: 10/20/30/40/50/100/150/200/… → 10k × level.
+    // Gated on highest_level — re-leveling after death never re-awards gold.
+    const goldMilestoneLevels = collectGoldMilestones(highestLevel, newHighest);
+    const milestoneGoldGain = goldMilestoneLevels.reduce(
+        (sum, lv) => sum + lv * GOLD_MILESTONE_REWARD_PER_LEVEL,
+        0,
+    );
+
     const newMaxHp = char.max_hp + hpGain + milestoneHp;
     const newMaxMp = char.max_mp + mpGain + milestoneMp;
     const newAttack = (char.attack ?? 0) + milestoneAtk;
     const newDefense = (char.defense ?? 0) + milestoneDef;
+    const newGold = (char.gold ?? 0) + milestoneGoldGain;
     const { hpBonus, mpBonus } = getEffectiveMaxBonuses();
     const effectiveMaxHp = newMaxHp + hpBonus;
     const effectiveMaxMp = newMaxMp + mpBonus;
@@ -172,6 +203,7 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
         defense: newDefense,
         hp: newHp,
         mp: newMp,
+        gold: newGold,
       },
     });
 
@@ -183,6 +215,8 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
       const _newLevel = result.newLevel;
       const _levelsGained = result.levelsGained;
       const _statPointsGained = statPointsGained;
+      const _goldGained = milestoneGoldGain;
+      const _goldMilestoneLevels = goldMilestoneLevels;
       queueMicrotask(() => {
         const path = window.location.pathname;
         const combatPaths = ['/combat', '/dungeon', '/boss', '/transform'];
@@ -192,6 +226,8 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
           levelsGained: _levelsGained,
           statPointsGained: _statPointsGained,
           inCombat,
+          goldGained: _goldGained,
+          goldMilestoneLevels: _goldMilestoneLevels,
         });
       });
     }

@@ -6,7 +6,7 @@ import {
   type IPartyInfo,
 } from '../systems/partySystem';
 import type { CharacterClass } from '../api/v1/characterApi';
-import { partyApi, type IPartyWithMembers, type IPartyMemberRow } from '../api/v1/partyApi';
+import { partyApi, extractApiError, type IPartyWithMembers, type IPartyMemberRow } from '../api/v1/partyApi';
 
 /**
  * Party store — thin wrapper around `partyApi` + Supabase Realtime.
@@ -152,7 +152,7 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : 'Błąd dołączania do party.',
+        error: extractApiError(err),
       });
     }
   },
@@ -238,7 +238,7 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
       const rows = await partyApi.listPublicParties();
       set({ publicParties: rows, loading: false, error: null });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Nie udało się pobrać listy party.';
+      const msg = extractApiError(err) || 'Nie udało się pobrać listy party.';
       set({ loading: false, error: msg });
     }
   },

@@ -427,7 +427,7 @@ const Skills = () => {
     <div className="skills">
       <header className="skills__header page-header">
         <button className="skills__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="skills__title page-title">Skille</h1>
+        <h1 className="skills__title page-title">✨ Skille</h1>
         <span className="skills__class">{CLASS_ICONS[character.class] ?? '?'}</span>
       </header>
 

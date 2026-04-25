@@ -6,6 +6,7 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useTransformStore } from '../../stores/transformStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useBuffStore } from '../../stores/buffStore';
 import { saveCurrentCharacterStores } from '../../stores/characterScope';
 import { applyDeathPenalty } from '../../systems/levelSystem';
 import { applySkillBuff, getSkillDef } from '../../systems/skillBuffs';
@@ -33,6 +34,8 @@ import {
   getSpellDamageMultiplier,
   getElixirHpBonus,
   getElixirMpBonus,
+  getElixirHpPctMultiplier,
+  getElixirMpPctMultiplier,
   getElixirAtkBonus,
   getElixirDefBonus,
   getElixirAttackSpeedMultiplier,
@@ -296,8 +299,8 @@ const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getState>['c
     ...char,
     attack: Math.floor(rawAttack * getTransformAtkPctMultiplier()),
     defense: Math.floor(rawDefense * getTransformDefPctMultiplier()),
-    max_hp: Math.floor(rawMaxHp * getTransformHpPctMultiplier()),
-    max_mp: Math.floor(rawMaxMp * getTransformMpPctMultiplier()),
+    max_hp: Math.floor(rawMaxHp * getElixirHpPctMultiplier() * getTransformHpPctMultiplier()),
+    max_mp: Math.floor(rawMaxMp * getElixirMpPctMultiplier() * getTransformMpPctMultiplier()),
     attack_speed: baseAttackSpeed * getElixirAttackSpeedMultiplier(),
     crit_chance: Math.min(0.5, char.crit_chance + eq.critChance * 0.01 + tb.crit_chance),
     crit_damage: (char.crit_damage ?? 2.0) + eq.critDmg * 0.01 + tb.crit_dmg,
@@ -317,9 +320,13 @@ const Transform = () => {
   const { language } = useSettingsStore();
   const completedTransforms = useTransformStore((s) => s.completedTransforms);
   const currentQuest = useTransformStore((s) => s.currentTransformQuest);
+  const pendingClaimTransformId = useTransformStore((s) => s.pendingClaimTransformId);
   const consumables = useInventoryStore((s) => s.consumables);
   const { activeSkillSlots } = useSkillStore();
   const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore();
+  // Bug 2: subscribe to buff changes so render-time effective stats (max HP/MP) refresh when elixirs apply/expire
+  const _activeBuffs = useBuffStore((s) => s.allBuffs);
+  void _activeBuffs;
 
   // Screen phase
   const [phase, setPhase] = useState<ScreenPhase>('list');
@@ -334,6 +341,7 @@ const Transform = () => {
   const [monsterHit, setMonsterHit] = useState(false);
   const [playerHit, setPlayerHit] = useState(false);
   const [playerAttacking, setPlayerAttacking] = useState(false);
+  const [monsterAttacking, setMonsterAttacking] = useState(false);
 
   // Skill & potion state
   const [skillCooldowns, setSkillCooldowns] = useState<Record<string, number>>({});
@@ -411,6 +419,27 @@ const Transform = () => {
     }
   }, [clearTimers]);
 
+  // Bug 1 (2026-04): pending-reward recovery. If the user previously locked
+  // in a victory but missclicked / refreshed before claiming consumables,
+  // jump straight to the rewards screen on next entry. We only fire this
+  // when the view is on the list (so it doesn't override an active quest)
+  // and there's no quest currently in progress.
+  useEffect(() => {
+    if (!character) return;
+    if (pendingClaimTransformId == null) return;
+    if (currentQuest?.inProgress) return;
+    if (phase !== 'list') return;
+
+    const transformRewards = calculateTransformRewards(
+      pendingClaimTransformId,
+      character.class as TCharacterClass,
+    );
+    setActiveTransformId(pendingClaimTransformId);
+    setRewards(transformRewards);
+    setVictoryReady(false);
+    setPhase('allDefeated');
+  }, [character, currentQuest, pendingClaimTransformId, phase]);
+
   // Auto-scroll combat log
   useEffect(() => {
     if (logContainerRef.current) {
@@ -485,48 +514,77 @@ const Transform = () => {
     const hp = playerHpRef.current;
     const mp = playerMpRef.current;
 
+    const hpMissing = Math.max(0, charMaxHp - hp);
+    const mpMissing = Math.max(0, charMaxMp - mp);
     const hpPct = charMaxHp > 0 ? (hp / charMaxHp) * 100 : 100;
-    if (settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
-      const elixir = resolveAutoPotionElixir(settings.autoPotionHpId, 'hp', 'flat', inv.consumables);
-      if (elixir) {
-        inv.useConsumable(elixir.id);
-        startHpCooldown();
-        const flatMatch = elixir.effect.match(/^heal_hp_(\d+)$/);
-        const pctMatch = elixir.effect.match(/^heal_hp_pct_(\d+)$/);
-        if (flatMatch) { const a = parseInt(flatMatch[1], 10); healPlayerHp(a, charMaxHp); addLog(`[Auto] ${elixir.name_pl} +${a} HP`, 'system'); }
-        else if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxHp * p / 100); healPlayerHp(a, charMaxHp); addLog(`[Auto] ${elixir.name_pl} +${a} HP`, 'system'); }
-      }
-    }
-
     const mpPct = charMaxMp > 0 ? (mp / charMaxMp) * 100 : 100;
-    if (settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
-      const elixir = resolveAutoPotionElixir(settings.autoPotionMpId, 'mp', 'flat', inv.consumables);
-      if (elixir) {
-        inv.useConsumable(elixir.id);
-        startMpCooldown();
-        const flatMatch = elixir.effect.match(/^heal_mp_(\d+)$/);
-        const pctMatch = elixir.effect.match(/^heal_mp_pct_(\d+)$/);
-        if (flatMatch) { const a = parseInt(flatMatch[1], 10); healPlayerMp(a, charMaxMp); addLog(`[Auto] ${elixir.name_pl} +${a} MP`, 'system'); }
-        else if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxMp * p / 100); healPlayerMp(a, charMaxMp); addLog(`[Auto] ${elixir.name_pl} +${a} MP`, 'system'); }
+
+    // Hard safety: never fire a potion when HP/MP are already at (or above) max —
+    // regardless of threshold. Guards against stale refs, transform-cap drift,
+    // and floating-point rounding when the user sees "100%" in the UI.
+    const hpAtFull = charMaxHp > 0 && hp >= charMaxHp;
+    const mpAtFull = charMaxMp > 0 && mp >= charMaxMp;
+
+    const resolveAmount = (
+      elixirIdOrNull: string | null,
+      kind: 'flat' | 'pct',
+      hm: 'hp' | 'mp',
+      maxVal: number,
+    ) => {
+      const elixir = resolveAutoPotionElixir(elixirIdOrNull, hm, kind, inv.consumables);
+      if (!elixir) return null;
+      const flatRe = hm === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/;
+      const pctRe = hm === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/;
+      const flat = elixir.effect.match(flatRe);
+      const pct = elixir.effect.match(pctRe);
+      if (flat) return { id: elixir.id, name: elixir.name_pl, amount: parseInt(flat[1], 10), pct: null as number | null };
+      if (pct) { const p = parseInt(pct[1], 10); return { id: elixir.id, name: elixir.name_pl, amount: Math.floor(maxVal * p / 100), pct: p }; }
+      return null;
+    };
+
+    // Flat HP
+    if (!hpAtFull && settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
+      const pot = resolveAmount(settings.autoPotionHpId, 'flat', 'hp', charMaxHp);
+      if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
+        inv.useConsumable(pot.id);
+        startHpCooldown();
+        healPlayerHp(pot.amount, charMaxHp);
+        addLog(`[Auto] ${pot.name} +${pot.amount} HP`, 'system');
       }
     }
 
-    if (settings.autoPotionPctHpEnabled && settings.autoPotionPctHpThreshold > 0 && hpPct <= settings.autoPotionPctHpThreshold && pctHpCooldownRef.current <= 0) {
-      const elixir = resolveAutoPotionElixir(settings.autoPotionPctHpId, 'hp', 'pct', inv.consumables);
-      if (elixir) {
-        inv.useConsumable(elixir.id);
-        setPctHpCooldown(PCT_POTION_CD_MS); pctHpCooldownRef.current = PCT_POTION_CD_MS;
-        const pctMatch = elixir.effect.match(/^heal_hp_pct_(\d+)$/);
-        if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxHp * p / 100); healPlayerHp(a, charMaxHp); addLog(`[Auto%] ${elixir.name_pl} +${a} HP`, 'system'); }
+    // Flat MP
+    if (!mpAtFull && settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
+      const pot = resolveAmount(settings.autoPotionMpId, 'flat', 'mp', charMaxMp);
+      if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
+        inv.useConsumable(pot.id);
+        startMpCooldown();
+        healPlayerMp(pot.amount, charMaxMp);
+        addLog(`[Auto] ${pot.name} +${pot.amount} MP`, 'system');
       }
     }
-    if (settings.autoPotionPctMpEnabled && settings.autoPotionPctMpThreshold > 0 && mpPct <= settings.autoPotionPctMpThreshold && pctMpCooldownRef.current <= 0) {
-      const elixir = resolveAutoPotionElixir(settings.autoPotionPctMpId, 'mp', 'pct', inv.consumables);
-      if (elixir) {
-        inv.useConsumable(elixir.id);
+
+    // Pct HP
+    if (!hpAtFull && settings.autoPotionPctHpEnabled && settings.autoPotionPctHpThreshold > 0 && hpPct <= settings.autoPotionPctHpThreshold && pctHpCooldownRef.current <= 0) {
+      const pot = resolveAmount(settings.autoPotionPctHpId, 'pct', 'hp', charMaxHp);
+      if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
+        inv.useConsumable(pot.id);
+        setPctHpCooldown(PCT_POTION_CD_MS); pctHpCooldownRef.current = PCT_POTION_CD_MS;
+        healPlayerHp(pot.amount, charMaxHp);
+        const tag = pot.pct != null ? ` (${pot.pct}%)` : '';
+        addLog(`[Auto%] ${pot.name} +${pot.amount} HP${tag}`, 'system');
+      }
+    }
+
+    // Pct MP
+    if (!mpAtFull && settings.autoPotionPctMpEnabled && settings.autoPotionPctMpThreshold > 0 && mpPct <= settings.autoPotionPctMpThreshold && pctMpCooldownRef.current <= 0) {
+      const pot = resolveAmount(settings.autoPotionPctMpId, 'pct', 'mp', charMaxMp);
+      if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
+        inv.useConsumable(pot.id);
         setPctMpCooldown(PCT_POTION_CD_MS); pctMpCooldownRef.current = PCT_POTION_CD_MS;
-        const pctMatch = elixir.effect.match(/^heal_mp_pct_(\d+)$/);
-        if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxMp * p / 100); healPlayerMp(a, charMaxMp); addLog(`[Auto%] ${elixir.name_pl} +${a} MP`, 'system'); }
+        healPlayerMp(pot.amount, charMaxMp);
+        const tag = pot.pct != null ? ` (${pot.pct}%)` : '';
+        addLog(`[Auto%] ${pot.name} +${pot.amount} MP${tag}`, 'system');
       }
     }
   }, [addLog, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown]);
@@ -809,7 +867,11 @@ const Transform = () => {
         const dmg = Math.max(1, rawDmg - eff.defense);
 
         setPlayerHit(true);
-        setTimeout(() => setPlayerHit(false), 300);
+        setMonsterAttacking(true);
+        setTimeout(() => {
+          setPlayerHit(false);
+          setMonsterAttacking(false);
+        }, 420);
 
         addLog(
           `[${baseMonster.name_pl}] Atak za ${dmg} dmg (HP: ${Math.max(0, prevPhp - dmg)}/${eff.max_hp})`,
@@ -999,6 +1061,11 @@ const Transform = () => {
     // both the flat rewards and the % multipliers live on every render, so
     // they keep scaling as the player levels up or swaps gear. Doing the
     // bake here would double-count them.
+    //
+    // Bug 1 (2026-04): completeTransform() now also handles the recovery
+    // path where the quest was abandoned but a pending claim survived. It
+    // returns the transformId in either case so the rest of the flow runs
+    // identically.
     const completedId = useTransformStore.getState().completeTransform();
     if (completedId === 0) return;
 
@@ -1022,6 +1089,11 @@ const Transform = () => {
     if (rewards.weapon) {
       useInventoryStore.getState().addItem(rewards.weapon);
     }
+
+    // Bug 1: clear the pending-reward marker so re-entry doesn't loop the
+    // claim screen. Done last so that any thrown exception above keeps the
+    // pending claim alive for next attempt.
+    useTransformStore.getState().claimPendingReward();
 
     // Training runs always — no action needed
 
@@ -1191,9 +1263,22 @@ const Transform = () => {
     const quest = useTransformStore.getState().currentTransformQuest;
     const allMonsters = getTransformMonsters(activeTransformId);
     const defeatedCount = quest?.monstersDefeated.length ?? 0;
+    const tfColorInfo = getTransformColor(activeTransformId);
+    const tfColor = tfColorInfo.solid ?? tfColorInfo.gradient?.[0] ?? '#ffc107';
+    // Player avatar border reflects highest completed transform tier (persistent
+    // identity). If the player has no completed transforms yet, fall back to
+    // their class color — never to the active-quest color, which would make
+    // first-time players appear in the color of a transform they don't own.
+    const highestCompleted = completedTransforms.length > 0 ? Math.max(...completedTransforms) : 0;
+    const playerBorderColor = highestCompleted > 0
+      ? (getTransformColor(highestCompleted).solid ?? getTransformColor(highestCompleted).gradient?.[0] ?? tfColor)
+      : (CLASS_COLORS[character.class] ?? '#e94560');
 
     return (
-      <div className="transform__combat">
+      <div
+        className="transform__combat"
+        style={{ '--transform-color': tfColor } as React.CSSProperties}
+      >
         {/* Quest progress header */}
         <div className="transform__combat-progress">
           <span>Potwory: {defeatedCount} / {allMonsters.length}</span>
@@ -1222,6 +1307,10 @@ const Transform = () => {
             <div className="transform__bar-fill transform__bar-fill--hp" style={{ width: `${monsterHpPct * 100}%` }} />
             <span className="transform__bar-text">{monsterHp} / {monsterMaxHp}</span>
           </div>
+          <div className="transform__bar transform__bar--monster">
+            <div className="transform__bar-fill transform__bar-fill--mp" style={{ width: '100%' }} />
+            <span className="transform__bar-text">0 / 0 MP</span>
+          </div>
           {skillAnimOverlay && (
             <div className={`skill-anim-overlay ${skillAnimOverlay.anim.cssClass}`}>
               <span className="skill-anim-emoji">{skillAnimOverlay.anim.emoji}</span>
@@ -1231,8 +1320,11 @@ const Transform = () => {
 
         {/* Player card */}
         <div
-          className={`transform__player-card${playerHit ? ' transform__player-card--hit' : ''}`}
-          style={{ '--class-color': CLASS_COLORS[character.class] ?? '#ffc107' } as React.CSSProperties}
+          className={`transform__player-card${playerHit ? ' transform__player-card--hit' : ''}${monsterAttacking ? ' transform__player-card--monster-attack' : ''}`}
+          style={{
+            '--class-color': playerBorderColor,
+            '--transform-color': playerBorderColor,
+          } as React.CSSProperties}
         >
           <div className="transform__player-avatar-wrap transform__player-avatar-wrap--big transform__player-avatar-wrap--class-border">
             <img
@@ -1762,9 +1854,9 @@ const Transform = () => {
           disabled={phase === 'allDefeated' || phase === 'transforming' || phase === 'complete'}
           style={phase === 'allDefeated' || phase === 'transforming' || phase === 'complete' ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
         >
-          ← Wroc
+          ← Miasto
         </button>
-        <h1 className="transform__title page-title">🔄 Transform</h1>
+        <h1 className="transform__title page-title">🦋 Transform</h1>
       </header>
 
       {phase === 'list' && renderList()}

@@ -6,6 +6,10 @@ export interface ILevelUpEvent {
   statPointsGained: number;
   /** true when player is in combat/dungeon/boss — show subtle animation */
   inCombat: boolean;
+  /** Total gold awarded from milestone level rewards (0 if none crossed). */
+  goldGained?: number;
+  /** Specific milestone levels that triggered the gold reward (for UI listing). */
+  goldMilestoneLevels?: number[];
 }
 
 interface ILevelUpStore {

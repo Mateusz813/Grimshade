@@ -60,6 +60,27 @@ interface IBuffStore {
 
 const getCharId = (): string => useCharacterStore.getState().character?.id ?? '';
 
+// ── Mutually-exclusive buff groups ──────────────────────────────────────────
+// Some elixirs belong to a logical "category" where only one tier may be
+// active at a time (e.g. ATK damage tiers 25/50/100 + flat +50 ATK should be
+// mutually exclusive — picking a stronger one replaces the weaker one).
+//
+// Returns the list of OTHER effects in the same group that must be removed
+// before the new buff is added (excludes the incoming effect itself — that
+// is handled separately by the same-effect dedup in addPausableBuff/addBuff).
+const ATK_BUFF_GROUP = ['atk_dmg_25', 'atk_dmg_50', 'atk_dmg_100', 'atk_boost_50'];
+const SPELL_BUFF_GROUP = ['spell_dmg_25', 'spell_dmg_50', 'spell_dmg_100'];
+
+const getMutexEffects = (effect: string): string[] => {
+    if (ATK_BUFF_GROUP.includes(effect)) {
+        return ATK_BUFF_GROUP.filter((e) => e !== effect);
+    }
+    if (SPELL_BUFF_GROUP.includes(effect)) {
+        return SPELL_BUFF_GROUP.filter((e) => e !== effect);
+    }
+    return [];
+};
+
 export const useBuffStore = create<IBuffStore>()(
         (set, get) => ({
             allBuffs: [],
@@ -81,9 +102,11 @@ export const useBuffStore = create<IBuffStore>()(
                     } else {
                         expiresAt = Date.now() + durationMs;
                     }
+                    // Drop same-effect dupes AND any mutually-exclusive sibling effects.
+                    const mutex = getMutexEffects(buff.effect);
                     return {
                         allBuffs: [
-                            ...s.allBuffs.filter((b) => !(b.characterId === charId && b.effect === buff.effect)),
+                            ...s.allBuffs.filter((b) => !(b.characterId === charId && (b.effect === buff.effect || mutex.includes(b.effect)))),
                             { ...buff, characterId: charId, expiresAt, timerMode: 'realtime' as BuffTimerMode, remainingMs: 0 },
                         ],
                     };
@@ -101,9 +124,12 @@ export const useBuffStore = create<IBuffStore>()(
                         (b) => b.characterId === charId && b.effect === buff.effect && b.timerMode === 'pausable',
                     );
                     const newRemaining = (existing ? existing.remainingMs : 0) + durationMs;
+                    // Drop same-effect dupes AND any mutually-exclusive sibling effects
+                    // (e.g. activating ATK +100% removes any active ATK +25/50% and +50 flat ATK).
+                    const mutex = getMutexEffects(buff.effect);
                     return {
                         allBuffs: [
-                            ...s.allBuffs.filter((b) => !(b.characterId === charId && b.effect === buff.effect)),
+                            ...s.allBuffs.filter((b) => !(b.characterId === charId && (b.effect === buff.effect || mutex.includes(b.effect)))),
                             {
                                 ...buff,
                                 characterId: charId,

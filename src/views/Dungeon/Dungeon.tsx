@@ -8,6 +8,8 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useDungeonStore } from '../../stores/dungeonStore';
+import { usePartyStore } from '../../stores/partyStore';
+import { getPartyGateLevel } from '../../systems/partySystem';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { ELIXIRS } from '../../stores/shopStore';
@@ -26,6 +28,7 @@ import {
 } from '../../systems/dungeonSystem';
 // Dungeon combat uses simplified damage calculation (no skills/crits)
 import { rollMonsterDamage } from '../../systems/combat';
+import { getEffectiveChar } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
@@ -249,7 +252,8 @@ const getPotionLabel = (effect: string): string => {
 // ── HP bar sub-component ─────────────────────────────────────────────────────
 
 const HpBar = ({ current, max, variant }: { current: number; max: number; variant: 'hp' | 'mp' | 'enemy' }) => {
-    const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
+    // 0/0 monster MP pools render as a full bar, per design spec.
+    const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 100;
     return (
         <div className={`dungeon__combat-bar dungeon__combat-bar--${variant}`}>
             <motion.div
@@ -280,9 +284,17 @@ const Dungeon = () => {
     const navigate = useNavigate();
 
     const character    = useCharacterStore((s) => s.character);
+    const party        = usePartyStore((s) => s.party);
     const equipment    = useInventoryStore((s) => s.equipment);
     const consumables  = useInventoryStore((s) => s.consumables);
     const completedTransforms = useTransformStore((s) => s.completedTransforms);
+    // Bug 2 (2026-04): subscribe to allBuffs so render-time charMaxHp/charMaxMp
+    // recomputes whenever a buff is added/removed/expired. Without this the
+    // component renders only on character/equipment changes — meaning a buff
+    // tick-down mid-combat leaves charMaxHp stale and the auto-potion clamps
+    // heals at the wrong cap.
+    const _activeBuffs = useBuffStore((s) => s.allBuffs);
+    void _activeBuffs;
     const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
     const { activeSkillSlots } = useSkillStore();
     // Dungeons always run at x1 speed (no speed controls)
@@ -365,8 +377,13 @@ const Dungeon = () => {
     const tb        = getTrainingBonuses(skillLevels, character.class);
     const charAtk   = character.attack  + eqStats.attack + getElixirAtkBonus();
     const charDef   = character.defense + eqStats.defense + tb.defense + getElixirDefBonus();
-    const charMaxHp = character.max_hp  + eqStats.hp + tb.max_hp + getElixirHpBonus();
-    const charMaxMp = character.max_mp  + eqStats.mp + tb.max_mp + getElixirMpBonus();
+    // Include active transform in max HP/MP so auto-potion thresholds use the
+    // true cap.
+    const effChar   = getEffectiveChar(character);
+    const baseMaxHp = character.max_hp  + eqStats.hp + tb.max_hp + getElixirHpBonus();
+    const baseMaxMp = character.max_mp  + eqStats.mp + tb.max_mp + getElixirMpBonus();
+    const charMaxHp = effChar?.max_hp ?? baseMaxHp;
+    const charMaxMp = effChar?.max_mp ?? baseMaxMp;
     const charSpeed = (character.attack_speed + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
 
     // Best potions the player owns
@@ -457,31 +474,89 @@ const Dungeon = () => {
         const hp = playerHpRef.current;
         const mp = playerMpRef.current;
 
-        // Auto HP (flat slot; falls back to strongest owned flat HP potion)
-        const hpPct = charMaxHp > 0 ? (hp / charMaxHp) * 100 : 100;
-        if (settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
-            const elixir = resolveAutoPotionElixir(settings.autoPotionHpId, 'hp', 'flat', inv.consumables);
-            if (elixir) {
-                inv.useConsumable(elixir.id);
+        // Bug 2 (2026-04): pull the EFFECTIVE max HP/MP fresh on every fire so
+        // active-but-stale buffs (e.g. a +500 / +25% elixir that ticked down
+        // mid-combat without re-rendering Dungeon.tsx) can't clamp the heal at
+        // the wrong cap. Closure-captured `charMaxHp` was the old culprit
+        // behind "potion count went down but HP barely moved" reports.
+        const freshChar = useCharacterStore.getState().character;
+        const freshEff = freshChar ? getEffectiveChar(freshChar) : null;
+        const liveMaxHp = freshEff?.max_hp ?? charMaxHp;
+        const liveMaxMp = freshEff?.max_mp ?? charMaxMp;
+
+        const hpMissing = Math.max(0, liveMaxHp - hp);
+        const mpMissing = Math.max(0, liveMaxMp - mp);
+        const hpPct = liveMaxHp > 0 ? (hp / liveMaxHp) * 100 : 100;
+        const mpPct = liveMaxMp > 0 ? (mp / liveMaxMp) * 100 : 100;
+
+        // Hard safety: never fire a potion when HP/MP are already at (or above) max —
+        // regardless of threshold. Guards against stale refs, transform-cap drift,
+        // and floating-point rounding when the user sees "100%" in the UI.
+        const hpAtFull = liveMaxHp > 0 && hp >= liveMaxHp;
+        const mpAtFull = liveMaxMp > 0 && mp >= liveMaxMp;
+
+        const resolveAmount = (
+            elixirIdOrNull: string | null,
+            kind: 'flat' | 'pct',
+            hm: 'hp' | 'mp',
+            maxVal: number,
+        ) => {
+            const elixir = resolveAutoPotionElixir(elixirIdOrNull, hm, kind, inv.consumables);
+            if (!elixir) return null;
+            const flatRe = hm === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/;
+            const pctRe = hm === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/;
+            const flat = elixir.effect.match(flatRe);
+            const pct = elixir.effect.match(pctRe);
+            if (flat) return { id: elixir.id, name: elixir.name_pl, amount: parseInt(flat[1], 10), pct: null as number | null };
+            if (pct) { const p = parseInt(pct[1], 10); return { id: elixir.id, name: elixir.name_pl, amount: Math.floor(maxVal * p / 100), pct: p }; }
+            return null;
+        };
+
+        // Flat HP
+        if (!hpAtFull && settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionHpId, 'flat', 'hp', liveMaxHp);
+            if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
                 startHpCooldown();
-                const flatMatch = elixir.effect.match(/^heal_hp_(\d+)$/);
-                const pctMatch = elixir.effect.match(/^heal_hp_pct_(\d+)$/);
-                if (flatMatch) { const a = parseInt(flatMatch[1], 10); healPlayerHp(a, charMaxHp); addLog(`[Auto] ${elixir.name_pl} +${a} HP`, 'system'); }
-                else if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxHp * p / 100); healPlayerHp(a, charMaxHp); addLog(`[Auto] ${elixir.name_pl} +${a} HP`, 'system'); }
+                healPlayerHp(pot.amount, liveMaxHp);
+                addLog(`[Auto] ${pot.name} +${pot.amount} HP`, 'system');
             }
         }
 
-        // Auto MP (flat slot; falls back to strongest owned flat MP potion)
-        const mpPct = charMaxMp > 0 ? (mp / charMaxMp) * 100 : 100;
-        if (settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
-            const elixir = resolveAutoPotionElixir(settings.autoPotionMpId, 'mp', 'flat', inv.consumables);
-            if (elixir) {
-                inv.useConsumable(elixir.id);
+        // Flat MP
+        if (!mpAtFull && settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionMpId, 'flat', 'mp', liveMaxMp);
+            if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
                 startMpCooldown();
-                const flatMatch = elixir.effect.match(/^heal_mp_(\d+)$/);
-                const pctMatch = elixir.effect.match(/^heal_mp_pct_(\d+)$/);
-                if (flatMatch) { const a = parseInt(flatMatch[1], 10); healPlayerMp(a, charMaxMp); addLog(`[Auto] ${elixir.name_pl} +${a} MP`, 'system'); }
-                else if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxMp * p / 100); healPlayerMp(a, charMaxMp); addLog(`[Auto] ${elixir.name_pl} +${a} MP`, 'system'); }
+                healPlayerMp(pot.amount, liveMaxMp);
+                addLog(`[Auto] ${pot.name} +${pot.amount} MP`, 'system');
+            }
+        }
+
+        // Pct HP
+        if (!hpAtFull && settings.autoPotionPctHpEnabled && settings.autoPotionPctHpThreshold > 0 && hpPct <= settings.autoPotionPctHpThreshold && pctHpCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionPctHpId, 'pct', 'hp', liveMaxHp);
+            if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
+                setPctHpCooldown(PCT_POTION_COOLDOWN_MS);
+                pctHpCooldownRef.current = PCT_POTION_COOLDOWN_MS;
+                healPlayerHp(pot.amount, liveMaxHp);
+                const tag = pot.pct != null ? ` (${pot.pct}%)` : '';
+                addLog(`[Auto] ${pot.name} +${pot.amount} HP${tag}`, 'system');
+            }
+        }
+
+        // Pct MP
+        if (!mpAtFull && settings.autoPotionPctMpEnabled && settings.autoPotionPctMpThreshold > 0 && mpPct <= settings.autoPotionPctMpThreshold && pctMpCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionPctMpId, 'pct', 'mp', liveMaxMp);
+            if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
+                setPctMpCooldown(PCT_POTION_COOLDOWN_MS);
+                pctMpCooldownRef.current = PCT_POTION_COOLDOWN_MS;
+                healPlayerMp(pot.amount, liveMaxMp);
+                const tag = pot.pct != null ? ` (${pot.pct}%)` : '';
+                addLog(`[Auto] ${pot.name} +${pot.amount} MP${tag}`, 'system');
             }
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, addLog]);
@@ -515,18 +590,26 @@ const Dungeon = () => {
         if (isMp && !isPct) startMpCooldown();
         if (isHp && isPct) startPctHpCooldown();
         if (isMp && isPct) startPctMpCooldown();
+        // Bug 2: read fresh effective max so a buff that just landed is
+        // reflected immediately. Without this, the closure-captured
+        // charMaxHp could clamp the heal at the pre-buff cap.
+        const freshChar = useCharacterStore.getState().character;
+        const freshEff = freshChar ? getEffectiveChar(freshChar) : null;
+        const liveMaxHp = freshEff?.max_hp ?? charMaxHp;
+        const liveMaxMp = freshEff?.max_mp ?? charMaxMp;
+
         const flatMatch = elixir.effect.match(/^heal_(hp|mp)_(\d+)$/);
         const pctMatch = elixir.effect.match(/^heal_(hp|mp)_pct_(\d+)$/);
         if (flatMatch) {
             const type = flatMatch[1] as 'hp' | 'mp';
             const amount = parseInt(flatMatch[2], 10);
-            if (type === 'hp') { healPlayerHp(amount, charMaxHp); addLog(`${elixir.name_pl} +${amount} HP`, 'system'); }
-            else { healPlayerMp(amount, charMaxMp); addLog(`${elixir.name_pl} +${amount} MP`, 'system'); }
+            if (type === 'hp') { healPlayerHp(amount, liveMaxHp); addLog(`${elixir.name_pl} +${amount} HP`, 'system'); }
+            else { healPlayerMp(amount, liveMaxMp); addLog(`${elixir.name_pl} +${amount} MP`, 'system'); }
         } else if (pctMatch) {
             const type = pctMatch[1] as 'hp' | 'mp';
             const pct = parseInt(pctMatch[2], 10);
-            if (type === 'hp') { const a = Math.floor(charMaxHp * pct / 100); healPlayerHp(a, charMaxHp); addLog(`${elixir.name_pl} +${a} HP (${pct}%)`, 'system'); }
-            else { const a = Math.floor(charMaxMp * pct / 100); healPlayerMp(a, charMaxMp); addLog(`${elixir.name_pl} +${a} MP (${pct}%)`, 'system'); }
+            if (type === 'hp') { const a = Math.floor(liveMaxHp * pct / 100); healPlayerHp(a, liveMaxHp); addLog(`${elixir.name_pl} +${a} HP (${pct}%)`, 'system'); }
+            else { const a = Math.floor(liveMaxMp * pct / 100); healPlayerMp(a, liveMaxMp); addLog(`${elixir.name_pl} +${a} MP (${pct}%)`, 'system'); }
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, startPctHpCooldown, startPctMpCooldown, addLog]);
 
@@ -1000,7 +1083,7 @@ const Dungeon = () => {
                 <button className="dungeon__back page-back-btn" onClick={() => { setPhase('list'); navigate('/'); }}>
                     ← Miasto
                 </button>
-                <h1 className="dungeon__title page-title">Dungeony</h1>
+                <h1 className="dungeon__title page-title">🏰 Dungeony</h1>
                 {phase === 'running' && activeDungeon && (
                     <span className="dungeon__wave-counter">
                         Fala {currentWave + 1}/{totalWaves}
@@ -1018,7 +1101,11 @@ const Dungeon = () => {
                             const attemptsUsed = getAttemptsUsed(d.id);
                             const attemptsMax  = getAttemptsMax();
                             const noAttempts   = !canEnter(d.id);
-                            const tooLow       = character.level < getDungeonMinLevel(d);
+                            // Gate by the lowest human level in the party — the
+                            // weakest member dictates what content the group can
+                            // enter. Solo players keep their own level.
+                            const gateLevel    = getPartyGateLevel(character.level, party?.members ?? null);
+                            const tooLow       = gateLevel < getDungeonMinLevel(d);
                             const blocked      = noAttempts || tooLow;
 
                             const isExpanded = expandedDungeon === d.id;
@@ -1214,6 +1301,8 @@ const Dungeon = () => {
                                     <span className="dungeon__combat-hp-text">{Math.max(0, monsterCurrentHp)}/{monsterMaxHp}</span>
                                 </div>
                                 <HpBar current={monsterCurrentHp} max={monsterMaxHp} variant="enemy" />
+                                <HpBar current={0} max={0} variant="mp" />
+                                <span className="dungeon__combat-hp-text">0/0 MP</span>
 
                                 {/* Floating damage on monster (from player) */}
                                 <AnimatePresence>

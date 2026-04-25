@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { useCharacterStore } from './characterStore';
 import { useInventoryStore } from './inventoryStore';
-import { useMasteryStore } from './masteryStore';
 import monstersData from '../data/monsters.json';
 import { computeTaskRewards, type IMonsterRewardSource } from '../systems/taskRewards';
 
@@ -99,8 +98,6 @@ export const useTaskStore = create<ITaskStore>()(
           });
         }
 
-        // Auto-track mastery kills (replaces old mastery task system)
-        useMasteryStore.getState().addMasteryKills(monsterId, killCount);
       },
 
       claimReward: (taskId: string) => {

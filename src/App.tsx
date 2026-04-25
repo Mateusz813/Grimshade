@@ -5,6 +5,7 @@ import { useCharacterStore } from './stores/characterStore';
 import { useSync } from './hooks/useSync';
 import { useMpRegen } from './hooks/useMpRegen';
 import { useBackgroundCombat } from './hooks/useBackgroundCombat';
+import { useChatUnreadSubscription } from './hooks/useChatUnreadSubscription';
 import {
     saveCurrentCharacterStoresSync,
     getActiveCharacterIdForRestore,
@@ -14,6 +15,7 @@ import {
 import { characterApi } from './api/v1/characterApi';
 import AppRouter from './routes/AppRouter';
 import LevelUpNotification from './components/ui/LevelUpNotification/LevelUpNotification';
+import ChatUnreadBadge from './components/ui/ChatUnreadBadge/ChatUnreadBadge';
 
 /**
  * On module load (before any React render), synchronously restore
@@ -38,6 +40,7 @@ const App = () => {
     useSync();
     useMpRegen();
     useBackgroundCombat();
+    useChatUnreadSubscription();
 
     // Auto-save character stores when closing/refreshing the page
     useEffect(() => {
@@ -139,6 +142,7 @@ const App = () => {
       <>
         <AppRouter session={session} />
         <LevelUpNotification />
+        <ChatUnreadBadge />
       </>
     );
 };

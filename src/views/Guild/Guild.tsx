@@ -22,7 +22,7 @@ const Guild = () => {
                     className="guild__back-btn page-back-btn"
                     onClick={() => navigate('/')}
                 >
-                    ← Powrót
+                    ← Miasto
                 </button>
                 <h1 className="guild__title page-title">🏛️ Gildia</h1>
             </header>

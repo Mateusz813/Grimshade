@@ -44,6 +44,7 @@ import {
 import { useSkillStore } from '../../stores/skillStore';
 import { getTrainingBonuses } from '../../systems/skillSystem';
 import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combatEngine';
+import { useCombatStore } from '../../stores/combatStore';
 import { statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
 // TCharacterClass used for class-based filtering
 import type { Rarity } from '../../systems/lootSystem';
@@ -1455,7 +1456,7 @@ const Inventory = () => {
     <div className="inventory">
       <header className="inventory__header page-header">
         <button className="inventory__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="inventory__title page-title">Ekwipunek</h1>
+        <h1 className="inventory__title page-title">🎒 Ekwipunek</h1>
         <span className="inventory__gold">💰 {gold}g</span>
       </header>
 
@@ -1868,6 +1869,24 @@ const Inventory = () => {
                         useBuffStore.getState().addBuff(buffData, cfg.durationMs);
                       }
                       useInventoryStore.getState().addConsumable(elixir.id, -1);
+                      // Max HP/MP elixirs raise effective cap — heal up to new effMax
+                      // so HP bar and auto-potion treat the player as "full" rather
+                      // than permanently sub-max until the next heal.
+                      if (cfg.effect === 'hp_boost_500' || cfg.effect === 'hp_pct_25'
+                          || cfg.effect === 'mp_boost_500' || cfg.effect === 'mp_pct_25') {
+                        const freshChar = useCharacterStore.getState().character;
+                        if (freshChar) {
+                          const eff = engineGetEffectiveChar(freshChar);
+                          const newMaxHp = eff?.max_hp ?? freshChar.max_hp;
+                          const newMaxMp = eff?.max_mp ?? freshChar.max_mp;
+                          useCharacterStore.getState().updateCharacter({ hp: newMaxHp, mp: newMaxMp });
+                          const cs = useCombatStore.getState();
+                          if (cs.phase === 'fighting') {
+                            cs.setHps(cs.monsterCurrentHp, newMaxHp);
+                            cs.healPlayerMp(newMaxMp, newMaxMp);
+                          }
+                        }
+                      }
                     };
                   }
                 } else {

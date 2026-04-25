@@ -153,7 +153,7 @@ const Party = () => {
     <div className="party">
       <header className="party__header page-header">
         <button className="party__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="party__title page-title">Party</h1>
+        <h1 className="party__title page-title">🤝 Party</h1>
         {party && (
           <span className="party__size">{party.members.length}/{party.maxMembers ?? MAX_PARTY_SIZE}</span>
         )}

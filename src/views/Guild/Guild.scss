@@ -3,20 +3,24 @@
 
 .guild {
     min-height: 100dvh;
-    padding: 16px 12px 120px;
+    padding: 0 20px 120px;
     width: 100%;
     max-width: 100%;
     margin: 0;
 
-    @include tablet {
-        padding: 24px 24px 140px;
+    @media (min-width: 768px) {
+        padding: 0 28px 140px;
     }
 
+    // Header uses .page-header — negate side padding so shared 20/28px isn't doubled.
     &__header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
+        margin-left: -20px;
+        margin-right: -20px;
+
+        @media (min-width: 768px) {
+            margin-left: -28px;
+            margin-right: -28px;
+        }
     }
 
     &__back-btn {

@@ -26,8 +26,44 @@ const getPeekedCompletedTransforms = (charId: string): number[] => {
 };
 
 /**
- * Read a character's saved equipment + training bonuses from localStorage
- * (without switching active character) and return effective max HP/MP.
+ * Inspect a character's persisted buffs (without switching active character)
+ * and return the effective max-HP/MP modifiers from any active elixirs.
+ *
+ * Pausable buffs are considered active when remainingMs > 0 (the timer only
+ * ticks during combat, so it does not expire on its own). Realtime buffs are
+ * considered active when their expiresAt is still in the future.
+ */
+const getElixirMaxBonuses = (
+  charId: string,
+  baseMaxHp: number,
+  baseMaxMp: number,
+): { hpFlat: number; hpPctMul: number; mpFlat: number; mpPctMul: number } => {
+  const peek = peekCharacterStore(charId, 'buffs');
+  const list = (peek?.allBuffs as Array<{ effect: string; timerMode?: string; remainingMs?: number; expiresAt?: number }> | undefined) ?? [];
+  const now = Date.now();
+  let hpFlat = 0;
+  let mpFlat = 0;
+  let hpPctMul = 1;
+  let mpPctMul = 1;
+  for (const b of list) {
+    const isPausable = b.timerMode === 'pausable';
+    const active = isPausable
+      ? (b.remainingMs ?? 0) > 0
+      : (b.expiresAt ?? 0) > now;
+    if (!active) continue;
+    if (b.effect === 'hp_boost_500') hpFlat += 500;
+    else if (b.effect === 'mp_boost_500') mpFlat += 500;
+    else if (b.effect === 'hp_pct_25') hpPctMul *= 1.25;
+    else if (b.effect === 'mp_pct_25') mpPctMul *= 1.25;
+  }
+  void baseMaxHp; void baseMaxMp;
+  return { hpFlat, hpPctMul, mpFlat, mpPctMul };
+};
+
+/**
+ * Read a character's saved equipment + training bonuses + active elixir buffs
+ * from localStorage (without switching active character) and return effective
+ * max HP/MP.
  */
 const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: number, charClass?: string): { maxHp: number; maxMp: number } => {
   const inv = peekCharacterStore(charId, 'inventory');
@@ -47,9 +83,14 @@ const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: numb
   }
 
   const tb = getTrainingBonuses(skillLevels, charClass);
+  const baseSum = {
+    hp: baseMaxHp + eqHp + (tb.max_hp ?? 0),
+    mp: baseMaxMp + eqMp + (tb.max_mp ?? 0),
+  };
+  const elx = getElixirMaxBonuses(charId, baseSum.hp, baseSum.mp);
   return {
-    maxHp: baseMaxHp + eqHp + (tb.max_hp ?? 0),
-    maxMp: baseMaxMp + eqMp + (tb.max_mp ?? 0),
+    maxHp: Math.floor((baseSum.hp + elx.hpFlat) * elx.hpPctMul),
+    maxMp: Math.floor((baseSum.mp + elx.mpFlat) * elx.mpPctMul),
   };
 };
 
@@ -178,8 +219,10 @@ const CharacterSelect = () => {
           const eff = getEffectiveMaxStats(char.id, char.max_hp, char.max_mp, char.class);
           const effMaxHp = eff.maxHp;
           const effMaxMp = eff.maxMp;
-          const hpPct = effMaxHp > 0 ? Math.min(100, (char.hp / effMaxHp) * 100) : 0;
-          const mpPct = effMaxMp > 0 ? Math.min(100, (char.mp / effMaxMp) * 100) : 0;
+          const curHp = Math.max(0, Math.min(char.hp ?? 0, effMaxHp));
+          const curMp = Math.max(0, Math.min(char.mp ?? 0, effMaxMp));
+          const hpPct = effMaxHp > 0 ? Math.min(100, (curHp / effMaxHp) * 100) : 0;
+          const mpPct = effMaxMp > 0 ? Math.min(100, (curMp / effMaxMp) * 100) : 0;
           const isConfirming = confirmDeleteId === char.id;
 
           const accent = getCardAccent(char.id, char.class);
@@ -210,14 +253,14 @@ const CharacterSelect = () => {
                     <div className="char-select__bar char-select__bar--hp">
                       <div className="char-select__bar-fill" style={{ width: `${hpPct}%` }} />
                     </div>
-                    <span className="char-select__bar-value">{char.hp}/{effMaxHp}</span>
+                    <span className="char-select__bar-value">{curHp}/{effMaxHp}</span>
                   </div>
                   <div className="char-select__bar-wrap">
                     <span className="char-select__bar-label">MP</span>
                     <div className="char-select__bar char-select__bar--mp">
                       <div className="char-select__bar-fill" style={{ width: `${mpPct}%` }} />
                     </div>
-                    <span className="char-select__bar-value">{char.mp}/{effMaxMp}</span>
+                    <span className="char-select__bar-value">{curMp}/{effMaxMp}</span>
                   </div>
                 </div>
               </div>

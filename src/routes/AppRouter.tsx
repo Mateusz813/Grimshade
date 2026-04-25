@@ -35,6 +35,8 @@ import OfflineHunt from '../views/OfflineHunt/OfflineHunt';
 import Guild from '../views/Guild/Guild';
 import GlobalChat from '../views/GlobalChat/GlobalChat';
 import Friends from '../views/Friends/Friends';
+import Raid from '../views/Raid/Raid';
+import Trainer from '../views/Trainer/Trainer';
 
 interface IAppRouterProps {
     session: Session | null;
@@ -294,6 +296,22 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     element={
                         <ProtectedRoute session={session}>
                             <Friends />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/raid"
+                    element={
+                        <ProtectedRoute session={session}>
+                            <CombatGuard><Raid /></CombatGuard>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/trainer"
+                    element={
+                        <ProtectedRoute session={session}>
+                            <CombatGuard><Trainer /></CombatGuard>
                         </ProtectedRoute>
                     }
                 />

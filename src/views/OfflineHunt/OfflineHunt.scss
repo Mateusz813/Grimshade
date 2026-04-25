@@ -4,13 +4,13 @@
 // ── Main container ──────────────────────────────────────────────────────────
 .oh {
     min-height: 100dvh;
-    padding: 16px 12px 120px;
+    padding: 0 20px 120px;
     width: 100%;
     max-width: 100%;
     margin: 0;
 
-    @include tablet {
-        padding: 24px 24px 140px;
+    @media (min-width: 768px) {
+        padding: 0 28px 140px;
     }
 
     &__empty {
@@ -20,14 +20,19 @@
     }
 
     // ── Header ──────────────────────────────────────────────────────────
+    // &__header / &__back / &__title inherit from .page-header / .page-back-btn / .page-title.
+    // Negate the root's side padding so the shared header padding (20/28px) isn't doubled.
     &__header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
+        margin-left: -20px;
+        margin-right: -20px;
+
+        @media (min-width: 768px) {
+            margin-left: -28px;
+            margin-right: -28px;
+        }
     }
 
-    &__back {
+    &__back-legacy {
         padding: 8px 14px;
         border: 1px solid rgba(255, 255, 255, 0.15);
         border-radius: 8px;
@@ -41,7 +46,7 @@
         &:hover { background: rgba(255, 255, 255, 0.1); }
     }
 
-    &__title {
+    &__title-legacy {
         font-size: 22px;
         font-weight: 700;
         color: #ffc107;

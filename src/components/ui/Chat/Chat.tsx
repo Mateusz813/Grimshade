@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { chatApi, type IMessage } from '../../../api/v1/chatApi';
 import { useFriendsStore } from '../../../stores/friendsStore';
@@ -20,14 +21,36 @@ interface IChatProps {
     title?: string;
     maxHeight?: number;
     /**
-     * When true the message row context menu is disabled (used for party chat
-     * where members are already friends by being in the party, or for PM).
+     * When true the message row context menu is disabled (used for PM tabs
+     * and other places where the extra actions don't make sense).
      */
     disableContextMenu?: boolean;
+    /**
+     * Optional override for "Wyślij prywatną wiadomość". When provided it's
+     * called with the target character name instead of navigating away.
+     * GlobalChat passes this to open a new PM tab in place.
+     */
+    onOpenPm?: (targetName: string) => void;
+    /**
+     * Fired every time a NEW message arrives via subscription/polling (not
+     * historical messages loaded on mount, and not the player's own sends).
+     * Used by multi-tab hosts to increment unread counters.
+     */
+    onMessageReceived?: (msg: IMessage) => void;
+    /**
+     * When false, the chat is kept mounted but hidden via CSS. Multi-tab
+     * containers use this to keep every tab's state (scroll, input, live
+     * subscriptions) alive while only displaying the selected one.
+     */
+    active?: boolean;
+    /** When true the chat stretches to fill its parent's available height. */
+    fillHeight?: boolean;
 }
 
 interface IContextMenuState {
-    visible: boolean;
+    // Viewport coordinates — the menu is rendered through a portal at
+    // document.body with position:fixed so it can't be clipped by the scroll
+    // container around the message list.
     x: number;
     y: number;
     targetName: string;
@@ -57,6 +80,10 @@ const Chat = ({
     title = 'Chat',
     maxHeight = 240,
     disableContextMenu = false,
+    onOpenPm,
+    onMessageReceived,
+    active = true,
+    fillHeight = false,
 }: IChatProps) => {
     const navigate = useNavigate();
     const [messages, setMessages] = useState<IMessage[]>([]);
@@ -66,7 +93,6 @@ const Chat = ({
     const [collapsed, setCollapsed] = useState(false);
     const [menu, setMenu] = useState<IContextMenuState | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
-    const messagesRef = useRef<HTMLDivElement>(null);
 
     const isFriend = useFriendsStore((s) => s.isFriend);
     const isBlocked = useFriendsStore((s) => s.isBlocked);
@@ -86,9 +112,14 @@ const Chat = ({
     // isn't in the supabase_realtime publication on this instance. Both paths
     // dedupe by id, so having them run together is safe.
     useEffect(() => {
+        const notifyIfNew = (msg: IMessage) => {
+            if (msg.character_name === characterName) return;
+            onMessageReceived?.(msg);
+        };
         const unsub = chatApi.subscribe(channel, (msg) => {
             setMessages((prev) => {
                 if (prev.some((m) => m.id === msg.id)) return prev;
+                notifyIfNew(msg);
                 return [...prev, msg];
             });
         });
@@ -99,7 +130,10 @@ const Chat = ({
                         const seen = new Set(prev.map((m) => m.id));
                         const merged = [...prev];
                         for (const m of fresh) {
-                            if (!seen.has(m.id)) merged.push(m);
+                            if (!seen.has(m.id)) {
+                                merged.push(m);
+                                notifyIfNew(m);
+                            }
                         }
                         return merged;
                     });
@@ -107,12 +141,14 @@ const Chat = ({
                 .catch(() => { /* offline – skip tick */ });
         }, 4000);
         return () => { unsub(); clearInterval(pollId); };
-    }, [channel]);
+    }, [channel, characterName, onMessageReceived]);
 
-    // Auto-scroll to bottom
+    // Auto-scroll to bottom — only when active so hidden tabs don't thrash
+    // scrollIntoView on every background message.
     useEffect(() => {
+        if (!active) return;
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, active]);
 
     // Close context menu on outside click / Escape
     useEffect(() => {
@@ -139,10 +175,6 @@ const Chat = ({
         setSending(true);
         setError(null);
         try {
-            // Push the inserted row into local state immediately so the sender
-            // sees their own message without waiting for the Realtime
-            // postgres_changes round-trip. The subscription dedupes by id so
-            // the live event won't create a duplicate.
             const inserted = await chatApi.sendMessage(channel, text, characterName, characterClass, characterLevel);
             if (inserted) {
                 setMessages((prev) => {
@@ -172,19 +204,18 @@ const Chat = ({
         if (disableContextMenu) return;
         if (msg.character_name === characterName) return;
         e.preventDefault();
-        const container = messagesRef.current;
-        if (!container) return;
-        const rect = container.getBoundingClientRect();
+        // Anchor to the clicked target — coordinates are viewport-relative and
+        // consumed by the portal-rendered menu (position:fixed), so the menu
+        // never gets clipped by the message list's scroll container.
         const clientX = 'touches' in e
-            ? (e.touches[0]?.clientX ?? rect.left + 40)
+            ? (e.touches[0]?.clientX ?? 40)
             : e.clientX;
         const clientY = 'touches' in e
-            ? (e.touches[0]?.clientY ?? rect.top + 40)
+            ? (e.touches[0]?.clientY ?? 40)
             : e.clientY;
         setMenu({
-            visible: true,
-            x: clientX - rect.left,
-            y: clientY - rect.top,
+            x: clientX,
+            y: clientY,
             targetName: msg.character_name,
             targetClass: msg.character_class ?? null,
             targetLevel: msg.character_level ?? null,
@@ -195,13 +226,29 @@ const Chat = ({
         if (!menu) return;
         const target = menu.targetName;
         setMenu(null);
-        navigate(`/friends?pm=${encodeURIComponent(target)}`);
+        if (onOpenPm) {
+            onOpenPm(target);
+            return;
+        }
+        navigate(`/chat?pm=${encodeURIComponent(target)}`);
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
 
+    const rootStyle: React.CSSProperties = {};
+    if (!active) rootStyle.display = 'none';
+    if (fillHeight) {
+        rootStyle.height = '100%';
+        rootStyle.display = active ? 'flex' : 'none';
+        rootStyle.flexDirection = 'column';
+    }
+
+    const messagesStyle: React.CSSProperties = fillHeight
+        ? { flex: 1, minHeight: 0, maxHeight: 'none' }
+        : { maxHeight };
+
     return (
-        <div className="chat">
+        <div className={`chat${fillHeight ? ' chat--fill' : ''}`} style={rootStyle}>
             <div className="chat__header" onClick={() => setCollapsed((c) => !c)}>
                 <span className="chat__title">{title}</span>
                 <span className="chat__toggle">{collapsed ? '▲' : '▼'}</span>
@@ -209,7 +256,7 @@ const Chat = ({
 
             {!collapsed && (
                 <>
-                    <div ref={messagesRef} className="chat__messages" style={{ maxHeight }}>
+                    <div className="chat__messages" style={messagesStyle}>
                         {messages.length === 0 && (
                             <p className="chat__empty">Brak wiadomości. Napisz pierwszy!</p>
                         )}
@@ -248,63 +295,6 @@ const Chat = ({
                             );
                         })}
                         <div ref={bottomRef} />
-
-                        {menu && (
-                            <div
-                                className="chat__menu"
-                                style={{ left: menu.x, top: menu.y }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="chat__menu-header">
-                                    <span className="chat__menu-icon">{getClassIcon(menu.targetClass)}</span>
-                                    <span className="chat__menu-name">{menu.targetName}</span>
-                                    {menu.targetLevel !== null && (
-                                        <span className="chat__menu-level">Lv {menu.targetLevel}</span>
-                                    )}
-                                </div>
-                                {isFriend(menu.targetName) ? (
-                                    <button
-                                        type="button"
-                                        className="chat__menu-item"
-                                        onClick={() => { removeFriend(menu.targetName); setMenu(null); }}
-                                    >
-                                        ✖ Usuń ze znajomych
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="chat__menu-item"
-                                        onClick={() => { addFriend(menu.targetName); setMenu(null); }}
-                                    >
-                                        ➕ Dodaj do znajomych
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    className="chat__menu-item"
-                                    onClick={onSendPm}
-                                >
-                                    💌 Wyślij prywatną wiadomość
-                                </button>
-                                {isBlocked(menu.targetName) ? (
-                                    <button
-                                        type="button"
-                                        className="chat__menu-item chat__menu-item--danger"
-                                        onClick={() => { unblockUser(menu.targetName); setMenu(null); }}
-                                    >
-                                        🔓 Odblokuj gracza
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="chat__menu-item chat__menu-item--danger"
-                                        onClick={() => { blockUser(menu.targetName); setMenu(null); }}
-                                    >
-                                        🚫 Zablokuj gracza
-                                    </button>
-                                )}
-                            </div>
-                        )}
                     </div>
 
                     {error && <p className="chat__error">{error}</p>}
@@ -328,6 +318,64 @@ const Chat = ({
                         </button>
                     </div>
                 </>
+            )}
+
+            {menu && createPortal(
+                <div
+                    className="chat__menu"
+                    style={{ position: 'fixed', left: menu.x, top: menu.y }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="chat__menu-header">
+                        <span className="chat__menu-icon">{getClassIcon(menu.targetClass)}</span>
+                        <span className="chat__menu-name">{menu.targetName}</span>
+                        {menu.targetLevel !== null && (
+                            <span className="chat__menu-level">Lv {menu.targetLevel}</span>
+                        )}
+                    </div>
+                    {isFriend(menu.targetName) ? (
+                        <button
+                            type="button"
+                            className="chat__menu-item"
+                            onClick={() => { removeFriend(menu.targetName); setMenu(null); }}
+                        >
+                            ✖ Usuń ze znajomych
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className="chat__menu-item"
+                            onClick={() => { addFriend(menu.targetName); setMenu(null); }}
+                        >
+                            ➕ Dodaj do znajomych
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="chat__menu-item"
+                        onClick={onSendPm}
+                    >
+                        💌 Wyślij prywatną wiadomość
+                    </button>
+                    {isBlocked(menu.targetName) ? (
+                        <button
+                            type="button"
+                            className="chat__menu-item chat__menu-item--danger"
+                            onClick={() => { unblockUser(menu.targetName); setMenu(null); }}
+                        >
+                            🔓 Odblokuj gracza
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className="chat__menu-item chat__menu-item--danger"
+                            onClick={() => { blockUser(menu.targetName); setMenu(null); }}
+                        >
+                            🚫 Zablokuj gracza
+                        </button>
+                    )}
+                </div>,
+                document.body,
             )}
         </div>
     );

@@ -2,14 +2,18 @@
 @use '../../styles/breakpoints' as *;
 
 .global-chat {
-    min-height: 100dvh;
-    padding: 16px 12px 120px;
+    // Fill the viewport height so the chat panel itself can flex-grow and
+    // show the newest messages without scrolling the whole page.
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px 16px;
     width: 100%;
     max-width: 100%;
     margin: 0;
 
-    @include tablet {
-        padding: 24px 24px 140px;
+    @media (min-width: 768px) {
+        padding: 0 28px 20px;
     }
 
     &__loading {
@@ -18,11 +22,15 @@
         padding: 40px;
     }
 
+    // Header uses .page-header — negate root side padding so shared 20/28px isn't doubled.
     &__header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
+        margin-left: -20px;
+        margin-right: -20px;
+
+        @media (min-width: 768px) {
+            margin-left: -28px;
+            margin-right: -28px;
+        }
     }
 
     &__back-btn {
@@ -59,10 +67,107 @@
         line-height: 1.5;
     }
 
+    // ── Tabs bar ───────────────────────────────────────────────────────────
+    &__tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 0 0 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        overflow-x: auto;
+    }
+
+    &__tab {
+        display: inline-flex;
+        align-items: stretch;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: background 120ms ease, border-color 120ms ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        &--active {
+            background: rgba(233, 69, 96, 0.15);
+            border-color: rgba(233, 69, 96, 0.6);
+
+            .global-chat__tab-title { color: #fff; }
+        }
+    }
+
+    &__tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: transparent;
+        border: none;
+        color: $color-text-muted;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    &__tab-title {
+        color: inherit;
+    }
+
+    &__tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #e94560;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    &__tab-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        background: transparent;
+        border: none;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        color: $color-text-muted;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        font-family: inherit;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ff8899;
+        }
+    }
+
     &__chat-wrap {
         background: rgba(15, 15, 25, 0.5);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
         padding: 8px;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+
+        // Every mounted Chat (one per tab) fills the wrap; inactive tabs are
+        // already hidden via inline display:none from the component.
+        > .chat {
+            flex: 1;
+            min-height: 0;
+        }
     }
 }

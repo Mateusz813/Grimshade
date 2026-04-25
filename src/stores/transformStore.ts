@@ -70,6 +70,19 @@ interface ITransformStore {
    * migrated via `migrateLegacyBakedBonuses()` on first boot.
    */
   bakedBonusesApplied: boolean;
+  /**
+   * Bug 1 (2026-04): Transform ID of an unclaimed reward, or null.
+   *
+   * Set automatically the moment all quest monsters are defeated (regardless
+   * of whether the player actually clicks "Zgarnij nagrody"). It survives
+   * `abandonTransformQuest()` so that hitting "Wroc do miasta" / "Uciekaj"
+   * after victory — or closing the browser mid-claim — never destroys the
+   * pending consumable + weapon rewards.
+   *
+   * Cleared only by `claimPendingReward()` once items have been added to
+   * the inventory. Persisted via characterScope.
+   */
+  pendingClaimTransformId: number | null;
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -95,14 +108,27 @@ interface ITransformStore {
    * Complete the active transform quest. Moves the transform ID to completedTransforms
    * and clears the quest state. Returns the transform ID that was completed, or 0 if
    * no quest was active or quest is not yet complete.
+   *
+   * Note: also returns the pending claim ID if there is one (allowing callers
+   * to drive the post-quest claim flow even after the quest itself has been
+   * abandoned).
    */
   completeTransform: () => number;
 
   /**
    * Abandon the current transform quest without completing it.
-   * Progress is lost.
+   * Progress is lost — BUT if the quest had already auto-locked a pending
+   * reward claim (all monsters defeated), that claim survives.
    */
   abandonTransformQuest: () => void;
+
+  /**
+   * Bug 1: claim the pending consumable rewards for a previously-locked
+   * transform. Returns the transform ID that was pending (or null), and
+   * clears the `pendingClaimTransformId` field. Caller is responsible for
+   * actually adding the items to inventory + refilling HP/MP.
+   */
+  claimPendingReward: () => number | null;
 
   // ── Getters ──────────────────────────────────────────────────────────────
 
@@ -154,6 +180,7 @@ export const useTransformStore = create<ITransformStore>()(
     // field so loading a legacy save (without the key) falls back to `true`
     // via the migration path below.
     bakedBonusesApplied: false,
+    pendingClaimTransformId: null,
 
     // ── Actions ────────────────────────────────────────────────────────────
 
@@ -193,7 +220,7 @@ export const useTransformStore = create<ITransformStore>()(
     },
 
     defeatMonster: (monsterId: string): boolean => {
-      const { currentTransformQuest } = get();
+      const { currentTransformQuest, pendingClaimTransformId } = get();
       if (!currentTransformQuest || !currentTransformQuest.inProgress) return false;
 
       // Check if this monster is part of the quest
@@ -204,11 +231,22 @@ export const useTransformStore = create<ITransformStore>()(
       // Already defeated – still return true (idempotent)
       if (currentTransformQuest.monstersDefeated.includes(monsterId)) return true;
 
+      const newDefeated = [...currentTransformQuest.monstersDefeated, monsterId];
+      const isFullyComplete = newDefeated.length >= currentTransformQuest.totalMonsters;
+
+      // Bug 1: the moment the final monster falls, lock in a pending claim so
+      // the player can never lose their reward by missclicking "Wroc do miasta"
+      // or closing the browser before clicking through the animation. The
+      // quest itself stays in progress (so resume + claim flow works); the
+      // pending claim only gets cleared after items are added to inventory.
+      const lockClaim = isFullyComplete && pendingClaimTransformId == null;
+
       set({
         currentTransformQuest: {
           ...currentTransformQuest,
-          monstersDefeated: [...currentTransformQuest.monstersDefeated, monsterId],
+          monstersDefeated: newDefeated,
         },
+        ...(lockClaim ? { pendingClaimTransformId: currentTransformQuest.transformId } : {}),
       });
 
       return true;
@@ -221,26 +259,56 @@ export const useTransformStore = create<ITransformStore>()(
     },
 
     completeTransform: (): number => {
-      const { currentTransformQuest, completedTransforms } = get();
-      if (!currentTransformQuest || !currentTransformQuest.inProgress) return 0;
+      const { currentTransformQuest, completedTransforms, pendingClaimTransformId } = get();
 
-      // Verify all monsters are defeated
-      if (currentTransformQuest.monstersDefeated.length < currentTransformQuest.totalMonsters) {
-        return 0;
+      // Happy path: quest is in progress and all monsters defeated.
+      if (
+        currentTransformQuest?.inProgress &&
+        currentTransformQuest.monstersDefeated.length >= currentTransformQuest.totalMonsters
+      ) {
+        const completedId = currentTransformQuest.transformId;
+        const alreadyCompleted = completedTransforms.includes(completedId);
+
+        set({
+          completedTransforms: alreadyCompleted
+            ? completedTransforms
+            : [...completedTransforms, completedId],
+          currentTransformQuest: null,
+          // Pending claim was already set by defeatMonster on the last kill,
+          // but make absolutely sure (some legacy save states could be missing it).
+          pendingClaimTransformId: pendingClaimTransformId ?? completedId,
+        });
+
+        return completedId;
       }
 
-      const completedId = currentTransformQuest.transformId;
+      // Recovery path (Bug 1): the quest was abandoned mid-claim but a pending
+      // reward survived. Make sure the transform id is on the completed list
+      // and return it so the caller can drive the rewards screen.
+      if (pendingClaimTransformId != null) {
+        if (!completedTransforms.includes(pendingClaimTransformId)) {
+          set({
+            completedTransforms: [...completedTransforms, pendingClaimTransformId],
+          });
+        }
+        return pendingClaimTransformId;
+      }
 
-      set({
-        completedTransforms: [...completedTransforms, completedId],
-        currentTransformQuest: null,
-      });
-
-      return completedId;
+      return 0;
     },
 
     abandonTransformQuest: (): void => {
+      // Bug 1: pendingClaimTransformId is intentionally NOT cleared here —
+      // if all monsters were already defeated, the player keeps their right
+      // to claim consumable rewards even after fleeing.
       set({ currentTransformQuest: null });
+    },
+
+    claimPendingReward: (): number | null => {
+      const { pendingClaimTransformId } = get();
+      if (pendingClaimTransformId == null) return null;
+      set({ pendingClaimTransformId: null });
+      return pendingClaimTransformId;
     },
 
     // ── Getters ────────────────────────────────────────────────────────────

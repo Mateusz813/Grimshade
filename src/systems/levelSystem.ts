@@ -1,16 +1,53 @@
 // ── XP Curve ──────────────────────────────────────────────────────────────────
 //
-// Targets (CLAUDE.md):
-//   Lvl   1–50  : fast                  (100 → ~125 000 XP per level)
-//   Lvl  51–200 : ~dozens of min/level
-//   Lvl 201–1000: ≥1 level/day          at active play
-//   Lvl 1000    : ≈6 months total
+// Below level 100 we keep the legacy `300 * L^1.5` curve — cheap early levels
+// so new players see progress fast. From 100 onwards the curve bends up so a
+// level's worth of XP roughly equals the reward from a single bulk kill-task
+// at the player's tier, following these player-defined anchors:
 //
-// Formula: 100 * level^1.6 (min 100) — steeper early, prevents power-leveling
+//   Level  200 → 5 000   kills = 1 level   → ~7.3M  XP / level
+//   Level  400 → 10 000  kills = 1 level   → ~31.9M XP / level
+//   Level  600 → 20 000  kills = 1 level   → ~100.7M XP / level   (2× @400)
+//   Level  800 → 100 000 kills = 1 level   → ~696.8M XP / level   (10× @800)
+//   Level 1000 → 100 000 kills = 1 level   → ~897.2M XP / level
+//
+// taskRewardXp = monsterXp(L) × killCount × 1.5 (see taskRewards.ts), and the
+// anchors were computed from monsters.json's `xp` column at each level tier.
+// Between anchors we interpolate linearly; above 1000 we just hold the curve.
+
+interface IXpAnchor { level: number; xp: number }
+
+const XP_ANCHORS: readonly IXpAnchor[] = [
+  { level: 100,  xp: Math.floor(300 * Math.pow(100, 1.5)) }, // 300 000 — smooth join with legacy curve
+  { level: 200,  xp:   7_327_500 },
+  { level: 400,  xp:  31_875_000 },
+  { level: 600,  xp: 100_680_000 },
+  { level: 800,  xp: 696_750_000 },
+  { level: 1000, xp: 897_150_000 },
+];
+
+const legacyXp = (level: number): number =>
+  Math.max(300, Math.floor(300 * Math.pow(level, 1.5)));
+
+const interpolateAnchors = (level: number): number => {
+  if (level <= XP_ANCHORS[0].level) return XP_ANCHORS[0].xp;
+  const last = XP_ANCHORS[XP_ANCHORS.length - 1];
+  if (level >= last.level) return last.xp;
+  for (let i = 1; i < XP_ANCHORS.length; i++) {
+    const a = XP_ANCHORS[i - 1];
+    const b = XP_ANCHORS[i];
+    if (level <= b.level) {
+      const t = (level - a.level) / (b.level - a.level);
+      return Math.floor(a.xp + (b.xp - a.xp) * t);
+    }
+  }
+  return last.xp;
+};
 
 export const xpToNextLevel = (level: number): number => {
   if (level <= 0) return 300;
-  return Math.max(300, Math.floor(300 * Math.pow(level, 1.5)));
+  if (level < XP_ANCHORS[0].level) return legacyXp(level);
+  return interpolateAnchors(level);
 };
 
 // ── Total XP from level 1 to reach `level` ────────────────────────────────────

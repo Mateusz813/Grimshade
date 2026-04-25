@@ -1,0 +1,190 @@
+.raid {
+    padding: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+
+        h1 { margin: 0; font-size: 28px; }
+    }
+
+    &__back-btn {
+        background: #1f1f2e;
+        border: 1px solid #333;
+        color: #ccc;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        &:hover { background: #2a2a3a; }
+    }
+
+    &__gate {
+        background: #1a1a28;
+        border: 1px solid #2a2a3a;
+        border-radius: 12px;
+        padding: 32px;
+        text-align: center;
+
+        &-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+        h2 { margin: 0 0 8px; }
+        p { color: #aaa; margin-bottom: 16px; }
+        button {
+            background: #e53935; color: white; padding: 8px 20px; border: none;
+            border-radius: 6px; cursor: pointer; font-weight: bold;
+        }
+    }
+
+    &__hint {
+        color: #888; margin-bottom: 12px; font-size: 14px;
+    }
+
+    &__list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+    }
+
+    &__card {
+        display: flex; flex-direction: column;
+        background: #1a1a28; border: 1px solid #2a2a3a;
+        padding: 12px; border-radius: 10px; cursor: pointer;
+        text-align: left; gap: 4px;
+        color: #e0e0e0;
+        position: relative;
+        &:hover:not(:disabled) { border-color: #e53935; transform: translateY(-2px); }
+        &:disabled { opacity: 0.45; cursor: not-allowed; }
+        &--locked { border-color: #444; }
+        &--done { opacity: 0.5; }
+        &-lvl { font-size: 12px; color: #ffc107; font-weight: bold; }
+        &-name { font-size: 16px; font-weight: bold; }
+        &-waves { font-size: 12px; color: #aaa; }
+        &-left { font-size: 11px; color: #4fc3f7; position: absolute; top: 10px; right: 10px; }
+        &-lock { position: absolute; bottom: 10px; right: 10px; font-size: 18px; }
+    }
+
+    // ── Fighting layout ────────────────────────────────────────────────────
+    &--fighting {
+        background: linear-gradient(180deg, #0d0d1a 0%, #1a1a28 100%);
+    }
+
+    &__topbar {
+        display: flex; justify-content: space-between; align-items: center;
+        background: #1a1a28; padding: 8px 16px; border-radius: 8px; margin-bottom: 12px;
+    }
+
+    &__speed {
+        display: flex; gap: 4px;
+        button {
+            background: #2a2a3a; border: 1px solid #333; color: #ccc;
+            padding: 4px 10px; border-radius: 4px; cursor: pointer;
+            &.is-active { background: #e53935; color: white; border-color: #e53935; }
+        }
+    }
+
+    &__escape {
+        background: #b71c1c; color: white; border: none; padding: 6px 14px;
+        border-radius: 6px; cursor: pointer; font-weight: bold;
+    }
+
+    &__arena {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        flex: 1;
+        @media (max-width: 768px) { grid-template-columns: 1fr; }
+    }
+
+    &__members, &__bosses {
+        display: flex; flex-direction: column; gap: 8px;
+    }
+
+    &__member {
+        background: #1f1f2e; border: 2px solid #888; border-radius: 8px;
+        padding: 10px; transition: opacity 0.3s;
+        &.is-dead { opacity: 0.4; filter: grayscale(1); }
+        &.is-escaped { opacity: 0.3; border-style: dashed; }
+
+        &-head {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;
+        }
+        &-name { font-weight: bold; flex: 1; }
+        &-class { font-size: 11px; text-transform: uppercase; }
+        &-tier, &-bot { font-size: 11px; background: #333; padding: 1px 6px; border-radius: 3px; }
+    }
+
+    &__boss {
+        background: #1f1f2e; border: 2px solid #b71c1c; border-radius: 8px;
+        padding: 12px; position: relative;
+        &.is-dead { opacity: 0.3; filter: grayscale(1); }
+
+        &-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        &-sprite { font-size: 28px; }
+        &-name { font-weight: bold; }
+    }
+
+    &__bar {
+        position: relative; height: 18px; background: #0a0a10; border-radius: 4px;
+        overflow: hidden; margin-top: 4px;
+        div { height: 100%; transition: width 0.2s; }
+        span {
+            position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+            text-align: center; font-size: 11px; line-height: 18px;
+            color: white; text-shadow: 0 0 2px black;
+        }
+        &--hp div { background: linear-gradient(90deg, #d32f2f, #f44336); }
+        &--mp div { background: linear-gradient(90deg, #1976d2, #2196f3); }
+    }
+
+    &__fx {
+        position: absolute; top: 10px; right: 10px; font-size: 42px;
+        animation: raid-fx-pop 0.9s ease-out forwards;
+        pointer-events: none;
+    }
+
+    &__log {
+        background: #0a0a12; border: 1px solid #2a2a3a; border-radius: 6px;
+        padding: 8px 12px; margin-top: 12px; max-height: 140px; overflow-y: auto;
+        font-family: monospace; font-size: 12px;
+        div { line-height: 1.4; }
+    }
+
+    // ── Result ─────────────────────────────────────────────────────────────
+    &__result {
+        display: flex; flex-direction: column; gap: 12px; max-width: 700px; margin: 0 auto;
+
+        &-member {
+            background: #1a1a28; border: 2px solid; border-radius: 8px; padding: 12px;
+            h3 { margin: 0 0 8px; }
+            ul { margin: 0; padding-left: 18px; }
+        }
+    }
+
+    &__drop {
+        &--common { color: #cccccc; }
+        &--rare { color: #4fc3f7; }
+        &--epic { color: #ba68c8; }
+        &--legendary { color: #ff9800; }
+        &--mythic { color: #f48fb1; }
+        &--heroic { color: #ffd54f; font-weight: bold; }
+    }
+
+    &__primary {
+        background: #e53935; color: white; border: none; padding: 10px 24px;
+        border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 16px;
+        align-self: center;
+    }
+}
+
+@keyframes raid-fx-pop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    30%  { transform: scale(1.4); opacity: 1; }
+    100% { transform: scale(1.1); opacity: 0; }
+}

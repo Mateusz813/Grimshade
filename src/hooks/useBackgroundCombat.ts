@@ -182,10 +182,12 @@ export const useBackgroundCombat = () => {
     }, [phase, combatSpeed, botsKey]);
 
     // ── Cooldown tick timer (smooth UI in foreground) ────────────────────────
-    // Always runs during combat for smooth cooldown bar animations.
-    // The batch processing loops above handle the heavy lifting in background tabs.
+    // Runs during fighting AND victory so cooldowns continue draining during
+    // the ~1s gap between waves. Previously the tick paused on victory, which
+    // made cooldowns appear to "never reach zero" and "jump backward" when the
+    // next wave started (if AUTO recast immediately on the first tick).
     useEffect(() => {
-        if (phase !== 'fighting' || combatSpeed === 'SKIP') return;
+        if ((phase !== 'fighting' && phase !== 'victory') || combatSpeed === 'SKIP') return;
         const speedMult = SPEED_MULT[combatSpeed] ?? 1;
         const decPerTick = 100 * speedMult;
         let lastTickAt = Date.now();

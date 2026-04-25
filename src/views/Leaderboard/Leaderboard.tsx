@@ -170,7 +170,7 @@ const Leaderboard = () => {
     <div className="leaderboard">
       <header className="leaderboard__header page-header">
         <button className="leaderboard__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="leaderboard__title page-title">Rankingi</h1>
+        <h1 className="leaderboard__title page-title">🏆 Rankingi</h1>
         <button className="leaderboard__refresh" onClick={() => fetchLeaderboard(tab)}>
           ↻
         </button>

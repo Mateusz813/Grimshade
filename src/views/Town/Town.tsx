@@ -10,6 +10,7 @@ import { useTaskStore } from '../../stores/taskStore';
 import { useQuestStore } from '../../stores/questStore';
 import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { useSkillStore } from '../../stores/skillStore';
+import { useChatTabsStore } from '../../stores/chatTabsStore';
 import { useSync } from '../../hooks/useSync';
 import { useOfflineTrainingResume } from '../../hooks/useOfflineTrainingResume';
 import { xpProgress, xpToNextLevel } from '../../systems/levelSystem';
@@ -61,6 +62,7 @@ const Town = () => {
   const navigate   = useNavigate();
   const { t }      = useTranslation();
   const character  = useCharacterStore((s) => s.character);
+  const totalChatUnread = useChatTabsStore((s) => s.tabs.reduce((n, t) => n + t.unread, 0));
   const completedTransforms = useTransformStore((s) => s.completedTransforms);
   const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
   const transformColor = getHighestTransformColor();
@@ -651,7 +653,7 @@ const Town = () => {
           disabled={isBlocked}
           title={isBlocked ? blockedReason : undefined}
         >
-          <span className="town__nav-icon">🔥</span>
+          <span className="town__nav-icon">🦋</span>
           <span className="town__nav-btn-label town__nav-btn-label--glass">Transform</span>
           {isBlocked && <span className="town__blocked-tag">⚔️</span>}
         </button>
@@ -673,6 +675,16 @@ const Town = () => {
         >
           <span className="town__nav-icon">👹</span>
           <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.boss')}</span>
+          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
+        </button>
+        <button
+          className={`town__nav-btn town__nav-tile town__nav-tile--raid${isBlocked ? ' town__nav-btn--blocked' : ''}`}
+          onClick={() => !isBlocked && navigate('/raid')}
+          disabled={isBlocked}
+          title={isBlocked ? blockedReason : 'Raidy party (4 bossy × fale)'}
+        >
+          <span className="town__nav-icon">⚔️</span>
+          <span className="town__nav-btn-label town__nav-btn-label--glass">Raid</span>
           {isBlocked && <span className="town__blocked-tag">⚔️</span>}
         </button>
         <button className="town__nav-btn town__nav-tile town__nav-tile--monsters" onClick={() => navigate('/monsters')}>
@@ -715,9 +727,22 @@ const Town = () => {
           <span className="town__nav-btn-label town__nav-btn-label--glass">Arena</span>
           <span className="town__coming-soon">Wkrótce</span>
         </button>
+        <button
+          className={`town__nav-btn town__nav-tile town__nav-tile--trainer${isBlocked ? ' town__nav-btn--blocked' : ''}`}
+          onClick={() => !isBlocked && navigate('/trainer')}
+          disabled={isBlocked}
+          title={isBlocked ? blockedReason : 'Trainer — test skilli i DPS'}
+        >
+          <span className="town__nav-icon">🎯</span>
+          <span className="town__nav-btn-label town__nav-btn-label--glass">Trainer</span>
+          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
+        </button>
         <button className="town__nav-btn town__nav-tile town__nav-tile--chat" onClick={() => navigate('/chat')}>
           <span className="town__nav-icon">💬</span>
           <span className="town__nav-btn-label town__nav-btn-label--glass">Chat</span>
+          {totalChatUnread > 0 && (
+            <span className="town__nav-badge">{totalChatUnread > 99 ? '99+' : totalChatUnread}</span>
+          )}
         </button>
         <button className="town__nav-btn town__nav-tile town__nav-tile--friends" onClick={() => navigate('/friends')}>
           <span className="town__nav-icon">👥</span>

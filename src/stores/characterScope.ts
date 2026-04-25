@@ -291,8 +291,9 @@ const STORE_ENTRIES: IStoreEntry[] = [
       completedTransforms: [],
       currentTransformQuest: null,
       bakedBonusesApplied: false,
+      pendingClaimTransformId: null,
     }),
-    stateKeys: ['completedTransforms', 'currentTransformQuest', 'bakedBonusesApplied'],
+    stateKeys: ['completedTransforms', 'currentTransformQuest', 'bakedBonusesApplied', 'pendingClaimTransformId'],
   },
   {
     baseKey: 'combat',
