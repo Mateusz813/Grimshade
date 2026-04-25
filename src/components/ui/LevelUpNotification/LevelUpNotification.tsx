@@ -18,6 +18,9 @@ const LevelUpNotification = () => {
 
   if (!event) return null;
 
+  const goldGained = event.goldGained ?? 0;
+  const goldMilestones = event.goldMilestoneLevels ?? [];
+
   // ── Subtle (in-combat) ──────────────────────────────────────────────────
   if (event.inCombat) {
     return (
@@ -29,6 +32,11 @@ const LevelUpNotification = () => {
             <span className="lvlup__subtle-title">Poziom {event.newLevel}!</span>
             <span className="lvlup__subtle-sub">
               HP/MP odnowione ✦ +{event.statPointsGained} pkt statystyk
+              {goldGained > 0 && (
+                <>
+                  {' '}✦ <span className="lvlup__subtle-gold">+{goldGained.toLocaleString()} 💰</span>
+                </>
+              )}
             </span>
           </div>
         </div>
@@ -84,6 +92,16 @@ const LevelUpNotification = () => {
           {event.statPointsGained > 0 && (
             <span className="lvlup__reward lvlup__reward--stats">
               ✦ +{event.statPointsGained} punktów statystyk
+            </span>
+          )}
+          {goldGained > 0 && (
+            <span className="lvlup__reward lvlup__reward--gold">
+              💰 +{goldGained.toLocaleString()} Gold
+              {goldMilestones.length > 0 && (
+                <span className="lvlup__reward-detail">
+                  {' '}(milestone lvl {goldMilestones.join(', ')})
+                </span>
+              )}
             </span>
           )}
         </div>

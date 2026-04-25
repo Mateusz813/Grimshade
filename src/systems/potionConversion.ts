@@ -12,6 +12,9 @@
  *   4× hp_potion_super   (4×7.5k= 30kg)  → 1× hp_potion_ultimate(shop 30000g)
  *   5× hp_potion_ultimate(5×30k = 150kg) → 1× hp_potion_divine  (shop 150000g)
  *
+ * Alternate flat branch (parallel to the pct branch from tier 3 onward):
+ *   4× hp_potion_lg      (4×600 = 2400g) → 1× hp_potion_mega    (Mega, +1000 flat HP)
+ *
  * Same ratios for MP potions.
  * Supports mass conversion (convert N batches at once).
  */
@@ -83,6 +86,14 @@ export const POTION_CONVERSIONS: IPotionConversion[] = [
         outputId: 'hp_potion_divine', outputName: 'Boski Eliksir HP', outputIcon: '❤️',
         outputMinLevel: 600,
     },
+    // Alternate flat-heal branch: 4× Silny → 1× Mega (1000 flat HP)
+    {
+        tier: 7, family: 'hp',
+        inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: '❤️',
+        inputCount: 4,
+        outputId: 'hp_potion_mega', outputName: 'Mega Eliksir HP', outputIcon: '❤️‍🔥',
+        outputMinLevel: 100,
+    },
     // ── MP Potions ──
     {
         tier: 1, family: 'mp',
@@ -125,6 +136,14 @@ export const POTION_CONVERSIONS: IPotionConversion[] = [
         inputCount: 5,
         outputId: 'mp_potion_divine', outputName: 'Boski Eliksir MP', outputIcon: '💧',
         outputMinLevel: 600,
+    },
+    // Alternate flat-heal branch: 4× Silny → 1× Mega (1000 flat MP)
+    {
+        tier: 7, family: 'mp',
+        inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: '💧',
+        inputCount: 4,
+        outputId: 'mp_potion_mega', outputName: 'Mega Eliksir MP', outputIcon: '💎',
+        outputMinLevel: 100,
     },
 ];
 

@@ -1110,9 +1110,29 @@
     isolation: isolate;
 
     // Every tile uses the glass label for text
-    > span:not(.town__nav-icon):not(.town__nav-btn-label):not(.town__blocked-tag):not(.town__claim-badge):not(.town__task-indicator):not(.town__rest-full-tag):not(.town__coming-soon):not(.town__nav-avatar-bg) {
+    > span:not(.town__nav-icon):not(.town__nav-btn-label):not(.town__blocked-tag):not(.town__claim-badge):not(.town__task-indicator):not(.town__rest-full-tag):not(.town__coming-soon):not(.town__nav-avatar-bg):not(.town__nav-badge) {
       display: none; // hide old plain text spans
     }
+  }
+
+  &__nav-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #e94560;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+    z-index: 5;
   }
 
   &__coming-soon {
@@ -1139,51 +1159,29 @@
   @mixin tile-particles($emoji1, $emoji2, $_unused1: null, $_unused2: null, $_unused3: null) {
     background: #{'linear-gradient(135deg, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.25) 0%, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.08) 45%, #{$color-bg-secondary} 100%)'};
     border-color: #{'rgba(var(--tile-accent-rgb, 76, 175, 80), 0.35)'};
+    position: relative;
+    overflow: hidden;
 
-    &::before, &::after {
-      // Long repeating emoji strip so the hover scroll has content to reveal.
-      content: '#{$emoji1}   #{$emoji2}   #{$emoji1}   #{$emoji2}   #{$emoji1}   #{$emoji2}   #{$emoji1}   #{$emoji2}';
+    // Hover: gradient wave diagonally from bottom-left to top-right in the
+    // transform's accent color. Background is oversized and slid back and
+    // forth via `animation-direction: alternate` for the infinite sweep.
+    &::before {
+      content: '';
       position: absolute;
-      white-space: nowrap;
+      inset: 0;
       z-index: 1;
       pointer-events: none;
-      filter: blur(0.3px);
-    }
-
-    // Layer 1 — small, upper.
-    // NOTE: animation-play-state MUST come AFTER the `animation` shorthand,
-    // otherwise the shorthand resets it to `running` (default) and the
-    // particles animate by default instead of only on hover.
-    &::before {
-      top: 18%;
-      left: 0;
-      font-size: 14px;
       opacity: 0;
-      animation: tile-scroll 14s linear infinite;
-      animation-play-state: paused;
+      background: #{'linear-gradient(45deg, transparent 0%, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.55) 45%, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.75) 50%, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.55) 55%, transparent 100%)'};
+      background-size: 200% 200%;
+      background-position: 100% 0%;
+      mix-blend-mode: screen;
       transition: opacity 220ms ease;
     }
 
-    // Layer 2 — bigger, lower
-    &::after {
-      bottom: 25%;
-      left: 0;
-      font-size: 20px;
-      opacity: 0;
-      animation: tile-scroll 20s linear infinite;
-      animation-delay: -6s;
-      animation-play-state: paused;
-      transition: opacity 220ms ease;
-    }
-
-    // Hover: start the scroll + brighten + glow border
     &:hover::before {
-      animation-play-state: running;
-      opacity: 0.22;
-    }
-    &:hover::after {
-      animation-play-state: running;
-      opacity: 0.18;
+      opacity: 1;
+      animation: tile-gradient-wave 3.2s ease-in-out infinite alternate;
     }
     &:hover {
       border-color: #{'rgba(var(--tile-accent-rgb, 76, 175, 80), 0.75)'} !important;
@@ -1191,11 +1189,14 @@
     }
   }
 
-  // Seamless scroll: content is duplicated, so translating -50% restarts
-  // the visible pattern in the same spot.
-  @keyframes tile-scroll {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+  // Diagonal wave: with background-size 200% the image is exactly 2× the tile,
+  // so positioning the image so its center lands on the bottom-left corner
+  // (X=100%, Y=0%) and animating to top-right corner (X=0%, Y=100%) makes the
+  // 45deg gradient's bright center band sweep from corner to corner. Using
+  // `alternate` reverses it for the return trip.
+  @keyframes tile-gradient-wave {
+    0%   { background-position: 100% 0%; }
+    100% { background-position: 0% 100%; }
   }
 
   // Each tile keeps its unique emoji pair. Colors/border come from

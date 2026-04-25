@@ -35,6 +35,8 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { usePartyStore } from '../../stores/partyStore';
+import { getPartyGateLevel } from '../../systems/partySystem';
 import { xpProgress, xpToNextLevel } from '../../systems/levelSystem';
 import { useTaskStore } from '../../stores/taskStore';
 import { useQuestStore, getActiveQuestKillProgress } from '../../stores/questStore';
@@ -208,6 +210,7 @@ const ALL_ITEMS: IBaseItem[] = flattenItemsData(itemsData as Parameters<typeof f
 const Combat = () => {
     const navigate  = useNavigate();
     const character = useCharacterStore((s) => s.character);
+    const party     = usePartyStore((s) => s.party);
     const equipment = useInventoryStore((s) => s.equipment);
     const { combatSpeed, setCombatSpeed, skillMode, setSkillMode, showCombatXpBar, setShowCombatXpBar } = useSettingsStore();
     const { activeSkillSlots } = useSkillStore();
@@ -237,6 +240,11 @@ const Combat = () => {
         const g = parseInt(hex.slice(2, 4), 16);
         const b = parseInt(hex.slice(4, 6), 16);
         return `${r}, ${g}, ${b}`;
+    })();
+    const playerAccentFill = (() => {
+        const g = transformColor?.gradient;
+        if (g && g.length >= 2) return `linear-gradient(90deg, ${g.join(', ')})`;
+        return playerAccent;
     })();
 
     // Calculate effective stats (base character + equipment bonuses) for display.
@@ -610,7 +618,7 @@ const Combat = () => {
                         navigate('/');
                     }}>⏹ Zakończ</button>
                 )}
-                <h1 className="combat__title page-title">Walka</h1>
+                <h1 className="combat__title page-title">⚔️ Walka</h1>
                 {(phase === 'fighting' || phase === 'victory' || phase === 'dead') && monster && (() => {
                     const monsterTask = activeTasks.find((t) => t.monsterId === monster.id);
                     if (!monsterTask) return null;
@@ -716,7 +724,10 @@ const Combat = () => {
                         </div>
                         <div className="combat__monster-list">
                             {sortedMonsters.map((m) => {
-                                const unlock = getMonsterUnlockStatus(m, sortedMonsters, character.level, masteriesState);
+                                // In a party, the weakest human member dictates
+                                // what monsters the group can actually engage.
+                                const gateLevel = getPartyGateLevel(character.level, party?.members ?? null);
+                                const unlock = getMonsterUnlockStatus(m, sortedMonsters, gateLevel, masteriesState);
                                 const locked = !unlock.unlocked;
                                 const isExpanded = expandedMonster === m.id;
                                 const monsterTask = activeTasks.find((t) => t.monsterId === m.id);
@@ -1059,6 +1070,15 @@ const Combat = () => {
                                                 <span className="combat__wave-slot-hp">
                                                     {w.isDead ? '☠️ Zabity' : `${Math.max(0, w.currentHp)}/${w.maxHp}`}
                                                 </span>
+                                                <div className="combat__wave-slot-bar combat__wave-slot-bar--mp">
+                                                    <div
+                                                        className="combat__wave-slot-bar-fill combat__wave-slot-bar-fill--mp"
+                                                        style={{ width: '100%' }}
+                                                    />
+                                                </div>
+                                                <span className="combat__wave-slot-hp combat__wave-slot-hp--mp">
+                                                    0/0 MP
+                                                </span>
                                                 {aggroLabel && (
                                                     <span className="combat__wave-slot-aggro" title={`Atakuje: ${aggroLabel.replace('🎯 ', '')}`}>
                                                         {aggroLabel}
@@ -1204,6 +1224,7 @@ const Combat = () => {
                         style={{
                             '--player-accent': playerAccent,
                             '--player-accent-rgb': playerAccentRgb,
+                            '--player-accent-fill': playerAccentFill,
                         } as React.CSSProperties}
                     >
                         {playerTargetedCount > 0 && (
@@ -1240,13 +1261,25 @@ const Combat = () => {
                         </AnimatePresence>
                         <div className="combat__stat-row">
                             <span className="combat__stat-label">HP</span>
-                            <HpBar current={playerCurrentHp} max={effectiveChar?.max_hp ?? character.max_hp} variant="hp" />
-                            <span className="combat__hp-text">{Math.max(0, playerCurrentHp)}/{effectiveChar?.max_hp ?? character.max_hp}</span>
+                            {(() => {
+                                const mh = effectiveChar?.max_hp ?? character.max_hp;
+                                const cur = Math.max(0, Math.min(playerCurrentHp, mh));
+                                return <>
+                                    <HpBar current={cur} max={mh} variant="hp" />
+                                    <span className="combat__hp-text">{cur}/{mh}</span>
+                                </>;
+                            })()}
                         </div>
                         <div className="combat__stat-row">
                             <span className="combat__stat-label">MP</span>
-                            <HpBar current={playerCurrentMp} max={effectiveChar?.max_mp ?? character.max_mp} variant="mp" />
-                            <span className="combat__hp-text">{Math.max(0, playerCurrentMp)}/{effectiveChar?.max_mp ?? character.max_mp}</span>
+                            {(() => {
+                                const mm = effectiveChar?.max_mp ?? character.max_mp;
+                                const cur = Math.max(0, Math.min(playerCurrentMp, mm));
+                                return <>
+                                    <HpBar current={cur} max={mm} variant="mp" />
+                                    <span className="combat__hp-text">{cur}/{mm}</span>
+                                </>;
+                            })()}
                         </div>
                     </div>
                         );

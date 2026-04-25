@@ -56,6 +56,59 @@
     gap: $spacing-md;
   }
 
+  // ── Section header + refresh button ────────────────────────────────────────
+  &__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+  }
+
+  &__section-title {
+    font-size: $font-sm;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: $color-text-muted;
+    margin: 0;
+  }
+
+  &__join-error {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(233, 69, 96, 0.12);
+    border: 1px solid rgba(233, 69, 96, 0.35);
+    color: #ff8799;
+    font-size: 13px;
+  }
+
+  &__refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: $color-text;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
   // ── No party ───────────────────────────────────────────────────────────────
   &__no-party {
     display: flex;

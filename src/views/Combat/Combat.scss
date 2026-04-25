@@ -1114,6 +1114,14 @@
     height: 100%;
     background: linear-gradient(90deg, #f44336, #ff9800);
     transition: width 0.2s ease-out;
+
+    &--mp {
+      background: linear-gradient(90deg, #1976d2, #42a5f5);
+    }
+  }
+
+  &__wave-slot-bar--mp {
+    margin-top: 2px;
   }
 
   &__wave-slot-hp {
@@ -1121,6 +1129,10 @@
     color: $color-text-muted;
     font-weight: 600;
     white-space: nowrap;
+
+    &--mp {
+      color: #90caf9;
+    }
   }
 
   // ── Rarity tinting on wave slots (so the 4 stacked monsters are distinct) ─
@@ -1397,7 +1409,7 @@
     overflow: hidden;
 
     &--enemy .combat__bar-fill { background: $color-accent; }
-    &--hp    .combat__bar-fill { background: var(--player-accent, #4caf50); }
+    &--hp    .combat__bar-fill { background: var(--player-accent-fill, var(--player-accent, #4caf50)); }
     &--mp    .combat__bar-fill { background: #2196f3; }
   }
 
@@ -2389,14 +2401,16 @@
 }
 
 // ── Class-colored left border on player card ─────────────────────────────────
+// When a transform is active `--player-accent` is set and takes priority; the
+// class color below is only used as the fallback (no transform unlocked yet).
 .combat__card--player {
-  &[data-class="Knight"]      { border-left: 3px solid #e53935; }
-  &[data-class="Mage"]        { border-left: 3px solid #7b1fa2; }
-  &[data-class="Cleric"]      { border-left: 3px solid #ffc107; }
-  &[data-class="Archer"]      { border-left: 3px solid #4caf50; }
-  &[data-class="Rogue"]       { border-left: 3px solid #424242; }
-  &[data-class="Necromancer"] { border-left: 3px solid #795548; }
-  &[data-class="Bard"]        { border-left: 3px solid #ff9800; }
+  &[data-class="Knight"]      { border-left: 3px solid var(--player-accent, #e53935); }
+  &[data-class="Mage"]        { border-left: 3px solid var(--player-accent, #7b1fa2); }
+  &[data-class="Cleric"]      { border-left: 3px solid var(--player-accent, #ffc107); }
+  &[data-class="Archer"]      { border-left: 3px solid var(--player-accent, #4caf50); }
+  &[data-class="Rogue"]       { border-left: 3px solid var(--player-accent, #424242); }
+  &[data-class="Necromancer"] { border-left: 3px solid var(--player-accent, #795548); }
+  &[data-class="Bard"]        { border-left: 3px solid var(--player-accent, #ff9800); }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

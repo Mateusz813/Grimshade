@@ -158,7 +158,7 @@ const Deposit = () => {
         <div className="deposit">
             <header className="deposit__header page-header">
                 <button className="deposit__back page-back-btn" onClick={() => navigate('/')}>
-                    ← Powrót
+                    ← Miasto
                 </button>
                 <h1 className="deposit__title page-title">🏦 Depozyt</h1>
             </header>

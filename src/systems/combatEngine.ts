@@ -435,27 +435,30 @@ const useAutoPotionSlot = (
     if (!enabled || threshold <= 0 || onCooldown) return;
     // Safety: if current value is already at or above max, never fire a potion
     if (maxVal > 0 && currentVal >= maxVal) return;
+    const missing = Math.max(0, maxVal - currentVal);
     const valPct = maxVal > 0 ? (currentVal / maxVal) * 100 : 100;
     if (valPct > threshold) return;
     const inv = useInventoryStore.getState();
     const elixir = resolveAutoPotionElixir(potionId, hpOrMp, slotKind, inv.consumables);
     if (!elixir) return;
+    // Compute the would-be heal amount and skip if it would be mostly wasted.
+    // This is the real guard against the "lost 1 HP, burned a 50 HP potion"
+    // frustration — no matter what the % threshold says, we will never fire
+    // a potion unless at least its heal amount of HP/MP is actually missing.
+    const flatMatch = elixir.effect.match(hpOrMp === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/);
+    const pctMatch = elixir.effect.match(hpOrMp === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/);
+    let healAmount = 0;
+    if (flatMatch) healAmount = parseInt(flatMatch[1], 10);
+    else if (pctMatch) healAmount = Math.floor(maxVal * parseInt(pctMatch[1], 10) / 100);
+    if (healAmount <= 0) return;
+    if (missing < healAmount) return;
     inv.useConsumable(elixir.id);
     useDailyQuestStore.getState().addProgress('use_potion', 1);
     const cd = getPotionCooldownMs(elixir.id);
     if (cd > 0) startCdFn(cd);
-    const flatMatch = elixir.effect.match(hpOrMp === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/);
-    const pctMatch = elixir.effect.match(hpOrMp === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/);
-    if (flatMatch) {
-        const amount = parseInt(flatMatch[1], 10);
-        healFn(amount, maxVal);
-        addLogFn(`[Auto-Potion] ${elixir.name_pl} +${amount} ${hpOrMp.toUpperCase()}`, 'system');
-    } else if (pctMatch) {
-        const p = parseInt(pctMatch[1], 10);
-        const amount = Math.floor(maxVal * p / 100);
-        healFn(amount, maxVal);
-        addLogFn(`[Auto-Potion] ${elixir.name_pl} +${amount} ${hpOrMp.toUpperCase()} (${p}%)`, 'system');
-    }
+    healFn(healAmount, maxVal);
+    const pctText = pctMatch ? ` (${parseInt(pctMatch[1], 10)}%)` : '';
+    addLogFn(`[Auto-Potion] ${elixir.name_pl} +${healAmount} ${hpOrMp.toUpperCase()}${pctText}`, 'system');
 };
 
 export const tryAutoPotion = (
@@ -560,14 +563,17 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     } else {
         const live = useCombatStore.getState();
         const hpLevelGain = Math.max(0, (postChar?.max_hp ?? 0) - preMaxHp);
-        const mpLevelGain = Math.max(0, (postChar?.max_mp ?? 0) - preMaxMp);
-        // Clamp to effective max to prevent HP > maxHP in characterStore
+        // Clamp to effective max to prevent values > effMax in characterStore
+        // (happens when buffs/elixirs expire between kills).
         const effForSync = getEffectiveChar(postChar);
         const syncMaxHp = effForSync?.max_hp ?? (postChar?.max_hp ?? 9999);
         const syncMaxMp = effForSync?.max_mp ?? (postChar?.max_mp ?? 9999);
+        // Preserve live HP/MP across kills — neither HP nor MP auto-refills on
+        // victory. Natural regen (useMpRegen / hp_regen) handles recovery between
+        // fights, keeping skill MP costs meaningful across the whole session.
         useCharacterStore.getState().updateCharacter({
             hp: Math.min(syncMaxHp, Math.max(0, live.playerCurrentHp + hpLevelGain)),
-            mp: Math.min(syncMaxMp, Math.max(0, live.playerCurrentMp + mpLevelGain)),
+            mp: Math.min(syncMaxMp, Math.max(0, live.playerCurrentMp)),
         });
     }
     void saveCurrentCharacterStores();
@@ -578,6 +584,11 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     useQuestStore.getState().addProgress('kill_rarity', currentMonsterRarity, 1, s.monster.level);
     useDailyQuestStore.getState().addProgress('kill_any', 1);
     useDailyQuestStore.getState().addProgress('earn_gold', gold);
+    // Mastery uses the same rarity-weighted count as tasks so progress stays
+    // in sync between the two — a legendary kill grants the same number of
+    // units to both systems, and offline hunt (which already feeds weighted
+    // kills into both) matches live combat.
+    useMasteryStore.getState().addMasteryKills(s.monster.id, taskKills);
     // Update session stats
     useCombatStore.getState().addSessionStats(finalXp, gold);
     useCombatStore.getState().incrementSessionKill(currentMonsterRarity);
@@ -800,15 +811,16 @@ export const doPlayerAttackTick = (): void => {
         }
     }
 
-    // Auto-potion
+    // Auto-potion. `char` here is already the result of getEffectiveChar, so
+    // its max_hp/max_mp already include eq + training + elixirs + transform.
+    // Never pass it back into getEffectiveChar — that double-applies every
+    // bonus and inflates maxVal enough to drop perceived 100% HP below the
+    // auto-potion threshold, which was the "potion at 100% HP" bug.
     const freshAfterAtk = useCombatStore.getState();
-    {
-        const effAfterAtk = getEffectiveChar(char);
-        tryAutoPotion(
-            freshAfterAtk.playerCurrentHp, effAfterAtk?.max_hp ?? char.max_hp,
-            freshAfterAtk.playerCurrentMp, effAfterAtk?.max_mp ?? char.max_mp,
-        );
-    }
+    tryAutoPotion(
+        freshAfterAtk.playerCurrentHp, char.max_hp,
+        freshAfterAtk.playerCurrentMp, char.max_mp,
+    );
 
     // Track damage for daily quests
     if (totalDamage > 0) useDailyQuestStore.getState().addProgress('deal_damage', totalDamage);
@@ -940,12 +952,13 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
         timestamp: Date.now(),
     });
 
-    // Auto-potion after damage
+    // Auto-potion after damage. `char` here is already effective — passing it
+    // through getEffectiveChar again would double-apply bonuses and break the
+    // threshold math (see doPlayerAttackTick comment above).
     if (newPHp > 0) {
-        const effAfterHit = getEffectiveChar(char);
         tryAutoPotion(
-            newPHp, effAfterHit?.max_hp ?? char.max_hp,
-            useCombatStore.getState().playerCurrentMp, effAfterHit?.max_mp ?? char.max_mp,
+            newPHp, char.max_hp,
+            useCombatStore.getState().playerCurrentMp, char.max_mp,
         );
     }
 
@@ -1143,6 +1156,7 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
         useQuestStore.getState().addProgress('kill', m.id, skipTaskKills);
         useQuestStore.getState().addProgress('kill_rarity', rarity, 1, m.level);
         useDailyQuestStore.getState().addProgress('kill_any', 1);
+        useMasteryStore.getState().addMasteryKills(m.id, skipTaskKills);
         useCombatStore.getState().addSessionStats(skipFinalXp, 0);
         useCombatStore.getState().incrementSessionKill(rarity);
         useCombatStore.getState().setPhase('victory');
@@ -1183,10 +1197,16 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
     useCombatStore.getState().setLastDrops([]);
     useCombatStore.getState().setBaseMonster(baseMonster);
     // Clamp starting HP/MP to effective max to prevent HP > maxHP
-    // (can happen if buffs/elixirs expired since last heal)
+    // (can happen if buffs/elixirs expired since last heal).
+    // Don't auto-refill to effMax just because char.hp >= raw max_hp — after a
+    // victory char.hp can already exceed raw max_hp (it tracks the elixir-
+    // inflated value), and treating that as "full" would re-heal the player
+    // to 100% on the next fight even though they took damage.
     const effCharForInit = getEffectiveChar(char);
-    const clampedHp = effCharForInit ? Math.min(char.hp, effCharForInit.max_hp) : char.hp;
-    const clampedMp = effCharForInit ? Math.min(char.mp, effCharForInit.max_mp) : char.mp;
+    const effMaxHpInit = effCharForInit?.max_hp ?? char.max_hp;
+    const effMaxMpInit = effCharForInit?.max_mp ?? char.max_mp;
+    const clampedHp = Math.min(char.hp, effMaxHpInit);
+    const clampedMp = Math.min(char.mp, effMaxMpInit);
     useCombatStore.getState().initCombat(scaledMonster, clampedHp, clampedMp, rarity);
 
     // Hydrate party bots into botStore so they fight alongside the player.
@@ -1214,12 +1234,17 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
         useCombatStore.getState().addLog(`🐾 Fala ${plannedCount} potworów!`, 'system');
     }
 
-    // Auto-potion at fight start
+    // Auto-potion at fight start.
+    // Read live HP/MP from combatStore (post-initCombat) instead of char.hp/char.mp
+    // so we compare against the same effMax the UI shows — char.hp is pre-clamp
+    // and can be out of sync with playerCurrentHp/effMax, causing auto-potion to
+    // fire at what the user perceives as 100%.
     if (!isSkip) {
         const effChar = getEffectiveChar(char);
         const effMaxHp = effChar?.max_hp ?? char.max_hp;
         const effMaxMp = effChar?.max_mp ?? char.max_mp;
-        tryAutoPotion(char.hp, effMaxHp, char.mp, effMaxMp);
+        const liveCs = useCombatStore.getState();
+        tryAutoPotion(liveCs.playerCurrentHp, effMaxHp, liveCs.playerCurrentMp, effMaxMp);
     }
 
     // Set background started timestamp if not already set
@@ -1238,12 +1263,14 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
             const liveChar = useCharacterStore.getState().character;
             if (!liveChar) return;
             if (useCombatStore.getState().phase === 'dead') return;
-            // Auto-potion between SKIP iterations using live HP/MP
+            // Auto-potion between SKIP iterations using live HP/MP, clamped
+            // to effective max so an expired elixir can't leave HP > max.
             const effChar = getEffectiveChar(liveChar);
-            tryAutoPotion(
-                liveChar.hp, effChar?.max_hp ?? liveChar.max_hp,
-                liveChar.mp, effChar?.max_mp ?? liveChar.max_mp,
-            );
+            const effMaxHp = effChar?.max_hp ?? liveChar.max_hp;
+            const effMaxMp = effChar?.max_mp ?? liveChar.max_mp;
+            const curHp = Math.min(liveChar.hp, effMaxHp);
+            const curMp = Math.min(liveChar.mp, effMaxMp);
+            tryAutoPotion(curHp, effMaxHp, curMp, effMaxMp);
             const postPotionChar = useCharacterStore.getState().character;
             if (!postPotionChar) return;
             let iterMonster = scaledMonster;

@@ -357,8 +357,25 @@
     position: relative; // anchor for &__victory-overlay
 
     @include desktop {
-      max-width: 800px;
+      max-width: 1080px;
       margin: 0 auto;
+    }
+
+    // Side-by-side layout on wider screens: monster LEFT, player RIGHT
+    @media (min-width: 1024px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+      align-items: start;
+
+      // Everything except the two combat cards spans full width
+      > .transform__combat-progress,
+      > .transform__combat-toggles,
+      > .transform__skill-slots,
+      > .transform__potions,
+      > .transform__log {
+        grid-column: 1 / -1;
+      }
     }
   }
 
@@ -474,6 +491,7 @@
     align-items: center;
     gap: $spacing-sm;
     transition: all 0.15s ease;
+    position: relative; // so .skill-anim-overlay (position: absolute; inset: 0) overlays this card
 
     &--hit {
       background: rgba(244, 67, 54, 0.15);
@@ -482,8 +500,17 @@
   }
 
   &__monster-sprite {
-    font-size: 48px;
+    // Slightly smaller than the 140x140 player avatar — uniform size across
+    // every monster so they all look consistent.
+    font-size: 108px;
     line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 108px;
+    height: 108px;
+    flex: 0 0 108px;
+    filter: drop-shadow(0 0 24px rgba(244, 67, 54, 0.55));
   }
 
   &__monster-info {
@@ -505,7 +532,7 @@
   // ── Player card ─────────────────────────────────────────────────────────────
   &__player-card {
     background: $color-bg-card;
-    border: 2px solid $color-border;
+    border: 2px solid var(--transform-color, $color-border);
     border-radius: $radius-lg;
     padding: $spacing-md;
     display: flex;
@@ -513,11 +540,32 @@
     align-items: center;
     gap: $spacing-xs;
     transition: all 0.15s ease;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--transform-color, transparent) 25%, transparent);
 
     &--hit {
       background: rgba(233, 69, 96, 0.1);
       border-color: $color-accent;
     }
+
+    // Big shake + red flash when the boss swings at the player — pairs with
+    // `monsterAttacking` in Transform.tsx. Makes the fight feel impactful.
+    &--monster-attack {
+      animation: transform-monster-attack 0.42s ease-in-out;
+      box-shadow:
+        0 0 0 3px rgba(244, 67, 54, 0.55),
+        0 0 36px rgba(244, 67, 54, 0.75),
+        inset 0 0 28px rgba(244, 67, 54, 0.3);
+    }
+  }
+
+  @keyframes transform-monster-attack {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    15%  { transform: translate(-14px, 3px) rotate(-1.8deg); }
+    30%  { transform: translate(12px, -2px) rotate(1.6deg); }
+    45%  { transform: translate(-9px, 4px) rotate(-1.2deg); }
+    60%  { transform: translate(8px, -3px) rotate(1deg); }
+    75%  { transform: translate(-5px, 2px) rotate(-0.6deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
   }
 
   &__player-info--centered {
@@ -978,8 +1026,8 @@
   }
 
   &__player-avatar-wrap--class-border &__player-avatar--big {
-    border-color: var(--class-color, #ffc107);
-    box-shadow: 0 0 18px color-mix(in srgb, var(--class-color, #ffc107) 55%, transparent);
+    border-color: var(--transform-color, var(--class-color, #ffc107));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--transform-color, var(--class-color, #ffc107)) 55%, transparent);
   }
 
   &__player-class-icon {

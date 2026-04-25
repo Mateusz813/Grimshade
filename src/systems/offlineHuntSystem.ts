@@ -338,25 +338,19 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const skillLevelsGained = Math.max(0, skillLevelAfter - skillLevelBefore);
     const skillXpPctOfLevel = skillXpBeforeNeeded > 0 ? (preview.skillXpGained / skillXpBeforeNeeded) * 100 : 0;
 
-    // ── Mastery kills (weighted by rarity, matching live combat) ─────────────
-    const weightedKills =
-        killsByRarity.normal * 1 +
-        killsByRarity.strong * 2 +
-        killsByRarity.epic * 5 +
-        killsByRarity.legendary * 10 +
-        killsByRarity.boss * 20;
-    useMasteryStore.getState().addMasteryKills(monster.id, weightedKills);
-
-    // ── Task / quest / daily progress ───────────────────────────────────────
+    // ── Task / quest / daily / mastery progress (rarity-weighted) ────────────
     // Weighted by rarity — matches live combat handleMonsterDeath() which
     // applies MONSTER_RARITY_TASK_KILLS[rarity] per kill. Raw kills would
-    // drastically undercount tasks for high-rarity hunts.
+    // drastically undercount tasks AND mastery for high-rarity hunts.
     const weightedTaskKills =
         killsByRarity.normal    * (MONSTER_RARITY_TASK_KILLS.normal    ?? 1) +
         killsByRarity.strong    * (MONSTER_RARITY_TASK_KILLS.strong    ?? 1) +
         killsByRarity.epic      * (MONSTER_RARITY_TASK_KILLS.epic      ?? 1) +
         killsByRarity.legendary * (MONSTER_RARITY_TASK_KILLS.legendary ?? 1) +
         killsByRarity.boss      * (MONSTER_RARITY_TASK_KILLS.boss      ?? 1);
+
+    // Mastery kills weighted by rarity (same source-of-truth as tasks).
+    useMasteryStore.getState().addMasteryKills(monster.id, weightedTaskKills);
     useTaskStore.getState().addKill(monster.id, monster.level, weightedTaskKills);
     useQuestStore.getState().addProgress('kill', monster.id, weightedTaskKills);
     useQuestStore.getState().addProgress('kill_rarity', 'normal', killsByRarity.normal, monster.level);

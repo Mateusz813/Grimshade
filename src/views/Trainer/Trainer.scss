@@ -1,0 +1,97 @@
+.trainer {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+
+    &__header {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+        h1 { flex: 1; margin: 0; font-size: 26px; }
+        button {
+            background: #1f1f2e; border: 1px solid #333; color: #ccc;
+            padding: 6px 12px; border-radius: 6px; cursor: pointer;
+        }
+    }
+
+    &__controls {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+        background: #1a1a28; border: 1px solid #2a2a3a; padding: 8px 12px;
+        border-radius: 8px; margin-bottom: 12px;
+        label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; }
+    }
+
+    &__speed {
+        display: flex; gap: 4px; margin-right: 12px;
+        button {
+            background: #2a2a3a; border: 1px solid #333; color: #ccc;
+            padding: 4px 10px; border-radius: 4px; cursor: pointer;
+            &.is-active { background: #e53935; color: white; border-color: #e53935; }
+        }
+    }
+
+    &__arena {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+        @media (max-width: 768px) { grid-template-columns: 1fr; }
+    }
+
+    &__player {
+        background: #1f1f2e; border: 2px solid; border-radius: 8px; padding: 12px;
+        h3 { margin: 0 0 4px; }
+    }
+    &__class { font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+    &__party-member { font-size: 12px; color: #aaa; margin-top: 6px; }
+
+    &__dummy {
+        background: #1f1f2e; border: 2px solid #b71c1c; border-radius: 8px;
+        padding: 12px; position: relative; text-align: center;
+        &-sprite { font-size: 72px; margin-bottom: 4px; }
+        &-name { font-weight: bold; margin-bottom: 8px; }
+    }
+
+    &__bar {
+        position: relative; height: 18px; background: #0a0a10; border-radius: 4px;
+        overflow: hidden; margin-top: 4px;
+        div { height: 100%; transition: width 0.2s; }
+        span {
+            position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+            text-align: center; font-size: 11px; line-height: 18px;
+            color: white; text-shadow: 0 0 2px black;
+        }
+        &--hp div { background: linear-gradient(90deg, #d32f2f, #f44336); }
+        &--mp div { background: linear-gradient(90deg, #1976d2, #2196f3); }
+    }
+
+    &__fx {
+        position: absolute; top: 20px; right: 20px; font-size: 48px;
+        animation: trainer-fx-pop 0.8s ease-out forwards;
+        pointer-events: none;
+    }
+
+    &__stats {
+        display: flex; justify-content: space-around; gap: 12px;
+        background: #1a1a28; border: 1px solid #2a2a3a; padding: 12px;
+        border-radius: 8px; margin-bottom: 12px;
+        div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; }
+        strong { font-size: 18px; }
+        span { color: #888; }
+    }
+
+    &__log {
+        background: #0a0a12; border: 1px solid #2a2a3a; border-radius: 6px;
+        padding: 8px 12px; max-height: 140px; overflow-y: auto;
+        font-family: monospace; font-size: 12px;
+        div { line-height: 1.4; }
+    }
+}
+
+@keyframes trainer-fx-pop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    30%  { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(1.2); opacity: 0; }
+}

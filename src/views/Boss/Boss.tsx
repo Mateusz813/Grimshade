@@ -9,6 +9,7 @@ import { useSkillStore } from '../../stores/skillStore';
 import { useBossStore } from '../../stores/bossStore';
 import { useBossScoreStore } from '../../stores/bossScoreStore';
 import { usePartyStore } from '../../stores/partyStore';
+import { getPartyGateLevel } from '../../systems/partySystem';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { ELIXIRS } from '../../stores/shopStore';
@@ -33,6 +34,7 @@ import {
     type IBossUniqueItem,
 } from '../../systems/bossSystem';
 import { rollMonsterDamage } from '../../systems/combat';
+import { getEffectiveChar } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
@@ -229,7 +231,9 @@ const getPotionLabel = (effect: string): string => {
 // ── HP bar sub-component ─────────────────────────────────────────────────────
 
 const HpBar = ({ current, max, variant }: { current: number; max: number; variant: 'hp' | 'mp' | 'enemy' | 'boss-enraged' }) => {
-    const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
+    // 0/0 (e.g. monsters/bosses with no mana pool) renders as a full bar so the
+    // UI still communicates "exists but empty", per design spec.
+    const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 100;
     return (
         <div className={`boss__combat-bar boss__combat-bar--${variant}`}>
             <motion.div
@@ -287,6 +291,10 @@ const Boss = () => {
     const equipment   = useInventoryStore((s) => s.equipment);
     const consumables = useInventoryStore((s) => s.consumables);
     const completedTransforms = useTransformStore((s) => s.completedTransforms);
+    // Bug 2 (2026-04): subscribe to allBuffs so charMaxHp/charMaxMp recompute
+    // whenever an elixir buff is added/expired during a boss fight.
+    const _activeBuffs = useBuffStore((s) => s.allBuffs);
+    void _activeBuffs;
     const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
     const { activeSkillSlots } = useSkillStore();
     // Bosses always run at x1 speed (no speed controls)
@@ -337,6 +345,7 @@ const Boss = () => {
     const [monsterHit, setMonsterHit]           = useState(false);
     const [playerHit, setPlayerHit]             = useState(false);
     const [playerAttacking, setPlayerAttacking] = useState(false);
+    const [botAttackingClass, setBotAttackingClass] = useState<string | null>(null);
     const [floatingDmgs, setFloatingDmgs]       = useState<{ id: number; text: string; type: string; side?: 'left' | 'right' }[]>([]);
 
     const ATTACK_ANIM_DURATION: Record<string, number> = {
@@ -385,8 +394,14 @@ const Boss = () => {
     const tb        = getTrainingBonuses(skillLevels, character.class);
     const charAtk   = character.attack  + eqStats.attack + getElixirAtkBonus();
     const charDef   = character.defense + eqStats.defense + tb.defense + getElixirDefBonus();
-    const charMaxHp = character.max_hp  + eqStats.hp + tb.max_hp + getElixirHpBonus();
-    const charMaxMp = character.max_mp  + eqStats.mp + tb.max_mp + getElixirMpBonus();
+    // Use the transform-aware effective max HP/MP so active transforms raise
+    // the cap used by auto-potion / heal-clamp logic. Fallback to the raw
+    // sum if the effective snapshot isn't available yet.
+    const effChar   = getEffectiveChar(character);
+    const baseMaxHp = character.max_hp  + eqStats.hp + tb.max_hp + getElixirHpBonus();
+    const baseMaxMp = character.max_mp  + eqStats.mp + tb.max_mp + getElixirMpBonus();
+    const charMaxHp = effChar?.max_hp ?? baseMaxHp;
+    const charMaxMp = effChar?.max_mp ?? baseMaxMp;
     const charSpeed = (character.attack_speed + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
 
     // Best potions the player owns
@@ -467,48 +482,78 @@ const Boss = () => {
         const hp = playerHpRef.current;
         const mp = playerMpRef.current;
 
-        const hpPct = charMaxHp > 0 ? (hp / charMaxHp) * 100 : 100;
-        if (settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
-            const elixir = resolveAutoPotionElixir(settings.autoPotionHpId, 'hp', 'flat', inv.consumables);
-            if (elixir) {
-                inv.useConsumable(elixir.id);
+        // Bug 2 (2026-04): pull effective max HP/MP fresh on every fire so a
+        // buff that ticked down without re-rendering Boss.tsx can't clamp the
+        // heal at the stale (higher) cap.
+        const freshChar = useCharacterStore.getState().character;
+        const freshEff = freshChar ? getEffectiveChar(freshChar) : null;
+        const liveMaxHp = freshEff?.max_hp ?? charMaxHp;
+        const liveMaxMp = freshEff?.max_mp ?? charMaxMp;
+
+        // Safety: never fire a potion when HP/MP are already at (or above) max —
+        // regardless of the user's threshold. This guards against stale refs,
+        // transform-cap drift, and floating-point rounding.
+        const hpAtFull = liveMaxHp > 0 && hp >= liveMaxHp;
+        const mpAtFull = liveMaxMp > 0 && mp >= liveMaxMp;
+
+        // Resolve the potion amount first. We only fire a potion when the
+        // actual missing amount is at least as large as what this potion would
+        // restore — otherwise we'd waste a +50 HP flask healing 1 HP. This is
+        // the hard guard against "lost 1 HP, burned a potion".
+        const resolveAmount = (elixirIdOrNull: string | null, kind: 'flat' | 'pct', hm: 'hp' | 'mp', maxVal: number): { id: string; name: string; amount: number } | null => {
+            const elixir = resolveAutoPotionElixir(elixirIdOrNull, hm, kind, inv.consumables);
+            if (!elixir) return null;
+            const flatRe = hm === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/;
+            const pctRe = hm === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/;
+            const flat = elixir.effect.match(flatRe);
+            const pct = elixir.effect.match(pctRe);
+            if (flat) return { id: elixir.id, name: elixir.name_pl, amount: parseInt(flat[1], 10) };
+            if (pct) return { id: elixir.id, name: elixir.name_pl, amount: Math.floor(maxVal * parseInt(pct[1], 10) / 100) };
+            return null;
+        };
+
+        const hpMissing = Math.max(0, liveMaxHp - hp);
+        const mpMissing = Math.max(0, liveMaxMp - mp);
+        const hpPct = liveMaxHp > 0 ? (hp / liveMaxHp) * 100 : 100;
+        const mpPct = liveMaxMp > 0 ? (mp / liveMaxMp) * 100 : 100;
+
+        if (!hpAtFull && settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionHpId, 'flat', 'hp', liveMaxHp);
+            if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
                 startHpCooldown();
-                const flatMatch = elixir.effect.match(/^heal_hp_(\d+)$/);
-                const pctMatch = elixir.effect.match(/^heal_hp_pct_(\d+)$/);
-                if (flatMatch) { const a = parseInt(flatMatch[1], 10); healPlayerHp(a, charMaxHp); addLog(`[Auto] ${elixir.name_pl} +${a} HP`, 'system'); }
-                else if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxHp * p / 100); healPlayerHp(a, charMaxHp); addLog(`[Auto] ${elixir.name_pl} +${a} HP`, 'system'); }
+                healPlayerHp(pot.amount, liveMaxHp);
+                addLog(`[Auto] ${pot.name} +${pot.amount} HP`, 'system');
             }
         }
 
-        const mpPct = charMaxMp > 0 ? (mp / charMaxMp) * 100 : 100;
-        if (settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
-            const elixir = resolveAutoPotionElixir(settings.autoPotionMpId, 'mp', 'flat', inv.consumables);
-            if (elixir) {
-                inv.useConsumable(elixir.id);
+        if (!mpAtFull && settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionMpId, 'flat', 'mp', liveMaxMp);
+            if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
                 startMpCooldown();
-                const flatMatch = elixir.effect.match(/^heal_mp_(\d+)$/);
-                const pctMatch = elixir.effect.match(/^heal_mp_pct_(\d+)$/);
-                if (flatMatch) { const a = parseInt(flatMatch[1], 10); healPlayerMp(a, charMaxMp); addLog(`[Auto] ${elixir.name_pl} +${a} MP`, 'system'); }
-                else if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxMp * p / 100); healPlayerMp(a, charMaxMp); addLog(`[Auto] ${elixir.name_pl} +${a} MP`, 'system'); }
+                healPlayerMp(pot.amount, liveMaxMp);
+                addLog(`[Auto] ${pot.name} +${pot.amount} MP`, 'system');
             }
         }
-        // ── Pct auto-potions ──
-        if (settings.autoPotionPctHpEnabled && settings.autoPotionPctHpThreshold > 0 && hpPct <= settings.autoPotionPctHpThreshold && pctHpCooldownRef.current <= 0) {
-            const elixir = resolveAutoPotionElixir(settings.autoPotionPctHpId, 'hp', 'pct', inv.consumables);
-            if (elixir) {
-                inv.useConsumable(elixir.id);
+
+        if (!hpAtFull && settings.autoPotionPctHpEnabled && settings.autoPotionPctHpThreshold > 0 && hpPct <= settings.autoPotionPctHpThreshold && pctHpCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionPctHpId, 'pct', 'hp', liveMaxHp);
+            if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
                 setPctHpCooldown(PCT_POTION_CD_MS); pctHpCooldownRef.current = PCT_POTION_CD_MS;
-                const pctMatch = elixir.effect.match(/^heal_hp_pct_(\d+)$/);
-                if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxHp * p / 100); healPlayerHp(a, charMaxHp); addLog(`[Auto%] ${elixir.name_pl} +${a} HP`, 'system'); }
+                healPlayerHp(pot.amount, liveMaxHp);
+                addLog(`[Auto%] ${pot.name} +${pot.amount} HP`, 'system');
             }
         }
-        if (settings.autoPotionPctMpEnabled && settings.autoPotionPctMpThreshold > 0 && mpPct <= settings.autoPotionPctMpThreshold && pctMpCooldownRef.current <= 0) {
-            const elixir = resolveAutoPotionElixir(settings.autoPotionPctMpId, 'mp', 'pct', inv.consumables);
-            if (elixir) {
-                inv.useConsumable(elixir.id);
+
+        if (!mpAtFull && settings.autoPotionPctMpEnabled && settings.autoPotionPctMpThreshold > 0 && mpPct <= settings.autoPotionPctMpThreshold && pctMpCooldownRef.current <= 0) {
+            const pot = resolveAmount(settings.autoPotionPctMpId, 'pct', 'mp', liveMaxMp);
+            if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
+                inv.useConsumable(pot.id);
                 setPctMpCooldown(PCT_POTION_CD_MS); pctMpCooldownRef.current = PCT_POTION_CD_MS;
-                const pctMatch = elixir.effect.match(/^heal_mp_pct_(\d+)$/);
-                if (pctMatch) { const p = parseInt(pctMatch[1], 10); const a = Math.floor(charMaxMp * p / 100); healPlayerMp(a, charMaxMp); addLog(`[Auto%] ${elixir.name_pl} +${a} MP`, 'system'); }
+                healPlayerMp(pot.amount, liveMaxMp);
+                addLog(`[Auto%] ${pot.name} +${pot.amount} MP`, 'system');
             }
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, addLog]);
@@ -531,18 +576,24 @@ const Boss = () => {
         if (isMp && !isPct) startMpCooldown();
         if (isHp && isPct) { setPctHpCooldown(PCT_POTION_CD_MS); pctHpCooldownRef.current = PCT_POTION_CD_MS; }
         if (isMp && isPct) { setPctMpCooldown(PCT_POTION_CD_MS); pctMpCooldownRef.current = PCT_POTION_CD_MS; }
+        // Bug 2: pull effective max fresh so a freshly-applied buff is honored.
+        const freshChar = useCharacterStore.getState().character;
+        const freshEff = freshChar ? getEffectiveChar(freshChar) : null;
+        const liveMaxHp = freshEff?.max_hp ?? charMaxHp;
+        const liveMaxMp = freshEff?.max_mp ?? charMaxMp;
+
         const flatMatch = elixir.effect.match(/^heal_(hp|mp)_(\d+)$/);
         const pctMatch = elixir.effect.match(/^heal_(hp|mp)_pct_(\d+)$/);
         if (flatMatch) {
             const type = flatMatch[1] as 'hp' | 'mp';
             const amount = parseInt(flatMatch[2], 10);
-            if (type === 'hp') { healPlayerHp(amount, charMaxHp); addLog(`${elixir.name_pl} +${amount} HP`, 'system'); }
-            else { healPlayerMp(amount, charMaxMp); addLog(`${elixir.name_pl} +${amount} MP`, 'system'); }
+            if (type === 'hp') { healPlayerHp(amount, liveMaxHp); addLog(`${elixir.name_pl} +${amount} HP`, 'system'); }
+            else { healPlayerMp(amount, liveMaxMp); addLog(`${elixir.name_pl} +${amount} MP`, 'system'); }
         } else if (pctMatch) {
             const type = pctMatch[1] as 'hp' | 'mp';
             const pct = parseInt(pctMatch[2], 10);
-            if (type === 'hp') { const a = Math.floor(charMaxHp * pct / 100); healPlayerHp(a, charMaxHp); addLog(`${elixir.name_pl} +${a} HP (${pct}%)`, 'system'); }
-            else { const a = Math.floor(charMaxMp * pct / 100); healPlayerMp(a, charMaxMp); addLog(`${elixir.name_pl} +${a} MP (${pct}%)`, 'system'); }
+            if (type === 'hp') { const a = Math.floor(liveMaxHp * pct / 100); healPlayerHp(a, liveMaxHp); addLog(`${elixir.name_pl} +${a} HP (${pct}%)`, 'system'); }
+            else { const a = Math.floor(liveMaxMp * pct / 100); healPlayerMp(a, liveMaxMp); addLog(`${elixir.name_pl} +${a} MP (${pct}%)`, 'system'); }
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, addLog]);
 
@@ -676,7 +727,23 @@ const Boss = () => {
         const bossXpMult = getMasteryXpMultiplier(bossMasteryLvl);
         const bossGoldMult = getMasteryGoldMultiplier(bossMasteryLvl);
         const gold = Math.floor(rollBossGold(boss.gold) * bossGoldMult);
-        const xp = Math.floor(getBossXp(boss) * bossXpMult);
+        // Buff multipliers (xp_boost +50%, premium_xp_boost x2) — same stacking as normal combat
+        const bStore = useBuffStore.getState();
+        const xpMultiplier = bStore.getBuffMultiplier('xp_boost');
+        const premiumXpMult = bStore.getBuffMultiplier('premium_xp_boost');
+        const totalXpMult = xpMultiplier * premiumXpMult;
+        const baseBossXp = Math.floor(getBossXp(boss) * bossXpMult);
+        const xp = Math.floor(baseBossXp * totalXpMult);
+        if (totalXpMult > 1) {
+            const boostParts: string[] = [];
+            if (xpMultiplier > 1) boostParts.push('XP +50%');
+            if (premiumXpMult > 1) boostParts.push('Premium x2');
+            addLog(`⭐ ${boostParts.join(' + ')} aktywny! ${baseBossXp} × ${totalXpMult} = ${xp} XP`, 'system');
+        }
+        // Consume pausable buff time (same as normal combat)
+        if (bStore.hasBuff('premium_xp_boost')) bStore.consumePausableTime('premium_xp_boost', 2000);
+        if (bStore.hasBuff('xp_boost')) bStore.consumePausableTime('xp_boost', 2000);
+        if (bStore.hasBuff('skill_xp_boost')) bStore.consumePausableTime('skill_xp_boost', 2000);
 
         // Heroic drop (0.5% chance per boss kill) – generates a random heroic item for player's class
         if (Math.random() < 0.005) {
@@ -704,6 +771,11 @@ const Boss = () => {
         // Apply rewards
         const inv = useInventoryStore.getState();
         inv.addGold(gold);
+        // Award XP to the character (was missing — boss kills granted 0 XP before this fix)
+        const xpResult = useCharacterStore.getState().addXp(xp);
+        if (xpResult.levelsGained > 0) {
+            addLog(`Awans! Poziom ${xpResult.newLevel}! (+${xpResult.statPointsGained} pkt statystyk) – pełne HP/MP!`, 'system');
+        }
         setBossDefeated(boss.id);
         addBossKill(boss.id, boss.level);
 
@@ -1237,6 +1309,20 @@ const Boss = () => {
                 addLog(`${icon} ${bot.name} atakuje za ${action.damage} dmg (Boss HP: ${newBossHp.toLocaleString('pl-PL')})`, 'player');
             }
 
+            // Trigger the class-specific attack animation on the boss card so
+            // the player sees their party members swinging in, not just log text.
+            const animMs = ATTACK_ANIM_DURATION[bot.class] ?? 320;
+            setBotAttackingClass(bot.class);
+            setMonsterHit(true);
+            window.setTimeout(() => setBotAttackingClass((c) => c === bot.class ? null : c), animMs);
+            window.setTimeout(() => setMonsterHit(false), 200);
+
+            // Show floating damage so combat feels alive even when several bots
+            // attack in the same tick.
+            const dmgId = Date.now() + Math.random();
+            setFloatingDmgs((prev) => [...prev, { id: dmgId, text: `-${action.damage}`, type: action.type === 'skill' ? 'crit' : 'player', side: 'right' }]);
+            window.setTimeout(() => setFloatingDmgs((prev) => prev.filter((d) => d.id !== dmgId)), 800);
+
             if (newBossHp <= 0) {
                 handleBossDeath();
                 return;
@@ -1282,7 +1368,7 @@ const Boss = () => {
                 <button className="boss__back page-back-btn" onClick={() => { setPhase('list'); navigate('/'); }}>
                     ← Miasto
                 </button>
-                <h1 className="boss__title page-title">Bossowie</h1>
+                <h1 className="boss__title page-title">👹 Bossowie</h1>
                 <span className="boss__score">🏆 Boss Score: {getTotalScore().toLocaleString('pl-PL')}</span>
                 {phase === 'fighting' && activeBoss && (
                     <span className="boss__fighting-badge">⚔️ Walka</span>
@@ -1299,7 +1385,11 @@ const Boss = () => {
                             const attemptsUsed = getAttemptsUsed(b.id);
                             const attemptsMax  = getAttemptsMax();
                             const noAttempts   = !canChallenge(b.id);
-                            const tooLow       = character.level < b.level;
+                            // Gate by the lowest human level in the party — the
+                            // weakest member dictates which boss the group can
+                            // challenge. Solo players keep their own level.
+                            const gateLevel    = getPartyGateLevel(character.level, party?.members ?? null);
+                            const tooLow       = gateLevel < b.level;
                             const blocked      = noAttempts || tooLow;
                             const recommended  = getBossRecommendedLevel(b);
 
@@ -1544,7 +1634,7 @@ const Boss = () => {
                         {/* Arena */}
                         <div className="boss__arena">
                             {/* Boss card */}
-                            <div className={`boss__combat-card boss__combat-card--monster${monsterHit ? ' boss__combat-card--hit' : ''}${playerAttacking ? ` boss__combat-card--attack-${character.class}` : ''}${enraged ? ' boss__combat-card--enraged' : ''}`}>
+                            <div className={`boss__combat-card boss__combat-card--monster${monsterHit ? ' boss__combat-card--hit' : ''}${playerAttacking ? ` boss__combat-card--attack-${character.class}` : ''}${botAttackingClass ? ` boss__combat-card--attack-${botAttackingClass}` : ''}${enraged ? ' boss__combat-card--enraged' : ''}`}>
                                 {enraged && <div className="boss__enraged-combat-badge">🔥 WŚCIEKŁY</div>}
                                 <div className="boss__combat-card-header">
                                     <motion.span
@@ -1566,6 +1656,8 @@ const Boss = () => {
                                     </span>
                                 </div>
                                 <HpBar current={bossHp} max={scaledBossMaxHp} variant={enraged ? 'boss-enraged' : 'enemy'} />
+                                <HpBar current={0} max={0} variant="mp" />
+                                <span className="boss__combat-hp-text">0/0 MP</span>
 
                                 {/* Floating damage on boss (from player) */}
                                 <AnimatePresence>
@@ -1589,7 +1681,8 @@ const Boss = () => {
                                 )}
                             </div>
 
-                            {/* Player card */}
+                            {/* Player + party column (mirrors Combat view) */}
+                            <div className="boss__side boss__side--party">
                             <div className={`boss__combat-card boss__combat-card--player${playerHit ? ' boss__combat-card--hit' : ''}${aggroTargetRef.current === 'player' ? ' boss__combat-card--targeted' : ''}`}>
                                 {aggroTargetRef.current === 'player' && (
                                     <span className="boss__aggro-label">🎯 AGGRO</span>
@@ -1635,10 +1728,10 @@ const Boss = () => {
                                 </div>
                             </div>
 
-                            {/* Bot companions */}
+                            {/* Bot companions — stacked under player, same width */}
                             {bots.length > 0 && (
                                 <div className="boss__bot-party">
-                                    <div className="boss__bot-party-title">Towarzysze</div>
+                                    <div className="boss__bot-party-title">🤝 Towarzysze ({bots.filter((b) => b.alive).length}/{bots.length})</div>
                                     {bots.map((bot) => {
                                         const botHpPct = bot.maxHp > 0 ? Math.max(0, Math.min(100, (bot.hp / bot.maxHp) * 100)) : 0;
                                         const icon = BOT_CLASS_ICONS[bot.class] ?? '?';
@@ -1646,7 +1739,7 @@ const Boss = () => {
                                         return (
                                             <div
                                                 key={bot.id}
-                                                className={`boss__bot-card${!bot.alive ? ' boss__bot-card--dead' : ''}${isTarget ? ' boss__bot-card--targeted' : ''}`}
+                                                className={`boss__bot-card${!bot.alive ? ' boss__bot-card--dead' : ''}${isTarget ? ' boss__bot-card--targeted' : ''}${botAttackingClass === bot.class && bot.alive ? ' boss__bot-card--attacking' : ''}`}
                                             >
                                                 {isTarget && <span className="boss__aggro-label">🎯 AGGRO</span>}
                                                 <div className="boss__bot-card-header">
@@ -1671,6 +1764,7 @@ const Boss = () => {
                                     })}
                                 </div>
                             )}
+                            </div>{/* /boss__side--party */}
 
                             {/* Combat toggles */}
                             <div className="boss__combat-toggles">
