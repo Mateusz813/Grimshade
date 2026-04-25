@@ -104,12 +104,22 @@ export const useMpRegen = (): void => {
 
         const combat = useCombatStore.getState();
         if (combat.phase === 'fighting') {
-            // In combat – feed the combat store pool.
+            // In combat: only HP regenerates. MP is intentionally frozen so
+            // skill costs accumulate across a session instead of being silently
+            // refunded by passive regen between cooldowns.
             if (hpRegen > 0 && combat.playerCurrentHp > 0 && combat.playerCurrentHp < effectiveMaxHp) {
                 combat.healPlayerHp(hpRegen, effectiveMaxHp);
             }
-            if (mpRegen > 0 && combat.playerCurrentMp < effectiveMaxMp) {
-                combat.healPlayerMp(mpRegen, effectiveMaxMp);
+            return;
+        }
+
+        // Between waves (phase === 'victory'): pause MP regen entirely for the
+        // same reason — the ~1s auto-fight gap would otherwise silently refill
+        // exactly one skill cast. HP still regenerates so players recover chip
+        // damage between waves.
+        if (combat.phase === 'victory') {
+            if (hpRegen > 0 && combat.playerCurrentHp > 0 && combat.playerCurrentHp < effectiveMaxHp) {
+                combat.healPlayerHp(hpRegen, effectiveMaxHp);
             }
             return;
         }

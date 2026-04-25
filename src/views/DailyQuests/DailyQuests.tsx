@@ -63,7 +63,7 @@ const DailyQuests = () => {
                 <button className="daily-quests__back page-back-btn" onClick={() => navigate('/')}>
                     \u2190 Miasto
                 </button>
-                <h1 className="daily-quests__title page-title">Questy Dzienne</h1>
+                <h1 className="daily-quests__title page-title">📅 Questy Dzienne</h1>
             </header>
 
             {isLocked ? (

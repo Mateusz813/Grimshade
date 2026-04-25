@@ -220,6 +220,34 @@ export const getCompositionBonus = (memberClasses: string[]): number => {
   return 1.0;
 };
 
+// ── Level gating ──────────────────────────────────────────────────────────────
+
+/**
+ * Effective party level for content gating (dungeons / bosses / monsters).
+ *
+ * When the player is in a party we want the group to be blocked by the
+ * WEAKEST member — otherwise a level-100 leader could drag a level-10
+ * teammate into a level-80 boss fight and trivially carry them.
+ *
+ * Bots are excluded because they auto-scale to the average of human
+ * members (see `createBotHelper`), so counting them would hide the real
+ * low-level human that should be blocking access.
+ *
+ * Returns `character.level` (the solo case) when there is no party or
+ * the only member is the caller.
+ */
+export const getPartyGateLevel = (
+  myLevel: number,
+  members: IPartyMember[] | null | undefined,
+): number => {
+  if (!members || members.length === 0) return myLevel;
+  const humans = members.filter((m) => !m.isBot);
+  if (humans.length === 0) return myLevel;
+  const lowest = humans.reduce((min, m) => (m.level < min ? m.level : min), Infinity);
+  if (!Number.isFinite(lowest)) return myLevel;
+  return Math.min(myLevel, lowest);
+};
+
 // ── Aggro class weights ───────────────────────────────────────────────────────
 // Higher weight = more likely to be picked as the monster's target.
 // Knights tank most aggro; Cleric/Bard are the "backline" and rarely get hit.

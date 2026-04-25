@@ -24,7 +24,7 @@ export const ELIXIRS: IElixir[] = [
   { id: 'hp_potion_sm', name_pl: 'Maly Eliksir HP', name_en: 'Small Health Potion', description_pl: 'Przywraca 50 HP.', price: 30, effect: 'heal_hp_50', icon: '❤️', minLevel: 1 },
   { id: 'hp_potion_md', name_pl: 'Eliksir HP', name_en: 'Health Potion', description_pl: 'Przywraca 150 HP.', price: 150, effect: 'heal_hp_150', icon: '❤️', minLevel: 20 },
   { id: 'hp_potion_lg', name_pl: 'Silny Eliksir HP', name_en: 'Strong Health Potion', description_pl: 'Przywraca 400 HP.', price: 600, effect: 'heal_hp_400', icon: '❤️', minLevel: 50 },
-  { id: 'hp_potion_mega', name_pl: 'Mega Eliksir HP', name_en: 'Mega Health Elixir', description_pl: 'Natychmiast przywraca 1000 HP.', price: 7500, effect: 'heal_hp_1000', icon: '❤️‍🔥', minLevel: 100 },
+  { id: 'hp_potion_mega', name_pl: 'Mega Eliksir HP', name_en: 'Mega Health Elixir', description_pl: 'Natychmiast przywraca 1000 HP.', price: 15000, effect: 'heal_hp_1000', icon: '❤️‍🔥', minLevel: 100 },
   { id: 'hp_potion_great', name_pl: 'Wielki Eliksir HP', name_en: 'Great Health Potion', description_pl: 'Przywraca 20% maks. HP.', price: 2000, effect: 'heal_hp_pct_20', icon: '❤️', minLevel: 100 },
   { id: 'hp_potion_super', name_pl: 'Super Eliksir HP', name_en: 'Super Health Potion', description_pl: 'Przywraca 35% maks. HP.', price: 7500, effect: 'heal_hp_pct_35', icon: '❤️', minLevel: 200 },
   { id: 'hp_potion_ultimate', name_pl: 'Ultimatywny Eliksir HP', name_en: 'Ultimate Health Potion', description_pl: 'Przywraca 50% maks. HP.', price: 30000, effect: 'heal_hp_pct_50', icon: '❤️', minLevel: 400 },
@@ -33,7 +33,7 @@ export const ELIXIRS: IElixir[] = [
   { id: 'mp_potion_sm', name_pl: 'Maly Eliksir MP', name_en: 'Small Mana Potion', description_pl: 'Przywraca 30 MP.', price: 30, effect: 'heal_mp_30', icon: '💧', minLevel: 1 },
   { id: 'mp_potion_md', name_pl: 'Eliksir MP', name_en: 'Mana Potion', description_pl: 'Przywraca 100 MP.', price: 150, effect: 'heal_mp_100', icon: '💧', minLevel: 20 },
   { id: 'mp_potion_lg', name_pl: 'Silny Eliksir MP', name_en: 'Strong Mana Potion', description_pl: 'Przywraca 300 MP.', price: 600, effect: 'heal_mp_300', icon: '💧', minLevel: 50 },
-  { id: 'mp_potion_mega', name_pl: 'Mega Eliksir MP', name_en: 'Mega Mana Elixir', description_pl: 'Natychmiast przywraca 1000 MP.', price: 7500, effect: 'heal_mp_1000', icon: '💎', minLevel: 100 },
+  { id: 'mp_potion_mega', name_pl: 'Mega Eliksir MP', name_en: 'Mega Mana Elixir', description_pl: 'Natychmiast przywraca 1000 MP.', price: 15000, effect: 'heal_mp_1000', icon: '💎', minLevel: 100 },
   { id: 'mp_potion_great', name_pl: 'Wielki Eliksir MP', name_en: 'Great Mana Potion', description_pl: 'Przywraca 20% maks. MP.', price: 2000, effect: 'heal_mp_pct_20', icon: '💧', minLevel: 100 },
   { id: 'mp_potion_super', name_pl: 'Super Eliksir MP', name_en: 'Super Mana Potion', description_pl: 'Przywraca 35% maks. MP.', price: 7500, effect: 'heal_mp_pct_35', icon: '💧', minLevel: 200 },
   { id: 'mp_potion_ultimate', name_pl: 'Ultimatywny Eliksir MP', name_en: 'Ultimate Mana Potion', description_pl: 'Przywraca 50% maks. MP.', price: 30000, effect: 'heal_mp_pct_50', icon: '💧', minLevel: 400 },
@@ -210,7 +210,12 @@ interface IArmorCategory {
   pieces: IArmorPiece[];
 }
 
+/** Maximum item level the shop will ever generate, regardless of character level. */
+export const SHOP_ITEM_LEVEL_CAP = 100;
+
 export const generateShopItems = (characterClass: string, level: number): IShopItem[] => {
+  // Cap shop equipment level — high-level players still see lvl-100 max gear.
+  level = Math.min(level, SHOP_ITEM_LEVEL_CAP);
   const items: IShopItem[] = [];
   const rarities: Rarity[] = ['common', 'rare'];
 

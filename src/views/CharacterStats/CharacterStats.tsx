@@ -42,6 +42,11 @@ const CLASS_MODIFIER: Record<string, number> = {
   Archer: 1.2, Rogue: 1.0, Necromancer: 1.2, Bard: 1.0,
 };
 
+const CLASS_HEADER_ICONS: Record<string, string> = {
+  Knight: '🛡️', Mage: '🧙', Cleric: '⛪', Archer: '🏹',
+  Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+};
+
 interface IActiveSkillDef {
   id: string;
   name_pl: string;
@@ -288,7 +293,7 @@ const CharacterStats = () => {
     <div className="char-stats">
       <header className="char-stats__header page-header">
         <button className="char-stats__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="char-stats__title page-title">Postac</h1>
+        <h1 className="char-stats__title page-title">{CLASS_HEADER_ICONS[character.class] ?? '🧙'} Postać</h1>
       </header>
 
       {/* Character identity */}
@@ -336,8 +341,8 @@ const CharacterStats = () => {
             <motion.div
               className="char-stats__avatar-modal"
               style={{
-                '--class-color': CLASS_COLORS[character.class] ?? '#e94560',
-                '--class-color-rgb': hexToRgb(CLASS_COLORS[character.class] ?? '#e94560'),
+                '--class-color': accentColor,
+                '--class-color-rgb': accentColorRgb,
               } as React.CSSProperties}
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

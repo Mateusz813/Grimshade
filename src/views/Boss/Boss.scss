@@ -449,6 +449,11 @@
   }
 
   // ── Arena (real combat view) ──────────────────────────────────────────────
+  // Mirrors the normal Combat view 1:1 on wide screens:
+  //   - boss card on the LEFT column
+  //   - party column (player card + stacked companion rows) on the RIGHT
+  //   - the companion rows live inside the party column so they share the
+  //     player card's width and stack directly underneath him.
   &__arena {
     display: flex;
     flex-direction: column;
@@ -457,6 +462,30 @@
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;
+
+    @media (min-width: 1024px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+      align-items: start;
+
+      // Only the two primary columns sit side-by-side. Toggles, skills,
+      // potions and log span the full row below.
+      > *:not(.boss__combat-card--monster):not(.boss__side--party) {
+        grid-column: 1 / -1;
+      }
+    }
+  }
+
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    min-width: 0;
+
+    &--party {
+      // Stack player card + bot party vertically, same width.
+    }
   }
 
   &__combat-card {
@@ -1053,6 +1082,19 @@
       box-shadow: 0 0 18px rgba(#f44336, 0.55), inset 0 0 12px rgba(#f44336, 0.25);
       animation: boss-aggro-pulse 1.2s ease-in-out infinite;
     }
+
+    &--attacking {
+      border-color: #ffd54f !important;
+      box-shadow: 0 0 16px rgba(#ffd54f, 0.7), inset 0 0 10px rgba(#ffd54f, 0.35);
+      animation: boss-bot-attack 320ms ease-out;
+    }
+  }
+
+  @keyframes boss-bot-attack {
+    0%   { transform: translateX(0) scale(1); }
+    30%  { transform: translateX(14px) scale(1.06); }
+    60%  { transform: translateX(-4px) scale(1.02); }
+    100% { transform: translateX(0) scale(1); }
   }
 
   &__bot-card-header {

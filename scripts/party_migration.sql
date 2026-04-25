@@ -44,6 +44,7 @@ DROP POLICY IF EXISTS "anyone updates parties"       ON parties;
 DROP POLICY IF EXISTS "anyone deletes parties"       ON parties;
 DROP POLICY IF EXISTS "anyone reads party members"   ON party_members;
 DROP POLICY IF EXISTS "anyone inserts party members" ON party_members;
+DROP POLICY IF EXISTS "anyone updates party members" ON party_members;
 DROP POLICY IF EXISTS "anyone deletes party members" ON party_members;
 
 CREATE POLICY "anyone reads parties"         ON parties       FOR SELECT USING (TRUE);
@@ -53,4 +54,38 @@ CREATE POLICY "anyone deletes parties"       ON parties       FOR DELETE USING (
 
 CREATE POLICY "anyone reads party members"   ON party_members FOR SELECT USING (TRUE);
 CREATE POLICY "anyone inserts party members" ON party_members FOR INSERT WITH CHECK (TRUE);
+CREATE POLICY "anyone updates party members" ON party_members FOR UPDATE USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "anyone deletes party members" ON party_members FOR DELETE USING (TRUE);
+
+-- 4. Realtime needs REPLICA IDENTITY FULL on both tables so DELETE events ship
+--    the old row payload to subscribers (otherwise joined clients don't see
+--    members disappearing in real time).
+ALTER TABLE parties       REPLICA IDENTITY FULL;
+ALTER TABLE party_members REPLICA IDENTITY FULL;
+
+-- 5. `party_members` occasionally has a UNIQUE(character_id) constraint from
+--    an earlier schema draft. That prevents a second character on the same
+--    browser from joining an existing party. Drop it if present — uniqueness
+--    is only meaningful per (party_id, character_id).
+DO $$
+BEGIN
+    BEGIN
+        ALTER TABLE party_members DROP CONSTRAINT party_members_character_id_key;
+    EXCEPTION WHEN undefined_object THEN
+        -- already removed or never existed, ignore
+    END;
+END $$;
+
+-- 6. Ensure (party_id, character_id) uniqueness so a character can't double-join
+--    the same party while still being free to exist in a different party row.
+DO $$
+BEGIN
+    BEGIN
+        ALTER TABLE party_members
+            ADD CONSTRAINT party_members_party_char_unique UNIQUE (party_id, character_id);
+    EXCEPTION WHEN duplicate_object THEN
+        -- constraint already present, ignore
+    EXCEPTION WHEN duplicate_table THEN
+        -- some postgres versions report a different code, ignore
+    END;
+END $$;

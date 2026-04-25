@@ -88,7 +88,7 @@ const isPermissionError = (err: unknown): boolean => {
  * returns JSON with `message`/`details`/`hint` — prefer those over the bare
  * axios error message ("Request failed with status code 400").
  */
-const extractApiError = (err: unknown): string => {
+export const extractApiError = (err: unknown): string => {
     if (!axios.isAxiosError(err)) {
         return err instanceof Error ? err.message : 'Nieznany błąd.';
     }
@@ -260,8 +260,11 @@ class PartyApi extends BaseApi {
         // Try the full schema first.
         try {
             if (hasExtendedPartyCols) {
-                const rows = await fetchRows(FULL_PARTY_SELECT, 'is_public=eq.true');
-                return rows.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] }));
+                // Include parties where is_public is either TRUE or NULL — older rows
+                // created before the column existed have NULL and should still be
+                // visible in the browser.
+                const rows = await fetchRows(FULL_PARTY_SELECT, 'or=(is_public.eq.true,is_public.is.null)');
+                return await this.cleanupEmptyParties(rows.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] })));
             }
         } catch (err) {
             if (isSchemaMissingError(err)) {
@@ -273,7 +276,7 @@ class PartyApi extends BaseApi {
         // Fallback #1: minimal schema with embed.
         try {
             const rows = await fetchRows(MIN_PARTY_SELECT, '');
-            return rows.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] }));
+            return await this.cleanupEmptyParties(rows.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] })));
         } catch (err) {
             if (!axios.isAxiosError(err) || (err.response?.status !== 400 && err.response?.status !== 404)) {
                 throw err;
@@ -288,7 +291,7 @@ class PartyApi extends BaseApi {
                 '&order=created_at.desc&limit=50',
         });
         const hydrated = await hydrateMembersSeparately(plainRows, this);
-        return hydrated.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] }));
+        return await this.cleanupEmptyParties(hydrated.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] })));
     };
 
     /** Fetch a single party including its members (used after create/join). */
@@ -464,7 +467,12 @@ class PartyApi extends BaseApi {
         return (await this.getPartyWithMembers(input.partyId)) ?? { error: 'Dołączono, ale party zniknęło.' };
     };
 
-    /** Remove a member by character id. If they were the leader, the whole party is deleted. */
+    /**
+     * Remove a member by character id. The party row is dissolved when:
+     *   1. The leader leaves, or
+     *   2. The member leaving is the last one in the party.
+     * Without (2) empty parties linger forever and pollute the browser.
+     */
     leaveParty = async (partyId: string, characterId: string): Promise<void> => {
         const party = await this.getPartyWithMembers(partyId);
         if (!party) return;
@@ -480,6 +488,50 @@ class PartyApi extends BaseApi {
                 `/rest/v1/party_members?party_id=eq.${encodeURIComponent(partyId)}` +
                 `&character_id=eq.${encodeURIComponent(characterId)}`,
         });
+        // Cascade: if that was the last member, drop the party row too.
+        const remaining = (party.members ?? []).filter((m) => m.character_id !== characterId);
+        if (remaining.length === 0) {
+            try {
+                await this.delete({
+                    url: `/rest/v1/parties?id=eq.${encodeURIComponent(partyId)}`,
+                });
+            } catch {
+                // Non-fatal — a realtime peer may have already cleaned it up.
+            }
+        }
+    };
+
+    /**
+     * Delete every party row that has zero members. Called opportunistically
+     * from `listPublicParties` so stale disbanded parties stop appearing in
+     * the browser. Non-fatal on error (RLS may block cross-account deletes —
+     * in that case the owner's client will clean up once they log in).
+     */
+    private cleanupEmptyParties = async (parties: IPartyWithMembers[]): Promise<IPartyWithMembers[]> => {
+        const now = Date.now();
+        const empty: IPartyWithMembers[] = [];
+        const kept: IPartyWithMembers[] = [];
+        for (const p of parties) {
+            // Grace period: keep parties <30s old regardless — the leader member
+            // row may not have landed in PostgREST yet for other viewers.
+            const ageMs = now - new Date(p.created_at).getTime();
+            if ((p.members?.length ?? 0) === 0 && ageMs > 30_000) {
+                empty.push(p);
+            } else {
+                kept.push(p);
+            }
+        }
+        if (empty.length > 0) {
+            const ids = empty.map((p) => `"${p.id}"`).join(',');
+            try {
+                await this.delete({
+                    url: `/rest/v1/parties?id=in.(${ids})`,
+                });
+            } catch {
+                // Non-fatal — the next viewer will try again.
+            }
+        }
+        return kept;
     };
 
     /** Leader action: delete a member by row id (kick). */

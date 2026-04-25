@@ -36,13 +36,38 @@ interface ISendMessagePayload {
     user_id: string;
 }
 
+/** Max messages kept per channel after trim — older rows are deleted. */
+const CHANNEL_MESSAGE_CAP = 100;
+
 class ChatApi extends BaseApi {
-    getMessages = async (channel: string, limit = 50): Promise<IMessage[]> => {
+    getMessages = async (channel: string, limit = CHANNEL_MESSAGE_CAP): Promise<IMessage[]> => {
         const encoded = encodeURIComponent(channel);
         const data = await this.get<IMessage[]>({
             url: `/rest/v1/messages?channel=eq.${encoded}&order=created_at.desc&limit=${limit}&select=*`,
         });
         return [...data].reverse();
+    };
+
+    /**
+     * Trim a channel down to the most recent {@link CHANNEL_MESSAGE_CAP}
+     * messages. Keeps the DB small for long-running PM conversations.
+     * Non-fatal on failure — RLS may block deletes for non-owners, in which
+     * case another participant's client will trim on their next send.
+     */
+    private trimChannel = async (channel: string): Promise<void> => {
+        try {
+            const encoded = encodeURIComponent(channel);
+            const rows = await this.get<Pick<IMessage, 'id'>[]>({
+                url:
+                    `/rest/v1/messages?channel=eq.${encoded}` +
+                    `&order=created_at.desc&offset=${CHANNEL_MESSAGE_CAP}&limit=500&select=id`,
+            });
+            if (!Array.isArray(rows) || rows.length === 0) return;
+            const ids = rows.map((r) => `"${r.id}"`).join(',');
+            await this.delete({ url: `/rest/v1/messages?id=in.(${ids})` });
+        } catch {
+            // ignore — trimming is best-effort
+        }
     };
 
     /**
@@ -76,7 +101,34 @@ class ChatApi extends BaseApi {
                 headers: { Prefer: 'return=representation' },
             },
         });
+        // Fire-and-forget trim — only PM channels get capped so the global
+        // city log stays intact and doesn't thrash on every send.
+        if (channel.startsWith('pm_')) {
+            void this.trimChannel(channel);
+        }
         return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    };
+
+    /**
+     * Subscribe to EVERY new message (no channel filter). Useful for the
+     * recipient-side PM notification path: a fresh account that has never
+     * opened a chat tab with the sender still needs to learn a new PM
+     * arrived so we can auto-open the tab and tick the badge.
+     *
+     * Clients should filter the payload client-side (e.g. only react to
+     * channels starting with `pm_` where the current player's name appears).
+     */
+    subscribeAll = (onMessage: (msg: IMessage) => void): (() => void) => {
+        const uniqueName = `chat:all:${Math.random().toString(36).slice(2, 10)}:${Date.now()}`;
+        const sub = supabase
+            .channel(uniqueName)
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'messages' },
+                (payload) => onMessage(payload.new as IMessage),
+            )
+            .subscribe();
+        return () => { void supabase.removeChannel(sub); };
     };
 
     subscribe = (

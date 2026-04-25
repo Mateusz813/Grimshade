@@ -89,7 +89,7 @@ const Shop = () => {
       {/* Header */}
       <header className="shop__header page-header">
         <button className="shop__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="shop__title page-title">Sklep</h1>
+        <h1 className="shop__title page-title">🛒 Sklep</h1>
         <span className="shop__gold">💰 {gold.toLocaleString('pl-PL')}</span>
       </header>
 

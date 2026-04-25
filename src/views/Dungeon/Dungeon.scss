@@ -419,6 +419,19 @@
     display: flex;
     flex-direction: column;
     gap: $spacing-sm;
+
+    // Side-by-side layout on wider screens: monster LEFT, player RIGHT
+    @media (min-width: 1024px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+      align-items: start;
+
+      // Everything except the two combat cards spans full width
+      > *:not(.dungeon__combat-card--monster):not(.dungeon__combat-card--player) {
+        grid-column: 1 / -1;
+      }
+    }
   }
 
   &__combat-card {

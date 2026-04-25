@@ -3,45 +3,29 @@
 
 .deaths {
     min-height: 100vh;
-    background: $color-bg;
+    background: transparent;
     color: $color-text;
-    padding: $spacing-md;
-    padding-bottom: 100px;
+    padding: 0 16px 100px;
     max-width: 100%;
 
-    @include desktop {
-        padding: $spacing-lg;
+    @media (min-width: 768px) {
+        padding: 0 28px 100px;
     }
 
+
+    // Header uses .page-header from src/index.css — negate side padding so
+    // the shared 20/28px header padding isn't double-applied.
     &__header {
-        display: flex;
-        align-items: center;
-        gap: $spacing-md;
-        margin-bottom: $spacing-md;
-    }
+        margin-left: -16px;
+        margin-right: -16px;
 
-    &__back {
-        background: $color-bg-card;
-        color: $color-text;
-        border: 1px solid $color-border;
-        border-radius: $radius-md;
-        padding: $spacing-sm $spacing-md;
-        font-size: $font-sm;
-        cursor: pointer;
-        transition: background $transition-fast;
-
-        &:hover {
-            background: $color-bg-secondary;
+        @media (min-width: 768px) {
+            margin-left: -28px;
+            margin-right: -28px;
         }
     }
 
-    &__title {
-        flex: 1;
-        font-size: $font-xl;
-        margin: 0;
-        text-align: center;
-        color: #ff6b6b;
-    }
+    // &__back and &__title inherit from .page-back-btn / .page-title — no local styles
 
     &__refresh {
         background: $color-bg-card;
