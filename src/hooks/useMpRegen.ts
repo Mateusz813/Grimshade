@@ -3,6 +3,7 @@ import { useCharacterStore } from '../stores/characterStore';
 import { useCombatStore } from '../stores/combatStore';
 import { useSkillStore } from '../stores/skillStore';
 import { useInventoryStore } from '../stores/inventoryStore';
+import { useAppRouteStore } from '../stores/appRouteStore';
 import { getTrainingBonuses } from '../systems/skillSystem';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
 import { getEffectiveChar } from '../systems/combatEngine';
@@ -38,6 +39,11 @@ export const useMpRegen = (): void => {
     const tickRef = useRef<() => void>(() => undefined);
 
     const doTick = () => {
+        // 2026-05-09: pause regen on auth / character-select routes —
+        // otherwise updateCharacter writes hp/mp on every tick and the
+        // characterStore subscriber kicks scheduleAutoSave even when
+        // the player isn't actively in a session.
+        if (useAppRouteStore.getState().isCharacterless) return;
         const charStore = useCharacterStore.getState();
         const char = charStore.character;
         if (!char) return;

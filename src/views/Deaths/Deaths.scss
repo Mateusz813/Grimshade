@@ -5,43 +5,14 @@
     min-height: 100vh;
     background: transparent;
     color: $color-text;
-    padding: 0 16px 100px;
+    padding: 16px 16px 100px;
     max-width: 100%;
 
     @media (min-width: 768px) {
-        padding: 0 28px 100px;
+        padding: 20px 28px 100px;
     }
 
-
-    // Header uses .page-header from src/index.css — negate side padding so
-    // the shared 20/28px header padding isn't double-applied.
-    &__header {
-        margin-left: -16px;
-        margin-right: -16px;
-
-        @media (min-width: 768px) {
-            margin-left: -28px;
-            margin-right: -28px;
-        }
-    }
-
-    // &__back and &__title inherit from .page-back-btn / .page-title — no local styles
-
-    &__refresh {
-        background: $color-bg-card;
-        color: $color-text;
-        border: 1px solid $color-border;
-        border-radius: $radius-md;
-        padding: $spacing-sm $spacing-md;
-        font-size: $font-md;
-        cursor: pointer;
-
-        &:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-    }
-
+    // ── Filter chips ────────────────────────────────────────────────────────
     &__filters {
         display: flex;
         flex-wrap: wrap;
@@ -98,6 +69,7 @@
         border-radius: $radius-md;
     }
 
+    // ── Row list ────────────────────────────────────────────────────────────
     &__list {
         list-style: none;
         margin: 0;
@@ -108,52 +80,65 @@
     }
 
     &__item {
-        background: $color-bg-card;
+        position: relative;
+        // 2026-05-20 spec (".deaths__item usun background i dodaj padding
+        // 20px 0"): drop the card background colour, give the row vertical
+        // breathing room. The instance art in &__item-bg below is the only
+        // visible backdrop now.
         border: 1px solid $color-border;
         border-left: 3px solid #ff6b6b;
         border-radius: $radius-md;
-        padding: $spacing-sm $spacing-md;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+        padding: 20px 0;
+        overflow: hidden;
+        // The card is composed of two stacking contexts: the instance art
+        // (--deaths-bg-url) sits in &__item-bg behind everything; the actual
+        // text + chips live in &__item-content above it.
     }
 
-    &__item-row {
-        display: flex;
-        align-items: center;
-        gap: $spacing-sm;
-        font-size: $font-sm;
+    // 2026-05-20 spec: switched from cover+no-repeat to contain+repeat so
+    // the per-instance art tiles across the row at its natural aspect
+    // ratio instead of being cropped or stretched. Opacity is also gone —
+    // the image renders at full strength; the dark gradient in &::after
+    // is what keeps text legible.
+    &__item-bg {
+        position: absolute;
+        inset: 0;
+        background-image: var(--deaths-bg-url, none);
+        background-size: contain;
+        background-repeat: repeat;
+        background-position: center;
+        z-index: 0;
+        pointer-events: none;
 
-        &--sub {
-            font-size: $font-xs;
-            color: $color-text-muted;
+        // Dark left-weighted overlay. Heavier on the left where the text
+        // sits so the name + verb + nick stay readable; lighter on the
+        // right where only the timestamp lives.
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                90deg,
+                rgba(13, 16, 28, 0.92) 0%,
+                rgba(13, 16, 28, 0.70) 50%,
+                rgba(13, 16, 28, 0.55) 100%
+            );
         }
     }
 
-    &__item-class {
-        font-size: $font-md;
+    &__item-content {
+        position: relative;
+        z-index: 1;
+        padding: $spacing-sm $spacing-md $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 
-    &__item-name {
-        font-weight: 700;
-        font-size: $font-md;
-    }
-
-    &__item-level {
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: $radius-sm;
-        padding: 2px 6px;
-        font-size: $font-xs;
-        color: $color-text;
-    }
-
-    &__item-spacer {
-        flex: 1;
-    }
-
-    &__item-time {
-        color: $color-text-muted;
-        font-size: $font-xs;
+    &__item-chip-row {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
     }
 
     &__item-badge {
@@ -165,18 +150,267 @@
         text-transform: uppercase;
         letter-spacing: 0.4px;
         white-space: nowrap;
+        align-self: flex-start;
     }
 
-    &__item-desc {
-        font-size: $font-sm;
-        color: #ffb3b3;
-        font-weight: 500;
-        margin-top: 2px;
+    // ── Main content row ────────────────────────────────────────────────────
+    // Mobile = vertical centered stack (matches the original spec'd look).
+    // Desktop ≥768px = horizontal sprite? ▸ name ▸ verb ▸ victim, packed
+    // tight on the left ("Caly tekst do lewej na desktopach dawaj zeby
+    // napisy zabil nick itp byl zaraz po nazwie potwora dungeonu itp").
+    &__item-main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 8px;
+        padding: 4px 0 28px; // bottom padding leaves room for the absolute date
+
+        @media (min-width: 768px) {
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: left;
+            gap: 12px;
+            // Right padding reserves space for the absolute-positioned date
+            // stack (two lines now: relative + absolute timestamp).
+            padding: 4px 180px 4px 0;
+            flex-wrap: wrap;
+        }
     }
 
-    &__item-date {
-        font-size: 10px;
+    &__sprite {
+        width: 64px;
+        height: 64px;
+        border-radius: $radius-md;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+        }
+
+        @media (min-width: 768px) {
+            width: 72px;
+            height: 72px;
+        }
+    }
+
+    // ── Monster row (icon? + name + level) ──────────────────────────────────
+    &__monster {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+
+        @media (min-width: 768px) {
+            justify-content: flex-start;
+            // Don't stretch — let the verb + victim sit immediately to the
+            // right of the name instead of pushing them to the far edge.
+            flex: 0 0 auto;
+            min-width: 0;
+        }
+    }
+
+    &__monster-icon {
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    &__monster-name {
+        font-size: $font-md;
+        font-weight: 700;
+        color: #ffd7d7;
+        letter-spacing: 0.2px;
+
+        @media (min-width: 768px) {
+            font-size: 18px;
+        }
+    }
+
+    &__monster-lvl {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: $radius-sm;
+        padding: 2px 8px;
+        font-size: $font-xs;
+        color: $color-text;
+        font-weight: 600;
+    }
+
+    // ── Verb pill ───────────────────────────────────────────────────────────
+    // 2026-05-19 v25 spec:
+    //   "Napis zabil na tle czarnym z czaszka"      → black + 💀
+    //   "Napis przegnal na czerwonym tle z duchem"  → red + 👻
+    &__verb-wrap {
+        display: flex;
+        justify-content: center;
+
+        @media (min-width: 768px) {
+            justify-content: flex-start;
+        }
+    }
+
+    &__verb {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #fff;
+        border-radius: 999px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        white-space: nowrap;
+
+        &--killed {
+            background: #0a0a0a;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        &--fled {
+            background: linear-gradient(180deg, #d32f2f 0%, #9a1818 100%);
+            border: 1px solid rgba(255, 200, 200, 0.25);
+        }
+    }
+
+    &__verb-icon {
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    &__verb-text {
+        line-height: 1;
+    }
+
+    // ── Victim row (class icon + tag + nick + lvl) ──────────────────────────
+    &__victim {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+
+        @media (min-width: 768px) {
+            justify-content: flex-start;
+        }
+    }
+
+    &__victim-class {
+        font-size: $font-md;
+        line-height: 1;
+    }
+
+    &__victim-tag {
+        font-size: $font-xs;
         color: $color-text-muted;
-        opacity: 0.7;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: $radius-sm;
+        padding: 2px 6px;
+    }
+
+    &__victim-name {
+        font-weight: 700;
+        font-size: $font-md;
+    }
+
+    &__victim-lvl {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: $radius-sm;
+        padding: 2px 6px;
+        font-size: $font-xs;
+        color: $color-text;
+    }
+
+    // ── Date — pinned bottom-right both layouts ─────────────────────────────
+    // 2026-05-19 v25 spec ("Data w prawym dolnym rogu zawsze").
+    // 2026-05-20 spec: color → white + bold; show a relative "X temu" line
+    // above the absolute timestamp.
+    &__item-date {
+        position: absolute;
+        right: 10px;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+        color: #fff;
+        font-weight: 700;
+        font-size: 11px;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: $radius-sm;
+        padding: 4px 8px;
+        z-index: 2;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    &__item-date-rel {
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    &__item-date-abs {
+        font-size: 10px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.82);
+    }
+
+    // ── Pagination ──────────────────────────────────────────────────────────
+    &__pager {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: $spacing-md;
+        margin-top: $spacing-md;
+        padding: $spacing-sm;
+        flex-wrap: wrap;
+    }
+
+    &__pager-btn {
+        background: $color-bg-card;
+        color: $color-text;
+        border: 1px solid $color-border;
+        border-radius: $radius-md;
+        padding: 6px 14px;
+        font-size: $font-sm;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover:not(:disabled) {
+            border-color: $color-accent;
+            color: $color-accent;
+        }
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    }
+
+    &__pager-info {
+        font-size: $font-sm;
+        color: $color-text;
+        font-weight: 600;
+        min-width: 140px;
+        text-align: center;
+    }
+
+    &__pager-sub {
+        color: $color-text-muted;
+        font-weight: 400;
+        font-size: $font-xs;
     }
 }

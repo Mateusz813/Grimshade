@@ -9,6 +9,7 @@ import type { IMonster } from '../types/monster';
 import type { IInventoryItem } from './itemSystem';
 import type { TCharacterClass } from '../api/v1/characterApi';
 import { generateWeapon } from './itemGenerator';
+import { getMonsterImage } from './spriteAssets';
 import monstersData from '../data/monsters.json';
 import transformsData from '../data/transforms.json';
 
@@ -306,6 +307,28 @@ export const TRANSFORM_BOSS_MULTIPLIER = {
   atk: 8.0,
   def: 8.0,
 };
+
+// ── Per-tier multipliers for the 4-slot transform wave lineup ────────────────
+// Each transform fight now spawns FOUR enemies in the arena instead of one:
+//   slot 0 (top-left)     — Normal (light escort)
+//   slot 1 (top-right)    — Strong (medium escort)
+//   slot 2 (bottom-left)  — Epic   (heavy escort)
+//   slot 3 (bottom-right) — Boss   (the existing transform boss, 8x)
+// The boss tier reuses TRANSFORM_BOSS_MULTIPLIER so its HP/ATK/DEF stay
+// identical to the pre-rework single-enemy fight. The other tiers are
+// scaled relative to base monster stats — meaningfully threatening but
+// dispatch-able while the player chips at the boss.
+export type TTransformTier = 'Normal' | 'Strong' | 'Epic' | 'Boss';
+
+export const TRANSFORM_TIER_MULTIPLIERS: Record<TTransformTier, { hp: number; atk: number; def: number }> = {
+  Normal: { hp: 1.0, atk: 1.0, def: 1.0 },
+  Strong: { hp: 2.0, atk: 1.5, def: 1.3 },
+  Epic:   { hp: 4.0, atk: 2.5, def: 1.8 },
+  Boss:   { hp: TRANSFORM_BOSS_MULTIPLIER.hp, atk: TRANSFORM_BOSS_MULTIPLIER.atk, def: TRANSFORM_BOSS_MULTIPLIER.def },
+};
+
+/** Slot index → tier. Stable across waves — UI can rely on these positions. */
+export const TRANSFORM_SLOT_TIERS: readonly TTransformTier[] = ['Normal', 'Strong', 'Epic', 'Boss'];
 
 // ── Data access helpers ───────────────────────────────────────────────────────
 
@@ -667,4 +690,97 @@ export const applyTransformBossStats = (monster: IMonster): IMonster => {
     attack_max: Math.max(1, Math.floor(atkMax * TRANSFORM_BOSS_MULTIPLIER.atk)),
     defense: Math.floor(monster.defense * TRANSFORM_BOSS_MULTIPLIER.def),
   };
+};
+
+/**
+ * Apply a tier-specific multiplier to a base monster. Used for the three
+ * escort slots in a transform wave (Normal / Strong / Epic) — the boss slot
+ * keeps its existing `applyTransformBossStats` path so balance there is
+ * unchanged from pre-rework.
+ */
+export const applyTransformTierStats = (
+  monster: IMonster,
+  tier: TTransformTier,
+): IMonster => {
+  const mult = TRANSFORM_TIER_MULTIPLIERS[tier];
+  const atkMin = monster.attack_min ?? Math.floor(monster.attack * 0.8);
+  const atkMax = monster.attack_max ?? Math.floor(monster.attack * 1.2);
+  return {
+    ...monster,
+    hp: Math.floor(monster.hp * mult.hp),
+    attack: Math.floor(monster.attack * mult.atk),
+    attack_min: Math.max(1, Math.floor(atkMin * mult.atk)),
+    attack_max: Math.max(1, Math.floor(atkMax * mult.atk)),
+    defense: Math.floor(monster.defense * mult.def),
+  };
+};
+
+/**
+ * Build the 4-slot wave lineup for a single transform fight.
+ *
+ * Slot 0 (Normal), 1 (Strong), 2 (Epic) are escort monsters at the same level
+ * as the boss, drawn from the bestiary so each tile shows a different sprite.
+ * Slot 3 (Boss) is the canonical transform boss the caller passes in (already
+ * `applyTransformBossStats`-scaled if it came from the existing path).
+ *
+ * Picks 4 distinct nearby-level monsters from `monsters.json` so the row
+ * reads as a varied raid encounter rather than four copies of the same
+ * sprite. Falls back to repeating the boss template if the bestiary near
+ * `bossLevel` is too thin.
+ */
+export const getTransformWaveLineup = (
+  bossMonster: IMonster,
+  bossLevel: number,
+): Array<{ slot: 0 | 1 | 2 | 3; tier: TTransformTier; monster: IMonster; spriteImageUrl: string | null }> => {
+  // Pool of bestiary monsters sorted by level distance to the wave level,
+  // boss template excluded so slot 3's sprite isn't duplicated in slot 0/1/2.
+  const pool = [...allMonsters]
+    .filter((m) => m.id !== bossMonster.id)
+    .sort((a, b) => Math.abs(a.level - bossLevel) - Math.abs(b.level - bossLevel));
+
+  // Pull 3 escort templates. If the bestiary is empty or only one monster
+  // matches, repeat the closest fallback so we never serve up a null slot.
+  const fallback = pool[0] ?? bossMonster;
+  const tplNormal = pool[0] ?? fallback;
+  const tplStrong = pool[1] ?? fallback;
+  const tplEpic   = pool[2] ?? fallback;
+
+  // Stamp each escort with a per-slot id prefix so the React keys are stable
+  // and don't collide with the boss id (which the existing defeat-tracking
+  // logic compares against). Re-scales the escort's raw bestiary stats to
+  // the wave level so a low-level template (e.g., id `slime` at lvl 1)
+  // doesn't show up as a 1 HP joke against a level-30 boss — `scaleMonsterStats`
+  // is the canonical formula used for all transform-quest monsters.
+  const stamp = (tpl: IMonster, slot: number): IMonster => {
+    const scaled = scaleMonsterStats(bossLevel);
+    return {
+      ...tpl,
+      id: `${bossMonster.id}__slot${slot}_${tpl.id}`,
+      level: bossLevel,
+      hp: scaled.hp,
+      attack: scaled.attack,
+      attack_min: scaled.attack_min,
+      attack_max: scaled.attack_max,
+      defense: scaled.defense,
+      xp: scaled.xp,
+    };
+  };
+
+  // Capture each escort's original-template sprite URL BEFORE the stamp
+  // overwrites `level` with `bossLevel`. The sprite registry (spriteAssets)
+  // is keyed by `monster-{level}.png` and only spans levels 1-60 — a T2/T3
+  // transform (boss at level 60+) would miss every lookup if we used the
+  // post-stamp level, leaving the cards on emoji fallback. Using the original
+  // template's level guarantees the same monster art the player sees in the
+  // bestiary and other combat views (hunting/boss/dungeon). Falls back to
+  // null when no PNG exists for that level — the consumer renders the emoji
+  // glyph from `tpl.sprite` instead, identical to MonsterSprite's behaviour.
+  const lookupSprite = (tpl: IMonster) => getMonsterImage(tpl.level);
+
+  return [
+    { slot: 0, tier: 'Normal', monster: applyTransformTierStats(stamp(tplNormal, 0), 'Normal'), spriteImageUrl: lookupSprite(tplNormal) },
+    { slot: 1, tier: 'Strong', monster: applyTransformTierStats(stamp(tplStrong, 1), 'Strong'), spriteImageUrl: lookupSprite(tplStrong) },
+    { slot: 2, tier: 'Epic',   monster: applyTransformTierStats(stamp(tplEpic,   2), 'Epic'),   spriteImageUrl: lookupSprite(tplEpic) },
+    { slot: 3, tier: 'Boss',   monster: bossMonster, spriteImageUrl: null },
+  ];
 };

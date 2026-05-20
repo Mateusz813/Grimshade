@@ -11,9 +11,18 @@
 //   Level  800 → 100 000 kills = 1 level   → ~696.8M XP / level   (10× @800)
 //   Level 1000 → 100 000 kills = 1 level   → ~897.2M XP / level
 //
+// 2026-05-11 spec ("Mozna lvlowac powyzej 1000lvl tylko kazdy kolejny
+// poziom jest o 10% trudniejszy do wbicia niz poprzedni"): above 1000
+// the soft cap lifts and every subsequent level needs 10 % more XP
+// than the one before. The growth is `xpToNextLevel(1000) × 1.10^(L−1000)`
+// — exponential but slow enough that day-1 grinding feels like normal
+// post-cap progression; by lvl 1100 a level costs ~13× as much as 1000,
+// and by 1200 ~136× — diminishing-returns territory but still always
+// reachable.
+//
 // taskRewardXp = monsterXp(L) × killCount × 1.5 (see taskRewards.ts), and the
 // anchors were computed from monsters.json's `xp` column at each level tier.
-// Between anchors we interpolate linearly; above 1000 we just hold the curve.
+// Between anchors we interpolate linearly.
 
 interface IXpAnchor { level: number; xp: number }
 
@@ -44,9 +53,18 @@ const interpolateAnchors = (level: number): number => {
   return last.xp;
 };
 
+/** XP required to advance from `level` → `level + 1`. */
 export const xpToNextLevel = (level: number): number => {
   if (level <= 0) return 300;
   if (level < XP_ANCHORS[0].level) return legacyXp(level);
+  // 2026-05-11: above the level-1000 anchor every additional level
+  // costs 10 % more XP than the previous one. Compounding from the
+  // 1000 anchor: cost(L) = anchor1000 * 1.10^(L-1000).
+  const last = XP_ANCHORS[XP_ANCHORS.length - 1];
+  if (level >= last.level) {
+    const overflow = level - last.level;
+    return Math.floor(last.xp * Math.pow(1.10, overflow));
+  }
   return interpolateAnchors(level);
 };
 
@@ -90,7 +108,14 @@ export const processXpGain = (
   let levelsGained = 0;
   let statPointsGained = 0;
 
-  while (xp >= xpToNextLevel(level) && level < 1000) {
+  // 2026-05-11: the hard cap at 1000 is gone. Each level past 1000 costs
+  // 10 % more XP than the previous (see xpToNextLevel). Hard safety cap
+  // at 10000 to prevent a runaway loop if someone hands the engine an
+  // absurd XP gain — that's already ~lvl 1000 + 9000×1.10^n which is
+  // effectively unreachable; the bound only guards against a pathological
+  // input rather than a real player.
+  const HARD_SAFETY_CAP = 10_000;
+  while (xp >= xpToNextLevel(level) && level < HARD_SAFETY_CAP) {
     xp -= xpToNextLevel(level);
     level++;
     levelsGained++;
@@ -101,20 +126,22 @@ export const processXpGain = (
 };
 
 // ── Death penalty ─────────────────────────────────────────────────────────────
-// Scales heavily with level:
-//   Level 1:       no loss
-//   Level 2-10:    lose 1 level
-//   Level 11-50:   lose ~2-4% of levels (1-2 levels at 50)
-//   Level 51-200:  lose ~3-5% (3-10 levels)
-//   Level 201-500: lose ~4-5% (8-25 levels)
-//   Level 501-1000: lose ~5% (25-50 levels)
+// Player-spec'd (2026-05): the curve is now flat-percentage, not a tier
+// table. Death takes 2% of current level + 50% of every skill's trained
+// XP. Examples:
+//   Level 1   → 0 levels lost (floor below 1 → keeps you at 1)
+//   Level 50  → 1 level lost  (50  × 0.02 = 1.0)
+//   Level 100 → 2 levels lost (100 × 0.02 = 2.0)
+//   Level 500 → 10 levels lost
+//   Level 1000 → 20 levels lost (the spec's anchor — "20 lvls at 1000")
 //
-// Formula: levelsLost = max(1, floor(level * (0.03 + level * 0.00002)))
+// Skill XP: every trained skill drops by 50% of its banked XP. So a skill
+// trained to half of level 50 ends up at ~level 25's worth — meaningful
+// pain but never wipes a skill back to zero.
 //
-// Skill XP loss is much smaller (1-3%) — training is slow and grinding to
-// recover skills should NOT take days of playtime.
-//
-// Attributes from level-ups are NOT removed (idempotent via highest_level).
+// Attributes from past level-ups are NOT removed (idempotent via
+// highest_level): the penalty only resets the XP CURRENT-level pointer and
+// strips a few levels from the bar.
 
 export interface IDeathPenaltyResult {
     newLevel: number;
@@ -126,76 +153,96 @@ export interface IDeathPenaltyResult {
 
 /**
  * Calculate how many levels are lost on death.
- * Scales from 1 level at low levels to ~5% of current level at 1000.
+ *   formula: floor(level * 0.02)
+ *   • lvl 1   → 0
+ *   • lvl 50  → 1
+ *   • lvl 100 → 2
+ *   • lvl 500 → 10
+ *   • lvl 1000 → 20
  */
 const calculateLevelsLost = (level: number): number => {
     if (level <= 1) return 0;
-    if (level <= 10) return 1;
-    // Smooth curve: 3% base + tiny quadratic component
-    // lvl 50:   50 * 0.031  =  1.55 → 1
-    // lvl 100:  100 * 0.032 =  3.2  → 3
-    // lvl 200:  200 * 0.034 =  6.8  → 6
-    // lvl 500:  500 * 0.04  = 20.0  → 20
-    // lvl 1000: 1000 * 0.05 = 50.0  → 50
-    const pct = 0.03 + level * 0.00002;
-    return Math.max(1, Math.floor(level * pct));
+    return Math.max(0, Math.floor(level * 0.02));
 };
 
-/**
- * Calculate skill XP loss percentage on death.
- * Much smaller than level loss — skills are slow to train.
- *   lvl 1-10:  1%
- *   lvl 50:    1.1%
- *   lvl 200:   1.4%
- *   lvl 500:   2.0%
- *   lvl 1000:  3.0%
- */
-const calculateSkillXpLossPercent = (level: number): number => {
-    return Math.min(3, 1 + level * 0.002);
-};
+/** Death always takes 50% of every trained skill's banked XP. */
+const DEATH_SKILL_XP_LOSS_PCT = 50;
 
 export const applyDeathPenalty = (
     currentLevel: number,
     currentXp: number,
 ): IDeathPenaltyResult => {
-    // Can't lose level at level 1
+    // Lvl 1 — no level to strip. Keep the current XP pointer; the
+    // skill-XP penalty still applies.
     if (currentLevel <= 1) {
         return {
             newLevel: 1,
-            newXp: Math.max(0, Math.floor(currentXp * 0.5)),
-            xpPercent: 50,
+            newXp: currentXp,
+            xpPercent: Math.round((currentXp / Math.max(1, xpToNextLevel(1))) * 100),
             levelsLost: 0,
-            skillXpLossPercent: 1,
+            skillXpLossPercent: DEATH_SKILL_XP_LOSS_PCT,
         };
     }
 
     const levelsLost = calculateLevelsLost(currentLevel);
     const newLevel = Math.max(1, currentLevel - levelsLost);
 
-    // XP percent to keep on the new (lower) level – scales down with level.
-    // Low-level deaths are forgiving; high-level deaths leave you at ~5% of the
-    // new level's bar so recovering requires meaningful playtime.
-    let xpPercent: number;
-    if (currentLevel <= 5)        xpPercent = 75;
-    else if (currentLevel <= 20)  xpPercent = 50;
-    else if (currentLevel <= 50)  xpPercent = 30;
-    else if (currentLevel <= 100) xpPercent = 15;
-    else if (currentLevel <= 300) xpPercent = 10;
-    else                          xpPercent = 5;
-
-    const xpNeededForNewLevel = xpToNextLevel(newLevel);
-    // Clamp to at most xpNeeded - 1 to ensure the bar never appears "full" without leveling
-    const newXp = Math.min(
-        Math.floor(xpNeededForNewLevel * (xpPercent / 100)),
-        xpNeededForNewLevel - 1,
-    );
-
+    // After a level strip, drop the XP pointer to the FRESH base of the
+    // new lower level (player has to re-earn the levels they lost).
     return {
         newLevel,
-        newXp,
-        xpPercent,
+        newXp: 0,
+        xpPercent: 0,
         levelsLost,
-        skillXpLossPercent: calculateSkillXpLossPercent(currentLevel),
+        skillXpLossPercent: DEATH_SKILL_XP_LOSS_PCT,
+    };
+};
+
+/**
+ * Flee penalty — applied when the player presses "Ucieknij" mid-fight in
+ * non-hunting combat (Boss / Dungeon / Transform / Raid). Equipment is
+ * never lost. Per 2026-05 spec:
+ *   • level loss: floor(level * 0.003)  → 3 at lvl 1000, 0 below ~333
+ *   • skill XP:   0.1% of every trained skill's banked XP
+ *
+ * Returns the SAME shape as `applyDeathPenalty` so the UI overlay can
+ * render a unified "you lost X" panel for both flows — only the copy
+ * ("Uciekłeś" vs "Zginąłeś") and the visual intensity differ.
+ */
+const FLEE_SKILL_XP_LOSS_PCT = 0.1;
+
+export const applyFleePenalty = (
+    currentLevel: number,
+    currentXp: number,
+): IDeathPenaltyResult => {
+    // Lvl 1 — nothing to lose; keep XP and skip skill-XP drain too.
+    if (currentLevel <= 1) {
+        return { newLevel: 1, newXp: currentXp, xpPercent: 100, levelsLost: 0, skillXpLossPercent: 0 };
+    }
+
+    const levelsLost = Math.max(0, Math.floor(currentLevel * 0.003));
+    const newLevel = Math.max(1, currentLevel - levelsLost);
+
+    if (levelsLost === 0) {
+        // No level lost (lvl < ~333) — keep the XP pointer; only skill-XP
+        // hits.
+        return {
+            newLevel,
+            newXp: currentXp,
+            xpPercent: Math.round((currentXp / Math.max(1, xpToNextLevel(currentLevel))) * 100),
+            levelsLost: 0,
+            skillXpLossPercent: FLEE_SKILL_XP_LOSS_PCT,
+        };
+    }
+
+    // Level was stripped — drop XP pointer to fresh start of the new
+    // lower level (consistent with applyDeathPenalty).
+    return {
+        newLevel,
+        newXp: 0,
+        xpPercent: 0,
+        levelsLost,
+        skillXpLossPercent: FLEE_SKILL_XP_LOSS_PCT,
     };
 };
 

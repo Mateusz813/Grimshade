@@ -7,9 +7,11 @@
   color: $color-text;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh; // dynamic viewport height (accounts for mobile address bar)
-  overflow: hidden; // page itself never scrolls — arena scrolls internally
+  // Used to lock the viewport with `height: 100dvh; overflow: hidden` and
+  // delegate scrolling to `.combat__hub`. That created TWO vertical scrollbars
+  // on the picker view (page + hub). Now we just flow naturally and let the
+  // AppShell scroll — the inner hub no longer steals scroll either.
+  min-height: 100%;
 
   // ── Header ─────────────────────────────────────────────────────────────────
   &__header {
@@ -124,9 +126,12 @@
   }
 
   &__mode-btn {
+    align-items: center;
     border: 1px solid $color-border;
     border-radius: $radius-sm;
+    column-gap: $spacing-xs;
     cursor: pointer;
+    display: inline-flex;
     font-size: $font-xs;
     font-weight: 700;
     padding: $spacing-xs $spacing-sm;
@@ -136,12 +141,22 @@
     &--manual { background: $color-bg-card; border-color: $color-accent; color: $color-accent; }
   }
 
+  // Icon glyph (✨ for skills, ⚔️ for fight) inside the mode buttons. Sized a
+  // hair larger than the AUTO/MANUAL label so the icon reads first.
+  &__mode-btn-icon {
+    font-size: $font-sm;
+    line-height: 1;
+  }
+
   &__toggle-btn {
+    align-items: center;
     background: transparent;
     border: 1px solid $color-border;
     border-radius: $radius-sm;
     color: $color-text-muted;
+    column-gap: $spacing-xs;
     cursor: pointer;
+    display: inline-flex;
     font-size: $font-xs;
     font-weight: 700;
     padding: $spacing-xs $spacing-sm;
@@ -701,6 +716,22 @@
   &__variant-chance { color: rgba(255, 255, 255, 0.5); font-size: 10px; }
   &__variant-stats { color: rgba(255, 255, 255, 0.7); grid-column: 1 / -1; font-size: 10px; }
 
+  // Spec 3 (2026-05): XP / Gold / Task each on its own row so wrapping
+  // never crops a value mid-text. Inline span flips to flex-column.
+  &__variant-xp {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  &__variant-xp-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   &__variant-drops {
     grid-column: 1 / -1;
     padding: 4px 0 2px;
@@ -940,30 +971,39 @@
     justify-content: flex-end;
   }
 
+  // Wave +/− buttons. The glyphs are plain `+` / `−` (not color emoji) so the
+  // text color is whatever this rule sets. Per user request the glyph is white
+  // whenever the button is enabled, with only the border/background tinted by
+  // the modifier classes (red rim for remove, gold rim for add).
   &__wave-btn {
-    border-radius: $radius-sm;
-    cursor: pointer;
-    font-size: $font-xs;
-    font-weight: 700;
-    padding: 4px 10px;
-    transition: all $transition-fast;
+    align-items: center;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.18);
-    color: $color-text;
+    border-radius: $radius-sm;
+    color: $color-text; // white when clickable
+    cursor: pointer;
+    display: inline-flex;
+    font-size: $font-md;
+    font-weight: 700;
+    height: 32px;
+    justify-content: center;
+    line-height: 1;
+    min-width: 36px;
+    padding: 0 10px;
+    transition: all $transition-fast;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: rgba(255, 255, 255, 0.12);
     }
 
     &:disabled {
-      opacity: 0.45;
       cursor: not-allowed;
+      opacity: 0.45;
     }
 
     &--remove {
       background: rgba(244, 67, 54, 0.1);
       border-color: rgba(244, 67, 54, 0.4);
-      color: #f44336;
 
       &:hover:not(:disabled) {
         background: rgba(244, 67, 54, 0.2);
@@ -974,8 +1014,7 @@
 
   &__wave-add-btn {
     background: rgba(255, 193, 7, 0.1);
-    border: 1px solid rgba(255, 193, 7, 0.4);
-    color: #ffc107;
+    border-color: rgba(255, 193, 7, 0.4);
 
     &:hover:not(:disabled) {
       background: rgba(255, 193, 7, 0.2);
@@ -2886,5 +2925,793 @@
   .combat__skill-anim-emoji {
     animation: skill-summon-emoji 1.0s ease-out forwards;
     filter: drop-shadow(0 0 8px rgba(121, 85, 72, 0.7));
+  }
+}
+
+/* ============================================================================
+   Combat Hub redesign — top bar, monster grid cards, drop modal, bottom lists.
+   These rules live OUTSIDE the original `.combat { … }` block so the existing
+   arena styles stay untouched, but they all share the `combat__` BEM root so
+   they sit under the same component visually.
+============================================================================ */
+.combat {
+
+  // ── Top bar ────────────────────────────────────────────────────────────────
+  // Controls only (speed / skill mode / fight mode / XP toggle) — the previous
+  // Wstecz button + "⚔️ Polowanie" title were removed by user request to free
+  // up vertical space. Controls flex-wrap so they always fit on narrow phones.
+  &__top {
+    align-items: center;
+    background: $color-bg;
+    border-bottom: 1px solid $color-border;
+    column-gap: $spacing-md;
+    display: flex;
+    flex-wrap: wrap;
+    padding: $spacing-sm $spacing-md;
+    position: sticky;
+    row-gap: $spacing-xs;
+    top: 0;
+    z-index: $z-nav;
+  }
+
+  &__top-row {
+    align-items: center;
+    column-gap: $spacing-md;
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    row-gap: $spacing-xs;
+  }
+
+  // (Wstecz button + "⚔️ Polowanie" title removed — the top bar is now controls
+  // only. Their old &__top-back / &__top-title rules were dropped along with the
+  // JSX so the BEM stylesheet stays in lock-step with the markup.)
+
+  &__top-controls {
+    align-items: center;
+    column-gap: $spacing-xs;
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: $spacing-xs;
+
+    @include desktop {
+      // Wide screens: keep the controls block full-width and push the buttons
+      // themselves to the right edge of the header. Using `justify-content:
+      // flex-end` on a 100%-wide block (rather than shrinking the block to
+      // content) is what actually anchors the buttons against the right side
+      // of the page on desktop.
+      justify-content: flex-end;
+    }
+  }
+
+  &__top-stop {
+    background: rgba($color-accent, 0.12);
+    border: 1px solid $color-accent;
+    border-radius: $radius-sm;
+    color: $color-accent;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba($color-accent, 0.25);
+    }
+  }
+
+  // ── Hub (idle phase shell) ─────────────────────────────────────────────────
+  // Used to scroll INTERNALLY via `overflow-y: auto`, but the unified-HUD
+  // refactor lets the AppShell own the scroll container — keeping the inner
+  // overflow caused TWO vertical scrollbars side-by-side on the picker view
+  // (the page's outer one + the hub's inner one). Now we just flow naturally
+  // and let the page scroll the whole hub.
+  &__hub {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: $spacing-lg;
+    min-height: 0;
+    padding: $spacing-md;
+  }
+
+  &__hub-section-title {
+    color: $color-text-muted;
+    font-size: $font-sm;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin: 0 0 $spacing-sm;
+    // Centered on phones (per user request) — picks up enough breathing room
+    // around the upper-cased label so it reads as a real heading. From tablet
+    // up the title sits flush left with the section's content for a cleaner
+    // wide-screen layout.
+    text-align: center;
+    text-transform: uppercase;
+
+    @include tablet {
+      text-align: left;
+    }
+  }
+
+  // ── Wave-count box ─────────────────────────────────────────────────────────
+  // "Ilość przeciwników" — centered with max-width on mobile, left-aligned on
+  // desktop. Reuses the existing &__wave-btn / &__wave-add-btn styling.
+  &__hub-wave {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__wave-box {
+    align-items: center;
+    background: rgba(255, 193, 7, 0.05);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    border-radius: $radius-md;
+    column-gap: $spacing-sm;
+    display: flex;
+    flex-wrap: wrap;
+    // Per user request: keep the wave-count buttons centered in the box on
+    // every breakpoint (mobile + desktop both).
+    justify-content: center;
+    margin: 0 auto;
+    max-width: 360px;
+    padding: $spacing-sm $spacing-md;
+    row-gap: $spacing-xs;
+    width: 100%;
+
+    @include desktop {
+      // Desktop: anchor the whole box to the left of the hub column instead of
+      // centering it. The buttons inside still center within the box itself.
+      margin: 0;
+      max-width: 480px;
+    }
+  }
+
+  &__wave-count {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: $radius-sm;
+    color: $color-text;
+    font-size: $font-md;
+    font-weight: 700;
+    min-width: 64px;
+    padding: 4px 12px;
+    text-align: center;
+  }
+
+  &__wave-hint {
+    color: $color-text-muted;
+    flex: 1 1 100%;
+    font-size: $font-xs;
+    text-align: center;
+
+    @include desktop {
+      flex: 1;
+      text-align: left;
+    }
+  }
+
+  // ── Monster cards grid ─────────────────────────────────────────────────────
+  // Mobile: 1 per row. Tablet: 2 per row. Desktop: 3 per row.
+  &__hub-monsters {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__mcard-grid {
+    display: grid;
+    gap: $spacing-sm;
+    grid-template-columns: 1fr;
+
+    @include tablet {
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+    }
+
+    @include desktop {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
+
+  &__mcard {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    position: relative;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &--locked {
+      opacity: 0.55;
+    }
+
+    // Card is highlighted when the player has a task OR a quest involving this
+    // monster — the user couldn't tell from the bottom block which monster a
+    // task/quest pointed at, so the cue moved to the card itself.
+    &--task {
+      border-color: rgba(76, 175, 80, 0.7);
+      box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.35), 0 0 12px rgba(76, 175, 80, 0.2);
+    }
+
+    // 25/25 mastery → full purple border (user request: "caly border zawsze ma
+    // byc pokolorowany na fioletowo"). Wins over the green `--task` highlight
+    // because the rule comes after `--task`.
+    &--mastery-max {
+      border-color: #ab47bc;
+      box-shadow: 0 0 0 1px rgba(171, 71, 188, 0.45), 0 0 14px rgba(171, 71, 188, 0.3);
+    }
+  }
+
+  &__mcard-head {
+    align-items: center;
+    column-gap: $spacing-sm;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+  }
+
+  &__mcard-sprite {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    display: inline-flex;
+    font-size: 32px;
+    height: 56px;
+    justify-content: center;
+    line-height: 1;
+    width: 56px;
+
+    @include tablet {
+      font-size: 36px;
+      height: 64px;
+      width: 64px;
+    }
+  }
+
+  &__mcard-name {
+    color: $color-text;
+    font-size: $font-md;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__mcard-level {
+    background: rgba($color-accent, 0.12);
+    border: 1px solid rgba($color-accent, 0.5);
+    border-radius: $radius-sm;
+    color: $color-accent;
+    font-size: $font-xs;
+    font-weight: 700;
+    padding: 2px 8px;
+    // Centered to match the mastery chip directly below it (which centers via
+    // flex `justify-content: center`). Both chips share the same stretched
+    // width inside `combat__mcard-chips`, so center-aligned text keeps them
+    // visually balanced.
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  &__mcard-stats {
+    display: grid;
+    gap: $spacing-xs;
+    grid-template-columns: 1fr;
+
+    @include tablet {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &__mcard-stat {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: $radius-sm;
+    column-gap: $spacing-xs;
+    display: grid;
+    font-size: $font-xs;
+    grid-template-columns: auto auto 1fr;
+    padding: 4px 8px;
+
+    &--magical {
+      background: rgba(124, 77, 255, 0.18);
+      color: #b39ddb;
+    }
+  }
+
+  &__mcard-stat-icon {
+    font-size: $font-sm;
+    line-height: 1;
+  }
+
+  &__mcard-stat-label {
+    color: $color-text-muted;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  &__mcard-stat-value {
+    color: $color-text;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  &__mcard-rewards {
+    display: grid;
+    gap: $spacing-xs;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  &__mcard-reward {
+    align-items: center;
+    background: rgba(255, 193, 7, 0.06);
+    border: 1px solid rgba(255, 193, 7, 0.18);
+    border-radius: $radius-sm;
+    column-gap: $spacing-xs;
+    display: grid;
+    font-size: $font-xs;
+    grid-template-columns: auto auto 1fr;
+    padding: 4px 8px;
+  }
+
+  &__mcard-reward-icon {
+    font-size: $font-sm;
+    line-height: 1;
+  }
+
+  &__mcard-reward-label {
+    color: $color-text-muted;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  &__mcard-reward-value {
+    color: $color-text;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  &__mcard-reward-bonus {
+    color: #ffb74d;
+    cursor: help;
+    font-weight: 700;
+    text-shadow: 0 0 4px rgba(255, 152, 0, 0.5);
+  }
+
+  &__mcard-locked-note {
+    background: rgba(244, 67, 54, 0.08);
+    border: 1px dashed rgba(244, 67, 54, 0.4);
+    border-radius: $radius-sm;
+    color: #ef9a9a;
+    font-size: $font-xs;
+    font-weight: 600;
+    padding: 4px 8px;
+    text-align: center;
+  }
+
+  &__mcard-actions {
+    display: grid;
+    gap: $spacing-sm;
+    grid-template-columns: auto 1fr;
+  }
+
+  &__mcard-action {
+    align-items: center;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: $font-md;
+    justify-content: center;
+    line-height: 1;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+
+    &--info {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: $color-text;
+      min-width: 44px;
+
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    &--fight {
+      background: rgba(76, 175, 80, 0.15);
+      border: 1px solid #4caf50;
+      color: #4caf50;
+      font-weight: 700;
+
+      &:hover:not(:disabled) {
+        background: rgba(76, 175, 80, 0.3);
+      }
+    }
+  }
+
+  // ── Hub filter bar (above the wave-count box) ──────────────────────────────
+  // Two persistent toggles + a numeric "Lvl od" input + an optional Wyczyść
+  // button (only visible when at least one filter is active). Wraps freely so
+  // it stays usable on small phones. Per-character persistence happens in
+  // settingsStore via characterScope, so toggling here survives reloads.
+  &__hub-filters {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__filter-bar {
+    align-items: center;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    column-gap: $spacing-sm;
+    display: flex;
+    flex-wrap: wrap;
+    padding: $spacing-sm $spacing-md;
+    row-gap: $spacing-xs;
+  }
+
+  &__filter-toggle {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    column-gap: $spacing-xs;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: $font-xs;
+    font-weight: 600;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+    user-select: none;
+
+    // The checkbox lives inside the label for a11y / form semantics, but the
+    // visual cue is the --active class on the label itself, so the native
+    // checkbox is hidden off-screen.
+    input[type='checkbox'] {
+      height: 0;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      width: 0;
+    }
+
+    &:hover {
+      border-color: $color-accent;
+      color: $color-text;
+    }
+
+    &--active {
+      background: rgba(76, 175, 80, 0.15);
+      border-color: #4caf50;
+      color: #c8e6c9;
+    }
+  }
+
+  &__filter-toggle-label {
+    line-height: 1;
+  }
+
+  &__filter-input {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    column-gap: $spacing-xs;
+    display: inline-flex;
+    padding: 2px $spacing-sm;
+
+    input {
+      background: transparent;
+      border: 0;
+      color: $color-text;
+      font-size: $font-xs;
+      font-weight: 700;
+      outline: none;
+      padding: 4px 0;
+      width: 56px;
+
+      // Hide native spinner on number inputs — we don't need them for a
+      // single-digit-ish minimum-level filter.
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        appearance: none;
+        margin: 0;
+      }
+      -moz-appearance: textfield;
+    }
+  }
+
+  &__filter-input-label {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__filter-clear {
+    background: transparent;
+    border: 1px dashed rgba(244, 67, 54, 0.4);
+    border-radius: $radius-sm;
+    color: #ef9a9a;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 600;
+    margin-left: auto;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba(244, 67, 54, 0.12);
+      border-color: #f44336;
+      color: $color-text;
+    }
+  }
+
+  // Empty-state shown when the active filter set hides every monster.
+  &__hub-empty {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px dashed $color-border;
+    border-radius: $radius-md;
+    color: $color-text-muted;
+    font-size: $font-sm;
+    padding: $spacing-md;
+    text-align: center;
+  }
+
+  // ── Per-monster card chips & goals ─────────────────────────────────────────
+  // The header now stacks the LVL chip and the mastery chip vertically so the
+  // mastery chip can match the LVL chip's width (per user request). Both share
+  // the right column of the &__mcard-head grid.
+  &__mcard-chips {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  // Subtle purple chip under the LVL chip showing 🎖 X/25 monster mastery.
+  // Same width as the LVL chip (stretched by &__mcard-chips). The medal icon
+  // sits to the left of the count; the chip gets a brighter + glowing variant
+  // once the player hits 25/25.
+  &__mcard-mastery {
+    align-items: center;
+    background: rgba(171, 71, 188, 0.14);
+    border: 1px solid rgba(171, 71, 188, 0.5);
+    border-radius: $radius-sm;
+    color: #ce93d8;
+    column-gap: 4px;
+    display: inline-flex;
+    font-size: 10px;
+    font-weight: 700;
+    justify-content: center;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    white-space: nowrap;
+
+    &--max {
+      background: rgba(171, 71, 188, 0.32);
+      border-color: #ab47bc;
+      color: #fff;
+      text-shadow: 0 0 6px rgba(171, 71, 188, 0.7);
+    }
+  }
+
+  &__mcard-mastery-icon {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  // Per-card task / quest progress lines under the XP+Gold rewards. One line
+  // per task/quest involving the monster — gives the player an at-a-glance
+  // "this monster matters because..." cue without scrolling to the bottom.
+  &__mcard-goals {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__mcard-goal {
+    align-items: center;
+    border-radius: $radius-sm;
+    column-gap: $spacing-xs;
+    display: grid;
+    font-size: $font-xs;
+    font-weight: 600;
+    grid-template-columns: auto 1fr;
+    padding: 4px 8px;
+
+    &--task {
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      color: #c8e6c9;
+    }
+
+    &--quest {
+      background: rgba(171, 71, 188, 0.1);
+      border: 1px solid rgba(171, 71, 188, 0.4);
+      color: #e1bee7;
+    }
+
+    &--done {
+      background: rgba(76, 175, 80, 0.18);
+      border-color: #4caf50;
+      color: #fff;
+    }
+  }
+
+  &__mcard-goal-icon {
+    font-size: $font-sm;
+    line-height: 1;
+  }
+
+  &__mcard-goal-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // ── Drop info modal ────────────────────────────────────────────────────────
+  // Replaces the old inline expand. Centered popup with backdrop, scrollable
+  // body. On wide screens variants use a 2-col grid; on narrow ones they
+  // stack vertically.
+  &__drop-modal-backdrop {
+    align-items: center;
+    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: $spacing-md;
+    position: fixed;
+    z-index: $z-modal;
+  }
+
+  &__drop-modal {
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    max-width: 720px;
+    overflow: hidden;
+    width: 100%;
+
+    @include desktop {
+      max-width: 880px;
+    }
+  }
+
+  &__drop-modal-head {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid $color-border;
+    column-gap: $spacing-sm;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    padding: $spacing-sm $spacing-md;
+  }
+
+  &__drop-modal-sprite {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    display: inline-flex;
+    font-size: 28px;
+    height: 48px;
+    justify-content: center;
+    line-height: 1;
+    width: 48px;
+  }
+
+  &__drop-modal-name-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__drop-modal-name {
+    color: $color-text;
+    font-size: $font-md;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__drop-modal-level {
+    color: $color-accent;
+    font-size: $font-xs;
+    font-weight: 700;
+  }
+
+  &__drop-modal-close {
+    background: transparent;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: $font-md;
+    height: 32px;
+    line-height: 1;
+    transition: all $transition-fast;
+    width: 32px;
+
+    &:hover {
+      border-color: $color-accent;
+      color: $color-accent;
+    }
+  }
+
+  &__drop-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    overflow-y: auto;
+    padding: $spacing-md;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  &__drop-modal-summary {
+    display: flex;
+    flex-wrap: wrap;
+    font-size: $font-sm;
+    gap: $spacing-md;
+  }
+
+  &__drop-modal-info {
+    color: $color-text;
+    font-size: $font-sm;
+    font-weight: 600;
+  }
+
+  // Per-rarity variant cards stack on mobile, sit side-by-side on tablet+.
+  &__drop-modal-variants {
+    display: grid;
+    gap: $spacing-xs;
+    grid-template-columns: 1fr;
+
+    @include tablet {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @include desktop {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &__drop-modal-hint {
+    background: rgba(171, 71, 188, 0.1);
+    border: 1px dashed rgba(171, 71, 188, 0.5);
+    border-radius: $radius-sm;
+    color: #ce93d8;
+    font-size: $font-xs;
+    margin-top: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+
+    strong {
+      color: #ab47bc;
+      font-weight: 700;
+    }
   }
 }

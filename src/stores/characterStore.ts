@@ -6,13 +6,53 @@ import { useSkillStore } from './skillStore';
 import { useLevelUpStore } from './levelUpStore';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
 import { getTrainingBonuses } from '../systems/skillSystem';
+import {
+    getElixirHpBonus,
+    getElixirMpBonus,
+    getElixirHpPctMultiplier,
+    getElixirMpPctMultiplier,
+} from '../systems/combatElixirs';
+import {
+    getTransformFlatHp,
+    getTransformFlatMp,
+    getTransformHpPctMultiplier,
+    getTransformMpPctMultiplier,
+} from '../systems/transformBonuses';
 import itemsRaw from '../data/items.json';
 
 const ALL_ITEMS_FOR_HEAL = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
 /**
- * Returns bonus HP/MP from equipment + training (added on top of base max_hp/max_mp).
- * Used by level-up and death-respawn to fully restore HP/MP up to effective maximum.
+ * Returns the player's full effective max HP / MP — base + equipment +
+ * training + elixir + transform — mirroring `getEffectiveChar` in
+ * combatEngine.ts. Used by level-up and death-respawn to fully restore
+ * HP/MP up to the bar the player actually sees in the header.
+ *
+ * Older revisions only summed equipment + training, leaving 10–20 % gap
+ * after death whenever the player had an active elixir or completed
+ * transform tier.
+ */
+const getEffectiveMaxValues = (baseMaxHp: number, baseMaxMp: number): { maxHp: number; maxMp: number } => {
+    try {
+        const { equipment } = useInventoryStore.getState();
+        const eq = getTotalEquipmentStats(equipment, ALL_ITEMS_FOR_HEAL);
+        const { skillLevels } = useSkillStore.getState();
+        const tb = getTrainingBonuses(skillLevels);
+        const rawMaxHp = baseMaxHp + (eq.hp ?? 0) + (tb.max_hp ?? 0) + getElixirHpBonus() + getTransformFlatHp();
+        const rawMaxMp = baseMaxMp + (eq.mp ?? 0) + (tb.max_mp ?? 0) + getElixirMpBonus() + getTransformFlatMp();
+        return {
+            maxHp: Math.floor(rawMaxHp * getElixirHpPctMultiplier() * getTransformHpPctMultiplier()),
+            maxMp: Math.floor(rawMaxMp * getElixirMpPctMultiplier() * getTransformMpPctMultiplier()),
+        };
+    } catch {
+        return { maxHp: baseMaxHp, maxMp: baseMaxMp };
+    }
+};
+
+/**
+ * Backwards-compatible delta helper — kept so existing call sites that
+ * only need bonus deltas (level-up bar widening) keep working without
+ * recomputing the whole effective max each time.
  */
 const getEffectiveMaxBonuses = (): { hpBonus: number; mpBonus: number } => {
     try {
@@ -114,6 +154,12 @@ interface ICharacterState {
   updateCharacter: (partial: Partial<ICharacter>) => void;
   addXp: (xp: number) => IXpGainResult;
   spendStatPoint: (stat: StatPointStat) => void;
+  /**
+   * Spend EVERY available stat point on a single stat in one go. Used by the
+   * Postać view's stat-alloc tiles so a player who just dinged 50 levels
+   * doesn't have to click 50 times. Idempotent — no-op when stat_points = 0.
+   */
+  spendAllStatPoints: (stat: StatPointStat) => void;
   fullHealEffective: () => void;
   clearCharacter: () => void;
 }
@@ -257,17 +303,63 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
 
     set({ character: { ...char, ...updates } });
   },
+  spendAllStatPoints: (stat: StatPointStat) => {
+    const char = get().character;
+    if (!char) return;
+    const points = char.stat_points ?? 0;
+    if (points <= 0) return;
+
+    const bonus = STAT_POINT_BONUSES[stat];
+    const total = bonus * points;
+    const updates: Partial<ICharacter> = {
+      stat_points: 0,
+      [stat]: (char[stat] ?? 0) + total,
+    };
+    // Same hp/mp side-effect as the single-point version — bumping max_hp/mp
+    // also tops up the current pool by the same amount so the bar shows the
+    // gain immediately instead of leaving an awkward gap until next heal.
+    if (stat === 'max_hp') updates.hp = (char.hp ?? 0) + total;
+    if (stat === 'max_mp') updates.mp = (char.mp ?? 0) + total;
+
+    set({ character: { ...char, ...updates } });
+  },
   fullHealEffective: () => {
     const char = get().character;
     if (!char) return;
-    const { hpBonus, mpBonus } = getEffectiveMaxBonuses();
+    // Use the FULL effective max (equipment + training + elixir + transform)
+    // so a heavily-buffed player respawns at the cap shown in the header,
+    // not just at base + gear. Elixir/transform-aware so death-respawn
+    // doesn't silently cap them at 80–90 %.
+    const { maxHp, maxMp } = getEffectiveMaxValues(char.max_hp, char.max_mp);
     set({
       character: {
         ...char,
-        hp: char.max_hp + hpBonus,
-        mp: char.max_mp + mpBonus,
+        hp: maxHp,
+        mp: maxMp,
       },
     });
   },
-  clearCharacter: () => set({ character: null }),
+  clearCharacter: () => {
+    // 2026-05-13 spec ("Kiedy wychodze do wyboru postaci to moje party
+    // ktore mialem powinno zostac zlikwidowane"): leave any active
+    // party before tearing down the character session. We can't rely
+    // solely on the AvatarMenu menu-button hook because the player can
+    // also reach char-select by clearing the URL — at that point only
+    // the local React Router triggers, not our menu callback. By
+    // wiring the dissolve into clearCharacter itself we cover every
+    // exit path (menu, URL, programmatic logout). Fire-and-forget
+    // because the character clear must not be blocked on network.
+    const charId = get().character?.id;
+    if (charId) {
+        void (async () => {
+            try {
+                const { usePartyStore } = await import('./partyStore');
+                if (usePartyStore.getState().party) {
+                    await usePartyStore.getState().leaveParty(charId);
+                }
+            } catch { /* best effort */ }
+        })();
+    }
+    set({ character: null });
+  },
 }));

@@ -280,8 +280,10 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
             potionDrops[p.potionId] = (potionDrops[p.potionId] ?? 0) + p.count;
         }
 
-        // Spell chest drops
-        const chests = rollSpellChestDrop(monster.level, rarity, false, false);
+        // Spell chest drops — boss-rarity kills with max mastery (25/25) also
+        // roll the bonus heroic chest tier.
+        const hasMaxMastery = useMasteryStore.getState().isMaxMastery(monster.id);
+        const chests = rollSpellChestDrop(monster.level, rarity, false, false, hasMaxMastery);
         for (const c of chests) {
             spellChestDrops[c.chestLevel] = (spellChestDrops[c.chestLevel] ?? 0) + c.count;
         }

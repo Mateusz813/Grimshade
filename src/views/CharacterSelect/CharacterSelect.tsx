@@ -8,7 +8,9 @@ import { getTotalEquipmentStats, flattenItemsData, EMPTY_EQUIPMENT, type Equipme
 import { getTrainingBonuses } from '../../systems/skillSystem';
 import itemsRaw from '../../data/items.json';
 import { getCharacterAvatar } from '../../data/classAvatars';
-import { getTransformColor } from '../../systems/transformSystem';
+import Spinner from '../../components/ui/Spinner/Spinner';
+import { getTransformColor, getClassTransformBonuses, getTransformById } from '../../systems/transformSystem';
+import pwaIcon from '../../assets/images/pwa.png';
 import './CharacterSelect.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -61,9 +63,53 @@ const getElixirMaxBonuses = (
 };
 
 /**
- * Read a character's saved equipment + training bonuses + active elixir buffs
- * from localStorage (without switching active character) and return effective
- * max HP/MP.
+ * Sum the per-class transform bonuses for a peeked character. Mirrors
+ * `sumCompletedBonuses` from transformBonuses.ts but reads via
+ * `peekCharacterStore` so we can compute stats for ANY character on the
+ * select list without switching the active store. Returns zeroed values
+ * when the character has no transforms or its save still uses the
+ * legacy "baked" mode (in which case the bonuses are already inside
+ * the raw `max_hp` / `max_mp` numbers and re-applying would double-count).
+ */
+const getTransformMaxBonuses = (
+  charId: string,
+  charClass?: string,
+): { flatHp: number; flatMp: number; hpPctMul: number; mpPctMul: number } => {
+  const ZERO = { flatHp: 0, flatMp: 0, hpPctMul: 1, mpPctMul: 1 };
+  if (!charClass) return ZERO;
+  const t = peekCharacterStore(charId, 'transforms');
+  if (!t) return ZERO;
+  if (t.bakedBonusesApplied) return ZERO; // legacy save — bonuses live in base stats
+  const completed = t.completedTransforms as unknown;
+  if (!Array.isArray(completed) || completed.length === 0) return ZERO;
+  let flatHp = 0;
+  let flatMp = 0;
+  let hpPctSum = 0;
+  let mpPctSum = 0;
+  for (const tid of completed) {
+    if (typeof tid !== 'number') continue;
+    if (!getTransformById(tid)) continue;
+    const per = getClassTransformBonuses(charClass as Parameters<typeof getClassTransformBonuses>[0], tid);
+    flatHp += per.flatHp;
+    flatMp += per.flatMp;
+    hpPctSum += per.hpPercent;
+    mpPctSum += per.mpPercent;
+  }
+  return {
+    flatHp,
+    flatMp,
+    hpPctMul: 1 + hpPctSum / 100,
+    mpPctMul: 1 + mpPctSum / 100,
+  };
+};
+
+/**
+ * Read a character's saved equipment + training bonuses + transform
+ * bonuses + active elixir buffs from localStorage (without switching
+ * active character) and return effective max HP/MP — matching the
+ * `getEffectiveChar` calc that runs after login. Without this, the
+ * select list under-reported HP for any character with a transform
+ * unlocked (their bonus tier got skipped).
  */
 const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: number, charClass?: string): { maxHp: number; maxMp: number } => {
   const inv = peekCharacterStore(charId, 'inventory');
@@ -83,14 +129,18 @@ const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: numb
   }
 
   const tb = getTrainingBonuses(skillLevels, charClass);
+  const tx = getTransformMaxBonuses(charId, charClass);
+  // Mirror getEffectiveChar's order:
+  //   raw = base + equip + training + elixirFlat + transformFlat
+  //   eff = floor(raw * elixirPctMul * transformPctMul)
   const baseSum = {
-    hp: baseMaxHp + eqHp + (tb.max_hp ?? 0),
-    mp: baseMaxMp + eqMp + (tb.max_mp ?? 0),
+    hp: baseMaxHp + eqHp + (tb.max_hp ?? 0) + tx.flatHp,
+    mp: baseMaxMp + eqMp + (tb.max_mp ?? 0) + tx.flatMp,
   };
   const elx = getElixirMaxBonuses(charId, baseSum.hp, baseSum.mp);
   return {
-    maxHp: Math.floor((baseSum.hp + elx.hpFlat) * elx.hpPctMul),
-    maxMp: Math.floor((baseSum.mp + elx.mpFlat) * elx.mpPctMul),
+    maxHp: Math.floor((baseSum.hp + elx.hpFlat) * elx.hpPctMul * tx.hpPctMul),
+    maxMp: Math.floor((baseSum.mp + elx.mpFlat) * elx.mpPctMul * tx.mpPctMul),
   };
 };
 
@@ -199,8 +249,8 @@ const CharacterSelect = () => {
 
   if (isLoading) {
     return (
-      <div className="char-select">
-        <p className="char-select__loading">Ładowanie postaci…</p>
+      <div className="char-select char-select--loading">
+        <Spinner size="lg" label="Ładowanie postaci…" />
       </div>
     );
   }
@@ -208,7 +258,13 @@ const CharacterSelect = () => {
   return (
     <div className="char-select">
       <header className="char-select__header">
-        <h1 className="char-select__title">⚔️ Grimshade</h1>
+        {/* 2026-05-21 spec ("skasuj napis grimshade obok"): brand artwork
+            is the title now — the wordmark already sits inside the
+            artwork itself, so the inline "Grimshade" span was reading
+            as a duplicate. */}
+        <h1 className="char-select__title">
+          <img src={pwaIcon} alt="Grimshade" className="char-select__title-icon" />
+        </h1>
         <p className="char-select__subtitle">Wybierz postać</p>
       </header>
 
@@ -271,7 +327,7 @@ const CharacterSelect = () => {
                   onClick={() => void handleSelect(char)}
                   disabled={isSelecting}
                 >
-                  {isSelecting ? 'Ładowanie…' : 'Wybierz'}
+                  {isSelecting ? <Spinner size="sm" silent /> : 'Wybierz'}
                 </button>
 
                 {isConfirming ? (

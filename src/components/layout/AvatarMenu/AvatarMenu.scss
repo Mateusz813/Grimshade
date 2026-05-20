@@ -1,0 +1,128 @@
+.avatar-menu {
+  position: fixed;
+  top: 58px;
+  left: 8px;
+  z-index: 1400;
+  min-width: 240px;
+  max-width: calc(100vw - 16px);
+  background: rgba(20, 22, 38, 0.98);
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: avatar-menu-pop 0.14s ease-out;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    line-height: 1.2;
+
+    &:hover:not(&--disabled) {
+      background: rgba(255, 193, 7, 0.08);
+      border-color: rgba(255, 193, 7, 0.25);
+      color: #ffc107;
+    }
+
+    &:active:not(&--disabled) {
+      transform: scale(0.98);
+    }
+
+    &--row {
+      cursor: default;
+
+      &:hover {
+        background: transparent;
+        border-color: transparent;
+        color: #e0e0e0;
+      }
+    }
+
+    &--disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &--danger {
+      &:hover {
+        background: rgba(244, 67, 54, 0.12);
+        border-color: rgba(244, 67, 54, 0.3);
+        color: #ef9a9a;
+      }
+    }
+  }
+
+  &__item-icon {
+    flex: 0 0 auto;
+    width: 22px;
+    text-align: center;
+    font-size: 16px;
+  }
+
+  &__item-label {
+    flex: 1 1 auto;
+  }
+
+  &__item-meta {
+    flex: 0 0 auto;
+    font-size: 11px;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__lang-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  &__lang-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #b0b0b0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      border-color: rgba(255, 193, 7, 0.4);
+      color: #ffc107;
+    }
+
+    &--active {
+      background: rgba(255, 193, 7, 0.18);
+      border-color: rgba(255, 193, 7, 0.55);
+      color: #ffc107;
+    }
+  }
+}
+
+@keyframes avatar-menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

@@ -18,9 +18,34 @@
       rgba(20, 0, 0, 0.98) 50%,
       rgba(0, 0, 0, 0.99) 100%
     );
-    animation: death-epic-in 0.6s ease-out, death-epic-out 0.8s ease-in 5.2s forwards;
+    // Full death = persistent popup. Only the in-animation runs; the player
+    // must click to dismiss (handled in JS). The auto-out keyframe was
+    // removed to match the spec — if the popup hides itself the player can
+    // miss the post-mortem entirely.
+    animation: death-epic-in 0.6s ease-out;
     overflow: hidden;
     cursor: pointer;
+  }
+
+  // Flee variant — soft, blue/dust palette instead of blood. Same layout +
+  // particle system, just toned down so the "you ran" message reads as a
+  // small slap on the wrist instead of a death. Flee KEEPS its auto-out
+  // animation because it's a soft event the JS layer also auto-dismisses.
+  &--flee {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(20, 30, 60, 0.92) 0%,
+      rgba(10, 15, 35, 0.96) 55%,
+      rgba(0, 0, 0, 0.97) 100%
+    );
+    animation: death-epic-in 0.4s ease-out, death-epic-out 0.6s ease-in 3s forwards;
+
+    .death__skull {
+      filter: drop-shadow(0 0 14px rgba(120, 180, 255, 0.6));
+    }
+    .death__drip {
+      background: linear-gradient(180deg, rgba(180, 210, 255, 0.7), transparent);
+    }
   }
 
   // ── Blood drip particles falling from top ─────────────────────────────────

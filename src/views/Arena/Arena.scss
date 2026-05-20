@@ -1,0 +1,509 @@
+@use '../../styles/variables' as *;
+
+.arena {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+
+    // Match view drops the page constraints — the speed-bar strip and the
+    // combat arena both want to span full viewport width and sit flush
+    // against the global header (no 16px padding gap, no 1200px cap).
+    // The result modal still uses the .arena root for centering.
+    &--match {
+        padding: 0;
+        max-width: none;
+        gap: 0;
+    }
+
+    // Entry transition — full-viewport black wash. Comes in two flavours:
+    //   • base (fade-out, on the Arena view)  : 0 → 1, ease-in
+    //   • `--in` (fade-in, on the Match view) : 1 → 0, ease-out
+    //
+    // Both use `animation-fill-mode: both` so the `from` value applies
+    // during the render-paint frame BEFORE the animation actually
+    // starts — without it, the new view briefly flashed at opacity 0
+    // (defaulting to the rule's `opacity: 0`) between route swap and
+    // first animation frame, which is the "dziwny przeskok" the player
+    // saw. ease-in on the way out + ease-out on the way back keeps the
+    // transition perceived-symmetric (slow at the black hand-off, snappy
+    // through the in-and-out edges).
+    &__entry-overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 9999;
+        cursor: pointer;
+        // Fade-out path. `--in` modifier swaps both the keyframe name
+        // and the timing function below.
+        animation: arena-entry-fade 1.5s ease-in both;
+    }
+    @keyframes arena-entry-fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    &__entry-overlay--in {
+        // Fade-in starts at fully-black and clears to transparent. The
+        // `both` fill-mode locks opacity at 1 on the first paint frame
+        // so the new view is never visible behind the overlay before
+        // the keyframe's `from` value kicks in.
+        animation: arena-entry-fade-in 1.5s ease-out both;
+    }
+    @keyframes arena-entry-fade-in {
+        from { opacity: 1; }
+        to   { opacity: 0; }
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: $spacing-md;
+    }
+
+    &__back {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        color: #e0e0e0;
+        padding: 8px 14px;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-weight: 600;
+        &:hover { background: rgba(255, 255, 255, 0.10); }
+    }
+
+    &__title {
+        margin: 0;
+        font-size: $font-lg;
+        flex: 1;
+    }
+
+    // ── League header strip ──────────────────────────────────────────
+    &__league-strip {
+        --h: 0;
+        background: rgba(0, 0, 0, 0.30);
+        border: 1px solid hsla(var(--h), 50%, 45%, 0.35);
+        border-left: 4px solid hsla(var(--h), 60%, 50%, 0.7);
+        border-radius: $radius-md;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        // Pull league hex via inline `--league-color` set in Arena.tsx; the
+        // hsl() values above are unused fallback when the var is missing.
+        &--with-color {
+            border-color: var(--league-color, rgba(255,255,255,0.10));
+            border-left-color: var(--league-color, rgba(255,255,255,0.40));
+        }
+    }
+    &__league-row {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+    }
+    &__league-icon { font-size: 28px; }
+    &__league-name {
+        font-size: $font-md;
+        font-weight: 800;
+        color: var(--league-color, #fff);
+    }
+    // Inline AP badge — sits right after the league label per the new
+    // header design. Right-aligned via margin-left: auto so it docks to
+    // the strip's right edge regardless of label length.
+    &__league-ap {
+        margin-left: auto;
+        font-weight: 800;
+        color: #ffd54f;
+        font-size: $font-md;
+        white-space: nowrap;
+    }
+    // Two-line meta block: the underscore-prefixed full id ("Arena
+    // bronze_578656609") on top, the numeric-only "Liga nr: …" below.
+    &__league-meta-block {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    &__league-meta {
+        font-size: $font-xs;
+        color: $color-text-muted;
+    }
+    &__league-meta--num {
+        color: #c0c0c0;
+        font-weight: 600;
+    }
+    &__league-countdown {
+        font-size: $font-sm;
+        font-weight: 700;
+        color: #ffd54f;
+    }
+    &__league-actions {
+        display: flex;
+        gap: $spacing-sm;
+        margin-top: $spacing-sm;
+        flex-wrap: wrap;
+    }
+    &__action-chip {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        color: #e0e0e0;
+        padding: 6px 12px;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-size: $font-xs;
+        font-weight: 600;
+        &:hover { background: rgba(255, 255, 255, 0.10); }
+        &--claim {
+            background: linear-gradient(135deg, #43a047, #2e7d32);
+            border-color: rgba(76, 175, 80, 0.55);
+            box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+        }
+    }
+
+    // ── Defense snapshot card ───────────────────────────────────────
+    &__defense {
+        background: rgba(20, 30, 50, 0.6);
+        border: 1px solid rgba(120, 160, 220, 0.30);
+        border-radius: $radius-md;
+        padding: $spacing-md;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: $spacing-md;
+        align-items: center;
+    }
+    &__defense-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+        > img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+    &__defense-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    &__defense-title { font-weight: 700; }
+    &__defense-stats {
+        font-size: $font-xs;
+        color: $color-text-muted;
+    }
+    &__defense-confirm {
+        background: linear-gradient(135deg, #43a047, #2e7d32);
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-weight: 700;
+        white-space: nowrap;
+        &:hover {
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+        }
+    }
+
+    // ⚔️ Walcz CTA — replaces the dropped defense title and is the player's
+    // single-click entry point into a fight. Red gradient mirrors the
+    // attack chips on the leaderboard rows so it reads as the same action.
+    &__defense-fight {
+        background: linear-gradient(135deg, #e53935, #b71c1c);
+        color: white;
+        border: none;
+        padding: 12px 22px;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: $font-md;
+        white-space: nowrap;
+        box-shadow: 0 0 16px rgba(229, 57, 53, 0.45);
+        transition: transform 0.1s, box-shadow 0.15s;
+        &:hover {
+            background: linear-gradient(135deg, #ef5350, #c62828);
+            transform: scale(1.04);
+            box-shadow: 0 0 22px rgba(229, 57, 53, 0.65);
+        }
+        &:disabled {
+            background: rgba(120, 120, 120, 0.45);
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+    }
+
+    // ── My-position summary ────────────────────────────────────────
+    &__pos-strip {
+        display: flex;
+        align-items: center;
+        gap: $spacing-md;
+        padding: $spacing-sm $spacing-md;
+        background: rgba(255, 215, 100, 0.08);
+        border: 1px solid rgba(255, 215, 100, 0.30);
+        border-radius: $radius-sm;
+    }
+    &__pos-rank {
+        font-size: $font-lg;
+        font-weight: 800;
+        color: #ffd54f;
+    }
+    &__pos-meta { font-size: $font-sm; color: #e0e0e0; }
+    &__pos-attempts {
+        margin-left: auto;
+        font-size: $font-xs;
+        color: $color-text-muted;
+    }
+
+    // ── Leaderboard ────────────────────────────────────────────────
+    // Capped at 60vh with internal scroll so the league strip + defense
+    // card stay visible while the player browses 100 rows. On mount the
+    // view auto-scrolls to centre the player's row inside this box (see
+    // the `me-row` ref in Arena.tsx) — without the cap the page-level
+    // scroll position would jump and the chrome above would disappear.
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 60vh;
+        overflow-y: auto;
+        // Subtle frame so the scroll boundary reads — matches the
+        // league/defense card chrome.
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: $radius-sm;
+        padding: 6px;
+        scrollbar-width: thin;
+    }
+    &__row {
+        display: grid;
+        // Columns: rank (with optional medal), avatar, name+meta, LP, attack-button.
+        // The AP column was removed per the 2026-05 redesign — AP totals
+        // live in the league strip header now, not on every leaderboard row.
+        grid-template-columns: 60px 56px 1fr auto auto;
+        align-items: center;
+        gap: $spacing-sm;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: $radius-sm;
+        transition: background 0.15s ease;
+
+        &--me {
+            border: 2px solid #ffd54f;
+            background: rgba(255, 215, 100, 0.10);
+        }
+        &--bot { opacity: 0.85; }
+        &--attackable {
+            cursor: pointer;
+            &:hover {
+                background: rgba(76, 175, 80, 0.10);
+                border-color: rgba(76, 175, 80, 0.45);
+            }
+        }
+    }
+    &__row-rank {
+        font-size: $font-md;
+        font-weight: 800;
+        color: #ffd54f;
+        text-align: right;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        justify-content: flex-end;
+    }
+    // Top-3 medal glyph — sits inline before the #N rank chip.
+    &__row-medal {
+        font-size: 18px;
+        line-height: 1;
+    }
+    &__row-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+        > img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+    &__row-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+    }
+    &__row-name { font-weight: 700; }
+    &__row-meta { font-size: $font-xs; color: $color-text-muted; }
+    &__row-points {
+        font-size: $font-sm;
+        font-weight: 700;
+        text-align: right;
+    }
+    &__row-attack {
+        background: linear-gradient(135deg, #e53935, #b71c1c);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: $font-xs;
+        &:hover { filter: brightness(1.15); }
+        &:disabled {
+            background: rgba(150, 150, 150, 0.3);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+    }
+    &__row-tag {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    // ── Promotion / relegation dividers ────────────────────────────
+    &__divider {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        padding: 6px 12px;
+        font-size: $font-xs;
+        font-weight: 700;
+        border-radius: $radius-sm;
+        margin: 4px 0;
+        &--promo {
+            background: rgba(76, 175, 80, 0.10);
+            color: #66bb6a;
+            border: 1px dashed rgba(76, 175, 80, 0.45);
+        }
+        &--relegate {
+            background: rgba(244, 67, 54, 0.10);
+            color: #ef5350;
+            border: 1px dashed rgba(244, 67, 54, 0.45);
+        }
+    }
+
+    // ── Modal popups (rewards / log) ───────────────────────────────
+    &__modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+    &__modal {
+        background: #1a1f2e;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: $radius-md;
+        max-width: 600px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+    }
+    &__modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+    &__modal-title { font-size: $font-md; font-weight: 800; }
+    &__modal-close {
+        background: transparent;
+        border: none;
+        color: #aaa;
+        font-size: 22px;
+        cursor: pointer;
+        line-height: 1;
+        &:hover { color: #fff; }
+    }
+    &__reward-row {
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: $radius-sm;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: $spacing-sm;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+    &__reward-pos {
+        font-weight: 800;
+        color: #ffd54f;
+        min-width: 70px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    &__reward-medal { font-size: 22px; line-height: 1; }
+    &__reward-line {
+        font-size: $font-xs;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+    // Per-reward chip pill. Default = neutral white-ish; rarity / kind
+    // modifiers below override the colour family so the player can scan
+    // each row by colour. Stones use the same hue scale as item rarity in
+    // the inventory; AP uses the gold accent; gold uses warm-gold; HP/MP
+    // potions use the standard red/blue.
+    &__reward-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        color: #ddd;
+        white-space: nowrap;
+
+        // AP — yellow medal accent.
+        &--ap        { color: #ffd54f; border-color: rgba(255, 213, 79, 0.45); background: rgba(255, 213, 79, 0.10); }
+        // Gold — warm orange.
+        &--gold      { color: #ffb74d; border-color: rgba(255, 183, 77, 0.45); background: rgba(255, 183, 77, 0.10); }
+        // Spec 7 (2026-05): rarity colour mapping aligned with the rest
+        // of the app — mythic = yellow, legendary = red, epic = green,
+        // rare = blue, common = gray.
+        &--mythic    { color: #ffc107; border-color: rgba(255, 193, 7, 0.55);   background: rgba(255, 193, 7, 0.12); }
+        &--legendary { color: #f44336; border-color: rgba(244, 67, 54, 0.55);   background: rgba(244, 67, 54, 0.12); }
+        &--epic      { color: #4caf50; border-color: rgba(76, 175, 80, 0.55);   background: rgba(76, 175, 80, 0.12); }
+        &--rare      { color: #2196f3; border-color: rgba(33, 150, 243, 0.55);  background: rgba(33, 150, 243, 0.12); }
+        &--common    { color: #b0bec5; border-color: rgba(176, 190, 197, 0.55); background: rgba(176, 190, 197, 0.12); }
+        // Potions.
+        &--hp        { color: #ef5350; border-color: rgba(239, 83, 80, 0.45); background: rgba(239, 83, 80, 0.10); }
+        &--mp        { color: #42a5f5; border-color: rgba(66, 165, 245, 0.45); background: rgba(66, 165, 245, 0.10); }
+    }
+
+    &__log-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        gap: $spacing-sm;
+        padding: 6px 10px;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: $radius-sm;
+        font-size: $font-xs;
+        &--won { border-left: 3px solid #66bb6a; }
+        &--lost { border-left: 3px solid #ef5350; }
+    }
+}

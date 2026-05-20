@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isImageUrl } from '../../../systems/spriteAssets';
 import './ItemIcon.scss';
 
 interface IItemIconProps {
@@ -69,7 +70,15 @@ const ItemIcon = ({ icon, rarity, upgradeLevel, itemLevel, size = 'md', onClick,
             onMouseEnter={() => tooltip && showTooltip && setShowTip(true)}
             onMouseLeave={() => setShowTip(false)}
         >
-            <span className="item-icon__emoji">{icon}</span>
+            {/* The `icon` prop now carries either a Vite-served image URL (when
+                `getItemIcon` resolved a real PNG via spriteAssets) or the
+                legacy emoji string. We branch on that here so callers don't
+                have to know which they got. */}
+            {isImageUrl(icon) ? (
+                <img className="item-icon__image" src={icon} alt="" draggable={false} />
+            ) : (
+                <span className="item-icon__emoji">{icon}</span>
+            )}
 
             {(upgradeLevel ?? 0) > 0 && (
                 <span className="item-icon__upgrade">+{upgradeLevel}</span>

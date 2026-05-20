@@ -4,6 +4,7 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { useFriendsStore } from '../../stores/friendsStore';
 import { useChatTabsStore } from '../../stores/chatTabsStore';
 import { friendsApi, type IFriendCharacterInfo } from '../../api/v1/friendsApi';
+import Spinner from '../../components/ui/Spinner/Spinner';
 import './Friends.scss';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -14,6 +15,19 @@ const CLASS_ICONS: Record<string, string> = {
 };
 
 type TTab = 'friends' | 'blocked';
+
+/**
+ * Confirmation popup spec — a single union shape so the modal can
+ * render any of the 3 destructive flows (remove friend, block,
+ * unblock from blocked tab) without juggling four separate `useState`
+ * slots. `null` means no popup is open. The action labels live in
+ * the popup itself so the open-site call stays one line.
+ */
+type TConfirm =
+    | { kind: 'remove'; name: string }
+    | { kind: 'block'; name: string }
+    | { kind: 'unblock'; name: string }
+    | null;
 
 /**
  * Friends screen — social hub for each character.
@@ -43,12 +57,18 @@ const Friends = () => {
     const blockUser = useFriendsStore((s) => s.blockUser);
     const unblockUser = useFriendsStore((s) => s.unblockUser);
     const isFavorite = useFriendsStore((s) => s.isFavorite);
+    const isBlocked = useFriendsStore((s) => s.isBlocked);
+    const isFriend = useFriendsStore((s) => s.isFriend);
 
     const [tab, setTab] = useState<TTab>('friends');
     const [query, setQuery] = useState('');
     const [lookupError, setLookupError] = useState<string | null>(null);
     const [lookupResult, setLookupResult] = useState<IFriendCharacterInfo | null>(null);
     const [looking, setLooking] = useState(false);
+    // 2026-05-19 spec ("na błocka i kasowanie znajomego dodatkowy
+    // popup czy chcemy na pewno to zrobić"): one slot drives every
+    // destructive-confirmation modal in this view.
+    const [confirm, setConfirm] = useState<TConfirm>(null);
 
     const [infoByName, setInfoByName] = useState<Record<string, IFriendCharacterInfo>>({});
     const [loadingInfo, setLoadingInfo] = useState(false);
@@ -114,13 +134,25 @@ const Friends = () => {
         setQuery('');
     };
 
-    const onRemove = (name: string) => {
+    // 2026-05-19: remove-friend confirmation handler.
+    const handleConfirmedRemove = (name: string) => {
         removeFriend(name);
         setInfoByName((prev) => {
             const next = { ...prev };
             delete next[name];
             return next;
         });
+        setConfirm(null);
+    };
+
+    const handleConfirmedBlock = (name: string) => {
+        blockUser(name);
+        setConfirm(null);
+    };
+
+    const handleConfirmedUnblock = (name: string) => {
+        unblockUser(name);
+        setConfirm(null);
     };
 
     const openPm = (name: string) => {
@@ -144,26 +176,53 @@ const Friends = () => {
     if (!character) {
         return (
             <div className="friends">
-                <p className="friends__loading">Ładowanie...</p>
+                <Spinner size="lg" />
             </div>
         );
     }
+
+    // ── Confirm-modal copy ───────────────────────────────────────────────────
+    // Resolves the modal's title / body / button label from the union shape.
+    // Keeps the JSX render-block free of switch-case sprawl.
+    const confirmCopy = (() => {
+        if (!confirm) return null;
+        if (confirm.kind === 'remove') {
+            return {
+                title: 'Usuń znajomego',
+                body: `Na pewno chcesz usunąć "${confirm.name}" z listy znajomych?`,
+                cta: 'Usuń',
+                ctaClass: 'friends__confirm-btn--danger',
+                onConfirm: () => handleConfirmedRemove(confirm.name),
+            };
+        }
+        if (confirm.kind === 'block') {
+            return {
+                title: 'Zablokuj gracza',
+                body:
+                    `Na pewno chcesz zablokować "${confirm.name}"? ` +
+                    'Nie zobaczysz jego wiadomości na czacie, ale ' +
+                    'pozostanie na liście znajomych — możesz dalej do niego pisać.',
+                cta: 'Zablokuj',
+                ctaClass: 'friends__confirm-btn--danger',
+                onConfirm: () => handleConfirmedBlock(confirm.name),
+            };
+        }
+        return {
+            title: 'Odblokuj gracza',
+            body: isFriend(confirm.name)
+                ? `Odblokować "${confirm.name}"? Znów zobaczysz jego wiadomości. ` +
+                  'Pozostaje na Twojej liście znajomych.'
+                : `Odblokować "${confirm.name}"? Znów zobaczysz jego wiadomości.`,
+            cta: 'Odblokuj',
+            ctaClass: 'friends__confirm-btn--primary',
+            onConfirm: () => handleConfirmedUnblock(confirm.name),
+        };
+    })();
 
     // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <div className="friends">
-            <header className="friends__header page-header">
-                <button
-                    type="button"
-                    className="friends__back-btn page-back-btn"
-                    onClick={() => navigate('/')}
-                >
-                    ← Miasto
-                </button>
-                <h1 className="friends__title page-title">👥 Znajomi</h1>
-            </header>
-
             <div className="friends__tabs">
                 <button
                     type="button"
@@ -245,8 +304,17 @@ const Friends = () => {
                         {sortedFriends.map((name) => {
                             const info = infoByName[name];
                             const fav = isFavorite(name);
+                            // 2026-05-19 spec ("Jak mam kogoś w liście znajomych
+                            // i zablokuje to jest na obu listach naraz"):
+                            // friend rows highlight when the same name also
+                            // sits on the block list, and the block button
+                            // flips to 🔓 Odblokuj for one-tap recovery.
+                            const blockedToo = isBlocked(name);
                             return (
-                                <div key={name} className="friends__row">
+                                <div
+                                    key={name}
+                                    className={`friends__row${blockedToo ? ' friends__row--also-blocked' : ''}`}
+                                >
                                     <button
                                         type="button"
                                         className={`friends__row-star${fav ? ' friends__row-star--on' : ''}`}
@@ -259,7 +327,17 @@ const Friends = () => {
                                         {info ? (CLASS_ICONS[info.class] ?? '👤') : '👤'}
                                     </span>
                                     <div className="friends__row-info">
-                                        <div className="friends__row-name">{name}</div>
+                                        <div className="friends__row-name">
+                                            {name}
+                                            {blockedToo && (
+                                                <span
+                                                    className="friends__row-badge"
+                                                    title="Zablokowany — nie otrzymujesz od niego wiadomości"
+                                                >
+                                                    🚫
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="friends__row-meta">
                                             {info
                                                 ? `Lv ${info.level} ${info.class}`
@@ -281,18 +359,29 @@ const Friends = () => {
                                         >
                                             💌
                                         </button>
-                                        <button
-                                            type="button"
-                                            className="friends__action friends__action--block"
-                                            onClick={() => blockUser(name)}
-                                            title="Zablokuj gracza"
-                                        >
-                                            🚫
-                                        </button>
+                                        {blockedToo ? (
+                                            <button
+                                                type="button"
+                                                className="friends__action friends__action--unblock"
+                                                onClick={() => setConfirm({ kind: 'unblock', name })}
+                                                title="Odblokuj gracza"
+                                            >
+                                                🔓
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="friends__action friends__action--block"
+                                                onClick={() => setConfirm({ kind: 'block', name })}
+                                                title="Zablokuj gracza"
+                                            >
+                                                🚫
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             className="friends__action friends__action--remove"
-                                            onClick={() => onRemove(name)}
+                                            onClick={() => setConfirm({ kind: 'remove', name })}
                                             title="Usuń znajomego"
                                         >
                                             ✖
@@ -316,25 +405,79 @@ const Friends = () => {
                             </div>
                         </div>
                     )}
-                    {blocked.map((name) => (
-                        <div key={name} className="friends__row friends__row--blocked">
-                            <span className="friends__row-icon">🚫</span>
-                            <div className="friends__row-info">
-                                <div className="friends__row-name">{name}</div>
-                                <div className="friends__row-meta">Wiadomości ukryte</div>
+                    {blocked.map((name) => {
+                        const alsoFriend = isFriend(name);
+                        return (
+                            <div key={name} className="friends__row friends__row--blocked">
+                                <span className="friends__row-icon">🚫</span>
+                                <div className="friends__row-info">
+                                    <div className="friends__row-name">
+                                        {name}
+                                        {alsoFriend && (
+                                            <span
+                                                className="friends__row-badge friends__row-badge--friend"
+                                                title="Dalej na Twojej liście znajomych"
+                                            >
+                                                ⭐
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="friends__row-meta">
+                                        {alsoFriend
+                                            ? 'Znajomy — wiadomości od niego są ukryte, możesz dalej do niego pisać'
+                                            : 'Wiadomości ukryte'}
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="friends__action friends__action--unblock"
+                                    onClick={() => setConfirm({ kind: 'unblock', name })}
+                                >
+                                    🔓 Odblokuj
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                className="friends__action friends__action--unblock"
-                                onClick={() => unblockUser(name)}
-                            >
-                                🔓 Odblokuj
-                            </button>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </section>
             )}
 
+            {/* 2026-05-19 spec ("dodatkowy popup czy chcemy na pewno
+                to zrobić"): one shared confirm dialog for remove /
+                block / unblock. Backdrop click + Anuluj button both
+                dismiss without acting; only the primary CTA fires
+                the underlying mutation. */}
+            {confirmCopy && (
+                <div
+                    className="friends__confirm-backdrop"
+                    role="dialog"
+                    aria-modal="true"
+                    onClick={() => setConfirm(null)}
+                >
+                    <div
+                        className="friends__confirm-modal"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="friends__confirm-title">{confirmCopy.title}</h3>
+                        <p className="friends__confirm-body">{confirmCopy.body}</p>
+                        <div className="friends__confirm-actions">
+                            <button
+                                type="button"
+                                className="friends__confirm-btn"
+                                onClick={() => setConfirm(null)}
+                            >
+                                Anuluj
+                            </button>
+                            <button
+                                type="button"
+                                className={`friends__confirm-btn ${confirmCopy.ctaClass}`}
+                                onClick={confirmCopy.onConfirm}
+                            >
+                                {confirmCopy.cta}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

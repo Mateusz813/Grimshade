@@ -50,6 +50,12 @@ export interface IDungeonMonster {
   level: number;
   xp: number;
   sprite: string;
+  /** Attack speed (matches monsters.json `speed`). Used by Dungeon to clock
+   *  this mob's individual setInterval so 4 escorts with different speeds
+   *  swing on independent timers (each with its own hit animation) instead
+   *  of one shared aggregate tick. Optional because legacy code paths
+   *  scaling/serializing monsters may strip it; combat fallbacks to ~1.5. */
+  speed?: number;
 }
 
 // ── Character stats needed for dungeon simulation ─────────────────────────────
@@ -239,6 +245,160 @@ export const getWaveMonsterType = (
   const isBossWave = wave === totalWaves - 1;
   if (isBossWave) return getFinalWaveMonsterType(dungeonLevel);
   return getMidWaveMonsterType(dungeonLevel, wave, totalWaves);
+};
+
+// ── Multi-monster wave composition ──────────────────────────────────────────
+//
+// Dungeon waves used to spawn a single monster. We now spawn 1–4 enemies
+// per wave so the fights feel like real raid encounters. The lead monster
+// type (computed by `getWaveMonsterType`) sets the wave's "rarity tone";
+// the rest of the slots are filled with the same or one tier below so the
+// composition reads as "elite + escorts" rather than a random soup.
+//
+// Example outputs (verified against the player's spec):
+//   Lvl 1  wave 0           → [Normal]                     (1 mob, gentle intro)
+//   Lvl 1  wave 1           → [Strong, Normal]             (2 mobs)
+//   Lvl 1  wave 2 (boss)    → [Epic, Strong, Normal]       (3 mobs, escorts mix)
+//   Lvl 30 wave 2 (mid)     → [Legendary, Epic, Epic]      (3 mobs)
+//   Lvl 30 wave 5 (boss)    → [Boss, Legendary, Legendary, Legendary] (4 mobs)
+//   Lvl 1000 final wave     → [Boss, Boss, Boss, Boss]     (4 bosses)
+
+const TYPE_ORDER: readonly DungeonMonsterType[] = ['Normal', 'Strong', 'Epic', 'Legendary', 'Boss'];
+
+const stepDownType = (t: DungeonMonsterType): DungeonMonsterType => {
+  const idx = TYPE_ORDER.indexOf(t);
+  return idx <= 0 ? 'Normal' : TYPE_ORDER[idx - 1];
+};
+
+/**
+ * How many monsters spawn together in a given wave.
+ *
+ * - Boss waves: always crowded (3 mobs at low level, 4 from lvl 30+).
+ * - Regular waves: 1 → 2 → 3 progression based on wave index.
+ * - Higher dungeons (lvl 30+) bump each wave by +1 so the late waves
+ *   reach the 4-mob cap earlier and the run feels heavier.
+ *
+ * Capped at 4 so the existing CombatArena layout (4 enemy slots) still fits.
+ */
+export const getWaveMonsterCount = (
+  dungeonLevel: number,
+  wave: number,
+  totalWaves: number,
+): number => {
+  const isBossWave = wave === totalWaves - 1;
+  if (isBossWave) return dungeonLevel >= 30 ? 4 : 3;
+
+  const waveProgress = wave / Math.max(1, totalWaves - 1);
+  let count = 1 + Math.floor(waveProgress * 2);          // 0 → 1, 0.5 → 2, 1 → 3
+  if (dungeonLevel >= 30 && wave > 0) count += 1;        // hard dungeons bump non-first waves
+  return Math.max(1, Math.min(4, count));
+};
+
+/**
+ * Build the type composition for a wave. The first entry is the "lead"
+ * (toughest) monster — picked by `getWaveMonsterType` so existing wave
+ * scaling/labels still apply. The remaining slots are filled with the
+ * same type (top tier dungeons) or one tier below (mid+high), or a
+ * descending one-each ladder (low tier) so early players see variety
+ * instead of three identical Normals.
+ */
+export const getWaveComposition = (
+  dungeonLevel: number,
+  wave: number,
+  totalWaves: number,
+): DungeonMonsterType[] => {
+  const lead  = getWaveMonsterType(wave, totalWaves, dungeonLevel);
+  const count = getWaveMonsterCount(dungeonLevel, wave, totalWaves);
+  if (count <= 1) return [lead];
+
+  const out: DungeonMonsterType[] = [lead];
+
+  // Top tier (lvl 800+): everyone matches the lead — pure elite mob squads.
+  if (dungeonLevel >= 800) {
+    while (out.length < count) out.push(lead);
+    return out;
+  }
+
+  // Low tier (lvl 1-14): descending one-each ladder so the wave reads as
+  // "boss + escorts" instead of a flat block. Stops at Normal.
+  if (dungeonLevel <= 14) {
+    let current = lead;
+    while (out.length < count) {
+      current = stepDownType(current);
+      out.push(current);
+    }
+    return out;
+  }
+
+  // Mid + high tier (lvl 15-799): 1 lead + (count-1) of one tier below so
+  // the comp matches the player's spec ("2 epic + 1 legendary" at lvl 30
+  // wave 2 → lead = Legendary, fillers = Epic).
+  const filler = stepDownType(lead);
+  while (out.length < count) out.push(filler);
+  return out;
+};
+
+/**
+ * Pick the 1–4 monsters that make up a wave. Reuses `pickWaveMonster` for
+ * the lead slot (preserving any explicit `monsters[]` / `bossMonster`
+ * mapping the dungeon defines), then picks neighbouring monsters by level
+ * for the escort slots so the bestiary stays themed.
+ */
+export const pickWaveMonsters = (
+  dungeon: IDungeon,
+  allMonsters: IDungeonMonster[],
+  wave: number,
+  totalWaves: number,
+): IDungeonMonster[] => {
+  const dLvl  = getDungeonMinLevel(dungeon);
+  const count = getWaveMonsterCount(dLvl, wave, totalWaves);
+  const lead  = pickWaveMonster(dungeon, allMonsters, wave, totalWaves);
+  if (count <= 1) return [lead];
+
+  // Pool of candidates near the dungeon level, lead excluded so we don't
+  // double-up the same id in slot 0 + 1. Falls back to repeating the lead
+  // when the bestiary is too thin to fill all the escort slots.
+  const pool = [...allMonsters]
+    .filter((m) => m.id !== lead.id)
+    .sort((a, b) => Math.abs(a.level - dLvl) - Math.abs(b.level - dLvl));
+
+  const result: IDungeonMonster[] = [lead];
+  for (let i = 1; i < count; i++) {
+    result.push(pool[(i - 1) % Math.max(1, pool.length)] ?? lead);
+  }
+  return result;
+};
+
+/**
+ * Apply per-slot type multipliers when a wave spawns multiple monsters.
+ * Used by `Dungeon.tsx` to scale escort monsters with their own (typically
+ * lower) rarity tier instead of the lead's. Mirrors the per-type multiplier
+ * pass inside `scaleDungeonMonster`, but applied as a delta so the wave's
+ * baseline scaling is preserved.
+ */
+export const scaleDungeonMonsterAsType = (
+  monster: IDungeonMonster,
+  wave: number,
+  totalWaves: number,
+  dungeonLevel: number,
+  asType: DungeonMonsterType,
+): IDungeonMonster => {
+  // Start from the standard lead-typed scaling so the per-tier difficulty
+  // curve (lvl 1-8 vs 9-18 vs 20+) still applies to escort slots.
+  const leadScaled = scaleDungeonMonster(monster, wave, totalWaves, dungeonLevel);
+  const leadType   = getWaveMonsterType(wave, totalWaves, dungeonLevel);
+  if (asType === leadType) return leadScaled;
+
+  // Re-base by dividing out the lead's type multiplier and multiplying in
+  // the escort's. Floors guarantee we never serve up 0-stat monsters.
+  const leadMult = DUNGEON_MONSTER_TYPE_MULTIPLIERS[leadType];
+  const newMult  = DUNGEON_MONSTER_TYPE_MULTIPLIERS[asType];
+  return {
+    ...leadScaled,
+    hp:      Math.max(1, Math.floor(leadScaled.hp      * (newMult.hp  / leadMult.hp))),
+    attack:  Math.max(1, Math.floor(leadScaled.attack  * (newMult.atk / leadMult.atk))),
+    defense: Math.max(0, Math.floor(leadScaled.defense * (newMult.def / leadMult.def))),
+  };
 };
 
 /**
@@ -454,8 +614,14 @@ export interface IDungeonRewardEstimate {
 }
 
 /**
- * Estimates the gold and XP reward for a dungeon based on which monsters
- * will appear across all waves, multiplied by the dungeon reward multiplier (×4).
+ * Estimates the gold and XP reward for a dungeon. Mirrors the runtime math
+ * in `Dungeon.tsx`: every spawn (lead + escorts) in every wave is counted,
+ * then the accumulated kill total is multiplied by the dungeon reward
+ * multiplier (×4) and the level-driven completion bonus (`level²` XP +
+ * `level × 1 000` gold) is added on top. Monster type multipliers (Strong
+ * / Epic / Legendary / Boss) only scale stats — XP/gold per kill are the
+ * monster's raw values regardless of slot type, so we don't apply them
+ * here either.
  */
 export const estimateDungeonRewards = (
   dungeon: IDungeon,
@@ -469,18 +635,24 @@ export const estimateDungeonRewards = (
   let totalGoldMax = 0;
 
   for (let w = 0; w < totalWaves; w++) {
-    const monster = pickWaveMonster(dungeon, allMonsters, w, totalWaves);
-    totalXpEst += monster.xp;
-    const rawGold = monstersRawData.find((m) => m.id === monster.id)?.gold;
-    if (rawGold) {
-      totalGoldMin += rawGold[0];
-      totalGoldMax += rawGold[1];
+    const slots = pickWaveMonsters(dungeon, allMonsters, w, totalWaves);
+    for (const monster of slots) {
+      totalXpEst += monster.xp;
+      const rawGold = monstersRawData.find((m) => m.id === monster.id)?.gold;
+      if (rawGold) {
+        totalGoldMin += rawGold[0];
+        totalGoldMax += rawGold[1];
+      }
     }
   }
 
+  const lvl = dungeon.level ?? 1;
+  const xpBonus = lvl * lvl;
+  const goldBonus = lvl * 1_000;
+
   return {
-    goldMin: totalGoldMin * MULTIPLIER,
-    goldMax: totalGoldMax * MULTIPLIER,
-    xp: totalXpEst * MULTIPLIER,
+    goldMin: totalGoldMin * MULTIPLIER + goldBonus,
+    goldMax: totalGoldMax * MULTIPLIER + goldBonus,
+    xp:      totalXpEst   * MULTIPLIER + xpBonus,
   };
 };

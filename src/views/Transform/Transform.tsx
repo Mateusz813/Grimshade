@@ -3,14 +3,52 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
+import { getPotionImage, getSummonImage } from '../../systems/spriteAssets';
 import { useSkillStore } from '../../stores/skillStore';
 import { useTransformStore } from '../../stores/transformStore';
+import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { saveCurrentCharacterStores } from '../../stores/characterScope';
-import { applyDeathPenalty } from '../../systems/levelSystem';
+import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
+import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
+import { useCombatStore } from '../../stores/combatStore';
+import { useDeathStore } from '../../stores/deathStore';
+// Task / quest / mastery hooks — Transform kills now feed the same
+// progression streams as hunting / dungeon / raid / boss kills so the
+// player can grind out tasks while pushing transformation tiers.
+import { useTaskStore } from '../../stores/taskStore';
+import { useQuestStore } from '../../stores/questStore';
+import { useDailyQuestStore } from '../../stores/dailyQuestStore';
+import { useMasteryStore } from '../../stores/masteryStore';
+import {
+  CombatHudHost,
+  CombatPotionDock,
+  CombatArena,
+  CombatTopControls,
+  CombatSubControls,
+  CombatActionBar,
+  type ICombatEnemy,
+  type ICombatAlly,
+  type ICombatSkillSlot,
+  type ICombatPotionSlot,
+} from '../../components/organisms/CombatUI';
+import '../../components/organisms/CombatUI/CombatUI.scss';
 import { applySkillBuff, getSkillDef } from '../../systems/skillBuffs';
+import {
+  newCombatEffectsSession,
+  ensureStatus,
+  isCombatantStunned,
+  castSkill as effectsCastSkill,
+  tickAll as effectsTickAll,
+  routeDamage as effectsRouteDamage,
+  type ICombatEffectsSession,
+} from '../../systems/combatEffectsHelpers';
+import { consumeCasterBasicHitMods, consumeTargetMarkAmp } from '../../systems/skillEffectsV2';
+import { syncCasterChargeConsume } from '../../systems/combatEngine';
 import { useSkillAnim } from '../../hooks/useSkillAnim';
+import { useCombatFx } from '../../hooks/useCombatFx';
+import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
 import { resolveAutoPotionElixir } from '../../systems/potionSystem';
 import { CLASS_COLORS } from '../../systems/itemSystem';
 import { deathsApi } from '../../api/v1/deathsApi';
@@ -61,12 +99,15 @@ import {
   getTransformColor,
   applyTransformBossStats,
   calculateTransformRewards,
+  getTransformWaveLineup,
   type ITransformData,
   type ITransformColor,
   type ITransformRewards,
 } from '../../systems/transformSystem';
 import { getCharacterAvatar } from '../../data/classAvatars';
+// MonsterSprite removed — the unified EnemyCard renders sprites internally.
 import type { IMonster } from '../../types/monster';
+import type { TMonsterRarity } from '../../systems/lootSystem';
 import type { TCharacterClass } from '../../api/v1/characterApi';
 import itemsData from '../../data/items.json';
 import classesRaw from '../../data/classes.json';
@@ -161,10 +202,7 @@ import './Transform.scss';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const CLASS_ICONS: Record<string, string> = {
-  Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-  Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
-};
+// CLASS_ICONS removed — the unified AllyCard handles class iconography.
 
 const CLASS_MODIFIER: Record<string, number> = {
   Knight: 1.0, Mage: 1.3, Cleric: 1.0,
@@ -214,6 +252,11 @@ const SKILL_MP_COST = 15;
 const POTION_COOLDOWN_MS = 1000;
 const PCT_POTION_CD_MS = 500;
 
+// Pause between a transform monster dying and the next one being
+// summoned. Drives the slim "next monster in…" bar pinned under the
+// TopHeader so the player has a visible cue during the lull.
+const MONSTER_SPAWN_DELAY_MS = 1000;
+
 const hpPotions = ELIXIRS.filter((e) => e.effect.startsWith('heal_hp') && !e.effect.includes('pct'));
 const mpPotions = ELIXIRS.filter((e) => e.effect.startsWith('heal_mp') && !e.effect.includes('pct'));
 const pctHpPotions = ELIXIRS.filter((e) => e.effect.startsWith('heal_hp_pct'));
@@ -233,17 +276,68 @@ const getBestPotion = (
   return reversed.find((e) => (consumables[e.id] ?? 0) > 0) ?? reversed[0] ?? null;
 };
 
-const getPotionLabel = (effect: string): string => {
-  const flatMatch = effect.match(/^heal_(hp|mp)_(\d+)$/);
-  if (flatMatch) return `+${flatMatch[2]} ${flatMatch[1].toUpperCase()}`;
-  const pctMatch = effect.match(/^heal_(hp|mp)_pct_(\d+)$/);
-  if (pctMatch) return `+${pctMatch[2]}% ${pctMatch[1].toUpperCase()}`;
-  return effect;
-};
+// getPotionLabel removed — the unified CombatActionBar / CombatSubControls
+// render potion icons + counts internally.
 
 /** Get the avatar image for a class + transform number. */
 const getTransformAvatarImage = (cls: string, transformNumber: number): string => {
   return TRANSFORM_AVATARS[cls]?.[transformNumber] ?? BASE_AVATAR_IMAGES[cls] ?? mageImg;
+};
+
+// ── Transform card background images ──────────────────────────────────────
+// Mirrors the boss-card-background pattern: the user drops PNGs named
+// `transform-1.png`, `transform-2.png`, … into `src/assets/images/transforms/`
+// and they map 1:1 to the transform tier id. Missing files leave that card
+// with its existing chrome — the gradient border + shimmer still render
+// on top of the empty slot, so this is strictly additive.
+type TransformGlobModule = { default: string } | string;
+const TRANSFORM_CARD_FILES = import.meta.glob(
+  '../../assets/images/transforms/transform-*.png',
+  { eager: true },
+) as Record<string, TransformGlobModule>;
+
+const TRANSFORM_CARD_IMG_BY_INDEX: Map<number, string> = (() => {
+  const out = new Map<number, string>();
+  for (const [path, mod] of Object.entries(TRANSFORM_CARD_FILES)) {
+    const match = path.match(/\/transform-(\d+)\.png$/);
+    if (!match) continue;
+    const idx = Number(match[1]);
+    if (!Number.isFinite(idx) || idx <= 0) continue;
+    const url = typeof mod === 'string' ? mod : (mod as { default: string }).default;
+    if (url) out.set(idx, url);
+  }
+  return out;
+})();
+
+const getTransformCardImage = (transformId: number): string | null =>
+  TRANSFORM_CARD_IMG_BY_INDEX.get(transformId) ?? null;
+
+/**
+ * Convert a `#rrggbb` (or `#rgb`) hex string to its HSL hue (0–360).
+ * Used to turn each tier's `getTransformColor()` solid hex into a value we
+ * can hand to the combat arena's `--transform-hue` CSS variable so the
+ * darkening overlay tints in the same family as the card border / pill.
+ */
+const hexToHue = (hex: string): number => {
+  const stripped = hex.trim().replace(/^#/, '');
+  const full = stripped.length === 3
+    ? stripped.split('').map((c) => c + c).join('')
+    : stripped;
+  if (full.length !== 6) return 30;
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 30;
+  let h: number;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60;
+  if (h < 0) h += 360;
+  return Math.round(h);
 };
 
 // ── Combat log entry ─────────────────────────────────────────────────────────
@@ -258,7 +352,16 @@ let _logId = 0;
 
 // ── Phases ──────────────────────────────────────────────────────────────────
 
-type ScreenPhase = 'list' | 'fighting' | 'allDefeated' | 'transforming' | 'complete';
+type ScreenPhase = 'list' | 'entering' | 'fighting' | 'allDefeated' | 'transforming' | 'complete';
+
+// Total length of the cinematic entry — mirrors the Dungeon entry overlay.
+// Capped at 2s so veteran grinders aren't held hostage between transforms.
+const ENTRY_ANIM_TOTAL_MS = 2000;
+// Inside the entry animation, mount the combat panel + start the first
+// boss fight at this offset so the AnimatePresence fade-in lines up with
+// the "reveal" portion of the overlay (the last ~33%) rather than snapping
+// in at the very end.
+const ENTRY_ANIM_COMBAT_START_AT_MS = 1340;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -321,6 +424,10 @@ const Transform = () => {
   const completedTransforms = useTransformStore((s) => s.completedTransforms);
   const currentQuest = useTransformStore((s) => s.currentTransformQuest);
   const pendingClaimTransformId = useTransformStore((s) => s.pendingClaimTransformId);
+  // Necromancer summon stack — when the local player is a necro, this is
+  // the live ordered list spawned by `useNecroSummonStore` and consumed
+  // by AllyCard for the count badge + tooltip breakdown.
+  const necroSummons = useNecroSummonStore((s) => s.summons);
   const consumables = useInventoryStore((s) => s.consumables);
   const { activeSkillSlots } = useSkillStore();
   const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore();
@@ -332,16 +439,56 @@ const Transform = () => {
   const [phase, setPhase] = useState<ScreenPhase>('list');
 
   // Combat state
+  // `currentMonster` + `monsterHp` track the BOSS slot (slot 3, bottom-right).
+  // The 3 escort slots (Normal / Strong / Epic — top-left / top-right /
+  // bottom-left) live in `escortSlots` so each tile carries its own HP, sprite
+  // and tier label. Player auto-attacks chain through the escorts in order
+  // (slot 0 → 1 → 2) before reaching the boss; the wave clears only when all
+  // four are dead. See `getTransformWaveLineup` for the per-tier scaling.
   const [currentMonster, setCurrentMonster] = useState<IMonster | null>(null);
   const [monsterHp, setMonsterHp] = useState(0);
   const [monsterMaxHp, setMonsterMaxHp] = useState(0);
+  interface IEscortSlot {
+    slot: 0 | 1 | 2;
+    tier: 'Normal' | 'Strong' | 'Epic';
+    monster: IMonster;
+    currentHp: number;
+    maxHp: number;
+    /** Sprite URL captured from the ORIGINAL bestiary template's level —
+     *  `getTransformWaveLineup` does this lookup before `stamp` rewrites the
+     *  monster's level to `bossLevel`. We need it here because the sprite
+     *  registry only ships art for levels 1-60, so a T2/T3 boss (level 60+)
+     *  would miss every lookup if we relied on the post-stamp level inside
+     *  `MonsterSprite`. Falls back to null when no PNG exists for the
+     *  template's level — the card then drops to the emoji glyph as usual. */
+    imageUrl: string | null;
+  }
+  const [escortSlots, setEscortSlots] = useState<Array<IEscortSlot | null>>([null, null, null]);
+  // Mirror for setState-free reads inside attack handlers (same reasoning as
+  // `playerHpRef` / `monsterHpRef` — React 19 strict mode runs setState
+  // updaters twice, so side-effecting damage logic must use a ref pattern).
+  const escortSlotsRef = useRef<Array<IEscortSlot | null>>([null, null, null]);
+  // Track which escort slots have already been counted in the death effect so
+  // the session-kill tally doesn't double-fire on re-renders. Cleared on
+  // every fresh `startMonsterFight` invocation. Keyed by `${bossId}__slot${i}`
+  // so leftover entries from one wave can't bleed into the next.
+  const escortKillsCountedRef = useRef<Set<string>>(new Set());
   const [playerHp, setPlayerHp] = useState(0);
   const [playerMp, setPlayerMp] = useState(0);
   const [combatLog, setCombatLog] = useState<ICombatLogEntry[]>([]);
-  const [monsterHit, setMonsterHit] = useState(false);
-  const [playerHit, setPlayerHit] = useState(false);
+  // Pulse counters (not booleans) so the keyed flash overlays in EnemyCard /
+  // AllyCard re-mount on EVERY hit. Critical for transform combat where the
+  // player can hit twice in the same window (auto + skill cast) and the boss
+  // can spam attacks faster than the 300ms flash duration.
+  // Per-slot hit pulse — each slot keeps its own monotonic counter so a hit
+  // on slot 0 doesn't flash slots 1/2/3 too. Mirrors the Dungeon view's
+  // `monsterHitPulses` shape so the EnemyCard flash overlay re-mounts only on
+  // the actually-hit tile.
+  const [monsterHitPulses, setMonsterHitPulses] = useState<Record<number, number>>({});
+  const [playerHitPulse, setPlayerHitPulse] = useState(0);
   const [playerAttacking, setPlayerAttacking] = useState(false);
-  const [monsterAttacking, setMonsterAttacking] = useState(false);
+  // monsterAttacking removed: AllyCard's `hitPulse` (driven by playerHitPulse)
+  // now covers the "monster just hit you" flash via the unified CombatUI.
 
   // Skill & potion state
   const [skillCooldowns, setSkillCooldowns] = useState<Record<string, number>>({});
@@ -353,12 +500,37 @@ const Transform = () => {
   // Skill animation overlay
   const { overlay: skillAnimOverlay, trigger: triggerSkillAnim } = useSkillAnim();
 
+  // Per-slot floating numbers / per-slot themed skill animations.
+  // The hook returns a NEW object every render (object literal), so depending
+  // directly on `fx` inside any `useCallback` makes that callback recreate
+  // every render. That cascades into the death-effect deps array below
+  // (`startMonsterFight` is in those deps) and re-fires `addLog → setCombatLog`
+  // every render once `monsterHp <= 0`, exploding into "Maximum update depth
+  // exceeded". Solution: keep `fx` itself for reactive JSX reads, but use
+  // `fxRef.current.method(...)` inside callbacks so we depend on a stable ref
+  // instead of the unstable wrapper object. The methods on `fx` are themselves
+  // `useCallback`'d with `[]` so they're already stable references — we just
+  // need to dodge the wrapper-object identity churn.
+  const fx = useCombatFx();
+  const fxRef = useRef(fx);
+  useEffect(() => { fxRef.current = fx; });
+
   // Speed mode (x1 / x2 / x4, no SKIP)
   const [speedMode, setSpeedMode] = useState<'x1' | 'x2' | 'x4'>('x1');
   const speedMult = speedMode === 'x4' ? 4 : speedMode === 'x2' ? 2 : 1;
   const speedMultRef = useRef(1);
   useEffect(() => { speedMultRef.current = speedMult; }, [speedMult]);
+  // 2026-05 v6: keep global BuffStore speed in sync.
+  useEffect(() => {
+    useBuffStore.getState().setCombatSpeedMult(speedMult);
+    return () => useBuffStore.getState().setCombatSpeedMult(1);
+  }, [speedMult]);
+
   const cycleSpeed = useCallback(() => {
+    // Pure state transition. BuffStore.combatSpeedMult sync is handled
+    // by the useEffect([speedMult]) above to avoid Zustand setState
+    // firing inside React's reducer phase (which caused TopHeader to
+    // try re-rendering mid-Transform-render).
     setSpeedMode((s) => (s === 'x1' ? 'x2' : s === 'x2' ? 'x4' : 'x1'));
   }, []);
 
@@ -374,6 +546,40 @@ const Transform = () => {
   // reward popup — Uciekaj always returns to town without flashing.
   const [victoryReady, setVictoryReady] = useState(false);
 
+  // Spawn-bar progress — flips ON the moment a monster dies and OFF when
+  // the next monster spawns. While ON, an rAF loop fills `spawnProgress`
+  // 0→1 over the speed-scaled `MONSTER_SPAWN_DELAY_MS`. The bar shares
+  // the under-header pinned visual with hunting auto-fight + dungeon /
+  // raid spawn timers so the player learns one cue across the app.
+  const [waitingForSpawn, setWaitingForSpawn] = useState(false);
+  const [spawnProgress, setSpawnProgress] = useState(0);
+  const spawnStartRef = useRef<number>(0);
+  const spawnDurationRef = useRef<number>(MONSTER_SPAWN_DELAY_MS);
+
+  // ── Tile-zoom entry animation ─────────────────────────────────────────────
+  // Mirrors Dungeon.tsx: when the player clicks Walcz on a transform card,
+  // we capture the source card's bounding box + visual identity (hue + per-
+  // tier phoenix image), animate a fixed overlay growing from that rect to
+  // fullscreen, then flip phase to 'fighting'. The overlay holds at fullscreen
+  // through the AnimatePresence cross-fade so the player never sees a blank
+  // flash between the list and the combat panel. Click anywhere on the
+  // overlay during the cinematic to skip — the combat starts immediately.
+  const [enterAnim, setEnterAnim] = useState<
+    | { x: number; y: number; w: number; h: number; hue: number; image: string; transformId: number }
+    | null
+  >(null);
+  const enterAnimTimeoutsRef = useRef<number[]>([]);
+  // The transform the cinematic is leading INTO — read by `skipEntryAnimation`
+  // so a click during the intro can hand the right id to `handleStartQuest`
+  // without waiting for the queued timeout. Reset to null on overlay teardown.
+  const pendingTransformIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      enterAnimTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      enterAnimTimeoutsRef.current = [];
+    };
+  }, []);
+
   // Refs
   const combatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const monsterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -388,12 +594,40 @@ const Transform = () => {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const playerHpRef = useRef(0);
   const playerMpRef = useRef(0);
+  // Mirror of `monsterHp` so the attack handlers can read the previous HP
+  // without using `setMonsterHp((prev) => …)` — putting side effects inside
+  // a state-updater is illegal in React 19's strict mode (the updater runs
+  // twice, firing every store-mutation / setState side-effect twice and
+  // crashing with "Maximum update depth exceeded").
+  const monsterHpRef = useRef(0);
+
+  // Level-up HP/MP refill — characterStore.addXp refills hp/mp to max on
+  // every level-up, but Transform keeps a LOCAL playerHp/playerMp useState
+  // that doesn't see the store-side refill. Without this, leveling up
+  // mid-boss-fight would leave the player's bars stuck at the pre-level-up
+  // value until the next damage tick. We sync the local mirrors here.
+  useLevelUpRefill(phase === 'fighting', useCallback((maxHp, maxMp) => {
+    playerHpRef.current = maxHp;
+    playerMpRef.current = maxMp;
+    setPlayerHp(maxHp);
+    setPlayerMp(maxMp);
+  }, []));
+
   const skillCooldownRef = useRef<Map<string, number>>(new Map());
   const hpPotionCooldownRef = useRef(0);
   const mpPotionCooldownRef = useRef(0);
   const pctHpCooldownRef = useRef(0);
   const pctMpCooldownRef = useRef(0);
   const tryAutoPotionRef = useRef<() => void>(() => {});
+
+  // Skill-effect session — shared status state across player + opponent for
+  // DOTs, stuns, marks, immortality, dodges. Reset on every fresh boss in
+  // the transform quest (see `startMonsterFight`). Transform aggregates the
+  // entire enemy column into one combined opponent for stun/DOT purposes —
+  // matches the existing "single opposed swing per tick" model.
+  const effectsRef = useRef<ICombatEffectsSession>(newCombatEffectsSession());
+  const PLAYER_FX_ID = 'player';
+  const OPPONENT_FX_ID = 'opponent';
 
   const allTransforms = useMemo(() => getAllTransforms(), []);
 
@@ -419,6 +653,42 @@ const Transform = () => {
     }
   }, [clearTimers]);
 
+  // ── URL-leave / tab-close = death (anti-cheat) ───────────────────────────
+  // Same anti-cheat guard as Dungeon/Boss/Raid. Transform fights have a
+  // weird wrinkle: the monster CHANGES during a quest, so we need refs that
+  // track BOTH the active transform meta AND the current monster so the
+  // death log can name a real opponent (the one in front of the player when
+  // they bailed).
+  const leavePenaltyAppliedRef = useRef(false);
+  const activeTransformIdRef = useRef(0);
+  useEffect(() => { activeTransformIdRef.current = activeTransformId; }, [activeTransformId]);
+  const currentMonsterRef = useRef<typeof currentMonster>(null);
+  useEffect(() => { currentMonsterRef.current = currentMonster; }, [currentMonster]);
+  useEffect(() => {
+    const fire = () => {
+      if (leavePenaltyAppliedRef.current) return;
+      if (phaseRef.current !== 'fighting') return;
+      const tfId = activeTransformIdRef.current;
+      if (!tfId) return;
+      const meta = getTransformById(tfId);
+      const mon = currentMonsterRef.current;
+      const monsterName = mon?.name_pl ?? mon?.name_en ?? 'Nieznany potwór';
+      const transformName = meta?.name_pl ?? `Transform ${tfId}`;
+      const transformLvl = meta?.level ?? 1;
+      leavePenaltyAppliedRef.current = true;
+      applyCombatLeaveDeath({
+        source: 'transform',
+        sourceName: `${transformName} – ${monsterName}`,
+        sourceLevel: transformLvl,
+      });
+    };
+    window.addEventListener('beforeunload', fire);
+    return () => {
+      window.removeEventListener('beforeunload', fire);
+      fire();
+    };
+  }, []);
+
   // Bug 1 (2026-04): pending-reward recovery. If the user previously locked
   // in a victory but missclicked / refreshed before claiming consumables,
   // jump straight to the rewards screen on next entry. We only fire this
@@ -437,6 +707,10 @@ const Transform = () => {
     setActiveTransformId(pendingClaimTransformId);
     setRewards(transformRewards);
     setVictoryReady(false);
+    // Clean win — disable the leave guard so claiming the rewards (or just
+    // navigating away from the post-fight reward screen) doesn't punish a
+    // player who actually beat all the monsters.
+    leavePenaltyAppliedRef.current = true;
     setPhase('allDefeated');
   }, [character, currentQuest, pendingClaimTransformId, phase]);
 
@@ -450,6 +724,60 @@ const Transform = () => {
   // Keep HP/MP refs in sync with state
   useEffect(() => { playerHpRef.current = playerHp; }, [playerHp]);
   useEffect(() => { playerMpRef.current = playerMp; }, [playerMp]);
+  useEffect(() => { monsterHpRef.current = monsterHp; }, [monsterHp]);
+  useEffect(() => { escortSlotsRef.current = escortSlots; }, [escortSlots]);
+
+  // ── Live HP/MP mirror → characterStore ───────────────────────────────────
+  // Same pattern as Dungeon/Boss — mirror local fight HP/MP into characterStore
+  // every change so the global TopHeader bars stay live. Gated by 'fighting'
+  // phase so the 0 initial state we hold before `startMonsterFight` runs
+  // never overwrites the real character HP.
+  //
+  // Clamp uses EFFECTIVE max (base + equipment + training + active elixirs
+  // + transform) so a potion that brings HP above the BASE max isn't
+  // truncated when persisted to the store. Transform itself adds to max
+  // HP, so this matters even more here than in the other views.
+  useEffect(() => {
+    if (phase !== 'fighting') return;
+    const liveChar = useCharacterStore.getState().character;
+    if (!liveChar) return;
+    const eff = getEffectiveChar(liveChar);
+    const effMaxHp = eff?.max_hp ?? liveChar.max_hp;
+    const effMaxMp = eff?.max_mp ?? liveChar.max_mp;
+    const safeHp = Math.max(0, Math.min(effMaxHp, playerHp));
+    const safeMp = Math.max(0, Math.min(effMaxMp, playerMp));
+    if (liveChar.hp === safeHp && liveChar.mp === safeMp) return;
+    useCharacterStore.getState().updateCharacter({ hp: safeHp, mp: safeMp });
+  }, [playerHp, playerMp, phase]);
+
+  // ── Spawn-bar progress driver (rAF) ────────────────────────────────────
+  // While `waitingForSpawn` is true, fill `spawnProgress` 0→1 over the
+  // duration captured when the post-kill timeout was armed. Cancelled on
+  // unmount or when the flag flips off.
+  useEffect(() => {
+    if (!waitingForSpawn) return;
+    let raf = 0;
+    const tick = () => {
+      const elapsed = Date.now() - spawnStartRef.current;
+      const ratio = Math.min(1, elapsed / Math.max(1, spawnDurationRef.current));
+      setSpawnProgress(ratio);
+      if (ratio < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [waitingForSpawn]);
+
+  // Reset the spawn-bar whenever the player leaves the fighting phase
+  // (Uciekaj, death, claim). The setTimeout is best-effort and might
+  // still resolve in the background — this guarantees the bar
+  // disappears the moment the phase flips so it doesn't linger over
+  // the result / list views.
+  useEffect(() => {
+    if (phase !== 'fighting') {
+      setWaitingForSpawn(false);
+      setSpawnProgress(0);
+    }
+  }, [phase]);
 
   // ── Cooldown tick (100ms, scaled by speedMult) ───────────────────────────
   useEffect(() => {
@@ -474,8 +802,13 @@ const Transform = () => {
   }, [phase, speedMult]);
 
   // ── Add log helper ──────────────────────────────────────────────────────────
+  // Mirrors every entry to the shared combatStore session log so the unified
+  // CombatLogsModal (popup persists across waves) sees the same feed every
+  // other view sees. Local type is a strict subset of the store union — no
+  // remapping needed.
   const addLog = useCallback((text: string, type: ICombatLogEntry['type']) => {
     setCombatLog((prev) => [...prev.slice(-49), { id: _logId++, text, type }]);
+    useCombatStore.getState().addSessionLog(text, type);
   }, []);
 
   // ── Heal / cooldown helpers ─────────────────────────────────────────────
@@ -591,6 +924,58 @@ const Transform = () => {
 
   useEffect(() => { tryAutoPotionRef.current = tryAutoPotion; }, [tryAutoPotion]);
 
+  // Status / DOT tick — drains stun timers + applies DOT damage on a
+  // separate cadence (every 250 ms scaled by speed) so paralysed combatants
+  // recover in real-time and DOTs deal their per-second slice consistently.
+  // Transform aggregates the enemy column into one OPPONENT_FX_ID; DOT on
+  // that id routes to the boss slot's HP (which is the slot players
+  // ultimately have to break through to clear the wave).
+  useEffect(() => {
+    if (phase !== 'fighting') return;
+    const TICK_MS = 250;
+    const id = setInterval(() => {
+      const charLatest = useCharacterStore.getState().character;
+      const effChar = charLatest ? getEffectiveChar(charLatest) : null;
+      const charMaxHp = effChar?.max_hp ?? 1;
+      const dotResults = effectsTickAll(
+        effectsRef.current,
+        [
+          { id: PLAYER_FX_ID, maxHp: charMaxHp },
+          { id: OPPONENT_FX_ID, maxHp: monsterMaxHp || 1 },
+        ],
+        TICK_MS * speedMultRef.current,
+      );
+      for (const r of dotResults) {
+        if (r.id === PLAYER_FX_ID && r.dotDamage > 0) {
+          const apply = effectsRouteDamage(effectsRef.current, PLAYER_FX_ID, playerHpRef.current, r.dotDamage);
+          playerHpRef.current = Math.max(0, playerHpRef.current - apply.appliedDmg);
+          setPlayerHp(playerHpRef.current);
+        }
+        if (r.id === OPPONENT_FX_ID) {
+          if (r.dotDamage > 0) {
+            const apply = effectsRouteDamage(effectsRef.current, OPPONENT_FX_ID, monsterHpRef.current, r.dotDamage);
+            monsterHpRef.current = Math.max(0, monsterHpRef.current - apply.appliedDmg);
+            setMonsterHp(monsterHpRef.current);
+            // 2026-05 v6: per-tick DOT visual on the opponent card.
+            if (apply.appliedDmg > 0) {
+              fxRef.current.pushEnemyFloat(0, apply.appliedDmg, 'spell', { icon: '☠️' });
+            }
+          }
+          // 2026-05 v7: Mroczny Rytuał detonation. % of opponent max
+          // HP, no DEF mit. Re-read monsterHpRef in case the DOT path
+          // already shifted it this tick.
+          if (r.darkRitualTriggered && r.darkRitualDamage > 0 && monsterHpRef.current > 0) {
+            const ritualDmg = Math.min(monsterHpRef.current, r.darkRitualDamage);
+            monsterHpRef.current = Math.max(0, monsterHpRef.current - ritualDmg);
+            setMonsterHp(monsterHpRef.current);
+            fxRef.current.pushEnemyFloat(0, ritualDmg, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+          }
+        }
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [phase, monsterMaxHp]);
+
   // ── Manual potion use ───────────────────────────────────────────────────
   const doUsePotion = useCallback((elixirId: string) => {
     const elixir = ELIXIRS.find((e) => e.id === elixirId);
@@ -651,8 +1036,12 @@ const Transform = () => {
     const started = useTransformStore.getState().startTransformQuest(transformId, character.level);
     if (started) {
       setActiveTransformId(transformId);
+      // Fresh fight = fresh leave-guard cycle.
+      leavePenaltyAppliedRef.current = false;
       setPhase('fighting');
       setCombatLog([]);
+      // Reset shared session: backpack/loot/log/kills empty for the new quest run
+      useCombatStore.getState().clearCombatSession();
       setVictoryReady(false);
       // Training runs always — no need to pause
       // Start first monster
@@ -674,8 +1063,13 @@ const Transform = () => {
   const handleResumeQuest = useCallback(() => {
     if (!currentQuest?.inProgress) return;
     setActiveTransformId(currentQuest.transformId);
+    // Resuming a quest = fresh leave-guard cycle for this combat session.
+    leavePenaltyAppliedRef.current = false;
     setPhase('fighting');
     setCombatLog([]);
+    // Resume = fresh session window (the previous flee/exit already cleared it,
+    // but be safe in case the player navigated back without an explicit exit).
+    useCombatStore.getState().clearCombatSession();
     setVictoryReady(false);
     // Training runs always — no need to pause
     const remaining = useTransformStore.getState().getRemainingMonsters();
@@ -691,6 +1085,72 @@ const Transform = () => {
     }
   }, [currentQuest]);
 
+  // ── Cinematic entry: card → fullscreen morph + reveal ────────────────────
+  // Triggered by the per-card "Walcz" button. Captures the source card's
+  // bounding box + per-tier hue/image, flips into the new 'entering' phase
+  // (combat does NOT mount yet — no ticks, no damage), then schedules:
+  //   • T+1.34s — `handleStartQuest` so the combat HUD mounts UNDER the
+  //     still-opaque overlay; the reveal portion of the animation crossfades
+  //     from black straight into the live arena.
+  //   • T+2.0s — drop the overlay so the combat HUD is the sole visible layer.
+  // Click anywhere on the overlay during the cinematic to skip — handled by
+  // `skipEntryAnimation` below, which cancels the queued timeouts and starts
+  // combat immediately. Reduced-motion users + missing card element bypass
+  // the animation entirely.
+  const handleEnterClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>, transformId: number) => {
+      const card = (e.currentTarget as HTMLElement).closest('.transform__card') as HTMLElement | null;
+      const reducedMotion = typeof window !== 'undefined'
+        && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (!card || enterAnim || reducedMotion) {
+        handleStartQuest(transformId);
+        return;
+      }
+      const rect = card.getBoundingClientRect();
+      const tfColorInfo = getTransformColor(transformId);
+      const tfColorHex = tfColorInfo.solid ?? tfColorInfo.gradient?.[0] ?? '#ffc107';
+      const hue = hexToHue(tfColorHex);
+      const url = getTransformCardImage(transformId) ?? '';
+      pendingTransformIdRef.current = transformId;
+      setEnterAnim({
+        x: rect.left,
+        y: rect.top,
+        w: rect.width,
+        h: rect.height,
+        hue,
+        image: url,
+        transformId,
+      });
+      setPhase('entering');
+      enterAnimTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      enterAnimTimeoutsRef.current = [];
+      // T+1.34s — start combat under the still-opaque overlay.
+      const tCombat = window.setTimeout(() => {
+        handleStartQuest(transformId);
+      }, ENTRY_ANIM_COMBAT_START_AT_MS);
+      enterAnimTimeoutsRef.current.push(tCombat);
+      // T+2.0s — animation done, drop the overlay.
+      const tEnd = window.setTimeout(() => {
+        setEnterAnim(null);
+      }, ENTRY_ANIM_TOTAL_MS);
+      enterAnimTimeoutsRef.current.push(tEnd);
+    },
+    [enterAnim, handleStartQuest],
+  );
+
+  // Skip the cinematic — clicked anywhere on the overlay during 'entering'.
+  // Cancels every queued timeout, starts combat immediately if it hasn't yet,
+  // then clears the overlay so AnimatePresence runs the (fast) exit fade.
+  const skipEntryAnimation = useCallback(() => {
+    if (!enterAnim) return;
+    enterAnimTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+    enterAnimTimeoutsRef.current = [];
+    if (phaseRef.current === 'entering' && pendingTransformIdRef.current != null) {
+      handleStartQuest(pendingTransformIdRef.current);
+    }
+    setEnterAnim(null);
+  }, [enterAnim, handleStartQuest]);
+
   // ── Start fight with a specific monster ──────────────────────────────────────
   const startMonsterFight = useCallback((baseMonster: IMonster, transformId: number) => {
     const char = useCharacterStore.getState().character;
@@ -700,6 +1160,37 @@ const Transform = () => {
     setCurrentMonster(bossMonster);
     setMonsterHp(bossMonster.hp);
     setMonsterMaxHp(bossMonster.hp);
+    monsterHpRef.current = bossMonster.hp;
+
+    // Build the 4-slot wave lineup (Normal / Strong / Epic / Boss). Slots 0-2
+    // are escorts at the same level as the boss, drawn from the bestiary so
+    // each tile shows a different sprite. Slot 3 is the boss itself; we don't
+    // store it in `escortSlots` because it already lives in `currentMonster`.
+    const lineup = getTransformWaveLineup(bossMonster, baseMonster.level);
+    const newEscorts: Array<IEscortSlot | null> = [null, null, null];
+    for (const entry of lineup) {
+      if (entry.tier === 'Boss') continue; // slot 3 is `currentMonster`
+      newEscorts[entry.slot] = {
+        slot: entry.slot as 0 | 1 | 2,
+        tier: entry.tier,
+        monster: entry.monster,
+        currentHp: entry.monster.hp,
+        maxHp: entry.monster.hp,
+        // Pre-resolved sprite URL from the original template level — see the
+        // IEscortSlot.imageUrl docstring for why we have to capture this
+        // upstream of the stamp/level-rewrite.
+        imageUrl: entry.spriteImageUrl,
+      };
+    }
+    setEscortSlots(newEscorts);
+    escortSlotsRef.current = newEscorts;
+    // Fresh wave → fresh kill-tally tracking. Without this, a player who
+    // killed an escort in the previous wave would never get a tally for the
+    // matching slot in the next wave (the key would already be in the set).
+    escortKillsCountedRef.current = new Set();
+
+    // Clear leftover floats / skill overlays from any previous boss in this quest
+    fxRef.current.resetFx();
     // HP/MP are carried over between bosses within the same quest.
     // The store's char.hp/mp is kept in sync on monster death, so reading from the
     // store here gives the post-last-fight values (not a refill).
@@ -707,8 +1198,10 @@ const Transform = () => {
     setPlayerMp(char.mp);
     playerHpRef.current = char.hp;
     playerMpRef.current = char.mp;
-    setMonsterHit(false);
-    setPlayerHit(false);
+    // Pulse counters DON'T reset between bosses — only the slot id changes
+    // matter for keying. Resetting to 0 would still work, but staying
+    // monotonic guarantees the keyed flash overlay never ends up with the
+    // same key as the previous fight by accident.
     setPlayerAttacking(false);
 
     // Reset cooldowns for a fresh fight
@@ -718,6 +1211,11 @@ const Transform = () => {
     setMpPotionCooldown(0); mpPotionCooldownRef.current = 0;
     setPctHpCooldown(0); pctHpCooldownRef.current = 0;
     setPctMpCooldown(0); pctMpCooldownRef.current = 0;
+    // Fresh effect session — clear all timers / DOTs / queues from prior
+    // bosses so a leftover stun doesn't carry over into the next fight.
+    effectsRef.current = newCombatEffectsSession();
+    // Drop any necro summons left from a prior boss attempt.
+    useNecroSummonStore.getState().clear(PLAYER_FX_ID);
 
     addLog(`BOSS ${baseMonster.name_pl} (Lvl ${baseMonster.level}) - Walka rozpoczeta!`, 'system');
 
@@ -731,6 +1229,64 @@ const Transform = () => {
     // Clear old timers
     clearTimers();
 
+    // ── Target resolver ────────────────────────────────────────────────────
+    // Walks slots 0 → 1 → 2 → 3 (Normal / Strong / Epic / Boss) and returns
+    // the first one still alive. Slots 0-2 read from `escortSlotsRef`; slot 3
+    // is always the boss (`bossMonster` + `monsterHpRef`). Returns `null` once
+    // every slot is dead — the wave ends there.
+    type TTarget = {
+      slot: 0 | 1 | 2 | 3;
+      monster: IMonster;
+      prevHp: number;
+      maxHp: number;
+      name: string;
+    };
+    const resolveTarget = (): TTarget | null => {
+      const escorts = escortSlotsRef.current;
+      for (let s = 0; s < 3; s++) {
+        const e = escorts[s];
+        if (e && e.currentHp > 0) {
+          return {
+            slot: s as 0 | 1 | 2,
+            monster: e.monster,
+            prevHp: e.currentHp,
+            maxHp: e.maxHp,
+            name: e.monster.name_pl,
+          };
+        }
+      }
+      const bossHp = monsterHpRef.current;
+      if (bossHp > 0) {
+        return {
+          slot: 3,
+          monster: bossMonster,
+          prevHp: bossHp,
+          maxHp: bossMonster.hp,
+          name: bossMonster.name_pl,
+        };
+      }
+      return null;
+    };
+
+    // Apply damage to whichever slot the resolver picked. For escorts, we
+    // mutate the in-memory ref AND push a fresh array into the state so React
+    // re-renders the tile; for the boss we still go through the existing
+    // `monsterHpRef` + `setMonsterHp` pair so the death effect's deps array
+    // keeps working unchanged.
+    const applyDamageToSlot = (slot: 0 | 1 | 2 | 3, newHp: number) => {
+      if (slot === 3) {
+        monsterHpRef.current = newHp;
+        setMonsterHp(newHp);
+        return;
+      }
+      const cur = escortSlotsRef.current.slice();
+      const e = cur[slot];
+      if (!e) return;
+      cur[slot] = { ...e, currentHp: newHp };
+      escortSlotsRef.current = cur;
+      setEscortSlots(cur);
+    };
+
     // Player attack interval – runs at base/4 rate with tick-skipping for x1/x2/x4
     const playerTickInterval = Math.max(100, attackMs / 4);
     let playerTickCount = 0;
@@ -738,6 +1294,8 @@ const Transform = () => {
       playerTickCount += 1;
       const skip = 4 / speedMultRef.current; // x1=>4, x2=>2, x4=>1
       if (playerTickCount % skip !== 0) return;
+      // Stun gate — paralysed players skip their entire swing tick.
+      if (isCombatantStunned(effectsRef.current, PLAYER_FX_ID)) return;
       (() => {
       const latestChar = useCharacterStore.getState().character;
       if (!latestChar) return;
@@ -748,105 +1306,277 @@ const Transform = () => {
       const weaponDmg = rollWeaponDamage();
       const { skillLevels } = useSkillStore.getState();
       const skillBonus = getClassSkillBonus(latestChar.class, skillLevels);
+      // 2026-05 v6: consume "next basic" buff queues so Precyzyjny / Klon
+      // / Knight Ostateczny / Cięcie Boga all land their queued mod on
+      // the swing that follows the cast.
+      const playerStatus = ensureStatus(effectsRef.current, PLAYER_FX_ID);
+      const basicMods = consumeCasterBasicHitMods(playerStatus);
+      syncCasterChargeConsume(basicMods.consumed);
+      const basicCritBoost = basicMods.extraCritChance;
+      const basicForceCrit = basicMods.forceCrit;
+      const basicDmgMult = basicMods.dmgMult;
 
-      setMonsterHp((prevMhp) => {
-        if (prevMhp <= 0) return 0;
+      // Resolve target FIRST — walks the 4 slots and returns the first alive
+      // one, or bails when the wave is empty. All side effects below operate
+      // against this single target.
+      const target = resolveTarget();
+      if (!target) return;
+      const targetSlot = target.slot;
 
-        let totalDmg = 0;
-        if (isDualWield) {
-          const dual = calculateDualWieldDamage({
-            baseAtk: eff.attack,
-            weaponAtk: weaponDmg,
-            offHandAtk: rollOffHandDamage(),
-            skillBonus,
-            classModifier: CLASS_MODIFIER[latestChar.class] ?? 1,
-            enemyDefense: bossMonster.defense,
-            critChance: eff.crit_chance,
-            critDmg: eff.crit_damage,
-            maxCritChance: classData.maxCritChance ?? 0.5,
-            damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
-          });
-          totalDmg = dual.totalDamage;
-          addLog(
-            `[Ty] Podwojny atak za ${dual.hit1.finalDamage} + ${dual.hit2.finalDamage} = ${totalDmg} dmg${dual.hit1.isCrit || dual.hit2.isCrit ? ' CRIT!' : ''}`,
-            dual.hit1.isCrit || dual.hit2.isCrit ? 'crit' : 'dualwield',
-          );
-        } else {
-          const canBlock = !!classData.canBlock;
-          const canDodge = !!classData.canDodge;
-          const result = calculateDamage({
-            baseAtk: eff.attack,
-            weaponAtk: weaponDmg,
-            skillBonus,
-            classModifier: CLASS_MODIFIER[latestChar.class] ?? 1,
-            enemyDefense: bossMonster.defense,
-            critChance: eff.crit_chance,
-            critDmg: eff.crit_damage,
-            blockChance: canBlock ? calculateBlockChance(skillLevels['shielding'] ?? 0) : 0,
-            dodgeChance: canDodge ? calculateDodgeChance(latestChar.class) : 0,
-            maxCritChance: classData.maxCritChance ?? 0.5,
-            damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
-          });
-          totalDmg = result.finalDamage;
-          const logType = result.isCrit ? 'crit' : 'player';
-          addLog(
-            `[Ty] Atak za ${totalDmg} dmg${result.isCrit ? ' CRIT!' : ''} (HP: ${Math.max(0, prevMhp - totalDmg)}/${bossMonster.hp})`,
-            logType,
-          );
-        }
+      let totalDmg = 0;
+      if (isDualWield) {
+        const dual = calculateDualWieldDamage({
+          baseAtk: eff.attack,
+          weaponAtk: weaponDmg,
+          offHandAtk: rollOffHandDamage(),
+          skillBonus,
+          classModifier: CLASS_MODIFIER[latestChar.class] ?? 1,
+          enemyDefense: target.monster.defense,
+          critChance: eff.crit_chance + basicCritBoost,
+          critDmg: eff.crit_damage,
+          maxCritChance: classData.maxCritChance ?? 0.5,
+          damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier() * basicDmgMult,
+        });
+        totalDmg = dual.totalDamage;
+        // Per-hit floats so the targeted card shows two distinct numbers
+        // (one per swing) rather than collapsing to a single sum.
+        fxRef.current.pushEnemyFloat(targetSlot, dual.hit1.finalDamage, 'basic', { isCrit: dual.hit1.isCrit, icon: '🗡️' });
+        fxRef.current.pushEnemyFloat(targetSlot, dual.hit2.finalDamage, 'basic', { isCrit: dual.hit2.isCrit, icon: '🗡️' });
+        addLog(
+          `[Ty → ${target.name}] Podwojny atak za ${dual.hit1.finalDamage} + ${dual.hit2.finalDamage} = ${totalDmg} dmg${dual.hit1.isCrit || dual.hit2.isCrit ? ' CRIT!' : ''}`,
+          dual.hit1.isCrit || dual.hit2.isCrit ? 'crit' : 'dualwield',
+        );
+      } else {
+        const canBlock = !!classData.canBlock;
+        const canDodge = !!classData.canDodge;
+        const result = calculateDamage({
+          baseAtk: eff.attack,
+          weaponAtk: weaponDmg,
+          skillBonus,
+          classModifier: CLASS_MODIFIER[latestChar.class] ?? 1,
+          enemyDefense: target.monster.defense,
+          critChance: eff.crit_chance + basicCritBoost,
+          critDmg: eff.crit_damage,
+          blockChance: canBlock ? calculateBlockChance(skillLevels['shielding'] ?? 0) : 0,
+          dodgeChance: canDodge ? calculateDodgeChance(latestChar.class) : 0,
+          maxCritChance: classData.maxCritChance ?? 0.5,
+          isCrit: basicForceCrit ? true : undefined,
+          damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier() * basicDmgMult,
+        });
+        totalDmg = result.finalDamage;
+        fxRef.current.pushEnemyFloat(targetSlot, totalDmg, 'basic', { isCrit: result.isCrit });
+        const logType = result.isCrit ? 'crit' : 'player';
+        addLog(
+          `[Ty → ${target.name}] Atak za ${totalDmg} dmg${result.isCrit ? ' CRIT!' : ''} (HP: ${Math.max(0, target.prevHp - totalDmg)}/${target.maxHp})`,
+          logType,
+        );
+      }
 
-        setMonsterHit(true);
-        setPlayerAttacking(true);
-        const animDur = ATTACK_ANIM_DURATION[latestChar.class] ?? 350;
-        setTimeout(() => { setMonsterHit(false); setPlayerAttacking(false); }, animDur);
+      setMonsterHitPulses((p) => ({ ...p, [targetSlot]: (p[targetSlot] ?? 0) + 1 }));
+      setPlayerAttacking(true);
+      const animDur = ATTACK_ANIM_DURATION[latestChar.class] ?? 350;
+      setTimeout(() => { setPlayerAttacking(false); }, animDur);
 
-        // Grant skill XP from attack (weapon skill for non-magic + MLVL for magic classes)
+      // Grant skill XP from attack (weapon skill for non-magic + MLVL for magic classes)
+      useSkillStore.getState().addWeaponSkillXpFromAttack(latestChar.class);
+      useSkillStore.getState().addMlvlXpFromAttack(latestChar.class);
+      if (isDualWield) {
+        // Second hit for dual wield classes
         useSkillStore.getState().addWeaponSkillXpFromAttack(latestChar.class);
-        useSkillStore.getState().addMlvlXpFromAttack(latestChar.class);
-        if (isDualWield) {
-          // Second hit for dual wield classes
-          useSkillStore.getState().addWeaponSkillXpFromAttack(latestChar.class);
-        }
+      }
 
-        const newHp = Math.max(0, prevMhp - totalDmg);
+      let newHp = Math.max(0, target.prevHp - totalDmg);
 
-        // Auto-skill fire (check all 4 slots, only if skillMode=auto)
-        if (newHp > 0 && useSettingsStore.getState().skillMode === 'auto') {
-          const now = Date.now();
-          const slots = useSkillStore.getState().activeSkillSlots;
-          let extraDmg = 0;
-          for (let i = 0; i < 4; i++) {
-            const skillId = slots[i];
-            if (!skillId) continue;
-            const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-            if (now - lastUsed < SKILL_COOLDOWN_MS) continue;
-            if (playerMpRef.current < SKILL_MP_COST) continue;
-            const skillDmg = Math.max(1, Math.floor(eff.attack * 0.15 * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
-            extraDmg += skillDmg;
-            const newMp = Math.max(0, playerMpRef.current - SKILL_MP_COST);
-            playerMpRef.current = newMp;
-            setPlayerMp(newMp);
-            skillCooldownRef.current.set(skillId, now);
-            setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
-            { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd); }
-            triggerSkillAnim(skillId);
+      // Auto-skill fire (check all 4 slots, only if skillMode=auto)
+      if (newHp > 0 && useSettingsStore.getState().skillMode === 'auto') {
+        const now = Date.now();
+        const slots = useSkillStore.getState().activeSkillSlots;
+        let extraDmg = 0;
+        for (let i = 0; i < 4; i++) {
+          const skillId = slots[i];
+          if (!skillId) continue;
+          const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
+          if (now - lastUsed < SKILL_COOLDOWN_MS) continue;
+          if (playerMpRef.current < SKILL_MP_COST) continue;
+          // 2026-05 v7: Apokalipsa Śmierci synchronous self-cost.
+          {
+            const tmpDef = getSkillDef(skillId);
+            if ((tmpDef?.effect ?? '').includes('death_apocalypse') && latestChar.class === 'Necromancer') {
+              const hpPct = playerHpRef.current / Math.max(1, eff.max_hp);
+              if (hpPct < 0.05) continue;
+              let newPlayerHp: number;
+              if (hpPct > 0.20) {
+                newPlayerHp = Math.max(1, playerHpRef.current - Math.floor(eff.max_hp * 0.20));
+              } else {
+                newPlayerHp = Math.max(1, Math.floor(eff.max_hp * 0.03));
+              }
+              const lost = playerHpRef.current - newPlayerHp;
+              if (lost > 0) {
+                playerHpRef.current = newPlayerHp;
+                setPlayerHp(newPlayerHp);
+                useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
+                fxRef.current.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
+                addLog(`💔 Apokalipsa: -${lost} HP`, 'crit');
+              }
+            }
+          }
+          // Apply v2 effects (stun/dot/instant_kill/marks/etc.). Transform
+          // is a 1v1 from the effect system's POV — every alive monster
+          // counts as the single OPPONENT_FX_ID so AOE / multistrike are
+          // moot here (boss-style handling).
+          const sDef = getSkillDef(skillId);
+          // 2026-05 v6: pure-buff branch + skill.damage scaling.
+          const skillBaseMult = sDef?.damage ?? 1;
+          const isPureBuff = skillBaseMult === 0;
+          const targetMaxHp = target.maxHp || 1;
+          const targetHpPct = targetMaxHp > 0 ? (newHp / targetMaxHp) * 100 : 100;
+          const apply = effectsCastSkill({
+            session: effectsRef.current,
+            casterId: PLAYER_FX_ID,
+            targetId: OPPONENT_FX_ID,
+            targetHpPct,
+            effect: sDef?.effect ?? null,
+            allyIds: [PLAYER_FX_ID],
+            enemyIds: [OPPONENT_FX_ID],
+          });
+          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
+          let skillDmg = isPureBuff
+            ? 0
+            : (apply.instantKill ? Math.max(1, newHp) : Math.floor(baseDmg * apply.castDmgMult));
+          // 2026-05 v7: auto-skill spell consumes Klątwa AND gets Kraina ×N.
+          if (!isPureBuff && skillDmg > 0) {
+            const oppStAuto = ensureStatus(effectsRef.current, OPPONENT_FX_ID);
+            const ampAuto = consumeTargetMarkAmp(oppStAuto);
+            if (ampAuto.mult !== 1) {
+              skillDmg = Math.max(1, Math.floor(skillDmg * ampAuto.mult));
+            }
+          }
+          extraDmg += skillDmg;
+          const newMp = Math.max(0, playerMpRef.current - SKILL_MP_COST);
+          playerMpRef.current = newMp;
+          setPlayerMp(newMp);
+          skillCooldownRef.current.set(skillId, now);
+          setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+          if (sDef) applySkillBuff(skillId, sDef, speedMult);
+          triggerSkillAnim(skillId);
+          if (isPureBuff) {
+            fxRef.current.triggerAllySkillAnim(0, skillId);
+            addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
+          } else {
+            fxRef.current.triggerEnemySkillAnim(targetSlot, skillId);
+            fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
             addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
-            break;
           }
-          if (extraDmg > 0) {
-            return Math.max(0, newHp - extraDmg);
+          // 1v1 setup — AOE/multistrike stay no-ops. Suppress lint.
+          void apply.aoe; void apply.multistrike;
+          // 2026-05 v6: heal-on-cast (Promień Pustki, Pochłonięcie
+          // Życia, Żniwa Dusz). Capture pre/post HP so the float shows
+          // the COMPUTED heal value with a (MAX) tag when capped at
+          // max_hp — never silent at 100% HP.
+          if (apply.healCasterPctOfDmg > 0 && skillDmg > 0) {
+            const heal = Math.floor(skillDmg * (apply.healCasterPctOfDmg / 100));
+            const before = playerHpRef.current;
+            playerHpRef.current = Math.min(eff.max_hp, playerHpRef.current + heal);
+            setPlayerHp(playerHpRef.current);
+            const actual = playerHpRef.current - before;
+            if (heal > 0) {
+              const cappedTag = actual < heal ? ' (MAX)' : '';
+              fxRef.current.pushAllyFloat(0, heal, 'heal', {
+                icon: '✨',
+                label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+              });
+              addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+            }
           }
+          if (apply.healCasterPctOfMaxHp > 0) {
+            const heal = Math.floor(eff.max_hp * (apply.healCasterPctOfMaxHp / 100));
+            const before = playerHpRef.current;
+            playerHpRef.current = Math.min(eff.max_hp, playerHpRef.current + heal);
+            setPlayerHp(playerHpRef.current);
+            const actual = playerHpRef.current - before;
+            if (heal > 0) {
+              const cappedTag = actual < heal ? ' (MAX)' : '';
+              fxRef.current.pushAllyFloat(0, heal, 'heal', {
+                icon: '✨',
+                label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+              });
+            }
+          }
+          // 2026-05 v6: Cleric `heal` / `holy_nova` — heal_lowest_ally_pct.
+          // Transform is solo so player IS the lowest ally; heals N% of
+          // their max HP. Float on player slot + ally skill anim.
+          if (apply.healLowestAllyPct > 0) {
+            const heal = Math.floor(eff.max_hp * (apply.healLowestAllyPct / 100));
+            const before = playerHpRef.current;
+            playerHpRef.current = Math.min(eff.max_hp, playerHpRef.current + heal);
+            setPlayerHp(playerHpRef.current);
+            const actual = playerHpRef.current - before;
+            if (heal > 0) {
+              const cappedTag = actual < heal ? ' (MAX)' : '';
+              fxRef.current.pushAllyFloat(0, heal, 'heal', {
+                icon: '✨',
+                label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+              });
+              fxRef.current.triggerAllySkillAnim(0, skillId);
+              addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+            }
+          }
+          // Necro summon spawn — only when caster is a necro.
+          if (apply.summons.length > 0 && latestChar.class === 'Necromancer') {
+            const store = useNecroSummonStore.getState();
+            for (const sm of apply.summons) {
+              {
+                const spawned = store.spawn(PLAYER_FX_ID, sm.type, sm.count, eff.attack, eff.max_hp);
+                if (spawned > 0) fxRef.current.triggerAllySummonSpawn(0, sm.type);
+              }
+            }
+          }
+          // 2026-05 v7: Apokalipsa Śmierci — target damage only.
+          if (apply.deathApocalypse && latestChar.class === 'Necromancer') {
+            const apocDmg = Math.max(1, Math.floor(target.maxHp * (apply.deathApocalypseTargetMaxHpPct / 100)));
+            extraDmg += apocDmg;
+            fxRef.current.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
+            addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
+          }
+          break;
         }
+        if (extraDmg > 0) {
+          newHp = Math.max(0, newHp - extraDmg);
+        }
+      }
 
-        // Auto-potion check after player attack
-        tryAutoPotionRef.current();
+      // Necromancer summon swing — every live summon contributes a fraction
+      // of the necro's attack stat against the same target.
+      if (latestChar.class === 'Necromancer' && newHp > 0) {
+        const summonBonus = useNecroSummonStore.getState().totalAttackBonus(PLAYER_FX_ID, eff.attack);
+        if (summonBonus > 0) {
+          let dmg = Math.max(1, summonBonus - Math.floor(target.monster.defense * 0.5));
+          // 2026-05 v7: summon swings consume Klątwa Śmierci (count)
+          // AND Kraina Śmierci (duration ×N) on the boss.
+          const oppStSum = ensureStatus(effectsRef.current, OPPONENT_FX_ID);
+          const ampSum = consumeTargetMarkAmp(oppStSum);
+          if (ampSum.mult !== 1) {
+            dmg = Math.max(1, Math.floor(dmg * ampSum.mult));
+          }
+          newHp = Math.max(0, newHp - dmg);
+          fxRef.current.pushEnemyFloat(targetSlot, dmg, 'basic', { icon: '💀' });
+          addLog(`💀 Summony zadają ${dmg} dmg`, 'player');
+        }
+      }
 
-        return newHp;
-      });
+      // Auto-potion check after player attack
+      tryAutoPotionRef.current();
+
+      applyDamageToSlot(targetSlot, newHp);
       })();
     }, playerTickInterval);
 
-    // Monster attack interval – runs at base/4 rate with tick-skipping
+    // Monster attack interval – runs at base/4 rate with tick-skipping.
+    // Every alive monster (escorts + boss) lands its own swing on the player
+    // each tick; the per-tile float numbers come out as separate red pops so
+    // the player can read each contribution. The interval cadence is keyed
+    // off the boss's speed (escorts are minions and don't get a separate
+    // timer of their own — keeps the system simple and predictable).
     const monsterAttackMs = Math.max(800, 2000 - bossMonster.speed * 10);
     const monsterTickInterval = Math.max(100, monsterAttackMs / 4);
     let monsterTickCount = 0;
@@ -854,49 +1584,168 @@ const Transform = () => {
       monsterTickCount += 1;
       const skip = 4 / speedMultRef.current;
       if (monsterTickCount % skip !== 0) return;
-      setPlayerHp((prevPhp) => {
-        if (prevPhp <= 0) return 0;
+      // Stun gate — paralysed opponents skip their swing tick.
+      if (isCombatantStunned(effectsRef.current, OPPONENT_FX_ID)) return;
+      // 2026-05 v6: Krok Cienia / Unik charge buff — burns one charge
+      // per non-magic enemy hit, skips the entire attack tick.
+      if (useBuffStore.getState().getBuffCharges('skill_charge_dodge_next') > 0) {
+        useBuffStore.getState().consumeBuffCharge('skill_charge_dodge_next');
+        addLog(`Przeciwnik atakuje – Krok Cienia! Unik!`, 'crit');
+        return;
+      }
+      // 2026-05 v6: Cleric Boska Tarcza — block_next_party charge.
+      // Stacks up to 2; consumed per incoming hit, eats the entire
+      // attack tick.
+      if (useBuffStore.getState().getBuffCharges('skill_charge_block_next_party') > 0) {
+        useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
+        fxRef.current.pushAllyFloat(0, 0, 'heal', { icon: '🛡️', label: 'BLOCK' });
+        addLog(`🛡️ Boska Tarcza! Blok!`, 'crit');
+        return;
+      }
+      // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000) — % chance
+      // to fully dodge each incoming basic during the buff window.
+      const tfPlayerSt = ensureStatus(effectsRef.current, PLAYER_FX_ID);
+      if (tfPlayerSt.dodgeBuffMs > 0 && tfPlayerSt.dodgeBuffPct > 0) {
+        if (Math.random() * 100 < tfPlayerSt.dodgeBuffPct) {
+          fxRef.current.pushAllyFloat(0, 0, 'heal', { icon: '💨', label: 'UNIK' });
+          addLog(`💨 Bomba Dymna! Unik (${tfPlayerSt.dodgeBuffPct}%)`, 'crit');
+          return;
+        }
+      }
+      // Same pattern as the player attack: read prev HP from the ref, run all
+      // side effects in normal flow, finally setPlayerHp with a plain value.
+      const prevPhp = playerHpRef.current;
+      if (prevPhp <= 0) return;
 
-        const latestChar = useCharacterStore.getState().character;
-        if (!latestChar) return prevPhp;
-        const eff = getEffectiveChar(latestChar);
-        if (!eff) return prevPhp;
+      const latestChar = useCharacterStore.getState().character;
+      if (!latestChar) return;
+      const eff = getEffectiveChar(latestChar);
+      if (!eff) return;
 
-        // Monster attack with min/max range
-        const rawDmg = rollMonsterDamage(bossMonster);
+      // Build the list of attackers (alive escorts + alive boss). Order is
+      // top-left → top-right → bottom-left → bottom-right so the floats stack
+      // in a predictable reading order on the player card.
+      type TAttacker = { monster: IMonster; name: string };
+      const attackers: TAttacker[] = [];
+      const escorts = escortSlotsRef.current;
+      for (let s = 0; s < 3; s++) {
+        const e = escorts[s];
+        if (e && e.currentHp > 0) {
+          attackers.push({ monster: e.monster, name: e.monster.name_pl });
+        }
+      }
+      if (monsterHpRef.current > 0) {
+        attackers.push({ monster: bossMonster, name: bossMonster.name_pl });
+      }
+      if (attackers.length === 0) return;
+
+      let totalDmg = 0;
+      for (const a of attackers) {
+        const rawDmg = rollMonsterDamage(a.monster);
         const dmg = Math.max(1, rawDmg - eff.defense);
-
-        setPlayerHit(true);
-        setMonsterAttacking(true);
-        setTimeout(() => {
-          setPlayerHit(false);
-          setMonsterAttacking(false);
-        }, 420);
-
+        totalDmg += dmg;
+        // One red float per attacker so the player can read each contribution.
+        fxRef.current.pushAllyFloat(0, dmg, 'monster');
         addLog(
-          `[${baseMonster.name_pl}] Atak za ${dmg} dmg (HP: ${Math.max(0, prevPhp - dmg)}/${eff.max_hp})`,
+          `[${a.name}] Atak za ${dmg} dmg`,
           'monster',
         );
+      }
 
-        const newPhp = Math.max(0, prevPhp - dmg);
-        playerHpRef.current = newPhp;
-        // Try auto-potion after taking damage
-        setTimeout(() => tryAutoPotionRef.current(), 0);
-        return newPhp;
-      });
+      // Necromancer summon shield — front-of-queue summon eats accumulated
+      // damage before the necro takes it. Each opponent's swing already
+      // landed its float, so we just absorb the totalled HP delta.
+      let hpDelta = totalDmg;
+      if (latestChar.class === 'Necromancer' && hpDelta > 0) {
+        const store = useNecroSummonStore.getState();
+        if (store.count(PLAYER_FX_ID) > 0) {
+          const r2 = store.damageFirst(PLAYER_FX_ID, hpDelta);
+          hpDelta = Math.max(0, hpDelta - r2.dmgConsumed);
+        }
+      }
+
+      setPlayerHitPulse((p) => p + 1);
+      const newPhp = Math.max(0, prevPhp - hpDelta);
+      addLog(
+        `Otrzymales ${totalDmg} dmg (HP: ${newPhp}/${eff.max_hp})`,
+        'monster',
+      );
+      playerHpRef.current = newPhp;
+      setPlayerHp(newPhp);
+      // Try auto-potion after taking damage
+      setTimeout(() => tryAutoPotionRef.current(), 0);
     }, monsterTickInterval);
+    // `fx` intentionally NOT in deps — see comment on `fxRef`. Putting it here
+    // would re-create `startMonsterFight` every render, which makes the death
+    // effect's deps array (which includes startMonsterFight) churn every render
+    // and re-fire `addLog` once monsterHp ≤ 0, blowing the update-depth limit.
   }, [addLog, clearTimers]);
 
   // ── Check monster death / player death ────────────────────────────────────
   useEffect(() => {
     if (phase !== 'fighting') return;
 
-    // Monster defeated
-    if (monsterHp <= 0 && currentMonster) {
+    // Wave cleared — only when EVERY slot (3 escorts + boss) is dead. The boss
+    // is always killed last (the player auto-attack walks slots 0→1→2→3, so
+    // the boss is the final target), but we still gate on the escorts being
+    // dead too in case some future change reorders targeting. Each escort kill
+    // also fires a session/combat tally so the per-tier monsters count toward
+    // the global "monsters defeated" stats.
+    const escortsAllDead = escortSlots.every((e) => e === null || e.currentHp <= 0);
+
+    // Mirror escort kills to the shared combat session as soon as they go
+    // down. We track which slots have already been counted in a ref so the
+    // tally doesn't double-fire across re-renders. The ref lives outside the
+    // effect on purpose — see `escortKillsCountedRef` declaration.
+    if (currentMonster) {
+      for (let s = 0; s < 3; s++) {
+        const e = escortSlots[s];
+        if (!e || e.currentHp > 0) continue;
+        const key = `${currentMonster.id}__slot${s}`;
+        if (escortKillsCountedRef.current.has(key)) continue;
+        escortKillsCountedRef.current.add(key);
+        // Tier → kill bucket mapping. Normal/Strong/Epic mirror the dungeon
+        // monster types so the unified backpack popup counts them in the
+        // matching rows. (Boss is counted on the wave clear branch below.)
+        const bucket = e.tier === 'Normal' ? 'normal'
+          : e.tier === 'Strong' ? 'strong'
+          : 'epic';
+        useCombatStore.getState().incrementSessionKill(bucket);
+        // Per-kill task / quest / daily-quest / mastery progress —
+        // mirrors the hunt/dungeon/raid wiring so escorts contribute
+        // toward the same grind streams. The escort's `monster.id` is
+        // a real monsters.json entry, so the lookups inside each store
+        // resolve normally.
+        useTaskStore.getState().addKill(e.monster.id, e.monster.level, 1);
+        useQuestStore.getState().addProgress('kill', e.monster.id, 1, e.monster.level);
+        useDailyQuestStore.getState().addProgress('kill_any', 1);
+        useMasteryStore.getState().addMasteryKills(e.monster.id, 1);
+        addLog(`${e.tier} ${e.monster.name_pl} pokonany!`, 'system');
+      }
+    }
+
+    // Wave cleared — boss + all escorts down. Triggers the spawn timer for
+    // the next wave OR arms `victoryReady` if this was the last wave.
+    if (monsterHp <= 0 && escortsAllDead && currentMonster) {
       clearTimers();
       tickCombatElixirs(2000);
       // Record defeat in store
       useTransformStore.getState().defeatMonster(currentMonster.id);
+      // Mirror to shared combat session so the unified backpack popup tally
+      // counts every transform monster as a boss-tier kill.
+      useCombatStore.getState().incrementSessionKill('boss');
+      // Per-kill task / quest / daily-quest / mastery progress for the
+      // boss — same wiring as the escort branch above. Boss-typed
+      // daily quests + boss-rarity quests both fire here so the player
+      // gets full credit alongside hunting / dungeon / raid kills.
+      useTaskStore.getState().addKill(currentMonster.id, currentMonster.level, 1);
+      useQuestStore.getState().addProgress('kill', currentMonster.id, 1, currentMonster.level);
+      useQuestStore.getState().addProgress('boss', currentMonster.id, 1);
+      useQuestStore.getState().addProgress('kill_rarity', 'boss', 1, currentMonster.level);
+      useQuestStore.getState().addProgress('kill_bosses_any', 'any', 1);
+      useDailyQuestStore.getState().addProgress('kill_any', 1);
+      useDailyQuestStore.getState().addProgress('kill_boss', 1);
+      useMasteryStore.getState().addMasteryKills(currentMonster.id, 1);
       addLog(`BOSS ${currentMonster.name_pl} pokonany!`, 'system');
 
       // Persist current HP/MP into character store so next boss fight continues
@@ -917,8 +1766,19 @@ const Transform = () => {
       if (postKillTimeoutRef.current) {
         clearTimeout(postKillTimeoutRef.current);
       }
+      const spawnDelayMs = Math.max(60, Math.floor(MONSTER_SPAWN_DELAY_MS / speedMultRef.current));
+      // Arm the spawn-bar countdown so the slim header bar fills L→R
+      // over the wait. Cleared either when the timeout fires or when
+      // the player flees / dies / claims (the phase-watching effect
+      // below zeroes it whenever phase ≠ 'fighting').
+      spawnStartRef.current = Date.now();
+      spawnDurationRef.current = spawnDelayMs;
+      setSpawnProgress(0);
+      setWaitingForSpawn(true);
       postKillTimeoutRef.current = setTimeout(() => {
         postKillTimeoutRef.current = null;
+        setWaitingForSpawn(false);
+        setSpawnProgress(0);
         // If the player abandoned / fled / died in the meantime, do nothing.
         if (phaseRef.current !== 'fighting') return;
         const remaining = useTransformStore.getState().getRemainingMonsters();
@@ -935,12 +1795,15 @@ const Transform = () => {
             startMonsterFight(nextM, activeTransformId);
           }
         }
-      }, 1000);
+      }, spawnDelayMs);
     }
 
     // Player death
     if (playerHp <= 0 && currentMonster && monsterHp > 0) {
       clearTimers();
+      // Real combat death — flag the leave guard so unmount cleanup doesn't
+      // double-charge on top of the penalty applied below.
+      leavePenaltyAppliedRef.current = true;
       addLog('Zostales pokonany!', 'system');
 
       // Apply death penalty
@@ -967,6 +1830,15 @@ const Transform = () => {
         const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
         const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
 
+        // Capture the penalty figures so we can feed the unified DeathNotification
+        // popup below — same shape as Boss/Dungeon use, so the player sees the
+        // same "you died, here's what you lost" overlay across every combat view.
+        let oldLevelForPopup = char.level;
+        let newLevelForPopup = char.level;
+        let levelsLostForPopup = 0;
+        let xpPercentForPopup = 100;
+        let skillXpLossPercentForPopup = 0;
+
         if (usedDeathProtection) {
           useCharacterStore.getState().fullHealEffective();
           addLog('Eliksir Ochrony uchronil Cie od utraty poziomu!', 'system');
@@ -974,17 +1846,33 @@ const Transform = () => {
           const penalty = applyDeathPenalty(char.level, char.xp);
           const currentHighest = char.highest_level ?? char.level;
           const preservedHighest = Math.max(currentHighest, char.level);
+          // Apply level/XP loss WITHOUT touching hp/mp — leaving the partial
+          // 50% / 50% restore behind from before. After the level rollback
+          // settles we call `fullHealEffective` so the player respawns at
+          // 100% (against the NEW max_hp/max_mp computed from the rolled-
+          // back level + active equipment), matching the behaviour of every
+          // other combat view (Boss/Dungeon/Combat). Anything less and the
+          // first thing the player has to do post-respawn is sit and watch
+          // a regen tick before they can fight again — bad UX after the
+          // already painful XP loss.
           useCharacterStore.getState().updateCharacter({
             level: penalty.newLevel,
             xp: penalty.newXp,
             highest_level: preservedHighest,
-            hp: Math.floor(char.max_hp * 0.5),
-            mp: Math.floor(char.max_mp * 0.5),
           });
-          useSkillStore.getState().applyDeathPenalty(char.class);
+          useCharacterStore.getState().fullHealEffective();
+          useSkillStore.getState().applyDeathPenalty(char.class, penalty.skillXpLossPercent);
+          useSkillStore.getState().purgeLockedSkillSlots(char.class, penalty.newLevel);
           if (penalty.levelsLost > 0) {
-            addLog(`Straciles poziom: ${char.level} -> ${penalty.newLevel}`, 'system');
+            addLog(`Straciles ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}: ${char.level} -> ${penalty.newLevel} · -${penalty.skillXpLossPercent}% Skill XP`, 'system');
+          } else {
+            addLog(`Zginąłeś. Kara: -${penalty.skillXpLossPercent}% Skill XP`, 'system');
           }
+          oldLevelForPopup = char.level;
+          newLevelForPopup = penalty.newLevel;
+          levelsLostForPopup = penalty.levelsLost;
+          xpPercentForPopup = penalty.xpPercent;
+          skillXpLossPercentForPopup = penalty.skillXpLossPercent;
         }
 
         // Item loss with optional Amulet of Loss protection
@@ -994,11 +1882,35 @@ const Transform = () => {
         } else if (itemsLost > 0) {
           addLog(`Stracileś ${itemsLost} przedmiot(ow) przy smierci!`, 'system');
         }
+
+        // Unified epic death overlay — same popup the Boss/Dungeon/Combat
+        // views fire. Auto-navigates to town but the popup itself stays
+        // mounted (DeathNotification is global) until the player clicks
+        // it, so the post-mortem can't be missed. killedBy is the monster
+        // that actually landed the killing blow (not the transform meta),
+        // matching the mental model "X killed me" rather than "this whole
+        // dungeon killed me".
+        useDeathStore.getState().triggerDeath({
+          killedBy: monsterName,
+          sourceLevel: monsterLvl,
+          oldLevel: oldLevelForPopup,
+          newLevel: newLevelForPopup,
+          levelsLost: levelsLostForPopup,
+          xpPercent: xpPercentForPopup,
+          skillXpLossPercent: skillXpLossPercentForPopup,
+          protectionUsed: usedDeathProtection,
+          source: 'transform',
+        });
       }
 
       // Abandon quest
       useTransformStore.getState().abandonTransformQuest();
       void saveCurrentCharacterStores();
+      // Death ends the session — clear the shared session so the next combat
+      // view starts with an empty backpack/log popup.
+      useCombatStore.getState().clearCombatSession();
+      // Drop any leftover necro summons.
+      useNecroSummonStore.getState().clear(PLAYER_FX_ID);
 
       // Point 11: track the death transition so Abandon / nav away cancels it.
       if (deathTimeoutRef.current) {
@@ -1010,22 +1922,79 @@ const Transform = () => {
         setCurrentMonster(null);
       }, 2000);
     }
-  }, [monsterHp, playerHp, phase, currentMonster, activeTransformId, clearTimers, addLog, startMonsterFight]);
+  }, [monsterHp, playerHp, phase, currentMonster, escortSlots, activeTransformId, clearTimers, addLog, startMonsterFight]);
 
   // ── Handle "Uciekaj" button ─────────────────────────────────────────────────
   // Point 11: Ucieknij must be fully cancellable — abandon the quest, cancel
   // any pending post-kill / death timers, and go straight to Miasto so no
   // stray setTimeout can fire an "allDefeated" state and award bogus rewards.
+  // Spec: Ucieknij from a non-hunting fight = standard 1/10 flee penalty (XP
+  // loss only — no level strip, no item loss). Same penalty as Boss/Dungeon.
   const handleAbandon = useCallback(() => {
     clearTimers(); // cancels attack intervals + post-kill + death timeouts
     useTransformStore.getState().abandonTransformQuest();
+    // Voluntary abandon = soft flee penalty — flag the leave guard so
+    // unmount cleanup doesn't upgrade this to a full death.
+    leavePenaltyAppliedRef.current = true;
+    // Apply the standard flee penalty so retreating from transform-quest
+    // bosses costs the player something — never strips a level, never
+    // touches equipment.
+    const ch = useCharacterStore.getState().character;
+    if (ch && ch.level > 1) {
+      // 2026-05-19 v25 spec: log flee to the global deaths feed so the
+      // /deaths view can render "<monster> przegnał <player>" even when
+      // the player didn't actually die. We do this even if a protection
+      // elixir would have negated the XP loss — the spec is explicit
+      // that the feed entry must still appear, just with the verb
+      // "przegnał" (driven by `result: 'fled'`).
+      const transformMeta = getTransformById(activeTransformId);
+      const mon = currentMonster;
+      const monsterName = mon?.name_pl ?? mon?.name_en ?? transformMeta?.name_pl ?? `Transform ${activeTransformId}`;
+      const monsterLvl = mon?.level ?? transformMeta?.level ?? ch.level;
+      void deathsApi.logDeath({
+        character_id: ch.id,
+        character_name: ch.name,
+        character_class: ch.class,
+        character_level: ch.level,
+        source: 'transform',
+        source_name: monsterName,
+        source_level: monsterLvl,
+        result: 'fled',
+      });
+
+      const pen = applyFleePenalty(ch.level, ch.xp);
+      useCharacterStore.getState().updateCharacter({
+        xp: pen.newXp,
+        level: pen.newLevel,
+      });
+      useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
+      if (pen.levelsLost > 0) {
+        useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+      }
+    }
+    // Persist current HP/MP so fleeing keeps your wounds (combat outcomes
+    // never silently top you off). Clamp to EFFECTIVE max so an HP-elixir-
+    // boosted player doesn't lose their over-base HP on flee.
+    {
+      const liveChar = useCharacterStore.getState().character;
+      if (liveChar) {
+        const fleeEff = getEffectiveChar(liveChar);
+        const fleeMaxHp = fleeEff?.max_hp ?? liveChar.max_hp;
+        const fleeMaxMp = fleeEff?.max_mp ?? liveChar.max_mp;
+        useCharacterStore.getState().updateCharacter({
+          hp: Math.max(1, Math.min(fleeMaxHp, playerHpRef.current)),
+          mp: Math.max(0, Math.min(fleeMaxMp, playerMpRef.current)),
+        });
+      }
+    }
     // Training runs always — no action needed
+    useCombatStore.getState().clearCombatSession();
     setVictoryReady(false);
     setPhase('list');
     setCurrentMonster(null);
     setCombatLog([]);
     navigate('/');
-  }, [clearTimers, navigate]);
+  }, [clearTimers, navigate, activeTransformId, currentMonster]);
 
   // Point N6: explicit claim button handler — transitions to 'allDefeated'.
   const handleClaimVictory = useCallback(() => {
@@ -1103,6 +2072,13 @@ const Transform = () => {
   }, [character, rewards]);
 
   const handleReturn = useCallback(() => {
+    // Reset transform-screen state so the next visit lands fresh on the list
+    // view (not stuck on the previous quest's complete screen). Then route to
+    // the city — the button on the complete screen now reads "Wroc do miasta"
+    // (return to town), so the player is sent to the town hub at `/` instead
+    // of just the in-page transform list. Without the state reset, navigating
+    // back into /transform later would briefly flash the previous complete
+    // screen before the list mounts.
     setPhase('list');
     setCurrentMonster(null);
     setCombatLog([]);
@@ -1110,7 +2086,8 @@ const Transform = () => {
     setShowTransformAnimation(false);
     setShowFullscreenAvatar(false);
     setActiveTransformId(0);
-  }, []);
+    navigate('/');
+  }, [navigate]);
 
   // ── Render helpers ──────────────────────────────────────────────────────────
 
@@ -1130,22 +2107,37 @@ const Transform = () => {
           const monsterCount = getTransformMonsters(t.id).length;
           const questForThis = currentQuest?.transformId === t.id ? currentQuest : null;
 
+          const cardImage = getTransformCardImage(t.id);
+
           return (
             <div
               key={t.id}
-              className={`transform__card transform__card--${status}`}
+              className={`transform__card transform__card--${status}${cardImage ? ' transform__card--has-image' : ''}`}
               style={{
                 '--transform-color': colorInfo.solid ?? colorInfo.gradient?.[0] ?? '#9e9e9e',
                 '--transform-gradient': colorInfo.css,
+                ...(cardImage ? { '--card-image': `url("${cardImage}")` } : null),
               } as React.CSSProperties}
             >
               <div className="transform__card-header">
-                <div className="transform__card-number" style={{ background: colorInfo.css }}>
-                  T{t.id}
+                <div
+                  className={`transform__card-number${cardImage ? ' transform__card-number--has-image' : ''}`}
+                  style={{ background: colorInfo.css }}
+                >
+                  {cardImage ? (
+                    <img
+                      className="transform__card-number-img"
+                      src={cardImage}
+                      alt={`T${t.id}`}
+                      draggable={false}
+                    />
+                  ) : (
+                    `T${t.id}`
+                  )}
                 </div>
                 <div className="transform__card-info">
                   <span className="transform__card-name">{t[nameKey]}</span>
-                  <span className="transform__card-level">Wymagany poziom: {t.level}</span>
+                  <span className="transform__card-level-pill">{t.level} LVL</span>
                 </div>
                 <div className="transform__card-status">
                   {status === 'locked' && <span className="transform__status-icon">🔒</span>}
@@ -1156,7 +2148,7 @@ const Transform = () => {
               </div>
 
               <div className="transform__card-monsters">
-                {monsterCount} Bossow | Lvl {t.monsterLevelRange[0]}-{t.monsterLevelRange[1]}
+                <span className="transform__card-monsters-pill">{monsterCount} bossów</span>
               </div>
 
               {/* Progress bar for in-progress quests */}
@@ -1193,9 +2185,9 @@ const Transform = () => {
                 {status === 'available' && (
                   <button
                     className="transform__btn transform__btn--start"
-                    onClick={() => handleStartQuest(t.id)}
+                    onClick={(e) => handleEnterClick(e, t.id)}
                   >
-                    Start
+                    Walcz
                   </button>
                 )}
                 {status === 'in_progress' && (
@@ -1217,6 +2209,8 @@ const Transform = () => {
   // ── Manual skill use (click a slot when skillMode === 'manual') ──────────
   const doManualSkill = useCallback((slotIdx: 0 | 1 | 2 | 3) => {
     if (phase !== 'fighting') return;
+    // Stun gate — caster cannot cast while paralysed.
+    if (isCombatantStunned(effectsRef.current, PLAYER_FX_ID)) return;
     const latestChar = useCharacterStore.getState().character;
     if (!latestChar) return;
     const eff = getEffectiveChar(latestChar);
@@ -1231,307 +2225,543 @@ const Transform = () => {
       addLog('Za mało MP!', 'system');
       return;
     }
-    const skillDmg = Math.max(
-      1,
-      Math.floor(eff.attack * 0.15 * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
-    );
-    setMonsterHp((prevMhp) => {
-      if (prevMhp <= 0) return 0;
-      return Math.max(0, prevMhp - skillDmg);
+    // 2026-05 v7: Apokalipsa Śmierci — synchronous self-cost.
+    const sDefGateT = useSkillStore.getState().activeSkillSlots[slotIdx]
+      ? getSkillDef(useSkillStore.getState().activeSkillSlots[slotIdx]!)
+      : null;
+    if ((sDefGateT?.effect ?? '').includes('death_apocalypse')) {
+      const hpPctT = playerHpRef.current / Math.max(1, eff.max_hp);
+      if (hpPctT < 0.05) {
+        addLog('💔 Apokalipsa zablokowana: < 5% HP', 'system');
+        return;
+      }
+      let newPlayerHp: number;
+      if (hpPctT > 0.20) {
+        newPlayerHp = Math.max(1, playerHpRef.current - Math.floor(eff.max_hp * 0.20));
+      } else {
+        newPlayerHp = Math.max(1, Math.floor(eff.max_hp * 0.03));
+      }
+      const lost = playerHpRef.current - newPlayerHp;
+      if (lost > 0) {
+        playerHpRef.current = newPlayerHp;
+        setPlayerHp(newPlayerHp);
+        useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
+        fxRef.current.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
+        addLog(`💔 Apokalipsa: -${lost} HP`, 'crit');
+      }
+    }
+
+    // Manual skill targets whichever monster the auto-attack would currently
+    // be hitting (first alive slot in 0→1→2→3 order). Without this, manual
+    // casts always landed on slot 0 even after the Normal escort died.
+    const escorts = escortSlotsRef.current;
+    let targetSlot: 0 | 1 | 2 | 3 = 3;
+    let targetName = currentMonsterRef.current?.name_pl ?? 'BOSS';
+    let prevTargetHp = monsterHpRef.current;
+    let isBossTarget = true;
+    let targetMaxHp = currentMonsterRef.current?.hp ?? 1;
+    for (let s = 0; s < 3; s++) {
+      const e = escorts[s];
+      if (e && e.currentHp > 0) {
+        targetSlot = s as 0 | 1 | 2;
+        targetName = e.monster.name_pl;
+        prevTargetHp = e.currentHp;
+        targetMaxHp = e.maxHp;
+        isBossTarget = false;
+        break;
+      }
+    }
+    if (prevTargetHp <= 0) return;
+    // Apply v2 effects (stun/dot/instant_kill/marks/etc.) against the
+    // combined OPPONENT_FX_ID — Transform is 1v1 from the effect system's
+    // POV (matches Boss behaviour).
+    const sDef = getSkillDef(skillId);
+    // 2026-05 v6: pure-buff branch + skill.damage scaling.
+    const skillBaseMult = sDef?.damage ?? 1;
+    const isPureBuff = skillBaseMult === 0;
+    const targetHpPct = targetMaxHp > 0 ? (prevTargetHp / targetMaxHp) * 100 : 100;
+    const apply = effectsCastSkill({
+      session: effectsRef.current,
+      casterId: PLAYER_FX_ID,
+      targetId: OPPONENT_FX_ID,
+      targetHpPct,
+      effect: sDef?.effect ?? null,
+      allyIds: [PLAYER_FX_ID],
+      enemyIds: [OPPONENT_FX_ID],
     });
+    const baseDmg = isPureBuff ? 0 : Math.max(
+      1,
+      Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
+    );
+    let skillDmg = isPureBuff
+      ? 0
+      : (apply.instantKill ? Math.max(1, prevTargetHp) : Math.floor(baseDmg * apply.castDmgMult));
+    // 2026-05 v7: manual spell cast consumes Klątwa Śmierci (count) AND
+    // benefits from Kraina Śmierci (duration ×N) — same as basics.
+    if (!isPureBuff && skillDmg > 0) {
+      const oppStSpell = ensureStatus(effectsRef.current, OPPONENT_FX_ID);
+      const ampSpell = consumeTargetMarkAmp(oppStSpell);
+      if (ampSpell.mult !== 1) {
+        skillDmg = Math.max(1, Math.floor(skillDmg * ampSpell.mult));
+      }
+    }
+    // 2026-05 v7: Apokalipsa Śmierci — target damage only (self-cost
+    // already paid synchronously at the top of doManualSkill).
+    if (apply.deathApocalypse && latestChar.class === 'Necromancer') {
+      const apocDmg = Math.max(1, Math.floor((targetMaxHp || prevTargetHp || 1) * (apply.deathApocalypseTargetMaxHpPct / 100)));
+      skillDmg += apocDmg;
+      fxRef.current.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
+      addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
+    }
+    const newTargetHp = isPureBuff ? prevTargetHp : Math.max(0, prevTargetHp - skillDmg);
+    void apply.aoe; void apply.multistrike;
+    // Necro summon spawn — only when the local player is a necro. Note:
+    // Transform is a "you become the phoenix" view — but the underlying
+    // class can still be Necromancer, so the summon stack still applies
+    // (the player avatar is the necro icon with summon badges).
+    if (apply.summons.length > 0 && latestChar.class === 'Necromancer') {
+      const store = useNecroSummonStore.getState();
+      for (const sm of apply.summons) {
+        const spawned = store.spawn(PLAYER_FX_ID, sm.type, sm.count, eff.attack, eff.max_hp);
+        if (spawned > 0) fxRef.current.triggerAllySummonSpawn(0, sm.type);
+      }
+    }
+
+    if (isBossTarget) {
+      monsterHpRef.current = newTargetHp;
+      setMonsterHp(newTargetHp);
+    } else {
+      const cur = escortSlotsRef.current.slice();
+      const e = cur[targetSlot as 0 | 1 | 2];
+      if (e) {
+        cur[targetSlot as 0 | 1 | 2] = { ...e, currentHp: newTargetHp };
+        escortSlotsRef.current = cur;
+        setEscortSlots(cur);
+      }
+    }
+
     const newMp = Math.max(0, playerMpRef.current - SKILL_MP_COST);
     playerMpRef.current = newMp;
     setPlayerMp(newMp);
     skillCooldownRef.current.set(skillId, now);
     setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
-    { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd); }
+    if (sDef) applySkillBuff(skillId, sDef, speedMult);
     triggerSkillAnim(skillId);
-    addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
+    if (isPureBuff) {
+      fxRef.current.triggerAllySkillAnim(0, skillId);
+      addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
+    } else {
+      fxRef.current.triggerEnemySkillAnim(targetSlot, skillId);
+      fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
+      addLog(`✨ ${formatSkillName(skillId)} → ${targetName}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
+    }
+    // 2026-05 v6: heal-on-cast also wired in the manual-cast path
+    // (the auto-attack tick branch above handles it for auto). Without
+    // this, manual Promień Pustki / Pochłonięcie Życia / Żniwa Dusz
+    // never healed in transform — only the auto-attack mid-tick cast
+    // did.
+    if (apply.healCasterPctOfDmg > 0 && skillDmg > 0) {
+      const heal = Math.floor(skillDmg * (apply.healCasterPctOfDmg / 100));
+      const before = playerHpRef.current;
+      playerHpRef.current = Math.min(eff.max_hp, playerHpRef.current + heal);
+      setPlayerHp(playerHpRef.current);
+      const actual = playerHpRef.current - before;
+      if (heal > 0) {
+        const cappedTag = actual < heal ? ' (MAX)' : '';
+        fxRef.current.pushAllyFloat(0, heal, 'heal', {
+          icon: '✨',
+          label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+        });
+        addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+      }
+    }
+    if (apply.healCasterPctOfMaxHp > 0) {
+      const heal = Math.floor(eff.max_hp * (apply.healCasterPctOfMaxHp / 100));
+      const before = playerHpRef.current;
+      playerHpRef.current = Math.min(eff.max_hp, playerHpRef.current + heal);
+      setPlayerHp(playerHpRef.current);
+      const actual = playerHpRef.current - before;
+      if (heal > 0) {
+        const cappedTag = actual < heal ? ' (MAX)' : '';
+        fxRef.current.pushAllyFloat(0, heal, 'heal', {
+          icon: '✨',
+          label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+        });
+      }
+    }
+    if (apply.healLowestAllyPct > 0) {
+      const heal = Math.floor(eff.max_hp * (apply.healLowestAllyPct / 100));
+      const before = playerHpRef.current;
+      playerHpRef.current = Math.min(eff.max_hp, playerHpRef.current + heal);
+      setPlayerHp(playerHpRef.current);
+      const actual = playerHpRef.current - before;
+      if (heal > 0) {
+        const cappedTag = actual < heal ? ' (MAX)' : '';
+        fxRef.current.pushAllyFloat(0, heal, 'heal', {
+          icon: '✨',
+          label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+        });
+        fxRef.current.triggerAllySkillAnim(0, skillId);
+        addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+      }
+    }
     useSkillStore.getState().addMlvlXpFromSkill(latestChar.class);
+    // `fx` intentionally NOT in deps — see fxRef comment. Same reasoning as
+    // `startMonsterFight` above.
   }, [addLog, phase, triggerSkillAnim]);
 
-  // ── Combat view ──────────────────────────────────────────────────────────────
+  // ── Combat view (unified CombatUI) ───────────────────────────────────────
+  // Transform feeds into the same shared component tree as every other combat
+  // view. Each transform monster is a boss-tier solo encounter, so we use the
+  // shimmering daily-boss bg variant and show only one enemy slot + the player
+  // ally slot (other slots stay empty placeholders so nothing reflows).
   const renderCombat = () => {
     if (!currentMonster) return null;
 
     const effChar = getEffectiveChar(character);
-    const hpPct = effChar ? Math.min(1, playerHp / effChar.max_hp) : 0;
-    const mpPct = effChar ? Math.min(1, playerMp / effChar.max_mp) : 0;
-    const monsterHpPct = monsterMaxHp > 0 ? Math.min(1, monsterHp / monsterMaxHp) : 0;
+    const charMaxHp = effChar?.max_hp ?? 0;
+    const charMaxMp = effChar?.max_mp ?? 0;
 
-    // Figure out how many monsters remain
+    // Quest progress (transform-specific — no other view counts "monsters in
+    // a quest" this way, so it lives outside the shared CombatUI tree).
     const quest = useTransformStore.getState().currentTransformQuest;
     const allMonsters = getTransformMonsters(activeTransformId);
     const defeatedCount = quest?.monstersDefeated.length ?? 0;
     const tfColorInfo = getTransformColor(activeTransformId);
     const tfColor = tfColorInfo.solid ?? tfColorInfo.gradient?.[0] ?? '#ffc107';
-    // Player avatar border reflects highest completed transform tier (persistent
-    // identity). If the player has no completed transforms yet, fall back to
-    // their class color — never to the active-quest color, which would make
-    // first-time players appear in the color of a transform they don't own.
+    // Player avatar border reflects highest completed transform tier
+    // (persistent identity). If the player has no completed transforms yet,
+    // fall back to their class color — never to the active-quest color, which
+    // would make first-time players appear in the color of a transform they
+    // don't own.
     const highestCompleted = completedTransforms.length > 0 ? Math.max(...completedTransforms) : 0;
     const playerBorderColor = highestCompleted > 0
       ? (getTransformColor(highestCompleted).solid ?? getTransformColor(highestCompleted).gradient?.[0] ?? tfColor)
       : (CLASS_COLORS[character.class] ?? '#e94560');
 
+    // Per-tier phoenix arena bg + matching hue. Hoisted ABOVE the uiEnemies
+    // build so the boss-slot can use this same image as its sprite (instead of
+    // falling back to a generic bestiary boss-N.png that doesn't exist for
+    // most transform-tier levels).
+    const arenaImageUrl = getTransformCardImage(activeTransformId);
+    const arenaHue = hexToHue(tfColor);
+
+    // ── Enemy slots (Normal / Strong / Epic / Boss = slots 0..3) ──────────
+    // The player auto-attack walks slots 0→1→2→3 in order, so only the first
+    // alive slot shows the yellow target ring. Once a slot dies the next one
+    // inherits the ring without any explicit retargeting click.
+    const firstAliveSlot = (() => {
+      for (let s = 0; s < 3; s++) {
+        const e = escortSlots[s];
+        if (e && e.currentHp > 0) return s;
+      }
+      return 3; // boss is always the last alive
+    })();
+
+    // Tier → rarity mapping for the slot card backdrops. Normal/Strong/Epic
+    // map to the matching dungeon-style rarity tints; Boss keeps its boss
+    // gold/red treatment so the bottom-right tile still reads as a boss.
+    const tierToRarity = (tier: 'Normal' | 'Strong' | 'Epic'): TMonsterRarity =>
+      tier === 'Normal' ? 'normal'
+      : tier === 'Strong' ? 'strong'
+      : 'epic';
+
+    const buildEscortEnemy = (slot: 0 | 1 | 2): ICombatEnemy | null => {
+      const e = escortSlots[slot];
+      if (!e) return null;
+      return {
+        id: e.monster.id,
+        name: e.monster.name_pl,
+        level: e.monster.level,
+        sprite: e.monster.sprite ?? '👹',
+        kind: 'monster' as const,
+        // Use the pre-resolved sprite URL (captured from the original
+        // template level before stamp rewrote it to bossLevel). This makes
+        // each escort tile show the actual bestiary PNG for that monster
+        // species — Wojownik Gnoll, Troll Bagienny, Ork Warlord, etc. —
+        // instead of falling back to MonsterSprite's level-keyed lookup
+        // which misses for T2/T3 transforms (boss levels 60+ have no
+        // matching `monster-{level}.png` in the asset registry). When the
+        // template's level also has no art, this is null and EnemyCard
+        // routes to the emoji fallback exactly as before.
+        imageUrl: e.imageUrl,
+        currentHp: Math.max(0, e.currentHp),
+        maxHp: e.maxHp,
+        rarity: tierToRarity(e.tier),
+        isDead: e.currentHp <= 0,
+        isTargetedByPlayer: firstAliveSlot === slot,
+        hitPulse: monsterHitPulses[slot] ?? 0,
+        attackingClassName: playerAttacking && firstAliveSlot === slot ? `attack-${character.class}` : null,
+        skillAnim: fx.enemySkill[slot] ?? null,
+        floats: fx.enemyFloats[slot] ?? [],
+      };
+    };
+
+    const uiEnemies: Array<ICombatEnemy | null> = [
+      buildEscortEnemy(0),
+      buildEscortEnemy(1),
+      buildEscortEnemy(2),
+      {
+        id: currentMonster.id,
+        name: currentMonster.name_pl,
+        level: currentMonster.level,
+        sprite: currentMonster.sprite ?? '👹',
+        kind: 'boss' as const,
+        // Use the per-tier phoenix card image as the boss sprite — overrides
+        // the bestiary boss-N.png lookup so the bottom-right tile actually
+        // shows the transform painting the player saw on the list view.
+        imageUrl: arenaImageUrl ?? null,
+        // Phoenix card art is composed to fill its portrait frame — `contain`
+        // (the default for monster sprites) leaves visible empty bars top
+        // and bottom that read as a layout bug, so the transform-only boss
+        // slot opts into `cover` to fill the whole tile edge-to-edge.
+        imageObjectFit: 'cover',
+        currentHp: Math.max(0, monsterHp),
+        maxHp: monsterMaxHp,
+        rarity: 'boss',
+        isDead: monsterHp <= 0,
+        isTargetedByPlayer: firstAliveSlot === 3,
+        // Per-attack pulse counter — every player swing / auto-skill cast
+        // increments this so the boss card flashes on every distinct hit
+        // even when two attacks land within the same 300ms window.
+        hitPulse: monsterHitPulses[3] ?? 0,
+        attackingClassName: playerAttacking && firstAliveSlot === 3 ? `attack-${character.class}` : null,
+        // Per-slot themed skill animation + floating damage numbers
+        skillAnim: fx.enemySkill[3] ?? null,
+        floats: fx.enemyFloats[3] ?? [],
+        // 2026-05 v7: live status countdowns on the transform boss —
+        // ☠️ Klątwa Śmierci ×N · Ts and 💀 Mroczny Rytuał N% · Ts both
+        // render so the player can time their burst window.
+        statusOverlay: (() => {
+          const st = effectsRef.current.statuses.get(OPPONENT_FX_ID);
+          if (!st) return undefined;
+          const top = st.markAmp.find((mm) => mm.count > 0 && mm.remainingMs > 0);
+          const topRitual = st.darkRitualPending.length > 0
+            ? st.darkRitualPending.reduce((a, b) => (a.triggerInMs <= b.triggerInMs ? a : b))
+            : null;
+          return {
+            stunMs: st.stunMs,
+            immortalMs: st.immortalMs,
+            markHealToDmgMs: st.markNoHealMs,
+            markAmpMs: top?.remainingMs,
+            markAmpMult: top?.mult,
+            darkRitualMs: topRitual?.triggerInMs,
+            darkRitualPct: topRitual?.pctOfMaxHp,
+            markAmpAllMs: st.markAmpAll?.remainingMs,
+            markAmpAllMult: st.markAmpAll?.mult,
+          };
+        })(),
+      },
+    ];
+
+    // ── Ally slots (player only — solo fight; pad to 4) ────────────────────
+    const playerSummonList = necroSummons[PLAYER_FX_ID] ?? [];
+    const playerSummonsByType: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>> = {};
+    for (const sm of playerSummonList) {
+      playerSummonsByType[sm.type] = (playerSummonsByType[sm.type] ?? 0) + 1;
+    }
+    const SUMMON_RANK_T = { skeleton: 0, ghost: 1, demon: 2, lich: 3 } as const;
+    const SUMMON_LABELS_T: Record<'skeleton' | 'ghost' | 'demon' | 'lich', string> = {
+      skeleton: 'Szkielet', ghost: 'Duch', demon: 'Demon', lich: 'Lisz',
+    };
+    const frontSummonT = playerSummonList.length > 0
+      ? [...playerSummonList].sort((a, b) => SUMMON_RANK_T[a.type] - SUMMON_RANK_T[b.type])[0]
+      : null;
+    const playerNameT = (character.class === 'Necromancer' && frontSummonT)
+      ? SUMMON_LABELS_T[frontSummonT.type]
+      : character.name;
+    const playerAvatarT = (character.class === 'Necromancer' && frontSummonT)
+      ? (getSummonImage(frontSummonT.type) ?? getCharacterAvatar(character.class, completedTransforms))
+      : getCharacterAvatar(character.class, completedTransforms);
+    const playerCurHpT = (character.class === 'Necromancer' && frontSummonT)
+      ? frontSummonT.hp
+      : Math.max(0, playerHp);
+    const playerMaxHpT = (character.class === 'Necromancer' && frontSummonT)
+      ? frontSummonT.maxHp
+      : charMaxHp;
+    const playerCurMpT = (character.class === 'Necromancer' && frontSummonT)
+      ? frontSummonT.mp
+      : Math.max(0, playerMp);
+    const playerMaxMpT = (character.class === 'Necromancer' && frontSummonT)
+      ? frontSummonT.maxMp
+      : charMaxMp;
+    const uiAllies: Array<ICombatAlly | null> = [
+      {
+        id: 'player',
+        name: playerNameT,
+        avatarUrl: playerAvatarT,
+        accentColor: playerBorderColor,
+        className: character.class,
+        currentHp: playerCurHpT,
+        maxHp: playerMaxHpT,
+        currentMp: playerCurMpT,
+        maxMp: playerMaxMpT,
+        isDead: playerHp <= 0,
+        isPlayer: true,
+        level: character.level,
+        summonCount: playerSummonList.length,
+        summonsByType: playerSummonsByType,
+        onSummonClick: (type) => {
+            useNecroSummonStore.getState().despawnOne(PLAYER_FX_ID, type);
+            addLog(`💨 Odesłano: ${type}`, 'system');
+        },
+        // Solo fight — the one boss is always aggro'd onto the player.
+        aggroCount: 1,
+        // Per-attack pulse counter — every boss swing increments it so the
+        // player's flash overlay re-mounts (replays the CSS animation) even
+        // when the boss is attacking faster than the 300ms flash duration.
+        hitPulse: playerHitPulse,
+        attackingClassName: null,
+        transformTier: highestCompleted || undefined,
+        // Skill animations don't currently target allies in transform fights
+        // (boss has no aimed spells), but we still bind a slot for future-proof
+        // parity with the other views.
+        skillAnim: fx.allySkill[0] ?? null,
+        floats: fx.allyFloats[0] ?? [],
+        summonSpawn: fx.allySummonSpawn[0] ?? null,
+      },
+      null, null, null,
+    ];
+
+    // ── Skill slots (4 active slots — pad nulls for empty) ────────────────
+    const uiSkills: Array<ICombatSkillSlot | null> =
+      (activeSkillSlots as (string | null)[]).map((skillId, i) => {
+        if (!skillId) return null;
+        const cdRemaining = skillCooldowns[skillId] ?? 0;
+        const cdActive = cdRemaining > 0;
+        const noMp = playerMp < SKILL_MP_COST;
+        return {
+          id: skillId,
+          icon: getSkillIcon(skillId),
+          name: skillId,
+          mpCost: SKILL_MP_COST,
+          cooldownProgress: cdActive ? 1 - cdRemaining / SKILL_COOLDOWN_MS : 1,
+          cooldownRemainingMs: cdRemaining,
+          disabled: skillMode === 'auto' || noMp || cdActive,
+          onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),
+        };
+      });
+
+    // ── Potion slots ──────────────────────────────────────────────────────
+    const bestHpPotion    = getBestPotion(hpPotions,    consumables);
+    const bestMpPotion    = getBestPotion(mpPotions,    consumables);
+    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables);
+    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables);
+
+    const buildPotion = (
+      potion: typeof bestPctHpPotion,
+      kind: ICombatPotionSlot['kind'],
+      cd: number,
+      cdMax: number,
+    ): ICombatPotionSlot | null => {
+      if (!potion) return null;
+      const count = consumables[potion.id] ?? 0;
+      const cdActive = cd > 0;
+      return {
+        kind,
+        // 2026-05: dock shows the actual selected potion's PNG art.
+        icon: getPotionImage(potion.id) ?? undefined,
+        count,
+        cooldownProgress: cdActive ? 1 - cd / cdMax : 1,
+        cooldownRemainingMs: cdActive ? cd : 0,
+        disabled: count === 0 || cdActive,
+        onClick: () => doUsePotion(potion.id),
+      };
+    };
+    const pctHpSlot  = buildPotion(bestPctHpPotion, 'pct-hp', pctHpCooldown, PCT_POTION_CD_MS);
+    const pctMpSlot  = buildPotion(bestPctMpPotion, 'pct-mp', pctMpCooldown, PCT_POTION_CD_MS);
+    const flatHpSlot = buildPotion(bestHpPotion,    'hp',     hpPotionCooldown, POTION_COOLDOWN_MS);
+    const flatMpSlot = buildPotion(bestMpPotion,    'mp',     mpPotionCooldown, POTION_COOLDOWN_MS);
+
+    const autoPotOn = autoPotionHpEnabled || autoPotionMpEnabled;
+    const toggleAutoPot = () => {
+      const next = !autoPotOn;
+      useSettingsStore.getState().setAutoPotionHpEnabled(next);
+      useSettingsStore.getState().setAutoPotionMpEnabled(next);
+    };
+
     return (
       <div
         className="transform__combat"
-        style={{ '--transform-color': tfColor } as React.CSSProperties}
+        style={{
+          '--transform-color': tfColor,
+          '--transform-hue': arenaHue,
+          ...(arenaImageUrl ? { '--arena-image': `url("${arenaImageUrl}")` } : null),
+        } as React.CSSProperties}
       >
-        {/* Quest progress header */}
-        <div className="transform__combat-progress">
-          <span>Potwory: {defeatedCount} / {allMonsters.length}</span>
-          <div className="transform__combat-progress-bar">
-            <div
-              className="transform__combat-progress-fill"
-              style={{ width: `${(defeatedCount / allMonsters.length) * 100}%` }}
+        <CombatHudHost active={phase === 'fighting'} accent={tfColor} compact>
+          <div className="combat-ui">
+            <CombatTopControls
+              speed={{ label: speedMode, onCycle: cycleSpeed }}
+              autoSkill={{
+                on: skillMode === 'auto',
+                onToggle: () =>
+                  setSkillMode(skillMode === 'auto' ? 'manual' : 'auto'),
+              }}
+              autoPotion={{ on: autoPotOn, onToggle: toggleAutoPot }}
+            />
+
+            {/* Spawn-timer bar — visible only between monsters while the
+                next one is about to appear. Same slim under-header pin as
+                hunting auto-fight + dungeon / raid spawn timers so the
+                player learns one cue: thin bar = "incoming". */}
+            {waitingForSpawn && (
+              <div
+                className="combat-ui__spawn-bar"
+                aria-label="Następny potwór za chwilę"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(spawnProgress * 100)}
+              >
+                <span
+                  className="combat-ui__spawn-bar-fill"
+                  style={{ width: `${spawnProgress * 100}%` }}
+                />
+              </div>
+            )}
+
+            {/* Quest progress banner — same visual slot as Dungeon/Raid
+                wave counters so the three view families feel unified. Each
+                4-monster wave counts as ONE bossDefeat tally entry, so the
+                "Fala N/30" reads naturally to the player as wave count. */}
+            <div className="combat-ui__wave-banner" aria-live="polite">
+              <span className="combat-ui__wave-banner-label">Fala</span>
+              <span className="combat-ui__wave-banner-value">
+                {defeatedCount + 1}/{allMonsters.length}
+              </span>
+            </div>
+
+            <CombatArena
+              enemies={uiEnemies}
+              allies={uiAllies}
+              bgVariant={arenaImageUrl ? 'transform' : 'daily-boss'}
+              /* Per-slot animation only — see Combat.tsx note. */
+              overlay={null}
+            />
+
+            <CombatSubControls xp={null} />
+
+            <CombatPotionDock
+              hpPotion={flatHpSlot}
+              pctHpPotion={pctHpSlot}
+              mpPotion={flatMpSlot}
+              pctMpPotion={pctMpSlot}
+            />
+
+            <CombatActionBar
+              skills={uiSkills}
+              exit={{
+                kind: 'flee',
+                onFlee: handleAbandon, // applies flee penalty + clears session
+              }}
             />
           </div>
-        </div>
-
-        {/* Monster card */}
-        <div className={`transform__monster-card${monsterHit ? ' transform__monster-card--hit' : ''}${playerAttacking ? ` transform__monster-card--attack-${character.class}` : ''}`}>
-          <motion.span
-            className="transform__monster-sprite"
-            animate={monsterHit ? { scale: [1, 0.8, 1.1, 1], rotate: [0, -5, 5, 0] } : {}}
-            transition={{ duration: 0.3 }}
-          >
-            {currentMonster.sprite}
-          </motion.span>
-          <div className="transform__monster-info">
-            <span className="transform__monster-name">BOSS {currentMonster.name_pl}</span>
-            <span className="transform__monster-level">BOSS · Lvl {currentMonster.level}</span>
-          </div>
-          <div className="transform__bar transform__bar--monster">
-            <div className="transform__bar-fill transform__bar-fill--hp" style={{ width: `${monsterHpPct * 100}%` }} />
-            <span className="transform__bar-text">{monsterHp} / {monsterMaxHp}</span>
-          </div>
-          <div className="transform__bar transform__bar--monster">
-            <div className="transform__bar-fill transform__bar-fill--mp" style={{ width: '100%' }} />
-            <span className="transform__bar-text">0 / 0 MP</span>
-          </div>
-          {skillAnimOverlay && (
-            <div className={`skill-anim-overlay ${skillAnimOverlay.anim.cssClass}`}>
-              <span className="skill-anim-emoji">{skillAnimOverlay.anim.emoji}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Player card */}
-        <div
-          className={`transform__player-card${playerHit ? ' transform__player-card--hit' : ''}${monsterAttacking ? ' transform__player-card--monster-attack' : ''}`}
-          style={{
-            '--class-color': playerBorderColor,
-            '--transform-color': playerBorderColor,
-          } as React.CSSProperties}
-        >
-          <div className="transform__player-avatar-wrap transform__player-avatar-wrap--big transform__player-avatar-wrap--class-border">
-            <img
-              src={getCharacterAvatar(character.class, useTransformStore.getState().completedTransforms)}
-              alt={character.class}
-              className="transform__player-avatar transform__player-avatar--big"
-            />
-            <span className="transform__player-avatar-lvl">Lvl {character.level}</span>
-          </div>
-          <div className="transform__player-info transform__player-info--centered">
-            <span className="transform__player-name">
-              <span className="transform__player-class-icon">{CLASS_ICONS[character.class] ?? '?'}</span>
-              {character.name}
-            </span>
-          </div>
-          <div className="transform__bar transform__bar--player-hp">
-            <div className="transform__bar-fill transform__bar-fill--hp" style={{ width: `${hpPct * 100}%` }} />
-            <span className="transform__bar-text">{playerHp} / {effChar?.max_hp ?? 0}</span>
-          </div>
-          <div className="transform__bar transform__bar--player-mp">
-            <div className="transform__bar-fill transform__bar-fill--mp" style={{ width: `${mpPct * 100}%` }} />
-            <span className="transform__bar-text">{playerMp} / {effChar?.max_mp ?? 0}</span>
-          </div>
-        </div>
-
-        {/* Combat toggles */}
-        <div className="transform__combat-toggles">
-          <button
-            className={`transform__toggle-btn transform__toggle-btn--speed transform__toggle-btn--speed-${speedMode}`}
-            onClick={cycleSpeed}
-            title="Prędkość walki"
-          >
-            ⏱ {speedMode.toUpperCase()}
-          </button>
-          <button
-            className={`transform__toggle-btn transform__toggle-btn--${skillMode}`}
-            onClick={() => setSkillMode(skillMode === 'auto' ? 'manual' : 'auto')}
-          >
-            {skillMode === 'auto' ? '🔄 Skille: AUTO' : '👆 Skille: MANUAL'}
-          </button>
-          <button
-            className={`transform__toggle-btn transform__toggle-btn--potion${autoPotionHpEnabled || autoPotionMpEnabled ? '' : ' transform__toggle-btn--off'}`}
-            onClick={() => {
-              const newState = !(autoPotionHpEnabled || autoPotionMpEnabled);
-              useSettingsStore.getState().setAutoPotionHpEnabled(newState);
-              useSettingsStore.getState().setAutoPotionMpEnabled(newState);
-            }}
-          >
-            {(autoPotionHpEnabled || autoPotionMpEnabled) ? '🧪 Auto-Potion: ON' : '🧪 Auto-Potion: OFF'}
-          </button>
-        </div>
-
-        {/* Skill slots */}
-        <div className="transform__skill-slots">
-          {(activeSkillSlots as (string | null)[]).map((skillId, i) => {
-            const isEmpty = !skillId;
-            const cdRemaining = skillId ? (skillCooldowns[skillId] ?? 0) : 0;
-            const cdActive = cdRemaining > 0;
-            const cdFraction = cdActive ? cdRemaining / SKILL_COOLDOWN_MS : 0;
-            const notEnoughMp = playerMp < SKILL_MP_COST;
-            const isManual = skillMode === 'manual';
-            const canClick = !isEmpty && isManual && !cdActive && !notEnoughMp;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => canClick && doManualSkill(i as 0 | 1 | 2 | 3)}
-                disabled={isEmpty || !isManual || cdActive || notEnoughMp}
-                className={[
-                  'transform__skill-slot',
-                  isEmpty ? 'transform__skill-slot--empty' : 'transform__skill-slot--filled',
-                  cdActive ? 'transform__skill-slot--on-cooldown' : '',
-                  !isEmpty && isManual && !cdActive ? 'transform__skill-slot--manual' : '',
-                ].filter(Boolean).join(' ')}
-                title={
-                  isEmpty ? 'Pusty slot'
-                    : cdActive ? `Cooldown: ${Math.ceil(cdRemaining / 1000)}s`
-                    : notEnoughMp ? `Za mało MP (${SKILL_MP_COST})`
-                    : isManual ? `${formatSkillName(skillId)} – kliknij aby użyć`
-                    : `${formatSkillName(skillId)} (AUTO)`
-                }
-              >
-                {cdActive && (
-                  <span
-                    className="transform__skill-cd-overlay"
-                    style={{ height: `${cdFraction * 100}%` }}
-                  />
-                )}
-                <span className="transform__skill-slot-name">{formatSkillName(skillId)}</span>
-                {!isEmpty && (
-                  <span className="transform__skill-slot-badge">
-                    {cdActive ? `${Math.ceil(cdRemaining / 1000)}s`
-                      : isManual ? `${SKILL_MP_COST}MP`
-                      : 'AUTO'}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Potion buttons */}
-        <div className="transform__potions">
-          {(() => {
-            const bestHpPotion = getBestPotion(hpPotions, consumables);
-            if (!bestHpPotion) return null;
-            const count = consumables[bestHpPotion.id] ?? 0;
-            const cdActive = hpPotionCooldown > 0;
-            const cdFrac = cdActive ? hpPotionCooldown / POTION_COOLDOWN_MS : 0;
-            return (
-              <button
-                className={`transform__potion-btn transform__potion-btn--hp${cdActive ? ' transform__potion-btn--cooldown' : ''}`}
-                onClick={() => doUsePotion(bestHpPotion.id)}
-                disabled={count === 0 || cdActive}
-                title={cdActive ? `Cooldown: ${Math.ceil(hpPotionCooldown / 1000)}s` : count === 0 ? 'Brak eliksirów HP' : bestHpPotion.description_pl}
-              >
-                {cdActive && (
-                  <span className="transform__potion-cd-overlay" style={{ height: `${cdFrac * 100}%` }} />
-                )}
-                <span className="transform__potion-label">{bestHpPotion.icon} {getPotionLabel(bestHpPotion.effect)}</span>
-                <span className="transform__potion-count">x{count}</span>
-              </button>
-            );
-          })()}
-          {(() => {
-            const bestMpPotion = getBestPotion(mpPotions, consumables);
-            if (!bestMpPotion) return null;
-            const count = consumables[bestMpPotion.id] ?? 0;
-            const cdActive = mpPotionCooldown > 0;
-            const cdFrac = cdActive ? mpPotionCooldown / POTION_COOLDOWN_MS : 0;
-            return (
-              <button
-                className={`transform__potion-btn transform__potion-btn--mp${cdActive ? ' transform__potion-btn--cooldown' : ''}`}
-                onClick={() => doUsePotion(bestMpPotion.id)}
-                disabled={count === 0 || cdActive}
-                title={cdActive ? `Cooldown: ${Math.ceil(mpPotionCooldown / 1000)}s` : count === 0 ? 'Brak eliksirów MP' : bestMpPotion.description_pl}
-              >
-                {cdActive && (
-                  <span className="transform__potion-cd-overlay" style={{ height: `${cdFrac * 100}%` }} />
-                )}
-                <span className="transform__potion-label">{bestMpPotion.icon} {getPotionLabel(bestMpPotion.effect)}</span>
-                <span className="transform__potion-count">x{count}</span>
-              </button>
-            );
-          })()}
-          {(() => {
-            const bestPctHpPotion = getBestPotion(pctHpPotions, consumables);
-            if (!bestPctHpPotion) return null;
-            const count = consumables[bestPctHpPotion.id] ?? 0;
-            const cdActive = pctHpCooldown > 0;
-            const cdFrac = cdActive ? pctHpCooldown / PCT_POTION_CD_MS : 0;
-            return (
-              <button
-                className={`transform__potion-btn transform__potion-btn--pct-hp${cdActive ? ' transform__potion-btn--cooldown' : ''}${count === 0 ? ' transform__potion-btn--empty' : ''}`}
-                onClick={() => doUsePotion(bestPctHpPotion.id)}
-                disabled={count === 0 || cdActive}
-                title={cdActive ? `Cooldown: ${Math.ceil(pctHpCooldown / 1000)}s` : count === 0 ? 'Brak % potionów HP' : bestPctHpPotion.description_pl}
-              >
-                {cdActive && (
-                  <span className="transform__potion-cd-overlay" style={{ height: `${cdFrac * 100}%` }} />
-                )}
-                <span className="transform__potion-label">❤️‍🔥 {getPotionLabel(bestPctHpPotion.effect)}</span>
-                <span className="transform__potion-count">x{count}</span>
-              </button>
-            );
-          })()}
-          {(() => {
-            const bestPctMpPotion = getBestPotion(pctMpPotions, consumables);
-            if (!bestPctMpPotion) return null;
-            const count = consumables[bestPctMpPotion.id] ?? 0;
-            const cdActive = pctMpCooldown > 0;
-            const cdFrac = cdActive ? pctMpCooldown / PCT_POTION_CD_MS : 0;
-            return (
-              <button
-                className={`transform__potion-btn transform__potion-btn--pct-mp${cdActive ? ' transform__potion-btn--cooldown' : ''}${count === 0 ? ' transform__potion-btn--empty' : ''}`}
-                onClick={() => doUsePotion(bestPctMpPotion.id)}
-                disabled={count === 0 || cdActive}
-                title={cdActive ? `Cooldown: ${Math.ceil(pctMpCooldown / 1000)}s` : count === 0 ? 'Brak % potionów MP' : bestPctMpPotion.description_pl}
-              >
-                {cdActive && (
-                  <span className="transform__potion-cd-overlay" style={{ height: `${cdFrac * 100}%` }} />
-                )}
-                <span className="transform__potion-label">💎 {getPotionLabel(bestPctMpPotion.effect)}</span>
-                <span className="transform__potion-count">x{count}</span>
-              </button>
-            );
-          })()}
-        </div>
-
-        {/* Combat log */}
-        <div className="transform__log" ref={logContainerRef}>
-          {combatLog.map((entry) => (
-            <div key={entry.id} className={`transform__log-entry transform__log-entry--${entry.type}`}>
-              {entry.text}
-            </div>
-          ))}
-        </div>
-
-        {/* Abandon button */}
-        <button className="transform__btn transform__btn--abandon" onClick={handleAbandon}>
-          Uciekaj (przerwij quest)
-        </button>
+        </CombatHudHost>
 
         {/* Point N6: explicit claim overlay — only rendered when all monsters
             are defeated. Absolutely positioned over the combat area so it
-            never shifts layout. Uciekaj remains accessible underneath via
-            the backdrop-locked state so the user never accidentally claims. */}
+            never shifts layout. */}
         <AnimatePresence>
           {victoryReady && (
             <motion.div
@@ -1832,8 +3062,21 @@ const Transform = () => {
         <p className="transform__complete-text">
           Twoj avatar zostal zmieniony. Bonusy zostaly dodane do postaci.
         </p>
-        <button className="transform__btn transform__btn--back" onClick={handleReturn}>
-          Wroc do listy
+        {/* Themed return-to-town button. Inline CSS vars carry the transform's
+            per-tier colour into `&--town` (matches the same `--transform-color`
+            / `--transform-gradient` pattern that `&--start` consumes on the
+            list view, so the visual language is consistent). The label changed
+            from "Wroc do listy" to "Wroc do miasta" — the handler now routes
+            to `/` (town hub) instead of just resetting in-view phase state. */}
+        <button
+          className="transform__btn transform__btn--town"
+          onClick={handleReturn}
+          style={{
+            '--transform-color': colorInfo.solid ?? colorInfo.gradient?.[0] ?? '#ffc107',
+            '--transform-gradient': colorInfo.css,
+          } as React.CSSProperties}
+        >
+          Wroc do miasta
         </button>
       </div>
     );
@@ -1842,27 +3085,95 @@ const Transform = () => {
   // ── Main render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="transform">
-      <header className="transform__header page-header">
-        <button
-          className="transform__back page-back-btn"
-          onClick={() => {
-            if (phase === 'list') navigate('/');
-            else if (phase === 'fighting') handleAbandon();
-            // allDefeated / transforming / complete — back disabled
-          }}
-          disabled={phase === 'allDefeated' || phase === 'transforming' || phase === 'complete'}
-          style={phase === 'allDefeated' || phase === 'transforming' || phase === 'complete' ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-        >
-          ← Miasto
-        </button>
-        <h1 className="transform__title page-title">🦋 Transform</h1>
-      </header>
-
-      {phase === 'list' && renderList()}
+    <div className={`transform${phase === 'fighting' ? ' transform--fighting' : ''}`}>
+      {/* List remains rendered during 'entering' so the morph anchors to a
+          live card behind the overlay (fade-out feels grounded instead of
+          starting from black). The overlay sits at z-index 9000 above
+          everything else. */}
+      {(phase === 'list' || phase === 'entering') && renderList()}
       {phase === 'fighting' && renderCombat()}
       {phase === 'allDefeated' && renderAllDefeated()}
       {(phase === 'transforming' || phase === 'complete') && renderComplete()}
+
+      {/* ── Cinematic entry overlay ─────────────────────────────────────────
+          Three layers (z-index ladder inside the overlay):
+            1 — phoenix image, morphs from card rect → fullscreen + soft zoom
+            2 — black panel, fades 0→1→1→0 (peaks at 33%, lifts at 67%)
+            3 — "kliknij aby pominąć" hint, surfaces during the dark hold
+          The wrapper itself owns the click → skip handler. */}
+      <AnimatePresence>
+        {enterAnim && (
+          <motion.div
+            key={`transform-enter-${enterAnim.transformId}`}
+            className="transform__enter-overlay"
+            onClick={skipEntryAnimation}
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.18, ease: 'linear' } }}
+          >
+            <motion.div
+              className="transform__enter-image"
+              initial={{
+                top: enterAnim.y,
+                left: enterAnim.x,
+                width: enterAnim.w,
+                height: enterAnim.h,
+                borderRadius: 12,
+                scale: 1,
+                opacity: 1,
+              }}
+              animate={{
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100dvh',
+                borderRadius: 0,
+                scale: 1.06,
+                opacity: [1, 1, 0, 0],
+              }}
+              transition={{
+                top:          { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
+                left:         { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
+                width:        { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
+                height:       { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
+                borderRadius: { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
+                scale:        { duration: 2.0, ease: 'linear' },
+                opacity:      { duration: 2.0, times: [0, 0.3, 0.36, 1], ease: 'linear' },
+              }}
+              style={{
+                '--card-hue': enterAnim.hue,
+                '--card-image': enterAnim.image
+                  ? `url("${enterAnim.image}")`
+                  : 'none',
+              } as React.CSSProperties}
+            />
+
+            <motion.div
+              className="transform__enter-darkness"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 1, 0] }}
+              transition={{
+                duration: 2.0,
+                times: [0, 0.33, 0.67, 1],
+                ease: 'easeInOut',
+              }}
+            />
+
+            <motion.div
+              className="transform__enter-skip-hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0, 1, 1, 0, 0] }}
+              transition={{
+                duration: 2.0,
+                times: [0, 0.2, 0.35, 0.55, 0.67, 1],
+                ease: 'linear',
+              }}
+            >
+              kliknij aby pominąć
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { getMonsterUnlockStatus } from '../../systems/progression';
 import tasksRaw from '../../data/tasks.json';
 import monstersData from '../../data/monsters.json';
 import { computeTaskRewards } from '../../systems/taskRewards';
+import { formatGoldShort } from '../../systems/goldFormat';
 import './Tasks.scss';
 
 interface IMonsterMini {
@@ -158,7 +159,7 @@ const Tasks = () => {
                   </span>
                 </div>
                 <div className="tasks__active-reward">
-                  Nagroda: 💰 {activeTask.rewardGold.toLocaleString('pl-PL')} gold · ⭐ {activeTask.rewardXp.toLocaleString('pl-PL')} XP
+                  Nagroda: 💰 {formatGoldShort(activeTask.rewardGold)} · ⭐ {activeTask.rewardXp.toLocaleString('pl-PL')} XP
                 </div>
                 {isComplete && (
                   <button className="tasks__claim-btn" onClick={() => handleClaimReward(activeTask.id)}>
@@ -236,7 +237,7 @@ const Tasks = () => {
                             {isActive ? `${activeForThis!.progress}/` : ''}{task.killCount} zabojstw
                           </span>
                           <span className="tasks__threshold-reward">
-                            💰 {task.rewardGold.toLocaleString('pl-PL')}g · ⭐ {task.rewardXp.toLocaleString('pl-PL')} XP
+                            💰 {formatGoldShort(task.rewardGold)} · ⭐ {task.rewardXp.toLocaleString('pl-PL')} XP
                           </span>
                           {isCompleted && <span className="tasks__threshold-done">✓ Gotowe!</span>}
                         </button>
@@ -261,7 +262,7 @@ const Tasks = () => {
                   ✓ {ct.killCount.toLocaleString('pl-PL')} × {ct.monsterName}
                 </div>
                 <div className="tasks__history-reward">
-                  💰 +{ct.rewardGold.toLocaleString('pl-PL')}g · ⭐ +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
+                  💰 +{formatGoldShort(ct.rewardGold)} · ⭐ +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
                 </div>
                 <div className="tasks__history-date">
                   {new Date(ct.completedAt).toLocaleDateString('pl-PL')}

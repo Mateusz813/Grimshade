@@ -1,0 +1,101 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  // Chrome reserve — exposed as a custom property so the global view
+  // override below can subtract it from `100dvh` and stop every view
+  // root's `min-height: 100vh` from over-reserving and forcing a phantom
+  // page scroll. Default = mobile baseline (50px header + 60px nav);
+  // breakpoints below tweak the value to match the actual padding for
+  // that viewport size.
+  --app-chrome-h: 110px;
+
+  &__main {
+    flex: 1 1 auto;
+    // Reserve space for the fixed TopHeader (50px) and BottomNav (60px).
+    padding-top: 50px;
+    padding-bottom: 60px;
+    min-height: 0;
+  }
+
+  // On auth / character-select pages we hide the fixed TopHeader/BottomNav
+  // chrome — drop the reservation padding too so those views can use their
+  // full-screen layouts unchanged. Views inside --bare keep their own
+  // `min-height: 100vh` (Login/Register use it to centre the form vertically)
+  // because chrome is 0 → no need for the global cap.
+  &--bare &__main {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  // ── Global view-root height cap ───────────────────────────────────────
+  // Every regular view file ships `.foo { min-height: 100vh }` so its
+  // background gradient fills the viewport when content is short. That
+  // works fine in isolation but inside `.app-shell__main` (which adds
+  // `padding-top: 50px` for the fixed TopHeader and `padding-bottom: 60-64px`
+  // for the BottomNav) the math becomes `100vh + 110-114px > 100vh` →
+  // every page gets a phantom 100-114px scroll even when content fits in
+  // the visible area.
+  //
+  // This rule re-bases the view root's min-height to the available content
+  // area (`100svh` minus the chrome reserve) so a view full of nothing
+  // still paints to the bottom of the visible area, but never PAST it.
+  // Combat HUD views are excluded — they have their own scroll-when-needed
+  // logic in CombatUI.scss with a 140px potion-dock buffer that the
+  // generic 110-114px chrome cap would fight with.
+  //
+  // 2026-05-19 v17: switched from `100dvh` to `100svh` (smallest
+  // viewport height). On desktop they're equal; on mobile `svh`
+  // accounts for ALL browser chrome visible — never larger than the
+  // actual available area. Eliminates the 1-2px rounding overflow
+  // that was producing a phantom scroll on the Town view at certain
+  // zoom levels.
+  //
+  // Specificity 0,4,1 (3 :not + .app-shell__main + *) beats every view's
+  // own root rule (0,1,0), so this override wins regardless of import order.
+  &:not(&--bare):not(&--combat-hud) &__main > * {
+    // 2026-05-19 v18: use BOTH min and max height anchored to the
+    // small viewport (svh) so a view root can never grow past the
+    // visible area without an explicit override. Internal
+    // scrollable containers (Inventory list, chat messages, etc.)
+    // handle their own overflow.
+    min-height: calc(100svh - var(--app-chrome-h));
+    max-height: calc(100svh - var(--app-chrome-h));
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell:not(.app-shell--bare) {
+    // Desktop bottom nav reserves 44px (the visible nav bar itself, no
+    // extra breathing-room margin); top header stays 50px. 50 + 44 = 94.
+    --app-chrome-h: 94px;
+
+    .app-shell__main {
+      padding-bottom: 44px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell:not(.app-shell--bare) {
+    // Phone: tighter top (46px) + standard nav (60px) = 106.
+    --app-chrome-h: 106px;
+
+    .app-shell__main {
+      padding-top: 46px;
+    }
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell:not(.app-shell--bare) {
+    // Tiny phones: tighter both ways (46 + 56 = 102).
+    --app-chrome-h: 102px;
+
+    .app-shell__main {
+      padding-bottom: 56px;
+    }
+  }
+}

@@ -48,7 +48,7 @@ const OfflineRewardModal = ({
           </p>
           <p className="offline-reward-modal__text">
             Skill <strong>{skillName}</strong> zebrał{' '}
-            <span className="offline-reward-modal__xp">+{earnedXp} XP</span>!
+            <span className="offline-reward-modal__xp">+{earnedXp.toLocaleString('pl-PL')} XP</span>!
           </p>
           <button className="offline-reward-modal__btn" onClick={onClose}>
             Odbierz

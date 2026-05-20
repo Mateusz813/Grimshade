@@ -14,6 +14,8 @@ import { useCharacterStore } from '../stores/characterStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useCooldownStore } from '../stores/cooldownStore';
 import { useBotStore } from '../stores/botStore';
+import { useAppRouteStore } from '../stores/appRouteStore';
+import { usePartyStore } from '../stores/partyStore';
 import {
     doPlayerAttackTick,
     doMonsterAttackTick,
@@ -26,11 +28,16 @@ import {
     tryAutoPotion,
     simulateOfflineCombat,
     advanceSkillCooldowns,
+    huntStatusTick,
     SPEED_MULT,
 } from '../systems/combatEngine';
 import { xpToNextLevel } from '../systems/levelSystem';
+import { formatGoldShort } from '../systems/goldFormat';
 
-const AUTO_FIGHT_DELAY_MS = 1000;
+/** Delay between victory and the next auto-fight kicking off (normal speeds).
+ *  Exported so the in-fight UI can render a matching countdown bar above the
+ *  "Walcz ponownie" button — single source of truth for the wait window. */
+export const AUTO_FIGHT_DELAY_MS = 1000;
 const MAX_BACKGROUND_COMBAT_MS = 10 * 60 * 60 * 1000; // 10 hours
 /** If more than 10s passed since last tick, trigger offline simulation */
 const OFFLINE_GAP_THRESHOLD_MS = 10_000;
@@ -43,6 +50,37 @@ export const useBackgroundCombat = () => {
     const backgroundStartedAt = useCombatStore((s) => s.backgroundStartedAt);
     const monster = useCombatStore((s) => s.monster);
     const botsKey = useBotStore((s) => s.bots.map((b) => b.id).join(','));
+    // 2026-05-11 spec ("to sa kopie walki to jest blad — ma byc JEDNA
+    // wspolna walka"): in a multi-human party the leader's engine is
+    // the single source of truth for monster state. Members are pure
+    // spectators — their engine NEVER ticks during shared combat, so
+    // they can't double-simulate the fight or race with the leader's
+    // broadcasts. The leader keeps ticking normally; members paint
+    // what arrives via `partyCombatSyncStore`.
+    const partyId = usePartyStore((s) => s.party?.id);
+    const partyLeaderId = usePartyStore((s) => s.party?.leaderId);
+    const otherHumansKey = usePartyStore((s) => {
+        if (!s.party) return '';
+        return s.party.members
+            .filter((m) => !m.isBot && m.id !== character?.id)
+            .map((m) => m.id)
+            .join(',');
+    });
+    const isNonLeaderMember = !!(
+        partyId &&
+        partyLeaderId &&
+        character?.id &&
+        partyLeaderId !== character.id &&
+        otherHumansKey.length > 0
+    );
+    // 2026-05-09: pause the engine entirely on login / register /
+    // character-select — without this, a fight left mid-flight in
+    // localStorage keeps ticking on those screens, firing
+    // `saveCurrentCharacterStores()` (3 Supabase writes / kill) every
+    // ~second and drowning the API. AppShell flips this flag from its
+    // route effect; the engine resumes when we land on a real game
+    // route again.
+    const isCharacterlessRoute = useAppRouteStore((s) => s.isCharacterless);
 
     // ── Offline catch-up on mount / visibility change ───────────────────────
     const offlineCatchUpDone = useRef(false);
@@ -54,12 +92,28 @@ export const useBackgroundCombat = () => {
             if (cs.phase !== 'fighting' && cs.phase !== 'victory') return;
             if (!cs.baseMonster) return;
 
+            // 2026-05-12 CRITICAL FIX ("wyszedłem z walki jako sojusznik
+            // to zginalem"): simulateOfflineCombat runs the engine
+            // standalone — for non-leader members in a multi-human
+            // party that means simulating a fight where the member
+            // has no leader-broadcast HP recovery. The engine kills
+            // them in the sim, fires handlePlayerDeath, takes -18
+            // levels. Disastrous when the member just briefly tabbed
+            // away (their HP is leader-authoritative anyway). Skip
+            // the catch-up for members; leader's broadcasts handle
+            // their state on return.
+            const psParty = usePartyStore.getState().party;
+            const meChar = useCharacterStore.getState().character;
+            const otherH = psParty?.members.filter((m) => !m.isBot && m.id !== meChar?.id) ?? [];
+            const isMember = !!(psParty && meChar && otherH.length > 0 && psParty.leaderId !== meChar.id);
+            if (isMember) return;
+
             const gapMs = Date.now() - new Date(cs.lastCombatTickAt).getTime();
             if (gapMs >= OFFLINE_GAP_THRESHOLD_MS) {
                 const result = simulateOfflineCombat(gapMs);
                 if (result && result.kills > 0) {
                     useCombatStore.getState().addLog(
-                        `⏰ Walka offline: ${result.kills} killi, +${result.xpEarned.toLocaleString('pl-PL')} XP, +${result.goldEarned.toLocaleString('pl-PL')} gold (${result.elapsedMinutes} min)`,
+                        `⏰ Walka offline: ${result.kills} killi, +${result.xpEarned.toLocaleString('pl-PL')} XP, +${formatGoldShort(result.goldEarned)} (${result.elapsedMinutes} min)`,
                         'system',
                     );
                     if (result.levelUps > 0) {
@@ -94,6 +148,12 @@ export const useBackgroundCombat = () => {
     // ── Player attack interval (timestamp-based catch-up) ──────────────────
     useEffect(() => {
         if (phase !== 'fighting' || combatSpeed === 'SKIP' || !character) return;
+        if (isCharacterlessRoute) return;
+        // 2026-05-11: members STILL run this tick — but `doPlayerAttackTick`
+        // detects party-membership internally and diverts the damage to an
+        // `attack-action` broadcast instead of applying locally. The leader
+        // resolves on their authoritative state. This is how Knight
+        // contributes to the shared monster.
         const effChar = getEffectiveChar(character);
         if (!effChar) return;
         const mult = SPEED_MULT[combatSpeed] ?? 1;
@@ -131,11 +191,14 @@ export const useBackgroundCombat = () => {
         useCombatStore.getState().setLastCombatTickAt(new Date().toISOString());
 
         return () => clearInterval(id);
-    }, [phase, combatSpeed, character?.id, character?.attack_speed, monster?.id]);
+    }, [phase, combatSpeed, character?.id, character?.attack_speed, monster?.id, isCharacterlessRoute, isNonLeaderMember]);
 
     // ── Monster attack interval (timestamp-based catch-up) ─────────────────
     useEffect(() => {
         if (phase !== 'fighting' || combatSpeed === 'SKIP' || !monster) return;
+        if (isCharacterlessRoute) return;
+        // Members are spectators — leader simulates the whole fight.
+        if (isNonLeaderMember) return;
         const mult = SPEED_MULT[combatSpeed] ?? 1;
         const monsterIntervalMs = Math.max(200, getAttackMs(monster.speed) / mult);
 
@@ -163,7 +226,7 @@ export const useBackgroundCombat = () => {
         }, tickMs);
 
         return () => clearInterval(id);
-    }, [phase, combatSpeed, monster?.id, monster?.speed]);
+    }, [phase, combatSpeed, monster?.id, monster?.speed, isCharacterlessRoute, isNonLeaderMember]);
 
     // ── Bot attack interval ─────────────────────────────────────────────────
     // All alive party bots share one interval — they attack roughly every
@@ -172,6 +235,9 @@ export const useBackgroundCombat = () => {
     useEffect(() => {
         if (phase !== 'fighting' || combatSpeed === 'SKIP') return;
         if (!botsKey) return; // no bots in party
+        if (isCharacterlessRoute) return;
+        // Members are spectators — leader simulates the whole fight.
+        if (isNonLeaderMember) return;
         const mult = SPEED_MULT[combatSpeed] ?? 1;
         const botIntervalMs = Math.max(300, Math.floor(1800 / mult));
         const id = setInterval(() => {
@@ -179,7 +245,41 @@ export const useBackgroundCombat = () => {
             doBotAttackTick();
         }, botIntervalMs);
         return () => clearInterval(id);
-    }, [phase, combatSpeed, botsKey]);
+    }, [phase, combatSpeed, botsKey, isCharacterlessRoute, isNonLeaderMember]);
+
+    // ── Skill effects status tick (DOT, stun timers, marks) ──────────────────
+    // Runs at 250 ms while fighting — drains stun / DOT / mark / immortal
+    // timers and applies DOT damage to player + every alive wave monster.
+    // Independent of combat speed because the effect runtime already takes
+    // wall-clock deltas internally.
+    useEffect(() => {
+        if (phase !== 'fighting') return;
+        if (isCharacterlessRoute) return;
+        const id = setInterval(() => huntStatusTick(), 250);
+        return () => clearInterval(id);
+    }, [phase, isCharacterlessRoute]);
+
+    // ── Auto-skill fast poller (250 ms) ──────────────────────────────────────
+    // 2026-05-11 spec ("auto spelle slabo dzialaja, mija strasznie duzo
+    // czasu zanim sie uzyja"): the auto-skill cast logic lives inside
+    // `doPlayerAttackTick`, so before this tick it only ran at the
+    // player's attack-speed cadence (1-2 s typically). With a 8 s
+    // cooldown that meant up to a full attack-interval of extra delay
+    // after the spell came off cooldown. Running `doPlayerAttackTick`
+    // with `autoSkillOnly=true` at 250 ms polls all auto-slots much
+    // closer to cooldown reset — basic-attack damage is skipped on
+    // these polls so we don't 4× the player's swings.
+    useEffect(() => {
+        if (phase !== 'fighting') return;
+        if (combatSpeed === 'SKIP') return;
+        if (isCharacterlessRoute) return;
+        const id = setInterval(() => {
+            const live = useCombatStore.getState();
+            if (live.phase !== 'fighting') return;
+            doPlayerAttackTick(true);
+        }, 250);
+        return () => clearInterval(id);
+    }, [phase, combatSpeed, isCharacterlessRoute]);
 
     // ── Cooldown tick timer (smooth UI in foreground) ────────────────────────
     // Runs during fighting AND victory so cooldowns continue draining during
@@ -188,6 +288,7 @@ export const useBackgroundCombat = () => {
     // next wave started (if AUTO recast immediately on the first tick).
     useEffect(() => {
         if ((phase !== 'fighting' && phase !== 'victory') || combatSpeed === 'SKIP') return;
+        if (isCharacterlessRoute) return;
         const speedMult = SPEED_MULT[combatSpeed] ?? 1;
         const decPerTick = 100 * speedMult;
         let lastTickAt = Date.now();
@@ -200,12 +301,16 @@ export const useBackgroundCombat = () => {
             useCooldownStore.getState().tick(Math.min(realDec, decPerTick * 20)); // cap at 2s worth
         }, 100);
         return () => clearInterval(interval);
-    }, [phase, combatSpeed]);
+    }, [phase, combatSpeed, isCharacterlessRoute]);
 
     // ── Auto-fight after victory ────────────────────────────────────────────
     useEffect(() => {
         if (phase !== 'victory') return;
         if (!autoFight) return;
+        if (isCharacterlessRoute) return;
+        // Members never trigger their own next fight — leader does it
+        // and broadcasts the new state.
+        if (isNonLeaderMember) return;
         const { baseMonster } = useCombatStore.getState();
         if (!baseMonster) return;
 
@@ -238,11 +343,14 @@ export const useBackgroundCombat = () => {
             clearInterval(potionInterval);
             clearTimeout(timer);
         };
-    }, [phase, combatSpeed, autoFight]);
+    }, [phase, combatSpeed, autoFight, isCharacterlessRoute, isNonLeaderMember]);
 
     // ── SKIP mode trigger: if SKIP is activated mid-fight ───────────────────
     useEffect(() => {
         if (combatSpeed !== 'SKIP' || phase !== 'fighting' || !monster || !character) return;
+        if (isCharacterlessRoute) return;
+        // Members never resolve SKIP locally — leader does and broadcasts.
+        if (isNonLeaderMember) return;
         const rarity = useCombatStore.getState().monsterRarity;
         const s = useCombatStore.getState();
         resolveInstantFight(monster, s.playerCurrentHp, s.playerCurrentMp, rarity);

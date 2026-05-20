@@ -39,12 +39,12 @@ describe('calculateDropMultiplier', () => {
     expect(calculateDropMultiplier(1)).toBe(1.0);
   });
 
-  it('returns 1.15 for 2 players', () => {
-    expect(calculateDropMultiplier(2)).toBeCloseTo(1.15);
+  it('returns 1.005 for 2 players (+0.5% per ally)', () => {
+    expect(calculateDropMultiplier(2)).toBeCloseTo(1.005);
   });
 
-  it('returns 1.45 for max party (4)', () => {
-    expect(calculateDropMultiplier(4)).toBeCloseTo(1.45);
+  it('returns 1.015 for max party (4)', () => {
+    expect(calculateDropMultiplier(4)).toBeCloseTo(1.015);
   });
 
   it('clamps at MAX_PARTY_SIZE', () => {

@@ -1,3 +1,8 @@
+import { getPotionImage } from './spriteAssets';
+
+// Tiny helper — resolve a potion ID's PNG art with an emoji fallback.
+const PI = (id: string, fallback: string): string => getPotionImage(id) ?? fallback;
+
 /**
  * Potion conversion (Alchemy).
  *
@@ -46,103 +51,103 @@ export const POTION_CONVERSIONS: IPotionConversion[] = [
     // ── HP Potions ──
     {
         tier: 1, family: 'hp',
-        inputId: 'hp_potion_sm', inputName: 'Maly Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_sm', inputName: 'Maly Eliksir HP', inputIcon: PI('hp_potion_sm', '❤️'),
         inputCount: 5,
-        outputId: 'hp_potion_md', outputName: 'Eliksir HP', outputIcon: '❤️',
+        outputId: 'hp_potion_md', outputName: 'Eliksir HP', outputIcon: PI('hp_potion_md', '❤️'),
         outputMinLevel: 20,
     },
     {
         tier: 2, family: 'hp',
-        inputId: 'hp_potion_md', inputName: 'Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_md', inputName: 'Eliksir HP', inputIcon: PI('hp_potion_md', '❤️'),
         inputCount: 4,
-        outputId: 'hp_potion_lg', outputName: 'Silny Eliksir HP', outputIcon: '❤️',
+        outputId: 'hp_potion_lg', outputName: 'Silny Eliksir HP', outputIcon: PI('hp_potion_lg', '❤️'),
         outputMinLevel: 50,
     },
     {
         tier: 3, family: 'hp',
-        inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: PI('hp_potion_lg', '❤️'),
         inputCount: 4,
-        outputId: 'hp_potion_great', outputName: 'Wielki Eliksir HP', outputIcon: '❤️',
+        outputId: 'hp_potion_great', outputName: 'Wielki Eliksir HP', outputIcon: PI('hp_potion_great', '❤️'),
         outputMinLevel: 100,
     },
     {
         tier: 4, family: 'hp',
-        inputId: 'hp_potion_great', inputName: 'Wielki Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_great', inputName: 'Wielki Eliksir HP', inputIcon: PI('hp_potion_great', '❤️'),
         inputCount: 4,
-        outputId: 'hp_potion_super', outputName: 'Super Eliksir HP', outputIcon: '❤️',
+        outputId: 'hp_potion_super', outputName: 'Super Eliksir HP', outputIcon: PI('hp_potion_super', '❤️'),
         outputMinLevel: 200,
     },
     {
         tier: 5, family: 'hp',
-        inputId: 'hp_potion_super', inputName: 'Super Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_super', inputName: 'Super Eliksir HP', inputIcon: PI('hp_potion_super', '❤️'),
         inputCount: 4,
-        outputId: 'hp_potion_ultimate', outputName: 'Ultimatywny Eliksir HP', outputIcon: '❤️',
+        outputId: 'hp_potion_ultimate', outputName: 'Ultimatywny Eliksir HP', outputIcon: PI('hp_potion_ultimate', '❤️'),
         outputMinLevel: 400,
     },
     {
         tier: 6, family: 'hp',
-        inputId: 'hp_potion_ultimate', inputName: 'Ultimatywny Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_ultimate', inputName: 'Ultimatywny Eliksir HP', inputIcon: PI('hp_potion_ultimate', '❤️'),
         inputCount: 5,
-        outputId: 'hp_potion_divine', outputName: 'Boski Eliksir HP', outputIcon: '❤️',
+        outputId: 'hp_potion_divine', outputName: 'Boski Eliksir HP', outputIcon: PI('hp_potion_divine', '❤️'),
         outputMinLevel: 600,
     },
     // Alternate flat-heal branch: 4× Silny → 1× Mega (1000 flat HP)
     {
         tier: 7, family: 'hp',
-        inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: '❤️',
+        inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: PI('hp_potion_lg', '❤️'),
         inputCount: 4,
-        outputId: 'hp_potion_mega', outputName: 'Mega Eliksir HP', outputIcon: '❤️‍🔥',
+        outputId: 'hp_potion_mega', outputName: 'Mega Eliksir HP', outputIcon: PI('hp_potion_mega', '❤️‍🔥'),
         outputMinLevel: 100,
     },
     // ── MP Potions ──
     {
         tier: 1, family: 'mp',
-        inputId: 'mp_potion_sm', inputName: 'Maly Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_sm', inputName: 'Maly Eliksir MP', inputIcon: PI('mp_potion_sm', '💧'),
         inputCount: 5,
-        outputId: 'mp_potion_md', outputName: 'Eliksir MP', outputIcon: '💧',
+        outputId: 'mp_potion_md', outputName: 'Eliksir MP', outputIcon: PI('mp_potion_md', '💧'),
         outputMinLevel: 20,
     },
     {
         tier: 2, family: 'mp',
-        inputId: 'mp_potion_md', inputName: 'Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_md', inputName: 'Eliksir MP', inputIcon: PI('mp_potion_md', '💧'),
         inputCount: 4,
-        outputId: 'mp_potion_lg', outputName: 'Silny Eliksir MP', outputIcon: '💧',
+        outputId: 'mp_potion_lg', outputName: 'Silny Eliksir MP', outputIcon: PI('mp_potion_lg', '💧'),
         outputMinLevel: 50,
     },
     {
         tier: 3, family: 'mp',
-        inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: PI('mp_potion_lg', '💧'),
         inputCount: 4,
-        outputId: 'mp_potion_great', outputName: 'Wielki Eliksir MP', outputIcon: '💧',
+        outputId: 'mp_potion_great', outputName: 'Wielki Eliksir MP', outputIcon: PI('mp_potion_great', '💧'),
         outputMinLevel: 100,
     },
     {
         tier: 4, family: 'mp',
-        inputId: 'mp_potion_great', inputName: 'Wielki Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_great', inputName: 'Wielki Eliksir MP', inputIcon: PI('mp_potion_great', '💧'),
         inputCount: 4,
-        outputId: 'mp_potion_super', outputName: 'Super Eliksir MP', outputIcon: '💧',
+        outputId: 'mp_potion_super', outputName: 'Super Eliksir MP', outputIcon: PI('mp_potion_super', '💧'),
         outputMinLevel: 200,
     },
     {
         tier: 5, family: 'mp',
-        inputId: 'mp_potion_super', inputName: 'Super Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_super', inputName: 'Super Eliksir MP', inputIcon: PI('mp_potion_super', '💧'),
         inputCount: 4,
-        outputId: 'mp_potion_ultimate', outputName: 'Ultimatywny Eliksir MP', outputIcon: '💧',
+        outputId: 'mp_potion_ultimate', outputName: 'Ultimatywny Eliksir MP', outputIcon: PI('mp_potion_ultimate', '💧'),
         outputMinLevel: 400,
     },
     {
         tier: 6, family: 'mp',
-        inputId: 'mp_potion_ultimate', inputName: 'Ultimatywny Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_ultimate', inputName: 'Ultimatywny Eliksir MP', inputIcon: PI('mp_potion_ultimate', '💧'),
         inputCount: 5,
-        outputId: 'mp_potion_divine', outputName: 'Boski Eliksir MP', outputIcon: '💧',
+        outputId: 'mp_potion_divine', outputName: 'Boski Eliksir MP', outputIcon: PI('mp_potion_divine', '💧'),
         outputMinLevel: 600,
     },
     // Alternate flat-heal branch: 4× Silny → 1× Mega (1000 flat MP)
     {
         tier: 7, family: 'mp',
-        inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: '💧',
+        inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: PI('mp_potion_lg', '💧'),
         inputCount: 4,
-        outputId: 'mp_potion_mega', outputName: 'Mega Eliksir MP', outputIcon: '💎',
+        outputId: 'mp_potion_mega', outputName: 'Mega Eliksir MP', outputIcon: PI('mp_potion_mega', '💎'),
         outputMinLevel: 100,
     },
 ];

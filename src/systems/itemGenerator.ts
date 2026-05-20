@@ -1,5 +1,6 @@
 import type { Rarity, IInventoryItem, EquipmentSlot } from './itemSystem';
 import { RARITY_BONUS_SLOTS, getBaseStatKeysForSlot } from './itemSystem';
+import { getItemImage } from './spriteAssets';
 import itemTemplates from '../data/itemTemplates.json';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -410,7 +411,7 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
     const parts = itemId.split('_lvl');
     if (parts.length < 2) {
         // Try legacy item IDs
-        return getLegacyItemInfo(itemId);
+        return resolveImageIcon(itemId, getLegacyItemInfo(itemId));
     }
 
     const typePart = parts[0];
@@ -418,26 +419,26 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
     // Check weapons
     for (const w of itemTemplates.weapons as IItemTemplate[]) {
         if (w.type === typePart) {
-            return {
+            return resolveImageIcon(itemId, {
                 name_pl: w.name_pl,
                 name_en: w.name_en,
                 icon: w.icon,
                 type: w.type,
                 slot: w.slot as EquipmentSlot,
-            };
+            });
         }
     }
 
     // Check offhands
     for (const o of itemTemplates.offhands as IItemTemplate[]) {
         if (o.type === typePart) {
-            return {
+            return resolveImageIcon(itemId, {
                 name_pl: o.name_pl,
                 name_en: o.name_en,
                 icon: o.icon,
                 type: o.type,
                 slot: o.slot as EquipmentSlot,
-            };
+            });
         }
     }
 
@@ -446,13 +447,13 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
         for (const piece of category.pieces) {
             const armorType = `${prefix}_${piece.slot}`;
             if (typePart === armorType) {
-                return {
+                return resolveImageIcon(itemId, {
                     name_pl: `${category.prefix_pl} ${piece.name_pl}`,
                     name_en: `${category.prefix_en} ${piece.name_en}`,
                     icon: piece.icon,
                     type: armorType,
                     slot: piece.slot as EquipmentSlot,
-                };
+                });
             }
         }
     }
@@ -460,17 +461,29 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
     // Check accessories
     for (const a of itemTemplates.accessories as IItemTemplate[]) {
         if (a.type === typePart) {
-            return {
+            return resolveImageIcon(itemId, {
                 name_pl: a.name_pl,
                 name_en: a.name_en,
                 icon: a.icon,
                 type: a.type,
                 slot: a.slot as EquipmentSlot,
-            };
+            });
         }
     }
 
     return null;
+};
+
+/**
+ * Substitute the legacy emoji `icon` with a Vite-served PNG URL when one exists
+ * in /assets/images/items. Falls back to the original emoji so items without
+ * art continue to render.
+ */
+const resolveImageIcon = (itemId: string, info: IItemDisplayInfo | null): IItemDisplayInfo | null => {
+    if (!info) return null;
+    const img = getItemImage(itemId, info.slot, info.type);
+    if (img) return { ...info, icon: img };
+    return info;
 };
 
 // ── Legacy item ID support ────────────────────────────────────────────────────

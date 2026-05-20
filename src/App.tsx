@@ -2,10 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { useCharacterStore } from './stores/characterStore';
+import { useSkillStore } from './stores/skillStore';
 import { useSync } from './hooks/useSync';
 import { useMpRegen } from './hooks/useMpRegen';
 import { useBackgroundCombat } from './hooks/useBackgroundCombat';
 import { useChatUnreadSubscription } from './hooks/useChatUnreadSubscription';
+import { useLeaderboardStatSync } from './hooks/useLeaderboardStatSync';
 import {
     saveCurrentCharacterStoresSync,
     getActiveCharacterIdForRestore,
@@ -15,7 +17,7 @@ import {
 import { characterApi } from './api/v1/characterApi';
 import AppRouter from './routes/AppRouter';
 import LevelUpNotification from './components/ui/LevelUpNotification/LevelUpNotification';
-import ChatUnreadBadge from './components/ui/ChatUnreadBadge/ChatUnreadBadge';
+import Spinner from './components/ui/Spinner/Spinner';
 
 /**
  * On module load (before any React render), synchronously restore
@@ -41,12 +43,35 @@ const App = () => {
     useMpRegen();
     useBackgroundCombat();
     useChatUnreadSubscription();
+    useLeaderboardStatSync();
 
     // Auto-save character stores when closing/refreshing the page
     useEffect(() => {
         const handleBeforeUnload = () => saveCurrentCharacterStoresSync();
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, []);
+
+    // ── Global skill-slot purge ─────────────────────────────────────────────
+    // Subscribe to character.level + class so any time the player drops below
+    // a slotted spell's unlock-level (death penalty in any view, including
+    // legacy deaths from before the per-view purge landed) the slot clears
+    // automatically. Mounted at the App root so it covers every route, not
+    // just the combat views.
+    useEffect(() => {
+        const sync = () => {
+            const ch = useCharacterStore.getState().character;
+            if (!ch) return;
+            useSkillStore.getState().purgeLockedSkillSlots(ch.class, ch.level);
+        };
+        sync(); // run once on mount so stale slots from earlier sessions flush
+        const unsub = useCharacterStore.subscribe((s, prev) => {
+            if (!s.character || !prev.character) return;
+            if (s.character.level !== prev.character.level || s.character.class !== prev.character.class) {
+                useSkillStore.getState().purgeLockedSkillSlots(s.character.class, s.character.level);
+            }
+        });
+        return unsub;
     }, []);
 
     // Also save on visibilitychange (mobile browsers may not fire beforeunload)
@@ -130,19 +155,22 @@ const App = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#9e9e9e',
                 }}
             >
-                Ładowanie...
+                <Spinner size="lg" />
             </div>
         );
     }
 
+    // 2026-05-19 v5: ChatUnreadBadge moved into AppRouterInner (which
+    // sits inside <BrowserRouter>) so `useNavigate` inside the popup's
+    // Chat component has a Router context. Mounting it here at the App
+    // root crashed with "useNavigate() may be used only in the context
+    // of a <Router> component" the moment the player opened the popup.
     return (
       <>
         <AppRouter session={session} />
         <LevelUpNotification />
-        <ChatUnreadBadge />
       </>
     );
 };

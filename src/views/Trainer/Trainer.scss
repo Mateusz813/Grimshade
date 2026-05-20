@@ -1,97 +1,194 @@
 .trainer {
-    padding: 16px;
-    max-width: 1200px;
-    margin: 0 auto;
     color: #e0e0e0;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
 
-    &__header {
-        display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
-        h1 { flex: 1; margin: 0; font-size: 26px; }
-        button {
-            background: #1f1f2e; border: 1px solid #333; color: #ccc;
-            padding: 6px 12px; border-radius: 6px; cursor: pointer;
-        }
+    // Loading variant — used while the character store hasn't hydrated.
+    // Centers the Spinner against the global dragon backdrop instead of
+    // dropping a plain "Wczytywanie postaci…" string.
+    &--loading {
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100dvh - 110px);
     }
+    // Match-style: full-bleed view. The header back-button + "Trainer"
+    // title were removed per the 2026-05 redesign; navigation goes
+    // through the combat exit button at the bottom. No `min-height: 100vh`
+    // so the page doesn't scroll when the combat-ui already fills the
+    // viewport — every other combat view (Arena, Boss) follows the same
+    // pattern.
+    padding: 0;
+    max-width: none;
 
-    &__controls {
-        display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-        background: #1a1a28; border: 1px solid #2a2a3a; padding: 8px 12px;
-        border-radius: 8px; margin-bottom: 12px;
-        label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; }
-    }
-
-    &__speed {
-        display: flex; gap: 4px; margin-right: 12px;
-        button {
-            background: #2a2a3a; border: 1px solid #333; color: #ccc;
-            padding: 4px 10px; border-radius: 4px; cursor: pointer;
-            &.is-active { background: #e53935; color: white; border-color: #e53935; }
-        }
-    }
-
-    &__arena {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 12px;
-        @media (max-width: 768px) { grid-template-columns: 1fr; }
-    }
-
-    &__player {
-        background: #1f1f2e; border: 2px solid; border-radius: 8px; padding: 12px;
-        h3 { margin: 0 0 4px; }
-    }
-    &__class { font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
-    &__party-member { font-size: 12px; color: #aaa; margin-top: 6px; }
-
-    &__dummy {
-        background: #1f1f2e; border: 2px solid #b71c1c; border-radius: 8px;
-        padding: 12px; position: relative; text-align: center;
-        &-sprite { font-size: 72px; margin-bottom: 4px; }
-        &-name { font-weight: bold; margin-bottom: 8px; }
-    }
-
-    &__bar {
-        position: relative; height: 18px; background: #0a0a10; border-radius: 4px;
-        overflow: hidden; margin-top: 4px;
-        div { height: 100%; transition: width 0.2s; }
-        span {
-            position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-            text-align: center; font-size: 11px; line-height: 18px;
-            color: white; text-shadow: 0 0 2px black;
-        }
-        &--hp div { background: linear-gradient(90deg, #d32f2f, #f44336); }
-        &--mp div { background: linear-gradient(90deg, #1976d2, #2196f3); }
-    }
-
-    &__fx {
-        position: absolute; top: 20px; right: 20px; font-size: 48px;
-        animation: trainer-fx-pop 0.8s ease-out forwards;
-        pointer-events: none;
-    }
-
+    // Damage stats card — horizontally centred above the action bar so
+    // the player's eye lands on the DPS readout naturally between the
+    // arena and their skill row. Translucent background + thin border
+    // so the trainer arena art still reads through it.
     &__stats {
-        display: flex; justify-content: space-around; gap: 12px;
-        background: #1a1a28; border: 1px solid #2a2a3a; padding: 12px;
-        border-radius: 8px; margin-bottom: 12px;
-        div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; }
-        strong { font-size: 18px; }
-        span { color: #888; }
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 96px; // sits clear of the 80px action-bar + ~16px gap
+        z-index: 30;
+        display: flex;
+        gap: 14px;
+        background: rgba(15, 17, 28, 0.78);
+        backdrop-filter: blur(6px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        pointer-events: none;
+        white-space: nowrap;
+        div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        strong { font-size: 16px; color: #e0e0e0; }
+        span { color: #888; font-size: 11px; }
+
+        @media (max-width: 540px) {
+            // Mobile — keep centered but allow the strip to span more
+            // of the viewport with smaller numbers.
+            bottom: 88px;
+            gap: 8px;
+            padding: 6px 10px;
+            font-size: 10px;
+            strong { font-size: 13px; }
+            span { font-size: 9px; }
+        }
     }
 
-    &__log {
-        background: #0a0a12; border: 1px solid #2a2a3a; border-radius: 6px;
-        padding: 8px 12px; max-height: 140px; overflow-y: auto;
-        font-family: monospace; font-size: 12px;
-        div { line-height: 1.4; }
-    }
-}
+    // 2026-05 v6: dummy HP % slider — sandbox target HP for execute_below
+    // testing. Sits inline with other top-bar chips.
+    &__hp-slider {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(180deg, rgba(244, 67, 54, 0.18), rgba(0, 0, 0, 0.32));
+        border: 1px solid rgba(244, 67, 54, 0.45);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
 
-@keyframes trainer-fx-pop {
-    0%   { transform: scale(0.4); opacity: 0; }
-    30%  { transform: scale(1.5); opacity: 1; }
-    100% { transform: scale(1.2); opacity: 0; }
+        input[type="range"] {
+            width: 80px;
+            accent-color: #f44336;
+            cursor: pointer;
+        }
+    }
+    &__hp-slider-label { color: #ffcdd2; }
+    &__hp-slider-val { color: #ff8a80; min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    // 2026-05 v6: kill-ally sandbox modal — overlays everything when
+    // the player wants to test rez/heal/shield spells on a fallen ally.
+    &__kill-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(4px);
+        z-index: 1500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    &__kill-modal {
+        background: linear-gradient(180deg, #1a1a2e, #14142a);
+        border: 1px solid rgba(244, 67, 54, 0.55);
+        border-radius: 12px;
+        max-width: 420px;
+        width: 100%;
+        padding: 18px 20px;
+        color: #e0e0e0;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 16px rgba(244, 67, 54, 0.25);
+    }
+
+    &__kill-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #ff5252;
+        margin-bottom: 6px;
+    }
+
+    &__kill-hint {
+        font-size: 12px;
+        color: #9e9e9e;
+        margin-bottom: 14px;
+        line-height: 1.4;
+    }
+
+    &__kill-empty {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        padding: 24px 0;
+    }
+
+    &__kill-list {
+        list-style: none;
+        margin: 0 0 14px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__kill-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+    }
+
+    &__kill-row-name {
+        font-size: 13px;
+        color: #fff;
+
+        small {
+            color: #888;
+            margin-left: 6px;
+            font-size: 11px;
+        }
+    }
+
+    &__kill-row-btn {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+
+        &:hover { opacity: 0.85; }
+
+        &--kill   { background: #d32f2f; color: #fff; }
+        &--revive { background: #4caf50; color: #fff; }
+    }
+
+    &__kill-close {
+        width: 100%;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        color: #e0e0e0;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover { background: rgba(255, 255, 255, 0.15); }
+    }
 }

@@ -15,6 +15,35 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+
+  /* Browser scrollbar tinted with the player's transformation accent.
+     `--nav-accent` is set on `:root` by the global transform-accent hook
+     (defaults to gold #ffc107 for the lobby/idle state), so the scrollbar
+     instantly mirrors whatever form the player is currently in. Firefox
+     uses `scrollbar-color`; WebKit needs the per-element rules below. */
+  scrollbar-color: var(--nav-accent, #ffc107) rgba(15, 17, 28, 0.45);
+  scrollbar-width: thin;
+}
+
+/* WebKit (Chrome, Safari, Edge) — colour the scrollbar thumb in the
+   transform accent and give the track a dark, semi-transparent glassy fill
+   so it blends with the background image regardless of which view the
+   player is on. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 17, 28, 0.4);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--nav-accent, #ffc107);
+  border-radius: 6px;
+  border: 2px solid rgba(15, 17, 28, 0.6); /* inner padding so the thumb looks softer */
+}
+::-webkit-scrollbar-thumb:hover {
+  /* Slight darken on hover — `color-mix` is supported in all modern engines. */
+  background: color-mix(in srgb, var(--nav-accent, #ffc107) 80%, #000);
 }
 
 body {
@@ -25,7 +54,11 @@ body {
   overflow-x: hidden;
   background: #1a1a2e;
   color: #e0e0e0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* MedievalSharp is the new global type per the 2026-05 redesign — fits
+     the dark-fantasy theme. The system-ui fallback keeps the page legible
+     while the Google Font finishes loading (matches the
+     `display=swap` in index.html). */
+  font-family: 'MedievalSharp', system-ui, 'Segoe UI', Roboto, sans-serif;
   font-size: 15px;
   line-height: 1.5;
 }
