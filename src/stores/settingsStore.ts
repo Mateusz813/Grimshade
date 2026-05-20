@@ -28,6 +28,52 @@ interface ISettingsState {
   autoSellEpic: boolean;
   autoSellLegendary: boolean;
   autoSellMythic: boolean;
+
+  /** Hunt-hub filters (persisted per character via characterScope). */
+  huntFilterAvailableOnly: boolean;
+  huntFilterTaskedOnly: boolean;
+  /** Minimum monster level to show in the hub list (0 = no minimum). */
+  huntFilterMinLevel: number;
+  /** Sort the hub list by descending level (highest first) when true. */
+  huntFilterSortDesc: boolean;
+  setHuntFilterAvailableOnly: (val: boolean) => void;
+  setHuntFilterTaskedOnly: (val: boolean) => void;
+  setHuntFilterMinLevel: (val: number) => void;
+  setHuntFilterSortDesc: (val: boolean) => void;
+
+  /** Dungeon-list filters — same per-character persistence pattern as the
+   *  hunt filters above. `dungeonFilterAvailableOnly` hides locked/exhausted
+   *  dungeons, `dungeonFilterMinLevel` is the input the player types to
+   *  hide everything below their chosen floor, and `dungeonFilterSortDesc`
+   *  flips the list to highest-level-first. All three persist to the active
+   *  character's scope so they survive across sessions and classes. */
+  dungeonFilterAvailableOnly: boolean;
+  dungeonFilterMinLevel: number;
+  dungeonFilterSortDesc: boolean;
+  setDungeonFilterAvailableOnly: (val: boolean) => void;
+  setDungeonFilterMinLevel: (val: number) => void;
+  setDungeonFilterSortDesc: (val: boolean) => void;
+
+  /** Raid-list filters — independent of the dungeon ones so a player can
+   *  filter raids without disturbing their dungeon view. Same persistence
+   *  contract (per-character via characterScope). */
+  raidFilterAvailableOnly: boolean;
+  raidFilterMinLevel: number;
+  raidFilterSortDesc: boolean;
+  setRaidFilterAvailableOnly: (val: boolean) => void;
+  setRaidFilterMinLevel: (val: number) => void;
+  setRaidFilterSortDesc: (val: boolean) => void;
+
+  /** Boss-list filters — same persistence contract as the dungeon/raid
+   *  filters. Independent slice so a player can narrow the boss roster
+   *  without affecting the dungeon or raid views. */
+  bossFilterAvailableOnly: boolean;
+  bossFilterMinLevel: number;
+  bossFilterSortDesc: boolean;
+  setBossFilterAvailableOnly: (val: boolean) => void;
+  setBossFilterMinLevel: (val: number) => void;
+  setBossFilterSortDesc: (val: boolean) => void;
+
   setShowCombatXpBar: (val: boolean) => void;
   setLanguage: (lang: Language) => void;
   setCombatSpeed: (speed: CombatSpeed) => void;
@@ -79,6 +125,54 @@ export const useSettingsStore = create<ISettingsState>()(
       autoSellEpic: false,
       autoSellLegendary: false,
       autoSellMythic: false,
+
+      // Hunt-hub filters — defaults are "show everything" so existing
+      // characters open the hub looking exactly like before the filter bar
+      // landed. Per-character persistence happens through characterScope.
+      huntFilterAvailableOnly: false,
+      huntFilterTaskedOnly: false,
+      huntFilterMinLevel: 0,
+      huntFilterSortDesc: false,
+      setHuntFilterAvailableOnly: (huntFilterAvailableOnly) => set({ huntFilterAvailableOnly }),
+      setHuntFilterTaskedOnly: (huntFilterTaskedOnly) => set({ huntFilterTaskedOnly }),
+      setHuntFilterMinLevel: (huntFilterMinLevel) =>
+          set({ huntFilterMinLevel: Math.max(0, Math.floor(huntFilterMinLevel || 0)) }),
+      setHuntFilterSortDesc: (huntFilterSortDesc) => set({ huntFilterSortDesc }),
+
+      // Dungeon filters — defaults match "show everything" so existing
+      // characters open the list looking exactly like before. Per-character
+      // persistence happens through characterScope (same as hunt filters).
+      dungeonFilterAvailableOnly: false,
+      dungeonFilterMinLevel: 0,
+      dungeonFilterSortDesc: false,
+      setDungeonFilterAvailableOnly: (dungeonFilterAvailableOnly) => set({ dungeonFilterAvailableOnly }),
+      setDungeonFilterMinLevel: (dungeonFilterMinLevel) =>
+          set({ dungeonFilterMinLevel: Math.max(0, Math.floor(dungeonFilterMinLevel || 0)) }),
+      setDungeonFilterSortDesc: (dungeonFilterSortDesc) => set({ dungeonFilterSortDesc }),
+
+      // Raid filters — same defaults & semantics as dungeon filters; the
+      // raid hub is the dungeon hub's harder sibling so visual parity calls
+      // for behavioural parity in the controls.
+      raidFilterAvailableOnly: false,
+      raidFilterMinLevel: 0,
+      raidFilterSortDesc: false,
+      setRaidFilterAvailableOnly: (raidFilterAvailableOnly) => set({ raidFilterAvailableOnly }),
+      setRaidFilterMinLevel: (raidFilterMinLevel) =>
+          set({ raidFilterMinLevel: Math.max(0, Math.floor(raidFilterMinLevel || 0)) }),
+      setRaidFilterSortDesc: (raidFilterSortDesc) => set({ raidFilterSortDesc }),
+
+      // Boss filters — same defaults & semantics as dungeon/raid filters.
+      // Independent slice so a player can narrow the boss roster without
+      // affecting other hub views. Per-character persistence handled by
+      // characterScope (see stateKeys list there).
+      bossFilterAvailableOnly: false,
+      bossFilterMinLevel: 0,
+      bossFilterSortDesc: false,
+      setBossFilterAvailableOnly: (bossFilterAvailableOnly) => set({ bossFilterAvailableOnly }),
+      setBossFilterMinLevel: (bossFilterMinLevel) =>
+          set({ bossFilterMinLevel: Math.max(0, Math.floor(bossFilterMinLevel || 0)) }),
+      setBossFilterSortDesc: (bossFilterSortDesc) => set({ bossFilterSortDesc }),
+
       setShowCombatXpBar: (showCombatXpBar) => {
         localStorage.setItem('showCombatXpBar', String(showCombatXpBar));
         set({ showCombatXpBar });

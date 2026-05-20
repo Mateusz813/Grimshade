@@ -1,3 +1,5 @@
+@use '../../styles/variables' as *;
+
 .raid {
     padding: 16px;
     max-width: 1400px;
@@ -7,184 +9,891 @@
     display: flex;
     flex-direction: column;
 
-    &__header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 16px;
-
-        h1 { margin: 0; font-size: 28px; }
+    // In-fight: drop the wrapper padding so the unified combat-ui chip
+    // strip (sticky `top: 0`) touches the underside of the fixed
+    // TopHeader instead of sitting under a 16px gap. Also relax
+    // `min-height` so the arena fits the visible viewport without
+    // forcing a scroll bar — same parity fix as the dungeon view.
+    //
+    // `max-width: none` so the ambient battle background (the dark
+    // gradient panel + arena bg) reaches the full viewport width, not
+    // the 1400 px lobby cap. Without this, on ultrawide / desktop screens
+    // the player saw a thin sliver of game-bg on each side that didn't
+    // match the centered combat panel.
+    &--fighting {
+        padding: 0;
+        min-height: 100%;
+        max-width: none;
+        width: 100%;
     }
 
-    &__back-btn {
-        background: #1f1f2e;
-        border: 1px solid #333;
-        color: #ccc;
-        padding: 6px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        &:hover { background: #2a2a3a; }
-    }
-
+    // ── Gates (no party / too small / not leader) ─────────────────────────────
     &__gate {
         background: #1a1a28;
         border: 1px solid #2a2a3a;
         border-radius: 12px;
         padding: 32px;
         text-align: center;
+        margin: 24px auto;
+        max-width: 480px;
 
         &-icon { font-size: 48px; display: block; margin-bottom: 12px; }
         h2 { margin: 0 0 8px; }
-        p { color: #aaa; margin-bottom: 16px; }
+        p  { color: #aaa; margin-bottom: 16px; }
         button {
             background: #e53935; color: white; padding: 8px 20px; border: none;
             border-radius: 6px; cursor: pointer; font-weight: bold;
+            &:hover { background: #c62828; }
         }
     }
 
-    &__hint {
-        color: #888; margin-bottom: 12px; font-size: 14px;
+    // ── Hub panel: filters + raid cards (mirrors Dungeon hub) ─────────────────
+    &__panel {
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-md;
     }
 
-    &__list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 10px;
+    // Ultrawide: raid cards pack two per row at 1100px each. Filter rows,
+    // empty state and any non-card sibling stay full-width via
+    // `flex-basis: 100%`, so only `&__card` actually pair up. The wrapping
+    // `.raid` itself caps at 1400px in the base rule above — bump it to
+    // accommodate two cards (~2200px + gaps + padding) so the 2-up layout
+    // can actually breathe.
+    @media (min-width: 2300px) {
+        max-width: none;
+
+        &__panel {
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+
+            > :not(.raid__card) {
+                flex-basis: 100%;
+            }
+        }
     }
 
+    &__hub-filters {
+        display: flex;
+        flex-direction: column;
+    }
+
+    &__hub-section-title {
+        color: $color-text-muted;
+        font-size: $font-sm;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        margin: 0 0 $spacing-sm;
+        text-transform: uppercase;
+    }
+
+    &__filter-bar {
+        align-items: center;
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $radius-md;
+        column-gap: $spacing-sm;
+        display: flex;
+        flex-wrap: wrap;
+        padding: $spacing-sm $spacing-md;
+        row-gap: $spacing-xs;
+    }
+
+    &__filter-toggle {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid $color-border;
+        border-radius: $radius-sm;
+        color: $color-text-muted;
+        column-gap: $spacing-xs;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: $font-xs;
+        font-weight: 600;
+        padding: $spacing-xs $spacing-sm;
+        transition: all $transition-fast;
+        user-select: none;
+
+        // Native checkbox stays for a11y but is visually hidden — the
+        // active state lives on the label via the `--active` modifier.
+        input[type='checkbox'] {
+            height: 0;
+            margin: 0;
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            width: 0;
+        }
+
+        &:hover {
+            border-color: $color-accent;
+            color: $color-text;
+        }
+
+        &--active {
+            background: rgba(229, 57, 53, 0.18);
+            border-color: #e53935;
+            color: #ffcdd2;
+        }
+    }
+
+    &__filter-toggle-label { line-height: 1; }
+
+    &__filter-input {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid $color-border;
+        border-radius: $radius-sm;
+        column-gap: $spacing-xs;
+        display: inline-flex;
+        padding: 2px $spacing-sm;
+
+        input {
+            background: transparent;
+            border: 0;
+            color: $color-text;
+            font-size: $font-xs;
+            font-weight: 700;
+            outline: none;
+            padding: 4px 0;
+            width: 56px;
+
+            &::-webkit-outer-spin-button,
+            &::-webkit-inner-spin-button {
+                appearance: none;
+                margin: 0;
+            }
+            -moz-appearance: textfield;
+        }
+    }
+
+    &__filter-input-label {
+        color: $color-text-muted;
+        font-size: $font-xs;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    &__filter-clear {
+        background: transparent;
+        border: 1px dashed rgba(244, 67, 54, 0.4);
+        border-radius: $radius-sm;
+        color: #ef9a9a;
+        cursor: pointer;
+        font-size: $font-xs;
+        font-weight: 600;
+        margin-left: auto;
+        padding: $spacing-xs $spacing-sm;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: rgba(244, 67, 54, 0.12);
+            border-color: #f44336;
+            color: $color-text;
+        }
+    }
+
+    &__filters-empty {
+        text-align: center;
+        padding: $spacing-md;
+        color: $color-text-muted;
+        font-size: $font-sm;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px dashed $color-border;
+        border-radius: $radius-md;
+    }
+
+    // ── Raid card (1:1 with dungeon card chrome) ─────────────────────────────
+    // Visual language is intentionally identical to `.dungeon__card`: same
+    // image-driven background (`--card-image`), same hue gradient on the
+    // border + box-shadow, same shimmer ::before, same top glow ::after.
+    // The two list views must read interchangeably — only the corner labels
+    // ("4 fal × 4" vs. "4 fal") and reward callouts differ. Keep this rule
+    // in lock-step with Dungeon.scss `&__card` if anything changes there.
     &__card {
-        display: flex; flex-direction: column;
-        background: #1a1a28; border: 1px solid #2a2a3a;
-        padding: 12px; border-radius: 10px; cursor: pointer;
-        text-align: left; gap: 4px;
-        color: #e0e0e0;
+        --h: var(--card-hue, 220);
+        --card-image: none;
+        // Tile cap: a single raid card never grows past 1100px. Parent
+        // `__panel` is flex-column by default so cards stack centred via
+        // `align-self`; the ultrawide block at the bottom flips the panel
+        // to a 2-up wrapping row.
+        width: 100%;
+        max-width: 1100px;
+        align-self: center;
         position: relative;
-        &:hover:not(:disabled) { border-color: #e53935; transform: translateY(-2px); }
-        &:disabled { opacity: 0.45; cursor: not-allowed; }
-        &--locked { border-color: #444; }
-        &--done { opacity: 0.5; }
-        &-lvl { font-size: 12px; color: #ffc107; font-weight: bold; }
-        &-name { font-size: 16px; font-weight: bold; }
-        &-waves { font-size: 12px; color: #aaa; }
-        &-left { font-size: 11px; color: #4fc3f7; position: absolute; top: 10px; right: 10px; }
-        &-lock { position: absolute; bottom: 10px; right: 10px; font-size: 18px; }
+        overflow: hidden;
+        // `min-height` matches Dungeon — the per-raid painting needs a
+        // minimum canvas to read as a "biome shot" rather than a thin strip.
+        min-height: 240px;
+        // Image-driven background. The painting lives in the lowest layer;
+        // hue accents (border + box-shadow), shimmer (::before) and top glow
+        // (::after) all paint on top so the picture stays clean and the
+        // card still carries its level-coded identity. `background-color`
+        // is the fallback shown only when the art is missing
+        // (--card-image resolves to `none`).
+        background-color: $color-bg-card;
+        background-image: var(--card-image);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        border: 1px solid hsla(var(--h), 50%, 45%, 0.35);
+        border-left: 3px solid hsla(var(--h), 60%, 50%, 0.7);
+        border-radius: $radius-md;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+        box-shadow:
+            0 2px 16px hsla(var(--h), 50%, 25%, 0.2),
+            0 0 1px hsla(var(--h), 60%, 50%, 0.3),
+            inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.1);
+
+        // Animated shimmer overlay — sweeps across the card every 6s.
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                hsla(var(--h), 60%, 60%, 0.06),
+                transparent
+            );
+            animation: raid-card-shimmer 6s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        // Top glow accent line.
+        &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(
+                90deg,
+                transparent 10%,
+                hsla(var(--h), 70%, 60%, 0.4) 50%,
+                transparent 90%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        & > * { position: relative; z-index: 1; }
+
+        &:hover:not(&--blocked) {
+            border-color: hsla(var(--h), 60%, 55%, 0.65);
+            box-shadow:
+                0 6px 28px hsla(var(--h), 50%, 30%, 0.35),
+                0 0 2px hsla(var(--h), 60%, 50%, 0.5),
+                inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.15);
+            transform: translateY(-1px);
+        }
+
+        &--blocked { opacity: 0.6; }
+
+        // "All daily attempts used" — image stays clean (no green tint), state
+        // is signalled with a green border + reduced opacity so the card
+        // visibly recedes without obscuring the art. Mirrors dungeon's choice;
+        // the previous green-gradient overlay clobbered the whole picture.
+        &--all-done {
+            border-color: rgba(76, 175, 80, 0.5);
+            border-left-color: rgba(76, 175, 80, 0.75);
+            opacity: 0.65;
+
+            &::before { animation: none; }
+        }
     }
 
-    // ── Fighting layout ────────────────────────────────────────────────────
+    @keyframes raid-card-shimmer {
+        0%, 100% { left: -100%; opacity: 0; }
+        40% { opacity: 1; }
+        80% { left: 200%; opacity: 0; }
+    }
+
+    // ── Corner badges ────────────────────────────────────────────────────────
+    &__corner {
+        position: absolute;
+        top: 8px;
+        z-index: 2;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: hsla(var(--h, 220), 60%, 18%, 0.85);
+        border: 1px solid hsla(var(--h, 220), 60%, 50%, 0.45);
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+        pointer-events: none;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+
+        &--lvl   { left: 8px; }
+        &--waves { right: 8px; }
+
+        // "Pokonany" — sits between the lvl & waves pills, signalling that
+        // the player has used all daily attempts (which, for raids, only
+        // increment on victory — so this implies a clear). Same visual
+        // grammar as the dungeon's `&--cleared`: bumped one size class
+        // above the metadata pills, saturated green, outer glow. Reads
+        // as a status, not as another corner chip.
+        &--cleared {
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(46, 125, 50, 0.95);
+            border-color: rgba(129, 199, 132, 0.85);
+            color: #f1f8e9;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            padding: 4px 12px;
+            text-transform: uppercase;
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.6),
+                0 0 14px rgba(76, 175, 80, 0.5);
+        }
+    }
+
+    // ── Centred head (name + flavour) ────────────────────────────────────────
+    &__card-head {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: $spacing-xs;
+        text-align: center;
+        max-width: 400px;
+        margin: 28px auto 0;
+        padding: 0 $spacing-sm;
+    }
+
+    &__card-name {
+        font-size: $font-lg;
+        font-weight: 700;
+        margin: 0;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    &__card-desc {
+        font-size: $font-sm;
+        color: $color-text-muted;
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    // Reward callout — gold + xp summary. Borders previously framed this
+    // strip top & bottom to separate it from the head and the drop button,
+    // but they competed visually with the dashed borders on neighbouring
+    // cards (the painting backgrounds carry their own framing). Removed
+    // per user direction; spacing alone now handles the rhythm.
+    &__card-rewards {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: $spacing-md;
+        font-size: $font-sm;
+        color: rgba(255, 255, 255, 0.75);
+        font-weight: 600;
+        padding: $spacing-xs 0;
+    }
+
+    // ── Drop popup trigger ──────────────────────────────────────────────────
+    // Capped to 200px and centred so it visually pairs with the matching
+    // `__enter-btn--wide` below it instead of stretching across the whole
+    // tile — same shape both buttons now use.
+    &__drop-btn {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid hsla(var(--h, 220), 40%, 50%, 0.3);
+        border-radius: $radius-sm;
+        color: rgba(255, 255, 255, 0.75);
+        cursor: pointer;
+        font-size: $font-xs;
+        font-weight: 600;
+        padding: 6px 12px;
+        text-align: center;
+        transition: background $transition-fast, border-color $transition-fast, color $transition-fast;
+        width: 100%;
+        max-width: 200px;
+        align-self: center;
+
+        &:hover {
+            background: hsla(var(--h, 220), 50%, 25%, 0.5);
+            border-color: hsla(var(--h, 220), 60%, 55%, 0.6);
+            color: #fff;
+        }
+    }
+
+    // ── Drop-table modal ─────────────────────────────────────────────────────
+    &__modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: $spacing-md;
+        animation: raid-modal-fade 0.15s ease-out;
+    }
+
+    @keyframes raid-modal-fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    &__modal {
+        --h: var(--card-hue, 220);
+        background:
+            radial-gradient(ellipse at 15% 20%, hsla(var(--h), 65%, 28%, 0.5) 0%, transparent 55%),
+            linear-gradient(160deg, hsla(var(--h), 50%, 15%, 0.85) 0%, $color-bg-card 75%);
+        border: 1px solid hsla(var(--h), 60%, 50%, 0.5);
+        border-radius: $radius-md;
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.6),
+            0 0 0 1px hsla(var(--h), 60%, 50%, 0.3);
+        width: 100%;
+        max-width: 480px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        animation: raid-modal-pop 0.2s ease-out;
+    }
+
+    @keyframes raid-modal-pop {
+        from { opacity: 0; transform: scale(0.96) translateY(8px); }
+        to   { opacity: 1; transform: scale(1)    translateY(0);   }
+    }
+
+    &__modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: $spacing-sm;
+        padding: $spacing-sm $spacing-md;
+        border-bottom: 1px solid hsla(var(--h, 220), 50%, 50%, 0.25);
+        flex-shrink: 0;
+    }
+
+    &__modal-title {
+        font-size: $font-lg;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    &__modal-close {
+        background: transparent;
+        border: none;
+        color: $color-text-muted;
+        font-size: $font-lg;
+        cursor: pointer;
+        padding: 0 6px;
+        line-height: 1;
+
+        &:hover { color: #fff; }
+    }
+
+    &__modal-body {
+        overflow-y: auto;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-md;
+    }
+
+    &__drop-section {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    &__drop-section-title {
+        font-size: 10px;
+        color: $color-text-muted;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 2px;
+        font-weight: 600;
+    }
+
+    &__drop-info {
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.6);
+        padding: 1px 0;
+        line-height: 1.4;
+    }
+
+    &__drop-tier {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 1px 0;
+        font-size: 10px;
+    }
+
+    &__drop-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    &__drop-tier-name {
+        font-weight: 600;
+        min-width: 90px;
+    }
+
+    &__drop-tier-chance {
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    // ── Attempts strip ──────────────────────────────────────────────────────
+    &__attempts {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.65);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 $spacing-xs;
+
+        > span { font-weight: 600; }
+    }
+
+    &__attempts-bar {
+        flex: 1;
+        max-width: 160px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    &__attempts-bar-fill {
+        height: 100%;
+        background: #4caf50;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+        &--full { background: $color-accent; }
+    }
+
+    &__cooldown, &__locked {
+        font-size: $font-sm;
+        color: $color-text-muted;
+        text-align: center;
+    }
+
+    // ── Wide CTA button (1:1 with dungeon enter btn) ────────────────────────
+    // Hollow look (transparent fill + 2px hue-coloured border) capped at
+    // 200px wide and centred so it visually pairs with the matching
+    // `__drop-btn` above it instead of stretching across the whole tile.
+    // Previously this was a filled gradient bar — replaced to keep the
+    // raid list visually identical to the dungeon list per the parity
+    // spec; only the corner labels and combat path remain raid-specific.
+    &__enter-btn {
+        background: $color-accent;
+        border: none;
+        border-radius: $radius-sm;
+        color: white;
+        cursor: pointer;
+        font-size: $font-sm;
+        font-weight: 600;
+        padding: $spacing-xs $spacing-lg;
+        transition: background $transition-fast;
+        &:hover { background: $color-accent-hover; }
+
+        &--wide {
+            width: 100%;
+            max-width: 200px;
+            align-self: center;
+            padding: 10px $spacing-lg;
+            font-size: $font-md;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            background: transparent;
+            border: 2px solid hsla(var(--h, 220), 70%, 50%, 0.9);
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 0 12px hsla(var(--h, 220), 65%, 40%, 0.35);
+
+            &:hover {
+                background: hsla(var(--h, 220), 65%, 40%, 0.18);
+                border-color: hsla(var(--h, 220), 75%, 60%, 1);
+                box-shadow: 0 0 18px hsla(var(--h, 220), 70%, 50%, 0.55);
+                transform: translateY(-1px);
+            }
+        }
+    }
+
+    // ── Fighting layout ─────────────────────────────────────────────────────
     &--fighting {
         background: linear-gradient(180deg, #0d0d1a 0%, #1a1a28 100%);
     }
 
-    &__topbar {
-        display: flex; justify-content: space-between; align-items: center;
-        background: #1a1a28; padding: 8px 16px; border-radius: 8px; margin-bottom: 12px;
-    }
-
-    &__speed {
-        display: flex; gap: 4px;
-        button {
-            background: #2a2a3a; border: 1px solid #333; color: #ccc;
-            padding: 4px 10px; border-radius: 4px; cursor: pointer;
-            &.is-active { background: #e53935; color: white; border-color: #e53935; }
-        }
-    }
-
-    &__escape {
-        background: #b71c1c; color: white; border: none; padding: 6px 14px;
-        border-radius: 6px; cursor: pointer; font-weight: bold;
-    }
-
-    &__arena {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        flex: 1;
-        @media (max-width: 768px) { grid-template-columns: 1fr; }
-    }
-
-    &__members, &__bosses {
-        display: flex; flex-direction: column; gap: 8px;
-    }
-
-    &__member {
-        background: #1f1f2e; border: 2px solid #888; border-radius: 8px;
-        padding: 10px; transition: opacity 0.3s;
-        &.is-dead { opacity: 0.4; filter: grayscale(1); }
-        &.is-escaped { opacity: 0.3; border-style: dashed; }
-
-        &-head {
-            display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;
-        }
-        &-name { font-weight: bold; flex: 1; }
-        &-class { font-size: 11px; text-transform: uppercase; }
-        &-tier, &-bot { font-size: 11px; background: #333; padding: 1px 6px; border-radius: 3px; }
-    }
-
-    &__boss {
-        background: #1f1f2e; border: 2px solid #b71c1c; border-radius: 8px;
-        padding: 12px; position: relative;
-        &.is-dead { opacity: 0.3; filter: grayscale(1); }
-
-        &-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        &-sprite { font-size: 28px; }
-        &-name { font-weight: bold; }
-    }
-
-    &__bar {
-        position: relative; height: 18px; background: #0a0a10; border-radius: 4px;
-        overflow: hidden; margin-top: 4px;
-        div { height: 100%; transition: width 0.2s; }
-        span {
-            position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-            text-align: center; font-size: 11px; line-height: 18px;
-            color: white; text-shadow: 0 0 2px black;
-        }
-        &--hp div { background: linear-gradient(90deg, #d32f2f, #f44336); }
-        &--mp div { background: linear-gradient(90deg, #1976d2, #2196f3); }
-    }
-
+    // Skill FX overlay (rendered inside the shared CombatArena overlay slot).
     &__fx {
-        position: absolute; top: 10px; right: 10px; font-size: 42px;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 42px;
         animation: raid-fx-pop 0.9s ease-out forwards;
         pointer-events: none;
     }
 
-    &__log {
-        background: #0a0a12; border: 1px solid #2a2a3a; border-radius: 6px;
-        padding: 8px 12px; margin-top: 12px; max-height: 140px; overflow-y: auto;
-        font-family: monospace; font-size: 12px;
-        div { line-height: 1.4; }
+    @keyframes raid-fx-pop {
+        0%   { transform: scale(0.4); opacity: 0; }
+        30%  { transform: scale(1.4); opacity: 1; }
+        100% { transform: scale(1.1); opacity: 0; }
     }
 
-    // ── Result ─────────────────────────────────────────────────────────────
-    &__result {
-        display: flex; flex-direction: column; gap: 12px; max-width: 700px; margin: 0 auto;
+    // ── Result screen (per-member loot tiles) ───────────────────────────────
+    &__result-header {
+        text-align: center;
+        margin: 24px auto 12px;
+        h1 { margin: 0; font-size: 28px; }
+    }
 
-        &-member {
-            background: #1a1a28; border: 2px solid; border-radius: 8px; padding: 12px;
-            h3 { margin: 0 0 8px; }
-            ul { margin: 0; padding-left: 18px; }
+    &__result-sub {
+        margin: 4px 0 0;
+        color: $color-text-muted;
+        font-size: $font-sm;
+    }
+
+    &__result {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-md;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: $spacing-md;
+    }
+
+    &__result-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: $spacing-md;
+    }
+
+    &__result-member {
+        --h: var(--card-hue, 220);
+        background:
+            radial-gradient(ellipse at 15% 20%, hsla(var(--h), 65%, 28%, 0.45) 0%, transparent 55%),
+            linear-gradient(160deg, hsla(var(--h), 50%, 15%, 0.55) 0%, $color-bg-card 75%);
+        border: 2px solid;
+        border-radius: $radius-md;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+        box-shadow:
+            0 2px 14px hsla(var(--h), 50%, 25%, 0.18),
+            inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.1);
+
+        &--escaped {
+            opacity: 0.55;
+            border-style: dashed !important;
         }
     }
 
+    &__result-member-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    &__result-member-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 6px currentColor;
+    }
+
+    &__result-member-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    &__result-member-name {
+        margin: 0;
+        font-size: $font-md;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    &__result-member-meta {
+        font-size: $font-xs;
+        color: $color-text-muted;
+    }
+
+    &__result-member-empty {
+        margin: 0;
+        font-size: $font-xs;
+        color: $color-text-muted;
+        font-style: italic;
+    }
+
+    &__result-drops {
+        // Icon grid — every drop kind (item / stone / chest / potion / xp / gold)
+        // renders as an <ItemIcon> tile, so the result list visually mirrors
+        // the dungeon win-screen instead of being a wall of text. Auto-fill
+        // wraps icons across rows so even members with 10+ drops stay tidy.
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        gap: 6px;
+    }
+
+    // Completion-roll bonus item — pulled out of the regular drop grid and
+    // rendered under its own "🎁 Dodatkowy item:" header so the player can
+    // immediately see what they earned for clearing the whole raid (vs.
+    // getting lost in 20+ per-boss icons above).
+    &__result-bonus {
+        margin-top: $spacing-sm;
+        padding-top: $spacing-sm;
+        border-top: 1px solid rgba(255, 255, 255, 0.10);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__result-bonus-label {
+        font-size: $font-xs;
+        color: $color-text-muted;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    &__result-bonus-icons {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        gap: 6px;
+    }
+
+    &__result-wipe {
+        text-align: center;
+        color: #ef9a9a;
+        font-size: $font-sm;
+        margin: 0;
+    }
+
     &__drop {
-        &--common { color: #cccccc; }
-        &--rare { color: #4fc3f7; }
-        &--epic { color: #ba68c8; }
-        &--legendary { color: #ff9800; }
-        &--mythic { color: #f48fb1; }
-        &--heroic { color: #ffd54f; font-weight: bold; }
+        font-size: $font-sm;
+        // Canonical rarity palette — matches RAID_RARITY_COLOR in Raid.tsx
+        // and the rarity dots in the drop modal so the win-screen list reads
+        // in the same palette as everything else in the app.
+        //   common = white, rare = blue, epic = green,
+        //   legendary = red, mythic = yellow, heroic = purple
+        &--common    { color: #ffffff; }
+        &--rare      { color: #2196f3; }
+        &--epic      { color: #4caf50; }
+        &--legendary { color: #f44336; }
+        &--mythic    { color: #ffc107; }
+        &--heroic    { color: #9c27b0; font-weight: bold; }
+    }
+
+    // Result-screen footer — flex row that holds "Ponów" + "Powrót do lobby"
+    // (or just the lobby button on wipe). Centred, wraps on narrow screens.
+    // Both buttons stretch to share equal width so the shorter "Ponów"
+    // label doesn't render as a tiny chip next to "Powrót do lobby".
+    &__result-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-sm;
+        justify-content: center;
+        align-items: stretch;
+        margin: $spacing-md auto 0;
+
+        > .raid__primary {
+            // Each button takes an equal share of the row, capped at
+            // 220 px so on very wide screens they don't sprawl.
+            flex: 1 1 0;
+            min-width: 180px;
+            max-width: 220px;
+        }
     }
 
     &__primary {
-        background: #e53935; color: white; border: none; padding: 10px 24px;
-        border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 16px;
-        align-self: center;
-    }
-}
+        background: $color-accent;
+        color: white;
+        border: none;
+        // Fixed line-height + box-sizing so the button height is identical
+        // regardless of label contents — emoji glyphs render taller than
+        // plain text otherwise, leaving "⚔️ Ponów" 7 px shorter than
+        // "Powrót do lobby" with default `line-height: normal`.
+        padding: 0 24px;
+        height: 44px;
+        line-height: 44px;
+        box-sizing: border-box;
+        border-radius: $radius-sm;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: $font-md;
+        transition: background $transition-fast, box-shadow $transition-fast;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
+        &:hover { background: $color-accent-hover; }
 
-@keyframes raid-fx-pop {
-    0%   { transform: scale(0.4); opacity: 0; }
-    30%  { transform: scale(1.4); opacity: 1; }
-    100% { transform: scale(1.1); opacity: 0; }
+        // Replay variant — vivid green (no level-hue tint) so the player can
+        // tell at a glance "this restarts the raid I just cleared". Fixed
+        // gradient, drops the hue var so it stands out next to the
+        // hue-tinted "Powrót do lobby" sibling regardless of raid level.
+        &--retry {
+            background: linear-gradient(135deg, #43a047, #2e7d32);
+            box-shadow:
+                0 2px 12px rgba(67, 160, 71, 0.45),
+                0 0 0 1px rgba(76, 175, 80, 0.45) inset;
+            &:hover {
+                background: linear-gradient(135deg, #4caf50, #388e3c);
+                box-shadow:
+                    0 4px 16px rgba(76, 175, 80, 0.55),
+                    0 0 0 1px rgba(102, 187, 106, 0.55) inset;
+            }
+        }
+
+        // Hued variant — picks up the raid card's level-coded hue (set via
+        // `--btn-hue` inline) so the "Powrót do lobby" button on the
+        // result screen matches the lobby card border the player came in
+        // from. Same hsl() ramp the card itself uses, just rendered as a
+        // subtle gradient instead of a flat fill.
+        &--hued {
+            --h: var(--btn-hue, 220);
+            background: linear-gradient(
+                135deg,
+                hsl(var(--h), 60%, 50%),
+                hsl(var(--h), 65%, 38%)
+            );
+            box-shadow:
+                0 2px 12px hsla(var(--h), 60%, 35%, 0.45),
+                0 0 0 1px hsla(var(--h), 70%, 60%, 0.45) inset;
+            &:hover {
+                background: linear-gradient(
+                    135deg,
+                    hsl(var(--h), 65%, 56%),
+                    hsl(var(--h), 70%, 44%)
+                );
+                box-shadow:
+                    0 4px 16px hsla(var(--h), 70%, 45%, 0.55),
+                    0 0 0 1px hsla(var(--h), 75%, 65%, 0.55) inset;
+            }
+        }
+    }
 }

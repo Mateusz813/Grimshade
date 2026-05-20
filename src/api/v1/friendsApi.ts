@@ -48,15 +48,33 @@ const decorate = (row: IRawCharacter): IFriendCharacterInfo => {
 };
 
 class FriendsApi extends BaseApi {
-    /** Look up a single character by exact name (case-sensitive). */
+    /**
+     * Look up a character by name — case-insensitive **prefix** match.
+     *
+     * 2026-05-19 spec ("Jak pisze Knigh to powinno mi znalezc gracza
+     * Knight tez"): the old `name=eq.{exact}` only returned a hit on
+     * a perfect literal, so typos / partial typing always landed on
+     * "Nie znaleziono". The new query is `name=ilike.{q}*` —
+     * PostgREST's ILIKE pattern (case-insensitive, `*` = `%`
+     * wildcard) — capped at 5 results, ordered alphabetically.
+     *
+     * If the query exactly equals one of the candidates we prefer
+     * that hit so "Knight" still resolves to "Knight" even when
+     * "Knight2" sorts in front alphabetically; otherwise the first
+     * prefix match wins.
+     */
     findByName = async (name: string): Promise<IFriendCharacterInfo | null> => {
-        const encoded = encodeURIComponent(name.trim());
-        if (!encoded) return null;
+        const clean = name.trim();
+        if (!clean) return null;
+        const pattern = `${clean}*`;
+        const encoded = encodeURIComponent(pattern);
         const data = await this.get<IRawCharacter[]>({
-            url: `/rest/v1/characters?name=eq.${encoded}&select=id,name,class,level,updated_at&limit=1`,
+            url: `/rest/v1/characters?name=ilike.${encoded}&select=id,name,class,level,updated_at&order=name.asc&limit=5`,
         });
         if (!data.length) return null;
-        return decorate(data[0]);
+        const lc = clean.toLowerCase();
+        const exact = data.find((r) => r.name.toLowerCase() === lc);
+        return decorate(exact ?? data[0]);
     };
 
     /** Bulk fetch character rows for a list of friend names. */

@@ -169,6 +169,27 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   cosmic_hymn:      anim('music',    '🌌'),
   god_ballad:       anim('music',    '👑'),
   universe_song:    anim('music',    '🌠'),
+
+  // ── Guild boss spells (2026-05-18 v11) ───────────────────────────────────
+  // The guild dungeon boss draws from its own spell registry
+  // (`data/guildBossSpells.ts`). Registering the ids here lets
+  // `useCombatFx.triggerAllySkillAnim(slot, spellId)` find a themed
+  // overlay so the player sees fire / poison / lightning / dark
+  // bursts on their tile instead of just a damage float.
+  cios:             anim('physical',  '⚔️'),
+  pozoga:           anim('fire',      '🔥'),
+  mroz:             anim('ice',       '❄️'),
+  burza:            anim('lightning', '⚡'),
+  klatwa:           anim('dark',      '👁️'),
+  krwawienie:       anim('poison',    '🩸'),
+  eksplozja:        anim('fire',      '💥'),
+  swietlistosc:     anim('holy',      '✨'),
+  mrocznaAura:      anim('dark',      '🌌'),
+  // Apocalypse-tier spells reuse the arcane/dark keyframes — no
+  // dedicated 'apocalypse' preset, but arcane reads as cataclysmic
+  // enough at the tier-9/10 cadence.
+  apokalipsa:       anim('arcane',    '☠️'),
+  apokalipsaCienia: anim('dark',      '💀'),
 };
 
 /**

@@ -32,14 +32,26 @@ export interface IPartyInfo {
   isPublic?: boolean;
   /** Capacity — defaults to `MAX_PARTY_SIZE` when not synced from server. */
   maxMembers?: number;
+  /** 2026-05-13: minimum character level a joiner must meet. 1 (or
+   *  undefined) = open to anyone. Enforced both client-side (Dołącz
+   *  button disabled below the floor) and server-side (partyApi join). */
+  minJoinLevel?: number;
 }
 
-// ── Multipliers (CLAUDE.md formula) ──────────────────────────────────────────
+// ── Multipliers ──────────────────────────────────────────────────────────────
+// 2026-05-09 spec ("nie wiele wiekszy 0.5% za kazdego czlonka i 6.5% XP za
+// kazdego czlonka party"): the bonus per extra ally is small but real.
 
-/** Drop rate multiplier for a given party size. */
+/** Drop rate multiplier for a given party size — +0.5% per extra ally. */
 export const calculateDropMultiplier = (partySize: number): number => {
   const size = Math.max(1, Math.min(partySize, MAX_PARTY_SIZE));
-  return 1 + (size - 1) * 0.15;
+  return 1 + (size - 1) * 0.005;
+};
+
+/** XP multiplier for a given party size — +6.5% per extra ally. */
+export const calculateXpMultiplier = (partySize: number): number => {
+  const size = Math.max(1, Math.min(partySize, MAX_PARTY_SIZE));
+  return 1 + (size - 1) * 0.065;
 };
 
 /** Monster difficulty multiplier for a given party size. */
@@ -125,6 +137,7 @@ export interface IPartySummary {
   botMembers: number;
   avgLevel: number;
   dropMultiplier: number;
+  xpMultiplier: number;
   difficultyMultiplier: number;
 }
 
@@ -138,6 +151,7 @@ export const getPartySummary = (members: IPartyMember[]): IPartySummary => {
     botMembers:           getBotCount(members),
     avgLevel,
     dropMultiplier:       calculateDropMultiplier(size),
+    xpMultiplier:         calculateXpMultiplier(size),
     difficultyMultiplier: calculateDifficultyMultiplier(size),
   };
 };
@@ -246,6 +260,43 @@ export const getPartyGateLevel = (
   const lowest = humans.reduce((min, m) => (m.level < min ? m.level : min), Infinity);
   if (!Number.isFinite(lowest)) return myLevel;
   return Math.min(myLevel, lowest);
+};
+
+/**
+ * 2026-05-11 spec ("lider party powinien widziec tylko te potwory ktore
+ * sa dostepne przez party"): the party's effective monster-unlock cap.
+ *
+ * Each member's client computes their own `maxUnlockedMonsterLevel`
+ * (highest monster level they have unlocked — level gate + mastery
+ * prereq on previous monster) and broadcasts it via party presence.
+ * This helper takes the local player's value plus the presence map
+ * and returns the MIN across all human members. Any monster above
+ * this cap should be hidden from the leader's picker — the party
+ * can't all fight it.
+ *
+ * Bots are excluded (they auto-scale, see createBotHelper). Members
+ * with no presence snapshot yet are skipped — they can't block a
+ * fight until we know what they have. This is intentional: a member
+ * who just joined sees a 1-2 s window where the cap reflects existing
+ * presence, then their snapshot lands and the cap snaps to the real
+ * min.
+ */
+export const getPartyMaxUnlockedMonsterLevel = (
+  myMaxUnlockedLevel: number,
+  members: IPartyMember[] | null | undefined,
+  presenceByMember: Record<string, { maxUnlockedMonsterLevel?: number }>,
+  myCharacterId: string,
+): number => {
+  let cap = myMaxUnlockedLevel;
+  if (!members || members.length === 0) return cap;
+  for (const m of members) {
+    if (m.isBot) continue;
+    if (m.id === myCharacterId) continue;
+    const snap = presenceByMember[m.id];
+    if (snap?.maxUnlockedMonsterLevel === undefined) continue;
+    if (snap.maxUnlockedMonsterLevel < cap) cap = snap.maxUnlockedMonsterLevel;
+  }
+  return cap;
 };
 
 // ── Aggro class weights ───────────────────────────────────────────────────────

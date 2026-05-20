@@ -132,8 +132,34 @@ export const SKILL_ICONS: Record<string, string> = {
 };
 
 /**
- * Get the icon for a skill by its id. Returns a generic sparkle if not found.
+ * Get the icon for a skill by its id.
+ *
+ * Now resolves to the per-class artwork at
+ * `assets/images/spells/{class}-{index}.png` when available — falls back
+ * to the historic emoji map (and finally a generic sparkle) so legacy
+ * call sites don't break while the artwork registry is being populated.
  */
+import skillsData from './skills.json';
+import { getSpellImage } from '../systems/spriteAssets';
+
+interface IActiveSkillRow { id: string }
+
+const SKILL_TO_IMAGE_KEY: Record<string, { className: string; index: number }> = (() => {
+  const out: Record<string, { className: string; index: number }> = {};
+  const classes = skillsData.activeSkills as Record<string, IActiveSkillRow[]>;
+  for (const [cls, skills] of Object.entries(classes)) {
+    skills.forEach((s, idx) => {
+      out[s.id] = { className: cls, index: idx + 1 };
+    });
+  }
+  return out;
+})();
+
 export const getSkillIcon = (skillId: string): string => {
+  const key = SKILL_TO_IMAGE_KEY[skillId];
+  if (key) {
+    const url = getSpellImage(key.className, key.index);
+    if (url) return url;
+  }
   return SKILL_ICONS[skillId] ?? '✦';
 };

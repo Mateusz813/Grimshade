@@ -6,27 +6,33 @@ import { useOfflineHuntStore } from '../stores/offlineHuntStore';
 import { useActivityTracker } from '../hooks/useActivityTracker';
 import { useGlobalChatNotifications } from '../hooks/useGlobalChatNotifications';
 
-import BuffBar from '../components/ui/BuffBar/BuffBar';
-import FloatingNav from '../components/ui/FloatingNav/FloatingNav';
+import AppShell from '../components/layout/AppShell/AppShell';
 import DeathNotification from '../components/ui/DeathNotification/DeathNotification';
+import ChatUnreadBadge from '../components/ui/ChatUnreadBadge/ChatUnreadBadge';
 import Login from '../views/Auth/Login/Login';
 import Register from '../views/Auth/Register/Register';
 import ForgotPassword from '../views/Auth/ForgotPassword/ForgotPassword';
 import CharacterSelect from '../views/CharacterSelect/CharacterSelect';
 import CharacterCreate from '../views/CharacterCreate/CharacterCreate';
 import Town from '../views/Town/Town';
+import Battle from '../views/Battle/Battle';
 import Combat from '../views/Combat/Combat';
 import Dungeon from '../views/Dungeon/Dungeon';
 import Boss from '../views/Boss/Boss';
 import Inventory from '../views/Inventory/Inventory';
 import Deposit from '../views/Deposit/Deposit';
-import Skills from '../views/Skills/Skills';
+// Skills view retired (2026-05 v5) — its content lives inside the
+// Postać section's popups (Active Skills + Training popups) so the
+// dedicated `/skills` route is no longer needed.
 import Leaderboard from '../views/Leaderboard/Leaderboard';
 import Shop from '../views/Shop/Shop';
 import Party from '../views/Party/Party';
 import Tasks from '../views/Tasks/Tasks';
 import Quests from '../views/Quests/Quests';
-import CharacterStats from '../views/CharacterStats/CharacterStats';
+// CharacterStats view retired (2026-05 v6) — stat-point distribution moved
+// into the Postać section (/inventory). Combat HUD's "+N statystyk" badge
+// also gone in this pass; players see the unspent-points hint on the Postać
+// tab and the 4-tile distributor on the /inventory view itself.
 import MonsterList from '../views/MonsterList/MonsterList';
 import Market from '../views/Market/Market';
 import Transform from '../views/Transform/Transform';
@@ -35,8 +41,12 @@ import OfflineHunt from '../views/OfflineHunt/OfflineHunt';
 import Guild from '../views/Guild/Guild';
 import GlobalChat from '../views/GlobalChat/GlobalChat';
 import Friends from '../views/Friends/Friends';
+import Social from '../views/Social/Social';
 import Raid from '../views/Raid/Raid';
+import Arena from '../views/Arena/Arena';
+import ArenaMatch from '../views/Arena/ArenaMatch';
 import Trainer from '../views/Trainer/Trainer';
+import OnlineOnlyGuard from './OnlineOnlyGuard';
 
 interface IAppRouterProps {
     session: Session | null;
@@ -85,9 +95,8 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
 
     return (
         <>
-            <BuffBar />
-            <FloatingNav />
             <DeathNotification />
+            <AppShell>
             <Routes>
                 {/* Public routes */}
                 <Route
@@ -136,6 +145,14 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
 
                 {/* Game routes – all protected */}
                 <Route
+                    path="/battle"
+                    element={
+                        <ProtectedRoute session={session}>
+                            <Battle />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
                     path="/combat"
                     element={
                         <ProtectedRoute session={session}>
@@ -176,18 +193,10 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     }
                 />
                 <Route
-                    path="/skills"
-                    element={
-                        <ProtectedRoute session={session}>
-                            <Skills />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
                     path="/leaderboard"
                     element={
                         <ProtectedRoute session={session}>
-                            <Leaderboard />
+                            <OnlineOnlyGuard><Leaderboard /></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -203,7 +212,7 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     path="/party"
                     element={
                         <ProtectedRoute session={session}>
-                            <Party />
+                            <OnlineOnlyGuard><Party /></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -223,14 +232,10 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                         </ProtectedRoute>
                     }
                 />
-                <Route
-                    path="/stats"
-                    element={
-                        <ProtectedRoute session={session}>
-                            <CharacterStats />
-                        </ProtectedRoute>
-                    }
-                />
+                {/* /stats retired — every reference now redirects to /inventory
+                    where the Postać view hosts the 4-tile stat-point distributor
+                    above the action row. */}
+                <Route path="/stats" element={<Navigate to="/inventory" replace />} />
                 <Route
                     path="/monsters"
                     element={
@@ -247,7 +252,7 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     path="/market"
                     element={
                         <ProtectedRoute session={session}>
-                            <Market />
+                            <OnlineOnlyGuard><Market /></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -263,7 +268,7 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     path="/deaths"
                     element={
                         <ProtectedRoute session={session}>
-                            <Deaths />
+                            <OnlineOnlyGuard><Deaths /></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -287,7 +292,7 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     path="/chat"
                     element={
                         <ProtectedRoute session={session}>
-                            <GlobalChat />
+                            <OnlineOnlyGuard><GlobalChat /></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -295,7 +300,15 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     path="/friends"
                     element={
                         <ProtectedRoute session={session}>
-                            <Friends />
+                            <OnlineOnlyGuard><Friends /></OnlineOnlyGuard>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/social"
+                    element={
+                        <ProtectedRoute session={session}>
+                            <OnlineOnlyGuard><Social /></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -303,7 +316,23 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     path="/raid"
                     element={
                         <ProtectedRoute session={session}>
-                            <CombatGuard><Raid /></CombatGuard>
+                            <OnlineOnlyGuard><CombatGuard><Raid /></CombatGuard></OnlineOnlyGuard>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/arena"
+                    element={
+                        <ProtectedRoute session={session}>
+                            <OnlineOnlyGuard><Arena /></OnlineOnlyGuard>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/arena/match"
+                    element={
+                        <ProtectedRoute session={session}>
+                            <OnlineOnlyGuard><CombatGuard><ArenaMatch /></CombatGuard></OnlineOnlyGuard>
                         </ProtectedRoute>
                     }
                 />
@@ -319,6 +348,12 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                 {/* Catch-all */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </AppShell>
+            {/* 2026-05-19 v5: floating chat icon lives INSIDE the
+                Router so Chat's `useNavigate` works when the popup
+                mounts. The badge itself gates on character presence
+                so it stays hidden on /login / /character-select. */}
+            <ChatUnreadBadge />
         </>
     );
 };

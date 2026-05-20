@@ -5,15 +5,103 @@ import {
   STONE_CONVERSION_CHAIN,
   STONE_CONVERSION_COST,
   STONE_CONVERSION_GOLD,
+  flattenItemsData,
+  getSellPrice,
+  getTotalEquipmentStats,
   type IInventoryItem,
   type IEquipment,
   type EquipmentSlot,
   type Rarity,
 } from '../systems/itemSystem';
+import itemsRaw from '../data/items.json';
+import { useSettingsStore } from './settingsStore';
+
+// 2026-05-21: items.json baseline cache used by `equipItem` /
+// `unequipItem` to compute the HP/MP delta a gear change produces. The
+// flattened list is shared with the Inventory view + offline hunt
+// reward path so memoising it once at module load is essentially free.
+const ALL_ITEMS_FOR_STATS = flattenItemsData(
+  itemsRaw as Parameters<typeof flattenItemsData>[0],
+);
+
+/**
+ * 2026-05-21 spec ("Jezeli zaloze eq ktore dodaje HP lub MP ... to tam
+ * mam mniej HP niz powinienem miec"): equipping HP / MP gear used to
+ * bump effective `max_hp` / `max_mp` but leave `character.hp` /
+ * `character.mp` untouched. The bar then read at less than 100% (e.g.
+ * 4000 / 5000) right after equipping and stayed there indefinitely —
+ * the player perceived this as "missing HP" and got even more confused
+ * when leaving + re-entering the character (the value persisted, but
+ * the chrome on character-select made it look like progress was lost).
+ *
+ * Fix: every equip / unequip recomputes the equipment HP/MP delta and
+ * adjusts `character.hp` / `character.mp` by the SAME amount, clamped
+ * to the post-change base + equip range. Net effect:
+ *   • Equip +1000 HP gear → current HP jumps by +1000 (bar fills).
+ *   • Unequip the gear → current HP drops by 1000 (bar shrinks).
+ *   • Swapping a +500 for a +1000 → current HP goes up by +500.
+ *
+ * Uses a deferred microtask + lazy `import('./characterStore')` to
+ * break the import cycle (`characterStore` imports `inventoryStore`).
+ */
+const applyEquipmentHpMpDelta = (
+  oldEquipment: Partial<IEquipment>,
+  newEquipment: Partial<IEquipment>,
+): void => {
+  let oldStats;
+  let newStats;
+  try {
+    oldStats = getTotalEquipmentStats(oldEquipment, ALL_ITEMS_FOR_STATS);
+    newStats = getTotalEquipmentStats(newEquipment, ALL_ITEMS_FOR_STATS);
+  } catch {
+    return;
+  }
+  const deltaHp = (newStats.hp ?? 0) - (oldStats.hp ?? 0);
+  const deltaMp = (newStats.mp ?? 0) - (oldStats.mp ?? 0);
+  if (deltaHp === 0 && deltaMp === 0) return;
+  // Lazy import — characterStore imports inventoryStore, so a static
+  // import here would create a cycle. The deferred resolve happens on
+  // the next microtask, after the inventory `set()` lands.
+  void import('./characterStore').then(({ useCharacterStore }) => {
+    const ch = useCharacterStore.getState().character;
+    if (!ch) return;
+    // Cap at (base + new equip) so a player who just swapped to a
+    // weaker piece can never exceed the new headroom. Elixir /
+    // transform multipliers are intentionally NOT folded in — the
+    // delta we apply is in raw equip space, so the upper clamp is
+    // also in raw equip space.
+    const newMaxHp = (ch.max_hp ?? 0) + (newStats.hp ?? 0);
+    const newMaxMp = (ch.max_mp ?? 0) + (newStats.mp ?? 0);
+    const nextHp = Math.max(0, Math.min(newMaxHp, (ch.hp ?? 0) + deltaHp));
+    const nextMp = Math.max(0, Math.min(newMaxMp, (ch.mp ?? 0) + deltaMp));
+    if (nextHp === (ch.hp ?? 0) && nextMp === (ch.mp ?? 0)) return;
+    useCharacterStore.getState().updateCharacter({
+      hp: nextHp,
+      mp: nextMp,
+    });
+  }).catch(() => { /* characterStore not yet loaded — fine */ });
+};
+
+// Maps a rarity to the matching auto-sell flag in settingsStore.
+// 2026-05 spec: every code path that adds an item to the bag must run
+// it through this filter so the player's auto-sell preference applies
+// universally — task drops, dungeon loot, boss rewards, transform
+// rewards, raid loot, offline-hunt rewards, etc.
+const isAutoSellRarity = (rarity: Rarity): boolean => {
+  const s = useSettingsStore.getState();
+  switch (rarity) {
+    case 'common':    return s.autoSellCommon;
+    case 'rare':      return s.autoSellRare;
+    case 'epic':      return s.autoSellEpic;
+    case 'legendary': return s.autoSellLegendary;
+    case 'mythic':    return s.autoSellMythic;
+    default:          return false;
+  }
+};
 
 /** Max inventory bag slots. */
-const MAX_BAG_SIZE = 1000;
-const MAX_DEPOSIT_SIZE = 10000;
+export const MAX_BAG_SIZE = 1000;
+export const MAX_DEPOSIT_SIZE = 10000;
 
 // Rarity order from lowest (auto-sold first) to highest (never auto-sold).
 // When the bag is full and a new item arrives, the lowest-rarity item is
@@ -66,6 +154,8 @@ interface IInventoryStore {
   /** Per-character bank storage (max 10000 slots). Items here are NEVER lost on death. */
   deposit: IInventoryItem[];
   gold: number;
+  /** Arena points — PvP currency, separate from gold. Spent in arena shop / pool. */
+  arenaPoints: number;
   /** consumable id → count owned */
   consumables: Record<string, number>;
   /** stone id → count owned (stackable enhancement stones) */
@@ -73,6 +163,14 @@ interface IInventoryStore {
 
   /** Returns false when bag is full. */
   addItem: (item: IInventoryItem) => boolean;
+  /**
+   * Place an item into the bag bypassing auto-sell. Used by code paths
+   * where the player EXPLICITLY wants the item (market cancel, market
+   * buy, equip-revert), so a stale "auto-sell rare" toggle never
+   * silently converts the item back to gold. Returns false when the
+   * bag is full — caller should show "Plecak pełny" before calling.
+   */
+  restoreItem: (item: IInventoryItem) => boolean;
   removeItem: (uuid: string) => void;
   /** Moves item from bag into the given equipment slot, swapping if occupied. */
   equipItem: (uuid: string, slot: EquipmentSlot) => void;
@@ -84,6 +182,10 @@ interface IInventoryStore {
   sellMultiple: (uuids: string[], getSellPriceFn: (item: IInventoryItem) => number) => number;
   addGold: (amount: number) => void;
   spendGold: (amount: number) => boolean;
+  /** Add arena points (separate currency from gold; earned in PvP arena). */
+  addArenaPoints: (amount: number) => void;
+  /** Spend arena points; returns false when balance is too low. */
+  spendArenaPoints: (amount: number) => boolean;
   /** Increases the upgrade level of an item by 1 (in bag or equipment). */
   upgradeItem: (uuid: string) => void;
   /** Replace an item's bonuses with new ones (used by bonus reroll). */
@@ -124,11 +226,21 @@ export const useInventoryStore = create<IInventoryStore>()(
       equipment: { ...EMPTY_EQUIPMENT },
       deposit: [],
       gold: 0,
+      arenaPoints: 0,
       consumables: {},
       stones: {},
 
       addItem: (item) => {
         const { bag, gold } = get();
+        // 2026-05 spec 4: universal auto-sell hook. Every incoming item
+        // (drops, quest rewards, dungeon/boss/raid/transform/arena loot,
+        // offline-hunt) flows through here, so a single rarity-flag flip
+        // in settingsStore controls auto-sell across the whole app.
+        if (isAutoSellRarity(item.rarity)) {
+          const price = getSellPrice(item);
+          set({ gold: gold + price });
+          return true; // treated as "added" — caller doesn't need to know it was sold
+        }
         if (bag.length < MAX_BAG_SIZE) {
           set({ bag: [...bag, item] });
           return true;
@@ -158,6 +270,18 @@ export const useInventoryStore = create<IInventoryStore>()(
         return true;
       },
 
+      // 2026-05-08: paired with addItem but skips the auto-sell hook.
+      // Caller asserts the player WANTS this item in their bag (e.g.
+      // market cancel returning escrowed loot, market buy, raid kick
+      // refund). If the bag is full we return false — caller is
+      // responsible for surfacing that to the player.
+      restoreItem: (item) => {
+        const { bag } = get();
+        if (bag.length >= MAX_BAG_SIZE) return false;
+        set({ bag: [...bag, item] });
+        return true;
+      },
+
       removeItem: (uuid) =>
         set((s) => ({ bag: s.bag.filter((i) => i.uuid !== uuid) })),
 
@@ -171,7 +295,13 @@ export const useInventoryStore = create<IInventoryStore>()(
         const displaced = equipment[slot];
         if (displaced) newBag.push(displaced);
 
-        set({ bag: newBag, equipment: { ...equipment, [slot]: item } });
+        const oldEquipment = { ...equipment };
+        const newEquipment = { ...equipment, [slot]: item };
+        set({ bag: newBag, equipment: newEquipment });
+        // 2026-05-21: bump character.hp / .mp by the equipment HP / MP
+        // delta so equipping +1000 HP gear visibly raises current HP,
+        // not just the cap. See `applyEquipmentHpMpDelta` for the why.
+        applyEquipmentHpMpDelta(oldEquipment, newEquipment);
       },
 
       unequipItem: (slot) => {
@@ -179,7 +309,13 @@ export const useInventoryStore = create<IInventoryStore>()(
         const item = equipment[slot];
         if (!item) return;
         if (bag.length >= MAX_BAG_SIZE) return;
-        set({ bag: [...bag, item], equipment: { ...equipment, [slot]: null } });
+        const oldEquipment = { ...equipment };
+        const newEquipment = { ...equipment, [slot]: null };
+        set({ bag: [...bag, item], equipment: newEquipment });
+        // Symmetric to equipItem — unequipping HP / MP gear drops the
+        // current value by the same amount it just gave (clamped to
+        // the new ceiling so the bar can never go above max).
+        applyEquipmentHpMpDelta(oldEquipment, newEquipment);
       },
 
       sellItem: (uuid, goldAmount) =>
@@ -207,6 +343,16 @@ export const useInventoryStore = create<IInventoryStore>()(
         const { gold } = get();
         if (gold < amount) return false;
         set({ gold: gold - amount });
+        return true;
+      },
+
+      addArenaPoints: (amount) =>
+        set((s) => ({ arenaPoints: Math.max(0, (s.arenaPoints ?? 0) + amount) })),
+
+      spendArenaPoints: (amount) => {
+        const cur = get().arenaPoints ?? 0;
+        if (cur < amount) return false;
+        set({ arenaPoints: cur - amount });
         return true;
       },
 

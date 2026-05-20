@@ -15,6 +15,8 @@ export interface IRaid {
 export interface IRaidBossState {
     id: string;
     baseId: string;
+    /** Native level of the source boss (used for sprite lookup). */
+    level: number;
     name: string;
     sprite: string;
     maxHp: number;
@@ -54,6 +56,10 @@ export interface IRaidDropLine {
     rarity?: string;
     amount?: number;
     itemId?: string;
+    /** True only for the single completion-roll item rolled per raid clear.
+     *  Render separately under "Dodatkowy item:" so it's not lost in the
+     *  per-boss drop grid. */
+    isBonus?: boolean;
 }
 
 export interface IRaidAttemptRecord {

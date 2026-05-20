@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+import pwaIcon from '../../../assets/images/pwa.png';
 import './Login.scss';
 
 const getLoginSchema = () =>
@@ -37,7 +38,12 @@ const Login = () => {
   return (
     <div className="login">
       <div className="login__card">
-        <h1 className="login__title">⚔️ Grimshade</h1>
+        {/* 2026-05-21 spec ("skasuj napis grimshade obok ... na login pageu
+            zrob to samo"): artwork is the whole title now — the
+            wordmark already sits inside the image. */}
+        <h1 className="login__title">
+          <img src={pwaIcon} alt="Grimshade" className="login__title-icon" />
+        </h1>
         <form className="login__form" onSubmit={handleSubmit(onSubmit)}>
           <div className="login__field">
             <label className="login__label">Email</label>

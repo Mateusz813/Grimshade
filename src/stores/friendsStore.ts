@@ -49,9 +49,9 @@ export const useFriendsStore = create<IFriendsStore>((set, get) => ({
         if (!clean) return;
         set((s) => {
             if (s.friends.includes(clean)) return s;
-            // Adding a blocked user implicitly unblocks them.
-            const blocked = s.blocked.filter((n) => n !== clean);
-            return { friends: [...s.friends, clean], blocked };
+            // 2026-05-19 spec: adding now leaves the block list alone
+            // — friends + blocked can coexist for the same name.
+            return { friends: [...s.friends, clean] };
         });
     },
 
@@ -74,20 +74,30 @@ export const useFriendsStore = create<IFriendsStore>((set, get) => ({
         });
     },
 
+    // 2026-05-19 spec ("Jak mam kogoś w liście znajomych i zablokuje
+    // to jest na obu listach naraz i mogę pisać tylko ja do niego
+    // kiedy chce a nie będę od niego otrzymywać wiadomości."):
+    // blocking no longer removes from friends/favorites — the two
+    // lists coexist for the same name. Chat already filters incoming
+    // messages from blocked users (Chat.tsx isBlocked guard) while
+    // outgoing PMs remain unrestricted, matching the spec.
     blockUser: (name) => {
         const clean = normalize(name);
         if (!clean) return;
         set((s) => {
             if (s.blocked.includes(clean)) return s;
-            // Blocking removes from friends/favorites to keep the graph consistent.
-            return {
-                blocked: [...s.blocked, clean],
-                friends: s.friends.filter((n) => n !== clean),
-                favorites: s.favorites.filter((n) => n !== clean),
-            };
+            return { blocked: [...s.blocked, clean] };
         });
     },
 
+    // 2026-05-19 spec ("I jak mam kogoś w znajomych i zablokuje a
+    // potem odblokuje to nie powinien kasować się ze znajomych
+    // tylko wrócić do znajomych. Jeżeli kogoś nie mam w znajomych a
+    // zablokuje to wtedy nie wraca do znajomych."): friend membership
+    // is untouched by block / unblock, so unblocking inherently
+    // restores the friend state if they were a friend before block
+    // (they never left the friends list) and does nothing for
+    // strangers who were blocked from a chat message.
     unblockUser: (name) => {
         const clean = normalize(name);
         set((s) => ({ blocked: s.blocked.filter((n) => n !== clean) }));

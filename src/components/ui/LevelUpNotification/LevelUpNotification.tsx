@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLevelUpStore } from '../../../stores/levelUpStore';
+import { formatGoldShort } from '../../../systems/goldFormat';
 import './LevelUpNotification.scss';
 
 const SUBTLE_DURATION_MS = 3000;
@@ -34,7 +35,7 @@ const LevelUpNotification = () => {
               HP/MP odnowione ✦ +{event.statPointsGained} pkt statystyk
               {goldGained > 0 && (
                 <>
-                  {' '}✦ <span className="lvlup__subtle-gold">+{goldGained.toLocaleString()} 💰</span>
+                  {' '}✦ <span className="lvlup__subtle-gold">+{formatGoldShort(goldGained)} 💰</span>
                 </>
               )}
             </span>
@@ -96,7 +97,7 @@ const LevelUpNotification = () => {
           )}
           {goldGained > 0 && (
             <span className="lvlup__reward lvlup__reward--gold">
-              💰 +{goldGained.toLocaleString()} Gold
+              💰 +{formatGoldShort(goldGained)}
               {goldMilestones.length > 0 && (
                 <span className="lvlup__reward-detail">
                   {' '}(milestone lvl {goldMilestones.join(', ')})

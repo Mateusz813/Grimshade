@@ -1,3 +1,5 @@
+import { xpToNextLevel } from './levelSystem';
+
 // ── Data interfaces (matching bosses.json) ────────────────────────────────────
 
 export interface IBossDropEntry {
@@ -137,24 +139,74 @@ export const getBossPhaseMultiplier = (bossHpFraction: number): number =>
 export const isBossEnraged = (currentHp: number, maxHp: number): boolean =>
   maxHp > 0 && currentHp / maxHp < 0.3;
 
-// ── Reward multiplier ─────────────────────────────────────────────────────────
-// Bosses are harder and rarer than normal monsters, so they should give at least
-// 4x more XP and Gold to be worth the effort.
+// ── Reward curve (level-driven, monotonic) ───────────────────────────────────
+//
+// Boss rewards are derived purely from `boss.level` so the table is
+// guaranteed to be monotonic — every higher-level boss pays out more than
+// every lower one. The per-boss `xp` / `gold` fields in bosses.json are
+// kept as historical metadata but are NOT consulted at runtime; this lets
+// us bake the curve in one place and keep the JSON readable.
+//
+// Anchors (rounded):
+//   Lvl 10:   ~1 700 g min · ~4 500 g max · ~1 700 XP   (≈18% of next-lvl XP)
+//   Lvl 100:  ~150 k–400 k g · ~30 k XP                 (≈10%)
+//   Lvl 500:  ~2.5–6.7 cc g · ~3 M XP                   (≈5%)
+//   Lvl 975:  ~5.7–15 cc g · ~16 M XP                   (≈1.9%)
+//   Lvl 1000: ~6.0–16 cc g · ~16 M XP                   (≈1.8%)
+//
+// XP percentage decays via `0.005 + 0.19 / (1 + level/80)` — high % early
+// so low levels feel rewarding, then asymptotes to ~1.8% at the cap so a
+// single boss kill never trivialises a level. Gold midpoint follows
+// `38 · level^1.8`; min = 60% of mid, max = 160% of mid (≈2.7× spread).
 
-export const BOSS_REWARD_MULTIPLIER = 4;
+export interface IBossRewards {
+  goldMin: number;
+  goldMax: number;
+  xp: number;
+}
+
+const bossXpPercent = (level: number): number =>
+  0.005 + 0.19 / (1 + Math.max(1, level) / 80);
+
+const bossGoldMid = (level: number): number =>
+  Math.floor(38 * Math.pow(Math.max(1, level), 1.8));
+
+/** Canonical reward curve — level in, {goldMin,goldMax,xp} out. */
+export const computeBossRewards = (level: number): IBossRewards => {
+  const mid = bossGoldMid(level);
+  return {
+    goldMin: Math.max(1, Math.floor(mid * 0.6)),
+    goldMax: Math.max(1, Math.floor(mid * 1.6)),
+    xp:      Math.max(1, Math.floor(xpToNextLevel(level) * bossXpPercent(level))),
+  };
+};
+
+/**
+ * Kept for backwards compatibility with any external caller. The new curve
+ * is already absorbed into `computeBossRewards`, so multiplying again would
+ * double-count — leave at 1 so existing display sites that still reference
+ * it work without behaviour change. New code should NOT use this constant.
+ */
+export const BOSS_REWARD_MULTIPLIER = 1;
 
 // ── Gold reward ───────────────────────────────────────────────────────────────
 
-export const rollBossGold = (range: [number, number]): number => {
-  const base = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
-  return base * BOSS_REWARD_MULTIPLIER;
+export const rollBossGold = (boss: IBoss): number => {
+  const r = computeBossRewards(boss.level);
+  return r.goldMin + Math.floor(Math.random() * (r.goldMax - r.goldMin + 1));
+};
+
+/** UI helper — same min/max range that `rollBossGold` rolls against. */
+export const getBossGoldRange = (boss: IBoss): [number, number] => {
+  const r = computeBossRewards(boss.level);
+  return [r.goldMin, r.goldMax];
 };
 
 // ── XP reward ────────────────────────────────────────────────────────────────
 
-/** Returns boss XP with the reward multiplier applied. */
+/** Returns boss XP from the level-driven curve. */
 export const getBossXp = (boss: IBoss): number =>
-  boss.xp * BOSS_REWARD_MULTIPLIER;
+  computeBossRewards(boss.level).xp;
 
 // ── Unique drop roll ──────────────────────────────────────────────────────────
 
@@ -189,7 +241,7 @@ export const resolveBoss = (
 
   const won = bossHp <= 0 && playerHp > 0;
   const drops = won ? rollBossLoot(boss) : [];
-  const gold  = won ? rollBossGold(boss.gold) : 0;
+  const gold  = won ? rollBossGold(boss) : 0;
 
   return {
     won,

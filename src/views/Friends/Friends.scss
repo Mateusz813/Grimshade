@@ -167,8 +167,13 @@
         border: 1px solid rgba(76, 175, 80, 0.35);
         border-radius: 10px;
 
-        @media (max-width: 480px) {
+        // 2026-05-19 spec ("Na mobilce Guzik dodaj pod wszystkim"):
+        // on phones the lookup card stacks — icon + info above,
+        // "Dodaj" CTA full-width below so it never gets squished
+        // next to truncated text.
+        @media (max-width: 540px) {
             flex-wrap: wrap;
+            align-items: flex-start;
         }
     }
 
@@ -208,6 +213,15 @@
         transition: background 120ms ease;
 
         &:hover { background: #43a047; }
+
+        // 2026-05-19: full-width below the icon + info on phones so
+        // the CTA is tap-friendly and doesn't squeeze next to a
+        // wrapped meta line.
+        @media (max-width: 540px) {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+        }
     }
 
     // ── List ──────────────────────────────────────────────────────────────────
@@ -236,6 +250,41 @@
         &--blocked {
             background: rgba(244, 67, 54, 0.06);
             border-color: rgba(244, 67, 54, 0.25);
+        }
+
+        // 2026-05-19 spec ("Jak mam kogoś w liście znajomych i
+        // zablokuje to jest na obu listach naraz"): friend rows whose
+        // name also lives on the block list get a subtle red tint
+        // + warmer border so the dual state reads at a glance.
+        &--also-blocked {
+            background: rgba(244, 67, 54, 0.05);
+            border-color: rgba(244, 67, 54, 0.22);
+        }
+    }
+
+    &__row-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    &__row-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        font-size: 11px;
+        line-height: 1;
+        border-radius: 6px;
+        background: rgba(244, 67, 54, 0.18);
+        border: 1px solid rgba(244, 67, 54, 0.55);
+        color: #f44336;
+
+        &--friend {
+            background: rgba(255, 193, 7, 0.18);
+            border-color: rgba(255, 193, 7, 0.55);
+            color: #ffc107;
         }
     }
 
@@ -393,6 +442,91 @@
         &:hover {
             color: $color-text;
             background: rgba(255, 255, 255, 0.06);
+        }
+    }
+
+    // 2026-05-19 spec ("dodatkowy popup czy chcemy na pewno to
+    // zrobić"): destructive-action confirm dialog used for remove
+    // friend / block / unblock flows. Backdrop covers the viewport;
+    // modal is small and centered.
+    &__confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    &__confirm-modal {
+        width: 100%;
+        max-width: 420px;
+        background: linear-gradient(180deg, #1a1d2a 0%, #0d0e16 100%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        padding: 20px;
+    }
+
+    &__confirm-title {
+        margin: 0 0 10px;
+        font-size: 18px;
+        font-weight: 800;
+        color: $color-text;
+    }
+
+    &__confirm-body {
+        margin: 0 0 18px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: $color-text-muted;
+    }
+
+    &__confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    &__confirm-btn {
+        padding: 8px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 8px;
+        color: $color-text;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms ease, border-color 120ms ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.22);
+        }
+
+        &--danger {
+            background: linear-gradient(180deg, #d32f2f, #b71c1c);
+            border-color: #d32f2f;
+            color: #fff;
+
+            &:hover {
+                background: linear-gradient(180deg, #e53935, #c62828);
+                border-color: #e53935;
+            }
+        }
+
+        &--primary {
+            background: linear-gradient(180deg, #ff9800, #f57c00);
+            border-color: #ff9800;
+            color: #fff;
+
+            &:hover {
+                background: linear-gradient(180deg, #ffa726, #fb8c00);
+                border-color: #ffa726;
+            }
         }
     }
 }

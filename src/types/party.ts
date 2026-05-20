@@ -16,6 +16,17 @@ export interface IPartyInfo {
     leaderId: string;
     members: IPartyMember[];
     createdAt: string;
+    /** Optional name / description / settings carried from the server row.
+     *  Older usages of this type didn't include them; the partyStore's
+     *  `adaptToPartyInfo` always fills them now. */
+    name?: string;
+    description?: string;
+    hasPassword?: boolean;
+    isPublic?: boolean;
+    maxMembers?: number;
+    /** 2026-05-13: minimum character level a joiner must meet. 1 = open
+     *  to anyone. Optional for legacy code paths. */
+    minJoinLevel?: number;
 }
 
 export interface IPartyCombatResult {

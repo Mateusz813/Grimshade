@@ -1,4 +1,5 @@
 import itemTemplates from '../data/itemTemplates.json';
+import { getItemImage, getStoneImage } from './spriteAssets';
 
 // ── Generated-item info (parsed from itemId, avoids circular import with itemGenerator) ──
 
@@ -530,14 +531,23 @@ export const STONE_FOR_RARITY: Record<Rarity, string> = {
     heroic:    'heroic_stone',
 };
 
+// 2026-05: stone icons swapped from the legacy 💎 emoji to the player's
+// PNG art (`/assets/images/upgrade-stone/stone-{1..6}.png`). The values
+// below are URLs when art is available, falling back to the emoji for
+// safety. Consumers that render via <ItemIcon> auto-detect the URL via
+// `isImageUrl()`; raw `<span>` consumers should also branch on URL.
 export const STONE_ICONS: Record<string, string> = {
-    common_stone:    '💎',
-    rare_stone:      '💎',
-    epic_stone:      '💎',
-    legendary_stone: '💎',
-    mythic_stone:    '💎',
-    heroic_stone:    '💎',
+    common_stone:    getStoneImage('common_stone')    ?? '💎',
+    rare_stone:      getStoneImage('rare_stone')      ?? '💎',
+    epic_stone:      getStoneImage('epic_stone')      ?? '💎',
+    legendary_stone: getStoneImage('legendary_stone') ?? '💎',
+    mythic_stone:    getStoneImage('mythic_stone')    ?? '💎',
+    heroic_stone:    getStoneImage('heroic_stone')    ?? '💎',
 };
+
+/** Generic "any stone" art (stone-7) — used by drop summaries / chest
+ *  rewards / enhancement-cost rows that don't carry a specific stone tier. */
+export const STONE_GENERIC_ICON: string = getStoneImage(null) ?? '💎';
 
 export const STONE_NAMES: Record<string, string> = {
     common_stone:    'Zwykly Kamien',
@@ -766,9 +776,25 @@ export const getItemType = (itemId: string, allItems: IBaseItem[]): string | nul
     return null;
 };
 
-/** Get the best emoji icon for an item, checking type first then falling back to slot. */
+/**
+ * Returns the best icon for an item — preferring the real PNG art when one
+ * exists for this item's type/slot, falling back to the legacy emoji glyph
+ * for anything we don't have art for yet (potions, stones, exotic accessories).
+ *
+ * The return value is either a Vite-served image URL or an emoji string.
+ * `ItemIcon` detects which it got via `isImageUrl` and renders the right
+ * element. Callers that already pipe the result through `ItemIcon` get the
+ * upgrade for free.
+ */
 export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[]): string => {
     const itemType = getItemType(itemId, allItems);
+
+    // 1. Prefer the real PNG when we have one for this item's type/slot.
+    const imageUrl = getItemImage(itemId, slot, itemType ?? undefined);
+    if (imageUrl) return imageUrl;
+
+    // 2. Otherwise fall back to the original emoji ladder so consumables /
+    //    exotic accessories (with no art) still render the legacy glyph.
     if (itemType && ITEM_TYPE_ICONS[itemType]) {
         return ITEM_TYPE_ICONS[itemType];
     }

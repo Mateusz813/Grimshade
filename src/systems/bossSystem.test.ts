@@ -11,7 +11,7 @@ import {
   BOSS_HP_MULTIPLIER,
   BOSS_ATK_MULTIPLIER,
   BOSS_DEF_MULTIPLIER,
-  BOSS_REWARD_MULTIPLIER,
+  computeBossRewards,
   getBossXp,
   type IBoss,
   type IBossCharacter,
@@ -155,18 +155,43 @@ describe('rollBossLoot', () => {
 // ── rollBossGold ──────────────────────────────────────────────────────────────
 
 describe('rollBossGold', () => {
-  it('stays within the boss gold range scaled by BOSS_REWARD_MULTIPLIER', () => {
+  it('stays within the level-driven gold range', () => {
+    const expected = computeBossRewards(BOSS.level);
     for (let i = 0; i < 50; i++) {
-      const g = rollBossGold([200, 500]);
-      expect(g).toBeGreaterThanOrEqual(200 * BOSS_REWARD_MULTIPLIER);
-      expect(g).toBeLessThanOrEqual(500 * BOSS_REWARD_MULTIPLIER);
+      const g = rollBossGold(BOSS);
+      expect(g).toBeGreaterThanOrEqual(expected.goldMin);
+      expect(g).toBeLessThanOrEqual(expected.goldMax);
     }
   });
 });
 
 describe('getBossXp', () => {
-  it('returns boss.xp multiplied by BOSS_REWARD_MULTIPLIER', () => {
-    expect(getBossXp(BOSS)).toBe(BOSS.xp * BOSS_REWARD_MULTIPLIER);
+  it('returns the level-driven XP from computeBossRewards', () => {
+    expect(getBossXp(BOSS)).toBe(computeBossRewards(BOSS.level).xp);
+  });
+});
+
+describe('computeBossRewards', () => {
+  it('is monotonically non-decreasing with level (gold + XP)', () => {
+    let prevGoldMax = 0;
+    let prevXp = 0;
+    for (let l = 1; l <= 1000; l += 5) {
+      const r = computeBossRewards(l);
+      expect(r.goldMax).toBeGreaterThanOrEqual(prevGoldMax);
+      expect(r.xp).toBeGreaterThanOrEqual(prevXp);
+      prevGoldMax = r.goldMax;
+      prevXp = r.xp;
+    }
+  });
+
+  it('caps top-end gold at ≲2 sc per kill', () => {
+    expect(computeBossRewards(1000).goldMax).toBeLessThanOrEqual(20_000_000); // 2 sc
+  });
+
+  it('caps top-end XP at ≲2% of next-level XP', () => {
+    const r = computeBossRewards(1000);
+    // 897.15M anchor at lvl 1000 → 2% = 17.94M
+    expect(r.xp).toBeLessThanOrEqual(18_000_000);
   });
 });
 

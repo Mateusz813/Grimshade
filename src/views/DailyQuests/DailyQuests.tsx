@@ -6,6 +6,9 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { scaleRewards } from '../../systems/dailyQuestSystem';
 import type { DailyQuestGoalType } from '../../systems/dailyQuestSystem';
+import { formatGoldShort } from '../../systems/goldFormat';
+import { getElixirImage } from '../../systems/spriteAssets';
+import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import './DailyQuests.scss';
 
 const GOAL_LABELS: Record<DailyQuestGoalType, string> = {
@@ -134,9 +137,13 @@ const DailyQuests = () => {
                                     </div>
 
                                     <div className="daily-quests__rewards">
-                                        <span className="daily-quests__reward">\uD83D\uDCB0 {rewards.gold}g</span>
-                                        <span className="daily-quests__reward">\u2728 {rewards.xp} XP</span>
-                                        {rewards.elixir && <span className="daily-quests__reward">\uD83E\uDDEA Eliksir</span>}
+                                        <span className="daily-quests__reward">\uD83D\uDCB0 {formatGoldShort(rewards.gold)}</span>
+                                        <span className="daily-quests__reward">\u2728 {rewards.xp.toLocaleString('pl-PL')} XP</span>
+                                        {rewards.elixir && (
+                                            <span className="daily-quests__reward">
+                                                <TinyIcon icon={getElixirImage(rewards.elixir) ?? '\uD83E\uDDEA'} size="sm" /> Eliksir
+                                            </span>
+                                        )}
                                     </div>
 
                                     {active.completed && !active.claimed && (

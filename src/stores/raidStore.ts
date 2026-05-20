@@ -13,6 +13,13 @@ interface IRaidStore {
     attemptsRemaining: (raidId: string) => number;
     /** Consume one attempt for today. Returns false if no attempts left. */
     consumeAttempt: (raidId: string) => boolean;
+    /** 2026-05-15 v11 spec ("Jezeli ucieklem z raidu a moi soujusznicy
+     *  i tak go zrobili to nie zabieraj mi limitow robienia go"):
+     *  decrement today's count for this raid by one, never going
+     *  below zero. Called from Raid.tsx's flee handler so a leader
+     *  who escapes (whether or not the rest of the party clears the
+     *  raid afterwards) doesn't lose a daily attempt. */
+    refundAttempt: (raidId: string) => void;
     resetDay: () => void;
 }
 
@@ -46,6 +53,19 @@ export const useRaidStore = create<IRaidStore>()(
                     },
                 }));
                 return true;
+            },
+
+            refundAttempt: (raidId) => {
+                const today = todayIso();
+                const cur = get().attempts[raidId];
+                if (!cur || cur.day !== today) return;
+                const next = Math.max(0, cur.count - 1);
+                set((s) => ({
+                    attempts: {
+                        ...s.attempts,
+                        [raidId]: { day: today, count: next },
+                    },
+                }));
             },
 
             resetDay: () => set({ attempts: {} }),

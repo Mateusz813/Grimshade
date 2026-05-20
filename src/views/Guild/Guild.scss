@@ -12,138 +12,2128 @@
         padding: 0 28px 140px;
     }
 
-    // Header uses .page-header — negate side padding so shared 20/28px isn't doubled.
-    &__header {
+    // ── Top bar ────────────────────────────────────────────────────────
+    // 2026-05-18 spec ("Napis gildie na 100% szerokosci ekranu"): stretch
+    // the sticky bar edge-to-edge by negating the page padding (the .guild
+    // root carries 20px / 28px side padding for the rest of the screen).
+    &__top-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        position: sticky;
+        top: 0;
+        background: rgba(20, 22, 32, 0.92);
+        backdrop-filter: blur(6px);
+        z-index: 5;
         margin-left: -20px;
         margin-right: -20px;
 
         @media (min-width: 768px) {
+            padding: 16px 28px;
             margin-left: -28px;
             margin-right: -28px;
         }
     }
 
-    &__back-btn {
-        padding: 8px 14px;
+    &__top-title {
+        flex: 1;
+        font-size: 20px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0;
+        // 2026-05-18 spec ("Wysrodkuj napis gildie"): always centred
+        // inside the top bar — when there's no back button (list view)
+        // it sits perfectly in the middle; when there IS a back button
+        // (detail/boss/treasury/requests) the title still centres
+        // within the remaining flex space.
+        text-align: center;
+    }
+
+    &__nav-back {
+        padding: 6px 12px;
         border: 1px solid rgba(255, 255, 255, 0.15);
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.05);
         color: $color-text;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: background 120ms ease;
 
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
+        &:hover { background: rgba(255, 255, 255, 0.1); }
     }
 
-    &__title {
-        font-size: 24px;
-        font-weight: 700;
-        color: $color-text;
-        margin: 0;
-    }
-
-    &__card {
-        background: linear-gradient(180deg, rgba(156, 39, 176, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%);
-        border: 2px solid rgba(156, 39, 176, 0.3);
-        border-radius: 16px;
-        padding: 32px 20px;
+    &__empty {
+        padding: 40px;
         text-align: center;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
-
-        @include tablet {
-            padding: 48px 40px;
-        }
+        color: $color-text-muted;
     }
 
-    &__icon {
-        font-size: 72px;
+    // ── List view ──────────────────────────────────────────────────────
+    &__list-box {
+        background: linear-gradient(180deg, rgba(156, 39, 176, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%);
+        border: 1px solid rgba(156, 39, 176, 0.25);
+        border-radius: 12px;
+        padding: 14px;
+        margin-top: 8px;
+    }
+
+    &__list-search {
         margin-bottom: 12px;
 
-        @include tablet {
-            font-size: 96px;
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: $color-text;
+            font-size: 14px;
+
+            &:focus {
+                outline: none;
+                border-color: #ff9800;
+            }
         }
     }
 
-    &__card-title {
-        font-size: 22px;
-        font-weight: 700;
-        color: $color-text;
-        margin: 0 0 12px;
-
-        @include tablet {
-            font-size: 28px;
-        }
+    &__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
-    &__card-text {
-        font-size: 14px;
-        line-height: 1.6;
-        color: $color-text-muted;
-        max-width: 480px;
-        margin: 0 auto 24px;
-
-        @include tablet {
-            font-size: 16px;
-        }
-    }
-
-    &__features {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-        margin: 24px 0;
-
-        @media (min-width: $bp-sm) {
-            grid-template-columns: 1fr 1fr;
-        }
-    }
-
-    &__feature {
+    &__list-row {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 14px;
+        padding: 10px 12px;
         background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 10px;
-        text-align: left;
+        transition: background 120ms;
+
+        &:hover { background: rgba(255, 255, 255, 0.08); }
     }
 
-    &__feature-icon {
-        font-size: 28px;
+    &__list-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
         flex-shrink: 0;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+
+        &--big {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            font-size: 38px;
+        }
     }
 
-    &__feature-content {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
+    &__list-info {
+        flex: 1;
+        min-width: 0;
     }
 
-    &__feature-name {
-        font-size: 14px;
+    &__list-name {
+        font-size: 15px;
         font-weight: 700;
         color: $color-text;
     }
 
-    &__feature-desc {
+    &__list-tag {
+        color: #ff9800;
+        font-weight: 800;
+    }
+
+    &__list-meta {
         font-size: 12px;
         color: $color-text-muted;
     }
 
-    &__player-info {
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    &__list-apply {
+        padding: 8px 12px;
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.5);
+        border-radius: 8px;
+        color: #4caf50;
+        font-size: 18px;
+        cursor: pointer;
+
+        &:hover { background: rgba(76, 175, 80, 0.35); }
+    }
+
+    &__list-empty {
+        text-align: center;
+        padding: 24px;
+        color: $color-text-muted;
+        font-size: 14px;
+    }
+
+    &__list-pager {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 12px;
         font-size: 13px;
         color: $color-text-muted;
 
-        strong {
+        button {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
             color: $color-text;
+            cursor: pointer;
+            font-size: 12px;
+
+            &:disabled { opacity: 0.4; cursor: not-allowed; }
         }
+    }
+
+    &__list-actions {
+        margin-top: 16px;
+        display: flex;
+        justify-content: center;
+    }
+
+    &__list-create {
+        padding: 12px 24px;
+        background: linear-gradient(180deg, #ff9800, #f57c00);
+        border: 1px solid #ff9800;
+        border-radius: 10px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+
+        &:hover { filter: brightness(1.1); }
+    }
+
+    &__toast {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: rgba(76, 175, 80, 0.12);
+        border: 1px solid rgba(76, 175, 80, 0.4);
+        border-radius: 8px;
+        color: #4caf50;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    // ── Create dialog ──────────────────────────────────────────────────
+    &__create-cost {
+        font-size: 14px;
+        color: $color-text-muted;
+        margin: 4px 0 12px;
+
+        strong { color: #ff9800; }
+    }
+
+    &__create-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: $color-text-muted;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 12px 0 6px;
+    }
+
+    &__create-icons {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 6px;
+    }
+
+    &__create-icon-tile {
+        aspect-ratio: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-size: 22px;
+        cursor: pointer;
+        transition: transform 100ms;
+
+        &:hover { transform: scale(1.08); }
+        &.is-selected {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+    }
+
+    &__create-colors {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 6px;
+    }
+
+    &__create-color-tile {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        cursor: pointer;
+
+        &.is-selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px #ff9800;
+        }
+    }
+
+    &__create-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 8px;
+    }
+
+    &__create-input {
+        width: 100%;
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        color: $color-text;
+        font-size: 14px;
+
+        &:focus { outline: none; border-color: #ff9800; }
+    }
+
+    &__create-error {
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: rgba(244, 67, 54, 0.12);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+        border-radius: 8px;
+        color: #f44336;
+        font-size: 13px;
+    }
+
+    // ── Guild home ─────────────────────────────────────────────────────
+    &__home-banner {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: linear-gradient(180deg, rgba(255, 152, 0, 0.08), rgba(0, 0, 0, 0.25));
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        border-radius: 12px;
+        margin-top: 8px;
+    }
+
+    &__home-titles {
+        flex: 1;
+        min-width: 0;
+    }
+
+    &__home-name {
+        font-size: 18px;
+        font-weight: 800;
+        color: $color-text;
+    }
+
+    &__home-level {
+        font-size: 12px;
+        color: $color-text-muted;
+        margin: 4px 0 6px;
+
+        strong { color: #ff9800; }
+    }
+
+    &__home-xpbar {
+        position: relative;
+        height: 18px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 9px;
+        overflow: hidden;
+    }
+
+    &__home-xpbar-fill {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #ff9800, #ffc107);
+        transition: width 0.4s;
+    }
+
+    &__home-xpbar-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    &__member-contrib {
+        margin-right: 8px;
+        padding: 4px 8px;
+        background: rgba(255, 152, 0, 0.12);
+        border: 1px solid rgba(255, 152, 0, 0.35);
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #ff9800;
+        white-space: nowrap;
+    }
+
+    // 2026-05-18 spec ("Pod lista graczy dodaj jeszcze chat
+    // gildyjny i trzymaj ostatnie 500 wiadomosci"): per-guild chat
+    // container under the member roster. Reuses the global Chat
+    // component so styling matches the rest of the app — we only
+    // need a top margin to separate from the member list.
+    &__chat {
+        margin-top: 18px;
+    }
+
+    &__home-warning {
+        color: #ffb74d;
+        font-size: 13px;
+        margin: 6px 0;
+    }
+
+    // ── Members ────────────────────────────────────────────────────────
+    &__members {
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    // 2026-05-18 v2 spec ("Na mobilce ile XP pod nickiem i avatarem a
+    // akcje ponizej XP"): on phones the row collapses vertically —
+    // avatar + class-icon + name sit on the top row, XP chip + action
+    // buttons drop below as their own row. The desktop layout keeps
+    // the dense horizontal arrangement for ≥768px.
+    &__member-row {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        grid-template-areas:
+            "avatar classIcon info"
+            "actions actions actions";
+        align-items: center;
+        gap: 6px 10px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+
+        &.is-me {
+            border-color: rgba(255, 152, 0, 0.6);
+            background: rgba(255, 152, 0, 0.08);
+        }
+
+        @media (min-width: 768px) {
+            display: flex;
+            grid-template-columns: none;
+            grid-template-areas: none;
+        }
+    }
+
+    &__member-avatar { grid-area: avatar; }
+    &__member-class-icon { grid-area: classIcon; }
+    &__member-info { grid-area: info; }
+
+    // The XP chip + kick/leave buttons share an "actions" row on
+    // mobile, centred. On desktop they each sit inline at the end.
+    &__member-actions {
+        grid-area: actions;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+
+        @media (min-width: 768px) {
+            width: auto;
+            margin-left: auto;
+        }
+    }
+
+    &__member-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        // Shimmering border = transform-colored member. Animates a
+        // subtle hue rotation so the avatar visibly "glows" like the
+        // town widget does for transformed players.
+        &.is-shimmer {
+            animation: guild-shimmer 4s ease-in-out infinite;
+        }
+    }
+
+    @keyframes guild-shimmer {
+        0%, 100% { filter: brightness(1) saturate(1); }
+        50% { filter: brightness(1.15) saturate(1.3); }
+    }
+
+    &__member-avatar-fallback {
+        font-size: 22px;
+    }
+
+    &__member-class-icon {
+        font-size: 18px;
+        width: 24px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    &__member-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    &__member-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    &__member-crown {
+        font-size: 16px;
+    }
+
+    &__member-self {
+        margin-left: 4px;
+        padding: 1px 6px;
+        font-size: 10px;
+        background: rgba(255, 152, 0, 0.2);
+        border-radius: 6px;
+        color: #ff9800;
+    }
+
+    &__member-class {
+        font-size: 12px;
+    }
+
+    &__member-kick,
+    &__member-leave {
+        padding: 6px 10px;
+        background: rgba(244, 67, 54, 0.12);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+        border-radius: 8px;
+        color: #f44336;
+        font-size: 14px;
+        cursor: pointer;
+
+        &:hover { background: rgba(244, 67, 54, 0.25); }
+    }
+
+    &__member-leave {
+        background: rgba(255, 152, 0, 0.12);
+        border-color: rgba(255, 152, 0, 0.4);
+        color: #ff9800;
+
+        &:hover { background: rgba(255, 152, 0, 0.25); }
+    }
+
+    // ── Sub-nav ────────────────────────────────────────────────────────
+    // 2026-05-18 spec ("uzyj zdjec w pliku guild/ tak samo jak te
+    // kafelki sa w miescie, napis na dole i zdjecie jako tlo"): each
+    // tile is a square-ish card with a full-bleed background image
+    // and a frosted glass label at the bottom — mirrors the town's
+    // .town__nav-tile-img + .town__nav-btn-label--glass pair.
+    // 2026-05-18 v2 spec ("Jednak daj max width 300px i height i ustaw
+    // te kafelki od lewej do prawej"): tiles capped at 300×300 and
+    // anchored to the LEFT (not centred). Wrap onto a second row when
+    // the viewport can't fit three across.
+    &__nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+        justify-content: flex-start;
+    }
+
+    &__nav-tile {
+        position: relative;
+        flex: 1 1 220px;
+        aspect-ratio: 1 / 1;
+        max-width: 300px;
+        max-height: 300px;
+        padding: 0;
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        color: $color-text;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        overflow: hidden;
+        isolation: isolate;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+
+        &:hover {
+            box-shadow: 0 0 20px rgba(255, 152, 0, 0.3);
+            transform: translateY(-2px);
+        }
+
+        &:hover .guild__nav-tile-img {
+            transform: scale(1.08);
+        }
+    }
+
+    &__nav-tile-img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+        transform: scale(1.02);
+        transition: transform 280ms ease;
+        pointer-events: none;
+        user-select: none;
+        border-radius: inherit;
+    }
+
+    &__nav-tile-label {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 3;
+        padding: 8px 10px;
+        font-weight: 700;
+        font-size: 13px;
+        color: #fff;
+        text-align: center;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+        backdrop-filter: blur(8px) saturate(1.2);
+        -webkit-backdrop-filter: blur(8px) saturate(1.2);
+        background: linear-gradient(
+            180deg,
+            rgba(10, 10, 30, 0.15) 0%,
+            rgba(10, 10, 30, 0.55) 100%
+        );
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    // ── Boss ───────────────────────────────────────────────────────────
+    // 2026-05-18 spec ("Zamiast obecnego tla uzywamy tla dla danego
+    // poziomu lochu"): full-width stage that paints the dungeon
+    // background art under the card. Background is set inline via
+    // `style={{backgroundImage}}` so the per-tier art switches without
+    // CSS contortions.
+    &__boss-stage {
+        position: relative;
+        margin: 12px auto 0;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background-size: cover;
+        background-position: center;
+        background-color: rgba(0, 0, 0, 0.18);
+        overflow: hidden;
+        // 2026-05-18 v15 spec ("tlo ma byc 700px szerokie na 200px,
+        // obrazek bossa duzo mniejszy adekwatnie"): hard-locked
+        // panel dimensions in the arena/preview phase — 700 × 200,
+        // centred. The portrait + HP bar live inside, leaving room
+        // without squishing the dungeon backdrop.
+        width: 700px;
+        max-width: 100%;
+        height: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: stretch;
+        // 2026-05-18 v16 spec ("Animacje i sama walke mozesz
+        // powiekszyc juz do normalnych rozmiarow"): smoothly grow
+        // to the combat-grade size when entering the entry/fight
+        // phases so the resize happens behind the door overlay
+        // (no visible jump). 350ms matches the door-opening hold.
+        transition:
+            width 350ms ease,
+            max-width 350ms ease,
+            height 350ms ease;
+
+        // Combat-size mode: the panel matches the shared CombatArena
+        // footprint (max-width 980px) so the boss + player cards
+        // render at their natural hunt/raid resolution. Height
+        // collapses to fit content so the arena can grow as tall as
+        // it needs without scroll-clipping.
+        &.is-fighting {
+            width: 100%;
+            max-width: 1040px;
+            height: auto;
+            min-height: 200px;
+        }
+
+        // 2026-05-18 v10: when the shared CombatArena renders inside
+        // the guild stage, strip its own opaque "daily-boss"
+        // gradient + glow so the dungeon art (loch.png) bleeds
+        // through. Cards (ally/enemy) and inner column dividers stay
+        // styled by the arena itself — only the outer surface goes
+        // see-through.
+        .combat-ui__arena {
+            background: transparent !important;
+            box-shadow: none !important;
+            animation: none !important;
+            border-radius: 12px;
+
+            &--daily-boss,
+            &--transform {
+                background: transparent !important;
+                box-shadow: none !important;
+                animation: none !important;
+
+                &::after { display: none !important; }
+            }
+        }
+
+        // 2026-05-19 v18 spec ("te okna tez zrob przezroczyste tylko
+        // na tym widoku"): empty enemy / ally slot placeholders
+        // (`--empty` modifier) get the dark `rgba(20,22,32,0.85)`
+        // background + grey border from the shared CombatUI base
+        // class. Inside the guild boss stage we want the dungeon
+        // backdrop to show through those unused slots instead, so
+        // we zero out their fill + border. Filled boss / player
+        // cards keep their normal chrome.
+        .combat-ui__enemy--empty,
+        .combat-ui__ally--empty {
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+    }
+
+    // 2026-05-18 v3 spec ("z klasy .guild__boss-card usun border, tak
+    // samo background, usun wszystko tak na prawde zostaw tam tylko
+    // position: relative"): all chrome stripped — the dungeon
+    // background art is the canvas, the boss + hp bar sit directly
+    // on it without a card overlay.
+    &__boss-card {
+        position: relative;
+        height: 100%;
+
+        // 2026-05-18 v16 spec ("w animacji dodaj zanikanie ekranu
+        // do 0 widocznosci zeby nie bylo widac przeskoku w
+        // powiekszaniu okna do walki"): when the combat arena
+        // mounts (phase === 'fighting'), fade it in from 0 → 1
+        // opacity over 380ms. Combined with the entry overlay
+        // fade-out at the tail end of the door sequence, the
+        // transition reads as "doors part → combat scene
+        // materialises" instead of a hard snap.
+        &.is-fighting {
+            animation: guild-combat-fade-in 380ms ease-out;
+        }
+    }
+
+    @keyframes guild-combat-fade-in {
+        0%   { opacity: 0; }
+        100% { opacity: 1; }
+    }
+
+    &__boss-name {
+        text-align: center;
+        font-size: 16px;
+        font-weight: 800;
+        color: #ff9800;
+        letter-spacing: 1px;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+
+        // 2026-05-18 v14: external variant rendered BELOW the boss
+        // stage panel — bigger label since it's no longer competing
+        // with the dungeon backdrop for visual weight.
+        &--ext {
+            font-size: 20px;
+            margin: 0;
+        }
+    }
+
+    // 2026-05-18 v14 spec ("poukladaj tam buttony i wszystkie
+    // informacje zeby sie zmiescily, moga byc tez pod tym zdjeciem"):
+    // wrapper for everything that used to sit ON the dungeon panel —
+    // boss label, status banners, engagement readout, speed picker,
+    // attack/finish/claim buttons, error message. Centred under the
+    // panel with the same max-width so the column reads as one
+    // visual unit.
+    &__boss-controls {
+        // 2026-05-18 v17 spec ("reszta boxow rozszesz na caly ekran
+        // prawie tylko tlo z bossem wysrodkowane"): only the
+        // boss-stage stays at its compact 700px width; controls /
+        // info / log stretch close to the full viewport width so
+        // the panel reads as a centred focal point with broad
+        // chrome on either side.
+        width: 100%;
+        max-width: 1280px;
+        margin: 12px auto 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: rgba(15, 17, 28, 0.55);
+        border: 1px solid rgba(255, 152, 0, 0.18);
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    // 2026-05-18 v17 spec ("na desktopach ikonka po lewej stronie"
+    // + "Dla mobilki daj … width i height 100px dla wiekszych
+    // 130px, zdejmij border z niego"): desktop is an L-shaped grid
+    // — image pinned top-LEFT (130×130, borderless), HP bar spans
+    // the full panel width along the bottom. On phones the grid
+    // collapses to a single column so the image centres above the
+    // bar instead of crowding the left edge.
+    &__boss-preview {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        grid-template-rows: 1fr auto;
+        align-items: center;
+        flex: 1 1 auto;
+        padding: 0;
+        height: 100%;
+        gap: 8px;
+
+        @media (max-width: 540px) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    &__boss-preview-img {
+        grid-row: 1 / 2;
+        grid-column: 1 / 2;
+        justify-self: start;
+        align-self: center;
+        width: 130px;
+        height: 130px;
+        object-fit: cover;
+        border: 0;
+        border-radius: 14px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.5);
+
+        @media (max-width: 540px) {
+            grid-column: 1 / -1;
+            justify-self: center;
+            width: 100px;
+            height: 100px;
+        }
+    }
+
+    // 2026-05-18 v13 spec ("Pokaz na progress barze aktualny poziom
+    // hp bossa zeby bylo widac ile %HP mu zostalo"): replace the
+    // text-only HP pill with a full-width red progress bar that
+    // visualises remaining boss HP. Fill width is set inline from
+    // the live `boss.boss_current_hp / boss.boss_max_hp` ratio.
+    &__boss-preview-hpbar {
+        // 2026-05-18 v17: bar always spans the full panel width
+        // along the bottom row of the grid — `grid-column: 1 / -1`
+        // makes it stretch beneath both the portrait cell and the
+        // empty cell on desktop, and beneath the lone portrait
+        // cell on mobile.
+        grid-row: 2 / 3;
+        grid-column: 1 / -1;
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        border: 1px solid rgba(244, 67, 54, 0.55);
+        overflow: hidden;
+        box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.7);
+    }
+
+    &__boss-preview-hpbar-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, #b71c1c 0%, #f44336 55%, #ff8a65 100%);
+        box-shadow: 0 0 8px rgba(244, 67, 54, 0.7);
+        transition: width 280ms ease;
+    }
+
+    &__boss-preview-hpbar-text {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: 12px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 4px rgba(0, 0, 0, 0.8);
+    }
+
+    // Compact boss portrait — fixed square ratio, image fills the
+    // tile via object-fit: cover so the boss face is centred and
+    // legible at small sizes. Cast overlays sit on top.
+    &__boss-sprite {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: rgba(0, 0, 0, 0.55);
+        border: 2px solid rgba(244, 67, 54, 0.55);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 120ms ease, filter 120ms ease;
+        }
+
+        &.is-hit img {
+            animation: guild-boss-hit 360ms ease;
+        }
+
+        // 2026-05-18 v4 spec ("pokonany boss powinna byc ikonka
+        // czaszki na nim"): dead-boss visual — image desaturates and
+        // the giant ☠️ overlay sits on top of the portrait.
+        &.is-dead img {
+            filter: grayscale(0.85) brightness(0.55);
+        }
+    }
+
+    &__boss-dead-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 80px;
+        z-index: 4;
+        text-shadow:
+            0 0 12px rgba(0, 0, 0, 0.9),
+            0 0 24px rgba(244, 67, 54, 0.6);
+        pointer-events: none;
+        animation: guild-boss-skull-pop 600ms ease-out;
+    }
+
+    @keyframes guild-boss-skull-pop {
+        0%   { opacity: 0; transform: scale(0.4); }
+        60%  { opacity: 1; transform: scale(1.15); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    // 2026-05-18 spec ("widzimy ich animacje ataku"): per-spell cast
+    // overlay layered on top of the boss sprite. The icon + name
+    // panel scales in, the radial glow ring pulses outwards, then
+    // both fade. The `--cast-color` CSS var is set inline from the
+    // spell's hex so every spell kind feels visually distinct.
+    &__boss-cast-fx {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        animation: guild-boss-cast 700ms ease-out;
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: -10%;
+            border-radius: 50%;
+            background: radial-gradient(
+                circle at center,
+                var(--cast-color, #fff) 0%,
+                transparent 60%
+            );
+            opacity: 0.55;
+            animation: guild-boss-cast-burst 700ms ease-out;
+        }
+
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 4px solid var(--cast-color, #fff);
+            opacity: 0;
+            animation: guild-boss-cast-ring 700ms ease-out;
+        }
+
+        // Per-spell-kind extra accent layer. Each tints the boss
+        // sprite with a different hue while the cast is active.
+        &--fire {
+            mix-blend-mode: screen;
+            filter: drop-shadow(0 0 12px #ff5722);
+        }
+        &--ice {
+            filter: drop-shadow(0 0 12px #29b6f6);
+        }
+        &--lightning {
+            filter: drop-shadow(0 0 12px #ffeb3b);
+        }
+        &--dark {
+            filter: drop-shadow(0 0 18px #9c27b0);
+        }
+        &--holy {
+            filter: drop-shadow(0 0 20px #fff176);
+        }
+        &--poison {
+            filter: drop-shadow(0 0 12px #4caf50);
+        }
+        &--physical {
+            filter: drop-shadow(0 0 8px #bdbdbd);
+        }
+        &--apocalypse {
+            filter: drop-shadow(0 0 24px #e91e63);
+        }
+    }
+
+    @keyframes guild-boss-cast {
+        0%   { opacity: 0; transform: scale(0.7); }
+        25%  { opacity: 1; transform: scale(1.05); }
+        80%  { opacity: 1; transform: scale(1); }
+        100% { opacity: 0; transform: scale(1); }
+    }
+
+    @keyframes guild-boss-cast-burst {
+        0%   { transform: scale(0.6); opacity: 0.65; }
+        100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    @keyframes guild-boss-cast-ring {
+        0%   { transform: scale(0.5); opacity: 0; }
+        20%  { transform: scale(0.8); opacity: 0.9; }
+        100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    &__boss-cast-icon {
+        position: relative;
+        z-index: 2;
+        font-size: 56px;
+        line-height: 1;
+        filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.7));
+
+        // PNG icon variant — same footprint as the emoji glyph.
+        img {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+    }
+
+    &__boss-cast-icon-img {
+        display: block;
+    }
+
+    &__boss-cast-name {
+        position: relative;
+        z-index: 2;
+        margin-top: 6px;
+        padding: 3px 10px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid var(--cast-color, #fff);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--cast-color, #fff);
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+        white-space: nowrap;
+    }
+
+    // ── Arena: boss tile left, player tile right ───────────────
+    // 2026-05-18 v4 spec ("1 kafelek bossa i 1 kafelek naszej
+    // postaci"): compact portrait tiles, ~180-220px wide, anchored
+    // side-by-side on every viewport (mobile + desktop). Boss
+    // tile and player tile each carry their own HP bar + cast
+    // overlays — no stack/wrap.
+    &__boss-arena {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        justify-content: center;
+        flex-wrap: nowrap;
+        padding: 16px 0;
+    }
+
+    &__boss-side {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 180px;
+        max-width: 45vw;
+
+        @media (min-width: 640px) {
+            width: 220px;
+            max-width: none;
+        }
+
+        &--placeholder {
+            // Empty column in the arena phase so the boss stays
+            // anchored to the left half of the layout.
+            visibility: hidden;
+        }
+    }
+
+    // Player tile mirrors the boss tile — same square footprint
+    // with the avatar filling the frame (object-fit: cover) so
+    // both portraits feel visually balanced. Border colour is
+    // injected via inline `style` from the player's transform
+    // tier — see GuildBoss render where `borderStyle` is built.
+    &__boss-player-avatar {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: rgba(0, 0, 0, 0.55);
+        border: 3px solid #888;
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: filter 120ms ease;
+        }
+
+        &.is-hit img {
+            animation: guild-boss-player-hit 320ms ease;
+        }
+    }
+
+    &__boss-player-meta {
+        font-size: 12px;
+        color: $color-text-muted;
+        text-align: center;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    @keyframes guild-boss-player-hit {
+        0%   { transform: translateX(0); filter: brightness(1); }
+        25%  { transform: translateX(-4px); filter: brightness(0.6) hue-rotate(-30deg); }
+        50%  { transform: translateX(4px); }
+        100% { transform: translateX(0); filter: brightness(1); }
+    }
+
+    &__boss-player-floats {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    &__boss-player-float {
+        font-size: 14px;
+        font-weight: 800;
+        text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+        animation: guild-float 1.1s ease-out forwards;
+    }
+
+    &__boss-player-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: $color-text;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    &__boss-player-hp-bar,
+    &__boss-player-mp-bar {
+        position: relative;
+        width: 100%;
+        max-width: 220px;
+        height: 14px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 7px;
+        overflow: hidden;
+    }
+
+    &__boss-player-hp-fill {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #4caf50, #66bb6a);
+        transition: width 0.25s linear;
+    }
+
+    &__boss-player-mp-fill {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #2196f3, #64b5f6);
+        transition: width 0.25s linear;
+    }
+
+    &__boss-player-hp-text,
+    &__boss-player-mp-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    @keyframes guild-boss-hit {
+        0%   { transform: translateX(0) scale(1); }
+        20%  { transform: translateX(-6px) scale(1.03); filter: drop-shadow(0 0 12px #ff5252); }
+        40%  { transform: translateX(6px); }
+        60%  { transform: translateX(-3px); }
+        100% { transform: translateX(0) scale(1); }
+    }
+
+    // 2026-05-18 v6 spec ("Animacje moich atakow nie sa takie same
+    // jak na polowaniu"): class-themed flash on the boss sprite each
+    // time the player swings. Each class gets its own coloured
+    // diagonal streak across the boss tile (Knight=red sword,
+    // Mage=purple bolt, Archer=green arrow, etc.) — quick 320ms
+    // sweep so back-to-back swings re-mount the animation.
+    &__boss-sprite {
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(135deg, transparent 45%, currentColor 50%, transparent 55%);
+            opacity: 0;
+            mix-blend-mode: screen;
+        }
+
+        &.is-player-attack-Knight::after,
+        &.is-player-attack-Mage::after,
+        &.is-player-attack-Cleric::after,
+        &.is-player-attack-Archer::after,
+        &.is-player-attack-Rogue::after,
+        &.is-player-attack-Necromancer::after,
+        &.is-player-attack-Bard::after {
+            animation: guild-boss-player-streak 320ms ease-out;
+        }
+
+        &.is-player-attack-Knight     { color: #e53935; }
+        &.is-player-attack-Mage       { color: #7b1fa2; }
+        &.is-player-attack-Cleric     { color: #ffc107; }
+        &.is-player-attack-Archer     { color: #4caf50; }
+        &.is-player-attack-Rogue      { color: #9e9e9e; }
+        &.is-player-attack-Necromancer{ color: #795548; }
+        &.is-player-attack-Bard       { color: #ff9800; }
+    }
+
+    @keyframes guild-boss-player-streak {
+        0%   { opacity: 0; transform: translateX(-30%); }
+        30%  { opacity: 0.85; }
+        100% { opacity: 0; transform: translateX(30%); }
+    }
+
+    &__boss-hp-bar {
+        position: relative;
+        height: 24px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    &__boss-hp-fill {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #f44336, #e57373);
+        transition: width 0.5s;
+    }
+
+    &__boss-hp-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    }
+
+    &__boss-banner {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: rgba(255, 152, 0, 0.12);
+        border: 1px solid rgba(255, 152, 0, 0.4);
+        border-radius: 8px;
+        color: #ff9800;
+        font-size: 13px;
+        text-align: center;
+
+        &--ok {
+            background: rgba(76, 175, 80, 0.12);
+            border-color: rgba(76, 175, 80, 0.4);
+            color: #4caf50;
+        }
+
+        &--win {
+            background: rgba(33, 150, 243, 0.12);
+            border-color: rgba(33, 150, 243, 0.4);
+            color: #2196f3;
+        }
+    }
+
+    &__boss-actions {
+        margin-top: 14px;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    &__boss-floats {
+        position: absolute;
+        top: 60px;
+        left: 0;
+        right: 0;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    &__boss-float {
+        font-size: 26px;
+        font-weight: 800;
+        color: #ffc107;
+        text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+        animation: guild-float 1.0s ease-out forwards;
+
+        &.is-crit {
+            color: #ff5252;
+            font-size: 32px;
+        }
+    }
+
+    &__boss-float-crit {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 2px 6px;
+        background: rgba(255, 82, 82, 0.25);
+        border: 1px solid #ff5252;
+        border-radius: 6px;
+        font-size: 11px;
+        color: #ff5252;
+    }
+
+    @keyframes guild-float {
+        0%   { opacity: 0; transform: translateY(0) scale(0.9); }
+        15%  { opacity: 1; transform: translateY(-6px) scale(1.05); }
+        100% { opacity: 0; transform: translateY(-70px) scale(1); }
+    }
+
+    &__boss-engagement {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 8px;
+        border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+
+    &__boss-engagement-label {
+        font-size: 12px;
+        color: $color-text-muted;
+
+        strong { color: #ff9800; }
+    }
+
+    &__boss-engagement-bar {
+        margin-top: 6px;
+        height: 8px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    &__boss-engagement-fill {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #ff9800, #ffc107);
+        transition: width 0.2s linear;
+    }
+
+    &__boss-speed {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+    }
+
+    &__boss-speed-btn {
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        color: $color-text;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover { background: rgba(255, 255, 255, 0.1); }
+        &.is-active {
+            background: rgba(255, 152, 0, 0.2);
+            border-color: #ff9800;
+            color: #ff9800;
+        }
+    }
+
+    // 2026-05-18 v9 spec ("zrob jakas epicka fajna animacje startu
+    // walki z bossem"): door-opening intro modelled after Boss.tsx
+    // (`.boss__entry-*`). Two iron doors slide off, a seam of light
+    // cracks down the middle, a shockwave ring pulses outward, and
+    // the boss portrait + name punch into view. Total runtime 1.7s,
+    // aligned with the `setTimeout` that swaps phase from 'entry'
+    // to 'fighting' in attemptAttackNow.
+    &__boss-entry-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        overflow: hidden;
+        background:
+            radial-gradient(ellipse at center,
+                rgba(60, 10, 10, 0.95) 0%,
+                rgba(10, 0, 0, 0.98) 55%,
+                #000 100%);
+        animation: guild-entry-overlay 1.7s ease-in-out forwards;
+    }
+
+    @keyframes guild-entry-overlay {
+        // 2026-05-18 v16: overlay starts FULLY opaque so the stage
+        // resize (700×200 → 1040×auto) that fires at the same time
+        // is hidden from frame 1. Tail fade-out remains so the
+        // doors clear into the new combat arena that's already in
+        // place behind them.
+        0%   { opacity: 1; }
+        85%  { opacity: 1; }
+        100% { opacity: 0; }
+    }
+
+    // Soft fog / ember underglow that becomes visible as the doors
+    // slide off — gives the reveal a dungeon-floor depth.
+    &__boss-entry-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(ellipse at 50% 75%, rgba(255, 87, 34, 0.22) 0%, transparent 60%),
+            radial-gradient(ellipse at 50% 30%, rgba(244, 67, 54, 0.18) 0%, transparent 55%);
+    }
+
+    &__boss-entry-door {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        z-index: 4;
+        background:
+            linear-gradient(180deg,
+                rgba(30, 30, 40, 0.98) 0%,
+                rgba(10, 10, 20, 1) 50%,
+                rgba(30, 30, 40, 0.98) 100%),
+            repeating-linear-gradient(180deg,
+                rgba(255, 255, 255, 0.02) 0,
+                rgba(255, 255, 255, 0.02) 2px,
+                transparent 2px, transparent 8px);
+        box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.8);
+        will-change: transform;
+
+        // Rivets along the seam edge (top + bottom rows).
+        &::before, &::after {
+            content: '';
+            position: absolute;
+            background-image: radial-gradient(circle, #2a2a3a 0, #2a2a3a 4px, transparent 5px);
+            background-size: 22px 22px;
+            background-repeat: repeat-x;
+            height: 22px;
+            left: 0;
+            right: 0;
+            opacity: 0.6;
+        }
+        &::before { top: 0; }
+        &::after  { bottom: 0; }
+
+        &--left {
+            left: 0;
+            border-right: 1px solid rgba(255, 180, 40, 0.5);
+            animation: guild-entry-door-left 1.7s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+
+        &--right {
+            right: 0;
+            border-left: 1px solid rgba(255, 180, 40, 0.5);
+            animation: guild-entry-door-right 1.7s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+    }
+
+    // Doors hold closed for the first ~12% (200ms), then slide off
+    // by ~58% (1000ms), then stay off-screen until the overlay fades.
+    @keyframes guild-entry-door-left {
+        0%   { transform: translateX(0); }
+        12%  { transform: translateX(0); }
+        58%  { transform: translateX(-110%); }
+        100% { transform: translateX(-110%); }
+    }
+    @keyframes guild-entry-door-right {
+        0%   { transform: translateX(0); }
+        12%  { transform: translateX(0); }
+        58%  { transform: translateX(110%); }
+        100% { transform: translateX(110%); }
+    }
+
+    // Vertical crack of light down the seam — scales in as doors part.
+    &__boss-entry-seam {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 6px;
+        margin-left: -3px;
+        z-index: 2;
+        transform-origin: center;
+        background: linear-gradient(180deg,
+            transparent 0%,
+            #ffc107 10%,
+            #fff 50%,
+            #ffc107 90%,
+            transparent 100%);
+        box-shadow:
+            0 0 30px 8px rgba(255, 193, 7, 0.8),
+            0 0 60px 20px rgba(255, 100, 40, 0.6);
+        animation: guild-entry-seam 1.7s ease-out forwards;
+    }
+
+    @keyframes guild-entry-seam {
+        0%   { transform: scaleY(0); opacity: 0; }
+        12%  { transform: scaleY(0); opacity: 0; }
+        30%  { transform: scaleY(1); opacity: 1; }
+        65%  { transform: scaleY(1); opacity: 1; }
+        100% { transform: scaleY(1); opacity: 0; }
+    }
+
+    // Expanding shockwave ring that pulses out of the seam crack.
+    &__boss-entry-shock {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 120px;
+        height: 120px;
+        margin: -60px 0 0 -60px;
+        border-radius: 50%;
+        border: 3px solid rgba(255, 193, 7, 0.9);
+        box-shadow: 0 0 40px rgba(255, 152, 0, 0.8);
+        z-index: 1;
+        pointer-events: none;
+        will-change: transform, opacity;
+        animation: guild-entry-shock 1.7s ease-out forwards;
+    }
+
+    @keyframes guild-entry-shock {
+        0%   { transform: scale(0); opacity: 0; }
+        12%  { transform: scale(0); opacity: 0.9; }
+        40%  { transform: scale(4); opacity: 0; }
+        100% { transform: scale(4); opacity: 0; }
+    }
+
+    // Boss portrait + name + tier reveal in the centre.
+    // 2026-05-18 v18: shrunk gap from 6 → 3px so sprite + name +
+    // level pack inside the 200px-tall panel without overflowing.
+    &__boss-entry-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        text-align: center;
+        filter: drop-shadow(0 0 18px rgba(255, 100, 40, 0.9));
+        animation: guild-entry-label 1.7s ease-out forwards;
+    }
+
+    @keyframes guild-entry-label {
+        0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+        20%  { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+        38%  { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+        55%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        85%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+        100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    // 2026-05-18 v18 spec ("Juz prawie animacja ma za duze zdjecie
+    // nie miesci sie w tym oknie teraz zrob tak zeby animacja
+    // pierwsza wejscia do bossa miescila sie w calosci ta ikonka"):
+    // the entry overlay is anchored to the boss-stage panel which
+    // is only 200px tall — sprite + name + level all shrink so
+    // every part of the reveal fits inside that frame.
+    &__boss-entry-sprite {
+        display: block;
+        width: clamp(80px, 14vw, 110px);
+        height: clamp(80px, 14vw, 110px);
+        border-radius: 14px;
+        overflow: hidden;
+        border: 2px solid rgba(255, 193, 7, 0.85);
+        box-shadow:
+            0 0 18px rgba(255, 152, 0, 0.7),
+            inset 0 0 22px rgba(0, 0, 0, 0.6);
+        background: radial-gradient(circle at 50% 60%, rgba(255, 87, 34, 0.35), rgba(0, 0, 0, 0.85) 70%);
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+    }
+
+    &__boss-entry-name {
+        font-size: clamp(14px, 2.4vw, 18px);
+        font-weight: 900;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        text-shadow:
+            0 0 10px #ff5722,
+            0 0 18px rgba(244, 67, 54, 0.8),
+            0 1px 3px #000;
+    }
+
+    &__boss-entry-level {
+        font-size: clamp(10px, 1.6vw, 12px);
+        font-weight: 700;
+        color: #ffc107;
+        letter-spacing: 0.16em;
+        text-shadow: 0 0 6px rgba(255, 193, 7, 0.9);
+        text-transform: uppercase;
+    }
+
+    &__boss-log {
+        // 2026-05-18 v17: stretched along with controls/info to
+        // ~1280px — only the boss-stage panel keeps its 700px
+        // focal width.
+        width: 100%;
+        max-width: 1280px;
+        margin: 14px auto 0;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+    }
+
+    &__boss-log-title {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+    }
+
+    &__boss-log-empty {
+        color: $color-text-muted;
+        font-size: 12px;
+        text-align: center;
+        padding: 8px 0;
+        margin: 0;
+    }
+
+    &__boss-log-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 240px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__boss-log-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 6px;
+        font-size: 12px;
+    }
+
+    &__boss-log-when {
+        color: $color-text-muted;
+        flex-shrink: 0;
+    }
+
+    &__boss-log-who {
+        flex: 1;
+        min-width: 0;
+        color: $color-text;
+    }
+
+    &__boss-log-dmg {
+        color: #ff9800;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    &__boss-info {
+        // 2026-05-18 v17: widened to match controls/log — only the
+        // boss-stage stays compact.
+        width: 100%;
+        max-width: 1280px;
+        margin: 14px auto 0;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 8px;
+        font-size: 13px;
+        color: $color-text;
+        line-height: 1.6;
+
+        p { margin: 4px 0; }
+        strong { color: #ff9800; }
+    }
+
+    &__boss-rules {
+        color: $color-text-muted !important;
+        font-size: 12px !important;
+        margin-top: 8px !important;
+    }
+
+    // ── Claim popup ────────────────────────────────────────────────────
+    &__claim-popup {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 360px;
+        overflow-y: auto;
+    }
+
+    &__claim-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+    }
+
+    &__claim-icon {
+        font-size: 22px;
+    }
+
+    // ── Treasury ───────────────────────────────────────────────────────
+    &__treasury-grids {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 12px;
+
+        @media (min-width: 768px) {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    &__treasury-col {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+    }
+
+    &__treasury-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: $color-text;
+        margin: 0 0 10px;
+    }
+
+    &__treasury-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    &__treasury-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+    }
+
+    &__treasury-icon {
+        font-size: 22px;
+        flex-shrink: 0;
+    }
+
+    &__treasury-info {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        color: $color-text;
+    }
+
+    &__treasury-meta {
+        font-size: 11px;
+        color: $color-text-muted;
+    }
+
+    &__treasury-empty {
+        text-align: center;
+        padding: 16px;
+        color: $color-text-muted;
+        font-size: 13px;
+    }
+
+    &__treasury-name {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    &__treasury-upgrade {
+        color: #ff9800;
+        font-weight: 800;
+    }
+
+    &__treasury-filters {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    &__treasury-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    &__treasury-filter-pill {
+        padding: 4px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        color: $color-text;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+
+        &:hover { filter: brightness(1.15); }
+        &.is-active {
+            background: rgba(255, 152, 0, 0.18);
+            border-color: #ff9800;
+            color: #ff9800;
+        }
+    }
+
+    &__treasury-filter-icon {
+        width: 18px;
+        height: 18px;
+        object-fit: contain;
+        display: block;
+    }
+
+    &__treasury-filter-icon-emoji {
+        font-size: 16px;
+        line-height: 1;
+    }
+
+    &__treasury-filter-label {
+        font-size: 11px;
+    }
+
+    // ── Logs ───────────────────────────────────────────────────────────
+    &__log-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    &__log-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 6px;
+        font-size: 12px;
+    }
+
+    &__log-tag {
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 10px;
+
+        &--deposit {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        &--withdraw {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+    }
+
+    &__log-player {
+        color: $color-text;
+    }
+
+    &__log-item {
+        font-weight: 700;
+    }
+
+    &__log-level {
+        padding: 1px 6px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 4px;
+        color: $color-text-muted;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    &__log-time {
+        margin-left: auto;
+        color: $color-text-muted;
+    }
+
+    // ── Requests ───────────────────────────────────────────────────────
+    &__requests {
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    // 2026-05-18 spec ("guziki na mobilce pod nazwa gracza, nazwa
+    // gracza i guziki wysrodkowane"): on phones the row stacks
+    // vertically with everything centred; the wider desktop layout
+    // keeps the side-by-side row for density.
+    &__request-row {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        text-align: center;
+
+        @media (min-width: 768px) {
+            flex-direction: row;
+            text-align: left;
+            gap: 12px;
+            padding: 10px 12px;
+        }
+    }
+
+    &__request-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+        flex: 1;
+        min-width: 0;
+
+        @media (min-width: 768px) {
+            justify-content: flex-start;
+        }
+    }
+
+    &__request-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        width: 100%;
+
+        @media (min-width: 768px) {
+            width: auto;
+        }
+
+        button {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px 14px;
+
+            @media (min-width: 768px) {
+                flex: 0 0 auto;
+            }
+        }
+    }
+
+    // ── Modal ──────────────────────────────────────────────────────────
+    &__modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    &__modal {
+        background: linear-gradient(180deg, rgba(30, 30, 40, 0.98), rgba(20, 22, 32, 0.98));
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 20px;
+        width: 100%;
+        max-width: 420px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+
+        &--wide { max-width: 640px; }
+    }
+
+    &__modal-title {
+        margin: 0 0 12px;
+        font-size: 18px;
+        font-weight: 700;
+        color: $color-text;
+    }
+
+    &__modal-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 18px;
+
+        button {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: $color-text;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+
+            &:disabled { opacity: 0.5; cursor: not-allowed; }
+            &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+        }
+    }
+
+    // ── Buttons ────────────────────────────────────────────────────────
+    &__btn-primary {
+        padding: 8px 16px;
+        background: linear-gradient(180deg, #ff9800, #f57c00) !important;
+        border: 1px solid #ff9800 !important;
+        color: #fff !important;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover:not(:disabled) { filter: brightness(1.1); }
+
+        // 2026-05-19 spec ("kolor guzika do ataku bossa w kolorze
+        // naszego transformu"): when the guild boss attack CTA
+        // carries the `--attack` modifier, read the bg + border
+        // from CSS variables that the view inline-sets from the
+        // player's highest-transform colour. Falls back to the
+        // default orange when no transform has been claimed.
+        &--attack {
+            background: var(
+                --guild-attack-bg,
+                linear-gradient(180deg, #ff9800, #f57c00)
+            ) !important;
+            border-color: var(--guild-attack-border, #ff9800) !important;
+        }
+    }
+
+    &__btn-danger {
+        padding: 8px 16px;
+        background: linear-gradient(180deg, #f44336, #c62828) !important;
+        border: 1px solid #f44336 !important;
+        color: #fff !important;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover:not(:disabled) { filter: brightness(1.1); }
+    }
+
+    &__btn-secondary {
+        padding: 6px 12px;
+        background: rgba(33, 150, 243, 0.12);
+        border: 1px solid rgba(33, 150, 243, 0.4);
+        border-radius: 8px;
+        color: #2196f3;
+        font-size: 13px;
+        cursor: pointer;
+
+        &:hover { background: rgba(33, 150, 243, 0.25); }
+    }
+
+    // 2026-05-18 spec ("guzik przyjmij na zielono"): dedicated green
+    // CTA variant for the requests-accept flow + any other positive
+    // confirmation button we add later (e.g. claim boss reward).
+    &__btn-ok {
+        padding: 8px 16px;
+        background: linear-gradient(180deg, #43a047, #2e7d32) !important;
+        border: 1px solid #43a047 !important;
+        border-radius: 8px;
+        color: #fff !important;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover:not(:disabled) { filter: brightness(1.1); }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
     }
 }

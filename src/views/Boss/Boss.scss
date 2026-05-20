@@ -25,6 +25,10 @@
   }
 
   // ── Header ─────────────────────────────────────────────────────────────────
+  // Default header (unused now, kept as a base in case any sub-view re-enables
+  // the bordered top bar). The active variant on the Bossowie page is
+  // `__header--minimal` below: just the trophy badge centred under the
+  // page-shell, no border, no title, no back button.
   &__header {
     display: flex;
     align-items: center;
@@ -34,32 +38,34 @@
     border-bottom: 1px solid $color-border;
   }
 
-  &__back {
+  &__header--minimal {
     background: transparent;
-    border: none;
-    color: $color-text-muted;
-    cursor: pointer;
-    font-size: $font-sm;
-    padding: $spacing-xs $spacing-sm;
-    &:hover { color: $color-accent; }
-  }
+    border-bottom: none;
+    justify-content: center;
+    padding: $spacing-sm $spacing-md $spacing-xs;
+    margin-top: $spacing-xs;
 
-  &__title {
-    flex: 1;
-    color: $color-accent;
-    font-size: $font-xl;
-    margin: 0;
+    // Trophy is hidden during combat / result phases (only renders on the
+    // list view), so the header itself collapses to zero height during
+    // fighting — letting the combat top-controls strip touch the global
+    // page header without a stale gap.
+    .boss--fighting & {
+      display: none;
+    }
   }
 
   &__score {
-    font-size: $font-sm;
+    font-size: $font-md;
     color: #ffc107;
     font-weight: 700;
-    background: rgba(#ffc107, 0.1);
-    padding: $spacing-xs $spacing-sm;
-    border-radius: $radius-sm;
-    border: 1px solid rgba(#ffc107, 0.25);
+    background: rgba(#ffc107, 0.12);
+    padding: $spacing-sm $spacing-lg;
+    border-radius: $radius-md;
+    border: 1px solid rgba(#ffc107, 0.3);
     white-space: nowrap;
+    box-shadow: 0 0 18px rgba(#ffc107, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.04em;
   }
 
   &__fighting-badge {
@@ -78,17 +84,199 @@
     flex-direction: column;
     gap: $spacing-md;
 
-    // Inside fighting mode, panel must fill remaining space
+    // Inside fighting mode, panel must fill remaining space AND drop ALL
+    // its padding so:
+    //  • the combat top-controls strip butts directly against the global
+    //    page header (no top gap),
+    //  • the same strip and the arena underneath span the full viewport
+    //    width (no left/right gap — per UX direction: "Pasek z guzikami
+    //    do przyspieszania walki itp powinien byc na 100% szerokosci
+    //    ekranu a jest jakies 98%"). The chip pills inside the strip
+    //    keep their own internal padding so they don't touch the edge.
+    //
+    // `overflow: visible` is intentional — paired with the AppShell-level
+    // `min-height: 100%; height: auto` unlock rule in CombatUI.scss it
+    // lets the page scroll naturally when the arena content exceeds the
+    // viewport (narrow phones / responsive widths). The earlier
+    // `overflow: hidden` flat-out clipped overflowing rows so the player
+    // couldn't see the bottom of the action bar / potion dock at all
+    // when the screen was short — same scroll-when-needed pattern as
+    // hunting / transform now. The 140px reserve in `.app-shell__main`
+    // (compact carve-out) keeps the dock from crashing the last row.
     .boss--fighting & {
       flex: 1;
       min-height: 0;
-      overflow: hidden;
+      overflow: visible;
+      padding: 0;
     }
+  }
+
+  // Ultrawide layout — boss cards pack two-per-row at 1100px each. Filter
+  // bar / arena view / fight-mode containers stay full-width via
+  // `flex-basis: 100%`, so only `&__card` siblings actually pair up.
+  // We also disable the rule when the view is in fighting mode to avoid
+  // disturbing the locked-viewport combat layout.
+  @media (min-width: 2300px) {
+    &:not(&--fighting) &__panel {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+
+      > :not(.boss__card) {
+        flex-basis: 100%;
+      }
+    }
+  }
+
+  // ── Hub filter bar ─────────────────────────────────────────────────────────
+  // Mirrors the Dungeon filter strip exactly so the two listing screens read
+  // as siblings: pill toggles → numeric "Lvl od" input → optional Wyczyść.
+  // Per-character persistence comes from settingsStore via characterScope.
+  &__hub-filters {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__hub-section-title {
+    color: $color-text-muted;
+    font-size: $font-sm;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin: 0 0 $spacing-sm;
+    text-transform: uppercase;
+  }
+
+  &__filter-bar {
+    align-items: center;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    column-gap: $spacing-sm;
+    display: flex;
+    flex-wrap: wrap;
+    padding: $spacing-sm $spacing-md;
+    row-gap: $spacing-xs;
+  }
+
+  &__filter-toggle {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    column-gap: $spacing-xs;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: $font-xs;
+    font-weight: 600;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+    user-select: none;
+
+    // Native checkbox stays for a11y / form semantics; the visual cue is the
+    // `--active` modifier on the label itself.
+    input[type='checkbox'] {
+      height: 0;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      width: 0;
+    }
+
+    &:hover {
+      border-color: $color-accent;
+      color: $color-text;
+    }
+
+    &--active {
+      background: rgba(76, 175, 80, 0.15);
+      border-color: #4caf50;
+      color: #c8e6c9;
+    }
+  }
+
+  &__filter-toggle-label {
+    line-height: 1;
+  }
+
+  &__filter-input {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    column-gap: $spacing-xs;
+    display: inline-flex;
+    padding: 2px $spacing-sm;
+
+    input {
+      background: transparent;
+      border: 0;
+      color: $color-text;
+      font-size: $font-xs;
+      font-weight: 700;
+      outline: none;
+      padding: 4px 0;
+      width: 56px;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        appearance: none;
+        margin: 0;
+      }
+      -moz-appearance: textfield;
+    }
+  }
+
+  &__filter-input-label {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__filter-clear {
+    background: transparent;
+    border: 1px dashed rgba(244, 67, 54, 0.4);
+    border-radius: $radius-sm;
+    color: #ef9a9a;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 600;
+    margin-left: auto;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba(244, 67, 54, 0.12);
+      border-color: #f44336;
+      color: $color-text;
+    }
+  }
+
+  &__filters-empty {
+    text-align: center;
+    padding: $spacing-md;
+    color: $color-text-muted;
+    font-size: $font-sm;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed $color-border;
+    border-radius: $radius-md;
   }
 
   // ── Boss card ──────────────────────────────────────────────────────────────
   &__card {
     --h: var(--card-hue, 0);
+    --card-image: none;
+    // Tile-width cap: a single boss card never exceeds 1100px. The parent
+    // `__panel` is flex-column by default so cards stack centred via
+    // `align-self`; the ultrawide media block at the bottom switches the
+    // panel to a 2-up wrapping row.
+    width: 100%;
+    max-width: 1100px;
+    align-self: center;
     position: relative;
     overflow: hidden;
     background:
@@ -114,6 +302,36 @@
         $color-bg-card 70%
       );
     border: 1px solid hsla(var(--h), 50%, 45%, 0.4);
+
+    // Per-boss painting variant — stacks the user-provided image under the
+    // hue gradient via a layered background. The gradient on top is darkened
+    // a touch so the image reads through but text on the card stays legible.
+    // When the user hasn't dropped art for a slot the modifier class isn't
+    // added in JSX, so this block is a no-op for those tiles.
+    &--has-bg {
+      background:
+        // Top: hue tint (lighter alphas than the no-image variant so the
+        // painting can breathe; without this the image would look muddy).
+        linear-gradient(
+          155deg,
+          hsla(var(--h), 55%, 16%, 0.55) 0%,
+          hsla(var(--h), 40%, 10%, 0.25) 30%,
+          rgba(0, 0, 0, 0.55) 80%
+        ),
+        // Middle: dark vignette pinning the image to the centre so the
+        // edges of the card don't get bright glare from the painting.
+        radial-gradient(
+          ellipse at center,
+          transparent 0%,
+          rgba(0, 0, 0, 0.55) 95%
+        ),
+        // Bottom: the boss painting itself.
+        var(--card-image),
+        $color-bg-card;
+      background-size: cover, cover, cover, auto;
+      background-position: center, center, center, center;
+      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+    }
     border-left: 4px solid hsla(var(--h), 65%, 50%, 0.75);
     border-radius: $radius-md;
     padding: $spacing-md;
@@ -176,16 +394,44 @@
 
     &--blocked { opacity: 0.6; }
 
+    // "All daily attempts used" — keep the per-boss hue border intact so
+    // the card still reads as part of its tier (per user direction: "kolor
+    // borderu jak pokonalem bossa nie powinien sie zmienic"). The state
+    // is signalled exclusively by reduced opacity + the centred ✓ Pokonany
+    // stamp at the top of the card. The shimmer animation pauses too so
+    // the card feels dormant rather than active.
     &--all-done {
-      background:
-        radial-gradient(ellipse at 20% 30%, rgba(76, 175, 80, 0.18) 0%, transparent 50%),
-        linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, $color-bg-card 60%);
-      border-color: rgba(76, 175, 80, 0.3);
-      border-left-color: rgba(76, 175, 80, 0.5);
-      opacity: 0.7;
+      opacity: 0.65;
 
       &::before { animation: none; }
     }
+  }
+
+  // ── "Pokonany" stamp ───────────────────────────────────────────────────────
+  // Pinned absolute so the centred head can claim the full card width.
+  // Identical visual to Dungeon's `__corner--cleared` for cross-view
+  // consistency. Sits horizontally between the LVL badge (top-right)
+  // and the left edge of the card so the three top-row signals don't
+  // overlap on narrow screens.
+  &__card-cleared-badge {
+    position: absolute;
+    top: $spacing-sm;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    background: rgba(46, 125, 50, 0.95);
+    border: 1px solid rgba(129, 199, 132, 0.85);
+    color: #f1f8e9;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+                0 0 14px rgba(76, 175, 80, 0.5);
+    pointer-events: none;
   }
 
   @keyframes boss-card-shimmer {
@@ -200,9 +446,41 @@
     gap: $spacing-md;
   }
 
+  // Avatar tile — fixed-size square with a 2px hue-gradient frame and 6px
+  // outer corners (4px inner). The gradient runs across the same hue used
+  // by the card chrome so each boss gets a frame that matches its tile
+  // identity. Achieved with the padding+gradient-bg trick so the frame
+  // works for both the <img> case and the emoji-fallback <span> case
+  // without needing border-image.
   &__sprite {
-    font-size: 48px;
     flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    padding: 2px;
+    border-radius: 6px;
+    background: linear-gradient(
+      135deg,
+      hsla(var(--h, 0), 75%, 55%, 0.95) 0%,
+      hsla(calc(var(--h, 0) + 30), 70%, 60%, 0.95) 100%
+    );
+    box-shadow: 0 0 12px hsla(var(--h, 0), 60%, 45%, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    overflow: hidden;
+
+    > img,
+    > span {
+      width: 100%;
+      height: 100%;
+      border-radius: 4px;
+      background: $color-bg-card;
+      object-fit: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
   }
 
   &__card-info {
@@ -217,9 +495,30 @@
     color: $color-accent;
   }
 
-  &__card-level {
-    font-size: $font-xs;
-    color: $color-text-muted;
+  // Corner LVL badge — sits absolutely positioned in the top-right of the
+  // card so the level is glanceable without consuming a content row.
+  // Shares the card hue + a soft glow so it reads as part of the chrome.
+  &__card-level-badge {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-sm;
+    z-index: 2;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(
+      135deg,
+      hsla(var(--h, 0), 75%, 35%, 0.95) 0%,
+      hsla(calc(var(--h, 0) + 25), 65%, 28%, 0.95) 100%
+    );
+    border: 1px solid hsla(var(--h, 0), 75%, 55%, 0.7);
+    box-shadow: 0 2px 10px hsla(var(--h, 0), 60%, 30%, 0.4),
+                inset 0 1px 0 hsla(var(--h, 0), 80%, 70%, 0.25);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
   &__card-desc {
@@ -234,14 +533,39 @@
     gap: $spacing-sm;
     font-size: $font-xs;
     color: $color-text-muted;
+    align-items: center;
+
+    // Combat row (HP / ATK / DEF) — slightly bigger numbers and tighter
+    // letter spacing so it reads as the primary "what fight am I about to
+    // get into" line. Sat above the rewards row in the JSX.
+    &--combat {
+      gap: $spacing-md;
+      font-size: $font-sm;
+      font-weight: 600;
+      color: $color-text;
+
+      > span { white-space: nowrap; }
+    }
+
+    // Rewards row (Gold / XP / 📦) — gold colour cue links it visually to
+    // the reward palette used on the result screen reward rows. The drop
+    // icon now flows naturally inline (no `margin-left: auto`) so it sits
+    // immediately after XP rather than getting pushed flush right — feels
+    // less detached from the cluster it relates to.
+    &--rewards {
+      gap: $spacing-md;
+      font-size: $font-sm;
+      color: #ffc107;
+      font-weight: 600;
+
+      .boss__card-stat-gold { display: inline-flex; align-items: center; }
+    }
   }
 
-  &__card-party-note {
-    font-size: $font-xs;
-    color: #ff9800;
-    font-style: italic;
-    margin-top: 2px;
-  }
+  // `__card-party-note` was the old "👥 Zbalansowany dla 4-osobowej drużyny"
+  // caption — removed from the JSX in the unified-combat pass. Kept the
+  // selector slot intentionally empty as a marker so anyone grepping the
+  // legacy class name finds the explanation without resurrecting it.
 
   // ── Unique drops list ──────────────────────────────────────────────────────
   &__unique-drops {
@@ -290,6 +614,112 @@
 
     &:hover { background: rgba(255, 255, 255, 0.08); border-color: $color-accent; }
     &--open { border-color: $color-accent; color: $color-text; }
+  }
+
+  // ── Drop-table icon button (lives next to the gold cell) ──────────────────
+  // Replaces the old wide "Drop table" toggle. Tucked alongside the gold
+  // amount because the player's eye already lands there when scanning the
+  // stat row — opening the popup is a single tap away without bloating the
+  // tile with another full-width row.
+  &__card-stat-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__drop-icon {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 1px 6px;
+    line-height: 1.2;
+    transition: background $transition-fast, border-color $transition-fast, transform 0.1s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: $color-accent;
+      transform: translateY(-1px);
+    }
+  }
+
+  // ── Drop-table modal (popup) ──────────────────────────────────────────────
+  &__modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-md;
+    animation: boss-modal-fade 0.15s ease-out;
+  }
+
+  @keyframes boss-modal-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  &__modal {
+    --h: var(--card-hue, 0);
+    background:
+      radial-gradient(ellipse at 15% 20%, hsla(var(--h), 65%, 28%, 0.5) 0%, transparent 55%),
+      linear-gradient(160deg, hsla(var(--h), 50%, 15%, 0.85) 0%, $color-bg-card 75%);
+    border: 1px solid hsla(var(--h), 60%, 50%, 0.5);
+    border-radius: $radius-md;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6),
+                0 0 0 1px hsla(var(--h), 60%, 50%, 0.3);
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: boss-modal-pop 0.2s ease-out;
+  }
+
+  @keyframes boss-modal-pop {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);   }
+  }
+
+  &__modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid hsla(var(--h, 0), 50%, 50%, 0.25);
+    flex-shrink: 0;
+  }
+
+  &__modal-title {
+    font-size: $font-md;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  &__modal-close {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    font-size: $font-lg;
+    cursor: pointer;
+    padding: 0 6px;
+    line-height: 1;
+
+    &:hover { color: #fff; }
+  }
+
+  &__modal-body {
+    overflow-y: auto;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
   }
 
   &__drop-table {
@@ -354,21 +784,39 @@
     margin-top: 2px;
   }
 
+  // Footer is a wrap-row: attempts sits on the left (pushed left by
+  // `margin-right: auto` on `__attempts`), the lock / cooldown / pokonany
+  // status badges flow right of it, and the Wyzwij button is forced onto
+  // its own line via `flex-basis: 100%` so it can centre-align via its
+  // own auto margins. This keeps "attempts on the left, button centred"
+  // working in the same flex container.
+  // Footer is a column so the Wyzwij CTA always sits on its own line and
+  // centres independently of the attempts cluster width. The internal
+  // `&-row` is the horizontal status strip (attempts + cooldown / locked).
   &__card-footer {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__card-footer-row {
+    display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
-    gap: $spacing-xs;
+    align-items: center;
+    gap: $spacing-sm;
   }
 
   &__attempts {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 6px;
+    // Push subsequent siblings (status/cooldown/locked badges) to the
+    // right edge of the footer row — the attempts cluster anchors the
+    // left side of the row.
+    margin-right: auto;
   }
 
   &__attempts-bar {
@@ -395,17 +843,41 @@
     color: $color-text-muted;
   }
 
+  // Challenge CTA — same hollow + hue-gradient-border idiom as Dungeon's
+  // `__enter-btn--wide`. Transparent fill lets the boss painting / card
+  // chrome show through and the 2px border picks up the per-tile hue so
+  // each boss button reads as part of its own card rather than a generic
+  // red action button. Centred (200px max-width + `align-self: center`)
+  // so it visually anchors the bottom of the card.
   &__challenge-btn {
-    background: $color-accent;
-    border: none;
+    // Footer is now `flex-direction: column`, so the button is
+    // automatically on its own row. `margin: 0 auto` handles the
+    // horizontal centring; max-width caps the visual weight of the CTA.
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto;
+    padding: 10px $spacing-lg;
+    background: transparent;
+    border: 2px solid hsla(var(--h, 0), 70%, 50%, 0.9);
     border-radius: $radius-sm;
-    color: white;
+    color: #fff;
     cursor: pointer;
-    font-size: $font-sm;
-    font-weight: 600;
-    padding: $spacing-sm $spacing-lg;
-    transition: background $transition-fast;
-    &:hover { background: $color-accent-hover; }
+    font-size: $font-md;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0 12px hsla(var(--h, 0), 65%, 40%, 0.35);
+    transition: background $transition-fast, border-color $transition-fast,
+                box-shadow $transition-fast, transform 0.1s;
+
+    &:hover {
+      background: hsla(var(--h, 0), 65%, 40%, 0.18);
+      border-color: hsla(var(--h, 0), 75%, 60%, 1);
+      box-shadow: 0 0 18px hsla(var(--h, 0), 70%, 50%, 0.55);
+      transform: translateY(-1px);
+    }
+
+    &:active { transform: translateY(0); }
   }
 
   // ── Speed button ────────────────────────────────────────────────────────────
@@ -892,11 +1364,29 @@
   }
 
   // ── Result ─────────────────────────────────────────────────────────────────
+  // 1:1 with Dungeon's result panel. Per-boss painting drives the card
+  // background (via `--card-image`); the shimmering victory banner / reward
+  // rows / drops grid sit on top with their own backgrounds for legibility.
   &__result {
-    background: $color-bg-card;
+    --h: var(--card-hue, 0);
+    --card-image: none;
+    position: relative;
+    overflow: hidden;
+    background-color: $color-bg-card;
+    background-image: var(--card-image);
+    // `contain` keeps the boss painting whole (no crop) and `repeat` tiles
+    // it across whatever extra height the card grows to when the drops list
+    // is long. Centred so the focal point sits behind the victory banner
+    // on the most common card size.
+    background-size: contain;
+    background-position: center;
+    background-repeat: repeat;
     border: 2px solid $color-border;
     border-radius: $radius-lg;
     padding: $spacing-lg;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -904,18 +1394,91 @@
     text-align: center;
 
     &--win  {
-      border-color: #ffc107;
-      box-shadow: 0 0 16px rgba(#ffc107, 0.15);
+      border-color: hsla(var(--h), 70%, 55%, 0.7);
+      box-shadow: 0 0 24px hsla(var(--h), 60%, 45%, 0.25);
     }
     &--loss { border-color: $color-accent; }
   }
 
-  &__result-sprite { font-size: 64px; }
+  // Centred panel modifier — pins the result card vertically in the
+  // visible viewport (header + bottom nav already subtracted via min-height
+  // calc) so the celebration screen doesn't crowd under the header.
+  &__panel--centered {
+    min-height: calc(100vh - 200px);
+    min-height: calc(100dvh - 200px);
+    justify-content: center;
+  }
+
   &__result-title  { font-size: $font-xxl; font-weight: 700; }
 
   &__result--win  .boss__result-title { color: #ffc107; }
   &__result--loss .boss__result-title { color: $color-accent; }
   &__result-boss   { font-size: $font-md; color: $color-text-muted; }
+
+  // ── Victory banner ────────────────────────────────────────────────────────
+  // Per spec: transparent fill so the boss painting behind shows through,
+  // borders dropped, only the diagonal shimmer (::before) and inner-label
+  // text shadows stay. Reads as a "ribbon of light" sweeping over the
+  // painting rather than a coloured plaque — same idiom as Dungeon.
+  &__victory-banner {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    border-radius: $radius-md;
+    padding: $spacing-lg $spacing-md;
+    background: transparent;
+    text-align: center;
+    color: #fff;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(
+        110deg,
+        transparent,
+        rgba(255, 255, 255, 0.18),
+        transparent
+      );
+      animation: boss-victory-shimmer 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    > * { position: relative; z-index: 1; }
+  }
+
+  @keyframes boss-victory-shimmer {
+    0%   { left: -120%; }
+    60%  { left: 120%;  }
+    100% { left: 120%;  }
+  }
+
+  &__victory-icon {
+    display: block;
+    font-size: 2.4rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 8px hsla(var(--h, 0), 80%, 50%, 0.6));
+    margin-bottom: $spacing-xs;
+  }
+
+  &__victory-name {
+    font-size: $font-xl;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  }
+
+  &__victory-sub {
+    margin-top: 4px;
+    font-size: $font-sm;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: hsla(var(--h, 0), 80%, 80%, 0.95);
+    font-weight: 700;
+  }
 
   &__rewards {
     width: 100%;
@@ -936,15 +1499,20 @@
     color: #ffc107;
   }
 
-  &__drops-result {
+  // Renamed from `__drops-result` / `__drops-result-title` to match the
+  // Dungeon class names (`__drops` / `__drops-title`) so the result view
+  // shares vocabulary across both pages — easier to read together when
+  // diffing the two views and matches the Dungeon-identical UX spec.
+  &__drops {
+    margin-top: $spacing-xs;
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: $spacing-sm;
+    gap: $spacing-xs;
     text-align: left;
   }
 
-  &__drops-result-title {
+  &__drops-title {
     font-size: $font-sm;
     color: #ffc107;
     font-weight: 600;
@@ -998,6 +1566,93 @@
     padding: $spacing-sm $spacing-lg;
     transition: border-color $transition-fast;
     &:hover { border-color: $color-accent; }
+
+    // Win CTA — same green claim button as Dungeon's `--claim`. Bold, wide,
+    // celebratory; the eye lands on it as the primary "you're done, take
+    // your stuff and go" action after a boss kill.
+    &--claim {
+      width: 100%;
+      max-width: 240px;
+      align-self: center;
+      background: linear-gradient(135deg, #2e7d32, #43a047);
+      border: 1px solid #4caf50;
+      color: #fff;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px $spacing-lg;
+      box-shadow: 0 4px 14px rgba(76, 175, 80, 0.35),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, #388e3c, #4caf50);
+        border-color: #66bb6a;
+        box-shadow: 0 6px 22px rgba(76, 175, 80, 0.55),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &:active { transform: translateY(0); }
+    }
+
+    // Spec 6 (2026-05): "Walcz ponownie" CTA — same chrome as `--claim`
+    // but blue, paired beside it on a winning result screen so the
+    // player can re-run the same boss + bot party with one click.
+    &--again {
+      width: 100%;
+      max-width: 240px;
+      align-self: center;
+      background: linear-gradient(135deg, #1565c0, #2196f3);
+      border: 1px solid #42a5f5;
+      color: #fff;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px $spacing-lg;
+      box-shadow: 0 4px 14px rgba(33, 150, 243, 0.35),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, #1976d2, #42a5f5);
+        border-color: #64b5f6;
+        box-shadow: 0 6px 22px rgba(33, 150, 243, 0.55),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &:active { transform: translateY(0); }
+    }
+
+    // Loss CTA — red retreat button so the panel doesn't visually celebrate
+    // a defeat with a green claim. Same dimensions as `--claim` so the two
+    // states are visually siblings; only the colour palette differs.
+    &--retreat {
+      width: 100%;
+      max-width: 240px;
+      align-self: center;
+      background: linear-gradient(135deg, #b71c1c, #e53935);
+      border: 1px solid #ef5350;
+      color: #fff;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px $spacing-lg;
+      box-shadow: 0 4px 14px rgba(229, 57, 53, 0.4),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, #c62828, #ef5350);
+        border-color: #ef9a9a;
+        box-shadow: 0 6px 22px rgba(229, 57, 53, 0.6),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &:active { transform: translateY(0); }
+    }
   }
 
   &__result-actions {
@@ -1007,6 +1662,7 @@
     margin-top: $spacing-md;
     width: 100%;
     max-width: 320px;
+    align-items: center;
   }
 
   &__retry-btn {
@@ -1346,10 +2002,20 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    pointer-events: none;
+    // Clickable surface — taps anywhere on the overlay short-circuit
+    // the door-opening intro via `skipBossEntry` (Boss.tsx). Inner
+    // ornaments (entry-bg, entry-shock) keep `pointer-events: none` so
+    // they don't intercept the click; the doors / label have no handler
+    // and just bubble naturally to this parent.
+    pointer-events: auto;
+    cursor: pointer;
     overflow: hidden;
     background:
       radial-gradient(ellipse at center, rgba(60, 10, 10, 0.95) 0%, rgba(10, 0, 0, 0.98) 55%, #000 100%);
+
+    &:focus-visible {
+      outline: none;
+    }
   }
 
   // Subtle vignette / floor-fog layer that gives the reveal some depth.

@@ -1,0 +1,157 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1300;
+  height: 60px;
+  padding: 0 4px env(safe-area-inset-bottom, 0);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 2px;
+  background: rgba(15, 16, 30, 0.95);
+  border-top: 1px solid rgba(255, 193, 7, 0.18);
+  backdrop-filter: blur(14px);
+
+  &__btn {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 2px;
+    background: transparent;
+    border: 0;
+    border-top: 2px solid transparent;
+    color: #b0b0b0;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    line-height: 1.1;
+    font-family: inherit;
+
+    &:hover {
+      color: var(--nav-accent, #ffc107);
+      background: rgba(var(--nav-accent-rgb, 255, 193, 7), 0.08);
+    }
+
+    &--active {
+      color: var(--nav-accent, #ffc107);
+      border-top-color: var(--nav-accent, #ffc107);
+      background: rgba(var(--nav-accent-rgb, 255, 193, 7), 0.12);
+    }
+
+    // 2026-05-20 spec ("wyszarz, spolecznosc, arene, raidy"): the
+    // Społeczność button is dead in offline mode. Grayscale + reduced
+    // opacity + small lock icon top-right of the SVG. Pointer events
+    // are killed at the React level via the `disabled` attr too.
+    &--offline-locked {
+      filter: grayscale(0.85) brightness(0.6);
+      opacity: 0.55;
+      cursor: not-allowed;
+      position: relative;
+
+      &:hover {
+        background: transparent; // suppress the hover-tint
+        color: #b0b0b0;
+      }
+
+      &::after {
+        content: '🔒';
+        position: absolute;
+        top: 4px;
+        right: 10px;
+        font-size: 10px;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+      }
+    }
+  }
+
+  &__icon {
+    position: relative; // anchors the absolute claim-dot
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+
+    svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+  }
+
+  // Pulsing purple dot — same colour + cadence as the header status
+  // dot ("rewards waiting"). Sits at the top-right of the icon so it
+  // doesn't shove the label or change the button's footprint. Keyframes
+  // live at the bottom of the file (outside the .bottom-nav block).
+  &__claim-dot {
+    position: absolute;
+    top: -3px;
+    right: -5px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #b388ff;
+    border: 1.5px solid rgba(15, 17, 28, 0.85);
+    box-shadow: 0 0 6px #b388ff, 0 0 12px rgba(179, 136, 255, 0.65);
+    pointer-events: none;
+    animation: bottom-nav-claim-blink 0.9s ease-in-out infinite;
+  }
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .bottom-nav {
+    height: 64px;
+
+    &__btn {
+      gap: 3px;
+      padding: 8px 4px;
+    }
+
+    &__icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    &__label {
+      font-size: 11px;
+    }
+  }
+}
+
+@media (max-width: 380px) {
+  .bottom-nav {
+    height: 56px;
+
+    &__icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    &__label {
+      font-size: 9px;
+    }
+  }
+}
+
+// Claim-dot blink — fired by `bottom-nav__claim-dot` when the Questy
+// nav item has rewards waiting. Same cadence as the header status dot
+// + Quests hub claim dot so the three indicators feel like one alert
+// system across the chrome.
+@keyframes bottom-nav-claim-blink {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.85); }
+}

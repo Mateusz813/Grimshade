@@ -1,0 +1,175 @@
+// 2026-05-19 v2 spec ("Brakuje ikonki chatu do odpalania malego
+// chatu na popupie jak w party"): compact chat popover anchored to
+// the bottom-right of the viewport, matching the party widget's
+// popover footprint. Sits ABOVE the chat-unread badge so the badge
+// is still visible (or hidden via badge.is-popup-open, whichever
+// reads better — kept here so the popup can stack on phones too).
+// 2026-05-19 v3 spec ("powinien byc tam na popupie odwzorowany
+// widok /chat ze wszystkimi dostepnymi chatami"): popover anchored
+// to the bottom-LEFT next to the chat icon. Mirrors the /chat
+// route's layout (every tab, full Chat panels) at a compact size
+// so the player can read & reply without leaving the current view.
+// 2026-05-19 v7 spec ("popraw wyswietlanie chatu zeby byl przy tej
+// ikonce w miare"): popover anchored to the bottom-RIGHT next to
+// the new chat-icon position. Sits just above + slightly inside
+// of the icon so the visual relationship reads as "this is the
+// thing the icon opened".
+.chat-popup {
+    position: fixed;
+    right: 8px;
+    bottom: 96px;
+    z-index: 1311;
+    width: min(420px, calc(100vw - 16px));
+    height: min(560px, calc(100vh - 180px));
+    display: flex;
+    flex-direction: column;
+    background: rgba(15, 17, 28, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+
+    @media (min-width: 768px) {
+        right: 12px;
+        bottom: 96px;
+        width: 460px;
+        height: 600px;
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.25);
+    }
+
+    &__title {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: 0.04em;
+    }
+
+    &__close {
+        width: 28px;
+        height: 28px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        color: #ccc;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+    }
+
+    &__tabs {
+        display: flex;
+        gap: 4px;
+        padding: 8px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        overflow-x: auto;
+
+        &::-webkit-scrollbar { height: 6px; }
+        &::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 999px;
+        }
+    }
+
+    &__tab {
+        display: inline-flex;
+        align-items: stretch;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: background 120ms ease, border-color 120ms ease;
+
+        &:hover { background: rgba(255, 255, 255, 0.08); }
+
+        &--active {
+            background: rgba(233, 69, 96, 0.18);
+            border-color: rgba(233, 69, 96, 0.65);
+
+            .chat-popup__tab-title { color: #fff; }
+        }
+    }
+
+    &__tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        max-width: 140px;
+        overflow: hidden;
+    }
+
+    &__tab-title {
+        color: inherit;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    &__tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: #e94560;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    &__tab-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        background: transparent;
+        border: none;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        font-family: inherit;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ff8899;
+        }
+    }
+
+    &__chat-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 6px 8px 8px;
+        background: rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+    }
+}

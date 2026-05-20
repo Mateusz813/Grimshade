@@ -36,7 +36,33 @@ import type { CharacterClass } from './characterApi';
 // Set to `false` as soon as we see a PostgREST error that mentions a missing
 // column. Once flipped we stop asking for those columns in subsequent calls,
 // so the browser keeps working on un-migrated Supabase instances.
+//
+// 2026-05-09: re-promote to `true` after 30 s. Without this, a single
+// schema-missing error during the migration window permanently locks the
+// session into the minimal-payload path even AFTER the user runs the
+// migration — they'd see "0/4 graczy" forever until a hard refresh because
+// the embedded `party_members(*)` SELECT got skipped. The 30 s probe means
+// we self-heal: the next call after the migration lands re-tries with the
+// full payload and succeeds.
 let hasExtendedPartyCols = true;
+let lastSchemaMissingAt = 0;
+const SCHEMA_REPROBE_MS = 30_000;
+
+/**
+ * Returns whether to send the FULL payload / SELECT extended columns. Re-probes
+ * (returns true) every SCHEMA_REPROBE_MS so a session that latched into
+ * fallback mode self-heals once the migration runs.
+ */
+const shouldUseExtendedCols = (): boolean => {
+    if (hasExtendedPartyCols) return true;
+    if (Date.now() - lastSchemaMissingAt > SCHEMA_REPROBE_MS) {
+        // eslint-disable-next-line no-console
+        console.info('[partyApi] re-probing extended schema after cooldown');
+        hasExtendedPartyCols = true;
+        return true;
+    }
+    return false;
+};
 
 /** PostgREST error code for "column does not exist" / missing in schema cache. */
 const isSchemaMissingError = (err: unknown): boolean => {
@@ -60,6 +86,27 @@ const isSchemaMissingError = (err: unknown): boolean => {
         return true;
     }
     return false;
+};
+
+/** Strict version of isSchemaMissingError — fires ONLY for PGRST204
+ *  "Could not find the 'X' column" responses. Used by
+ *  `insertMemberWithRetry` to know whether stripping the offending
+ *  column will make the request succeed. */
+const isMissingColumnError = (err: unknown): boolean => {
+    if (!axios.isAxiosError(err)) return false;
+    if (err.response?.status !== 400) return false;
+    const data = err.response?.data as { code?: string; message?: string } | undefined;
+    if (data?.code !== 'PGRST204') return false;
+    return /could not find the .* column/i.test(data?.message ?? '');
+};
+
+/** Pull the offending column name out of a PGRST204 message like:
+ *  "Could not find the 'character_class' column of 'party_members' in the schema cache" */
+const parseMissingColumn = (err: unknown): string | null => {
+    if (!axios.isAxiosError(err)) return null;
+    const msg = (err.response?.data as { message?: string } | undefined)?.message ?? '';
+    const m = msg.match(/['"`]([a-zA-Z0-9_]+)['"`]\s+column/i);
+    return m?.[1] ?? null;
 };
 
 /**
@@ -106,14 +153,16 @@ export const extractApiError = (err: unknown): string => {
  * to do (open Supabase → SQL Editor → paste the script → Run).
  */
 export class PartyMigrationMissingError extends Error {
-    constructor(kind: 'schema' | 'rls', underlying: string) {
-        const prefix = kind === 'schema'
-            ? 'Brak kolumn w tabeli `parties`.'
-            : 'Brak uprawnień do tabeli `parties` (RLS).';
+    constructor(kind: 'schema' | 'rls' | 'rls-members', underlying: string) {
+        const prefix =
+            kind === 'schema' ? 'Brak kolumn w tabeli `parties`.'
+          : kind === 'rls-members' ? 'Brak uprawnień do tabeli `party_members` (RLS).'
+          : 'Brak uprawnień do tabeli `parties` (RLS).';
         super(
             `${prefix} Otwórz Supabase → SQL Editor → New query i wklej zawartość pliku ` +
             `scripts/party_migration.sql z repo, a potem kliknij Run. ` +
-            `Skrypt dodaje kolumny description/password/is_public i politykę RLS. ` +
+            `Skrypt dodaje kolumny description/password/is_public, czyści stare ` +
+            `unikalne ograniczenia i ustawia permisywne polityki RLS. ` +
             `Pod spodem: ${underlying}`,
         );
         this.name = 'PartyMigrationMissingError';
@@ -121,6 +170,7 @@ export class PartyMigrationMissingError extends Error {
 }
 
 const onSchemaMissing = (where: string): void => {
+    lastSchemaMissingAt = Date.now();
     if (!hasExtendedPartyCols) return;
     hasExtendedPartyCols = false;
     // eslint-disable-next-line no-console
@@ -140,6 +190,10 @@ export interface IPartyRow {
     is_public: boolean;
     has_password: boolean; // derived client-side (password !== null)
     created_at: string;
+    /** Optional minimum character level a joiner must meet. NULL / 1 = no
+     *  restriction. Added 2026-05-13 — older parties default to 1 client-
+     *  side so they stay joinable. */
+    min_join_level: number;
 }
 
 export interface IPartyMemberRow {
@@ -149,7 +203,9 @@ export interface IPartyMemberRow {
     character_name: string;
     character_class: CharacterClass;
     character_level: number;
-    role: string | null;
+    /** Optional — older schemas don't have this column. Leader detection
+     *  uses `parties.leader_id` everywhere; `role` is never read. */
+    role?: string | null;
     joined_at: string;
 }
 
@@ -164,6 +220,8 @@ export interface ICreatePartyInput {
     password: string | null;
     isPublic: boolean;
     maxMembers?: number;
+    /** Optional min level to join. Omit / 1 for no restriction. */
+    minJoinLevel?: number;
 }
 
 export interface IJoinPartyInput {
@@ -183,6 +241,7 @@ interface IRawPartyRow {
     is_public: boolean;
     password: string | null;
     created_at: string;
+    min_join_level?: number;
 }
 
 interface IRawPartyRowWithMembers extends IRawPartyRow {
@@ -199,18 +258,27 @@ const sanitize = (row: IRawPartyRow): IPartyRow => ({
     is_public: row.is_public ?? true,
     has_password: row.password !== null && row.password !== undefined && row.password !== '',
     created_at: row.created_at,
+    // Default to 1 (no restriction) for legacy rows without the column.
+    min_join_level: row.min_join_level ?? 1,
 });
 
-/** PostgREST column lists — with or without the optional browser columns. */
+/** PostgREST column lists — with or without the optional browser columns.
+ *  2026-05-09: dropped `role` from the embedded `party_members(...)` select.
+ *  The DB column doesn't exist on every install, and selecting it 400's the
+ *  WHOLE query with `column party_members_1.role does not exist`, which then
+ *  cascaded into the no-embed fallback that drops members entirely → roster
+ *  rendered as 0/4 even though the membership row was there. The client
+ *  doesn't read `role` anywhere (leader detection uses `parties.leader_id`),
+ *  so removing it from the projection is a pure win. */
 const FULL_PARTY_SELECT =
-    'id,leader_id,name,description,max_members,is_public,password,created_at,' +
-    'party_members(id,party_id,character_id,character_name,character_class,character_level,role,joined_at)';
+    'id,leader_id,name,description,max_members,is_public,password,min_join_level,created_at,' +
+    'party_members(id,party_id,character_id,character_name,character_class,character_level,joined_at)';
 const MIN_PARTY_SELECT =
     'id,leader_id,name,max_members,created_at,' +
-    'party_members(id,party_id,character_id,character_name,character_class,character_level,role,joined_at)';
+    'party_members(id,party_id,character_id,character_name,character_class,character_level,joined_at)';
 const NO_EMBED_PARTY_SELECT =
     'id,leader_id,name,max_members,created_at';
-const FULL_PARTY_SINGLE_SELECT = 'id,leader_id,name,description,max_members,is_public,password,created_at';
+const FULL_PARTY_SINGLE_SELECT = 'id,leader_id,name,description,max_members,is_public,password,min_join_level,created_at';
 const MIN_PARTY_SINGLE_SELECT  = 'id,leader_id,name,max_members,created_at';
 
 /**
@@ -259,7 +327,7 @@ class PartyApi extends BaseApi {
             });
         // Try the full schema first.
         try {
-            if (hasExtendedPartyCols) {
+            if (shouldUseExtendedCols()) {
                 // Include parties where is_public is either TRUE or NULL — older rows
                 // created before the column existed have NULL and should still be
                 // visible in the browser.
@@ -304,7 +372,7 @@ class PartyApi extends BaseApi {
                     '&limit=1',
             });
         try {
-            if (hasExtendedPartyCols) {
+            if (shouldUseExtendedCols()) {
                 const rows = await fetchOne(FULL_PARTY_SELECT);
                 if (!rows.length) return null;
                 return { ...sanitize(rows[0]), members: rows[0].party_members ?? [] };
@@ -338,6 +406,80 @@ class PartyApi extends BaseApi {
         return { ...sanitize(row), members: row.party_members ?? [] };
     };
 
+    /**
+     * Find the party (if any) the given character is currently a member
+     * of. Returns the full IPartyWithMembers snapshot or null.
+     *
+     * Used on Party.tsx mount so a refresh restores the user's active
+     * party from the DB instead of leaving them in a "ghost" state
+     * where the row exists but the local store is empty.
+     */
+    getMyActiveParty = async (characterId: string): Promise<IPartyWithMembers | null> => {
+        try {
+            const rows = await this.get<{ party_id: string }[]>({
+                url: `/rest/v1/party_members?character_id=eq.${encodeURIComponent(characterId)}&select=party_id&limit=1`,
+            });
+            if (!rows.length) return null;
+            return this.getPartyWithMembers(rows[0].party_id);
+        } catch {
+            return null;
+        }
+    };
+
+    /**
+     * Delete every party_members row for the given character. Called
+     * when Party.tsx mount detects the local user has no active party
+     * but might have stale member rows from prior sessions that are
+     * keeping a zombie party alive in the public feed.
+     */
+    deleteMyStaleMemberships = async (characterId: string): Promise<void> => {
+        try {
+            await this.delete({
+                url: `/rest/v1/party_members?character_id=eq.${encodeURIComponent(characterId)}`,
+            });
+        } catch {
+            // Best-effort — RLS may block; ignore.
+        }
+    };
+
+    /**
+     * Insert a `party_members` row, retrying with progressively-stripped
+     * payload when PostgREST rejects unknown columns (PGRST204). Lets a
+     * party_members table that's missing optional columns
+     * (character_name / character_class / character_level / joined_at)
+     * still accept the leader / new joiner — the row keeps the only
+     * truly required fields (party_id + character_id) and the UI fills
+     * in the missing meta from the local character store at render time.
+     *
+     * Throws the FINAL error (not a column-strip detection) so callers
+     * can still surface RLS / FK / etc. failures to the user.
+     */
+    private insertMemberWithRetry = async (data: Record<string, unknown>): Promise<void> => {
+        const ESSENTIAL_KEYS = new Set(['party_id', 'character_id']);
+        let payload = { ...data };
+        // Up to 4 retries — one per optional column that could be missing.
+        for (let attempt = 0; attempt < 5; attempt++) {
+            try {
+                await this.post<Record<string, unknown>, IPartyMemberRow[]>({
+                    url: '/rest/v1/party_members',
+                    data: payload,
+                    config: { headers: { Prefer: 'return=representation' } },
+                });
+                return;
+            } catch (err) {
+                if (!isMissingColumnError(err)) throw err;
+                const missing = parseMissingColumn(err);
+                if (!missing || ESSENTIAL_KEYS.has(missing) || !(missing in payload)) throw err;
+                // eslint-disable-next-line no-console
+                console.warn(`[partyApi] party_members missing column "${missing}" — retrying without it.`);
+                const next = { ...payload };
+                delete next[missing];
+                payload = next;
+            }
+        }
+        throw new Error('party_members INSERT failed after column-strip retries.');
+    };
+
     /** Create a new party and insert the leader as the first member in one flow. */
     createParty = async (input: ICreatePartyInput & IJoinPartyInput): Promise<IPartyWithMembers | null> => {
         const buildBody = (extended: boolean): Partial<IRawPartyRow> => (
@@ -349,6 +491,10 @@ class PartyApi extends BaseApi {
                     password: input.password && input.password.length > 0 ? input.password : null,
                     is_public: input.isPublic,
                     max_members: input.maxMembers ?? 4,
+                    // 2026-05-13: minimum level to join (NULL/1 = no gate).
+                    // Older schemas without the column drop this field via
+                    // the PGRST204 retry path below.
+                    min_join_level: input.minJoinLevel && input.minJoinLevel > 1 ? input.minJoinLevel : 1,
                 }
                 : {
                     leader_id: input.leaderId,
@@ -365,7 +511,7 @@ class PartyApi extends BaseApi {
 
         let partyRows: IRawPartyRow[] = [];
         try {
-            partyRows = await insertParty(hasExtendedPartyCols);
+            partyRows = await insertParty(shouldUseExtendedCols());
         } catch (err) {
             if (isSchemaMissingError(err)) {
                 onSchemaMissing('createParty');
@@ -386,25 +532,52 @@ class PartyApi extends BaseApi {
         if (!Array.isArray(partyRows) || partyRows.length === 0) return null;
         const party = partyRows[0];
 
-        // Insert leader as first member
+        // Insert leader as first member.
+        // 2026-05-09 spec follow-up: a single failed create from a
+        // previous session can leave a stale `party_members` row whose
+        // UNIQUE(character_id) constraint blocks every subsequent
+        // attempt with "duplicate key value". Wipe any orphan rows
+        // for THIS character first so a retry always succeeds. The
+        // delete is scoped tightly so we never touch a real active
+        // membership.
         try {
-            await this.post<Partial<IPartyMemberRow>, IPartyMemberRow[]>({
-                url: '/rest/v1/party_members',
-                data: {
-                    party_id: party.id,
-                    character_id: input.characterId,
-                    character_name: input.characterName,
-                    character_class: input.characterClass,
-                    character_level: input.characterLevel,
-                    role: 'leader',
-                },
-                config: { headers: { Prefer: 'return=representation' } },
+            await this.delete({
+                url: `/rest/v1/party_members?character_id=eq.${encodeURIComponent(input.characterId)}`,
+            });
+        } catch {
+            // Non-fatal — if the delete is blocked we'll see the same
+            // failure on the insert below and surface it through the
+            // toast/console-error path.
+        }
+        try {
+            // 2026-05-09: column-aware retry. If PostgREST 400s with
+            // PGRST204 ("Could not find the 'X' column"), strip X from
+            // the payload and retry — up to 4 times so a single bad
+            // schema can lose all of {character_name, character_class,
+            // character_level, joined_at} without crashing the create.
+            // The party row stays usable even if the member row only
+            // has {party_id, character_id} — leader detection uses
+            // parties.leader_id, and the UI can resolve the missing
+            // character meta from the local store at render time.
+            await this.insertMemberWithRetry({
+                party_id: party.id,
+                character_id: input.characterId,
+                character_name: input.characterName,
+                character_class: input.characterClass,
+                character_level: input.characterLevel,
             });
         } catch (err) {
+            // The party row was already created — best-effort cleanup so
+            // we don't leave a leaderless ghost row in the public feed.
+            try {
+                await this.delete({ url: `/rest/v1/parties?id=eq.${encodeURIComponent(party.id)}` });
+            } catch { /* ignore — RLS may block, the cleanup-empty-parties pass will get it */ }
+            // eslint-disable-next-line no-console
+            console.error('[partyApi] party_members INSERT failed:', err);
             if (isPermissionError(err)) {
-                throw new PartyMigrationMissingError('rls', extractApiError(err));
+                throw new PartyMigrationMissingError('rls-members', extractApiError(err));
             }
-            throw new Error(extractApiError(err));
+            throw new Error(`party_members INSERT: ${extractApiError(err)}`);
         }
 
         return this.getPartyWithMembers(party.id);
@@ -426,7 +599,7 @@ class PartyApi extends BaseApi {
             });
         let rows: IRawPartyRow[] = [];
         try {
-            rows = await fetchTarget(hasExtendedPartyCols ? FULL_PARTY_SINGLE_SELECT : MIN_PARTY_SINGLE_SELECT);
+            rows = await fetchTarget(shouldUseExtendedCols() ? FULL_PARTY_SINGLE_SELECT : MIN_PARTY_SINGLE_SELECT);
         } catch (err) {
             if (isSchemaMissingError(err)) {
                 onSchemaMissing('joinParty');
@@ -440,6 +613,14 @@ class PartyApi extends BaseApi {
         if (target.password && target.password !== (input.password ?? '')) {
             return { error: 'Nieprawidłowe hasło.' };
         }
+        // 2026-05-13: minimum-level gate. Older schemas may not have the
+        // column — treat undefined as no restriction. Joining your own
+        // already-in-progress party (e.g. re-joining after disconnect)
+        // still passes if the character meets the floor.
+        const minLevel = target.min_join_level ?? 1;
+        if (minLevel > 1 && input.characterLevel < minLevel) {
+            return { error: `To party wymaga poziomu ${minLevel}+.` };
+        }
 
         // Check capacity
         const existing = await this.getPartyWithMembers(input.partyId);
@@ -451,17 +632,14 @@ class PartyApi extends BaseApi {
             return existing; // already in party
         }
 
-        await this.post<Partial<IPartyMemberRow>, IPartyMemberRow[]>({
-            url: '/rest/v1/party_members',
-            data: {
-                party_id: input.partyId,
-                character_id: input.characterId,
-                character_name: input.characterName,
-                character_class: input.characterClass,
-                character_level: input.characterLevel,
-                role: 'member',
-            },
-            config: { headers: { Prefer: 'return=representation' } },
+        // Same `role` drop as createParty — column is never read client-side.
+        // Same column-aware retry too so missing-column schemas don't break joining.
+        await this.insertMemberWithRetry({
+            party_id: input.partyId,
+            character_id: input.characterId,
+            character_name: input.characterName,
+            character_class: input.characterClass,
+            character_level: input.characterLevel,
         });
 
         return (await this.getPartyWithMembers(input.partyId)) ?? { error: 'Dołączono, ale party zniknęło.' };
@@ -511,11 +689,19 @@ class PartyApi extends BaseApi {
         const now = Date.now();
         const empty: IPartyWithMembers[] = [];
         const kept: IPartyWithMembers[] = [];
+        // 2026-05-09 spec ("dalej widze zamkniete juz party"): also
+        // delete ANY party older than 6 hours regardless of member
+        // count. Without an activity heartbeat we can't tell if those
+        // members are still online; in practice 6 h+ old parties are
+        // dead test rows from earlier sessions and should be GC'd.
+        const STALE_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
         for (const p of parties) {
             // Grace period: keep parties <30s old regardless — the leader member
             // row may not have landed in PostgREST yet for other viewers.
             const ageMs = now - new Date(p.created_at).getTime();
-            if ((p.members?.length ?? 0) === 0 && ageMs > 30_000) {
+            const isEmptyAndOld = (p.members?.length ?? 0) === 0 && ageMs > 30_000;
+            const isVeryStale = ageMs > STALE_AGE_MS;
+            if (isEmptyAndOld || isVeryStale) {
                 empty.push(p);
             } else {
                 kept.push(p);
@@ -523,6 +709,16 @@ class PartyApi extends BaseApi {
         }
         if (empty.length > 0) {
             const ids = empty.map((p) => `"${p.id}"`).join(',');
+            try {
+                // Defensive: delete child rows first so old schemas
+                // without ON DELETE CASCADE don't leave orphan
+                // party_members rows whose parent gets removed below.
+                await this.delete({
+                    url: `/rest/v1/party_members?party_id=in.(${ids})`,
+                });
+            } catch {
+                // Non-fatal — RLS may block; continue.
+            }
             try {
                 await this.delete({
                     url: `/rest/v1/parties?id=in.(${ids})`,
@@ -541,13 +737,35 @@ class PartyApi extends BaseApi {
         });
     };
 
+    /**
+     * Leader action: hand off leadership to another party member by
+     * patching `parties.leader_id`. The Realtime subscription pushes
+     * the change to every member's client immediately. RLS must allow
+     * the current leader to update the row — same policy that lets
+     * them update party meta.
+     */
+    transferLeadership = async (partyId: string, newLeaderId: string): Promise<void> => {
+        try {
+            await this.patch({
+                url: `/rest/v1/parties?id=eq.${encodeURIComponent(partyId)}`,
+                data: { leader_id: newLeaderId },
+            });
+        } catch (err) {
+            if (isSchemaMissingError(err)) {
+                onSchemaMissing('transferLeadership');
+                return;
+            }
+            throw err;
+        }
+    };
+
     /** Leader action: edit party meta (description, password, is_public). */
     updatePartyMeta = async (
         partyId: string,
         patch: { description?: string; password?: string | null; is_public?: boolean },
     ): Promise<void> => {
         // Skip entirely on un-migrated schemas — the columns don't exist to patch.
-        if (!hasExtendedPartyCols) return;
+        if (!shouldUseExtendedCols()) return;
         try {
             await this.patch({
                 url: `/rest/v1/parties?id=eq.${encodeURIComponent(partyId)}`,

@@ -1,5 +1,6 @@
 import { type Rarity, RARITY_ORDER, RARITY_BONUS_SLOTS } from './itemSystem';
 import { SPELL_CHEST_LEVELS } from './skillSystem';
+import { getSpellChestImage } from './spriteAssets';
 
 export type { Rarity };
 
@@ -398,9 +399,20 @@ export const getMaxRarityForLevel = (monsterLevel: number): Rarity => {
 // ── Potion drops from monsters ──────────────────────────────────────────────
 
 /**
+ * Drop chances per potion tier (intentionally low — potions are powerful).
+ *   - Flat-heal tiers (sm / md / lg, monsters lvl < 100): 0.4%
+ *   - Percentage-regen tiers (great / super / ultimate / divine, lvl 100+): 0.1%
+ *   - Mega elixir bonus (lvl 100+, +1000 flat): 0.4%
+ * All values are < 0.5% so potions stay scarce.
+ */
+export const POTION_FLAT_DROP_CHANCE = 0.004;
+export const POTION_PCT_DROP_CHANCE = 0.001;
+export const POTION_MEGA_DROP_CHANCE = 0.004;
+
+/**
  * Roll potion drops based on monster level.
- * ~5% chance for HP potion, ~3% chance for MP potion per kill.
- * Potion tier scales with monster level.
+ * Potion tier scales with monster level. Mega elixirs are a bonus roll for
+ * monsters level 100+ (matches the `minLevel` of `hp_potion_mega` in the shop).
  */
 export const rollPotionDrop = (monsterLevel: number): { potionId: string; count: number }[] => {
     const drops: { potionId: string; count: number }[] = [];
@@ -408,49 +420,86 @@ export const rollPotionDrop = (monsterLevel: number): { potionId: string; count:
     // Determine potion tier by monster level
     let hpPotionId: string;
     let mpPotionId: string;
+    let mainChance: number;
 
-    if (monsterLevel >= 600) { hpPotionId = 'hp_potion_divine'; mpPotionId = 'mp_potion_divine'; }
-    else if (monsterLevel >= 400) { hpPotionId = 'hp_potion_ultimate'; mpPotionId = 'mp_potion_ultimate'; }
-    else if (monsterLevel >= 200) { hpPotionId = 'hp_potion_super'; mpPotionId = 'mp_potion_super'; }
-    else if (monsterLevel >= 100) { hpPotionId = 'hp_potion_great'; mpPotionId = 'mp_potion_great'; }
-    else if (monsterLevel >= 50) { hpPotionId = 'hp_potion_lg'; mpPotionId = 'mp_potion_lg'; }
-    else if (monsterLevel >= 20) { hpPotionId = 'hp_potion_md'; mpPotionId = 'mp_potion_md'; }
-    else { hpPotionId = 'hp_potion_sm'; mpPotionId = 'mp_potion_sm'; }
+    if (monsterLevel >= 600) { hpPotionId = 'hp_potion_divine'; mpPotionId = 'mp_potion_divine'; mainChance = POTION_PCT_DROP_CHANCE; }
+    else if (monsterLevel >= 400) { hpPotionId = 'hp_potion_ultimate'; mpPotionId = 'mp_potion_ultimate'; mainChance = POTION_PCT_DROP_CHANCE; }
+    else if (monsterLevel >= 200) { hpPotionId = 'hp_potion_super'; mpPotionId = 'mp_potion_super'; mainChance = POTION_PCT_DROP_CHANCE; }
+    else if (monsterLevel >= 100) { hpPotionId = 'hp_potion_great'; mpPotionId = 'mp_potion_great'; mainChance = POTION_PCT_DROP_CHANCE; }
+    else if (monsterLevel >= 50) { hpPotionId = 'hp_potion_lg'; mpPotionId = 'mp_potion_lg'; mainChance = POTION_FLAT_DROP_CHANCE; }
+    else if (monsterLevel >= 20) { hpPotionId = 'hp_potion_md'; mpPotionId = 'mp_potion_md'; mainChance = POTION_FLAT_DROP_CHANCE; }
+    else { hpPotionId = 'hp_potion_sm'; mpPotionId = 'mp_potion_sm'; mainChance = POTION_FLAT_DROP_CHANCE; }
 
-    if (Math.random() < 0.05) drops.push({ potionId: hpPotionId, count: 1 });
-    if (Math.random() < 0.03) drops.push({ potionId: mpPotionId, count: 1 });
+    if (Math.random() < mainChance) drops.push({ potionId: hpPotionId, count: 1 });
+    if (Math.random() < mainChance) drops.push({ potionId: mpPotionId, count: 1 });
 
-    // Mega elixirs: rare bonus drop from monsters level 80+ (below lvl 100 tier threshold)
-    if (monsterLevel >= 80) {
-        if (Math.random() < 0.01) drops.push({ potionId: 'hp_potion_mega', count: 1 });
-        if (Math.random() < 0.006) drops.push({ potionId: 'mp_potion_mega', count: 1 });
+    // Mega elixirs: rare bonus drop from monsters level 100+ (matches shop minLevel)
+    if (monsterLevel >= 100) {
+        if (Math.random() < POTION_MEGA_DROP_CHANCE) drops.push({ potionId: 'hp_potion_mega', count: 1 });
+        if (Math.random() < POTION_MEGA_DROP_CHANCE) drops.push({ potionId: 'mp_potion_mega', count: 1 });
     }
 
     return drops;
 };
 
-// ── Potion drop info for display (MonsterList) ──────────────────────────────
+// ── Potion drop info for display (MonsterList / Combat / Boss / Dungeon) ────
 
-export const HP_POTION_DROP_CHANCE = 0.05;
-export const MP_POTION_DROP_CHANCE = 0.03;
+/**
+ * @deprecated Drop chance now varies per tier — read `IPotionDropInfo.hpChance`
+ *  / `mpChance` from `getPotionDropInfo` instead. Kept as a fallback default
+ *  pointing at the flat-tier rate.
+ */
+export const HP_POTION_DROP_CHANCE = POTION_FLAT_DROP_CHANCE;
+/** @deprecated See `HP_POTION_DROP_CHANCE`. */
+export const MP_POTION_DROP_CHANCE = POTION_FLAT_DROP_CHANCE;
 
-export interface IPotionDropInfo {
+export interface IPotionMegaDropInfo {
     hpPotionId: string;
     hpLabel: string;
     hpHeal: string;
     mpPotionId: string;
     mpLabel: string;
     mpHeal: string;
+    chance: number;
 }
 
+export interface IPotionDropInfo {
+    hpPotionId: string;
+    hpLabel: string;
+    hpHeal: string;
+    /** Drop chance for the HP potion at this tier (0–1). */
+    hpChance: number;
+    mpPotionId: string;
+    mpLabel: string;
+    mpHeal: string;
+    /** Drop chance for the MP potion at this tier (0–1). */
+    mpChance: number;
+    /** Mega-elixir bonus drop info (only present for monsters lvl 100+). */
+    mega?: IPotionMegaDropInfo;
+}
+
+const MEGA_INFO: IPotionMegaDropInfo = {
+    hpPotionId: 'hp_potion_mega',
+    hpLabel: 'Mega HP',
+    hpHeal: '+1000 HP',
+    mpPotionId: 'mp_potion_mega',
+    mpLabel: 'Mega MP',
+    mpHeal: '+1000 MP',
+    chance: POTION_MEGA_DROP_CHANCE,
+};
+
 export const getPotionDropInfo = (monsterLevel: number): IPotionDropInfo => {
-    if (monsterLevel >= 600) return { hpPotionId: 'hp_potion_divine', hpLabel: 'Divine HP', hpHeal: '100% HP', mpPotionId: 'mp_potion_divine', mpLabel: 'Divine MP', mpHeal: '100% MP' };
-    if (monsterLevel >= 400) return { hpPotionId: 'hp_potion_ultimate', hpLabel: 'Ultimate HP', hpHeal: '50% HP', mpPotionId: 'mp_potion_ultimate', mpLabel: 'Ultimate MP', mpHeal: '50% MP' };
-    if (monsterLevel >= 200) return { hpPotionId: 'hp_potion_super', hpLabel: 'Super HP', hpHeal: '35% HP', mpPotionId: 'mp_potion_super', mpLabel: 'Super MP', mpHeal: '35% MP' };
-    if (monsterLevel >= 100) return { hpPotionId: 'hp_potion_great', hpLabel: 'Great HP', hpHeal: '20% HP', mpPotionId: 'mp_potion_great', mpLabel: 'Great MP', mpHeal: '20% MP' };
-    if (monsterLevel >= 50) return { hpPotionId: 'hp_potion_lg', hpLabel: 'Strong HP', hpHeal: '+400', mpPotionId: 'mp_potion_lg', mpLabel: 'Strong MP', mpHeal: '+300' };
-    if (monsterLevel >= 20) return { hpPotionId: 'hp_potion_md', hpLabel: 'HP Potion', hpHeal: '+150', mpPotionId: 'mp_potion_md', mpLabel: 'MP Potion', mpHeal: '+100' };
-    return { hpPotionId: 'hp_potion_sm', hpLabel: 'Small HP', hpHeal: '+50', mpPotionId: 'mp_potion_sm', mpLabel: 'Small MP', mpHeal: '+30' };
+    const mega = monsterLevel >= 100 ? MEGA_INFO : undefined;
+    const pct = POTION_PCT_DROP_CHANCE;
+    const flat = POTION_FLAT_DROP_CHANCE;
+
+    if (monsterLevel >= 600) return { hpPotionId: 'hp_potion_divine',   hpLabel: 'Divine HP',   hpHeal: '100% HP', hpChance: pct,  mpPotionId: 'mp_potion_divine',   mpLabel: 'Divine MP',   mpHeal: '100% MP', mpChance: pct,  mega };
+    if (monsterLevel >= 400) return { hpPotionId: 'hp_potion_ultimate', hpLabel: 'Ultimate HP', hpHeal: '50% HP',  hpChance: pct,  mpPotionId: 'mp_potion_ultimate', mpLabel: 'Ultimate MP', mpHeal: '50% MP',  mpChance: pct,  mega };
+    if (monsterLevel >= 200) return { hpPotionId: 'hp_potion_super',    hpLabel: 'Super HP',    hpHeal: '35% HP',  hpChance: pct,  mpPotionId: 'mp_potion_super',    mpLabel: 'Super MP',    mpHeal: '35% MP',  mpChance: pct,  mega };
+    if (monsterLevel >= 100) return { hpPotionId: 'hp_potion_great',    hpLabel: 'Great HP',    hpHeal: '20% HP',  hpChance: pct,  mpPotionId: 'mp_potion_great',    mpLabel: 'Great MP',    mpHeal: '20% MP',  mpChance: pct,  mega };
+    if (monsterLevel >= 50)  return { hpPotionId: 'hp_potion_lg',       hpLabel: 'Strong HP',   hpHeal: '+400',    hpChance: flat, mpPotionId: 'mp_potion_lg',       mpLabel: 'Strong MP',   mpHeal: '+300',    mpChance: flat };
+    if (monsterLevel >= 20)  return { hpPotionId: 'hp_potion_md',       hpLabel: 'HP Potion',   hpHeal: '+150',    hpChance: flat, mpPotionId: 'mp_potion_md',       mpLabel: 'MP Potion',   mpHeal: '+100',    mpChance: flat };
+    return                          { hpPotionId: 'hp_potion_sm',       hpLabel: 'Small HP',    hpHeal: '+50',     hpChance: flat, mpPotionId: 'mp_potion_sm',       mpLabel: 'Small MP',    mpHeal: '+30',     mpChance: flat };
 };
 
 // ── Spell Chest Drops ──────────────────────────────────────────────────────
@@ -460,14 +509,25 @@ export interface ISpellChestDrop {
     count: number;
 }
 
-/** Base drop chance per eligible spell chest level based on monster rarity */
+/** Base drop chance per eligible spell chest level, keyed by monster rarity. */
 export const SPELL_CHEST_BASE_CHANCE: Record<TMonsterRarity, number> = {
-    normal:    0.005,
-    strong:    0.01,
-    epic:      0.015,
-    legendary: 0.025,
-    boss:      0.04,
+    normal:    0.001,   // 0.1%
+    strong:    0.005,   // 0.5%
+    epic:      0.010,   // 1%
+    legendary: 0.015,   // 1.5%
+    boss:      0.020,   // 2%
 };
+
+/**
+ * Bonus drop chance for "Heroic" spell chests — only rolls on boss-rarity
+ * monsters that the player has fully mastered (25/25). Independent roll on
+ * top of the boss-rarity chest, so a single kill can yield both. Display
+ * for this tier should be hidden until the player actually unlocks mastery.
+ */
+export const SPELL_CHEST_HEROIC_BASE_CHANCE = 0.05; // 5%
+
+/** Display label / order key for the synthetic "heroic" chest tier. */
+export type TSpellChestRarityTier = TMonsterRarity | 'heroic';
 
 /**
  * Roll spell chest drops from a monster kill.
@@ -475,20 +535,26 @@ export const SPELL_CHEST_BASE_CHANCE: Record<TMonsterRarity, number> = {
  * Monsters level 1-4 never drop spell chests.
  * @param isDungeon - dungeon monsters get 1.5x drop chance
  * @param isBoss - boss encounters get 2.0x drop chance
+ * @param hasMaxMastery - if true and monster is boss-rarity, also rolls the
+ *   heroic-tier chest at `SPELL_CHEST_HEROIC_BASE_CHANCE` per eligible level.
  */
 export const rollSpellChestDrop = (
     monsterLevel: number,
     monsterRarity: TMonsterRarity,
     isDungeon: boolean = false,
     isBoss: boolean = false,
+    hasMaxMastery: boolean = false,
 ): ISpellChestDrop[] => {
     // No drops from monsters level 1-4
     if (monsterLevel < 5) return [];
 
-    const baseChance = SPELL_CHEST_BASE_CHANCE[monsterRarity] ?? 0.01;
+    const baseChance = SPELL_CHEST_BASE_CHANCE[monsterRarity] ?? SPELL_CHEST_BASE_CHANCE.normal;
     let multiplier = 1.0;
     if (isDungeon) multiplier *= 1.5;
     if (isBoss) multiplier *= 2.0;
+
+    const heroicEligible = hasMaxMastery && monsterRarity === 'boss';
+    const heroicChance = heroicEligible ? SPELL_CHEST_HEROIC_BASE_CHANCE * multiplier : 0;
 
     const drops: ISpellChestDrop[] = [];
 
@@ -498,19 +564,46 @@ export const rollSpellChestDrop = (
         if (Math.random() < chance) {
             drops.push({ chestLevel, count: 1 });
         }
+        // Heroic bonus roll: independent extra chest of the same level when the
+        // player has fully mastered this monster.
+        if (heroicChance > 0 && Math.random() < heroicChance) {
+            drops.push({ chestLevel, count: 1 });
+        }
     }
 
     return drops;
 };
 
+export interface ISpellChestRateBreakdown {
+    /** 'normal' | 'strong' | 'epic' | 'legendary' | 'boss' | 'heroic' */
+    tier: TSpellChestRarityTier;
+    /** Base chance (0–1) per eligible chest level. */
+    chance: number;
+}
+
 /**
  * Get spell chest drop info for display in monster list / drop table.
- * Returns the eligible chest levels and the base chance for normal monsters.
+ * Returns the eligible chest levels and a breakdown of per-rarity chances.
+ * The heroic tier is included only when `hasMaxMastery` is true (so the UI
+ * can hide it for players who haven't fully mastered the monster yet).
  */
-export const getSpellChestDropInfo = (monsterLevel: number): { levels: number[]; baseChance: number } => {
-    if (monsterLevel < 5) return { levels: [], baseChance: 0 };
+export const getSpellChestDropInfo = (
+    monsterLevel: number,
+    hasMaxMastery: boolean = false,
+): { levels: number[]; baseChance: number; rates: ISpellChestRateBreakdown[] } => {
+    if (monsterLevel < 5) return { levels: [], baseChance: 0, rates: [] };
     const levels = SPELL_CHEST_LEVELS.filter((lvl) => lvl <= monsterLevel);
-    return { levels, baseChance: SPELL_CHEST_BASE_CHANCE.normal };
+    const rates: ISpellChestRateBreakdown[] = [
+        { tier: 'normal',    chance: SPELL_CHEST_BASE_CHANCE.normal },
+        { tier: 'strong',    chance: SPELL_CHEST_BASE_CHANCE.strong },
+        { tier: 'epic',      chance: SPELL_CHEST_BASE_CHANCE.epic },
+        { tier: 'legendary', chance: SPELL_CHEST_BASE_CHANCE.legendary },
+        { tier: 'boss',      chance: SPELL_CHEST_BASE_CHANCE.boss },
+    ];
+    if (hasMaxMastery) {
+        rates.push({ tier: 'heroic', chance: SPELL_CHEST_HEROIC_BASE_CHANCE });
+    }
+    return { levels, baseChance: SPELL_CHEST_BASE_CHANCE.normal, rates };
 };
 
 /**
@@ -525,7 +618,21 @@ export const getSpellChestKey = (level: number): string => `spell_chest_${level}
 export const getSpellChestDisplayName = (level: number): string => `Spell Chest (Lvl ${level})`;
 
 /**
- * Get the icon for a spell chest based on level.
- * Higher levels get a different icon.
+ * 2026-05: returns the PNG art for a spell chest at the given level
+ * (`/assets/images/spell-chest/spell-chest-{N}.png`, N = 1..15) or the
+ * legacy emoji as a last-resort fallback. Consumers rendering inline
+ * should branch on `isImageUrl()` (or use `<TinyIcon>`). Plain-text
+ * contexts (combat log, drop name strings) should call
+ * `getSpellChestEmoji()` instead — that one always returns a glyph.
  */
-export const getSpellChestIcon = (level: number): string => level >= 100 ? '🎁' : '📦';
+export const getSpellChestIcon = (level: number): string => {
+    const url = getSpellChestImage(level);
+    if (url) return url;
+    return level >= 100 ? '🎁' : '📦';
+};
+
+/** Plain-text-safe fallback for combat-log lines / drop-name strings
+ *  that get joined and rendered as text (no <img> support). Always
+ *  returns the legacy emoji glyph. */
+export const getSpellChestEmoji = (level: number): string =>
+    level >= 100 ? '🎁' : '📦';

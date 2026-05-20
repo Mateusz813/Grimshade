@@ -100,9 +100,21 @@ export const useMasteryStore = create<IMasteryStore>()(
         });
         // Refresh mastery-type quest goals (lazy import to avoid circular dependency)
         setTimeout(() => {
-          const { useQuestStore } = require('./questStore') as { useQuestStore: { getState: () => { refreshMasteryProgress: () => void } } };
-          useQuestStore.getState().refreshMasteryProgress();
+          // Dynamic import — questStore imports masteryStore at module
+          // load, so a top-level import here would create a cycle.
+          // `import()` resolves at runtime when both modules are fully
+          // initialised. Vite ships ESM in dev too, so the legacy
+          // `require()` here used to throw `require is not defined`.
+          void import('./questStore').then(({ useQuestStore }) => {
+            useQuestStore.getState().refreshMasteryProgress();
+          });
         }, 0);
+        // 2026-05-19 v16 spec ("Dodaj jeszcze zakladke z punktami
+        // masteri"): push the new total mastery point sum to the
+        // character row so the leaderboard ranks players by lifetime
+        // mastery progression. `mode: 'set'` overwrites — the client
+        // is the source of truth for the sum.
+        void pushMasteryTotal(get());
       },
 
       addMasteryKills: (monsterId: string, killCount: number) => {
@@ -130,11 +142,15 @@ export const useMasteryStore = create<IMasteryStore>()(
               [monsterId]: newLevel >= MASTERY_MAX_LEVEL ? 0 : overflow,
             },
           });
-          // Refresh mastery-type quest goals (lazy import to avoid circular dependency)
+          // Dynamic import — same circular-dep avoidance as the
+          // single-kill path above.
           setTimeout(() => {
-            const { useQuestStore } = require('./questStore') as { useQuestStore: { getState: () => { refreshMasteryProgress: () => void } } };
-            useQuestStore.getState().refreshMasteryProgress();
+            void import('./questStore').then(({ useQuestStore }) => {
+              useQuestStore.getState().refreshMasteryProgress();
+            });
           }, 0);
+          // 2026-05-19 v16: push new mastery-points total.
+          void pushMasteryTotal(get());
         } else {
           set({
             masteryKills: {
@@ -184,3 +200,36 @@ export const useMasteryStore = create<IMasteryStore>()(
       },
     }),
 );
+
+/**
+ * 2026-05-19 v16 spec ("Dodaj jeszcze zakladke z punktami masteri"):
+ * sum every monster's mastery level and push the total to the
+ * character row's `mastery_points` column. Called after every
+ * mastery level-up so the leaderboard ranking stays fresh.
+ *
+ * Lives outside the store factory because Zustand `set/get` types
+ * inside the factory closure are awkward to expose; the helper
+ * takes the live store snapshot directly.
+ */
+async function pushMasteryTotal(snapshot: { masteries: Record<string, IMasteryData> }): Promise<void> {
+    try {
+        const total = Object.values(snapshot.masteries).reduce(
+            (sum, m) => sum + (m?.level ?? 0),
+            0,
+        );
+        const [{ useCharacterStore }, { characterApi }] = await Promise.all([
+            import('./characterStore'),
+            import('../api/v1/characterApi'),
+        ]);
+        const charId = useCharacterStore.getState().character?.id;
+        if (!charId) return;
+        await characterApi.bumpStat({
+            characterId: charId,
+            column: 'mastery_points',
+            value: total,
+            mode: 'set',
+        });
+    } catch {
+        // Non-critical — best-effort sync.
+    }
+}

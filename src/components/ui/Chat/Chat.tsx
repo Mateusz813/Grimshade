@@ -4,6 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { chatApi, type IMessage } from '../../../api/v1/chatApi';
 import { useFriendsStore } from '../../../stores/friendsStore';
 import { buildPmChannel } from '../../../api/v1/friendsApi';
+import { useGuildStore } from '../../../stores/guildStore';
+import { useGuildTagsStore } from '../../../stores/guildTagsStore';
+import { parseSystemMessage } from '../../../systems/systemChatMessages';
+import { getItemDisplayInfo } from '../../../systems/itemGenerator';
+import { getSkillIcon } from '../../../data/skillIcons';
+import ItemIcon from '../ItemIcon/ItemIcon';
+import TinyIcon from '../TinyIcon/TinyIcon';
 import './Chat.scss';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -45,6 +52,9 @@ interface IChatProps {
     active?: boolean;
     /** When true the chat stretches to fill its parent's available height. */
     fillHeight?: boolean;
+    /** Maximum historical messages to fetch on mount. Defaults to
+     *  chatApi's own default (100). Guild chat overrides to 500. */
+    messageCap?: number;
 }
 
 interface IContextMenuState {
@@ -84,15 +94,29 @@ const Chat = ({
     onMessageReceived,
     active = true,
     fillHeight = false,
+    messageCap,
 }: IChatProps) => {
     const navigate = useNavigate();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [collapsed, setCollapsed] = useState(false);
+    // 2026-05-19 v3 spec ("Te expandy jak napis Gildia Druzyna itp
+    // nie powinny byc klikalne to nie powinien byc expand nigdy na
+    // zadnym widoku"): collapse / expand toggle removed entirely.
+    // The chat header is now a static label so accidental taps on a
+    // narrow phone don't fold the log out from under the player.
     const [menu, setMenu] = useState<IContextMenuState | null>(null);
-    const bottomRef = useRef<HTMLDivElement>(null);
+    // 2026-05-18 v12 spec ("Samo mi caly czas scrolluje na sam dol
+    // widoku gildi tam gdzie jest chat, napraw to"): scroll the
+    // chat's own `.chat__messages` container directly rather than
+    // calling `bottomRef.scrollIntoView` on an anchor div. The
+    // previous approach climbed every scrollable ancestor, so when
+    // the chat sat inside the long guild detail page the whole page
+    // lurched to the bottom on every new message. A direct
+    // `scrollTop = scrollHeight` on the container scrolls only the
+    // chat, leaving the page anchored where the player left it.
+    const messagesRef = useRef<HTMLDivElement>(null);
 
     const isFriend = useFriendsStore((s) => s.isFriend);
     const isBlocked = useFriendsStore((s) => s.isBlocked);
@@ -101,12 +125,30 @@ const Chat = ({
     const blockUser = useFriendsStore((s) => s.blockUser);
     const unblockUser = useFriendsStore((s) => s.unblockUser);
 
+    // 2026-05-18 spec ("przed naszym nickiem wszedzie dodaje sie tag
+    // gildii w nawiasach [XXX] Krasek"): for the LOCAL player pull the
+    // tag straight from their own guild; for OTHER message authors look
+    // up the cached name→tag map, refilling it whenever the visible
+    // message list changes.
+    const ownGuildTag = useGuildStore((s) => s.guild?.tag ?? '');
+    const tagsByName = useGuildTagsStore((s) => s.tagsByName);
+    const resolveTagsByName = useGuildTagsStore((s) => s.resolveTagsByName);
+    useEffect(() => {
+        if (messages.length === 0) return;
+        const names = Array.from(new Set(
+            messages
+                .filter((m) => m.character_name !== characterName)
+                .map((m) => m.character_name),
+        ));
+        if (names.length > 0) void resolveTagsByName(names);
+    }, [messages, characterName, resolveTagsByName]);
+
     // Load initial messages
     useEffect(() => {
-        chatApi.getMessages(channel)
+        chatApi.getMessages(channel, messageCap)
             .then(setMessages)
             .catch(() => setError('Błąd ładowania wiadomości.'));
-    }, [channel]);
+    }, [channel, messageCap]);
 
     // Subscribe to Realtime + poll as a fallback in case the `messages` table
     // isn't in the supabase_realtime publication on this instance. Both paths
@@ -144,10 +186,17 @@ const Chat = ({
     }, [channel, characterName, onMessageReceived]);
 
     // Auto-scroll to bottom — only when active so hidden tabs don't thrash
-    // scrollIntoView on every background message.
+    // scrollTop on every background message. We update the chat's own
+    // scroll position rather than calling `bottomRef.scrollIntoView`,
+    // which would also tug every scrollable ancestor (including the
+    // host page) toward the bottom — that was the bug in the guild
+    // detail view where the whole page kept lurching to the chat
+    // every time a new message arrived (2026-05-18 v12).
     useEffect(() => {
         if (!active) return;
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const el = messagesRef.current;
+        if (!el) return;
+        el.scrollTop = el.scrollHeight;
     }, [messages, active]);
 
     // Close context menu on outside click / Escape
@@ -249,14 +298,11 @@ const Chat = ({
 
     return (
         <div className={`chat${fillHeight ? ' chat--fill' : ''}`} style={rootStyle}>
-            <div className="chat__header" onClick={() => setCollapsed((c) => !c)}>
+            <div className="chat__header">
                 <span className="chat__title">{title}</span>
-                <span className="chat__toggle">{collapsed ? '▲' : '▼'}</span>
             </div>
 
-            {!collapsed && (
-                <>
-                    <div className="chat__messages" style={messagesStyle}>
+            <div className="chat__messages" ref={messagesRef} style={messagesStyle}>
                         {messages.length === 0 && (
                             <p className="chat__empty">Brak wiadomości. Napisz pierwszy!</p>
                         )}
@@ -288,13 +334,92 @@ const Chat = ({
                                         disabled={disableContextMenu || isMe}
                                     >
                                         {friend && !isMe && <span className="chat__msg-name-star">★</span>}
-                                        {msg.character_name}:
+                                        {(() => {
+                                            // Prefix guild tag if the sender belongs to one.
+                                            // For me, read from my own guild store; for others
+                                            // use the cached lookup populated by the effect.
+                                            const tag = isMe
+                                                ? (ownGuildTag ? `[${ownGuildTag}]` : '')
+                                                : (tagsByName[msg.character_name]?.tag ?? '');
+                                            return tag ? `${tag} ${msg.character_name}:` : `${msg.character_name}:`;
+                                        })()}
                                     </button>
-                                    <span className="chat__msg-text">{msg.content}</span>
+                                    {(() => {
+                                        // 2026-05-19 v14 spec ("Chat
+                                        // system brak zdjecia
+                                        // przedmiotu oraz dodawaj
+                                        // odpowiednie tlo z rarity"):
+                                        // structured system-channel
+                                        // payloads render with an
+                                        // ItemIcon (rarity-tinted
+                                        // frame + upgrade glow);
+                                        // anything else falls back
+                                        // to plain text.
+                                        const sys = parseSystemMessage(msg.content);
+                                        if (sys && sys.type === 'skillUpgrade') {
+                                            // 2026-05-20 spec: render skill
+                                            // upgrades with the spell icon
+                                            // resolved at display time (the
+                                            // icon URL is not baked into the
+                                            // payload because Vite-hashed
+                                            // URLs change per build).
+                                            const icon = getSkillIcon(sys.skillId);
+                                            return (
+                                                <span className="chat__msg-text chat__msg-text--system chat__msg-text--skill">
+                                                    <span className="chat__msg-sys-icon">
+                                                        <TinyIcon icon={icon} size="md" />
+                                                    </span>
+                                                    <span className="chat__msg-sys-body">
+                                                        ulepszył(a) skill{' '}
+                                                        <strong>{sys.skillName}</strong>
+                                                        {' do '}
+                                                        <strong>+{sys.upgradeLevel}</strong>
+                                                        !
+                                                    </span>
+                                                </span>
+                                            );
+                                        }
+                                        if (sys && sys.type === 'upgrade') {
+                                            const info = getItemDisplayInfo(sys.itemId);
+                                            const icon = info?.icon ?? '⚔️';
+                                            // 2026-05-19 v15 spec ("zrob
+                                            // tak zeby ten tekst sie
+                                            // zawijal w dol a nie tak ze
+                                            // nie da sie tego
+                                            // przeczytac"): keep the
+                                            // text as a SINGLE inline
+                                            // block (not per-word flex
+                                            // children) so it wraps
+                                            // line-by-line instead of
+                                            // splitting each word into
+                                            // a vertical character
+                                            // stack on narrow popups.
+                                            return (
+                                                <span className={`chat__msg-text chat__msg-text--system chat__msg-text--rarity-${sys.rarity}`}>
+                                                    <span className="chat__msg-sys-icon">
+                                                        <ItemIcon
+                                                            icon={icon}
+                                                            rarity={sys.rarity}
+                                                            upgradeLevel={sys.upgradeLevel}
+                                                            size="sm"
+                                                            showTooltip={false}
+                                                        />
+                                                    </span>
+                                                    <span className="chat__msg-sys-body">
+                                                        ulepszył(a){' '}
+                                                        <strong>{sys.itemName}</strong>
+                                                        {' do '}
+                                                        <strong>+{sys.upgradeLevel}</strong>
+                                                        !
+                                                    </span>
+                                                </span>
+                                            );
+                                        }
+                                        return <span className="chat__msg-text">{msg.content}</span>;
+                                    })()}
                                 </div>
                             );
                         })}
-                        <div ref={bottomRef} />
                     </div>
 
                     {error && <p className="chat__error">{error}</p>}
@@ -317,8 +442,6 @@ const Chat = ({
                             {sending ? '…' : '↑'}
                         </button>
                     </div>
-                </>
-            )}
 
             {menu && createPortal(
                 <div

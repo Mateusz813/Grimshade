@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     sortListings,
-    filterBySlot,
+    filterByCategory,
     filterByRarity,
     isValidPrice,
     calculateMarketTax,
@@ -10,9 +10,9 @@ import {
 } from './marketSystem';
 
 const MOCK_LISTINGS: IMarketListing[] = [
-    { id: '1', sellerId: 'u1', sellerName: 'Player1', itemId: 'sword_1', itemName: 'Iron Sword', itemLevel: 10, rarity: 'common', slot: 'mainHand', price: 500, bonuses: {}, upgradeLevel: 0, listedAt: '2024-01-01T00:00:00Z' },
-    { id: '2', sellerId: 'u2', sellerName: 'Player2', itemId: 'epic_staff', itemName: 'Epic Staff', itemLevel: 50, rarity: 'epic', slot: 'mainHand', price: 10000, bonuses: { attack: 20 }, upgradeLevel: 3, listedAt: '2024-01-02T00:00:00Z' },
-    { id: '3', sellerId: 'u3', sellerName: 'Player3', itemId: 'ring_hp', itemName: 'HP Ring', itemLevel: 20, rarity: 'rare', slot: 'ring', price: 2000, bonuses: { hp: 50 }, upgradeLevel: 0, listedAt: '2024-01-03T00:00:00Z' },
+    { id: '1', sellerId: 'u1', sellerName: 'Player1', kind: 'item', itemId: 'sword_1', itemName: 'Iron Sword', itemLevel: 10, rarity: 'common', slot: 'mainHand', price: 500, quantity: 1, quantityInitial: 1, bonuses: {}, upgradeLevel: 0, listedAt: '2024-01-01T00:00:00Z' },
+    { id: '2', sellerId: 'u2', sellerName: 'Player2', kind: 'item', itemId: 'epic_staff', itemName: 'Epic Staff', itemLevel: 50, rarity: 'epic', slot: 'mainHand', price: 10000, quantity: 1, quantityInitial: 1, bonuses: { attack: 20 }, upgradeLevel: 3, listedAt: '2024-01-02T00:00:00Z' },
+    { id: '3', sellerId: 'u3', sellerName: 'Player3', kind: 'item', itemId: 'ring_hp', itemName: 'HP Ring', itemLevel: 20, rarity: 'rare', slot: 'ring1', price: 2000, quantity: 1, quantityInitial: 1, bonuses: { hp: 50 }, upgradeLevel: 0, listedAt: '2024-01-03T00:00:00Z' },
 ];
 
 describe('sortListings', () => {
@@ -50,24 +50,24 @@ describe('sortListings', () => {
     });
 });
 
-describe('filterBySlot', () => {
-    it('returns all when slot is all', () => {
-        expect(filterBySlot(MOCK_LISTINGS, 'all').length).toBe(3);
+describe('filterByCategory', () => {
+    it('returns all when category is all', () => {
+        expect(filterByCategory(MOCK_LISTINGS, 'all').length).toBe(3);
     });
 
-    it('filters by ring slot', () => {
-        const filtered = filterBySlot(MOCK_LISTINGS, 'ring');
+    it('filters by ring bucket (covers ring1/ring2)', () => {
+        const filtered = filterByCategory(MOCK_LISTINGS, 'ring');
         expect(filtered.length).toBe(1);
-        expect(filtered[0].slot).toBe('ring');
+        expect(filtered[0].slot).toBe('ring1');
     });
 
     it('filters by mainHand slot', () => {
-        const filtered = filterBySlot(MOCK_LISTINGS, 'mainHand');
+        const filtered = filterByCategory(MOCK_LISTINGS, 'mainHand');
         expect(filtered.length).toBe(2);
     });
 
     it('returns empty array when no match', () => {
-        expect(filterBySlot(MOCK_LISTINGS, 'boots').length).toBe(0);
+        expect(filterByCategory(MOCK_LISTINGS, 'boots').length).toBe(0);
     });
 });
 

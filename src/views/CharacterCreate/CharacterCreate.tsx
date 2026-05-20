@@ -81,13 +81,23 @@ const CLASS_IMAGES: Record<CharacterClass, string> = {
 
 const STAT_MAX: Record<string, number> = { hp: 200, mp: 200, attack: 10, defense: 5, speed: 3 };
 
+// 2026-05-19 v20 spec ("Daj ograniczenie przy tworzeniu postaci na
+// ilosc znakow w nicku na 18 znakow max bez znakow specjalnych,
+// tylko litery i cyfry moze byc spacja ale tylko jedna"): tightened
+// the name validator. Max 18 chars, English-letter or digit alphabet
+// only (no Polish diacritics — they'd embed punctuation-adjacent
+// characters that bot/UI rendering can't always handle), and at
+// most ONE space anywhere in the name. The trailing-only space rule
+// is enforced by the regex (no consecutive spaces, no leading /
+// trailing space accepted by the trim + count rule).
 const getCreateSchema = () =>
   z.object({
     name: z
       .string()
+      .trim()
       .min(3, 'Min. 3 znaki')
-      .max(20, 'Max. 20 znaków')
-      .regex(/^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ0-9 ]+$/, 'Tylko litery, cyfry i spacje'),
+      .max(18, 'Max. 18 znaków')
+      .regex(/^[a-zA-Z0-9]+(?: [a-zA-Z0-9]+)?$/, 'Tylko litery, cyfry i max jedna spacja'),
   });
 
 type ICreateForm = z.infer<ReturnType<typeof getCreateSchema>>;
@@ -209,6 +219,11 @@ const CharacterCreate = () => {
                 type="text"
                 autoComplete="off"
                 placeholder="Wpisz nazwę…"
+                // 2026-05-19 v20: cap at 18 chars from the input
+                // itself so the player can't even type past the
+                // limit. The zod validator still runs on submit as
+                // a belt-and-braces guard.
+                maxLength={18}
                 {...register('name')}
               />
               {errors.name && (
