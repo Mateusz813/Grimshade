@@ -1,8 +1,9 @@
 import { useCallback, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useChatTabsStore } from '../../stores/chatTabsStore';
 import Chat from '../../components/ui/Chat/Chat';
+import Spinner from '../../components/ui/Spinner/Spinner';
 import './GlobalChat.scss';
 
 /**
@@ -14,18 +15,21 @@ import './GlobalChat.scss';
  * message counts; inactive tabs show a badge when someone writes.
  */
 const GlobalChat = () => {
-    const navigate = useNavigate();
     const location = useLocation();
     const character = useCharacterStore((s) => s.character);
 
     const tabs = useChatTabsStore((s) => s.tabs);
     const activeId = useChatTabsStore((s) => s.activeId);
     const ensureCityTab = useChatTabsStore((s) => s.ensureCityTab);
+    const ensureSystemTab = useChatTabsStore((s) => s.ensureSystemTab);
     const openPm = useChatTabsStore((s) => s.openPm);
     const closeTab = useChatTabsStore((s) => s.closeTab);
     const setActive = useChatTabsStore((s) => s.setActive);
 
-    useEffect(() => { ensureCityTab(); }, [ensureCityTab]);
+    useEffect(() => {
+        ensureCityTab();
+        ensureSystemTab();
+    }, [ensureCityTab, ensureSystemTab]);
 
     // Support `?pm=<Name>` deep-links (e.g. from an older Friends shortcut).
     useEffect(() => {
@@ -42,24 +46,13 @@ const GlobalChat = () => {
     if (!character) {
         return (
             <div className="global-chat">
-                <p className="global-chat__loading">Ładowanie...</p>
+                <Spinner size="lg" />
             </div>
         );
     }
 
     return (
         <div className="global-chat">
-            <header className="global-chat__header page-header">
-                <button
-                    type="button"
-                    className="global-chat__back-btn page-back-btn"
-                    onClick={() => navigate('/')}
-                >
-                    ← Miasto
-                </button>
-                <h1 className="global-chat__title page-title">💬 Chat</h1>
-            </header>
-
             <div className="global-chat__tabs" role="tablist">
                 {tabs.map((t) => (
                     <div
@@ -78,7 +71,7 @@ const GlobalChat = () => {
                                 <span className="global-chat__tab-badge">{t.unread > 99 ? '99+' : t.unread}</span>
                             )}
                         </button>
-                        {t.type === 'pm' && (
+                        {t.closable && (
                             <button
                                 type="button"
                                 className="global-chat__tab-close"
@@ -104,7 +97,11 @@ const GlobalChat = () => {
                         disableContextMenu={t.type === 'pm'}
                         active={t.id === activeId}
                         fillHeight
-                        onOpenPm={t.type === 'city' ? handleOpenPm : undefined}
+                        // 2026-05-19 v11: same in-place PM open for
+                        // every non-PM tab (city / guild / party /
+                        // system) — opens the PM as a new tab in
+                        // this view instead of navigating.
+                        onOpenPm={t.type !== 'pm' ? handleOpenPm : undefined}
                     />
                 ))}
             </div>

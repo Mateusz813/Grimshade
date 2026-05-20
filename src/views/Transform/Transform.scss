@@ -9,6 +9,30 @@
   color: $color-text;
   padding-bottom: $spacing-xl;
 
+  // While the combat phase is mounted hide the page-header (the
+  // `<CombatActionBar>` already exposes Uciekaj for back-out) and
+  // collapse the wrapper's bottom padding so the unified combat-ui
+  // chips touch the underside of the fixed TopHeader and the arena
+  // fits the visible viewport without forcing a scroll.
+  &--fighting {
+    min-height: 100%;
+    padding: 0;
+    // Natural-flow layout — same as Boss in production. The earlier hard
+    // lock (`height: 100dvh; overflow: hidden`) introduced a phantom
+    // page-level scrollbar on desktop because `.app-shell__main` already
+    // reserves `padding-top: 50px` for the fixed TopHeader, so 100dvh
+    // worth of content inside it forced 100dvh + 50px = scrollbar.
+    // CombatUI.scss has a matching `.app-shell--combat-hud` rule that
+    // unsets `height: auto; overflow: visible` on this selector so the
+    // shell's bottom padding is honoured and the scrollbar only appears
+    // when the inner content genuinely overflows (eg. responsive narrow
+    // viewports — screenshot 3 territory). Anything wider just fits.
+    display: flex;
+    flex-direction: column;
+
+    .transform__header { display: none; }
+  }
+
   // ── Header ──────────────────────────────────────────────────────────────────
   &__header {
     display: flex;
@@ -65,6 +89,28 @@
     transition: all $transition-normal;
     position: relative;
     overflow: hidden;
+    // Fixed silhouette across every status — a completed card naturally grows
+    // to ~230px because of the 80px avatar preview, so locked / available /
+    // in-progress cards adopt the same minimum and feel uniform in the grid
+    // (no more shorter rows when nothing is unlocked yet).
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+
+    // When a per-tier background photo is wired (transform-N.png), paint it
+    // under the card chrome with a darkening gradient overlay so the text /
+    // shimmer / border-glow stay readable. Plain text-only cards keep their
+    // original solid background.
+    &--has-image {
+      background:
+        linear-gradient(
+          135deg,
+          rgba(20, 20, 35, 0.86),
+          rgba(15, 15, 30, 0.72) 45%,
+          rgba(10, 10, 20, 0.88)
+        ),
+        var(--card-image, none) center / cover no-repeat;
+    }
 
     // Accent glow on left side
     &::before {
@@ -131,6 +177,21 @@
       border-color: var(--transform-color, #4caf50);
       background: linear-gradient(135deg, $color-bg-secondary, color-mix(in srgb, var(--transform-color, #4caf50) 8%, transparent));
     }
+
+    // The `&--completed` rule above sets its own solid background which would
+    // erase the per-tier photo on finished transforms. When BOTH classes are
+    // applied, layer the image back in under a hue-tinted darkening overlay
+    // so completed cards still show their phoenix instead of a flat panel.
+    &--has-image#{&}--completed {
+      background:
+        linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--transform-color, #4caf50) 22%, rgba(20, 20, 35, 0.86)),
+          rgba(15, 15, 30, 0.7) 50%,
+          color-mix(in srgb, var(--transform-color, #4caf50) 16%, rgba(10, 10, 20, 0.88))
+        ),
+        var(--card-image, none) center / cover no-repeat;
+    }
   }
 
   @keyframes transform-shimmer {
@@ -162,6 +223,25 @@
     color: #fff;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     flex-shrink: 0;
+    overflow: hidden;
+
+    // When a per-tier photo is wired we drop the text and show a circular
+    // crop of that same image. The 2px padding lets the inline-style gradient
+    // background read as a thin coloured ring so the tier's identity is still
+    // visible around the edge of the phoenix.
+    &--has-image {
+      padding: 2px;
+    }
+  }
+
+  &__card-number-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+    display: block;
+    user-select: none;
   }
 
   &__card-info {
@@ -180,6 +260,25 @@
   &__card-level {
     font-size: $font-xs;
     color: $color-text-muted;
+  }
+
+  // Hue-tinted level badge — colour matches the per-tier `--transform-color`
+  // so each card's required level reads as part of that transform's identity
+  // (mirrors how the Boss list shows tier-coloured level pills).
+  &__card-level-pill {
+    align-self: flex-start;
+    margin-top: 2px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: $font-xs;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--transform-color, $color-accent);
+    background: color-mix(in srgb, var(--transform-color, $color-accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--transform-color, $color-accent) 55%, transparent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--transform-color, $color-accent) 20%, transparent);
+    text-shadow: 0 0 6px color-mix(in srgb, var(--transform-color, $color-accent) 35%, transparent);
+    width: max-content;
   }
 
   &__card-status {
@@ -210,6 +309,22 @@
     font-size: $font-xs;
     color: $color-text-muted;
     margin-bottom: $spacing-sm;
+    display: flex;
+  }
+
+  // Compact pill that holds just the boss count — no level-range tail. The
+  // surface picks up a hint of the per-tier hue so it harmonises with the
+  // level pill above without competing for attention.
+  &__card-monsters-pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: $font-xs;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    background: color-mix(in srgb, var(--transform-color, $color-text-muted) 8%, rgba(255, 255, 255, 0.06));
+    border: 1px solid color-mix(in srgb, var(--transform-color, $color-text-muted) 35%, rgba(255, 255, 255, 0.12));
+    width: max-content;
+    letter-spacing: 0.02em;
   }
 
   // ── Progress bar (in-progress quest) ────────────────────────────────────────
@@ -259,6 +374,9 @@
   &__card-actions {
     display: flex;
     gap: $spacing-sm;
+    // Pushed to the bottom of the now-flex card so every tile has its CTA
+    // in the same place regardless of how much content sits above it.
+    margin-top: auto;
   }
 
   &__btn {
@@ -274,8 +392,18 @@
     text-align: center;
 
     &--start {
-      background: $color-accent;
-      &:hover { background: $color-accent-hover; transform: translateY(-1px); }
+      // Per-tier coloured CTA — uses the transform's full gradient when one is
+      // wired (e.g. zloto-czarny tiers) and falls back to the solid hue, then
+      // global accent. Adds a soft glow tinted with the same colour so the
+      // Walcz button reads as part of the transform's identity.
+      background: var(--transform-gradient, var(--transform-color, $color-accent));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--transform-color, $color-accent) 35%, transparent);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+      &:hover {
+        filter: brightness(1.15);
+        transform: translateY(-1px);
+        box-shadow: 0 0 18px color-mix(in srgb, var(--transform-color, $color-accent) 55%, transparent);
+      }
     }
 
     &--resume {
@@ -341,6 +469,41 @@
       margin-top: $spacing-lg;
       &:hover { border-color: $color-accent; color: $color-accent; }
     }
+
+    // Themed return-to-town button on the post-transform complete screen.
+    // Carries the same `--transform-color` / `--transform-gradient` CSS vars
+    // that `&--start` uses on the list view, so the same per-tier palette
+    // (gold for T1, etc.) reads on this button too — instant visual link
+    // back to the transform the player just completed. Outlined idle state
+    // (so it doesn't compete with the title's solid fill) → hover fills
+    // with the gradient, mirroring how `&--start` looks at rest. The glow
+    // uses the same `color-mix` recipe as `&--start` so the box-shadow
+    // halo matches whatever colour the transform carries.
+    &--town {
+      margin-top: $spacing-lg;
+      background: transparent;
+      border: 1.5px solid var(--transform-color, $color-accent);
+      color: var(--transform-color, $color-accent);
+      text-shadow: none;
+      // Pinch up the padding a touch over the base &__btn so the bigger
+      // outline doesn't make the button look cramped relative to the title.
+      padding: $spacing-md $spacing-lg;
+      font-size: $font-md;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--transform-color, $color-accent) 0%, transparent);
+      transition: background $transition-fast, color $transition-fast,
+                  box-shadow $transition-fast, transform $transition-fast,
+                  filter $transition-fast;
+
+      &:hover {
+        background: var(--transform-gradient, var(--transform-color, $color-accent));
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+        transform: translateY(-1px);
+        filter: brightness(1.08);
+        box-shadow: 0 0 18px color-mix(in srgb, var(--transform-color, $color-accent) 55%, transparent);
+      }
+    }
   }
 
   @keyframes transform-btn-shine {
@@ -350,33 +513,18 @@
 
   // ── Combat view ─────────────────────────────────────────────────────────────
   &__combat {
-    padding: $spacing-md;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: $spacing-md;
+    gap: 0;
     position: relative; // anchor for &__victory-overlay
-
-    @include desktop {
-      max-width: 1080px;
-      margin: 0 auto;
-    }
-
-    // Side-by-side layout on wider screens: monster LEFT, player RIGHT
-    @media (min-width: 1024px) {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: $spacing-md;
-      align-items: start;
-
-      // Everything except the two combat cards spans full width
-      > .transform__combat-progress,
-      > .transform__combat-toggles,
-      > .transform__skill-slots,
-      > .transform__potions,
-      > .transform__log {
-        grid-column: 1 / -1;
-      }
-    }
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    // No max-width / no grid split — Transform combat now uses the unified
+    // CombatUI arena (4 enemy slots + 4 ally slots) full-bleed, same as
+    // Boss / Dungeon / Raid. Preventing layout reflow + giving the arena the
+    // entire viewport width so the speed-control strip can span 100%.
   }
 
   // Point N6: absolute claim-reward overlay — covers the combat view without
@@ -1214,6 +1362,84 @@
 
   &__potion-label { z-index: 1; font-weight: 600; }
   &__potion-count { z-index: 1; font-size: 10px; opacity: 0.7; }
+
+  // ── Cinematic entry overlay ───────────────────────────────────────────────
+  // Mirrors `dungeon__enter-*` exactly so the two views feel like siblings.
+  // Z-index ladder inside this block:
+  //   wrapper   — 9000 (above TopHeader at ~1000 and spawn-bar at ~1290)
+  //   image     —    1
+  //   darkness  —    2 (covers the image when at peak opacity)
+  //   skip-hint —    3 (legible against full-black mid-animation)
+  &__enter-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  &__enter-image {
+    --h: var(--card-hue, 30);
+    position: fixed;
+    z-index: 1;
+    pointer-events: none;
+    transform-origin: center center;
+    background-color: $color-bg-card;
+    background-image: var(--card-image, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 1px solid hsla(var(--h), 50%, 45%, 0.5);
+    box-shadow: 0 12px 48px hsla(var(--h), 50%, 30%, 0.6),
+                0 0 120px hsla(var(--h), 60%, 50%, 0.35);
+    overflow: hidden;
+
+    // Class-tinted vignette over the image — keeps the morph from looking
+    // like a flat scaled JPEG and instead reads as "we're falling into a
+    // location with mood lighting".
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(
+          circle at center,
+          hsla(var(--h), 70%, 55%, 0.18) 0%,
+          transparent 35%
+        ),
+        radial-gradient(
+          circle at center,
+          transparent 50%,
+          hsla(var(--h), 30%, 6%, 0.85) 100%
+        );
+      pointer-events: none;
+    }
+  }
+
+  &__enter-darkness {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: #000;
+  }
+
+  &__enter-skip-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    pointer-events: none;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    user-select: none;
+  }
 }
 
 // Per-class attack animations on the monster card (shared mixin from combat-animations)

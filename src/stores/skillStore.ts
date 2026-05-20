@@ -13,8 +13,10 @@ import {
     GENERAL_TRAINABLE_STATS,
     getSpellChestUpgradeCost,
     CLASS_WEAPON_SKILL,
+    skillXpToNextLevel,
 } from '../systems/skillSystem';
 import { useBuffStore } from './buffStore';
+import skillsData from '../data/skills.json';
 import type { CharacterClass } from '../api/v1/characterApi';
 
 /**
@@ -65,10 +67,29 @@ interface ISkillStore extends ISkillState {
     initSkills: (cls: CharacterClass) => void;
     /** Add XP to a weapon/magic skill; returns levelsGained */
     addSkillXp: (skillId: string, xp: number) => number;
-    /** Apply death penalty to all active weapon skills */
-    applyDeathPenalty: (cls: CharacterClass) => void;
+    /**
+     * Apply a percentage XP loss to every trainable skill (weapon skills
+     * for the class + magic_level + GENERAL_TRAINABLE_STATS).
+     *
+     * lossPct is the % of TOTAL banked XP to remove. The result is
+     * re-normalized back into (level, currentXp) — so a level-50 skill
+     * with half-XP toward 51, hit by lossPct=50, lands somewhere around
+     * level 25.
+     *
+     * Defaults to 50 (the death penalty) so old callers keep working.
+     * Pass 0.1 for the flee penalty.
+     */
+    applyDeathPenalty: (cls: CharacterClass, lossPct?: number) => void;
     /** Set active skill in a slot (0-3); pass null to clear the slot */
     setActiveSkillSlot: (slot: 0 | 1 | 2 | 3, skillId: string | null) => void;
+    /**
+     * Walk the 4 active skill slots and clear any whose `unlockLevel` is
+     * higher than `currentLevel`. Used after a death-penalty level drop so
+     * a slotted lvl-100 spell on a lvl-92 character doesn't sit there
+     * permanently disabled and confusing the player. Returns the number
+     * of slots cleared.
+     */
+    purgeLockedSkillSlots: (cls: CharacterClass, currentLevel: number) => number;
     /** Start always-on training for a skill (begins at given speed multiplier) */
     startOfflineTraining: (skillId: string, speedMultiplier?: number) => void;
     /**
@@ -104,6 +125,14 @@ interface ISkillStore extends ISkillState {
     addMlvlXpFromSkill: (cls: CharacterClass) => number;
     /** Attempt to unlock (purchase) an active skill. Requires spell chest + gold. Returns true if purchased. */
     unlockSkill: (skillId: string, goldCost: number, spendGoldFn: (amount: number) => boolean, chestLevel: number, useChestsFn: (level: number, count: number) => boolean) => boolean;
+    /**
+     * Dev/sandbox: unlock every active skill for the given list of ids
+     * (typically all class skills for the active character). Free — no
+     * gold or chest cost. Used by the Postać view's "Odblokuj wszystkie"
+     * button so a tester can hop between class characters and immediately
+     * try every spell without grinding through chest unlocks.
+     */
+    unlockAllActiveSkills: (skillIds: string[]) => void;
     /** Check if a skill has been unlocked/purchased */
     isSkillUnlocked: (skillId: string) => boolean;
     /** Attempt to upgrade an active skill. Returns result with success/fail, gold + chests spent. */
@@ -160,25 +189,37 @@ export const useSkillStore = create<ISkillStore>()(
                 return result.levelsGained;
             },
 
-            applyDeathPenalty: (cls) => {
+            applyDeathPenalty: (cls, lossPct = 50) => {
                 const skillIds = getClassWeaponSkills(cls);
                 // Apply to weapon skills + magic_level + ALL general trainable stats
                 const allIds = [...new Set([...skillIds, 'magic_level', ...GENERAL_TRAINABLE_STATS])];
+                const fraction = Math.max(0, Math.min(100, lossPct)) / 100;
+                if (fraction <= 0) return;
                 set((state) => {
                     const levels = { ...state.skillLevels };
                     const xp = { ...state.skillXp };
                     for (const id of allIds) {
                         const lvl = levels[id] ?? 0;
-                        // On death: drop skill level by 1 and reset its XP to 0.
-                        // Trained levels cannot go below 0 (base). Bonus skill levels
-                        // from equipment/items are applied separately via getEffectiveSkillLevel
-                        // and are not affected by death penalty.
-                        if (lvl > 0) {
-                            levels[id] = lvl - 1;
-                            xp[id] = 0;
-                        } else if ((xp[id] ?? 0) > 0) {
-                            xp[id] = 0;
+                        const cur = xp[id] ?? 0;
+                        if (lvl <= 0 && cur <= 0) continue;
+                        // Step 1: total banked XP across all completed
+                        // skill levels + the in-progress XP toward the
+                        // next level.
+                        let total = cur;
+                        for (let i = 0; i < lvl; i++) total += skillXpToNextLevel(i);
+                        // Step 2: shave the loss percentage off.
+                        total = Math.max(0, Math.floor(total * (1 - fraction)));
+                        // Step 3: re-derive (level, currentXp). Walk the
+                        // skill XP curve from 0 and "spend" total until
+                        // we run out — what's left is the new current
+                        // XP toward the next level.
+                        let newLvl = 0;
+                        while (total >= skillXpToNextLevel(newLvl)) {
+                            total -= skillXpToNextLevel(newLvl);
+                            newLvl += 1;
                         }
+                        levels[id] = newLvl;
+                        xp[id] = total;
                     }
                     return { skillLevels: levels, skillXp: xp };
                 });
@@ -195,6 +236,27 @@ export const useSkillStore = create<ISkillStore>()(
                     slots[slot] = skillId;
                     return { activeSkillSlots: slots };
                 });
+            },
+
+            purgeLockedSkillSlots: (cls, currentLevel) => {
+                const key = cls.toLowerCase() as keyof typeof skillsData.activeSkills;
+                const list = (skillsData.activeSkills[key] ?? []) as Array<{ id: string; unlockLevel: number }>;
+                const lookup = new Map(list.map((s) => [s.id, s.unlockLevel]));
+                let cleared = 0;
+                set((state) => {
+                    const slots = [...state.activeSkillSlots] as ISkillState['activeSkillSlots'];
+                    for (let i = 0; i < 4; i++) {
+                        const id = slots[i];
+                        if (!id) continue;
+                        const unlock = lookup.get(id);
+                        if (typeof unlock === 'number' && unlock > currentLevel) {
+                            slots[i] = null;
+                            cleared++;
+                        }
+                    }
+                    return cleared > 0 ? { activeSkillSlots: slots } : {};
+                });
+                return cleared;
             },
 
             startOfflineTraining: (skillId, speedMultiplier = 1) => {
@@ -368,6 +430,17 @@ export const useSkillStore = create<ISkillStore>()(
                 return true;
             },
 
+            unlockAllActiveSkills: (skillIds) => {
+                set((s) => {
+                    const next: Record<string, boolean> = { ...s.unlockedSkills };
+                    let changed = false;
+                    for (const id of skillIds) {
+                        if (next[id] !== true) { next[id] = true; changed = true; }
+                    }
+                    return changed ? { unlockedSkills: next } : s;
+                });
+            },
+
             isSkillUnlocked: (skillId) => {
                 return get().unlockedSkills[skillId] === true;
             },
@@ -407,6 +480,23 @@ export const useSkillStore = create<ISkillStore>()(
                     set((s) => ({
                         skillUpgradeLevels: { ...s.skillUpgradeLevels, [skillId]: targetLevel },
                     }));
+                    // 2026-05-19 v16 spec ("ulepszenie skilla tak samo
+                    // jedno ulepszenie to jeden punkt"): bump the
+                    // skill-upgrade counter on the character row for
+                    // the leaderboard ranking.
+                    void Promise.all([
+                        import('./characterStore'),
+                        import('../api/v1/characterApi'),
+                    ]).then(([{ useCharacterStore }, { characterApi }]) => {
+                        const charId = useCharacterStore.getState().character?.id;
+                        if (!charId) return;
+                        void characterApi.bumpStat({
+                            characterId: charId,
+                            column: 'skill_upgrades_done',
+                            value: 1,
+                            mode: 'add',
+                        });
+                    }).catch(() => { /* offline */ });
                     return { success: true, newLevel: targetLevel, goldSpent: chestCost.gold, chestsSpent: chestCost.chests };
                 }
 

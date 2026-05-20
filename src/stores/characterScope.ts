@@ -28,10 +28,12 @@ import { useTransformStore } from './transformStore';
 import { useCombatStore } from './combatStore';
 import { useOfflineHuntStore } from './offlineHuntStore';
 import { useFriendsStore } from './friendsStore';
+import { useConnectivityStore } from './connectivityStore';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 import { saveGame, loadGame, deleteGameSave } from '../storage/gameStorage';
 import { characterApi } from '../api/v1/characterApi';
 import { supabase } from '../lib/supabase';
+import skillsData from '../data/skills.json';
 
 // ── Active character tracker ────────────────────────────────────────────────
 
@@ -219,8 +221,8 @@ const STORE_ENTRIES: IStoreEntry[] = [
     baseKey: 'dungeons',
     getState: () => useDungeonStore.getState(),
     setState: (d) => useDungeonStore.setState(d),
-    defaults: () => ({ dailyAttempts: {}, lastResult: null }),
-    stateKeys: ['dailyAttempts', 'lastResult'],
+    defaults: () => ({ dailyAttempts: {}, clearedDungeonIds: {}, lastResult: null }),
+    stateKeys: ['dailyAttempts', 'clearedDungeonIds', 'lastResult'],
   },
   // Party state is server-synced via `partyApi` + Supabase Realtime now, so
   // there's no per-character localStorage slice. The store still exists for
@@ -239,6 +241,17 @@ const STORE_ENTRIES: IStoreEntry[] = [
       autoPotionPctHpId: 'hp_potion_great', autoPotionPctMpId: 'mp_potion_great',
       showCombatXpBar: true,
       autoSellCommon: false, autoSellRare: false, autoSellEpic: false, autoSellLegendary: false, autoSellMythic: false,
+      huntFilterAvailableOnly: false, huntFilterTaskedOnly: false, huntFilterMinLevel: 0, huntFilterSortDesc: false,
+      // Dungeon-list filters mirror the hunt-filter defaults — show
+      // everything until the player explicitly narrows the list.
+      dungeonFilterAvailableOnly: false, dungeonFilterMinLevel: 0, dungeonFilterSortDesc: false,
+      // Raid-list filters — independent slice with the same defaults so the
+      // raid hub mirrors the dungeon hub's behaviour out of the box.
+      raidFilterAvailableOnly: false, raidFilterMinLevel: 0, raidFilterSortDesc: false,
+      // Boss-list filters — independent slice mirroring dungeon/raid pattern
+      // so the boss hub gets its own narrowing controls without leaking into
+      // sibling hubs.
+      bossFilterAvailableOnly: false, bossFilterMinLevel: 0, bossFilterSortDesc: false,
     }),
     stateKeys: [
       'language', 'combatSpeed', 'skillMode',
@@ -250,6 +263,10 @@ const STORE_ENTRIES: IStoreEntry[] = [
       'autoPotionPctHpId', 'autoPotionPctMpId',
       'showCombatXpBar',
       'autoSellCommon', 'autoSellRare', 'autoSellEpic', 'autoSellLegendary', 'autoSellMythic',
+      'huntFilterAvailableOnly', 'huntFilterTaskedOnly', 'huntFilterMinLevel', 'huntFilterSortDesc',
+      'dungeonFilterAvailableOnly', 'dungeonFilterMinLevel', 'dungeonFilterSortDesc',
+      'raidFilterAvailableOnly', 'raidFilterMinLevel', 'raidFilterSortDesc',
+      'bossFilterAvailableOnly', 'bossFilterMinLevel', 'bossFilterSortDesc',
     ],
   },
   {
@@ -549,8 +566,28 @@ const flushStoresToLocalStorage = (): void => {
 /**
  * Schedule a debounced auto-save. Multiple rapid state changes
  * (e.g. combat ticks) collapse into a single write.
+ *
+ * 2026-05-20 v2: in OFFLINE mode the debounce is killed — every store
+ * change flushes to localStorage immediately. Offline play has no
+ * Supabase fallback, so a 500 ms window where a refresh could erase
+ * the player's progress was the bug they reported ("ulepszylem skill
+ * do +3, refresh, cofa sie do +1"). The cost (a couple of extra
+ * localStorage writes per second under heavy combat) is acceptable in
+ * offline mode where the alternative is data loss.
  */
 const scheduleAutoSave = (): void => {
+  // 2026-05-20 v2: connectivityStore has no dependency on characterScope
+  // (one-way import chain), so a static import is cycle-safe.
+  const offlineMode = useConnectivityStore.getState().mode === 'offline';
+  if (offlineMode) {
+    // Cancel any pending debounced save and flush NOW.
+    if (_autoSaveTimer !== null) {
+      clearTimeout(_autoSaveTimer);
+      _autoSaveTimer = null;
+    }
+    flushStoresToLocalStorage();
+    return;
+  }
   if (_autoSaveTimer !== null) {
     clearTimeout(_autoSaveTimer);
   }
@@ -868,17 +905,29 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
   // Step 1: IMMEDIATELY restore from localStorage (sync, instant)
   let restored = restoreFromLocalStorageSync(newCharacterId);
 
-  // Step 2: Try loading from Supabase (async, may be newer)
-  try {
-    const saved = await loadGame(newCharacterId);
-    if (saved) {
-      const cloudBlob: Record<string, unknown> = { ...(saved as Record<string, unknown>) };
-      cloudBlob._ownerCharacterId = newCharacterId;
-      const ok = applyBlobToStores(cloudBlob, newCharacterId);
-      if (ok) restored = true;
+  // Step 2: Try loading from Supabase (async, may be newer).
+  //
+  // 2026-05-20 v2: SKIPPED when we're resuming an offline session
+  // (snapshot present in sessionStorage). Otherwise the cloud row —
+  // which is stale by definition during an offline session — would
+  // overwrite the local state, deleting whatever the player did
+  // offline. This was the exact bug players reported: "ulepszylem
+  // skill do +3, refresh, cofa sie do +1". The local state is the
+  // canonical source while offline; the next `transitionToOnline()`
+  // call will push it up to Supabase and unblock the cloud path.
+  const offlineSession = useConnectivityStore.getState().snapshot !== null;
+  if (!offlineSession) {
+    try {
+      const saved = await loadGame(newCharacterId);
+      if (saved) {
+        const cloudBlob: Record<string, unknown> = { ...(saved as Record<string, unknown>) };
+        cloudBlob._ownerCharacterId = newCharacterId;
+        const ok = applyBlobToStores(cloudBlob, newCharacterId);
+        if (ok) restored = true;
+      }
+    } catch {
+      // offline – localStorage data already restored above
     }
-  } catch {
-    // offline – localStorage data already restored above
   }
 
   if (!restored) {
@@ -903,6 +952,63 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
 
   // Start auto-save subscriptions for the new character
   startAutoSaveSubscriptions();
+
+  // 2026-05-11: defensive heal — if the loaded character has HP <= 0,
+  // refill them. Used to be gated on `phase !== 'fighting'` so an
+  // in-progress fight could resume from where it left off, but the
+  // realistic failure modes are:
+  //   • Tab closed mid-fight as a non-leader party member (engine was
+  //     suppressed, character.hp got nuked by stopCombat's bad sync —
+  //     see Combat.tsx exit handler fix). On reload Knight loads with
+  //     hp=0 AND phase='fighting' so the old guard skipped the heal.
+  //   • Death penalty crashed before fullHealEffective could land.
+  //   • Stale Supabase row from a pre-fix version of the death flow.
+  // None of these warrant keeping the player at 0 HP — they're all
+  // bugs we'd rather paper over than punish. Always heal on load.
+  // The combat store's phase / monster state still survive so the
+  // player can resume on the same fight if they want.
+  try {
+    const restoredChar = useCharacterStore.getState().character;
+    if (restoredChar && (restoredChar.hp ?? 0) <= 0) {
+      useCharacterStore.getState().fullHealEffective();
+    }
+  } catch { /* non-critical */ }
+
+  // ── PHASE 4: Lvl-1000 perk hook ─────────────────────────────────────────
+  // When the loaded character is at the level cap (1000), auto-unlock every
+  // active skill for their class. Lets the SQL `promote_all_to_1000.sql`
+  // migration take effect without us having to ship a per-browser localStorage
+  // edit — players just re-enter the character and skills appear in the
+  // Postać → Active Skills panel ready to slot.
+  ensureMaxLevelPerks();
+};
+
+/**
+ * Auto-unlock every active skill for the active character's class when they
+ * are at the level cap (1000). Idempotent — only sets `unlockedSkills[id] = true`
+ * for skills that aren't already unlocked, so it never overwrites the player's
+ * upgrade levels or active slot picks.
+ */
+const ensureMaxLevelPerks = (): void => {
+  const character = useCharacterStore.getState().character;
+  if (!character || character.level < 1000) return;
+  const classKey = character.class.toLowerCase();
+  const allClassSkills = (skillsData as { activeSkills: Record<string, { id: string }[]> })
+    .activeSkills[classKey] ?? [];
+  if (allClassSkills.length === 0) return;
+  const skillState = useSkillStore.getState();
+  const current = skillState.unlockedSkills ?? {};
+  const next: Record<string, boolean> = { ...current };
+  let changed = false;
+  for (const def of allClassSkills) {
+    if (next[def.id] !== true) {
+      next[def.id] = true;
+      changed = true;
+    }
+  }
+  if (changed) {
+    useSkillStore.setState({ unlockedSkills: next });
+  }
 };
 
 /**
@@ -996,8 +1102,36 @@ const saveCharacterToSupabase = async (charId: string): Promise<void> => {
 /**
  * Save current character's stores to both localStorage and Supabase.
  * Also persists character stats (level, XP, etc.) to the characters table.
+ *
+ * 2026-05-11 spec ("walka leci masa requestow i muli aplikacje"): each
+ * call fires 3 Supabase writes (`characters` PATCH, `character_weapon_skills`
+ * upsert, `game_saves` upsert). The combat engine calls this on EVERY
+ * monster kill — at x4 speed with auto-fight that's ~5-10 kills/sec,
+ * so 15-30 REST writes/sec drowning the API and the UI thread. We
+ * throttle to one save per 4s while combat is hot; localStorage
+ * persistence runs at its own 500 ms debounce inside the auto-save
+ * subscriptions, so the player's local state is safe regardless. The
+ * 5-minute useSync interval still flushes a fresh snapshot on top.
+ *
+ * To bypass the throttle (e.g. level-up, death, exit), call
+ * `saveCurrentCharacterStoresForce()` below — it ignores the gate.
  */
+const SAVE_THROTTLE_MS = 4_000;
+let _lastSaveAt = 0;
 export const saveCurrentCharacterStores = async (): Promise<void> => {
+  const now = Date.now();
+  if (now - _lastSaveAt < SAVE_THROTTLE_MS) return;
+  _lastSaveAt = now;
+  await saveCurrentCharacterStoresImpl();
+};
+
+/** Force a save bypassing the throttle (level-up, death, exit). */
+export const saveCurrentCharacterStoresForce = async (): Promise<void> => {
+  _lastSaveAt = Date.now();
+  await saveCurrentCharacterStoresImpl();
+};
+
+const saveCurrentCharacterStoresImpl = async (): Promise<void> => {
   if (_switchInProgress) return;
 
   const charId = _activeCharacterId;

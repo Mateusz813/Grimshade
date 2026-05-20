@@ -5,6 +5,7 @@ import {
     processXpGain,
     applyDeathPenalty,
     applyDeathXpPenalty,
+    applyFleePenalty,
     xpProgress,
 } from './levelSystem';
 
@@ -84,60 +85,111 @@ describe('processXpGain', () => {
     });
 });
 
-// ── applyDeathPenalty (NEW – level loss) ─────────────────────────────────────
+// ── applyDeathPenalty (NEW spec, 2026-05) ────────────────────────────────────
+// Death takes floor(level * 0.02) levels and 50% of every skill's banked XP.
 
 describe('applyDeathPenalty', () => {
-    it('should not lose level at level 1', () => {
+    it('keeps level 1 at level 1 (nothing to strip)', () => {
         const result = applyDeathPenalty(1, 500);
         expect(result.newLevel).toBe(1);
         expect(result.levelsLost).toBe(0);
-        // Level 1 keeps 50% of current XP
-        expect(result.newXp).toBe(250);
+        expect(result.newXp).toBe(500); // XP pointer untouched at lvl 1
+        expect(result.skillXpLossPercent).toBe(50);
     });
 
-    it('should lose 1 level at level 3 (75% XP kept)', () => {
-        const result = applyDeathPenalty(3, 500);
-        expect(result.newLevel).toBe(2);
+    it('loses 0 levels below lvl 50 (2% rounds down to 0)', () => {
+        const r3 = applyDeathPenalty(3, 500);
+        expect(r3.levelsLost).toBe(0);
+        expect(r3.newLevel).toBe(3);
+        const r10 = applyDeathPenalty(10, 1000);
+        expect(r10.levelsLost).toBe(0);
+        expect(r10.newLevel).toBe(10);
+        const r49 = applyDeathPenalty(49, 1000);
+        expect(r49.levelsLost).toBe(0);
+        expect(r49.newLevel).toBe(49);
+    });
+
+    it('loses exactly 1 level at lvl 50 (50 * 0.02 = 1)', () => {
+        const result = applyDeathPenalty(50, 5000);
         expect(result.levelsLost).toBe(1);
-        expect(result.xpPercent).toBe(75);
-        // newXp = 75% of xpToNextLevel(2)
-        const expected = Math.floor(xpToNextLevel(2) * 0.75);
-        expect(result.newXp).toBe(expected);
+        expect(result.newLevel).toBe(49);
     });
 
-    it('should lose 1 level at level 10 (50% XP kept)', () => {
-        const result = applyDeathPenalty(10, 1000);
-        expect(result.newLevel).toBe(9);
-        expect(result.levelsLost).toBe(1);
-        expect(result.xpPercent).toBe(50);
-    });
-
-    it('should lose 1 level at level 30 (30% XP kept)', () => {
-        const result = applyDeathPenalty(30, 5000);
-        expect(result.newLevel).toBe(29);
-        expect(result.xpPercent).toBe(30);
-    });
-
-    it('should lose 1 level at level 100 (10% XP kept)', () => {
+    it('loses 2 levels at lvl 100', () => {
         const result = applyDeathPenalty(100, 50000);
-        expect(result.newLevel).toBe(99);
-        expect(result.xpPercent).toBe(10);
+        expect(result.levelsLost).toBe(2);
+        expect(result.newLevel).toBe(98);
     });
 
-    it('should lose 1 level at level 500 (5% XP kept)', () => {
+    it('loses 10 levels at lvl 500', () => {
         const result = applyDeathPenalty(500, 50000);
-        expect(result.newLevel).toBe(499);
-        expect(result.xpPercent).toBe(5);
+        expect(result.levelsLost).toBe(10);
+        expect(result.newLevel).toBe(490);
     });
 
-    it('should include 5% skill XP loss', () => {
-        const result = applyDeathPenalty(10, 1000);
-        expect(result.skillXpLossPercent).toBe(5);
+    it('loses exactly 20 levels at lvl 1000 (the spec anchor)', () => {
+        const result = applyDeathPenalty(1000, 0);
+        expect(result.levelsLost).toBe(20);
+        expect(result.newLevel).toBe(980);
     });
 
-    it('should never go below level 1', () => {
+    it('always reports 50% skill XP loss', () => {
+        expect(applyDeathPenalty(50, 0).skillXpLossPercent).toBe(50);
+        expect(applyDeathPenalty(500, 0).skillXpLossPercent).toBe(50);
+        expect(applyDeathPenalty(1000, 0).skillXpLossPercent).toBe(50);
+    });
+
+    it('never goes below level 1', () => {
         const result = applyDeathPenalty(1, 100);
         expect(result.newLevel).toBe(1);
+    });
+
+    it('drops XP pointer to 0 when a level is stripped', () => {
+        const result = applyDeathPenalty(100, 50000);
+        expect(result.newXp).toBe(0);
+        expect(result.xpPercent).toBe(0);
+    });
+});
+
+// ── applyFleePenalty (NEW spec, 2026-05) ─────────────────────────────────────
+// Flee takes floor(level * 0.003) levels and 0.1% of every skill's banked XP.
+
+describe('applyFleePenalty', () => {
+    it('keeps level 1 at level 1 with no skill XP loss', () => {
+        const result = applyFleePenalty(1, 500);
+        expect(result.newLevel).toBe(1);
+        expect(result.levelsLost).toBe(0);
+        expect(result.newXp).toBe(500);
+        expect(result.skillXpLossPercent).toBe(0);
+    });
+
+    it('loses 0 levels below lvl 333', () => {
+        expect(applyFleePenalty(50, 1000).levelsLost).toBe(0);
+        expect(applyFleePenalty(100, 1000).levelsLost).toBe(0);
+        expect(applyFleePenalty(332, 1000).levelsLost).toBe(0);
+    });
+
+    it('loses 1 level at lvl 334 (0.3%)', () => {
+        const result = applyFleePenalty(334, 1000);
+        expect(result.levelsLost).toBe(1);
+        expect(result.newLevel).toBe(333);
+    });
+
+    it('loses 3 levels at lvl 1000 (the spec anchor)', () => {
+        const result = applyFleePenalty(1000, 0);
+        expect(result.levelsLost).toBe(3);
+        expect(result.newLevel).toBe(997);
+    });
+
+    it('reports 0.1% skill XP loss when above lvl 1', () => {
+        expect(applyFleePenalty(50, 0).skillXpLossPercent).toBe(0.1);
+        expect(applyFleePenalty(500, 0).skillXpLossPercent).toBe(0.1);
+        expect(applyFleePenalty(1000, 0).skillXpLossPercent).toBe(0.1);
+    });
+
+    it('preserves XP pointer when no level was stripped', () => {
+        const result = applyFleePenalty(100, 12345);
+        expect(result.newXp).toBe(12345);
     });
 });
 

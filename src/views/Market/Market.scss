@@ -1,405 +1,866 @@
 @use '../../styles/variables' as *;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Market — 2026-05-08 v2 rewrite per spec.
+//
+// Three tabs (Przegląd / Sprzedawaj / Moje), shared filter bar, list-row layout
+// for browse + my listings, sell-tile grid for the sell tab, buy/sell/edit
+// modals, sale-notification button + popover. The legacy "← Miasto" header
+// + duplicate gold chip are gone.
+// ─────────────────────────────────────────────────────────────────────────────
+
 .market {
-    min-height: 100vh;
+  min-height: 100vh;
+  background: #000;
+  color: $color-text;
+  padding-bottom: $spacing-xl;
+
+  &--embedded {
+    min-height: 0;
     background: transparent;
+  }
+
+  &__loading,
+  &__empty {
+    text-align: center;
+    padding: $spacing-xl $spacing-md;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: $spacing-sm $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $radius-md;
+    background: rgba(244, 67, 54, 0.12);
+    border: 1px solid #f44336;
+    color: #ff8a80;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    button {
+      background: transparent;
+      border: 1px solid currentColor;
+      border-radius: $radius-sm;
+      color: inherit;
+      cursor: pointer;
+      padding: 0 8px;
+    }
+  }
+
+  // ── Top row: tabs + notification button ───────────────────────────────────
+  &__top-row {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.96);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    @media (max-width: 600px) {
+      gap: 6px;
+      padding: 6px 8px;
+    }
+  }
+
+  &__tabs {
+    flex: 1;
+    display: flex;
+    gap: 4px;
+  }
+
+  &__tab {
+    flex: 1 1 0;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+
+    @media (max-width: 600px) {
+      font-size: 11px;
+      padding: 9px 4px;
+      letter-spacing: 0;
+    }
+
+    &:hover { color: var(--nav-accent, #fff); }
+
+    &--active {
+      color: var(--nav-accent, $color-accent);
+      border-bottom-color: var(--nav-accent, $color-accent);
+      background: color-mix(in srgb, var(--nav-accent, #{$color-accent}) 10%, transparent);
+    }
+  }
+
+  &__tab-count {
+    margin-left: 4px;
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  // ── Notification bell ─────────────────────────────────────────────────────
+  &__notify-btn {
+    position: relative;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+    &:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+    &--active {
+      animation: market-notify-pulse 1.6s ease-in-out infinite;
+      color: #ffd54f;
+      border-color: #ffd54f;
+    }
+  }
+
+  &__notify-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #f44336;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @keyframes market-notify-pulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(255, 213, 79, 0.6); }
+    50%      { box-shadow: 0 0 12px rgba(255, 213, 79, 0.7); }
+  }
+
+  // ── Filter bar ────────────────────────────────────────────────────────────
+  // 2026-05-08 v3: tighter mobile layout — search spans the full row,
+  // the four selects fit two-up, and the level inputs share a row.
+  &__filters {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.92);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr 1fr;
+      // Search spans both columns so it stays usable.
+      > .market__search { grid-column: 1 / -1; }
+    }
+  }
+
+  &__search,
+  &__select,
+  &__lvl-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: $radius-sm;
     color: $color-text;
-    padding-bottom: $spacing-xl;
+    font-size: 13px;
+    padding: 6px 10px;
+    min-width: 0;
 
-    &__header {
-        align-items: center;
-        background: $color-bg-secondary;
-        border-bottom: 1px solid $color-border;
-        display: flex;
-        gap: $spacing-sm;
-        padding: $spacing-sm $spacing-md;
-        position: sticky;
-        top: 0;
-        z-index: $z-nav;
+    &:focus {
+      outline: none;
+      border-color: var(--nav-accent, $color-accent);
+    }
+  }
+
+  &__lvl-input { width: 100%; }
+
+  // ── Panels ────────────────────────────────────────────────────────────────
+  &__panel {
+    padding: 8px 12px;
+  }
+
+  &__panel--list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  // 2026-05-08 v3 spec: sell tiles are MUCH smaller — closer to bag
+  // tile dimensions so the player sees a dense grid of inventory at
+  // a glance. Tile size capped at 96px and rows pack as tightly as the
+  // viewport allows.
+  &__panel--grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 6px;
+  }
+
+  // ── Listing row (Browse + My) ─────────────────────────────────────────────
+  // 2026-05-08 v3 — at narrow viewports the 4-column grid (icon /
+  // info / price / cta) overflows. We collapse the cta into the
+  // price column under 600px so the row still fits a 320px screen.
+  &__row {
+    display: grid;
+    grid-template-columns: 64px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--rarity-color, rgba(255, 255, 255, 0.1));
+    border-radius: $radius-md;
+    color: $color-text;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--rarity-color, #fff) 25%, transparent);
     }
 
-    &__back {
-        background: transparent;
-        border: none;
-        color: $color-text-muted;
-        cursor: pointer;
-        font-size: $font-sm;
-        padding: $spacing-xs;
-        transition: color $transition-fast;
-        &:hover { color: $color-accent; }
+    @media (max-width: 600px) {
+      grid-template-columns: 56px 1fr auto;
+      gap: 8px;
+      padding: 6px 8px;
+      // Hide the standalone CTA — clicking the whole row already
+      // opens the buy/edit popup, the cta is only visual chrome.
+      .market__row-cta { display: none; }
     }
 
-    &__title {
-        color: $color-accent;
-        flex: 1;
-        font-size: $font-lg;
-        margin: 0;
+    // Elixir / potion rows — same gold→purple gradient border as the
+    // sell tile so the family reads as one cohort across all tabs.
+    &--elixir {
+      border-color: transparent;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02)) padding-box,
+        linear-gradient(135deg, #ffd54f 0%, #ffb300 35%, #9c27b0 100%) border-box;
+
+      &:hover {
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) padding-box,
+          linear-gradient(135deg, #ffd54f 0%, #ffb300 35%, #9c27b0 100%) border-box;
+        box-shadow: 0 4px 14px rgba(156, 39, 176, 0.35);
+      }
+    }
+  }
+
+  &__row-icon {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: $radius-sm;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    @media (max-width: 600px) {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  &__row-lvl,
+  &__row-upgrade,
+  &__row-qty {
+    position: absolute;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #ffd54f;
+    pointer-events: none;
+    line-height: 1.1;
+  }
+
+  &__row-lvl     { top: 2px; left: 2px; }
+  &__row-upgrade { top: 2px; right: 2px; color: #4caf50; }
+  &__row-qty     { bottom: 2px; right: 2px; }
+
+  &__row-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__row-name {
+    font-size: 14px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__row-meta {
+    font-size: 11px;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  // 2026-05-08 v3: inline bonus chips on each listing row so the
+  // player can compare stats without opening the buy popup.
+  &__row-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-top: 2px;
+    font-size: 10px;
+
+    @media (max-width: 600px) {
+      gap: 3px 5px;
+    }
+  }
+
+  &__row-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  &__row-stat-label {
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    font-size: 9px;
+  }
+
+  &__row-stat-value {
+    color: #fff;
+    font-weight: 800;
+    font-feature-settings: 'tnum';
+  }
+
+  &__row-seller {
+    font-size: 10px;
+    color: $color-text-muted;
+    margin-top: 2px;
+  }
+
+  &__row-price {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1;
+  }
+
+  &__row-price-value {
+    color: $color-legendary;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  &__row-price-label {
+    font-size: 10px;
+    color: $color-text-muted;
+  }
+
+  &__row-cta {
+    background: var(--rarity-color, $color-accent);
+    color: #000;
+    border-radius: $radius-sm;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 8px 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    pointer-events: none; // parent button handles click
+  }
+
+  // ── Sell tile (grid) ──────────────────────────────────────────────────────
+  // 2026-05-08 v3: tiles are bag-sized (~96px). Lv badge top-left,
+  // upgrade badge top-right (corner with `+N`), qty badge bottom-right.
+  // Name renders as a thin caption underneath. No rarity caption — the
+  // border + name colour already convey it.
+  &__sell-tile {
+    background: #000;
+    border: 2px solid var(--rarity-color, rgba(255, 255, 255, 0.1));
+    border-radius: $radius-sm;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: stretch;
+    cursor: pointer;
+    color: $color-text;
+    transition: transform 0.12s, box-shadow 0.12s;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--rarity-color, #fff) 30%, transparent);
     }
 
-    &__gold {
-        color: $color-legendary;
-        font-size: $font-sm;
-        font-weight: 700;
-        background: $color-bg-card;
-        padding: $spacing-xs $spacing-sm;
-        border-radius: $radius-sm;
+    // 2026-05-08 v3 spec ("wszystkie eliksiry kolory borderow daj na
+    // zloty z fioletowym gradient borderu"): elixirs + potions get a
+    // unified gold-to-purple gradient border instead of the heuristic
+    // rarity colour, so the family reads as one visual cohort. Uses
+    // the background-clip trick (two backgrounds — solid for inside,
+    // gradient for the border slot) so the border-radius is preserved.
+    &--elixir {
+      border-color: transparent;
+      background:
+        linear-gradient(#000, #000) padding-box,
+        linear-gradient(135deg, #ffd54f 0%, #ffb300 35%, #9c27b0 100%) border-box;
+
+      &:hover {
+        box-shadow: 0 2px 12px rgba(156, 39, 176, 0.45);
+      }
+    }
+  }
+
+  &__sell-tile-icon {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    background: #000;
+    border-radius: $radius-sm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__sell-tile-lvl,
+  &__sell-tile-upgrade,
+  &__sell-tile-qty {
+    position: absolute;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #ffd54f;
+    line-height: 1.1;
+    pointer-events: none;
+  }
+
+  &__sell-tile-lvl     { top: 3px; left: 3px; }
+  &__sell-tile-upgrade { top: 3px; right: 3px; color: #4caf50; }
+  &__sell-tile-qty     { bottom: 3px; right: 3px; }
+
+  &__sell-tile-name {
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  // ── Pagination ───────────────────────────────────────────────────────────
+  &__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 12px;
+    color: $color-text-muted;
+  }
+
+  &__page-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: $radius-sm;
+    color: $color-text;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 8px 14px;
+
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+    &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+  }
+
+  &__page-info {
+    font-size: 13px;
+    color: $color-text-muted;
+  }
+
+  // ── Modals (buy / sell / edit / notifications) ───────────────────────────
+  &__modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+  }
+
+  &__modal {
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(180deg, #0c0d12 0%, #04050a 100%);
+    border: 2px solid var(--rarity-color, $color-accent);
+    border-radius: $radius-lg;
+    padding: 16px;
+    color: $color-text;
+    position: relative;
+    box-shadow: 0 18px 60px color-mix(in srgb, var(--rarity-color, #{$color-accent}) 35%, rgba(0, 0, 0, 0.8));
+
+    &--notifications {
+      max-width: 480px;
+      border-color: rgba(255, 213, 79, 0.6);
+    }
+  }
+
+  &__modal-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: $color-text;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s;
+    &:hover { background: rgba(255, 255, 255, 0.12); }
+  }
+
+  &__modal-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    margin: 4px 0 12px;
+    border: 1px solid;
+    border-radius: $radius-md;
+
+    // Elixir / potion hero: gold→purple gradient border + tinted
+    // backdrop, matching the listing row + sell tile treatment.
+    &--elixir {
+      border-color: transparent;
+      background:
+        linear-gradient(135deg, rgba(255, 213, 79, 0.18), rgba(156, 39, 176, 0.14)) padding-box,
+        linear-gradient(135deg, #ffd54f 0%, #ffb300 35%, #9c27b0 100%) border-box;
+    }
+  }
+
+  &__modal-icon {
+    position: relative;
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border-radius: $radius-sm;
+  }
+
+  // Corner badges on the modal hero icon (Lv + upgrade).
+  &__modal-icon-lvl,
+  &__modal-icon-upgrade {
+    position: absolute;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.9);
+    color: #ffd54f;
+    line-height: 1.1;
+  }
+
+  &__modal-icon-lvl     { top: 4px; left: 4px; }
+  &__modal-icon-upgrade { top: 4px; right: 4px; color: #4caf50; }
+
+  &__modal-name {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  &__modal-meta {
+    font-size: 12px;
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__modal-seller {
+    font-size: 12px;
+    color: $color-text-muted;
+  }
+
+  // Stats list shared by buy / sell / edit modals — same row layout
+  // as the inline row stats so the visual treatment is consistent.
+  &__modal-stats {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: $radius-md;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 4px 10px;
+    font-size: 12px;
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr 1fr;
+      font-size: 11px;
+    }
+  }
+
+  &__modal-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  &__modal-stat-label {
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    font-size: 10px;
+  }
+
+  &__modal-stat-value {
+    color: #fff;
+    font-weight: 800;
+    font-feature-settings: 'tnum';
+  }
+
+  &__modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  &__modal-qty-row,
+  &__modal-price-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+
+    label {
+      flex-shrink: 0;
+      font-size: 13px;
+      color: $color-text-muted;
+      min-width: 84px;
     }
 
-    // Tabs
-    &__tabs {
-        display: flex;
-        background: $color-bg-secondary;
-        border-bottom: 1px solid $color-border;
+    input[type="number"] {
+      flex: 1 1 100px;
+      min-width: 0;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: $radius-sm;
+      color: $color-text;
+      font-size: 14px;
+      padding: 8px 10px;
+      &:focus { outline: none; border-color: var(--rarity-color, $color-accent); }
     }
 
-    &__tab {
-        background: transparent;
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: $color-text-muted;
-        cursor: pointer;
-        flex: 1;
-        font-size: $font-sm;
-        font-weight: 600;
-        padding: $spacing-sm $spacing-md;
-        transition: color $transition-fast, border-color $transition-fast;
+    button {
+      background: rgba(255, 213, 79, 0.12);
+      border: 1px solid rgba(255, 213, 79, 0.4);
+      border-radius: $radius-sm;
+      color: #ffd54f;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 12px;
 
-        &:hover { color: $color-text; }
+      &:hover { background: rgba(255, 213, 79, 0.22); }
+    }
+  }
 
-        &--active {
-            border-bottom-color: $color-accent;
-            color: $color-accent;
-        }
+  &__modal-qty-info,
+  &__modal-price-suffix {
+    font-size: 12px;
+    color: $color-text-muted;
+  }
+
+  &__modal-total {
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(255, 213, 79, 0.06);
+    border: 1px solid rgba(255, 213, 79, 0.2);
+    border-radius: $radius-md;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 14px;
+
+    strong {
+      color: #ffd54f;
+      font-size: 18px;
+      font-weight: 900;
+    }
+  }
+
+  &__modal-unit {
+    font-size: 11px;
+    color: $color-text-muted;
+  }
+
+  &__modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+
+    &--column {
+      flex-direction: column;
+    }
+  }
+
+  &__modal-btn {
+    flex: 1;
+    border: none;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 12px 14px;
+    transition: filter 0.15s, transform 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    &:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    &--cancel {
+      background: rgba(255, 255, 255, 0.06);
+      color: $color-text-muted;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    // Loading & error
-    &__loading {
-        color: $color-text-muted;
-        font-size: $font-sm;
-        padding: $spacing-md;
-        text-align: center;
+    &--confirm {
+      background: linear-gradient(180deg, #ffd54f, #ffb300);
+      color: #1a1a1a;
     }
 
-    &__error {
-        align-items: center;
-        background: rgba(244, 67, 54, 0.1);
-        border: 1px solid rgba(244, 67, 54, 0.3);
-        border-radius: $radius-sm;
-        color: #ef9a9a;
-        display: flex;
-        font-size: $font-sm;
-        gap: $spacing-sm;
-        justify-content: space-between;
-        margin: $spacing-sm $spacing-md;
-        padding: $spacing-sm $spacing-md;
-
-        button {
-            background: none;
-            border: none;
-            color: #ef9a9a;
-            cursor: pointer;
-            font-size: $font-md;
-        }
+    &--remove {
+      background: rgba(244, 67, 54, 0.18);
+      color: #ff8a80;
+      border: 1px solid rgba(244, 67, 54, 0.5);
     }
+  }
 
-    // Filters
-    &__filters {
-        display: flex;
-        gap: $spacing-sm;
-        padding: $spacing-sm $spacing-md;
-        flex-wrap: wrap;
-    }
+  // ── Notifications list inside the modal ─────────────────────────────────
+  &__notify-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
 
-    &__select {
-        background: $color-bg;
-        border: 1px solid $color-border;
-        border-radius: $radius-sm;
-        color: $color-text;
-        font-size: $font-xs;
-        padding: $spacing-xs $spacing-sm;
-        flex: 1;
-        min-width: 0;
-        outline: none;
+  &__notify-row {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--rarity-color, rgba(255, 255, 255, 0.1));
+    border-radius: $radius-md;
+  }
 
-        &:focus { border-color: $color-accent; }
+  &__notify-row-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border-radius: $radius-sm;
+  }
 
-        option {
-            background: $color-bg;
-            color: $color-text;
-        }
-    }
+  &__notify-row-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
-    // Listing grid
-    &__listing-grid {
-        display: flex;
-        flex-direction: column;
-        gap: $spacing-xs;
-        padding: $spacing-sm $spacing-md;
+  &__notify-row-name {
+    font-size: 14px;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-        @media (min-width: 768px) {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-        }
+  &__notify-row-gold {
+    color: $color-legendary;
+    font-size: 13px;
+    font-weight: 800;
+  }
 
-        @media (min-width: 1024px) {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
+  &__notify-row-dismiss {
+    background: rgba(76, 175, 80, 0.18);
+    border: 1px solid rgba(76, 175, 80, 0.5);
+    border-radius: $radius-sm;
+    color: #81c784;
+    cursor: pointer;
+    font-size: 16px;
+    width: 36px;
+    height: 36px;
 
-    &__listing {
-        align-items: center;
-        background: $color-bg-card;
-        border: 1px solid var(--rarity-color, $color-border);
-        border-radius: $radius-md;
-        display: flex;
-        gap: $spacing-sm;
-        padding: $spacing-sm $spacing-md;
-        transition: background $transition-fast;
+    &:hover { background: rgba(76, 175, 80, 0.32); }
+  }
 
-        &:hover {
-            background: lighten($color-bg-card, 3%);
-        }
-    }
-
-    &__listing-icon {
-        font-size: 24px;
-        flex-shrink: 0;
-        width: 32px;
-        text-align: center;
-    }
-
-    &__listing-info {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-width: 0;
-    }
-
-    &__listing-name {
-        font-size: $font-sm;
-        font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    &__listing-meta {
-        color: $color-text-muted;
-        font-size: $font-xs;
-    }
-
-    &__listing-seller {
-        color: $color-text-muted;
-        font-size: 10px;
-    }
-
-    &__listing-price-wrap {
-        align-items: flex-end;
-        display: flex;
-        flex-direction: column;
-        flex-shrink: 0;
-        gap: $spacing-xs;
-    }
-
-    &__listing-price {
-        color: $color-legendary;
-        font-size: $font-sm;
-        font-weight: 700;
-    }
-
-    &__buy-btn, &__cancel-btn {
-        border: none;
-        border-radius: $radius-sm;
-        cursor: pointer;
-        font-size: $font-xs;
-        font-weight: 600;
-        padding: $spacing-xs $spacing-sm;
-        transition: opacity $transition-fast;
-
-        &:hover:not(:disabled) { opacity: 0.85; }
-        &:disabled { opacity: 0.4; cursor: not-allowed; }
-    }
-
-    &__buy-btn {
-        background: #4caf50;
-        color: #fff;
-    }
-
-    &__cancel-btn {
-        background: $color-accent;
-        color: #fff;
-    }
-
-    // Empty state
-    &__empty {
-        color: $color-text-muted;
-        font-size: $font-sm;
-        padding: $spacing-xl;
-        text-align: center;
-    }
-
-    // Sell tab
-    &__sell {
-        padding: $spacing-md;
-    }
-
-    &__sell-info {
-        color: $color-text-muted;
-        font-size: $font-sm;
-        margin: 0 0 $spacing-md;
-    }
-
-    &__sell-selected {
-        background: $color-bg-card;
-        border: 1px solid $color-border;
-        border-radius: $radius-md;
-        padding: $spacing-md;
-        display: flex;
-        flex-direction: column;
-        gap: $spacing-md;
-    }
-
-    &__sell-item {
-        border-left: 3px solid var(--rarity-color, $color-border);
-        display: flex;
-        flex-direction: column;
-        gap: $spacing-xs;
-        padding-left: $spacing-sm;
-
-        span:first-child {
-            font-size: $font-md;
-            font-weight: 600;
-        }
-    }
-
-    &__sell-rarity {
-        color: $color-text-muted;
-        font-size: $font-xs;
-    }
-
-    &__sell-form {
-        display: flex;
-        flex-direction: column;
-        gap: $spacing-sm;
-    }
-
-    &__sell-input {
-        background: $color-bg;
-        border: 1px solid $color-border;
-        border-radius: $radius-md;
-        color: $color-text;
-        font-size: $font-md;
-        padding: $spacing-sm;
-        outline: none;
-        width: 100%;
-
-        &:focus { border-color: $color-accent; }
-    }
-
-    &__sell-tax {
-        color: $color-text-muted;
-        font-size: $font-xs;
-    }
-
-    &__sell-actions {
-        display: flex;
-        gap: $spacing-sm;
-    }
-
-    &__sell-btn {
-        background: #4caf50;
-        border: none;
-        border-radius: $radius-md;
-        color: #fff;
-        cursor: pointer;
-        flex: 1;
-        font-size: $font-sm;
-        font-weight: 600;
-        padding: $spacing-sm;
-        transition: opacity $transition-fast;
-
-        &:hover:not(:disabled) { opacity: 0.85; }
-        &:disabled { opacity: 0.4; cursor: not-allowed; }
-    }
-
-    &__cancel-select-btn {
-        background: transparent;
-        border: 1px solid $color-border;
-        border-radius: $radius-md;
-        color: $color-text-muted;
-        cursor: pointer;
-        font-size: $font-sm;
-        padding: $spacing-sm;
-        transition: all $transition-fast;
-
-        &:hover {
-            border-color: $color-accent;
-            color: $color-accent;
-        }
-    }
-
-    // Sell bag grid
-    &__sell-bag-grid {
-        display: grid;
-        gap: $spacing-xs;
-        grid-template-columns: repeat(4, 1fr);
-
-        @media (min-width: 600px) {
-            grid-template-columns: repeat(6, 1fr);
-        }
-
-        @media (min-width: 1024px) {
-            grid-template-columns: repeat(8, 1fr);
-        }
-    }
-
-    &__sell-bag-item {
-        background: $color-bg-card;
-        border: 1px solid var(--rarity-color, $color-border);
-        border-radius: $radius-sm;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        padding: $spacing-xs;
-        transition: opacity $transition-fast;
-
-        &:hover { opacity: 0.85; }
-    }
-
-    &__sell-bag-icon {
-        font-size: 20px;
-    }
-
-    &__sell-bag-name {
-        font-size: 8px;
-        font-weight: 600;
-        overflow: hidden;
-        text-align: center;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        width: 100%;
-    }
-
-    // My listings
-    &__my {
-        padding: 0;
-    }
-
-    // Toast
-    &__toast {
-        position: fixed;
-        bottom: $spacing-lg;
-        left: 50%;
-        transform: translateX(-50%);
-        background: $color-bg-card;
-        border: 1px solid $color-accent;
-        border-radius: $radius-md;
-        color: $color-text;
-        font-size: $font-sm;
-        padding: $spacing-sm $spacing-lg;
-        z-index: $z-modal;
-        white-space: nowrap;
-    }
+  // ── Toast ───────────────────────────────────────────────────────────────
+  &__toast {
+    position: fixed;
+    bottom: $spacing-lg;
+    left: 50%;
+    transform: translateX(-50%);
+    background: $color-bg-card;
+    border: 1px solid $color-accent;
+    border-radius: $radius-md;
+    color: $color-text;
+    font-size: 13px;
+    padding: 10px 16px;
+    z-index: $z-modal;
+    white-space: nowrap;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
 }

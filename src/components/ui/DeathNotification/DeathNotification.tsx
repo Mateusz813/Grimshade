@@ -5,42 +5,58 @@ import { useCombatStore } from '../../../stores/combatStore';
 import { stopCombat } from '../../../systems/combatEngine';
 import './DeathNotification.scss';
 
-const DEATH_DURATION_MS = 6000;
+// Flee is a SOFT event with a low-stakes penalty — the popup auto-dismisses
+// after a short read-window. Death is a HARD event the player must
+// acknowledge: navigation to town happens automatically, but the popup
+// itself persists until the player clicks it. This guarantees the
+// "you died, here's what you lost" message can't be missed.
+const FLEE_DURATION_MS = 3500;
 
 const DeathNotification = () => {
   const event = useDeathStore((s) => s.event);
   const clearDeath = useDeathStore((s) => s.clearDeath);
   const navigate = useNavigate();
 
+  // Flee = soft penalty (no level loss, ~1/10 XP, no nav to town).
+  // Death = full penalty + force-return to town.
+  const isFlee = event?.kind === 'flee';
+
   useEffect(() => {
     if (!event) return;
 
-    // Stop all background combat immediately
-    const cs = useCombatStore.getState();
-    if (cs.phase === 'fighting' || cs.phase === 'victory' || cs.phase === 'dead') {
-      stopCombat();
+    if (!isFlee) {
+      // Real death stops combat hard, then auto-navigates to town —
+      // but the popup is mounted globally in AppRouter, so it stays
+      // on screen across the route change. The only way to dismiss
+      // it is the click handler below. The player MUST acknowledge.
+      const cs = useCombatStore.getState();
+      if (cs.phase === 'fighting' || cs.phase === 'victory' || cs.phase === 'dead') {
+        stopCombat();
+      }
+      navigate('/');
+      return;
     }
 
-    // Auto-dismiss after duration and navigate to town
+    // Flee: soft auto-dismiss after a short read-window. No navigation —
+    // the calling view already handled returning to its own list.
     const timer = setTimeout(() => {
       clearDeath();
-      navigate('/');
-    }, DEATH_DURATION_MS);
+    }, FLEE_DURATION_MS);
     return () => clearTimeout(timer);
-  }, [event, clearDeath, navigate]);
+  }, [event, isFlee, clearDeath, navigate]);
 
   if (!event) return null;
 
   const handleClick = () => {
     clearDeath();
-    navigate('/');
+    if (!isFlee) navigate('/');
   };
 
   return (
-    <div className="death death--epic" onClick={handleClick}>
+    <div className={`death death--epic${isFlee ? ' death--flee' : ''}`} onClick={handleClick}>
       {/* Blood drip particles falling from top */}
       <div className="death__drips">
-        {Array.from({ length: 30 }).map((_, i) => (
+        {Array.from({ length: isFlee ? 8 : 30 }).map((_, i) => (
           <span
             key={i}
             className="death__drip"
@@ -79,42 +95,53 @@ const DeathNotification = () => {
 
       {/* Center content */}
       <div className="death__center">
-        <span className="death__skull">💀</span>
-        <span className="death__label">ZGINĄŁEŚ</span>
+        <span className="death__skull">{isFlee ? '🏃' : '💀'}</span>
+        <span className="death__label">{isFlee ? 'UCIEKŁEŚ' : 'ZGINĄŁEŚ'}</span>
 
-        <div className="death__killer">
-          <span className="death__killer-text">
-            Zabity przez: <strong>{event.killedBy}</strong>
-          </span>
-          <span className="death__killer-level">
-            Poziom {event.sourceLevel}
-          </span>
-        </div>
+        {!isFlee && (
+          <div className="death__killer">
+            <span className="death__killer-text">
+              Zabity przez: <strong>{event.killedBy}</strong>
+            </span>
+            <span className="death__killer-level">
+              Poziom {event.sourceLevel}
+            </span>
+          </div>
+        )}
 
         <div className="death__penalties">
           {event.protectionUsed ? (
             <span className="death__penalty death__penalty--protected">
               🛡️ Eliksir Ochrony uchronił od utraty poziomu!
             </span>
+          ) : isFlee ? (
+            <>
+              {event.levelsLost > 0 && (
+                <span className="death__penalty death__penalty--level">
+                  📉 Poziom {event.oldLevel} → {event.newLevel} (-{event.levelsLost})
+                </span>
+              )}
+              <span className="death__penalty death__penalty--skill">
+                ⚔️ -{(event.skillXpLossPercent ?? 0.1).toFixed(1)}% Skill XP
+              </span>
+            </>
           ) : (
             <>
               {event.levelsLost > 0 ? (
                 <span className="death__penalty death__penalty--level">
-                  📉 Poziom {event.oldLevel} → {event.newLevel}
+                  📉 Poziom {event.oldLevel} → {event.newLevel} (-{event.levelsLost})
                 </span>
-              ) : (
-                <span className="death__penalty death__penalty--xp">
-                  📉 -50% XP
-                </span>
-              )}
+              ) : null}
               <span className="death__penalty death__penalty--skill">
-                ⚔️ -5% Skill XP
+                ⚔️ -{(event.skillXpLossPercent ?? 50).toFixed(0)}% Skill XP
               </span>
             </>
           )}
         </div>
 
-        <span className="death__tap-hint">kliknij aby wrócić do miasta</span>
+        <span className="death__tap-hint">
+          {isFlee ? 'kliknij aby zamknąć' : 'kliknij aby wrócić do miasta'}
+        </span>
       </div>
     </div>
   );

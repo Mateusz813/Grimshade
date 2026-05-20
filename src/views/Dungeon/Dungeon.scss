@@ -8,46 +8,21 @@
   color: $color-text;
   padding-bottom: $spacing-xl;
 
+  // While the combat phase is mounted (`dungeon__panel--combat` exists
+  // somewhere in the subtree) collapse the root spacing so the combat UI
+  // fills the visible viewport instead of overflowing it. Hunting's
+  // `.combat` wrapper uses `min-height: 100%` for the same reason — this
+  // brings dungeon to parity so the player never sees a vertical scroll
+  // bar during a fight.
+  &:has(.dungeon__panel--combat) {
+    min-height: 100%;
+    padding-bottom: 0;
+  }
+
   &__loading {
     text-align: center;
     margin-top: $spacing-xl;
     color: $color-text-muted;
-  }
-
-  // ── Header ─────────────────────────────────────────────────────────────────
-  &__header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    padding: $spacing-md;
-    background: $color-bg-secondary;
-    border-bottom: 1px solid $color-border;
-  }
-
-  &__back {
-    background: transparent;
-    border: none;
-    color: $color-text-muted;
-    cursor: pointer;
-    font-size: $font-sm;
-    padding: $spacing-xs $spacing-sm;
-    &:hover { color: $color-accent; }
-  }
-
-  &__title {
-    flex: 1;
-    color: $color-accent;
-    font-size: $font-xl;
-    margin: 0;
-  }
-
-  &__wave-counter {
-    font-size: $font-sm;
-    color: $color-legendary;
-    font-weight: 700;
-    background: $color-bg-card;
-    padding: $spacing-xs $spacing-sm;
-    border-radius: $radius-sm;
   }
 
   // ── Panel ──────────────────────────────────────────────────────────────────
@@ -58,28 +33,209 @@
     gap: $spacing-md;
   }
 
+  // Combat panel — used during the in-fight 'running' phase. We zero
+  // every bit of padding so the unified <CombatTopControls> chip strip
+  // touches the underside of the fixed TopHeader (no visual gap), and
+  // the arena fits inside the visible viewport without forcing a scroll.
+  // The hunting (Combat) view doesn't add any wrapper padding either —
+  // this brings dungeon parity so both feel identically "fitted".
+  &__panel--combat {
+    padding: 0;
+    gap: 0;
+  }
+
+  // Result/summary screen — vertically centred in the *visible* viewport
+  // (top header 50px + bottom nav ≈ 64px subtracted from 100dvh) so the
+  // celebration card floats in the middle of the screen instead of being
+  // pinned to the top with empty dark space below. `min-height` is the
+  // gate: if the card is taller than the available room (small phone
+  // landscape, lots of drops), `justify-content` becomes a no-op and the
+  // card grows naturally without clipping.
+  &__panel--centered {
+    min-height: calc(100dvh - 114px);
+    justify-content: center;
+  }
+
+  // Ultrawide layout: two 1100px cards fit comfortably side-by-side. We
+  // switch the panel to a wrapping row and force every NON-card child
+  // (filter strip, empty state, arena view, result screen) to span the
+  // full width via `flex-basis: 100%` so only `&__card` siblings pair up.
+  @media (min-width: 2300px) {
+    &__panel {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+
+      > :not(.dungeon__card) {
+        flex-basis: 100%;
+      }
+    }
+  }
+
+  // ── Hub filter bar ─────────────────────────────────────────────────────────
+  // Mirrors the Hunt-Hub filter strip exactly: three pill toggles + a numeric
+  // "Lvl od" input + an optional Wyczyść button (only shows when ≥1 filter is
+  // active). Wraps freely on small phones. Per-character persistence happens
+  // in settingsStore via characterScope.
+  &__hub-filters {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__hub-section-title {
+    color: $color-text-muted;
+    font-size: $font-sm;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin: 0 0 $spacing-sm;
+    text-transform: uppercase;
+  }
+
+  &__filter-bar {
+    align-items: center;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    column-gap: $spacing-sm;
+    display: flex;
+    flex-wrap: wrap;
+    padding: $spacing-sm $spacing-md;
+    row-gap: $spacing-xs;
+  }
+
+  &__filter-toggle {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    color: $color-text-muted;
+    column-gap: $spacing-xs;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: $font-xs;
+    font-weight: 600;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+    user-select: none;
+
+    // The native checkbox stays in the DOM for a11y / form semantics but the
+    // visual cue is `--active` on the label itself.
+    input[type='checkbox'] {
+      height: 0;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      width: 0;
+    }
+
+    &:hover {
+      border-color: $color-accent;
+      color: $color-text;
+    }
+
+    &--active {
+      background: rgba(76, 175, 80, 0.15);
+      border-color: #4caf50;
+      color: #c8e6c9;
+    }
+  }
+
+  &__filter-toggle-label {
+    line-height: 1;
+  }
+
+  &__filter-input {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    column-gap: $spacing-xs;
+    display: inline-flex;
+    padding: 2px $spacing-sm;
+
+    input {
+      background: transparent;
+      border: 0;
+      color: $color-text;
+      font-size: $font-xs;
+      font-weight: 700;
+      outline: none;
+      padding: 4px 0;
+      width: 56px;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        appearance: none;
+        margin: 0;
+      }
+      -moz-appearance: textfield;
+    }
+  }
+
+  &__filter-input-label {
+    color: $color-text-muted;
+    font-size: $font-xs;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__filter-clear {
+    background: transparent;
+    border: 1px dashed rgba(244, 67, 54, 0.4);
+    border-radius: $radius-sm;
+    color: #ef9a9a;
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 600;
+    margin-left: auto;
+    padding: $spacing-xs $spacing-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba(244, 67, 54, 0.12);
+      border-color: #f44336;
+      color: $color-text;
+    }
+  }
+
+  &__filters-empty {
+    text-align: center;
+    padding: $spacing-md;
+    color: $color-text-muted;
+    font-size: $font-sm;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed $color-border;
+    border-radius: $radius-md;
+  }
+
   // ── Dungeon card ───────────────────────────────────────────────────────────
+  // Per spec: background is JUST the per-dungeon art — no hue tint, no
+  // darkening overlay underneath. The colored left border (border-left in
+  // hue) and the ::before shimmer animation stay; both render *over* the
+  // image on their own z-layer so the picture reads clean. The fallback
+  // background-color shows only when the art is missing (--card-image
+  // resolves to `none`).
   &__card {
     --h: var(--card-hue, 220);
+    --card-image: none;
     position: relative;
     overflow: hidden;
-    background:
-      radial-gradient(
-        ellipse at 15% 20%,
-        hsla(var(--h), 65%, 28%, 0.5) 0%,
-        transparent 55%
-      ),
-      radial-gradient(
-        ellipse at 85% 80%,
-        hsla(calc(var(--h) + 30), 50%, 18%, 0.35) 0%,
-        transparent 50%
-      ),
-      linear-gradient(
-        160deg,
-        hsla(var(--h), 50%, 15%, 0.6) 0%,
-        hsla(var(--h), 35%, 10%, 0.3) 35%,
-        $color-bg-card 75%
-      );
+    min-height: 240px;
+    // Per spec: a single tile never grows past 1100px wide. Below the
+    // ultrawide breakpoint (see media block at the bottom) the parent
+    // `__panel` is a flex column so cards stack and centre via
+    // `align-self`. Above it, cards pack two-up.
+    width: 100%;
+    max-width: 1100px;
+    align-self: center;
+    background-color: $color-bg-card;
+    background-image: var(--card-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     border: 1px solid hsla(var(--h), 50%, 45%, 0.35);
     border-left: 3px solid hsla(var(--h), 60%, 50%, 0.7);
     border-radius: $radius-md;
@@ -141,13 +297,13 @@
 
     &--blocked { opacity: 0.6; }
 
+    // "All daily attempts used" — image stays clean (no green tint), state
+    // is signalled with a green border + reduced opacity so the card visibly
+    // recedes without obscuring the art.
     &--all-done {
-      background:
-        radial-gradient(ellipse at 20% 30%, rgba(76, 175, 80, 0.15) 0%, transparent 50%),
-        linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, $color-bg-card 60%);
-      border-color: rgba(76, 175, 80, 0.3);
-      border-left-color: rgba(76, 175, 80, 0.5);
-      opacity: 0.7;
+      border-color: rgba(76, 175, 80, 0.5);
+      border-left-color: rgba(76, 175, 80, 0.75);
+      opacity: 0.65;
 
       &::before { animation: none; }
     }
@@ -159,23 +315,66 @@
     80% { left: 200%; opacity: 0; }
   }
 
-  &__card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+  // ── Corner badges ──────────────────────────────────────────────────────────
+  // Pinned absolute so the centred head can claim the full card width.
+  &__corner {
+    position: absolute;
+    top: 8px;
+    z-index: 2;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: hsla(var(--h, 220), 60%, 18%, 0.85);
+    border: 1px solid hsla(var(--h, 220), 60%, 50%, 0.45);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+
+    &--lvl   { left: 8px; }
+    &--waves { right: 8px; }
+
+    // "Pokonany" — sits between the lvl & waves pills, signalling that the
+    // current character has cleared this dungeon at least once. Driven by
+    // `clearedDungeonIds` (with legacy backfill from `dailyAttempts`).
+    // Bumped one size class above the metadata pills + saturated green +
+    // outer glow so it reads as a status, not as another corner chip.
+    &--cleared {
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(46, 125, 50, 0.95);
+      border-color: rgba(129, 199, 132, 0.85);
+      color: #f1f8e9;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      text-transform: uppercase;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+                  0 0 14px rgba(76, 175, 80, 0.5);
+    }
   }
 
-  &__card-icon {
-    font-size: 1.6rem;
-    line-height: 1;
-    flex-shrink: 0;
+  // ── Centered head (icon, name, description) ────────────────────────────────
+  &__card-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-xs;
+    text-align: center;
+    max-width: 400px;
+    margin: 28px auto 0; // top inset clears the corner badges
+    padding: 0 $spacing-sm;
   }
 
   &__card-name {
     font-size: $font-lg;
     font-weight: 700;
-    flex: 1;
+    margin: 0;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 
   &__card-rarity {
@@ -189,6 +388,21 @@
     font-size: $font-sm;
     color: $color-text-muted;
     margin: 0;
+    line-height: 1.4;
+  }
+
+  // ── Reward summary (gold / XP only — level + waves live in corners) ───────
+  // Per spec: no separator borders — the row sits cleanly on the dungeon
+  // art with just typographic weight and the colored gold/XP glyphs.
+  &__card-rewards {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    font-size: $font-sm;
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 600;
+    padding: $spacing-xs 0;
   }
 
   &__card-meta {
@@ -214,6 +428,110 @@
 
     &:hover { background: rgba(255, 255, 255, 0.08); border-color: $color-accent; }
     &--open { border-color: $color-accent; color: $color-text; }
+  }
+
+  // ── Drop popup trigger (replaces inline expansion) ────────────────────────
+  // Unobtrusive ghost button — the focal point of the card is the wide
+  // "Wejdź" CTA below it, so the drop trigger keeps a low-key look. Capped
+  // at 200px wide and centred via `align-self: center` so it matches the
+  // sibling "Wejdź" CTA's footprint.
+  &__drop-btn {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid hsla(var(--h, 220), 40%, 50%, 0.3);
+    border-radius: $radius-sm;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    font-size: $font-xs;
+    font-weight: 600;
+    padding: 6px 12px;
+    text-align: center;
+    transition: background $transition-fast, border-color $transition-fast, color $transition-fast;
+    width: 100%;
+    max-width: 200px;
+    align-self: center;
+
+    &:hover {
+      background: hsla(var(--h, 220), 50%, 25%, 0.5);
+      border-color: hsla(var(--h, 220), 60%, 55%, 0.6);
+      color: #fff;
+    }
+  }
+
+  // ── Drop-table modal (popup) ───────────────────────────────────────────────
+  &__modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-md;
+    animation: dungeon-modal-fade 0.15s ease-out;
+  }
+
+  @keyframes dungeon-modal-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  &__modal {
+    --h: var(--card-hue, 220);
+    background:
+      radial-gradient(ellipse at 15% 20%, hsla(var(--h), 65%, 28%, 0.5) 0%, transparent 55%),
+      linear-gradient(160deg, hsla(var(--h), 50%, 15%, 0.85) 0%, $color-bg-card 75%);
+    border: 1px solid hsla(var(--h), 60%, 50%, 0.5);
+    border-radius: $radius-md;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6),
+                0 0 0 1px hsla(var(--h), 60%, 50%, 0.3);
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: dungeon-modal-pop 0.2s ease-out;
+  }
+
+  @keyframes dungeon-modal-pop {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);   }
+  }
+
+  &__modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid hsla(var(--h, 220), 50%, 50%, 0.25);
+    flex-shrink: 0;
+  }
+
+  &__modal-title {
+    font-size: $font-lg;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  &__modal-close {
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    font-size: $font-lg;
+    cursor: pointer;
+    padding: 0 6px;
+    line-height: 1;
+
+    &:hover { color: #fff; }
+  }
+
+  &__modal-body {
+    overflow-y: auto;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
   }
 
   &__drop-table {
@@ -288,18 +606,24 @@
 
   &__attempts {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 4px;
+    color: rgba(255, 255, 255, 0.65);
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 $spacing-xs;
+
+    > span {
+      font-weight: 600;
+    }
   }
 
   &__attempts-bar {
-    width: 60px;
-    height: 4px;
+    flex: 1;
+    max-width: 160px;
+    height: 6px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+    border-radius: 3px;
     overflow: hidden;
   }
 
@@ -317,6 +641,7 @@
   &__cooldown, &__locked {
     font-size: $font-sm;
     color: $color-text-muted;
+    text-align: center;
   }
 
   &__enter-btn {
@@ -330,6 +655,32 @@
     padding: $spacing-xs $spacing-lg;
     transition: background $transition-fast;
     &:hover { background: $color-accent-hover; }
+
+    // Wide variant — bottom-of-card CTA. Per spec: hollow look (transparent
+    // fill + 2px hue-coloured border) capped at 200px wide and centred so
+    // it visually pairs with the matching `__drop-btn` above it instead of
+    // stretching across the whole tile.
+    &--wide {
+      width: 100%;
+      max-width: 200px;
+      align-self: center;
+      padding: 10px $spacing-lg;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: transparent;
+      border: 2px solid hsla(var(--h, 220), 70%, 50%, 0.9);
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 0 12px hsla(var(--h, 220), 65%, 40%, 0.35);
+
+      &:hover {
+        background: hsla(var(--h, 220), 65%, 40%, 0.18);
+        border-color: hsla(var(--h, 220), 75%, 60%, 1);
+        box-shadow: 0 0 18px hsla(var(--h, 220), 70%, 50%, 0.55);
+        transform: translateY(-1px);
+      }
+    }
   }
 
   // ── Combat toggle buttons (skill mode, auto-potion) ────────────────────────
@@ -787,11 +1138,30 @@
   }
 
   // ── Result ─────────────────────────────────────────────────────────────────
+  // Mirrors the dungeon-card chrome — uses the per-dungeon background art
+  // (driven by `--card-image` set on the wrapper). Reward rows / banner
+  // sit on top with their own backgrounds so the picture doesn't fight
+  // text legibility.
   &__result {
-    background: $color-bg-card;
+    --h: var(--card-hue, 220);
+    --card-image: none;
+    position: relative;
+    overflow: hidden;
+    background-color: $color-bg-card;
+    background-image: var(--card-image);
+    // `contain` keeps the dungeon art whole (no edge crop) and `repeat`
+    // tiles it across whatever extra space the result card takes when the
+    // drops list grows. Centred so the focal point of the picture lands
+    // under the victory banner on the most common card size.
+    background-size: contain;
+    background-position: center;
+    background-repeat: repeat;
     border: 2px solid $color-border;
     border-radius: $radius-lg;
     padding: $spacing-lg;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -799,8 +1169,8 @@
     text-align: center;
 
     &--win  {
-      border-color: #ffc107;
-      box-shadow: 0 0 16px rgba(#ffc107, 0.15);
+      border-color: hsla(var(--h), 70%, 55%, 0.7);
+      box-shadow: 0 0 24px hsla(var(--h), 60%, 45%, 0.25);
     }
     &--loss { border-color: $color-accent; }
   }
@@ -810,6 +1180,71 @@
   &__result--win  .dungeon__result-title { color: #ffc107; }
   &__result--loss .dungeon__result-title { color: $color-accent; }
   &__result-dungeon { font-size: $font-md; color: $color-text-muted; }
+
+  // ── Victory banner ────────────────────────────────────────────────────────
+  // Per spec: transparent fill so the dungeon art behind shows through,
+  // borders dropped, only the diagonal shimmer (::before) and the text
+  // shadows on the inner labels stay. Reads as a "ribbon of light"
+  // sweeping over the dungeon image rather than a coloured plaque.
+  &__victory-banner {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    border-radius: $radius-md;
+    padding: $spacing-lg $spacing-md;
+    background: transparent;
+    text-align: center;
+    color: #fff;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(
+        110deg,
+        transparent,
+        rgba(255, 255, 255, 0.18),
+        transparent
+      );
+      animation: dungeon-victory-shimmer 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    > * { position: relative; z-index: 1; }
+  }
+
+  @keyframes dungeon-victory-shimmer {
+    0%   { left: -120%; }
+    60%  { left: 120%;  }
+    100% { left: 120%;  }
+  }
+
+  &__victory-icon {
+    display: block;
+    font-size: 2.4rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 8px hsla(var(--h, 220), 80%, 50%, 0.6));
+    margin-bottom: $spacing-xs;
+  }
+
+  &__victory-name {
+    font-size: $font-xl;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  }
+
+  &__victory-sub {
+    margin-top: 4px;
+    font-size: $font-sm;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: hsla(var(--h, 220), 80%, 80%, 0.95);
+    font-weight: 700;
+  }
 
   &__rewards {
     width: 100%;
@@ -897,6 +1332,186 @@
     padding: $spacing-sm $spacing-lg;
     transition: border-color $transition-fast;
     &:hover { border-color: $color-accent; }
+
+    // "Odbierz" claim CTA on the result screen — the celebratory beat
+    // after a dungeon win. Bold green gradient (mirrors the retry-btn
+    // palette) so the eye lands on it as the main next action. Width
+    // capped to match the other in-card CTAs (`__enter-btn--wide`,
+    // `__drop-btn`) for visual continuity.
+    &--claim {
+      width: 100%;
+      max-width: 240px;
+      align-self: center;
+      background: linear-gradient(135deg, #2e7d32, #43a047);
+      border: 1px solid #4caf50;
+      color: #fff;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px $spacing-lg;
+      box-shadow: 0 4px 14px rgba(76, 175, 80, 0.35),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, #388e3c, #4caf50);
+        border-color: #66bb6a;
+        box-shadow: 0 6px 22px rgba(76, 175, 80, 0.55),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &:active { transform: translateY(0); }
+    }
+
+    // Spec 4 (2026-05): "Walcz ponownie" CTA shown next to the green
+    // claim on a winning result screen — same chrome as `--claim` but
+    // tinted blue so the two reads as paired actions, not a duplicate.
+    &--again {
+      width: 100%;
+      max-width: 240px;
+      align-self: center;
+      background: linear-gradient(135deg, #1565c0, #2196f3);
+      border: 1px solid #42a5f5;
+      color: #fff;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px $spacing-lg;
+      box-shadow: 0 4px 14px rgba(33, 150, 243, 0.35),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, #1976d2, #42a5f5);
+        border-color: #64b5f6;
+        box-shadow: 0 6px 22px rgba(33, 150, 243, 0.55),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &:active { transform: translateY(0); }
+    }
+
+    // "Uciekaj" / "Wróć" CTA on the result screen — the defeat / flee
+    // beats. Bold red gradient (mirrors the danger palette used on the
+    // in-fight Exit chip) so the eye reads "this was a loss" instead of
+    // mistaking the panel for a celebratory win screen with a green
+    // claim button. Same width / typography as `--claim` so the two
+    // CTAs feel like siblings, only the colour scheme differs.
+    &--retreat {
+      width: 100%;
+      max-width: 240px;
+      align-self: center;
+      background: linear-gradient(135deg, #b71c1c, #e53935);
+      border: 1px solid #ef5350;
+      color: #fff;
+      font-size: $font-md;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px $spacing-lg;
+      box-shadow: 0 4px 14px rgba(229, 57, 53, 0.4),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, #c62828, #ef5350);
+        border-color: #ef9a9a;
+        box-shadow: 0 6px 22px rgba(229, 57, 53, 0.6),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      &:active { transform: translateY(0); }
+    }
+  }
+
+  // ── Cinematic entry overlay (2.0s) ─────────────────────────────────────────
+  // Three-layer cinematic that plays when the player taps "Wejdź" on a
+  // dungeon card. Layer A is the dungeon image morphing from the card to
+  // fullscreen. Layer B is a black panel that fades in over the image, holds,
+  // then fades back out to reveal the combat HUD that mounted underneath at
+  // ~2.4s in. Layer C is a small "click to skip" affordance. The wrapper is
+  // the click target and takes pointer events so the whole viewport is the
+  // skip surface.
+  //
+  // Z-index ladder inside this block:
+  //   wrapper     — 9000 (above TopHeader at ~1000 and spawn-bar at ~1290)
+  //   image       —    1
+  //   darkness    —    2 (covers the image when at peak opacity)
+  //   skip-hint   —    3 (legible against full-black mid-animation)
+  &__enter-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    // Wrapper itself is invisible — it's just the geometry + click target.
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  &__enter-image {
+    --h: var(--card-hue, 220);
+    position: fixed;
+    z-index: 1;
+    pointer-events: none;
+    transform-origin: center center;
+    background-color: $color-bg-card;
+    background-image: var(--card-image, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 1px solid hsla(var(--h), 50%, 45%, 0.5);
+    box-shadow: 0 12px 48px hsla(var(--h), 50%, 30%, 0.6),
+                0 0 120px hsla(var(--h), 60%, 50%, 0.35);
+    overflow: hidden;
+
+    // Class-tinted vignette over the image — keeps the morph from looking
+    // like a flat scaled JPEG and instead reads as "we're falling into a
+    // location with mood lighting".
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(
+          circle at center,
+          hsla(var(--h), 70%, 55%, 0.18) 0%,
+          transparent 35%
+        ),
+        radial-gradient(
+          circle at center,
+          transparent 50%,
+          hsla(var(--h), 30%, 6%, 0.85) 100%
+        );
+      pointer-events: none;
+    }
+  }
+
+  &__enter-darkness {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    // Pure black — opacity is driven by Framer Motion. Sits above the image
+    // so when it hits opacity 1 the entire viewport reads as fully black.
+    background: #000;
+  }
+
+  &__enter-skip-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    pointer-events: none;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    user-select: none;
   }
 
   &__result-actions {

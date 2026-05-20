@@ -39,6 +39,11 @@ interface ISendMessagePayload {
 /** Max messages kept per channel after trim — older rows are deleted. */
 const CHANNEL_MESSAGE_CAP = 100;
 
+/** 2026-05-18: guild channels keep a deeper buffer (500 messages) per
+ *  spec — the slower-tempo guild chat shouldn't lose the day's
+ *  conversation after a 100-message burst the way PM/global does. */
+const GUILD_CHANNEL_CAP = 500;
+
 class ChatApi extends BaseApi {
     getMessages = async (channel: string, limit = CHANNEL_MESSAGE_CAP): Promise<IMessage[]> => {
         const encoded = encodeURIComponent(channel);
@@ -54,13 +59,13 @@ class ChatApi extends BaseApi {
      * Non-fatal on failure — RLS may block deletes for non-owners, in which
      * case another participant's client will trim on their next send.
      */
-    private trimChannel = async (channel: string): Promise<void> => {
+    private trimChannel = async (channel: string, cap: number = CHANNEL_MESSAGE_CAP): Promise<void> => {
         try {
             const encoded = encodeURIComponent(channel);
             const rows = await this.get<Pick<IMessage, 'id'>[]>({
                 url:
                     `/rest/v1/messages?channel=eq.${encoded}` +
-                    `&order=created_at.desc&offset=${CHANNEL_MESSAGE_CAP}&limit=500&select=id`,
+                    `&order=created_at.desc&offset=${cap}&limit=500&select=id`,
             });
             if (!Array.isArray(rows) || rows.length === 0) return;
             const ids = rows.map((r) => `"${r.id}"`).join(',');
@@ -101,12 +106,42 @@ class ChatApi extends BaseApi {
                 headers: { Prefer: 'return=representation' },
             },
         });
-        // Fire-and-forget trim — only PM channels get capped so the global
-        // city log stays intact and doesn't thrash on every send.
+        // Fire-and-forget trim — PM channels cap at 100, guild
+        // channels at 500 (spec: "trzymaj ostatnie 500 wiadomosci").
+        // The global chat stays untrimmed so the city log survives.
         if (channel.startsWith('pm_')) {
-            void this.trimChannel(channel);
+            void this.trimChannel(channel, CHANNEL_MESSAGE_CAP);
+        } else if (channel.startsWith('guild_')) {
+            void this.trimChannel(channel, GUILD_CHANNEL_CAP);
         }
         return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    };
+
+    /**
+     * Post a system-channel event broadcast (e.g. "Krasek ulepszył
+     * miecz do +20"). The message rides the regular `messages` table
+     * on channel = `'system'` so it surfaces in the System tab the
+     * same way city messages do in the city tab. Sender is the player
+     * who triggered the event (required for RLS — session user must
+     * match `user_id`); the System tab styles the row distinctly to
+     * make it read as a server announcement rather than a chat line.
+     *
+     * 2026-05-19 spec ("System (tam będą pokazywać się wiadomości
+     * jeżeli ktoś ulepszy bron na +5 +7 itp ... tak samo skille").
+     */
+    postSystemEvent = async (
+        characterName: string,
+        characterClass: string,
+        characterLevel: number,
+        content: string,
+    ): Promise<IMessage | null> => {
+        return this.sendMessage(
+            'system',
+            content,
+            characterName,
+            characterClass,
+            characterLevel,
+        );
     };
 
     /**

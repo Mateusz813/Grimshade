@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import questsData from '../data/quests.json';
 import monstersData from '../data/monsters.json';
 import { useMasteryStore, MASTERY_MAX_LEVEL } from './masteryStore';
+import { useCharacterStore } from './characterStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -177,8 +178,24 @@ export const useQuestStore = create<IQuestStore>()(
         const MASTERY_TYPES: QuestGoalType[] = ['mastery_total', 'mastery_max_count', 'mastery_all_at_level'];
         if (MASTERY_TYPES.includes(type)) return;
 
+        // Defensive level gate — even when a quest is technically active in
+        // the store (the player could've activated a chain quest at high lvl,
+        // logged out, then come back at lower lvl after a respec / character
+        // reset), kills must NOT progress quests whose `minLevel` exceeds the
+        // player's current level. The player explicitly asked: "kill counts
+        // only after I take the quest" and "a level-200 quest shouldn't count
+        // when I'm level 100". This is the second half of that contract — the
+        // first is that activeQuests is the only set we ever touch (already
+        // true since we only iterate `activeQuests` below).
+        const charLevel = useCharacterStore.getState().character?.level ?? 0;
+
         const { activeQuests } = get();
         const updated = activeQuests.map((aq) => {
+          const def = getQuestById(aq.questId);
+          // Skip silently if the quest is below the player's level. The active
+          // entry stays in the store (the player can see it in the Quests view
+          // and abandon it manually), but no kills bleed into its progress.
+          if (def && def.minLevel > charLevel) return aq;
           const updatedGoals = aq.goals.map((g) => {
             if (g.type !== type) return g;
             let matchId = false;
@@ -279,6 +296,22 @@ export const useQuestStore = create<IQuestStore>()(
           activeQuests: activeQuests.filter((aq) => aq.questId !== questId),
           completedQuestIds: [...completedQuestIds, questId],
         });
+
+        // 2026-05-19 v16 spec ("Dodaj jeszcze zakladke ...
+        // wykonanymi questami tylko tymi jednorazowymi"): bump the
+        // global one-shot quest counter on the character row.
+        // Fire-and-forget — leaderboard sync is best-effort.
+        const charId = useCharacterStore.getState().character?.id;
+        if (charId) {
+          void import('../api/v1/characterApi').then(({ characterApi }) => {
+            void characterApi.bumpStat({
+              characterId: charId,
+              column: 'quests_oneshot_done',
+              value: 1,
+              mode: 'add',
+            });
+          }).catch(() => { /* offline */ });
+        }
       },
 
       isCompleted: (questId) => {

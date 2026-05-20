@@ -16,7 +16,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      // 2026-05-20: bundle the brand icon set so the install prompt +
+      // home-screen tile pick up the new artwork from /public/.
+      includeAssets: ['apple-touch-icon.png', 'pwa.png', 'favicon.svg'],
       manifest: {
         name: 'Grimshade',
         short_name: 'Grimshade',

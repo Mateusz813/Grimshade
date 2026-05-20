@@ -2,9 +2,28 @@
 
 .shop {
   min-height: 100vh;
-  background: transparent;
+  background: #000;        // 2026-05-08: hard black per spec
   color: $color-text;
   padding-bottom: $spacing-xl;
+
+  // The dark variant overrides any backgrounds the parent layout would
+  // bleed in (gradient game-bg, etc.) so the shop stays uniformly black.
+  &--dark { background: #000; }
+
+  // 2026-05-08: header strip — tabs + gold chip ONLY. The previous
+  // back-button / page-title row is removed.
+  &__header-strip {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-md;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
 
   &__loading {
     text-align: center;
@@ -48,29 +67,67 @@
     border-radius: $radius-sm;
   }
 
-  // ── Tabs ──────────────────────────────────────────────────────────────────
+  // ── Tabs (2026-05-08 spec: icon-only, full-width, transform accent) ─
+  // The whole row spans 100% of the parent strip; each button shares
+  // equal width via `flex: 1` so the icons stay centred regardless of
+  // viewport. Active tab uses `var(--nav-accent)` which is published
+  // by `useTransformAccent` — that means the underline AND glyph
+  // colour reflect the player's current transformation tier, falling
+  // back to their class colour pre-transform.
   &__tabs {
     display: flex;
-    background: $color-bg-secondary;
-    border-bottom: 1px solid $color-border;
+    width: 100%;
+    background: #000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   &__tab {
-    flex: 1;
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    color: $color-text-muted;
+    color: rgba(255, 255, 255, 0.55);
     cursor: pointer;
-    font-size: $font-sm;
-    padding: $spacing-sm $spacing-md;
-    transition: color $transition-fast, border-color $transition-fast;
+    // Icon-only — no text labels. Bigger glyph so the icon reads at a
+    // glance instead of looking like a tiny 13px label.
+    font-size: 22px;
+    line-height: 1;
+    padding: 12px 0;
+    transition: color $transition-fast, border-color $transition-fast, background $transition-fast;
 
-    &:hover { color: $color-text; }
+    &:hover { color: var(--nav-accent, $color-accent); }
 
     &--active {
-      color: $color-accent;
-      border-bottom-color: $color-accent;
+      color: var(--nav-accent, $color-accent);
+      border-bottom-color: var(--nav-accent, $color-accent);
+      background: color-mix(in srgb, var(--nav-accent, #{$color-accent}) 10%, transparent);
+    }
+  }
+
+  // Active tab `.page-tab--active` mirror in case the global page-tabs
+  // class is the one applied (the JSX uses both class names — keep
+  // them in sync so either path styles correctly).
+  &__tab.page-tab--active {
+    color: var(--nav-accent, $color-accent);
+    border-bottom-color: var(--nav-accent, $color-accent);
+    background: color-mix(in srgb, var(--nav-accent, #{$color-accent}) 10%, transparent);
+  }
+
+  // Glyph wrapper so the JSX can keep both <img> and emoji fallback in
+  // one cell without breaking flex centring.
+  &__tab-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    > img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
     }
   }
 
@@ -411,4 +468,445 @@
       color: $color-text;
     }
   }
+}
+
+// ─── 2026-05-08: backpack-style item grid + buy-pulse keyframe ────────────────
+//
+// `.shop__panel--grid` lays cards out left→right in a responsive grid that
+// mirrors the Inventory page (so items look "the same" whether they're in
+// the player's bag or on the shop shelf). Each card has a rarity-tinted
+// border, a square icon tile with a Lv badge + ATK/DEF mini-stat chip, a
+// name line, slot meta, and a Kup button + price footer.
+//
+// The buy animation is driven by a keyed `data-pulse` increment in the
+// React component — every successful purchase bumps the counter, which
+// re-mounts the `.shop__card-spark` ✨ overlay and re-runs the green
+// "bought" pulse on the card border. Subtle + fast (≈0.6s).
+
+.shop__panel--grid {
+    display: grid;
+    // 2026-05-08 spec: NEVER drop below 2 columns. The default of `repeat(2,
+    // minmax(0, 1fr))` guarantees two side-by-side cards even at 320px
+    // viewports; media queries widen the track count for tablets/desktop.
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $spacing-md;
+    padding: $spacing-md;
+
+    @media (min-width: 480px) {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    @media (min-width: 1024px) {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    @media (min-width: 1280px) {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+.shop__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    background: #000;        // 2026-05-08: hard black per spec, not rgba
+    border: 2px solid $color-border;
+    border-radius: $radius-md;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+
+    &:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.07);
+    }
+
+    // Buy pulse — green flash + scale bounce when the player clicks Kup
+    // and the purchase succeeds. `--bought` modifier toggles this.
+    &--bought {
+        animation: shop-card-bought 0.6s ease-out;
+    }
+}
+
+.shop__card-icon {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    // 2026-05-08 spec: hard #000 — no rarity tint. The inline
+    // `style={{ background: rgba(...) }}` was previously washing the
+    // tile in a 0.1-alpha rarity color; we drop that to honour the
+    // "all backgrounds are #000" rule. Border keeps the rarity color.
+    background: #000 !important;
+    border: 2px solid;
+    border-radius: $radius-sm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.shop__card-icon-glyph {
+    font-size: 44px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+// 2026-05-08: real-art PNG variant. Whenever getItemImage finds a
+// matching art file (sword.png / helmet-ciezki.png / etc.) we render
+// an <img> in place of the emoji glyph for a "real shop" look.
+.shop__card-icon-img {
+    max-width: 78%;
+    max-height: 78%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+.shop__card-lvl-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffd54f;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+}
+
+.shop__card-stat {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 5px;
+    line-height: 1.1;
+}
+
+.shop__card-name {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.shop__card-meta {
+    font-size: 10px;
+    color: $color-text-muted;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.shop__card-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: auto;
+}
+
+.shop__card-price {
+    font-size: 11px;
+    font-weight: 800;
+    color: $color-legendary;
+    text-align: center;
+}
+
+.shop__card-spark {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 22px;
+    pointer-events: none;
+    animation: shop-card-spark 0.6s ease-out forwards;
+}
+
+@keyframes shop-card-bought {
+    0%   { transform: scale(1);     box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+    25%  { transform: scale(1.04);  box-shadow: 0 0 18px rgba(76, 175, 80, 0.7); }
+    60%  { transform: scale(1.02);  box-shadow: 0 0 24px rgba(76, 175, 80, 0.5); }
+    100% { transform: scale(1);     box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+@keyframes shop-card-spark {
+    0%   { transform: scale(0.4) rotate(0deg);    opacity: 0; }
+    35%  { transform: scale(1.4) rotate(180deg);  opacity: 1; }
+    70%  { transform: scale(1.0) rotate(360deg);  opacity: 0.9; }
+    100% { transform: scale(0.6) translateY(-14px) rotate(540deg); opacity: 0; }
+}
+
+// Reuse same buy-pulse on elixir/potion rows.
+.shop__elixir--bought {
+    animation: shop-card-bought 0.6s ease-out;
+}
+
+// Arena tab placeholder (Phase 3 — replaced with real header below)
+.shop__arena-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+    color: $color-text-muted;
+
+    h3 {
+        margin: 0 0 12px;
+        color: #ffd700;
+        font-size: 22px;
+    }
+}
+
+// 2026-05-08: Arena tab header — shows current Punkty Areny prominently
+// so the player knows their budget while browsing the catalogue.
+// (Legacy chip — replaced by `.shop__arena-banner` below; kept so any
+// remaining call-sites don't paint `display: block` chunks.)
+.shop__arena-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    margin: 0 12px 8px;
+    background: linear-gradient(135deg, rgba(120, 70, 200, 0.18), rgba(40, 20, 80, 0.32));
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    border-radius: 10px;
+    color: #ffd700;
+    font-size: 14px;
+
+    strong {
+        color: #fff;
+        font-size: 16px;
+    }
+}
+
+// 2026-05-08 v2: full-width AP banner that sits ABOVE the arena
+// items grid. Replaces the old "Sklep Areny" side-chip. The label
+// is small, the value is the dominant element (big + gold). Spans
+// the full row so it reads as a header for the entire grid.
+.shop__panel--arena {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: #000;
+}
+
+.shop__arena-banner {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin: 0;
+    background: linear-gradient(135deg, rgba(180, 130, 30, 0.18), rgba(80, 40, 0, 0.28));
+    border-bottom: 1px solid rgba(255, 215, 0, 0.45);
+
+    &-label {
+        font-size: 13px;
+        color: rgba(255, 215, 0, 0.7);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    &-value {
+        font-size: 18px;
+        color: #ffd700;
+        strong {
+            font-size: 22px;
+            font-weight: 900;
+            color: #fff;
+            margin-right: 4px;
+        }
+    }
+}
+
+// ─── 2026-05-08: spec-driven shop refinements ──────────────────────────────
+//
+// - Black bg (set on .shop above).
+// - Min 2 columns always: clamp the minmax track size to 48vw at narrow
+//   widths so even on a 360px viewport we still get ≥2 cards.
+// - Gold chip in header flashes red when the balance drops, plus a
+//   floating "−Nk" label that fades upward.
+// - Buy animation = glow (replaces the green pulse).
+// - Card stat list with ▲/▼ vs equipped.
+
+// 2026-05-08 spec: shop--dark padding/gap only — column count is now
+// fully owned by the base `.shop__panel--grid` rule above so we never
+// drop below 2 columns at any viewport size.
+.shop--dark .shop__panel--grid {
+    padding: 12px;
+    gap: 12px;
+}
+
+// Gold chip — animates red when the balance dips. The `key` prop in
+// the JSX re-mounts on every flash so the keyframe replays.
+.shop__gold {
+    position: relative;
+    background: rgba(20, 22, 32, 0.92);
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    border-radius: 999px;
+    color: #ffd54f;
+    font-weight: 800;
+    padding: 6px 12px;
+    font-size: 13px;
+    transition: background 0.2s, border-color 0.2s;
+    &--lost { animation: shop-gold-flash 0.9s ease-out; }
+}
+.shop__gold-delta {
+    position: absolute;
+    bottom: 100%;
+    right: 8px;
+    color: #ff5252;
+    font-size: 12px;
+    font-weight: 800;
+    pointer-events: none;
+    animation: shop-gold-delta 1.2s ease-out forwards;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+// 2026-05-08: floating gold-loss delta. The chip itself moved to the
+// global TopHeader, so we float the "−Nk" label near the top-right of
+// the screen where the global gold widget is. Fixed positioning so it
+// sits over whatever the player is looking at.
+.shop__gold-delta-floating {
+    position: fixed;
+    top: 64px;
+    right: 24px;
+    z-index: 200;
+    color: #ff5252;
+    font-size: 18px;
+    font-weight: 800;
+    pointer-events: none;
+    animation: shop-gold-delta 1.2s ease-out forwards;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(255, 82, 82, 0.6);
+}
+
+@keyframes shop-gold-flash {
+    0%, 100% { background: rgba(20, 22, 32, 0.92); border-color: rgba(255, 215, 0, 0.35); }
+    25%      { background: rgba(120, 30, 30, 0.92); border-color: #ff5252; }
+    60%      { background: rgba(80, 20, 20, 0.92); border-color: rgba(255, 82, 82, 0.7); }
+}
+@keyframes shop-gold-delta {
+    0%   { transform: translateY(0)    scale(1);   opacity: 0; }
+    20%  { transform: translateY(-8px) scale(1.1); opacity: 1; }
+    100% { transform: translateY(-32px) scale(0.9); opacity: 0; }
+}
+
+// Replace the old "bought" pulse with a glow shimmer. Subtle — a 1s
+// outer-glow that pulses once and ramps the box-shadow.
+.shop__card--bought {
+    animation: shop-card-glow 0.85s ease-out;
+}
+@keyframes shop-card-glow {
+    0%   { box-shadow: 0 0 0 rgba(255, 255, 200, 0); }
+    35%  { box-shadow: 0 0 32px rgba(255, 235, 120, 0.85), 0 0 8px #fff inset; }
+    70%  { box-shadow: 0 0 24px rgba(255, 200, 60, 0.65); }
+    100% { box-shadow: 0 0 0 rgba(255, 200, 60, 0); }
+}
+
+// Card stat list — flat rows, mono font for numbers, ▲/▼ delta arrows.
+// 2026-05-08 v3: per spec, the shop card now only shows BASE stats —
+// the random-pool list and its `--pool` modifier rules were removed
+// alongside the JSX section.
+.shop__card-stats {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+}
+.shop__card-stat-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px;
+    align-items: baseline;
+}
+.shop__card-stat-label {
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    font-size: 10px;
+}
+.shop__card-stat-value {
+    color: #fff;
+    font-weight: 800;
+    font-feature-settings: 'tnum';
+}
+.shop__card-stat-delta {
+    font-weight: 800;
+    font-feature-settings: 'tnum';
+    &--up   { color: #4caf50; }
+    &--down { color: #f44336; }
+}
+
+// Quantity row inside potion cards (input + ×10 / ×100 / MAX presets).
+.shop__card-qty-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-top: 4px;
+    .shop__qty-input {
+        flex: 1;
+        min-width: 0;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #fff;
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+    .shop__qty-preset {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        &:hover { background: rgba(255,255,255,0.12); }
+    }
+}
+
+// Lock overlay (level / daily-limit) inside the card.
+.shop__card-lock {
+    margin-top: 2px;
+    padding: 4px 6px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    color: #ffc107;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    &--bad { color: #f44336; }
+}
+.shop__card--locked {
+    opacity: 0.55;
+    filter: saturate(0.7);
+}
+
+// 2026-05-08 v3 spec ("eliksiry maja taki sam border wszedzie"):
+// utility-elixir cards (Shop's Eliksiry tab + arena elixir items) get
+// the same gold→purple gradient border used by the market sell tile,
+// market listing row + bag elixir tile so the family reads as one
+// cohort across every screen. Two-background trick keeps border-radius.
+.shop__card--elixir {
+    border-color: transparent !important;
+    background:
+        linear-gradient(#000, #000) padding-box,
+        linear-gradient(135deg, #ffd54f 0%, #ffb300 35%, #9c27b0 100%) border-box !important;
+
+    &:hover {
+        box-shadow: 0 4px 16px rgba(156, 39, 176, 0.45);
+    }
 }

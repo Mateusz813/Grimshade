@@ -8,9 +8,14 @@
 .skill-anim-overlay {
   position: absolute;
   inset: 0;
+  // Anchor at the BOTTOM of the card. Damage floats sit at the vertical
+  // centre (`.combat-ui__floats { top: 45% }`); putting the spell glyph
+  // beneath them keeps both visible during a cast — no more "the spell
+  // ate my damage number" complaint.
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
+  padding-bottom: 6%;
   pointer-events: none;
   z-index: 5;
   border-radius: inherit;
@@ -22,6 +27,25 @@
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
   z-index: 2;
   position: relative;
+}
+
+// Per-class spell PNG render. Mobile (≤540px) cards are roughly half the
+// size of desktop, so the spell artwork shrinks proportionally — 40px on
+// phones, 80px on tablet/desktop. Was 64/96 in the previous iteration; the
+// player flagged the mobile size as still too dominant.
+.skill-anim-emoji--img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-block;
+}
+
+@media (min-width: 541px) {
+  .skill-anim-emoji--img {
+    width: 80px;
+    height: 80px;
+  }
 }
 
 // ── Fire ──────────────────────────────────────────────────────────────────────

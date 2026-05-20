@@ -91,6 +91,23 @@ export const useDailyQuestStore = create<IDailyQuestStore>()(
                     ),
                 });
 
+                // 2026-05-19 v16 spec ("wykonanymi questami dziennymi"):
+                // bump daily-quest completion counter on the character
+                // row so the leaderboard ranks players by daily haul.
+                void Promise.all([
+                    import('./characterStore'),
+                    import('../api/v1/characterApi'),
+                ]).then(([{ useCharacterStore }, { characterApi }]) => {
+                    const charId = useCharacterStore.getState().character?.id;
+                    if (!charId) return;
+                    void characterApi.bumpStat({
+                        characterId: charId,
+                        column: 'quests_daily_done',
+                        value: 1,
+                        mode: 'add',
+                    });
+                }).catch(() => { /* offline */ });
+
                 return rewards;
             },
 

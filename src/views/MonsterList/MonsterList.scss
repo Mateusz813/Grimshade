@@ -114,10 +114,14 @@
   }
 
   &__sprite {
-    font-size: 24px;
-    width: 32px;
-    text-align: center;
+    align-items: center;
+    display: inline-flex;
     flex-shrink: 0;
+    font-size: 24px;
+    height: 40px;
+    justify-content: center;
+    text-align: center;
+    width: 40px;
   }
 
   &__info {
@@ -567,5 +571,113 @@
     border-radius: 8px;
     margin-top: 2px;
     border: 1px solid rgba(255, 152, 0, 0.35);
+  }
+
+  // 2026-05-19 v24 spec ("dodaj ze jak sie kliknie w ikonke potwora
+  // to sie powieksza na caly ekran"): the sprite cell is now a
+  // button — strip default button chrome so it looks identical to
+  // the old `<span>` baseline. Hover hint via subtle scale so the
+  // player notices it's interactive.
+  &__sprite-btn {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    appearance: none;
+    transition: transform 120ms ease, filter 120ms ease;
+
+    &:hover:not(:disabled) {
+      transform: scale(1.04);
+      filter: brightness(1.08);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #ff9800;
+      outline-offset: 2px;
+    }
+  }
+
+  // Fullscreen sprite preview — fixed overlay above the entire
+  // viewport. Backdrop click + ESC dismiss; close button is a
+  // belt-and-braces escape hatch on touch.
+  &__fullscreen-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: monster-fullscreen-fade-in 180ms ease-out;
+  }
+
+  @keyframes monster-fullscreen-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  &__fullscreen-inner {
+    // 2026-05-19 v24 spec ("max width 300px i height 300px na
+    // powiekszeniu nie wiecej bo pikseluje sie"): hard-cap the
+    // sprite at 300×300. The source artwork is native low-res, so
+    // anything bigger upscales into jaggies. `min()` lets it shrink
+    // on tiny phones (90vw / 90vh) while never exceeding the
+    // 300-px ceiling.
+    width: min(90vw, 90vh, 300px);
+    height: min(90vw, 90vh, 300px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 0 32px rgba(255, 152, 0, 0.45));
+  }
+
+  &__fullscreen-caption {
+    position: fixed;
+    bottom: max(24px, env(safe-area-inset-bottom, 0));
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(15, 17, 28, 0.7);
+    border: 1px solid rgba(255, 152, 0, 0.5);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+
+  &__fullscreen-close {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top, 0));
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms ease, transform 120ms ease;
+
+    &:hover {
+      background: rgba(244, 67, 54, 0.5);
+      transform: scale(1.06);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #ff9800;
+      outline-offset: 2px;
+    }
   }
 }

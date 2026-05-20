@@ -61,6 +61,20 @@
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
     }
 
+    // Real PNG art (rendered when `icon` is a Vite-served URL, see ItemIcon.tsx).
+    // Fills the entire icon box and uses `object-fit: cover` so the art bleeds
+    // edge-to-edge — looks much more like proper game gear instead of a small
+    // sprite floating in the rarity-tinted background.
+    &__image {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+    }
+
     &__upgrade {
         position: absolute;
         top: 2px;
@@ -70,7 +84,7 @@
         font-weight: 800;
         border-radius: 3px;
         line-height: 1;
-        z-index: 2;
+        z-index: 3;
     }
 
     &__quantity {
@@ -80,7 +94,7 @@
         color: #fff;
         font-weight: 700;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-        z-index: 2;
+        z-index: 3;
     }
 
     &__level {
@@ -92,7 +106,7 @@
         font-weight: 700;
         border-radius: 3px;
         line-height: 1;
-        z-index: 2;
+        z-index: 3;
         letter-spacing: -0.3px;
     }
 
@@ -107,10 +121,14 @@
     }
 
     // ── Enhancement shimmer (+5/+7/+9/+12/+15/+20) ──────────────────────────
+    // Sits ABOVE the icon art (z-index 2 vs image's z-index 1) so the rotating
+    // swoosh stays visible even when the underlying PNG has dark/opaque areas.
+    // `mix-blend-mode: screen` means the transparent parts of the gradient
+    // don't dim the art — only the bright colored arc adds a glow on top.
     &__shimmer {
         position: absolute;
         inset: -30%;
-        z-index: 0;
+        z-index: 2;
         pointer-events: none;
         background: conic-gradient(
             from 0deg,

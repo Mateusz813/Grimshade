@@ -64,12 +64,26 @@ interface ICombatStore {
     sessionStartedAt: number;
     /** Last combat event — for triggering animations in Combat.tsx */
     lastCombatEvent: ICombatEvent | null;
-    /** Last dropped items — for victory popup display */
+    /** Last dropped items — for the per-fight victory popup display.
+     *  Resets at the start of each new fight. Use `sessionDrops` for the
+     *  cumulative session backpack view. */
     lastDrops: IDropDisplay[];
+    /** Cumulative drops since the player entered the combat view. Never
+     *  resets between fights — only `clearCombatSession` (explicit exit /
+     *  death / boss-kill) wipes it. Powers the 🎒 backpack modal. */
+    sessionDrops: IDropDisplay[];
     /** XP per hour computed by useBackgroundCombat */
     sessionXpPerHour: number;
     /** ISO timestamp of the last combat tick – used for offline catch-up */
     lastCombatTickAt: string | null;
+    /**
+     * Uncapped per-session log used by the new shared <CombatLogsModal>.
+     * The legacy `log` is capped at 50 for the inline ticker; this one keeps
+     * every entry until the player explicitly leaves the fight (exit popup,
+     * boss defeat, death). It does NOT reset between waves so multi-wave
+     * sessions accumulate the full history.
+     */
+    sessionLog: ICombatLogEntry[];
 
     // ── Wave (multi-monster) state ──────────────────────────────────────────
     /** All monsters in the current wave (1-4 of the same base monster type). */
@@ -115,6 +129,12 @@ interface ICombatStore {
     appendDrops: (drops: IDropDisplay[]) => void;
     setSessionXpPerHour: (v: number) => void;
     setLastCombatTickAt: (ts: string | null) => void;
+    /** Append a log entry to the uncapped session log. */
+    addSessionLog: (text: string, type: ICombatLogEntry['type']) => void;
+    /** Wipe the session log + drops + tally — call when the player exits the
+     *  combat view via the in-fight exit button or after a death/boss-defeat
+     *  result screen. */
+    clearCombatSession: () => void;
 
     // ── Wave actions ────────────────────────────────────────────────────────
     /** Append a monster to the wave (max MAX_WAVE_MONSTERS). Returns true if added. */
@@ -169,8 +189,10 @@ export const useCombatStore = create<ICombatStore>((set) => ({
     sessionStartedAt: Date.now(),
     lastCombatEvent: null,
     lastDrops: [],
+    sessionDrops: [],
     sessionXpPerHour: 0,
     lastCombatTickAt: null,
+    sessionLog: [],
     waveMonsters: [],
     activeTargetIdx: 0,
     wavePlannedCount: 1,
@@ -213,14 +235,28 @@ export const useCombatStore = create<ICombatStore>((set) => ({
         set((s) => ({ playerCurrentHp: Math.max(0, s.playerCurrentHp - dmg) })),
 
     addLog: (text, type) =>
-        set((s) => ({
-            log: [...s.log.slice(-49), { id: _logId++, text, type }],
-        })),
+        set((s) => {
+            const entry = { id: _logId++, text, type };
+            return {
+                log: [...s.log.slice(-49), entry],
+                // Session log is what feeds <CombatLogsModal>. Capped at 1000
+                // entries per request — long sessions used to grow this array
+                // unboundedly which both fattened the React state and made the
+                // modal scroll painfully when the player opened it after an
+                // hour of grinding.
+                sessionLog: [...s.sessionLog, entry].slice(-1000),
+            };
+        }),
 
     bulkAddLog: (entries) =>
         set((s) => {
             const newEntries = entries.map((e) => ({ id: _logId++, text: e.text, type: e.type }));
-            return { log: [...s.log, ...newEntries].slice(-50) };
+            return {
+                log: [...s.log, ...newEntries].slice(-50),
+                // Same 1000-entry cap as `addLog` — prevents bulk inserts
+                // (e.g. mass loot drops) from blowing past the limit.
+                sessionLog: [...s.sessionLog, ...newEntries].slice(-1000),
+            };
         }),
 
     addReward: (xp, gold) =>
@@ -271,8 +307,10 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             sessionStartedAt: Date.now(),
             lastCombatEvent: null,
             lastDrops: [],
+            sessionDrops: [],
             sessionXpPerHour: 0,
             lastCombatTickAt: null,
+            sessionLog: [],
             waveMonsters: [],
             activeTargetIdx: 0,
             wavePlannedCount: 1,
@@ -294,11 +332,38 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             sessionStartedAt: Date.now(),
         }),
     emitCombatEvent: (event) => set({ lastCombatEvent: event }),
-    setLastDrops: (drops) => set({ lastDrops: drops }),
+    // `setLastDrops` overwrites the per-fight `lastDrops` window (used by the
+    // result screens in Boss/Dungeon/Raid). It also appends to the cumulative
+    // `sessionDrops` so the 🎒 backpack modal sees every fight's loot since
+    // the player entered the combat view.
+    setLastDrops: (drops) =>
+        set((s) => ({
+            lastDrops: drops,
+            sessionDrops: drops.length > 0 ? [...s.sessionDrops, ...drops] : s.sessionDrops,
+        })),
+    // `appendDrops` is the wave-aware variant — used when multiple monsters
+    // die in the same wave. Same dual-write semantics.
     appendDrops: (drops) =>
-        set((s) => ({ lastDrops: [...s.lastDrops, ...drops] })),
+        set((s) => ({
+            lastDrops: [...s.lastDrops, ...drops],
+            sessionDrops: [...s.sessionDrops, ...drops],
+        })),
     setSessionXpPerHour: (v) => set({ sessionXpPerHour: v }),
     setLastCombatTickAt: (ts) => set({ lastCombatTickAt: ts }),
+    addSessionLog: (text, type) =>
+        set((s) => ({
+            sessionLog: [...s.sessionLog, { id: _logId++, text, type }],
+        })),
+    clearCombatSession: () =>
+        set({
+            sessionLog: [],
+            lastDrops: [],
+            sessionDrops: [],
+            sessionXpEarned: 0,
+            sessionGoldEarned: 0,
+            sessionKills: { normal: 0, strong: 0, epic: 0, legendary: 0, boss: 0 },
+            sessionStartedAt: Date.now(),
+        }),
 
     // ── Wave actions ────────────────────────────────────────────────────────
     addWaveMonster: (m, rarity) => {

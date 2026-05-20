@@ -8,12 +8,50 @@
 -- It is idempotent — safe to re-run.
 -- ============================================================================
 
+-- 0. Tables — create if they don't exist yet. Idempotent.
+-- `leader_id` is UUID (matches `characters.id`).
+CREATE TABLE IF NOT EXISTS parties (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    leader_id   UUID NOT NULL,
+    name        TEXT NOT NULL,
+    max_members INTEGER NOT NULL DEFAULT 4,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2026-05-09: `character_id` is UUID (not TEXT) because the existing
+-- `characters` table keys on a UUID. Earlier draft cast it to TEXT and
+-- the cleanup step at the bottom failed with "operator does not exist:
+-- uuid = text" on real installs.
+CREATE TABLE IF NOT EXISTS party_members (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    party_id        UUID NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+    character_id    UUID NOT NULL,
+    character_name  TEXT,
+    character_class TEXT,
+    character_level INTEGER NOT NULL DEFAULT 1,
+    joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 1. Extra columns on `parties` that the client expects.
 ALTER TABLE parties
-    ADD COLUMN IF NOT EXISTS description TEXT    DEFAULT '',
-    ADD COLUMN IF NOT EXISTS password    TEXT,
-    ADD COLUMN IF NOT EXISTS is_public   BOOLEAN DEFAULT TRUE,
-    ADD COLUMN IF NOT EXISTS updated_at  TIMESTAMPTZ DEFAULT NOW();
+    ADD COLUMN IF NOT EXISTS description    TEXT    DEFAULT '',
+    ADD COLUMN IF NOT EXISTS password       TEXT,
+    ADD COLUMN IF NOT EXISTS is_public      BOOLEAN DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ DEFAULT NOW(),
+    -- 2026-05-13: optional minimum character level for joining. NULL or
+    -- 1 = no restriction. Higher values gate the party browser's
+    -- "Dołącz" CTA + server-side join attempts.
+    ADD COLUMN IF NOT EXISTS min_join_level INTEGER DEFAULT 1;
+
+-- 1b. Extra columns on `party_members` for older schemas. The `role`
+--     column is kept for forward-compat but the client no longer writes
+--     to it (leader detection uses `parties.leader_id` instead).
+ALTER TABLE party_members
+    ADD COLUMN IF NOT EXISTS character_name  TEXT,
+    ADD COLUMN IF NOT EXISTS character_class TEXT,
+    ADD COLUMN IF NOT EXISTS character_level INTEGER DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS joined_at       TIMESTAMPTZ DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS role            TEXT;
 
 -- 2. Realtime publication for live party browser / membership updates.
 --    Wrapped in DO blocks because `ADD TABLE` errors if it's already in the

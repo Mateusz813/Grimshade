@@ -33,8 +33,9 @@ export interface ICompletedTask {
   completedAt: string;
 }
 
-/** Maximum number of simultaneous active REGULAR tasks. */
-const MAX_ACTIVE_TASKS = 2;
+// Active-task cap removed per the 2026-05 redesign — players can pick up
+// as many tasks as they want. The only constraint is one task per monster
+// id (enforced below in `startTask`).
 
 interface ITaskStore {
   /** @deprecated Use activeTasks instead. Kept for migration. */
@@ -61,9 +62,9 @@ export const useTaskStore = create<ITaskStore>()(
 
       startTask: (task) => {
         const { activeTasks } = get();
-        // Max 2 active regular tasks
-        if (activeTasks.length >= MAX_ACTIVE_TASKS) return;
-        // Cannot take two tasks for the same monster
+        // Cannot take two tasks for the same monster (only constraint
+        // remaining — the 2-task global cap was removed in the 2026-05
+        // redesign so players can build up large parallel grind lists).
         if (activeTasks.some((t) => t.monsterId === task.monsterId)) return;
         // Cannot take a task that is already active (same task id)
         if (activeTasks.some((t) => t.id === task.id)) return;

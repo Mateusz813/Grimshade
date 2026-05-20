@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useMasteryStore } from '../../stores/masteryStore';
+import { useTransformStore } from '../../stores/transformStore';
 import {
     useOfflineHuntStore,
     OFFLINE_HUNT_MAX_SECONDS,
@@ -24,12 +24,16 @@ import {
     RARITY_LABELS,
 } from '../../systems/itemSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
-import { MONSTER_RARITY_LABELS } from '../../systems/lootSystem';
+import { MONSTER_RARITY_LABELS, getSpellChestEmoji } from '../../systems/lootSystem';
+import { getStoneImage, getSpellChestImage, getConsumableImage } from '../../systems/spriteAssets';
+import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import { ELIXIRS } from '../../stores/shopStore';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
+import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
 import type { IMonster, TMonsterRarity } from '../../types/monster';
 import monstersRaw from '../../data/monsters.json';
 import itemsRaw from '../../data/items.json';
+import { formatGoldShort } from '../../systems/goldFormat';
 import './OfflineHunt.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -42,18 +46,42 @@ const MONSTER_RARITY_BORDER: Record<TMonsterRarity, string> = {
     boss:      '#ffc107',
 };
 
+// 2026-05: stone icons resolve via getStoneImage (PNG art) per rarity tier;
+// fall back to the legacy 💎 emoji if the registry hasn't loaded.
 const STONE_ICON_BY_TYPE: Record<string, { icon: string; label: string; color: string }> = {
-    common_stone:    { icon: '💎', label: 'Kamień Zwykły',      color: '#9e9e9e' },
-    rare_stone:      { icon: '💎', label: 'Kamień Rzadki',      color: '#2196f3' },
-    epic_stone:      { icon: '💎', label: 'Kamień Epicki',      color: '#4caf50' },
-    legendary_stone: { icon: '💎', label: 'Kamień Legendarny',  color: '#f44336' },
-    mythic_stone:    { icon: '💎', label: 'Kamień Mityczny',    color: '#ffc107' },
-    heroic_stone:    { icon: '💎', label: 'Kamień Heroiczny',   color: '#9c27b0' },
+    common_stone:    { icon: getStoneImage('common_stone')    ?? '💎', label: 'Kamień Zwykły',      color: '#9e9e9e' },
+    rare_stone:      { icon: getStoneImage('rare_stone')      ?? '💎', label: 'Kamień Rzadki',      color: '#2196f3' },
+    epic_stone:      { icon: getStoneImage('epic_stone')      ?? '💎', label: 'Kamień Epicki',      color: '#4caf50' },
+    legendary_stone: { icon: getStoneImage('legendary_stone') ?? '💎', label: 'Kamień Legendarny',  color: '#f44336' },
+    mythic_stone:    { icon: getStoneImage('mythic_stone')    ?? '💎', label: 'Kamień Mityczny',    color: '#ffc107' },
+    heroic_stone:    { icon: getStoneImage('heroic_stone')    ?? '💎', label: 'Kamień Heroiczny',   color: '#9c27b0' },
 };
 
 const formatInt = (n: number): string => Math.floor(n).toLocaleString('pl-PL');
 const formatPct = (n: number): string => `${n.toFixed(1)}%`;
 const ALL_MONSTERS = (monstersRaw as unknown as IMonster[]).slice().sort((a, b) => a.level - b.level);
+
+// 2026-05-20 spec: sort options shown above the monster grid. Defaults to
+// "level desc" so the player sees their highest unlocked monsters first.
+type TSortMode = 'level' | 'mastery';
+
+// Default class colour fallback used when the player has no completed
+// transforms yet — matches the Town hub's class-color → accent rule so
+// the OfflineHunt view looks visually consistent before any transform is
+// unlocked.
+const CLASS_COLORS: Record<string, string> = {
+    Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
+    Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
+};
+
+const hexToRgb = (hex: string): string => {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return '255,193,7';
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `${r},${g},${b}`;
+};
 
 const formatDuration = (seconds: number): string => {
     const h = Math.floor(seconds / 3600);
@@ -114,7 +142,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                     </div>
                     <div className="oh-modal__stat oh-modal__stat--gold">
                         <span className="oh-modal__stat-icon">💰</span>
-                        <span className="oh-modal__stat-val">+{formatInt(result.goldGained)}</span>
+                        <span className="oh-modal__stat-val">+{formatGoldShort(result.goldGained)}</span>
                     </div>
                 </div>
 
@@ -175,9 +203,13 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                             })}
                             {Object.entries(result.potionDrops).map(([potionId, count]) => {
                                 const elixir = ELIXIRS.find((e) => e.id === potionId);
+                                // 2026-05-08: prefer the unified consumable
+                                // image resolver — covers HP/MP potion art
+                                // AND the new buff/utility elixir PNGs.
+                                const dropIcon = getConsumableImage(potionId) ?? elixir?.icon ?? '⚗️';
                                 return (
                                     <div key={potionId} className="oh-modal__drop-chip" title={elixir?.name_pl ?? potionId}>
-                                        <span>{elixir?.icon ?? '⚗️'}</span>
+                                        <TinyIcon icon={dropIcon} size="md" />
                                         <span className="oh-modal__drop-chip-qty">×{formatInt(count)}</span>
                                     </div>
                                 );
@@ -186,7 +218,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                                 .sort(([a], [b]) => Number(a) - Number(b))
                                 .map(([level, count]) => (
                                     <div key={`sc_${level}`} className="oh-modal__drop-chip" title={`Spell Chest Lv${level}`}>
-                                        <span>📦</span>
+                                        <TinyIcon icon={getSpellChestImage(Number(level)) ?? getSpellChestEmoji(Number(level))} size="md" />
                                         <span className="oh-modal__drop-chip-lvl">Lv{level}</span>
                                         <span className="oh-modal__drop-chip-qty">×{formatInt(count)}</span>
                                     </div>
@@ -195,7 +227,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                                 const meta = STONE_ICON_BY_TYPE[stoneType] ?? { icon: '💎', label: stoneType, color: '#9e9e9e' };
                                 return (
                                     <div key={stoneType} className="oh-modal__drop-chip" title={meta.label} style={{ borderColor: meta.color }}>
-                                        <span style={{ color: meta.color }}>{meta.icon}</span>
+                                        <TinyIcon icon={meta.icon} size="md" />
                                         <span className="oh-modal__drop-chip-qty" style={{ color: meta.color }}>×{formatInt(count)}</span>
                                     </div>
                                 );
@@ -217,23 +249,38 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
 // ── Main component ──────────────────────────────────────────────────────────
 
 const OfflineHunt = () => {
-    const navigate = useNavigate();
     const character = useCharacterStore((s) => s.character);
     const skillLevels = useSkillStore((s) => s.skillLevels);
     const masteries = useMasteryStore((s) => s.masteries);
+
+    // 2026-05-20 spec: sort buttons + selected option painted in the
+    // active-transform colour, same accent the Town hub tiles use. Falls
+    // back to class colour for players who haven't completed a transform
+    // yet so the chrome never looks unstyled.
+    const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
+    const transformColor = getHighestTransformColor();
+    const accentHex = (() => {
+        if (transformColor?.solid) return transformColor.solid;
+        if (transformColor?.gradient) return transformColor.gradient[0];
+        return character ? (CLASS_COLORS[character.class] ?? '#ffc107') : '#ffc107';
+    })();
+    const accentRgb = hexToRgb(accentHex);
 
     const isActive = useOfflineHuntStore((s) => s.isActive);
     const startedAt = useOfflineHuntStore((s) => s.startedAt);
     const targetMonster = useOfflineHuntStore((s) => s.targetMonster);
     const trainedSkillId = useOfflineHuntStore((s) => s.trainedSkillId);
     const startHunt = useOfflineHuntStore((s) => s.startHunt);
-    const stopHunt = useOfflineHuntStore((s) => s.stopHunt);
 
     const [pickedSkillId, setPickedSkillId] = useState<string | null>(null);
     const [pickedMonsterId, setPickedMonsterId] = useState<string | null>(null);
     const [claimResult, setClaimResult] = useState<IOfflineHuntClaimResult | null>(null);
     const [claimFxActive, setClaimFxActive] = useState(false);
     const [nowTick, setNowTick] = useState(Date.now());
+    // 2026-05-20 spec: monster-grid sort. Defaults to "highest level first"
+    // — matches the user's most common goal (level up the highest mob you
+    // can reach).
+    const [sortMode, setSortMode] = useState<TSortMode>('level');
 
     useEffect(() => {
         if (!isActive) return;
@@ -252,14 +299,23 @@ const OfflineHunt = () => {
 
     const unlockedMonsters = useMemo(() => {
         if (!character) return [];
-        return ALL_MONSTERS
+        const list = ALL_MONSTERS
             .map((m) => ({
                 monster: m,
                 status: getMonsterUnlockStatus(m, ALL_MONSTERS, character.level, masteries),
                 masteryLevel: masteries[m.id]?.level ?? 0,
             }))
             .filter((e) => e.status.unlocked);
-    }, [character, masteries]);
+        // 2026-05-20 spec ("Dodalbym mozliwosc sortowanie od najwiekszego
+        // lvl. oraz od najwiekszej masterii"). Sorts are stable on the
+        // secondary key so equal-mastery rows stay grouped by level desc.
+        if (sortMode === 'mastery') {
+            list.sort((a, b) => (b.masteryLevel - a.masteryLevel) || (b.monster.level - a.monster.level));
+        } else {
+            list.sort((a, b) => (b.monster.level - a.monster.level) || (b.masteryLevel - a.masteryLevel));
+        }
+        return list;
+    }, [character, masteries, sortMode]);
 
     const livePreview = useMemo(() => {
         if (!isActive) return null;
@@ -288,11 +344,6 @@ const OfflineHunt = () => {
         }
     };
 
-    const handleCancel = (): void => {
-        stopHunt();
-        setClaimResult(null);
-    };
-
     const handleDismissResult = (): void => {
         setClaimResult(null);
     };
@@ -311,12 +362,18 @@ const OfflineHunt = () => {
     const isCapReached = elapsedSeconds >= OFFLINE_HUNT_MAX_SECONDS;
 
     return (
-        <div className="oh">
-            {/* Header */}
-            <header className="oh__header page-header">
-                <button className="oh__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-                <h1 className="oh__title page-title">🎯 Offline Hunt</h1>
-            </header>
+        <div
+            className="oh"
+            style={{
+                // Drives the active-state border / glow / button colour on
+                // skill chips, monster rows, sort buttons and the start CTA.
+                ['--oh-accent' as string]: accentHex,
+                ['--oh-accent-rgb' as string]: accentRgb,
+            }}
+        >
+            {/* 2026-05-20 spec ("Skasowac powrot do miasta i caly ten box u
+                gory"): header is fully removed. Side nav already handles
+                going back to town. */}
 
             {/* Epic claim FX overlay */}
             <AnimatePresence>
@@ -382,7 +439,9 @@ const OfflineHunt = () => {
                     </div>
 
                     <div className="oh__target-card">
-                        <span className="oh__target-sprite">{targetMonster.sprite}</span>
+                        <span className="oh__target-sprite">
+                            <MonsterSprite level={targetMonster.level} sprite={targetMonster.sprite} name={targetMonster.name_pl} />
+                        </span>
                         <div className="oh__target-info">
                             <div className="oh__target-name">{targetMonster.name_pl} <span className="oh__target-lvl">Lvl {targetMonster.level}</span></div>
                             <div className="oh__target-meta">
@@ -403,14 +462,16 @@ const OfflineHunt = () => {
                         <div className="oh__live-stats">
                             <div className="oh__live-stat"><span>👾 Zabite</span><strong>{livePreview.kills.toLocaleString('pl-PL')}</strong></div>
                             <div className="oh__live-stat"><span>⭐ XP</span><strong>+{livePreview.xpGained.toLocaleString('pl-PL')}</strong></div>
-                            <div className="oh__live-stat"><span>💰 Gold</span><strong>+{livePreview.goldGained.toLocaleString('pl-PL')}</strong></div>
+                            <div className="oh__live-stat"><span>💰 Gold</span><strong>+{formatGoldShort(livePreview.goldGained)}</strong></div>
                             <div className="oh__live-stat"><span>✨ Skill</span><strong>+{livePreview.skillXpGained.toLocaleString('pl-PL')}</strong></div>
                         </div>
                     )}
 
                     <div className="oh__active-btns">
+                        {/* 2026-05-20 spec ("Jak polowanie jest juz aktywne
+                            to skasowac guzik anuluj"): claim is the only
+                            option once a hunt is running — no escape button. */}
                         <button className="oh__btn oh__btn--claim" onClick={handleClaim}>🏆 Odbierz nagrody</button>
-                        <button className="oh__btn oh__btn--cancel" onClick={handleCancel}>✕ Anuluj</button>
                     </div>
                 </div>
             )}
@@ -444,6 +505,28 @@ const OfflineHunt = () => {
                             <span className="oh__card-step">2</span>
                             Wybierz potwora
                         </h2>
+
+                        {/* 2026-05-20 spec ("Dodalbym mozliwosc sortowanie od
+                            najwiekszego lvl. oraz od najwiekszej masterii ...
+                            kolory guzikow i wybranej opcji w kolorze
+                            transformu"): pill toggles painted in the
+                            transform accent (--oh-accent). */}
+                        <div className="oh__sort-row">
+                            <span className="oh__sort-label">Sortuj:</span>
+                            <button
+                                className={`oh__sort-chip${sortMode === 'level' ? ' oh__sort-chip--active' : ''}`}
+                                onClick={() => setSortMode('level')}
+                            >
+                                ⚔️ Lvl ↓
+                            </button>
+                            <button
+                                className={`oh__sort-chip${sortMode === 'mastery' ? ' oh__sort-chip--active' : ''}`}
+                                onClick={() => setSortMode('mastery')}
+                            >
+                                ⭐ Mastery ↓
+                            </button>
+                        </div>
+
                         <div className="oh__monster-list">
                             {unlockedMonsters.map(({ monster, masteryLevel }) => {
                                 const mult = getOfflineHuntSpeedMultiplier(masteryLevel);
@@ -454,7 +537,9 @@ const OfflineHunt = () => {
                                         className={`oh__monster-row${isPicked ? ' oh__monster-row--active' : ''}`}
                                         onClick={() => setPickedMonsterId(monster.id)}
                                     >
-                                        <span className="oh__monster-row-sprite">{monster.sprite}</span>
+                                        <span className="oh__monster-row-sprite">
+                                            <MonsterSprite level={monster.level} sprite={monster.sprite} name={monster.name_pl} />
+                                        </span>
                                         <div className="oh__monster-row-info">
                                             <span className="oh__monster-row-name">{monster.name_pl}</span>
                                             <span className="oh__monster-row-lvl">Lvl {monster.level}</span>

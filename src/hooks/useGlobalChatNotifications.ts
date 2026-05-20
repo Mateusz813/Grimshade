@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { chatApi } from '../api/v1/chatApi';
 import { useCharacterStore } from '../stores/characterStore';
 import { useChatNotificationsStore } from '../stores/chatNotificationsStore';
+import { useChatTabsStore } from '../stores/chatTabsStore';
 
 /**
  * Globally subscribes to chat activity so the floating nav badge reflects
@@ -25,9 +26,13 @@ export const useGlobalChatNotifications = (): void => {
     const markAllRead = useChatNotificationsStore((s) => s.markAllRead);
 
     // Reset the counter the moment the player navigates into /chat.
+    // 2026-05-19 v6: also clear the floating chat-icon notification
+    // dot so opening the full chat route silences the indicator the
+    // same way clicking the popup icon does.
     useEffect(() => {
         if (location.pathname === '/chat') {
             markAllRead();
+            useChatTabsStore.getState().clearNotification();
         }
     }, [location.pathname, markAllRead]);
 

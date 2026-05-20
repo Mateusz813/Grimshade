@@ -1,17 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { supabase } from '../../lib/supabase';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useSyncStore } from '../../stores/syncStore';
-import { useTaskStore } from '../../stores/taskStore';
-import { useQuestStore } from '../../stores/questStore';
-import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { useSkillStore } from '../../stores/skillStore';
-import { useChatTabsStore } from '../../stores/chatTabsStore';
-import { useSync } from '../../hooks/useSync';
 import { useOfflineTrainingResume } from '../../hooks/useOfflineTrainingResume';
 import { xpProgress, xpToNextLevel } from '../../systems/levelSystem';
 import { getTotalEquipmentStats, flattenItemsData } from '../../systems/itemSystem';
@@ -21,16 +12,33 @@ import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combat
 import itemsRaw from '../../data/items.json';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
-import { formatLastSynced } from '../../systems/syncSystem';
 import OfflineRewardModal from '../../components/ui/OfflineRewardModal/OfflineRewardModal';
 import { getCharacterAvatar } from '../../data/classAvatars';
+// Per-tile background art lives under `images/town/`. Each tile in the
+// 7-up nav grid below maps to one of these PNGs and is rendered as an
+// `<img>` (object-fit: cover) behind the glass-chip label so the entire
+// tile becomes its own piece of art instead of just an emoji.
+import imgOffline    from '../../assets/images/town/town-offline.png';
+import imgDeposit    from '../../assets/images/town/town-deposit.png';
+import imgMarket     from '../../assets/images/town/town-market.png';
+import imgMonsters   from '../../assets/images/town/town-monsters.png';
+import imgRest       from '../../assets/images/town/town-heal.png';
+import imgRankings   from '../../assets/images/town/town-rankings.png';
+import imgDeaths     from '../../assets/images/town/town-deaths.png';
 import { useTransformStore } from '../../stores/transformStore';
+import { getTransformColor } from '../../systems/transformSystem';
+import { useGuildStore } from '../../stores/guildStore';
+import { useGuildTagsStore } from '../../stores/guildTagsStore';
 import { useCombatStore } from '../../stores/combatStore';
-import { useOfflineHuntStore } from '../../stores/offlineHuntStore';
+import { useOfflineHuntStore, OFFLINE_HUNT_MAX_SECONDS } from '../../stores/offlineHuntStore';
+import { useConnectivityStore } from '../../stores/connectivityStore';
+import { useMarketStore } from '../../stores/marketStore';
 import { usePartyStore } from '../../stores/partyStore';
+import { usePartyPresenceStore } from '../../stores/partyPresenceStore';
 import { MAX_PARTY_SIZE, canJoinParty, getAggroWeight, type IPartyMember } from '../../systems/partySystem';
 import { MONSTER_RARITY_LABELS } from '../../systems/lootSystem';
 import { stopCombat } from '../../systems/combatEngine';
+import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
 import './Town.scss';
 
 const RARITY_BORDER_COLORS: Record<string, string> = {
@@ -58,20 +66,32 @@ const hexToRgb = (hex: string): string => {
   return `${r},${g},${b}`;
 };
 
+/** How often the tiles auto-pulse (per user spec: every 30 seconds). */
+const TILE_AUTOPULSE_INTERVAL_MS = 30_000;
+/** How long each pulse animation lasts before the class is cleared. */
+const TILE_AUTOPULSE_DURATION_MS = 900;
+
 const Town = () => {
   const navigate   = useNavigate();
-  const { t }      = useTranslation();
   const character  = useCharacterStore((s) => s.character);
-  const totalChatUnread = useChatTabsStore((s) => s.tabs.reduce((n, t) => n + t.unread, 0));
+  // 2026-05-08: market sale notifications. The market tile glows when
+  // someone has bought one of the player's listings — the actual list
+  // lives in `marketStore.saleNotifications`, refreshed on /town mount.
+  const saleNotifications = useMarketStore((s) => s.saleNotifications);
+  const fetchSaleNotifications = useMarketStore((s) => s.fetchSaleNotifications);
+  const hasMarketSales = saleNotifications.length > 0;
+  useEffect(() => {
+    if (character) void fetchSaleNotifications(character.id);
+  }, [character, fetchSaleNotifications]);
   const completedTransforms = useTransformStore((s) => s.completedTransforms);
   const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
   const transformColor = getHighestTransformColor();
   const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
 
   // Derive a single accent color (not a gradient) from the current transform tier.
-  // Before the first transform is completed, we fall back to the character class
-  // color so the avatar accent never looks out-of-place. Once a transform tier is
-  // completed, we switch to the transform's solid color or first gradient stop.
+  // Before the first transform is completed we fall back to the character class
+  // color so the avatar accent never looks out-of-place. Once a transform tier
+  // is completed, switch to the transform's solid color or first gradient stop.
   const classColorFallback = character ? (CLASS_COLORS[character.class] ?? '#e94560') : '#e94560';
   const tileAccent = (() => {
     if (!transformColor) return classColorFallback;
@@ -87,36 +107,57 @@ const Town = () => {
     const b = parseInt(hex.slice(4, 6), 16);
     return `${r}, ${g}, ${b}`;
   })();
-  const gold       = useInventoryStore((s) => s.gold);
-  const { language, setLanguage } = useSettingsStore();
-  const { isOnline, isSyncing, lastSynced } = useSyncStore();
-  const { doSync } = useSync();
-  const { reward: offlineReward, clearReward: clearOfflineReward } = useOfflineTrainingResume();
-  const activeTasks = useTaskStore((s) => s.activeTasks);
-  const activeQuests = useQuestStore((s) => s.activeQuests);
-  const completedQuestIds = useQuestStore((s) => s.completedQuestIds);
-  const dailyActiveQuests = useDailyQuestStore((s) => s.activeQuests);
   const equipment = useInventoryStore((s) => s.equipment);
   const skillLevels = useSkillStore((s) => s.skillLevels);
 
-  // Combat state for live widget and blocking
+  // Combat state for live widget and blocking the rest button.
   const combatPhase = useCombatStore((s) => s.phase);
   const combatMonster = useCombatStore((s) => s.monster);
   const combatMonsterRarity = useCombatStore((s) => s.monsterRarity);
   const combatSessionKills = useCombatStore((s) => s.sessionKills);
   const combatXpPerHour = useCombatStore((s) => s.sessionXpPerHour);
   const isCombatActive = combatPhase === 'fighting' || combatPhase === 'victory';
-  // Only the live Combat tile is mutually-exclusive with offline hunt.
-  // Dungeons, bosses, transforms and rest keep working while the hunt rolls
-  // kills in the background.
   const offlineHuntActive = useOfflineHuntStore((s) => s.isActive);
   const offlineHuntMonster = useOfflineHuntStore((s) => s.targetMonster);
-  // Dungeon / boss / transform / rest are only blocked during a live fight.
+  const offlineHuntStartedAt = useOfflineHuntStore((s) => s.startedAt);
+  // 2026-05-20 spec ("zamiast napisu offline trening to ile tam jestesmy
+  // na 12h"): tick once a second while the hunt is active so the elapsed
+  // time on the tile stays current. The ticker is gated on `isActive` so
+  // we don't burn a render budget on the Town view in the common case
+  // where no hunt is running.
+  const [offlineTick, setOfflineTick] = useState(Date.now());
+  useEffect(() => {
+    if (!offlineHuntActive) return;
+    const id = setInterval(() => setOfflineTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [offlineHuntActive]);
+  const offlineHuntElapsedSec = (() => {
+    if (!offlineHuntActive || !offlineHuntStartedAt) return 0;
+    const started = new Date(offlineHuntStartedAt).getTime();
+    if (Number.isNaN(started)) return 0;
+    const sec = Math.floor((offlineTick - started) / 1000);
+    return Math.max(0, Math.min(OFFLINE_HUNT_MAX_SECONDS, sec));
+  })();
+  const offlineHuntLabel = (() => {
+    if (!offlineHuntActive) return null;
+    const sec = offlineHuntElapsedSec;
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    // "5h 23m / 12h" — concise enough to fit the tile's glass label.
+    return `${h}h ${m.toString().padStart(2, '0')}m / 12h`;
+  })();
+  // Rest is the only Town tile that has a "blocked while fighting" state — the
+  // 6 other tiles always navigate freely.
   const isBlocked = isCombatActive;
   const blockedReason = 'Zakończ walkę najpierw';
 
   // Party state for expand widget
   const party = usePartyStore((s) => s.party);
+  // 2026-05-09: live HP/MP for party members comes from the realtime
+  // presence broadcast, NOT from `party.members[].hp` (which is just a
+  // 0/1 placeholder set by `rowToMember` because the parties DB schema
+  // doesn't track health). Hook ensures the strip shows real bars.
+  const partyPresence = usePartyPresenceStore((s) => s.byMember);
   const addBotHelper = usePartyStore((s) => s.addBotHelper);
   const removePartyMember = usePartyStore((s) => s.removeMember);
   const leaveParty = usePartyStore((s) => s.leaveParty);
@@ -124,7 +165,13 @@ const Town = () => {
   const createParty = usePartyStore((s) => s.createParty);
   const [partyExpanded, setPartyExpanded] = useState(false);
 
+  // 2026-05-20 spec: party features (create, bots, public list) are
+  // multiplayer-only; mute the buttons in offline mode so the player
+  // can't accidentally spin up a row they can't use.
+  const playMode = useConnectivityStore((s) => s.mode);
+  const isOffline = playMode === 'offline';
   const handleCreateParty = useCallback(() => {
+    if (isOffline) return;
     if (!character || party) return;
     const self: IPartyMember = {
       id: character.id,
@@ -135,8 +182,6 @@ const Town = () => {
       maxHp: character.max_hp,
       isOnline: true,
     };
-    // Quick public solo party so the composition bonus kicks in. For a
-    // password-gated or renamed party the player uses the /party screen.
     void createParty(self, {
       name:        `${character.name}'s party`,
       description: '',
@@ -144,20 +189,11 @@ const Town = () => {
       isPublic:    true,
     });
     setPartyExpanded(true);
-  }, [character, party, createParty]);
+  }, [character, party, createParty, isOffline]);
 
   const isPartyLeader = !!party && !!character && party.leaderId === character.id;
 
-  // Claimable rewards indicators
-  const hasClaimableQuest = activeQuests.some((q) =>
-    !completedQuestIds.includes(q.questId) && q.goals.every((g) => (g.progress ?? 0) >= g.count),
-  );
-  const hasClaimableDaily = dailyActiveQuests.some((q) => q.completed && !q.claimed);
-
-  // Include equipment bonuses + training bonuses + transform bonuses + elixirs in
-  // displayed max HP/MP so the numbers match the Combat view EXACTLY. We delegate
-  // to the same helper the combat engine uses so there is a single source of
-  // truth — Town, Combat and CharacterStats will always show identical max HP/MP.
+  // Effective max HP/MP via the engine helper (single source of truth with Combat).
   const eqStats = getTotalEquipmentStats(equipment, ALL_ITEMS);
   const tb = getTrainingBonuses(skillLevels, character?.class);
   const engineEff = character ? engineGetEffectiveChar(character) : null;
@@ -167,10 +203,6 @@ const Town = () => {
   const effMaxMp = engineEff
     ? engineEff.max_mp
     : (character ? character.max_mp + (eqStats.mp ?? 0) + (tb.max_mp ?? 0) + getElixirMpBonus() : 0);
-
-  // For the nav button indicator, show aggregate status: any task done = done, any task active = active
-  const anyTaskDone = activeTasks.some((t) => t.progress >= t.killCount);
-  const hasActiveTasks = activeTasks.length > 0;
 
   // ── Rest / Heal ─────────────────────────────────────────────────────────────
   const [isResting, setIsResting] = useState(false);
@@ -185,7 +217,7 @@ const Town = () => {
     setIsResting(true);
     setRestResult(null);
 
-    // Animate for 5s then apply the heal
+    // Animate for 10s then apply the heal
     setTimeout(() => {
       const store = useCharacterStore.getState();
       const c = store.character;
@@ -206,11 +238,31 @@ const Town = () => {
     ? character.hp < effMaxHp || character.mp < effMaxMp
     : false;
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    useCharacterStore.getState().clearCharacter();
-    navigate('/login');
-  };
+  // ── Offline reward popup ───────────────────────────────────────────────────
+  const { reward: offlineReward, clearReward: clearOfflineReward } = useOfflineTrainingResume();
+
+  // ── Tile auto-pulse (every 30s) ────────────────────────────────────────────
+  // The user wanted tiles to come alive on their own (not just on hover). We
+  // toggle a `town__nav--pulse` class on the nav root every 30 seconds; child
+  // tiles use that to play a brief glow/scale animation, then we remove the
+  // class so the next pulse re-triggers the keyframes from scratch.
+  const [tilesPulsing, setTilesPulsing] = useState(false);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTilesPulsing(true);
+      const off = setTimeout(() => setTilesPulsing(false), TILE_AUTOPULSE_DURATION_MS);
+      return () => clearTimeout(off);
+    }, TILE_AUTOPULSE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  // 2026-05-18: prime the guild tag cache for every party member so
+  // the [TAG] prefix renders in the expanded party widget.
+  useEffect(() => {
+    if (!party || party.members.length === 0) return;
+    const names = party.members.filter((m) => !m.isBot).map((m) => m.name);
+    if (names.length > 0) void useGuildTagsStore.getState().resolveTagsByName(names);
+  }, [party]);
 
   const hpPct    = character && effMaxHp > 0 ? Math.min(1, character.hp / effMaxHp) : 0;
   const mpPct    = character && effMaxMp > 0 ? Math.min(1, character.mp / effMaxMp) : 0;
@@ -226,81 +278,13 @@ const Town = () => {
         timeElapsed={offlineReward?.timeElapsed ?? 0}
         onClose={clearOfflineReward}
       />
-      <header className="town__header" style={character ? {
-        '--class-color': tileAccent,
-        '--class-color-rgb': tileAccentRgb,
-      } as React.CSSProperties : undefined}>
-        <div className="town__header-top">
-          <h1 className="town__title">{t('town.title')}</h1>
 
-          <div className="town__header-actions">
-            {/* Language switcher */}
-            <div className="town__lang-switch">
-              <button
-                className={`town__lang-btn${language === 'pl' ? ' town__lang-btn--active' : ''}`}
-                onClick={() => setLanguage('pl')}
-              >
-                PL
-              </button>
-              <button
-                className={`town__lang-btn${language === 'en' ? ' town__lang-btn--active' : ''}`}
-                onClick={() => setLanguage('en')}
-              >
-                EN
-              </button>
-            </div>
-
-            <button
-              className="town__change-char"
-              onClick={() => {
-                useCharacterStore.getState().clearCharacter();
-                navigate('/character-select');
-              }}
-              title="Zmień postać"
-            >
-              {character ? (
-                <img
-                  src={playerAvatarSrc}
-                  alt={character.class}
-                  className="town__change-char-img"
-                />
-              ) : '👤'}
-            </button>
-
-            <button className="town__logout" onClick={handleLogout}>
-              {t('town.logout')}
-            </button>
-          </div>
-        </div>
-
-        {/* Sync status bar */}
-        <div className="town__sync-bar">
-          <span className={`town__sync-status${isOnline ? '' : ' town__sync-status--offline'}`}>
-            {isOnline ? t('common.online') : t('common.offline')}
-          </span>
-          <span className="town__sync-time">
-            {isSyncing
-              ? t('common.syncing')
-              : t('common.last_synced', { time: formatLastSynced(lastSynced) })}
-          </span>
-          <button
-            className="town__sync-btn"
-            onClick={() => void doSync()}
-            disabled={!isOnline || isSyncing}
-            title={t('common.sync_now')}
-          >
-            {isSyncing ? '⟳' : '↑'}
-          </button>
-        </div>
-
-        {character && (() => {
-          // Scale the trace intensity with how many transform tiers the player
-          // has completed. Tier 1 is subtle (few faint pixels), each additional
-          // tier widens the pixels, brightens them and tightens the gap so more
-          // pixels are visible chasing each other around the border.
-          const flameTier = Math.min(completedTransforms.length, 11);
-          const ablazeBoost = 1 + (flameTier - 1) * 0.22; // 1.0, 1.22, 1.44, ... up to 3.20 @ T11
-          return (
+      {/* Character card – HP/MP/XP bars at a glance. The avatar/gold/lang/sync
+          /logout chrome moved to the persistent TopHeader + AvatarMenu. */}
+      {character && (() => {
+        const flameTier = Math.min(completedTransforms.length, 11);
+        const ablazeBoost = 1 + (flameTier - 1) * 0.22;
+        return (
           <div
             className={`town__character-card${flameTier >= 1 ? ' town__character-card--ablaze' : ''}`}
             style={{
@@ -313,11 +297,6 @@ const Town = () => {
             } as React.CSSProperties}
           >
             {flameTier >= 1 && (
-              // SVG trace: a dashed rectangle whose stroke-dashoffset animates
-              // infinitely, making the dashes appear to fly around the border.
-              // Stroke-width scales with --ablaze-boost so higher tiers show
-              // fatter pixels. Inset 1px so the stroke stays fully inside the
-              // card (no clipping by overflow:hidden).
               <svg
                 className="town__card-trace"
                 aria-hidden="true"
@@ -336,12 +315,11 @@ const Town = () => {
                 color: CLASS_COLORS[character.class] ?? '#9e9e9e',
                 borderColor: CLASS_COLORS[character.class] ?? '#2a2a4a',
               }}>{CLASS_ICONS[character.class] ?? '?'}</span>
-              <span className="town__char-level">{t('common.level')} {character.level}</span>
-              <span className="town__char-gold">💰 {gold.toLocaleString('pl-PL')}</span>
+              <span className="town__char-level">Poziom {character.level}</span>
             </div>
 
             <div className="town__bar-wrap">
-              <span className="town__bar-label">{t('town.stats.hp')}</span>
+              <span className="town__bar-label">HP</span>
               <div className="town__bar town__bar--hp">
                 <div className="town__bar-fill" style={{ width: `${hpPct * 100}%` }} />
               </div>
@@ -349,7 +327,7 @@ const Town = () => {
             </div>
 
             <div className="town__bar-wrap">
-              <span className="town__bar-label">{t('town.stats.mp')}</span>
+              <span className="town__bar-label">MP</span>
               <div className="town__bar town__bar--mp">
                 <div className="town__bar-fill" style={{ width: `${mpPct * 100}%` }} />
               </div>
@@ -357,27 +335,26 @@ const Town = () => {
             </div>
 
             <div className="town__bar-wrap">
-              <span className="town__bar-label">{t('town.stats.xp')}</span>
+              <span className="town__bar-label">XP</span>
               <div className="town__bar town__bar--xp">
                 <div className="town__bar-fill" style={{ width: `${xpPct * 100}%` }} />
                 <span className="town__bar-pct">{(xpPct * 100).toFixed(1)}%</span>
               </div>
-              <span className="town__bar-value">{character.xp}/{xpNeeded}</span>
+              <span className="town__bar-value">{character.xp.toLocaleString('pl-PL')}/{xpNeeded.toLocaleString('pl-PL')}</span>
             </div>
 
             {character.stat_points > 0 && (
               <button
                 className="town__stat-points town__stat-points--clickable"
-                onClick={() => navigate('/stats')}
-                title="Rozdaj punkty statystyk"
+                onClick={() => navigate('/inventory')}
+                title="Rozdaj punkty statystyk w widoku Postać"
               >
                 +{character.stat_points} statystyk do rozdania
               </button>
             )}
           </div>
-          );
-        })()}
-      </header>
+        );
+      })()}
 
       {/* ── Compact Combat Indicator ─────────────────────────────────────── */}
       {isCombatActive && combatMonster && (
@@ -386,7 +363,9 @@ const Town = () => {
           style={{ '--rarity-color': RARITY_BORDER_COLORS[combatMonsterRarity] } as React.CSSProperties}
         >
           <div className="town__combat-strip-left" onClick={() => navigate('/combat')}>
-            <span className="town__combat-strip-sprite">{combatMonster.sprite ?? '👾'}</span>
+            <span className="town__combat-strip-sprite">
+              <MonsterSprite level={combatMonster.level} sprite={combatMonster.sprite ?? '👾'} name={combatMonster.name_pl} />
+            </span>
             <div className="town__combat-strip-info">
               <div className="town__combat-strip-name">
                 {combatMonster.name_pl} Lvl {combatMonster.level}
@@ -414,25 +393,63 @@ const Town = () => {
       )}
 
       {/* ── Party Expand Widget ──────────────────────────────────────── */}
+      {/* 2026-05-18 spec ("usun ten uuid party i napis party, zostaw tylko
+          ikonki klasy od lewej sojusznikow party i color borderu ma byc
+          color aktualnego ich transformu"): collapsed header now shows
+          ONLY the row of class-icon avatars (no 🤝 chip, no "Party"
+          label, no UUID, no count badge). Each avatar's border is tinted
+          with that ally's highest-completed-transform colour — local
+          player resolves via the live transform store, remote allies via
+          their party-presence `transformTier` snapshot, AI bots fall
+          back to neutral grey (no transform progression). The body
+          (HP bars, kick, actions) still renders when the strip is
+          expanded — only the header chrome was trimmed. */}
       {party ? (
         <div className={`town__party-strip${partyExpanded ? ' town__party-strip--expanded' : ''}`}>
           <div
             className="town__party-strip-header"
             onClick={() => setPartyExpanded((v) => !v)}
           >
+            {/* 2026-05-18 spec ("Dodaj tylko na samym przodze ikonke rak
+                ze to party, przed ikonkami klass"): re-add the 🤝 chip
+                at the very left edge so the strip still reads visually
+                as "this is your party" — the UUID + label stay gone,
+                only the small icon is back. */}
             <span className="town__party-strip-icon">🤝</span>
-            <div className="town__party-strip-title">
-              <span className="town__party-strip-label">Party</span>
-              <span className="town__party-strip-code">{party.id}</span>
-            </div>
             <div className="town__party-strip-avatars">
               {party.members.slice(0, MAX_PARTY_SIZE).map((m) => {
-                const hpPct = m.maxHp > 0 ? Math.min(1, m.hp / m.maxHp) : 0;
+                const memberHpPct = m.maxHp > 0 ? Math.min(1, m.hp / m.maxHp) : 0;
+                // Resolve transform colour per member. Self pulls from
+                // the live transform store so swapping a tier mid-
+                // session re-tints the border immediately; others come
+                // from the broadcast presence snapshot (transformTier:
+                // 0 means base class → no transform colour, falls back
+                // to the class palette below).
+                let transformTier = 0;
+                if (!m.isBot) {
+                  if (m.id === character?.id) {
+                    transformTier = useTransformStore.getState().getHighestCompletedTransform?.() ?? 0;
+                  } else {
+                    transformTier = partyPresence[m.id]?.transformTier ?? 0;
+                  }
+                }
+                const tColor = transformTier > 0 ? getTransformColor(transformTier) : null;
+                const borderCss = tColor?.css ?? CLASS_COLORS[m.class] ?? 'rgba(255,255,255,0.18)';
+                // Use a thicker tinted border to make the transform
+                // colour pop; gradient transforms get the gradient via
+                // `border-image`, solid colours land on plain border.
+                const avatarStyle: React.CSSProperties = tColor?.gradient
+                  ? {
+                      border: '2px solid transparent',
+                      borderImage: `linear-gradient(135deg, ${tColor.gradient[0]}, ${tColor.gradient[1]}) 1`,
+                    }
+                  : { border: `2px solid ${borderCss}` };
                 return (
                   <div
                     key={m.id}
                     className={`town__party-avatar${m.isBot ? ' town__party-avatar--bot' : ''}${m.id === character?.id ? ' town__party-avatar--me' : ''}`}
                     title={`${m.name} · ${m.class} Lvl ${m.level} · ${m.hp}/${m.maxHp} HP`}
+                    style={avatarStyle}
                   >
                     <span className="town__party-avatar-icon">
                       {m.isBot ? '🤖' : (CLASS_ICONS[m.class] ?? '?')}
@@ -441,8 +458,8 @@ const Town = () => {
                       <span
                         className="town__party-avatar-hp-fill"
                         style={{
-                          width: `${hpPct * 100}%`,
-                          background: hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ffc107' : '#f44336',
+                          width: `${memberHpPct * 100}%`,
+                          background: memberHpPct > 0.5 ? '#4caf50' : memberHpPct > 0.25 ? '#ffc107' : '#f44336',
                         }}
                       />
                     </span>
@@ -450,9 +467,6 @@ const Town = () => {
                 );
               })}
             </div>
-            <span className="town__party-strip-count">
-              {party.members.length}/{MAX_PARTY_SIZE}
-            </span>
             <span className="town__party-strip-caret">
               {partyExpanded ? '▲' : '▼'}
             </span>
@@ -461,9 +475,26 @@ const Town = () => {
           {partyExpanded && (
             <div className="town__party-strip-body">
               {party.members.map((m) => {
-                const hpPct = m.maxHp > 0 ? Math.min(1, m.hp / m.maxHp) : 0;
                 const weight = getAggroWeight(m.class);
                 const isMe = m.id === character?.id;
+                // 2026-05-09: pull live HP/MP from the realtime presence
+                // snapshot for remote allies; for the local player and
+                // bots use the live store value. Falls back to the row
+                // placeholder only when no source exists yet.
+                let curHp = m.hp;
+                let maxHp = m.maxHp;
+                if (isMe && character) {
+                    curHp = character.hp;
+                    maxHp = character.max_hp;
+                } else if (!m.isBot) {
+                    const snap = partyPresence[m.id];
+                    if (snap) {
+                        curHp = snap.hp;
+                        maxHp = snap.maxHp;
+                    }
+                }
+                const memberHpPct = maxHp > 0 ? Math.min(1, curHp / maxHp) : 0;
+                const hasLiveHp = maxHp > 1; // bigger than the 0/1 placeholder
                 return (
                   <div key={m.id} className={`town__party-row${isMe ? ' town__party-row--me' : ''}${m.isBot ? ' town__party-row--bot' : ''}`}>
                     <span className="town__party-row-icon">
@@ -471,7 +502,19 @@ const Town = () => {
                     </span>
                     <div className="town__party-row-info">
                       <div className="town__party-row-name">
-                        {m.name}
+                        {(() => {
+                            // 2026-05-18: prefix [TAG] when the row's
+                            // character belongs to a guild. For me pull
+                            // from the live guild store; for others use
+                            // the cached lookup populated by the effect
+                            // a few lines below.
+                            if (isMe) {
+                                const myTag = useGuildStore.getState().guild?.tag;
+                                return myTag ? `[${myTag}] ${m.name}` : m.name;
+                            }
+                            const tag = useGuildTagsStore.getState().getTagByNameSync(m.name);
+                            return tag ? `${tag} ${m.name}` : m.name;
+                        })()}
                         {isMe && <span className="town__party-badge">Ty</span>}
                         {m.isBot && <span className="town__party-badge town__party-badge--bot">Bot</span>}
                       </div>
@@ -488,11 +531,13 @@ const Town = () => {
                         <div
                           className="town__party-hp-fill"
                           style={{
-                            width: `${hpPct * 100}%`,
-                            background: hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ffc107' : '#f44336',
+                            width: `${memberHpPct * 100}%`,
+                            background: memberHpPct > 0.5 ? '#4caf50' : memberHpPct > 0.25 ? '#ffc107' : '#f44336',
                           }}
                         />
-                        <span className="town__party-hp-text">{m.hp}/{m.maxHp}</span>
+                        <span className="town__party-hp-text">
+                          {hasLiveHp ? `${curHp}/${maxHp}` : '— / —'}
+                        </span>
                       </div>
                     </div>
                     {isPartyLeader && !isMe && (
@@ -509,7 +554,14 @@ const Town = () => {
               })}
 
               <div className="town__party-strip-actions">
-                {canJoinParty(party.members.length) && (
+                {/* 2026-05-09 spec ("jako sojusznik party nie leader nie
+                    powinienem moc dodawac boty"): only the leader can
+                    add bots. Members see no +Bot affordance. */}
+                {/* 2026-05-20 spec: bot helpers are blocked in offline mode
+                    (same rule as "no other live players"). Hide the +Bot
+                    affordance entirely so it can't be tapped — the store
+                    also short-circuits as belt-and-braces. */}
+                {isPartyLeader && !isOffline && canJoinParty(party.members.length) && (
                   <button
                     className="town__party-action-btn town__party-action-btn--add-bot"
                     onClick={(e) => { e.stopPropagation(); addBotHelper(); }}
@@ -553,10 +605,16 @@ const Town = () => {
       ) : character && (
         <div className="town__party-strip town__party-strip--empty">
           <span className="town__party-strip-icon">🤝</span>
-          <span className="town__party-strip-empty-text">Solo — brak party</span>
-          <button className="town__party-strip-create" onClick={handleCreateParty}>
-            + Stwórz party
-          </button>
+          <span className="town__party-strip-empty-text">
+            {isOffline ? 'Tryb offline — party niedostępne' : 'Solo — brak party'}
+          </span>
+          {/* 2026-05-20 spec: hide party CTAs in offline mode. */}
+          {!isOffline && (
+            <button className="town__party-strip-create" onClick={handleCreateParty}>
+              + Stwórz party
+            </button>
+          )}
+          {!isOffline && (
           <button
             className="town__party-strip-goto"
             onClick={() => navigate('/party')}
@@ -564,196 +622,102 @@ const Town = () => {
           >
             Dołącz →
           </button>
+          )}
         </div>
       )}
 
+      {/* ── Town tiles (mobile-first responsive grid) ─────────────────────
+          Order is fixed by user spec, left → right:
+          Offline trening · Depozyt · Market · Potwory · Odpoczynek · Rankingi · Śmierci  */}
       <nav
-        className="town__nav"
+        className={`town__nav town__nav--seven${tilesPulsing ? ' town__nav--pulse' : ''}`}
         style={{
           '--tile-accent':     tileAccent,
           '--tile-accent-rgb': tileAccentRgb,
         } as React.CSSProperties}
       >
         <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--combat${offlineHuntActive ? ' town__nav-btn--blocked' : ''}`}
-          onClick={() => !offlineHuntActive && navigate('/combat')}
-          disabled={offlineHuntActive}
-          title={offlineHuntActive ? blockedReason : undefined}
+          className={`town__nav-btn town__nav-tile town__nav-tile--offline town__nav-tile--has-img${offlineHuntActive ? ' town__nav-btn--task-active town__nav-tile--offline-active' : ''}`}
+          onClick={() => navigate('/offline-hunt')}
+          title={offlineHuntActive && offlineHuntMonster ? `Polowanie: ${offlineHuntMonster.name_pl}` : 'Offline Trening'}
         >
-          <span className="town__nav-icon">⚔️</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.combat')}</span>
-          {offlineHuntActive && <span className="town__blocked-tag">🎯</span>}
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--inventory" onClick={() => navigate('/inventory')}>
-          <span className="town__nav-icon">🎒</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.inventory')}</span>
-        </button>
-        <button
-          className="town__nav-btn town__nav-btn--character town__nav-tile town__nav-tile--character"
-          onClick={() => navigate('/stats')}
-          style={character && playerAvatarSrc
-            ? ({ '--player-avatar-url': `url('${playerAvatarSrc}')` } as React.CSSProperties)
-            : undefined}
-        >
-          {character && playerAvatarSrc && (
-            <span className="town__nav-avatar-bg" aria-hidden="true" />
+          {/* 2026-05-20 spec ("Jak polowanie jest aktywne to zamiast
+              zdjecia na kafelku Offline trening to co jest to dajemy
+              tego potwora ktorego bijemy aktualnie i czas zamiast napisu
+              offline trening to ile tam jestesmy na 12h"): when a hunt is
+              running, the static offline-trening painting is swapped for
+              a centered MonsterSprite of the mob being farmed, and the
+              glass label reads the elapsed/12h timer instead of the
+              static "Offline Trening" string. */}
+          {offlineHuntActive && offlineHuntMonster ? (
+            <span className="town__nav-tile-monster">
+              <MonsterSprite
+                level={offlineHuntMonster.level}
+                sprite={offlineHuntMonster.sprite}
+                name={offlineHuntMonster.name_pl}
+              />
+            </span>
+          ) : (
+            <img className="town__nav-tile-img" src={imgOffline} alt="" draggable={false} />
           )}
-          <span className="town__nav-icon town__nav-icon--avatar">
-            {!character || !playerAvatarSrc ? '📊' : null}
+          <span className="town__nav-btn-label town__nav-btn-label--glass">
+            {offlineHuntActive && offlineHuntLabel ? offlineHuntLabel : 'Offline Trening'}
           </span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass town__nav-btn-label--character">Postać</span>
         </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--skills" onClick={() => navigate('/skills')}>
-          <span className="town__nav-icon">✨</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.skills')}</span>
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--shop" onClick={() => navigate('/shop')}>
-          <span className="town__nav-icon">🛒</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.shop')}</span>
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--deposit" onClick={() => navigate('/deposit')}>
-          <span className="town__nav-icon">🏦</span>
+
+        <button className="town__nav-btn town__nav-tile town__nav-tile--deposit town__nav-tile--has-img" onClick={() => navigate('/deposit')}>
+          <img className="town__nav-tile-img" src={imgDeposit} alt="" draggable={false} />
           <span className="town__nav-btn-label town__nav-btn-label--glass">Depozyt</span>
         </button>
-        <button className={`town__nav-btn town__nav-tile town__nav-tile--tasks${hasActiveTasks ? (anyTaskDone ? ' town__nav-btn--task-done' : ' town__nav-btn--task-active') : ''}`} onClick={() => navigate('/tasks')}>
-          <span className="town__nav-icon">📋</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Taski {hasActiveTasks ? `(${activeTasks.length})` : ''}</span>
-          {hasActiveTasks && (
-            <div className="town__task-indicators">
-              {activeTasks.map((task) => {
-                const pct = Math.min(100, Math.floor((task.progress / task.killCount) * 100));
-                const isDone = task.progress >= task.killCount;
-                return (
-                  <div key={task.monsterId} className={`town__task-indicator${isDone ? ' town__task-indicator--done' : ''}`}>
-                    {isDone ? '✅' : <span className="town__task-indicator-text">{task.progress}/{task.killCount}</span>}
-                    {!isDone && (
-                      <span className="town__task-indicator-bar">
-                        <span className="town__task-indicator-fill" style={{ width: `${pct}%` }} />
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </button>
+
         <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--quests${hasClaimableQuest || hasClaimableDaily ? ' town__nav-btn--claimable' : ''}`}
-          onClick={() => navigate('/quests')}
+          className={`town__nav-btn town__nav-tile town__nav-tile--market town__nav-tile--has-img${hasMarketSales ? ' town__nav-tile--alert' : ''}${isOffline ? ' town__nav-btn--offline-locked' : ''}`}
+          onClick={() => navigate('/market')}
+          disabled={isOffline}
+          title={isOffline ? 'Niedostępne w trybie offline' : 'Market'}
         >
-          <span className="town__nav-icon">📜</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Questy</span>
-          {(hasClaimableQuest || hasClaimableDaily) && (
-            <span className="town__claim-badge">🎁</span>
-          )}
-        </button>
-        <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--transform${isBlocked ? ' town__nav-btn--blocked' : ''}`}
-          onClick={() => !isBlocked && navigate('/transform')}
-          disabled={isBlocked}
-          title={isBlocked ? blockedReason : undefined}
-        >
-          <span className="town__nav-icon">🦋</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Transform</span>
-          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
-        </button>
-        <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--dungeon${isBlocked ? ' town__nav-btn--blocked' : ''}`}
-          onClick={() => !isBlocked && navigate('/dungeon')}
-          disabled={isBlocked}
-          title={isBlocked ? blockedReason : undefined}
-        >
-          <span className="town__nav-icon">🏰</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.dungeon')}</span>
-          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
-        </button>
-        <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--boss${isBlocked ? ' town__nav-btn--blocked' : ''}`}
-          onClick={() => !isBlocked && navigate('/boss')}
-          disabled={isBlocked}
-          title={isBlocked ? blockedReason : undefined}
-        >
-          <span className="town__nav-icon">👹</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.boss')}</span>
-          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
-        </button>
-        <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--raid${isBlocked ? ' town__nav-btn--blocked' : ''}`}
-          onClick={() => !isBlocked && navigate('/raid')}
-          disabled={isBlocked}
-          title={isBlocked ? blockedReason : 'Raidy party (4 bossy × fale)'}
-        >
-          <span className="town__nav-icon">⚔️</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Raid</span>
-          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--monsters" onClick={() => navigate('/monsters')}>
-          <span className="town__nav-icon">🗺️</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Potwory</span>
-        </button>
-        <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--offline${offlineHuntActive ? ' town__nav-btn--task-active' : ''}`}
-          onClick={() => navigate('/offline-hunt')}
-          title={offlineHuntActive && offlineHuntMonster ? `Polowanie: ${offlineHuntMonster.name_pl}` : 'Offline Training'}
-        >
-          <span className="town__nav-icon">🎯</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Offline Trening</span>
-          {offlineHuntActive && offlineHuntMonster && (
-            <span className="town__task-indicator">
-              {offlineHuntMonster.sprite}
+          <img className="town__nav-tile-img" src={imgMarket} alt="" draggable={false} />
+          <span className="town__nav-btn-label town__nav-btn-label--glass">Market</span>
+          {hasMarketSales && !isOffline && (
+            <span className="town__nav-tile-badge" aria-label={`${saleNotifications.length} nowych sprzedaży`}>
+              {saleNotifications.length}
             </span>
           )}
         </button>
+
+        <button className="town__nav-btn town__nav-tile town__nav-tile--monsters town__nav-tile--has-img" onClick={() => navigate('/monsters')}>
+          <img className="town__nav-tile-img" src={imgMonsters} alt="" draggable={false} />
+          <span className="town__nav-btn-label town__nav-btn-label--glass">Potwory</span>
+        </button>
+
         <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--rest${isResting ? ' town__nav-btn--resting' : ''}${!canRest && !isResting ? ' town__nav-btn--rest-full' : ''}${isBlocked ? ' town__nav-btn--blocked' : ''}`}
+          className={`town__nav-btn town__nav-tile town__nav-tile--rest town__nav-tile--has-img${isResting ? ' town__nav-btn--resting' : ''}${!canRest && !isResting ? ' town__nav-btn--rest-full' : ''}${isBlocked ? ' town__nav-btn--blocked' : ''}`}
           onClick={handleRest}
           disabled={!canRest || isResting || isBlocked}
           title={isBlocked ? blockedReason : canRest ? 'Odpocznij i zregeneruj HP/MP do pełna' : 'HP i MP na maksimum'}
         >
-          <span className="town__nav-icon">🏕️</span>
+          <img className="town__nav-tile-img" src={imgRest} alt="" draggable={false} />
           <span className="town__nav-btn-label town__nav-btn-label--glass">{isResting ? 'Regeneracja...' : 'Odpoczynek'}</span>
           <span className="town__rest-full-tag" style={{ visibility: !canRest && !isResting ? 'visible' : 'hidden' }}>✓ Pełne</span>
         </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--party" onClick={() => navigate('/party')}>
-          <span className="town__nav-icon">🤝</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.party')}</span>
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--guild" onClick={() => navigate('/guild')}>
-          <span className="town__nav-icon">🏛️</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Gildia</span>
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--arena" disabled title="Wkrótce dostępne!">
-          <span className="town__nav-icon">🏟️</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Arena</span>
-          <span className="town__coming-soon">Wkrótce</span>
-        </button>
+
         <button
-          className={`town__nav-btn town__nav-tile town__nav-tile--trainer${isBlocked ? ' town__nav-btn--blocked' : ''}`}
-          onClick={() => !isBlocked && navigate('/trainer')}
-          disabled={isBlocked}
-          title={isBlocked ? blockedReason : 'Trainer — test skilli i DPS'}
+          className={`town__nav-btn town__nav-tile town__nav-tile--leaderboard town__nav-tile--has-img${isOffline ? ' town__nav-btn--offline-locked' : ''}`}
+          onClick={() => navigate('/leaderboard')}
+          disabled={isOffline}
+          title={isOffline ? 'Niedostępne w trybie offline' : 'Rankingi'}
         >
-          <span className="town__nav-icon">🎯</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Trainer</span>
-          {isBlocked && <span className="town__blocked-tag">⚔️</span>}
+          <img className="town__nav-tile-img" src={imgRankings} alt="" draggable={false} />
+          <span className="town__nav-btn-label town__nav-btn-label--glass">Rankingi</span>
         </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--chat" onClick={() => navigate('/chat')}>
-          <span className="town__nav-icon">💬</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Chat</span>
-          {totalChatUnread > 0 && (
-            <span className="town__nav-badge">{totalChatUnread > 99 ? '99+' : totalChatUnread}</span>
-          )}
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--friends" onClick={() => navigate('/friends')}>
-          <span className="town__nav-icon">👥</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">Znajomi</span>
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--leaderboard" onClick={() => navigate('/leaderboard')}>
-          <span className="town__nav-icon">🏆</span>
-          <span className="town__nav-btn-label town__nav-btn-label--glass">{t('town.nav.leaderboard')}</span>
-        </button>
-        <button className="town__nav-btn town__nav-tile town__nav-tile--deaths" onClick={() => navigate('/deaths')}>
-          <span className="town__nav-icon">💀</span>
+
+        <button
+          className={`town__nav-btn town__nav-tile town__nav-tile--deaths town__nav-tile--has-img${isOffline ? ' town__nav-btn--offline-locked' : ''}`}
+          onClick={() => navigate('/deaths')}
+          disabled={isOffline}
+          title={isOffline ? 'Niedostępne w trybie offline' : 'Śmierci'}
+        >
+          <img className="town__nav-tile-img" src={imgDeaths} alt="" draggable={false} />
           <span className="town__nav-btn-label town__nav-btn-label--glass">Śmierci</span>
         </button>
       </nav>

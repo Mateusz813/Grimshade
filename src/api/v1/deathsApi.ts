@@ -1,6 +1,19 @@
 import { BaseApi } from '../BaseApi';
 
-export type TDeathSource = 'monster' | 'dungeon' | 'boss' | 'transform';
+// 2026-05-19 v25 spec ("Dodać jeszcze raidy"): added 'raid' as a
+// fifth death source. Existing rows default to whatever they
+// already had — the column constraint is widened by
+// `scripts/deaths_migration.sql` to accept all five values.
+export type TDeathSource = 'monster' | 'dungeon' | 'boss' | 'transform' | 'raid';
+
+// 2026-05-19 v25 spec ("Oraz zapisywać jeżeli ktoś nie umarł ale
+// uciekł np z transformu i stracił XP jeśli nie mial eliksiru
+// ochronnego, a nawet jeśli mial to tez ma być to tutaj pisane
+// tylko z dopiskiem nie ze potwór zabił nick postaci. Tylko potwór
+// przegnał i nick postaci."): `killed` = actual HP-zero death,
+// `fled` = soft flee (Ucieknij button, URL leave). The deaths feed
+// renders the verb based on this column.
+export type TDeathResult = 'killed' | 'fled';
 
 export interface IDeathRecord {
     id: string;
@@ -12,6 +25,7 @@ export interface IDeathRecord {
     source_name: string;
     source_level: number;
     died_at: string;
+    result?: TDeathResult;
 }
 
 export interface IDeathPayload {
@@ -22,6 +36,7 @@ export interface IDeathPayload {
     source: TDeathSource;
     source_name: string;
     source_level: number;
+    result?: TDeathResult;
 }
 
 /**

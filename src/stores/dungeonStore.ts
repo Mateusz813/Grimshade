@@ -8,6 +8,15 @@ interface IDailyAttempts {
 
 interface IDungeonStore {
   dailyAttempts: Record<string, IDailyAttempts>;
+  /**
+   * Permanent "ever cleared" log keyed by dungeon id (value is just `true`
+   * — kept as an object instead of a Set so Zustand persistence via JSON
+   * round-trips cleanly through characterScope without custom replacers).
+   * Set once on the first victory and never reset; daily attempts can
+   * reach zero again, but `Pokonany` stays for the lifetime of the
+   * character.
+   */
+  clearedDungeonIds: Record<string, true>;
   lastResult: IDungeonResult | null;
 
   setDungeonCompleted: (dungeonId: string) => void;
@@ -15,6 +24,7 @@ interface IDungeonStore {
   getAttemptsUsed: (dungeonId: string) => number;
   getAttemptsMax: () => number;
   canEnter: (dungeonId: string) => boolean;
+  isDungeonCleared: (dungeonId: string) => boolean;
 }
 
 const getTodayStr = (): string => {
@@ -27,6 +37,7 @@ const MAX_DAILY_ATTEMPTS = 5;
 export const useDungeonStore = create<IDungeonStore>()(
     (set, get) => ({
       dailyAttempts: {},
+      clearedDungeonIds: {},
       lastResult: null,
 
       setDungeonCompleted: (dungeonId) =>
@@ -41,6 +52,12 @@ export const useDungeonStore = create<IDungeonStore>()(
                 used: isToday ? (current?.used ?? 0) + 1 : 1,
                 date: today,
               },
+            },
+            // Mark this dungeon as ever-cleared. Idempotent — re-setting
+            // to true on every subsequent win is a no-op.
+            clearedDungeonIds: {
+              ...s.clearedDungeonIds,
+              [dungeonId]: true,
             },
           };
         }),
@@ -62,5 +79,7 @@ export const useDungeonStore = create<IDungeonStore>()(
         if (!entry || entry.date !== today) return true;
         return entry.used < MAX_DAILY_ATTEMPTS;
       },
+
+      isDungeonCleared: (dungeonId) => Boolean(get().clearedDungeonIds[dungeonId]),
     }),
 );
