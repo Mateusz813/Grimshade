@@ -2,8 +2,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
+  // 2026-05-21: expose `package.json` version as a global constant so
+  // UI code can `import { APP_VERSION }` from a typed module without
+  // dragging package.json into the TS include / rootDir tree. See
+  // `src/lib/appVersion.ts` for the typed shim.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: {
     port: 5170,
     strictPort: true,
