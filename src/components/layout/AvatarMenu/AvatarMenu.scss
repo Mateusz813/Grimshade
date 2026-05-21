@@ -65,6 +65,18 @@
         color: #ef9a9a;
       }
     }
+
+    // 2026-05-21 spec: admin panel entry — visible only for the
+    // allow-listed account. Green tint so it reads as "tooling" not
+    // "destructive".
+    &--admin {
+      color: #a5d6a7;
+      &:hover {
+        background: rgba(76, 175, 80, 0.12);
+        border-color: rgba(76, 175, 80, 0.4);
+        color: #c8e6c9;
+      }
+    }
   }
 
   &__item-icon {
@@ -113,6 +125,21 @@
       border-color: rgba(255, 193, 7, 0.55);
       color: #ffc107;
     }
+  }
+
+  // 2026-05-21: app version footer (reads from package.json). Sits
+  // below the logout button, muted + small so it reads as metadata,
+  // not an interactive row.
+  &__version {
+    margin-top: 6px;
+    padding: 6px 12px 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    letter-spacing: 0.6px;
+    user-select: none;
   }
 }
 
