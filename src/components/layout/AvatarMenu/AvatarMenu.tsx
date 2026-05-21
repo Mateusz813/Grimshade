@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { useCharacterStore } from '../../../stores/characterStore';
@@ -9,6 +9,8 @@ import { usePartyStore } from '../../../stores/partyStore';
 import { useSync } from '../../../hooks/useSync';
 import { saveCurrentCharacterStores } from '../../../stores/characterScope';
 import { formatLastSynced } from '../../../systems/syncSystem';
+import AdminPanel, { ADMIN_EMAIL } from '../../ui/AdminPanel/AdminPanel';
+import { APP_VERSION } from '../../../lib/appVersion';
 import './AvatarMenu.scss';
 
 interface IAvatarMenuProps {
@@ -39,6 +41,22 @@ const AvatarMenu = ({ anchorRef, onClose }: IAvatarMenuProps) => {
   const isSyncing = useSyncStore((s) => s.isSyncing);
   const lastSynced = useSyncStore((s) => s.lastSynced);
   const { doSync } = useSync();
+
+  // 2026-05-21 spec: admin panel is gated on the player's Supabase
+  // session email. We pull the email once on mount + cache locally so
+  // the menu render isn't async. `null` means "still loading / not
+  // signed in"; only an exact match opens the door.
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      const email = data.session?.user?.email?.toLowerCase() ?? null;
+      setIsAdmin(email === ADMIN_EMAIL.toLowerCase());
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // 2026-05-20 spec: play-mode toggle. The toggle is the player's
   // explicit choice — separate from `isOnline` which mirrors the OS-
@@ -83,10 +101,23 @@ const AvatarMenu = ({ anchorRef, onClose }: IAvatarMenuProps) => {
       if (!target) return;
       if (popoverRef.current && popoverRef.current.contains(target)) return;
       if (anchorRef.current && anchorRef.current.contains(target)) return;
+      // 2026-05-21 fix: the admin panel renders via React portal to
+      // document.body so it lives OUTSIDE this menu's DOM subtree. Without
+      // this guard, every click inside the admin panel triggers the
+      // outside-click handler → closes the menu → unmounts the panel
+      // before the user's button click can register. Match by the
+      // backdrop class so we catch clicks on every panel surface.
+      const el = target instanceof Element ? target : (target as Node).parentElement;
+      if (el && el.closest('.admin-panel__backdrop')) return;
       onClose();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      // 2026-05-21 fix: same idea for the keyboard handler — when the
+      // admin panel is open, ESC should close the panel only. We
+      // detect this by querying for the panel's backdrop in the DOM.
+      if (document.querySelector('.admin-panel__backdrop')) return;
+      onClose();
     };
     document.addEventListener('pointerdown', onDocPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -205,6 +236,21 @@ const AvatarMenu = ({ anchorRef, onClose }: IAvatarMenuProps) => {
         </span>
       </button>
 
+      {/* 2026-05-21 spec: admin panel entry — rendered ONLY for the
+          allow-listed account email. Every other player never sees
+          this DOM node. */}
+      {isAdmin && (
+        <button
+          type="button"
+          className="avatar-menu__item avatar-menu__item--admin"
+          onClick={() => setAdminOpen(true)}
+          role="menuitem"
+        >
+          <span className="avatar-menu__item-icon">🛠️</span>
+          <span className="avatar-menu__item-label">Panel admina</span>
+        </button>
+      )}
+
       <button
         type="button"
         className="avatar-menu__item avatar-menu__item--danger"
@@ -214,6 +260,17 @@ const AvatarMenu = ({ anchorRef, onClose }: IAvatarMenuProps) => {
         <span className="avatar-menu__item-icon">🚪</span>
         <span className="avatar-menu__item-label">Wyloguj</span>
       </button>
+
+      {/* 2026-05-21 spec: version stripe under the logout button. Single
+          source of truth = package.json so a `npm version`/manual bump
+          is reflected here on the next build with zero glue. */}
+      <div className="avatar-menu__version" aria-label={`Grimshade v${APP_VERSION}`}>
+        v{APP_VERSION}
+      </div>
+
+      {isAdmin && adminOpen && (
+        <AdminPanel onClose={() => setAdminOpen(false)} />
+      )}
     </div>
   );
 };
