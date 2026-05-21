@@ -1,0 +1,314 @@
+@use '../../../styles/variables' as *;
+
+// ── Backdrop ─────────────────────────────────────────────────────────────────
+// Portaled to <body>, so this `position: fixed` anchors to the viewport
+// even when an ancestor of the original mount-point uses backdrop-filter.
+.admin-panel__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(3px);
+}
+
+// ── Panel ────────────────────────────────────────────────────────────────────
+.admin-panel {
+    width: 100%;
+    max-width: 680px;
+    // Take 90% of the viewport vertically — tall enough for big forms,
+    // small enough to leave breathing room around the edges.
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: #0f1320;
+    border: 1px solid #4caf50;
+    border-radius: $radius-lg;
+    box-shadow: 0 12px 60px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(76, 175, 80, 0.35),
+                0 0 40px rgba(76, 175, 80, 0.18);
+    color: $color-text;
+    overflow: hidden;
+    position: relative; // anchors the toast pill
+
+    &__header {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: linear-gradient(180deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.05) 100%);
+        border-bottom: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    &__title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #4caf50;
+        letter-spacing: 1px;
+    }
+
+    &__close {
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: $radius-md;
+        color: $color-text-muted;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover {
+            background: rgba(255, 80, 80, 0.15);
+            color: #ff8a8a;
+            border-color: rgba(255, 80, 80, 0.4);
+        }
+    }
+
+    // ── Tab strip — sticky at top of the panel ───────────────────────────
+    &__tabs {
+        flex: 0 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 8px 10px;
+        background: rgba(0, 0, 0, 0.4);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    &__tab {
+        flex: 1 1 auto;
+        min-width: 70px;
+        padding: 7px 8px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: $radius-sm;
+        color: $color-text-muted;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+
+        &:hover {
+            background: rgba(76, 175, 80, 0.1);
+            color: $color-text;
+        }
+
+        &--active {
+            background: rgba(76, 175, 80, 0.22);
+            border-color: #4caf50;
+            color: #4caf50;
+        }
+    }
+
+    // ── Body (scrollable) ────────────────────────────────────────────────
+    &__body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 14px 16px 18px;
+        // Smooth scrollbar on macOS / iOS
+        -webkit-overflow-scrolling: touch;
+
+        // Custom scrollbar (Chromium / WebKit)
+        &::-webkit-scrollbar { width: 8px; }
+        &::-webkit-scrollbar-track { background: transparent; }
+        &::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.3);
+            border-radius: 4px;
+        }
+    }
+
+    &__section {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        h3 {
+            margin: 8px 0 2px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #4caf50;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(76, 175, 80, 0.2);
+            padding-bottom: 4px;
+
+            &:first-child { margin-top: 0; }
+        }
+    }
+
+    // ── Row layout for label / control pairs ──────────────────────────────
+    &__row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 11px;
+        color: $color-text-muted;
+    }
+
+    &__row-label {
+        font-weight: 600;
+    }
+
+    &__row-controls {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+
+        input,
+        select {
+            flex: 1 1 80px;
+            min-width: 0;
+            padding: 6px 9px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: $radius-sm;
+            color: $color-text;
+            font-size: 12px;
+            font-family: inherit;
+
+            &:focus {
+                outline: none;
+                border-color: #4caf50;
+            }
+        }
+
+        button {
+            flex: 0 0 auto;
+            padding: 6px 12px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            border-radius: $radius-sm;
+            color: #4caf50;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+
+            &:hover {
+                background: rgba(76, 175, 80, 0.32);
+            }
+
+            &.admin-panel__danger-btn {
+                background: rgba(244, 67, 54, 0.15);
+                border-color: rgba(244, 67, 54, 0.5);
+                color: #ff8a8a;
+
+                &:hover {
+                    background: rgba(244, 67, 54, 0.28);
+                }
+            }
+        }
+    }
+
+    // ── Grid for grouped action buttons ───────────────────────────────────
+    &__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 6px;
+
+        button {
+            padding: 7px 9px;
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: $radius-sm;
+            color: $color-text;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+
+            &:hover {
+                background: rgba(76, 175, 80, 0.28);
+                border-color: #4caf50;
+            }
+
+            &.admin-panel__danger-btn {
+                background: rgba(244, 67, 54, 0.12);
+                border-color: rgba(244, 67, 54, 0.4);
+                color: #ff8a8a;
+
+                &:hover {
+                    background: rgba(244, 67, 54, 0.22);
+                    border-color: #f44336;
+                }
+            }
+        }
+    }
+
+    // ── Nuclear ───────────────────────────────────────────────────────────
+    &__warn {
+        font-size: 11px;
+        color: #ffb74d;
+        line-height: 1.5;
+        margin: 0;
+        padding: 10px 12px;
+        background: rgba(244, 67, 54, 0.08);
+        border: 1px solid rgba(244, 67, 54, 0.3);
+        border-radius: $radius-sm;
+    }
+
+    &__nuke {
+        padding: 12px 18px;
+        background: rgba(244, 67, 54, 0.15);
+        border: 1px solid #f44336;
+        border-radius: $radius-md;
+        color: #ff8a8a;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover {
+            background: rgba(244, 67, 54, 0.25);
+        }
+
+        &--confirm {
+            background: #d32f2f;
+            color: #fff;
+            animation: admin-panel-pulse 0.6s ease-in-out infinite alternate;
+        }
+    }
+
+    // ── Toast confirmation ────────────────────────────────────────────────
+    &__toast {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        padding: 8px 18px;
+        background: rgba(76, 175, 80, 0.95);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: 999px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        animation: admin-panel-toast 1.5s ease-out forwards;
+        z-index: 3;
+    }
+}
+
+@keyframes admin-panel-pulse {
+    from { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+    to   { box-shadow: 0 0 0 6px rgba(244, 67, 54, 0.25); }
+}
+
+@keyframes admin-panel-toast {
+    0%   { opacity: 0; transform: translate(-50%, 10px); }
+    15%  { opacity: 1; transform: translate(-50%, 0); }
+    80%  { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -10px); }
+}
