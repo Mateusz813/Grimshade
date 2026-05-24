@@ -16,13 +16,40 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
+
+# macOS — recursive żeby objąć .DS_Store w subkatalogach
+**/.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*~
+*.bak
 .vercel
+
+# Env files — sekrety NIGDY do repo. .env.example zostaje (template bez wartości).
+.env
+.env.*
+!.env.example
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Vite PWA dev artifacts (service worker preview)
+dev-dist/
+
+# Lint / format cache files
+.eslintcache
+.prettiercache
+.stylelintcache
 
 CLAUDE.md
 .claude/
