@@ -1,0 +1,220 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, cleanup, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+
+/**
+ * OfflineHunt view — passive kill grinder setup + claim flow. Steps:
+ *   1. Pick a trainable skill (class-gated).
+ *   2. Pick an unlocked monster (level + mastery-gated).
+ *   3. Start hunt → captures startedAt in offlineHuntStore.
+ *   4. Claim → reward modal mounts with XP + drops.
+ *
+ * Coverage:
+ *   • Smoke: setup card mounts when no hunt is active.
+ *   • Char-less branch renders the "Brak aktywnej postaci" empty state.
+ *   • Step 1 lists trainable skills for the player's class.
+ *   • Step 2 lists at least one unlocked monster (level 1 default).
+ *   • Sort buttons mount + toggle the active modifier.
+ *   • Start button disabled until both skill + monster picked.
+ *   • Active hunt card mounts when isActive flips true.
+ */
+
+vi.mock('framer-motion', async () => {
+    const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
+    return {
+        ...actual,
+        AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+        motion: new Proxy({}, {
+            get: () => (props: Record<string, unknown>) => {
+                const { children, ...rest } = props as { children?: React.ReactNode };
+                return <div {...(rest as Record<string, unknown>)}>{children}</div>;
+            },
+        }),
+    };
+});
+
+import OfflineHunt from './OfflineHunt';
+import { useCharacterStore } from '../../stores/characterStore';
+import { useSkillStore } from '../../stores/skillStore';
+import { useMasteryStore } from '../../stores/masteryStore';
+import { useTransformStore } from '../../stores/transformStore';
+import { useOfflineHuntStore } from '../../stores/offlineHuntStore';
+import type { ICharacter } from '../../api/v1/characterApi';
+
+const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
+    id: 'char-1',
+    user_id: 'user-1',
+    name: 'Hero',
+    class: 'Knight',
+    level: 5,
+    xp: 0,
+    hp: 100, max_hp: 100, mp: 30, max_mp: 30,
+    attack: 15, defense: 12, attack_speed: 2.0,
+    crit_chance: 3, crit_damage: 150, magic_level: 0,
+    hp_regen: 0, mp_regen: 0,
+    gold: 0, stat_points: 0, highest_level: 5,
+    equipment: {},
+    created_at: '', updated_at: '',
+    ...overrides,
+} as ICharacter);
+
+const renderOfflineHunt = () =>
+    render(
+        <MemoryRouter>
+            <OfflineHunt />
+        </MemoryRouter>,
+    );
+
+beforeEach(() => {
+    useCharacterStore.setState({ character: makeChar() });
+    useSkillStore.setState({ skillLevels: {} });
+    useMasteryStore.setState({ masteries: {}, masteryKills: {} });
+    useTransformStore.setState({ completedTransforms: [] });
+    useOfflineHuntStore.setState({
+        isActive: false,
+        startedAt: null,
+        targetMonster: null,
+        trainedSkillId: null,
+    });
+});
+
+afterEach(() => {
+    cleanup();
+});
+
+describe('OfflineHunt — smoke', () => {
+    it('renders the .oh root + setup container when no hunt is active', () => {
+        const { container } = renderOfflineHunt();
+        expect(container.querySelector('.oh')).not.toBeNull();
+        expect(container.querySelector('.oh__setup')).not.toBeNull();
+    });
+
+    it('renders the no-character empty state', () => {
+        useCharacterStore.setState({ character: null });
+        const { container } = renderOfflineHunt();
+        expect(container.querySelector('.oh__empty')).not.toBeNull();
+        expect(container.textContent).toContain('Brak aktywnej postaci');
+    });
+});
+
+describe('OfflineHunt — setup steps', () => {
+    it('renders two step cards (skill + monster)', () => {
+        const { container } = renderOfflineHunt();
+        const cards = container.querySelectorAll('.oh__card');
+        expect(cards.length).toBe(2);
+    });
+
+    it('lists at least one trainable skill chip for Knight', () => {
+        const { container } = renderOfflineHunt();
+        const skills = container.querySelectorAll('.oh__skill-chip');
+        expect(skills.length).toBeGreaterThan(0);
+    });
+
+    it('lists at least one unlocked monster (level 1 starters)', () => {
+        const { container } = renderOfflineHunt();
+        const monsters = container.querySelectorAll('.oh__monster-row');
+        expect(monsters.length).toBeGreaterThan(0);
+    });
+
+    it('renders sort buttons (Lvl / Mastery) with one active by default', () => {
+        const { container } = renderOfflineHunt();
+        const sortBtns = container.querySelectorAll('.oh__sort-chip');
+        expect(sortBtns.length).toBe(2);
+        const active = container.querySelector('.oh__sort-chip--active');
+        expect(active).not.toBeNull();
+        // Default sort is "level"; first chip should be active.
+        expect(active?.textContent).toMatch(/Lvl/);
+    });
+
+    it('toggles the active sort modifier when the other button is clicked', () => {
+        const { container } = renderOfflineHunt();
+        const sortBtns = container.querySelectorAll('.oh__sort-chip');
+        fireEvent.click(sortBtns[1]); // Mastery
+        expect(sortBtns[1].className).toContain('oh__sort-chip--active');
+        expect(sortBtns[0].className).not.toContain('oh__sort-chip--active');
+    });
+});
+
+describe('OfflineHunt — start CTA', () => {
+    it('keeps the start button disabled until both skill + monster picked', () => {
+        const { container } = renderOfflineHunt();
+        const startBtn = container.querySelector('.oh__btn--start') as HTMLButtonElement;
+        expect(startBtn.disabled).toBe(true);
+
+        // Pick a skill first.
+        const skillChip = container.querySelector('.oh__skill-chip') as HTMLButtonElement;
+        fireEvent.click(skillChip);
+        // Still disabled — no monster.
+        expect(startBtn.disabled).toBe(true);
+
+        const monsterRow = container.querySelector('.oh__monster-row') as HTMLButtonElement;
+        fireEvent.click(monsterRow);
+        expect(startBtn.disabled).toBe(false);
+    });
+
+    it('marks the picked skill + monster with the active modifier', () => {
+        const { container } = renderOfflineHunt();
+        const skillChip = container.querySelector('.oh__skill-chip') as HTMLButtonElement;
+        fireEvent.click(skillChip);
+        expect(skillChip.className).toContain('oh__skill-chip--active');
+
+        const monsterRow = container.querySelector('.oh__monster-row') as HTMLButtonElement;
+        fireEvent.click(monsterRow);
+        expect(monsterRow.className).toContain('oh__monster-row--active');
+    });
+});
+
+describe('OfflineHunt — active hunt card', () => {
+    it('renders the active card with progress + claim button when hunt is running', () => {
+        useOfflineHuntStore.setState({
+            isActive: true,
+            startedAt: new Date().toISOString(),
+            targetMonster: {
+                id: 'goblin', name_pl: 'Goblin', level: 3, sprite: '👾',
+                hp: 50, defense: 1, speed: 1, attack: 5, xp: 10,
+                gold: [1, 2], magical: false,
+            } as never,
+            trainedSkillId: 'sword_fighting',
+        });
+
+        const { container } = renderOfflineHunt();
+        expect(container.querySelector('.oh__active')).not.toBeNull();
+        expect(container.querySelector('.oh__btn--claim')).not.toBeNull();
+        expect(container.textContent).toContain('Polowanie aktywne');
+        expect(container.textContent).toContain('Goblin');
+    });
+
+    it('omits the setup card when a hunt is active', () => {
+        useOfflineHuntStore.setState({
+            isActive: true,
+            startedAt: new Date().toISOString(),
+            targetMonster: {
+                id: 'goblin', name_pl: 'Goblin', level: 3, sprite: '👾',
+                hp: 50, defense: 1, speed: 1, attack: 5, xp: 10,
+                gold: [1, 2], magical: false,
+            } as never,
+            trainedSkillId: 'sword_fighting',
+        });
+        const { container } = renderOfflineHunt();
+        expect(container.querySelector('.oh__setup')).toBeNull();
+    });
+});
+
+describe('OfflineHunt — class variants', () => {
+    it('renders trainable skills for Mage class', () => {
+        useCharacterStore.setState({ character: makeChar({ class: 'Mage' }) });
+        const { container } = renderOfflineHunt();
+        const skills = container.querySelectorAll('.oh__skill-chip');
+        expect(skills.length).toBeGreaterThan(0);
+    });
+});
+
+// TODO: Cover the start-hunt happy path end-to-end (pick skill + monster → click
+//       Start → store flips isActive=true → claim renders modal). The store
+//       action `startHunt` mutates skillStore/combatStore — easier to assert
+//       via the offlineHuntStore unit tests rather than driving the chain
+//       through React + happy-dom.
+// TODO: Reward modal on claim — claimOfflineHunt() reads dozens of subsystem
+//       outputs (item drops, potions, chests, stones) and the modal renders a
+//       lot of art via getConsumableImage / getSpellChestImage etc. Skipped;
+//       offlineHuntSystem.test.ts already covers the reward math.
