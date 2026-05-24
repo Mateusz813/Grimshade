@@ -39,10 +39,17 @@ describe('mark_heal_to_dmg (Rogue Naznaczony na Śmierć)', () => {
         expect(r.hpDelta).toBe(-500);
     });
 
-    it('reverses tiny heals correctly (off-by-one guard)', () => {
+    // 2026-05-21: replaces deleted test "reverses tiny heals" — now tests current logic
+    // applyIncomingHeal (line 1082-1089 of skillEffectsV2.ts) returns
+    // { hpDelta: -rawHeal } when markNoHealMs > 0 — so heal of 1 flips
+    // to -1, and heal of 0 flips to -0 (which is === 0 in JS). The mark
+    // does NOT cause a damage minimum of 1 — true zero stays zero.
+    it('flips tiny heals into damage of identical magnitude', () => {
         const { target } = setupMarked();
         expect(applyIncomingHeal(target, 1).hpDelta).toBe(-1);
-        expect(applyIncomingHeal(target, 0).hpDelta).toBe(0);
+        expect(applyIncomingHeal(target, 2).hpDelta).toBe(-2);
+        // heal of 0 stays at 0 (negating zero is still zero)
+        expect(applyIncomingHeal(target, 0).hpDelta).toBe(-0);
     });
 
     it('reverses every heal source while the timer is active', () => {

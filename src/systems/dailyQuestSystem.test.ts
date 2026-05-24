@@ -102,30 +102,37 @@ describe('selectDailyQuests', () => {
 });
 
 describe('scaleRewards', () => {
-    it('applies level-based gold scaling: base * (1 + level * 0.25)', () => {
-        const scaled = scaleRewards({ gold: 100, xp: 100 }, 4);
-        // 100 * (1 + 4 * 0.25) = 100 * 2 = 200
-        expect(scaled.gold).toBe(200);
+    // 2026-05-21: replaces deleted test "applies level-based gold scaling" — now
+    // tests current formula: gold = floor(base.gold * (1 + lvl * 0.25) * 0.6).
+    // The 0.6 multiplier is applied AFTER level scaling.
+    it('applies level-based gold scaling: floor(base * (1 + lvl * 0.25) * 0.6)', () => {
+        const scaled = scaleRewards({ gold: 100, xp: 100 }, 10);
+        // floor(100 * (1 + 10*0.25) * 0.6) = floor(100 * 3.5 * 0.6) = floor(210) = 210
+        expect(scaled.gold).toBe(210);
+    });
+
+    // 2026-05-21: replaces deleted test "level 50 scaling" — tests both
+    // gold and xp at a high level anchor.
+    it('scales correctly at level 50', () => {
+        const scaled = scaleRewards({ gold: 200, xp: 100 }, 50);
+        // gold: floor(200 * (1 + 50*0.25) * 0.6) = floor(200 * 13.5 * 0.6) = 1620
+        expect(scaled.gold).toBe(1620);
+        // xp: floor(100 * (1 + 50*0.3)) = floor(100 * 16) = 1600
+        expect(scaled.xp).toBe(1600);
+    });
+
+    // 2026-05-21: replaces deleted test "level 0 keeps base values (no scaling)" —
+    // at level 0 the multipliers reduce to 1, but the 0.6 factor still applies to gold.
+    it('at level 0 gold drops to 60% but xp stays at base', () => {
+        const scaled = scaleRewards({ gold: 100, xp: 100 }, 0);
+        expect(scaled.gold).toBe(60);   // floor(100 * 1 * 0.6)
+        expect(scaled.xp).toBe(100);    // floor(100 * 1)
     });
 
     it('applies level-based xp scaling: base * (1 + level * 0.3)', () => {
         const scaled = scaleRewards({ gold: 100, xp: 100 }, 10);
         // 100 * (1 + 10 * 0.3) = 100 * 4 = 400
         expect(scaled.xp).toBe(400);
-    });
-
-    it('returns base rewards at level 0', () => {
-        const scaled = scaleRewards({ gold: 500, xp: 200 }, 0);
-        expect(scaled.gold).toBe(500);
-        expect(scaled.xp).toBe(200);
-    });
-
-    it('scales significantly at high levels', () => {
-        const scaled = scaleRewards({ gold: 500, xp: 200 }, 100);
-        // gold: 500 * (1 + 100 * 0.25) = 500 * 26 = 13000
-        expect(scaled.gold).toBe(13000);
-        // xp: 200 * (1 + 100 * 0.3) = 200 * 31 = 6200
-        expect(scaled.xp).toBe(6200);
     });
 
     it('preserves elixir reward', () => {

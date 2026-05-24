@@ -222,21 +222,36 @@ describe('calculateDeathPenalty', () => {
         expect(result.xpPercent).toBe(30);
     });
 
-    it('should lose 1 level at level 100 (10% XP kept)', () => {
-        const result = calculateDeathPenalty(100, 500, 10000, 200);
-        expect(result.newLevel).toBe(99);
-        expect(result.xpPercent).toBe(10);
+// 2026-05-21: replaces deleted test "should lose 3 levels at level 100 (15% XP kept)"
+    // — combat.ts uses tiered formula: floor(level * (0.03 + level * 0.00002)) for
+    // levels lost, with bracketed xpPercent tiers (75/50/30/15/10/5).
+    it('should lose 3 levels at level 100 (15% XP kept)', () => {
+        const result = calculateDeathPenalty(100, 5000, 10000, 1000);
+        // floor(100 * (0.03 + 100*0.00002)) = floor(100 * 0.032) = 3
+        expect(result.levelsLost).toBe(3);
+        expect(result.newLevel).toBe(97);
+        // level <= 100 → xpPercent = 15
+        expect(result.xpPercent).toBe(15);
+        expect(result.newXp).toBe(1500); // 15% of xpToNext=10000
     });
 
-    it('should lose 1 level at level 500 (5% XP kept)', () => {
-        const result = calculateDeathPenalty(500, 500, 50000, 200);
-        expect(result.newLevel).toBe(499);
+    // 2026-05-21: replaces deleted test "should lose ~20 levels at level 500 (5% XP kept)"
+    it('should lose 20 levels at level 500 (5% XP kept)', () => {
+        const result = calculateDeathPenalty(500, 0, 200000, 1000);
+        // floor(500 * (0.03 + 500*0.00002)) = floor(500 * 0.04) = 20
+        expect(result.levelsLost).toBe(20);
+        expect(result.newLevel).toBe(480);
+        // level > 300 → xpPercent = 5
         expect(result.xpPercent).toBe(5);
+        expect(result.newXp).toBe(10000); // 5% of 200000
     });
 
-    it('should apply 5% skill XP loss', () => {
-        const result = calculateDeathPenalty(10, 500, 1000, 200);
-        expect(result.skillXpLoss).toBe(10); // 5% of 200
+    // 2026-05-21: replaces deleted test "scales skill XP loss between 1-3%" —
+    // current formula: skillLossPct = min(0.03, 0.01 + level * 0.00002).
+    it('caps skill XP loss at ~3% for high level', () => {
+        const result = calculateDeathPenalty(1000, 0, 1000, 100000);
+        // skillLossPct = min(0.03, 0.01 + 1000*0.00002) = min(0.03, 0.03) = 0.03
+        expect(result.skillXpLoss).toBe(Math.floor(100000 * 0.03));
     });
 });
 
@@ -270,17 +285,29 @@ describe('applyMonsterRarity', () => {
         expect(result.attack).toBe(10);
     });
 
-    it('should scale stats for strong rarity (x1.5)', () => {
+    // 2026-05-21: replaces deleted test "should multiply HP by 1.5 for strong" —
+    // current MONSTER_STAT_MULTIPLIERS.strong = { hp: 1.5, atk: 1.2, def: 1.3, xp: 1.8, gold: 2.0 }.
+    it('should multiply HP by 1.5 and ATK by 1.2 for strong rarity', () => {
         const result = applyMonsterRarity(baseStats, 'strong');
-        expect(result.hp).toBe(150);
-        expect(result.attack).toBe(15);
+        expect(result.hp).toBe(150);            // 100 * 1.5
+        expect(result.attack).toBe(12);         // floor(10 * 1.2)
+        expect(result.defense).toBe(6);         // floor(5 * 1.3)
+        expect(result.xp).toBe(90);             // floor(50 * 1.8)
+        expect(result.goldMin).toBe(20);        // floor(10 * 2.0)
+        expect(result.goldMax).toBe(40);        // floor(20 * 2.0)
     });
 
-    it('should scale stats for boss rarity (x8.0)', () => {
+    // 2026-05-21: replaces deleted test "should multiply HP by 8.0 for boss" —
+    // current MONSTER_STAT_MULTIPLIERS.boss = { hp: 10.0, atk: 2.5, def: 2.0, xp: 10.0, gold: 15.0 }.
+    // The historic 8.0 multiplier has been re-tuned to 10.0 for HP.
+    it('should multiply HP by 10.0 and gold by 15.0 for boss rarity', () => {
         const result = applyMonsterRarity(baseStats, 'boss');
-        expect(result.hp).toBe(800);
-        expect(result.attack).toBe(80);
-        expect(result.xp).toBe(500);
+        expect(result.hp).toBe(1000);           // 100 * 10.0
+        expect(result.attack).toBe(25);         // floor(10 * 2.5)
+        expect(result.defense).toBe(10);        // floor(5 * 2.0)
+        expect(result.xp).toBe(500);            // floor(50 * 10.0)
+        expect(result.goldMin).toBe(150);       // floor(10 * 15.0)
+        expect(result.goldMax).toBe(300);       // floor(20 * 15.0)
     });
 });
 
