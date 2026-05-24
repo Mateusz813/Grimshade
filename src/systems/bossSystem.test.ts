@@ -222,12 +222,23 @@ describe('getScaledBossStats', () => {
 // ── resolveBoss ───────────────────────────────────────────────────────────────
 
 describe('resolveBoss', () => {
-  it('strong character beats the boss', () => {
+  // 2026-05-21: replaces deleted test "strong character beats the boss" — now tests current logic
+  // The constant `BOSS_REWARD_MULTIPLIER` still exists (= 1) but is no longer
+  // used by `resolveBoss` — XP and gold now come from `computeBossRewards(boss.level)`
+  // (see lines 175-209 of bossSystem.ts). Boss XP is deterministic per level,
+  // gold is rolled from the canonical [goldMin, goldMax] range.
+  it('strong character beats the boss with deterministic XP and gold in range', () => {
     const result = resolveBoss(BOSS, STRONG_CHAR);
     expect(result.won).toBe(true);
     expect(result.playerHpLeft).toBeGreaterThan(0);
-    expect(result.xp).toBe(BOSS.xp * BOSS_REWARD_MULTIPLIER);
-    expect(result.gold).toBeGreaterThan(0);
+
+    // XP must equal the canonical reward curve at boss.level (no multiplier).
+    const expected = computeBossRewards(BOSS.level);
+    expect(result.xp).toBe(expected.xp);
+
+    // Gold must fall inside the level-driven range from computeBossRewards.
+    expect(result.gold).toBeGreaterThanOrEqual(expected.goldMin);
+    expect(result.gold).toBeLessThanOrEqual(expected.goldMax);
   });
 
   it('weak character loses to the boss', () => {

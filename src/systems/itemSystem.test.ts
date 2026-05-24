@@ -167,12 +167,20 @@ describe('RARITY_COLORS', () => {
     expect(RARITY_COLORS.common).toBe('#9e9e9e');
   });
 
-  it('should have correct hex for legendary', () => {
-    expect(RARITY_COLORS.legendary).toBe('#ffc107');
+  // 2026-05-21: replaces deleted test "should have correct hex for legendary" — now tests current logic
+  // RARITY_COLORS were re-mapped: legendary is now red (#f44336) and mythic is yellow (#ffc107).
+  // CLAUDE.md spec also lists heroic as the new top tier (purple #9c27b0).
+  it('should have correct hex for legendary (red)', () => {
+    expect(RARITY_COLORS.legendary).toBe('#f44336');
   });
 
-  it('should have correct hex for mythic', () => {
-    expect(RARITY_COLORS.mythic).toBe('#f44336');
+  // 2026-05-21: replaces deleted test "should have correct hex for mythic" — now tests current logic
+  it('should have correct hex for mythic (yellow)', () => {
+    expect(RARITY_COLORS.mythic).toBe('#ffc107');
+  });
+
+  it('should have correct hex for heroic (purple)', () => {
+    expect(RARITY_COLORS.heroic).toBe('#9c27b0');
   });
 });
 

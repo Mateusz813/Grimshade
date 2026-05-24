@@ -1,0 +1,162 @@
+/**
+ * Tests for the potion-conversion (Alchemy) helpers.
+ *
+ * The data table `POTION_CONVERSIONS` ships verbatim from the spec
+ * (5×sm → 1×md, 4×md → 1×lg, …) — the tests assert the canonical recipe
+ * shape AND that the helpers (`getMaxConversions`, `checkConversionAvailability`)
+ * report the right batch counts for various inventory sizes.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+    POTION_CONVERSIONS,
+    getMaxConversions,
+    checkConversionAvailability,
+    type IPotionConversion,
+} from './potionConversion';
+
+const findConv = (
+    family: 'hp' | 'mp',
+    inputId: string,
+    outputId: string,
+): IPotionConversion | undefined =>
+    POTION_CONVERSIONS.find(
+        (c) => c.family === family && c.inputId === inputId && c.outputId === outputId,
+    );
+
+// ── POTION_CONVERSIONS table ────────────────────────────────────────────────
+
+describe('POTION_CONVERSIONS table', () => {
+    it('lists 14 conversions total (6 main HP + 1 mega HP + 6 main MP + 1 mega MP)', () => {
+        expect(POTION_CONVERSIONS).toHaveLength(14);
+    });
+
+    it('every entry has a non-empty input / output ID', () => {
+        for (const c of POTION_CONVERSIONS) {
+            expect(c.inputId).toBeTruthy();
+            expect(c.outputId).toBeTruthy();
+            expect(c.inputId).not.toBe(c.outputId);
+        }
+    });
+
+    it('every entry consumes 4 or 5 inputs per batch', () => {
+        for (const c of POTION_CONVERSIONS) {
+            expect([4, 5]).toContain(c.inputCount);
+        }
+    });
+
+    it('tier values are 1..7 (1..6 main chain, 7 for the alt mega branch)', () => {
+        for (const c of POTION_CONVERSIONS) {
+            expect(c.tier).toBeGreaterThanOrEqual(1);
+            expect(c.tier).toBeLessThanOrEqual(7);
+        }
+    });
+
+    it('main HP chain: 5×sm→md, 4×md→lg, 4×lg→great, 4×great→super, 4×super→ultimate, 5×ultimate→divine', () => {
+        expect(findConv('hp', 'hp_potion_sm', 'hp_potion_md')?.inputCount).toBe(5);
+        expect(findConv('hp', 'hp_potion_md', 'hp_potion_lg')?.inputCount).toBe(4);
+        expect(findConv('hp', 'hp_potion_lg', 'hp_potion_great')?.inputCount).toBe(4);
+        expect(findConv('hp', 'hp_potion_great', 'hp_potion_super')?.inputCount).toBe(4);
+        expect(findConv('hp', 'hp_potion_super', 'hp_potion_ultimate')?.inputCount).toBe(4);
+        expect(findConv('hp', 'hp_potion_ultimate', 'hp_potion_divine')?.inputCount).toBe(5);
+    });
+
+    it('main MP chain mirrors HP chain (same ratios)', () => {
+        expect(findConv('mp', 'mp_potion_sm', 'mp_potion_md')?.inputCount).toBe(5);
+        expect(findConv('mp', 'mp_potion_md', 'mp_potion_lg')?.inputCount).toBe(4);
+        expect(findConv('mp', 'mp_potion_lg', 'mp_potion_great')?.inputCount).toBe(4);
+        expect(findConv('mp', 'mp_potion_great', 'mp_potion_super')?.inputCount).toBe(4);
+        expect(findConv('mp', 'mp_potion_super', 'mp_potion_ultimate')?.inputCount).toBe(4);
+        expect(findConv('mp', 'mp_potion_ultimate', 'mp_potion_divine')?.inputCount).toBe(5);
+    });
+
+    it('alternate mega branch: 4×lg → mega for both families', () => {
+        const hpMega = findConv('hp', 'hp_potion_lg', 'hp_potion_mega');
+        const mpMega = findConv('mp', 'mp_potion_lg', 'mp_potion_mega');
+        expect(hpMega).toBeDefined();
+        expect(mpMega).toBeDefined();
+        expect(hpMega?.inputCount).toBe(4);
+        expect(mpMega?.inputCount).toBe(4);
+        expect(hpMega?.tier).toBe(7);
+        expect(mpMega?.tier).toBe(7);
+    });
+
+    it('outputMinLevel is monotonically non-decreasing along the main chain', () => {
+        const hpMain = POTION_CONVERSIONS.filter((c) => c.family === 'hp' && c.tier <= 6).sort((a, b) => a.tier - b.tier);
+        for (let i = 1; i < hpMain.length; i++) {
+            expect(hpMain[i].outputMinLevel).toBeGreaterThanOrEqual(hpMain[i - 1].outputMinLevel);
+        }
+    });
+
+    it('matches the canonical level gates: 20 / 50 / 100 / 200 / 400 / 600', () => {
+        const expected = [20, 50, 100, 200, 400, 600];
+        const hpMain = POTION_CONVERSIONS.filter((c) => c.family === 'hp' && c.tier <= 6)
+            .sort((a, b) => a.tier - b.tier)
+            .map((c) => c.outputMinLevel);
+        expect(hpMain).toEqual(expected);
+        const mpMain = POTION_CONVERSIONS.filter((c) => c.family === 'mp' && c.tier <= 6)
+            .sort((a, b) => a.tier - b.tier)
+            .map((c) => c.outputMinLevel);
+        expect(mpMain).toEqual(expected);
+    });
+
+    it('every conversion has a non-empty display name and icon for both input and output', () => {
+        for (const c of POTION_CONVERSIONS) {
+            expect(c.inputName).toBeTruthy();
+            expect(c.outputName).toBeTruthy();
+            expect(c.inputIcon).toBeTruthy();
+            expect(c.outputIcon).toBeTruthy();
+        }
+    });
+});
+
+// ── getMaxConversions ───────────────────────────────────────────────────────
+
+describe('getMaxConversions', () => {
+    const conv5 = findConv('hp', 'hp_potion_sm', 'hp_potion_md')!;
+    const conv4 = findConv('hp', 'hp_potion_md', 'hp_potion_lg')!;
+
+    it('floors owned / inputCount', () => {
+        expect(getMaxConversions(conv5, 0)).toBe(0);
+        expect(getMaxConversions(conv5, 4)).toBe(0);
+        expect(getMaxConversions(conv5, 5)).toBe(1);
+        expect(getMaxConversions(conv5, 9)).toBe(1);
+        expect(getMaxConversions(conv5, 10)).toBe(2);
+        expect(getMaxConversions(conv5, 100)).toBe(20);
+    });
+
+    it('works for the 4-input recipes too', () => {
+        expect(getMaxConversions(conv4, 3)).toBe(0);
+        expect(getMaxConversions(conv4, 4)).toBe(1);
+        expect(getMaxConversions(conv4, 12)).toBe(3);
+    });
+
+    it('returns 0 for negative inventory (defensive)', () => {
+        expect(getMaxConversions(conv5, -1)).toBeLessThanOrEqual(0);
+    });
+});
+
+// ── checkConversionAvailability ─────────────────────────────────────────────
+
+describe('checkConversionAvailability', () => {
+    const conv = findConv('hp', 'hp_potion_sm', 'hp_potion_md')!;
+
+    it('canConvert is true only when at least one full batch is available', () => {
+        expect(checkConversionAvailability(conv, 4).canConvert).toBe(false);
+        expect(checkConversionAvailability(conv, 5).canConvert).toBe(true);
+    });
+
+    it('reports the same maxBatches as getMaxConversions', () => {
+        for (const owned of [0, 4, 5, 10, 25, 100]) {
+            const a = checkConversionAvailability(conv, owned);
+            expect(a.maxBatches).toBe(getMaxConversions(conv, owned));
+        }
+    });
+
+    it('returns canConvert=false with maxBatches=0 for empty inventory', () => {
+        expect(checkConversionAvailability(conv, 0)).toEqual({
+            canConvert: false,
+            maxBatches: 0,
+        });
+    });
+});
