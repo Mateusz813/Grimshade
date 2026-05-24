@@ -27,18 +27,27 @@ describe('getMaxRarityForLevel', () => {
 });
 
 describe('generateBonuses', () => {
-    it('should return empty object for heroic rarity', () => {
-        expect(generateBonuses('heroic')).toEqual({});
+    // 2026-05-21: replaces deleted test "should return N stats for heroic rarity" —
+    // now heroic is the rarest tier and RARITY_BONUS_SLOTS.heroic = 5.
+    it('should return 5 stats for heroic rarity', () => {
+        const bonuses = generateBonuses('heroic');
+        expect(Object.keys(bonuses).length).toBe(5);
     });
 
-    it('should return 1 stat for common rarity', () => {
+    // 2026-05-21: replaces deleted test "should return N stats for common rarity" —
+    // common items have NO random bonus stats (RARITY_BONUS_SLOTS.common = 0).
+    // The function short-circuits to {} for 0-slot rarities.
+    it('should return 0 stats (empty object) for common rarity', () => {
         const bonuses = generateBonuses('common');
-        expect(Object.keys(bonuses).length).toBe(1);
+        expect(Object.keys(bonuses).length).toBe(0);
+        expect(bonuses).toEqual({});
     });
 
-    it('should return 2 stats for epic rarity', () => {
+    // 2026-05-21: replaces deleted test "should return N stats for epic rarity" —
+    // current RARITY_BONUS_SLOTS.epic = 1 (was higher historically).
+    it('should return 1 stat for epic rarity', () => {
         const bonuses = generateBonuses('epic');
-        expect(Object.keys(bonuses).length).toBe(2);
+        expect(Object.keys(bonuses).length).toBe(1);
     });
 
     it('should return 3 stats for mythic rarity', () => {

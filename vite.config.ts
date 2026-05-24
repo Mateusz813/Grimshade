@@ -1,9 +1,11 @@
-/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
 
+// 2026-05-21: vitest config wydzielona do dedykowanego `vitest.config.ts`
+// — patrz tam dla setupu happy-dom, coverage thresholds i excludes (E2E
+// w tests/e2e/ uruchamia Playwright, nie vitest).
 export default defineConfig({
   // 2026-05-21: expose `package.json` version as a global constant so
   // UI code can `import { APP_VERSION }` from a typed module without
@@ -61,7 +63,4 @@ export default defineConfig({
       },
     }),
   ],
-  test: {
-    environment: 'node',
-  },
 });

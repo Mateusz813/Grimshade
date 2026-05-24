@@ -135,12 +135,25 @@ describe('transformSystem', () => {
       expect(xpElixir!.count).toBe(5);
     });
 
-    it('should include permanent bonuses', () => {
+    // 2026-05-21: replaces deleted test "should include permanent bonuses" — now tests current logic
+    // Per-transform bonuses are now CLASS-SPECIFIC (CLASS_TRANSFORM_BONUSES) and
+    // scale by tier multiplier (1.0 at T1, +0.3 per tier). For Knight T1 the
+    // baseline bonuses are: hpPercent=4, defPercent=3, dmgPercent=3, flatHp=420,
+    // flatMp=70, attack=9, defense=16, hpRegenFlat=0.5, mpRegenFlat=0.1.
+    it('should include permanent bonuses scaled per class (Knight T1 baseline)', () => {
       const rewards = calculateTransformRewards(1, 'Knight');
-      expect(rewards.permanentBonuses.hpPercent).toBe(3);
-      expect(rewards.permanentBonuses.attack).toBe(2);
-      expect(rewards.permanentBonuses.defense).toBe(2);
-      expect(rewards.permanentBonuses.classSkillBonus).toBe(1);
+      const b = rewards.permanentBonuses;
+      // Percent bonuses do NOT scale with tier — they're flat per tier.
+      expect(b.hpPercent).toBe(4);
+      expect(b.defPercent).toBe(3);
+      expect(b.dmgPercent).toBe(3);
+      // Flat rewards at T1 mult=1.0 equal the baseline values.
+      expect(b.flatHp).toBe(420);
+      expect(b.flatMp).toBe(70);
+      expect(b.attack).toBe(9);
+      expect(b.defense).toBe(16);
+      expect(b.hpRegenFlat).toBeCloseTo(0.5, 4);
+      expect(b.mpRegenFlat).toBeCloseTo(0.1, 4);
     });
 
     it('should return zero bonuses for invalid transform', () => {
@@ -172,15 +185,22 @@ describe('transformSystem', () => {
   });
 
   describe('getTransformBonuses', () => {
-    it('should return per-transform bonuses', () => {
-      const bonuses = getTransformBonuses(1);
-      expect(bonuses.hpPercent).toBe(3);
-      expect(bonuses.mpPercent).toBe(3);
-      expect(bonuses.hpRegen).toBe(0.05);
-      expect(bonuses.mpRegen).toBe(0.05);
-      expect(bonuses.attack).toBe(2);
-      expect(bonuses.defense).toBe(2);
-      expect(bonuses.classSkillBonus).toBe(1);
+    // 2026-05-21: replaces deleted test "per-transform bonuses" — now tests current logic
+    // The function is now class-aware: with no class passed it returns EMPTY_BONUSES.
+    // With a class it returns getClassTransformBonuses(class, tid) — same as the rewards path.
+    it('returns class-specific bonuses when class is provided (Knight T1)', () => {
+      const b = getTransformBonuses(1, 'Knight');
+      expect(b.hpPercent).toBe(4);
+      expect(b.flatHp).toBe(420);
+      expect(b.attack).toBe(9);
+      expect(b.defense).toBe(16);
+    });
+
+    it('returns zero bonuses when class is omitted', () => {
+      const b = getTransformBonuses(1);
+      expect(b.hpPercent).toBe(0);
+      expect(b.attack).toBe(0);
+      expect(b.flatHp).toBe(0);
     });
 
     it('should return zeros for invalid transform', () => {
@@ -197,20 +217,40 @@ describe('transformSystem', () => {
       expect(bonuses.attack).toBe(0);
     });
 
-    it('should accumulate bonuses from multiple transforms', () => {
-      const bonuses = getCumulativeTransformBonuses([1, 2, 3]);
-      expect(bonuses.hpPercent).toBe(9); // 3 * 3
-      expect(bonuses.attack).toBe(6); // 3 * 2
-      expect(bonuses.defense).toBe(6);
-      expect(bonuses.classSkillBonus).toBe(3);
+    // 2026-05-21: replaces deleted test "accumulates 3 transforms correctly" — now tests current logic
+    // Cumulative path: for each completed transform id, call
+    // getClassTransformBonuses(class, tid) and sum the fields. Tier multiplier
+    // grows by 0.3 per tier (T1=1.0, T2=1.3, T3=1.6). floor() is applied PER
+    // tier to flat fields, so the cumulative sum is the sum of floors —
+    // not the floor of the sum. Percent fields don't scale by tier.
+    it('accumulates 3 Knight transforms (T1+T2+T3)', () => {
+      const bonuses = getCumulativeTransformBonuses([1, 2, 3], 'Knight');
+      // hpPercent: 4 + 4 + 4 = 12 (no tier scaling on percent fields)
+      expect(bonuses.hpPercent).toBe(12);
+      // attack: floor(9*1.0) + floor(9*1.3) + floor(9*1.6) = 9 + 11 + 14 = 34
+      expect(bonuses.attack).toBe(34);
+      // defense: floor(16*1.0) + floor(16*1.3) + floor(16*1.6) = 16 + 20 + 25 = 61
+      expect(bonuses.defense).toBe(61);
+      // flatHp: 420 + floor(420*1.3) + floor(420*1.6) = 420 + 546 + 672 = 1638
+      expect(bonuses.flatHp).toBe(1638);
     });
 
-    it('should accumulate all 11 transforms correctly', () => {
-      const allIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-      const bonuses = getCumulativeTransformBonuses(allIds);
-      expect(bonuses.hpPercent).toBe(33); // 11 * 3
-      expect(bonuses.attack).toBe(22); // 11 * 2
-      expect(bonuses.hpRegen).toBeCloseTo(0.55); // 11 * 0.05
+    // 2026-05-21: replaces deleted test "accumulates all 11 transforms" — now tests current logic
+    it('accumulates all 11 Knight transforms', () => {
+      const all = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+      const bonuses = getCumulativeTransformBonuses(all, 'Knight');
+      // hpPercent: 4 * 11 = 44
+      expect(bonuses.hpPercent).toBe(44);
+      // attack: sum of floor(9 * mult) for mult ∈ {1.0,1.3,...,4.0} = 243
+      // (9+11+14+17+19+22+25+27+30+33+36 = 243)
+      expect(bonuses.attack).toBe(243);
+    });
+
+    it('returns zeros when class is omitted (even with completed transforms)', () => {
+      const bonuses = getCumulativeTransformBonuses([1, 2, 3]);
+      expect(bonuses.hpPercent).toBe(0);
+      expect(bonuses.attack).toBe(0);
+      expect(bonuses.flatHp).toBe(0);
     });
   });
 
