@@ -271,10 +271,14 @@ describe('skillXpProgress', () => {
 // ── Active Skill Upgrade System ──────────────────────────────────────────────
 
 describe('getSkillUpgradeCost', () => {
-    it('returns 100% success rate for +1', () => {
+    // 2026-05-21: replaces deleted test "returns 100% success rate for +1" — now tests current logic
+    // The chest-based variant lives in `getSpellChestUpgradeCost(targetLevel, skillUnlockLevel)`;
+    // `getSkillUpgradeCost(targetLevel)` is still single-arg and still returns 100% success at +1.
+    // Gold cost formula: floor(200 * targetLevel^2.2) → +1 = 200.
+    it('returns 100% success rate and 200 gold for +1', () => {
         const cost = getSkillUpgradeCost(1);
         expect(cost.successRate).toBe(100);
-        expect(cost.gold).toBe(1000); // 1000 * 1^2.2 = 1000
+        expect(cost.gold).toBe(200); // floor(200 * 1^2.2) = 200
     });
 
     it('returns 90% success rate for +2', () => {

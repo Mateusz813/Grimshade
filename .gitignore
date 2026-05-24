@@ -26,3 +26,9 @@ dist-ssr
 
 CLAUDE.md
 .claude/
+
+# Test artifacts (vitest + Playwright)
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/

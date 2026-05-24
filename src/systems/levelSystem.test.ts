@@ -79,9 +79,22 @@ describe('processXpGain', () => {
         expect(result.remainingXp).toBe(42);
     });
 
-    it('does not exceed level 1000', () => {
-        const result = processXpGain(999, 0, xpToNextLevel(999) + xpToNextLevel(1000) + 9999);
-        expect(result.newLevel).toBe(1000);
+    // 2026-05-21: replaces deleted test "does not exceed level 1000" — now tests current logic
+    // The hard level cap at 1000 was lifted per 2026-05-11 spec: each level past 1000
+    // costs 10% more XP than the previous (xpToNextLevel(L) = anchor * 1.10^(L-1000)).
+    // processXpGain still bounds runaway loops at HARD_SAFETY_CAP = 10_000.
+    it('can advance past level 1000 (cap was removed)', () => {
+        // From level 1000 with enough XP to push at least 1 level
+        const need = xpToNextLevel(1000);
+        const result = processXpGain(1000, 0, need);
+        expect(result.newLevel).toBe(1001);
+        expect(result.levelsGained).toBe(1);
+    });
+
+    it('is bounded by HARD_SAFETY_CAP (10000) on absurd XP gains', () => {
+        // Absurd input — engine should not loop forever. Cap is the bound.
+        const result = processXpGain(1, 0, Number.MAX_SAFE_INTEGER);
+        expect(result.newLevel).toBeLessThanOrEqual(10_000);
     });
 });
 
@@ -196,10 +209,15 @@ describe('applyFleePenalty', () => {
 // ── applyDeathXpPenalty (legacy) ─────────────────────────────────────────────
 
 describe('applyDeathXpPenalty', () => {
-    it('reduces XP by 10% of current level requirement', () => {
-        const result = applyDeathXpPenalty(500, 10);
-        const penalty = Math.floor(xpToNextLevel(10) * 0.1);
-        expect(result).toBe(500 - penalty);
+    // 2026-05-21: replaces deleted test "reduces XP by 10%" — now tests current logic
+    // applyDeathXpPenalty is kept for backwards compatibility. Formula:
+    //   penalty = floor(xpToNextLevel(currentLevel) * 0.1)
+    //   result  = max(0, currentXp - penalty)
+    // xpToNextLevel(1) = 300, so penalty at level 1 is 30.
+    it('reduces XP by 10% of the next-level XP requirement', () => {
+        // currentXp must be larger than penalty so we can observe the subtraction.
+        const penalty = Math.floor(xpToNextLevel(1) * 0.1); // 30
+        expect(applyDeathXpPenalty(1000, 1)).toBe(1000 - penalty);
     });
 
     it('does not go below 0', () => {
