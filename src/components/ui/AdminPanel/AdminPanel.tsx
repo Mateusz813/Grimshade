@@ -44,7 +44,33 @@ import monstersRaw from '../../../data/monsters.json';
 import questsRaw from '../../../data/quests.json';
 import './AdminPanel.scss';
 
+/**
+ * Set of email addresses authorized to open the Admin Panel.
+ *
+ * Includes:
+ *  - Production owner (`krasek39@gmail.com`) — primary admin
+ *  - E2E test admin (`e2e-admin@grimshade-test.local`) — only used by Playwright
+ *    full 9-tab admin smoke tests; populated via `seedTestAdminAccount.ts`
+ *    helper when missing. Has zero impact on production users because it lives
+ *    in fake-TLD domain that Supabase can't deliver mail to + isn't shared
+ *    with anyone in real onboarding flows.
+ *
+ * `ADMIN_EMAIL` kept as legacy named export pointing at production owner so
+ * existing imports keep working (AvatarMenu re-exports for backward compat).
+ */
+export const ADMIN_EMAILS = new Set<string>([
+    'krasek39@gmail.com',
+    'e2e-admin@grimshade-test.local',
+]);
+
+/** Legacy single-email export — points at primary production owner. */
 export const ADMIN_EMAIL = 'krasek39@gmail.com';
+
+/** Returns true if email matches ANY entry in ADMIN_EMAILS (case-insensitive). */
+export const isAdminEmail = (email: string | null | undefined): boolean => {
+    if (!email) return false;
+    return ADMIN_EMAILS.has(email.toLowerCase());
+};
 
 type TTab = 'char' | 'inv' | 'skill' | 'tasks' | 'quests' | 'walki' | 'social' | 'system' | 'nuke';
 
@@ -98,7 +124,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             const { data } = await supabase.auth.getSession();
             if (cancelled) return;
             const email = data.session?.user?.email?.toLowerCase() ?? null;
-            setAuthorised(email === ADMIN_EMAIL.toLowerCase());
+            setAuthorised(isAdminEmail(email));
         })();
         return () => { cancelled = true; };
     }, []);

@@ -2945,6 +2945,28 @@ const Trainer = () => {
         if (sd) applySkillBuff(def.id, sd, speedMult);
     }, [character, activeSkillSlots, myAttack, trainerCount, speedMult, noCooldowns, aggroTargetId, dummyHpPct, fx, pushDamage, addLog, rollBasicHit, deadAllies, isMultiHumanParty]);
 
+    // 2026-05 v6: sync speed with global BuffStore so the central
+    // BuffBar tick drains skill buffs at the matching rate.
+    // NOTE (2026-05-25): moved ABOVE the `if (!character)` early-return so the
+    // hook is registered on the first render even when character is null.
+    // Same Rules of Hooks bug as Boss/Transform/Dungeon — early return between
+    // hooks crashes the subtree on the next render after character hydrates
+    // (hook count changes between renders). The effect doesn't touch character
+    // so moving it is safe.
+    useEffect(() => {
+        useBuffStore.getState().setCombatSpeedMult(speedMult);
+        return () => useBuffStore.getState().setCombatSpeedMult(1);
+    }, [speedMult]);
+
+    // 2026-05-25: necroSummons subscription ALSO moved here (was previously
+    // line 3066, AFTER the early return). The store reads via
+    // `summons[character.id]` — when character is null we fall back to an
+    // empty string key which never matches → store returns undefined → the
+    // `?? []` fallback yields an empty list. Identical visible behaviour as
+    // returning empty when character is null, but the hook order is now
+    // stable across renders.
+    const necroSummonsForPlayer = useNecroSummonStore((s) => s.summons[character?.id ?? '']) ?? [];
+
     if (!character) {
         return (
             <div className="trainer trainer--loading">
@@ -2952,13 +2974,6 @@ const Trainer = () => {
             </div>
         );
     }
-
-    // 2026-05 v6: sync speed with global BuffStore so the central
-    // BuffBar tick drains skill buffs at the matching rate.
-    useEffect(() => {
-        useBuffStore.getState().setCombatSpeedMult(speedMult);
-        return () => useBuffStore.getState().setCombatSpeedMult(1);
-    }, [speedMult]);
 
     // ── Speed cycle (X1→X2→X4→X1) for the unified chip ────────────────
     // BuffStore.combatSpeedMult sync is handled by the
@@ -3057,7 +3072,10 @@ const Trainer = () => {
     // REACTIVE subscription via the hook (not getState()) so spawning
     // a new summon re-renders this view immediately. With getState()
     // the avatar swap waited for some unrelated state change.
-    const necroSummonsForPlayer = useNecroSummonStore((s) => s.summons[character.id]) ?? [];
+    // NOTE (2026-05-25): `necroSummonsForPlayer` is now declared ABOVE the
+    // early-return guard (see hook above) so its call site stays at a stable
+    // hook position across renders. Reference here is just kept for the
+    // surrounding derived constants (SUMMON_RANK / frontSummon).
     const SUMMON_RANK = { skeleton: 0, ghost: 1, demon: 2, lich: 3 } as const;
     const frontSummon = necroSummonsForPlayer.length > 0
         ? [...necroSummonsForPlayer].sort((a, b) => SUMMON_RANK[a.type] - SUMMON_RANK[b.type])[0]

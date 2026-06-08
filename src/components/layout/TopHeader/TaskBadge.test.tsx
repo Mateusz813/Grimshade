@@ -1,5 +1,37 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
+
+// Mock `getQuestById` BEFORE importing the component — the spec
+// "hides quests whose minLevel exceeds the player level" needs to
+// inject a quest definition with `minLevel: 100`. The default
+// export returns `undefined` for unknown ids, which short-circuits
+// the level guard in TaskBadge and prevents the test from exercising
+// the filter branch we're trying to verify.
+vi.mock('../../../stores/questStore', async () => {
+    const actual = await vi.importActual<typeof import('../../../stores/questStore')>(
+        '../../../stores/questStore',
+    );
+    return {
+        ...actual,
+        getQuestById: vi.fn((id: string) => {
+            if (id === 'high-lvl-quest') {
+                return {
+                    id: 'high-lvl-quest',
+                    name_pl: 'Wysokopoziomowy quest',
+                    name_en: 'High level quest',
+                    description_pl: '',
+                    description_en: '',
+                    category: 'main',
+                    minLevel: 100,
+                    goals: [{ type: 'kill', monsterId: 'rat', count: 50 }],
+                    rewards: { gold: 0, xp: 0 },
+                };
+            }
+            return undefined;
+        }),
+    };
+});
+
 import TaskBadge from './TaskBadge';
 import { useTaskStore } from '../../../stores/taskStore';
 import { useQuestStore } from '../../../stores/questStore';
@@ -118,10 +150,7 @@ describe('TaskBadge', () => {
         expect(pending.querySelector('.top-header__tasks-icon')?.textContent).toBe('📋');
     });
 
-    // TODO: test requires mocking getQuestById to return a quest with
-    // minLevel — bez tego filter w komponencie nie triggeruje się bo
-    // unknown questId zwraca null. Skipnij until proper quest fixture.
-    it.skip('hides quests whose minLevel exceeds the player level', () => {
+    it('hides quests whose minLevel exceeds the player level', () => {
         // Player lvl 5, quest requires lvl 100 — should be filtered out.
         useCharacterStore.setState((s) => ({
             character: { ...(s.character ?? {}), level: 5 } as unknown as typeof s.character,

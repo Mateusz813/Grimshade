@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { renderHook, cleanup } from '@testing-library/react';
 
 /**
  * useLeaderboardStatSync tests
@@ -50,6 +50,16 @@ beforeEach(() => {
     useQuestStore.setState({ completedQuestIds: [] } as unknown as ReturnType<typeof useQuestStore.getState>);
     useDailyQuestStore.setState({ activeQuests: [] } as unknown as ReturnType<typeof useDailyQuestStore.getState>);
     useSkillStore.setState({ skillUpgradeLevels: {} });
+});
+
+afterEach(() => {
+    // Without this every prior `renderHook(useLeaderboardStatSync)`
+    // stays subscribed to the Zustand `useCharacterStore`. When a
+    // later test calls `useCharacterStore.setState(...)`, all those
+    // stale subscriptions re-fire the effect — inflating
+    // `bumpStat.mock.calls.length` and breaking exact-count assertions.
+    // `cleanup()` unmounts every hook rendered via `renderHook`.
+    cleanup();
 });
 
 describe('useLeaderboardStatSync', () => {
@@ -137,10 +147,7 @@ describe('useLeaderboardStatSync', () => {
         }
     });
 
-    // TODO: timing-related — renderHook rerender + characterStore.subscribe
-    // doesn't flush in expected order. Hook does correct one-shot logic
-    // (verified manually in browser), just hard to assert in test env.
-    it.skip('does NOT re-fire on subsequent re-renders for the same character', () => {
+    it('does NOT re-fire on subsequent re-renders for the same character', () => {
         useCharacterStore.setState({ character: makeChar('same-id') });
         const { rerender } = renderHook(() => useLeaderboardStatSync());
         expect(characterApi.bumpStat).toHaveBeenCalledTimes(4);
@@ -150,20 +157,15 @@ describe('useLeaderboardStatSync', () => {
             character: { ...makeChar('same-id'), gold: 999 } as ICharacter,
         });
         rerender();
-        // Some test harnesses re-run effects on store update — what matters
-        // is the per-character guard. Filter calls by character id and
-        // assert we never see more than 4 calls per id snapshot.
-        // (Even if it re-ran, it would still pass with same id, but our
-        // ref guard means it shouldn't.)
+        // syncedRef tracks the last id we synced. Even with a brand-new
+        // character object the id matches the previous run, so the
+        // effect returns early after the ref check — no extra bumps.
         const ids = (characterApi.bumpStat as ReturnType<typeof vi.fn>).mock.calls
             .map((c) => c[0]?.characterId);
-        // We expect exactly 4 calls — one per stat, no duplicates.
         expect(ids.filter((i) => i === 'same-id').length).toBe(4);
     });
 
-    // TODO: same root cause as above — character switch via setState
-    // doesn't synchronously trigger re-render in renderHook.
-    it.skip('re-fires when the character actually switches (different id)', () => {
+    it('re-fires when the character actually switches (different id)', () => {
         useCharacterStore.setState({ character: makeChar('alpha') });
         const { rerender } = renderHook(() => useLeaderboardStatSync());
         expect(characterApi.bumpStat).toHaveBeenCalledTimes(4);

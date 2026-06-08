@@ -2091,9 +2091,14 @@ const Transform = () => {
 
   // ── Render helpers ──────────────────────────────────────────────────────────
 
-  if (!character) {
-    return <div className="transform"><p>Brak postaci.</p></div>;
-  }
+  // NOTE: `if (!character)` early-return moved DOWN past every hook in this
+  // component (after `doManualSkill` useCallback below). Returning early up
+  // here caused a Rules of Hooks violation — on first render character was
+  // null so React stopped counting hooks; on the next render character was
+  // hydrated and `doManualSkill` useCallback registered, breaking hook order
+  // and crashing the entire <Boss>-style component tree. E2E
+  // `combat/transform/page-loads.spec.ts` was failing with the React "change
+  // in the order of Hooks" error before this move.
 
   const nameKey = language === 'pl' ? 'name_pl' : 'name_en';
 
@@ -3083,6 +3088,14 @@ const Transform = () => {
   };
 
   // ── Main render ────────────────────────────────────────────────────────────
+
+  // Guard placed AFTER every hook in this component so we never alter hook
+  // call order between renders (Rules of Hooks). Render helpers above are
+  // closures — they don't execute until invoked from the JSX below, so an
+  // early bail-out here keeps them safely dormant when `character` is null.
+  if (!character) {
+    return <div className="transform"><p>Brak postaci.</p></div>;
+  }
 
   return (
     <div className={`transform${phase === 'fighting' ? ' transform--fighting' : ''}`}>

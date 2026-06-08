@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { useActivityTracker } from './useActivityTracker';
 import { useSkillStore } from '../stores/skillStore';
 
@@ -47,6 +47,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    // Unmount every `renderHook` from the previous test so the
+    // hook's `removeEventListener` / `clearInterval` cleanup fires.
+    // Otherwise prior listeners remain wired to window/document and
+    // a later test's `dispatchEvent` triggers spies from every test
+    // accumulated in the run.
+    cleanup();
     vi.useRealTimers();
 });
 
@@ -152,11 +158,7 @@ describe('useActivityTracker', () => {
         expect(onActivityChangeSpy).toHaveBeenLastCalledWith(false);
     });
 
-    // TODO: flaky test — happy-dom event listener cleanup timing.
-    // Hook removes listeners via useEffect cleanup, but test asserts
-    // that no calls happen post-unmount which fails due to micro-task
-    // ordering in @testing-library/react. Hook behavior is correct.
-    it.skip('removes listeners on unmount (no calls after unmount)', () => {
+    it('removes listeners on unmount (no calls after unmount)', () => {
         const { unmount } = renderHook(() => useActivityTracker());
         unmount();
         onActivityChangeSpy.mockClear();

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { marketApi } from '../api/v1/marketApi';
+import { useCharacterStore } from './characterStore';
 import {
     isValidPrice,
     isValidQuantity,
@@ -166,49 +167,35 @@ export const useMarketStore = create<IMarketStore>()((set, get) => ({
         }
     },
 
+    /**
+     * Buy `qty` units of a listing via the SECURITY DEFINER
+     * `buy_market_listing` RPC.
+     *
+     * 2026-05-25 v3 (production-bug fix): switched from the
+     * `getListing + decrementListing` chain to the server-side
+     * `marketApi.buyListing` RPC. The old chain ran the UPDATE/DELETE
+     * as the BUYER's auth session — RLS on `market_listings` silently
+     * NO-OPed it for cross-user rows, leaving the listing in place
+     * even though the UI showed success. Same listing could be bought
+     * infinitely.
+     *
+     * The new RPC atomically locks the row, validates not-self / in-stock /
+     * qty-sane, decrements (or deletes on stack-empty), and inserts the
+     * sale notification all in one call. One RPC per buy regardless of qty.
+     */
     buyListing: async (listingId, qty) => {
         if (!isValidQuantity(qty)) return null;
+        const buyerCharacterId = useCharacterStore.getState().character?.id;
+        if (!buyerCharacterId) {
+            set({ isLoading: false, error: 'Brak postaci — zaloguj się ponownie.' });
+            return null;
+        }
+
         set({ isLoading: true, error: null });
+        let result: Awaited<ReturnType<typeof marketApi.buyListing>>;
         try {
-            // Verify listing still exists + has enough remaining qty.
-            const listing = await marketApi.getListing(listingId);
-            if (!listing) {
-                set({ isLoading: false, error: 'Oferta już nie istnieje' });
-                return null;
-            }
-            if (qty > listing.quantity) {
-                set({ isLoading: false, error: 'Nie ma już tylu sztuk na ofercie' });
-                return null;
-            }
-            const totalPaid = listing.price * qty;
-            // Decrement (or delete when stack hits 0).
-            const after = await marketApi.decrementListing(listingId, qty);
-            // Refresh local copy of all listings — easier than splicing.
-            set((state) => ({
-                listings: after && after.quantity > 0
-                    ? state.listings.map((l) => (l.id === listingId ? after : l))
-                    : state.listings.filter((l) => l.id !== listingId),
-                myListings: after && after.quantity > 0
-                    ? state.myListings.map((l) => (l.id === listingId ? after : l))
-                    : state.myListings.filter((l) => l.id !== listingId),
-                isLoading: false,
-            }));
-            // Best-effort sale notification for the seller (visible next
-            // time they open the market).
-            void marketApi.createSaleNotification({
-                sellerId: listing.sellerId,
-                itemId: listing.itemId,
-                itemName: listing.itemName,
-                rarity: listing.rarity,
-                quantitySold: qty,
-                goldReceived: totalPaid,
-            });
-            return { listing, quantity: qty, totalPaid };
+            result = await marketApi.buyListing(listingId, buyerCharacterId, qty);
         } catch (e) {
-            // Surface the raw Supabase error so the player sees WHY.
-            // Most common cause is RLS denying DELETE/UPDATE on rows
-            // owned by another user — fix is a permissive market_listings
-            // policy or a server-side RPC.
             const msg = (e as { message?: string })?.message;
             set({
                 isLoading: false,
@@ -216,6 +203,63 @@ export const useMarketStore = create<IMarketStore>()((set, get) => ({
             });
             return null;
         }
+
+        if (!result.ok) {
+            const reason = result.reason;
+            const errorMsg =
+                reason === 'rpc_missing'
+                    ? 'Nie udało się kupić: serwerowa funkcja "buy_market_listing" '
+                      + 'nie jest jeszcze zainstalowana. Zastosuj migrację '
+                      + 'scripts/market_buy_rpc_migration.sql.'
+                    : reason === 'not_found'
+                        ? 'Oferta już nie istnieje.'
+                        : reason === 'own_listing'
+                            ? 'Nie możesz kupić własnej oferty.'
+                            : reason === 'out_of_stock'
+                                ? 'Oferta już się skończyła.'
+                                : reason === 'invalid_quantity'
+                                    ? 'Nieprawidłowa ilość.'
+                                    : `Nie udało się kupić: ${reason}`;
+            set({ isLoading: false, error: errorMsg });
+            return null;
+        }
+
+        // Hydrate IMarketListing shape from the RPC return so the
+        // caller (Market.tsx) can credit the buyer's inventory using
+        // the same `result.listing.kind / itemId / …` contract it had
+        // before the refactor.
+        const unitsBought = result.quantityPurchased;
+        const listing: IMarketListing = {
+            id: result.listingId,
+            sellerId: result.sellerId,
+            sellerName: result.sellerName,
+            kind: result.kind,
+            itemId: result.itemId,
+            itemName: result.itemName,
+            itemLevel: result.itemLevel,
+            rarity: result.rarity,
+            slot: result.slot,
+            price: result.price,
+            quantity: result.remainingQty,
+            quantityInitial: result.remainingQty + unitsBought,
+            bonuses: result.bonuses,
+            upgradeLevel: result.upgradeLevel,
+            listedAt: '',
+        };
+        const totalPaid = listing.price * unitsBought;
+
+        // Splice / replace local copy so the UI updates without a refetch.
+        set((state) => ({
+            listings: result.ok && result.remainingQty > 0
+                ? state.listings.map((l) => (l.id === listingId ? { ...l, quantity: result.remainingQty } : l))
+                : state.listings.filter((l) => l.id !== listingId),
+            myListings: result.ok && result.remainingQty > 0
+                ? state.myListings.map((l) => (l.id === listingId ? { ...l, quantity: result.remainingQty } : l))
+                : state.myListings.filter((l) => l.id !== listingId),
+            isLoading: false,
+        }));
+
+        return { listing, quantity: unitsBought, totalPaid };
     },
 
     dismissNotification: async (id) => {

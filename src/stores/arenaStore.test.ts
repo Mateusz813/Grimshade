@@ -91,12 +91,13 @@ describe('consumeAttempt', () => {
         expect(useArenaStore.getState().dailyAttempts.count).toBe(1);
     });
 
-    // TODO: pre-existing flake — agent's mock setup for daily limit
-    // counter doesn't match actual store behavior. Store logic verified
-    // manually; test setup needs fresh consumeAttempt() loop.
-    it.skip('returns false once 10 attempts have been used today', () => {
+    it('returns false once 10 attempts have been used today', () => {
         // Reuse today's bucket — count=10 should reject the next request.
-        const today = useArenaStore.getState().dailyAttempts.day;
+        // The store reads `new Date().toISOString().slice(0, 10)` to
+        // determine "today" — use the same primitive here so the bucket
+        // is recognized as current, otherwise `consumeAttempt` would
+        // see the day as stale and roll the counter back to 1.
+        const today = new Date().toISOString().slice(0, 10);
         useArenaStore.setState({
             currentArena: null,
             seasonStartIso: null,
@@ -139,9 +140,12 @@ describe('attemptsRemaining', () => {
         expect(useArenaStore.getState().attemptsRemaining()).toBe(10);
     });
 
-    // TODO: same root cause as above — daily counter mocking.
-    it.skip('reflects partial usage during the day', () => {
-        const today = useArenaStore.getState().dailyAttempts.day;
+    it('reflects partial usage during the day', () => {
+        // Same fix as `consumeAttempt` — `attemptsRemaining` compares
+        // `state.dailyAttempts.day` against `todayIso()`. Anything
+        // other than today's ISO date triggers the rollover path that
+        // returns the full daily budget. Use a fresh today key here.
+        const today = new Date().toISOString().slice(0, 10);
         useArenaStore.setState({
             currentArena: null,
             seasonStartIso: null,

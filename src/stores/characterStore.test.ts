@@ -166,6 +166,102 @@ describe('addXp', () => {
         expect(c.mp).toBe(c.max_mp);
     });
 
+    // ── GAP #4 — level-up grants 100% HP/MP, no free heal without leveling ──
+    // Source: characterStore.addXp → `didLevelUp ? effectiveMaxHp : clamp`.
+    // On a genuine level-up HP and MP must snap to the FULL effective max
+    // (base + per-level gain + equip + training). Without a level-up the XP
+    // pointer moves but HP/MP must NOT be topped up — XP alone never heals.
+    it('GAP #4: full-heals HP AND MP to the effective max on level-up (started low)', () => {
+        useCharacterStore.getState().setCharacter(makeChar({
+            class: 'Mage', // Mage: +3 HP, +8 MP per level — verifies both pools
+            level: 1,
+            xp: 0,
+            hp: 3,
+            max_hp: 80,
+            mp: 2,
+            max_mp: 120,
+            highest_level: 1,
+        }));
+        useCharacterStore.getState().addXp(xpToNextLevel(1));
+        const c = useCharacterStore.getState().character!;
+        expect(c.level).toBe(2);
+        // No equipment / training in this test → effective max == base max,
+        // which already includes the per-level HP/MP bump. Full heal means
+        // current == max for BOTH pools.
+        expect(c.hp).toBe(c.max_hp);
+        expect(c.mp).toBe(c.max_mp);
+        // Sanity: the heal actually moved the pools up from the seeded lows.
+        expect(c.hp).toBeGreaterThan(3);
+        expect(c.mp).toBeGreaterThan(2);
+    });
+
+    it('GAP #4: a multi-level jump still ends at 100% HP/MP', () => {
+        useCharacterStore.getState().setCharacter(makeChar({
+            level: 1,
+            xp: 0,
+            hp: 1,
+            max_hp: 100,
+            mp: 1,
+            max_mp: 30,
+            highest_level: 1,
+        }));
+        // Enough XP to clear several early levels in one call.
+        const bulk = xpToNextLevel(1) + xpToNextLevel(2) + xpToNextLevel(3);
+        const result = useCharacterStore.getState().addXp(bulk);
+        expect(result.levelsGained).toBeGreaterThanOrEqual(2);
+        const c = useCharacterStore.getState().character!;
+        expect(c.hp).toBe(c.max_hp);
+        expect(c.mp).toBe(c.max_mp);
+    });
+
+    it('GAP #4: XP gain WITHOUT a level-up does NOT heal HP/MP (no free heal)', () => {
+        useCharacterStore.getState().setCharacter(makeChar({
+            level: 5,
+            xp: 0,
+            hp: 40,   // intentionally damaged, below max
+            max_hp: 200,
+            mp: 10,   // intentionally drained, below max
+            max_mp: 80,
+            highest_level: 5,
+        }));
+        // Add just under the threshold — no level-up should occur.
+        const result = useCharacterStore.getState().addXp(xpToNextLevel(5) - 1);
+        expect(result.levelsGained).toBe(0);
+        const c = useCharacterStore.getState().character!;
+        // XP pointer advanced, level unchanged.
+        expect(c.level).toBe(5);
+        expect(c.xp).toBe(xpToNextLevel(5) - 1);
+        // HP / MP stay exactly where they were — gaining XP must never heal.
+        expect(c.hp).toBe(40);
+        expect(c.mp).toBe(10);
+    });
+
+    it('GAP #4: re-leveling at/below highest_level levels up but does NOT full-heal (gated branch)', () => {
+        // When the player re-levels into already-earned territory, the per-level
+        // HP/MP gain is gated off (highest_level guard), so `effectiveMaxHp`
+        // equals the unchanged base max. The level-up heal still snaps current
+        // HP/MP to that (unchanged) max — it must never exceed max_hp/max_mp.
+        useCharacterStore.getState().setCharacter(makeChar({
+            level: 3,
+            xp: 0,
+            hp: 20,
+            max_hp: 100,
+            mp: 5,
+            max_mp: 30,
+            highest_level: 5, // re-leveling below the all-time high
+        }));
+        const result = useCharacterStore.getState().addXp(xpToNextLevel(3));
+        expect(result.levelsGained).toBe(1);
+        const c = useCharacterStore.getState().character!;
+        expect(c.level).toBe(4);
+        // No new HP/MP minted (gated) — max stays at base.
+        expect(c.max_hp).toBe(100);
+        expect(c.max_mp).toBe(30);
+        // Level-up still heals to the (unchanged) max, never above it.
+        expect(c.hp).toBe(100);
+        expect(c.mp).toBe(30);
+    });
+
     it('clamps negative XP pointer to a safe non-negative starting value', () => {
         // 2026-05 hardening: addXp uses Math.max(0, char.xp ?? 0) to prevent
         // a corrupt save with negative XP from blocking levelups entirely.

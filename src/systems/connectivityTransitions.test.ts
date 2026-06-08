@@ -27,8 +27,12 @@ import {
 import { useCharacterStore } from '../stores/characterStore';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { useConnectivityStore } from '../stores/connectivityStore';
+import { usePartyStore } from '../stores/partyStore';
+import { useCombatStore } from '../stores/combatStore';
 import { EMPTY_EQUIPMENT, type IInventoryItem } from './itemSystem';
 import type { ICharacter } from '../api/v1/characterApi';
+import type { IMonster } from '../types/monster';
+import type { IPartyInfo } from '../types/party';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -91,6 +95,8 @@ beforeEach(() => {
         isNetworkUp: true,
         snapshot: null,
     });
+    usePartyStore.setState({ party: null, loading: false, error: null });
+    useCombatStore.getState().resetCombat();
     saveCurrentCharacterStoresMock.mockClear();
     saveCurrentCharacterStoresSyncMock.mockClear();
     if (typeof window !== 'undefined') {
@@ -405,6 +411,104 @@ describe('transitionToOffline', () => {
         transitionToOffline({ explicit: false });
         expect(useConnectivityStore.getState().mode).toBe('offline');
         expect(useConnectivityStore.getState().snapshot).toBeNull();
+    });
+});
+
+// ── GAP #17 — offline transition does NOT drop party / kill the player ───────
+//
+// FINDING (documented, not a bug): the *system* function `transitionToOffline`
+// is a pure snapshot-and-flip. It does NOT leave the party, clear party state,
+// or mutate the player's HP/level. The "drop the party before going offline"
+// rule lives entirely in the UI glue `AvatarMenu.togglePlayMode`, which calls
+// `usePartyStore.leaveParty(ch.id)` BEFORE invoking `transitionToOffline`.
+//
+// There is also NO "die when going offline mid party-combat" logic anywhere in
+// the systems layer — `AvatarMenu` just leaves the party then flips the mode.
+// That behaviour, and the route-blocking it enables, is exercised at the E2E
+// level (`tests/e2e/offline/mode-blocks-party-route.spec.ts` +
+// `online-toggle-mid-combat-finalizes-correctly.spec.ts`).
+//
+// These unit tests lock in the ACTUAL system contract so a future refactor
+// that accidentally bolts party/combat side effects onto `transitionToOffline`
+// (double-leaving, killing the player, wiping combat) gets caught here.
+
+const makeParty = (overrides?: Partial<IPartyInfo>): IPartyInfo => ({
+    id: 'party-1',
+    leaderId: 'char-1',
+    members: [
+        { id: 'char-1', name: 'Tester', class: 'Knight', level: 10, hp: 200, maxHp: 200, isBot: false, isOnline: true },
+    ],
+    createdAt: '2026-05-21T00:00:00Z',
+    ...overrides,
+});
+
+const makeMonster = (overrides?: Partial<IMonster>): IMonster => ({
+    id: 'rat',
+    name_pl: 'Szczur',
+    name_en: 'Rat',
+    icon: '🐀',
+    level: 1,
+    hp: 27,
+    attack: 4,
+    defense: 1,
+    speed: 1.0,
+    xp: 17,
+    gold: [1, 5],
+    ...overrides,
+} as IMonster);
+
+describe('transitionToOffline — GAP #17 party / combat side-effect contract', () => {
+    it('does NOT clear the party (party drop is UI glue, not the system fn)', () => {
+        useCharacterStore.setState({ character: makeCharacter() });
+        usePartyStore.setState({ party: makeParty(), loading: false, error: null });
+
+        transitionToOffline({ explicit: true });
+
+        // The system function leaves party state EXACTLY as-is. AvatarMenu is
+        // responsible for calling leaveParty() first.
+        expect(usePartyStore.getState().party).not.toBeNull();
+        expect(usePartyStore.getState().party!.id).toBe('party-1');
+        // Mode still flipped.
+        expect(useConnectivityStore.getState().mode).toBe('offline');
+    });
+
+    it('does NOT mutate the player HP / level when going offline solo mid-combat', () => {
+        // Solo combat in progress → offline must NOT kill the player or strip
+        // levels. Combat state + character vitals are preserved verbatim so
+        // the fight can keep running offline.
+        useCharacterStore.setState({ character: makeCharacter({ level: 10, hp: 150, max_hp: 200 }) });
+        usePartyStore.setState({ party: null, loading: false, error: null });
+        useCombatStore.getState().initCombat(makeMonster(), 150, 50, 'normal');
+        expect(useCombatStore.getState().phase).toBe('fighting');
+
+        transitionToOffline({ explicit: true });
+
+        const c = useCharacterStore.getState().character!;
+        // No death, no level loss — vitals untouched.
+        expect(c.level).toBe(10);
+        expect(c.hp).toBe(150);
+        // Combat keeps going (solo offline = fight continues).
+        expect(useCombatStore.getState().phase).toBe('fighting');
+        expect(useConnectivityStore.getState().mode).toBe('offline');
+    });
+
+    it('preserves an in-progress party-combat state at the system level (no auto-leave / no death)', () => {
+        // Mirrors "in a party DURING combat" — but at the SYSTEM boundary the
+        // only effect is the snapshot + mode flip. The party-leave + (UI-level)
+        // consequences are AvatarMenu's job, covered by E2E.
+        useCharacterStore.setState({ character: makeCharacter({ level: 10, hp: 200, max_hp: 200 }) });
+        usePartyStore.setState({ party: makeParty(), loading: false, error: null });
+        useCombatStore.getState().initCombat(makeMonster(), 200, 50, 'normal');
+
+        transitionToOffline({ explicit: true });
+
+        // Party NOT auto-dropped, player NOT killed by the system fn.
+        expect(usePartyStore.getState().party).not.toBeNull();
+        expect(useCharacterStore.getState().character!.hp).toBe(200);
+        // A trusted baseline snapshot was still captured before the flip.
+        const snap = useConnectivityStore.getState().snapshot;
+        expect(snap).not.toBeNull();
+        expect(snap!.level).toBe(10);
     });
 });
 

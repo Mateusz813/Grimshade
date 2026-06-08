@@ -35,10 +35,13 @@ $RECYCLE.BIN/
 *.bak
 .vercel
 
-# Env files — sekrety NIGDY do repo. .env.example zostaje (template bez wartości).
+# Env files — sekrety NIGDY do repo. *.example trzymamy jako template
+# (bez wartości). Pattern: każdy `.env.<X>` jest tajny, każdy
+# `.env.<X>.example` (i samo `.env.example`) commitujemy jako szablon.
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # TypeScript build cache
 *.tsbuildinfo

@@ -9,7 +9,7 @@ import { usePartyStore } from '../../../stores/partyStore';
 import { useSync } from '../../../hooks/useSync';
 import { saveCurrentCharacterStores } from '../../../stores/characterScope';
 import { formatLastSynced } from '../../../systems/syncSystem';
-import AdminPanel, { ADMIN_EMAIL } from '../../ui/AdminPanel/AdminPanel';
+import AdminPanel, { isAdminEmail } from '../../ui/AdminPanel/AdminPanel';
 import { APP_VERSION } from '../../../lib/appVersion';
 import './AvatarMenu.scss';
 
@@ -53,7 +53,7 @@ const AvatarMenu = ({ anchorRef, onClose }: IAvatarMenuProps) => {
     void supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
       const email = data.session?.user?.email?.toLowerCase() ?? null;
-      setIsAdmin(email === ADMIN_EMAIL.toLowerCase());
+      setIsAdmin(isAdminEmail(email));
     });
     return () => { cancelled = true; };
   }, []);

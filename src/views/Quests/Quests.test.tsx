@@ -46,6 +46,7 @@ import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { useMasteryStore } from '../../stores/masteryStore';
 import { useTransformStore } from '../../stores/transformStore';
 import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
+import { getTodayKey } from '../../systems/dailyQuestSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -92,8 +93,12 @@ beforeEach(() => {
         activeTasks: [],
         completedTasks: [],
     } as never);
+    // `lastRefreshDate` MUST equal today's key so the view's mount
+    // `useEffect(refreshIfNeeded)` is a no-op — otherwise it would
+    // call `selectDailyQuests()` and overwrite the per-test fixtures
+    // (`activeQuests` / `todayQuestDefs`) we configure below.
     useDailyQuestStore.setState({
-        lastRefreshDate: '2026-05-22',
+        lastRefreshDate: getTodayKey(),
         activeQuests: [],
         todayQuestDefs: [],
     });
@@ -178,8 +183,9 @@ describe('Quests — claimable dot on hub tiles', () => {
         expect(tasksTile?.className).toContain('quests__hub-tile--claimable');
     });
 
-    it.skip('marks the Daily tile as claimable when a daily quest is completed but unclaimed', () => {
+    it('marks the Daily tile as claimable when a daily quest is completed but unclaimed', () => {
         useDailyQuestStore.setState({
+            lastRefreshDate: getTodayKey(),
             activeQuests: [{ questId: 'dq1', progress: 50, completed: true, claimed: false }],
         } as never);
         const { container } = renderQuests();
@@ -189,15 +195,21 @@ describe('Quests — claimable dot on hub tiles', () => {
 });
 
 describe('Quests — Daily sub-view (unlocked)', () => {
-    it.skip('renders the empty-list message when todayQuestDefs is empty', () => {
+    it('renders the empty-list message when todayQuestDefs is empty', () => {
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement);
-        expect(container.querySelector('.quests__empty')?.textContent).toContain('Brak questow');
+        // The empty message lives inside `.quests__daily-list` (see
+        // Quests.tsx) — the literal copy says "Brak questow na dzis."
+        const empties = container.querySelectorAll('.quests__empty');
+        const hasEmpty = Array.from(empties).some(
+            (n) => n.textContent?.includes('Brak questow'),
+        );
+        expect(hasEmpty).toBe(true);
     });
 
-    it.skip('renders one quest card per todayQuestDef when active', () => {
+    it('renders one quest card per todayQuestDef when active', () => {
         useDailyQuestStore.setState({
-            lastRefreshDate: '2026-05-22',
+            lastRefreshDate: getTodayKey(),
             todayQuestDefs: [
                 {
                     id: 'dq_kill_50',

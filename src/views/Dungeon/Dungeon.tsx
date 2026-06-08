@@ -502,20 +502,27 @@ const Dungeon = () => {
     const setDungeonFilterMinLevel      = useSettingsStore((s) => s.setDungeonFilterMinLevel);
     const setDungeonFilterSortDesc      = useSettingsStore((s) => s.setDungeonFilterSortDesc);
 
-    if (!character) return <div className="dungeon"><Spinner size="lg" /></div>;
-
+    // NOTE: `if (!character) return …` early-return was moved DOWN past every
+    // hook in this component (search for "// Dungeon render guard (after-hooks)").
+    // The original early return here violated Rules of Hooks — first render
+    // with `character === null` skipped all subsequent hooks; second render
+    // with character hydrated registered them, mismatching hook count and
+    // crashing the <Dungeon> subtree with the React "change in order of Hooks"
+    // error. The derived values below use `character?.X ?? 0` so they still
+    // compute safely when character is null (their results are unused in
+    // that case — the post-hooks guard renders the spinner instead).
     const eqStats   = getTotalEquipmentStats(equipment, allItems);
-    const tb        = getTrainingBonuses(skillLevels, character.class);
-    const charAtk   = character.attack  + eqStats.attack + getElixirAtkBonus();
-    const charDef   = character.defense + eqStats.defense + tb.defense + getElixirDefBonus();
+    const tb        = getTrainingBonuses(skillLevels, character?.class ?? 'Knight');
+    const charAtk   = (character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus();
+    const charDef   = (character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus();
     // Include active transform in max HP/MP so auto-potion thresholds use the
     // true cap.
-    const effChar   = getEffectiveChar(character);
-    const baseMaxHp = character.max_hp  + eqStats.hp + tb.max_hp + getElixirHpBonus();
-    const baseMaxMp = character.max_mp  + eqStats.mp + tb.max_mp + getElixirMpBonus();
+    const effChar   = character ? getEffectiveChar(character) : null;
+    const baseMaxHp = (character?.max_hp ?? 0) + eqStats.hp + tb.max_hp + getElixirHpBonus();
+    const baseMaxMp = (character?.max_mp ?? 0) + eqStats.mp + tb.max_mp + getElixirMpBonus();
     const charMaxHp = effChar?.max_hp ?? baseMaxHp;
     const charMaxMp = effChar?.max_mp ?? baseMaxMp;
-    const charSpeed = (character.attack_speed + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
+    const charSpeed = ((character?.attack_speed ?? 1) + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
 
     // Cleric Błogosławieństwo pulse — 1-Hz game-time tick that pushes
     // a +X HP float on the player slot every in-game second. Dungeon
@@ -2290,6 +2297,14 @@ const Dungeon = () => {
 
     const totalWaves = activeDungeon ? getDungeonWaves(activeDungeon) : 0;
     // isBossWave computed inline where needed (inside wave completion handler)
+
+    // Dungeon render guard (after-hooks) — see note up near the eqStats block.
+    // Placed AFTER every hook in this component so we never alter hook call
+    // order between renders. Character starts null on the first render after
+    // a `goto('/dungeon')` (App.tsx re-hydrates async via switchToCharacter)
+    // and the React Rules of Hooks detector would crash the tree if we
+    // returned early before all `useEffect`s registered.
+    if (!character) return <div className="dungeon"><Spinner size="lg" /></div>;
 
     return (
         <div className="dungeon">

@@ -6,6 +6,12 @@ import { useAppRouteStore } from '../../../stores/appRouteStore';
 import { usePartyStore } from '../../../stores/partyStore';
 import { useGuildStore } from '../../../stores/guildStore';
 import { useChatTabsStore } from '../../../stores/chatTabsStore';
+import {
+  shouldDieOnDisconnect,
+  resolveDisconnectSource,
+  DISCONNECT_COMBAT_ROUTES,
+  DISCONNECT_ARENA_ROUTES,
+} from '../../../systems/disconnectPolicy';
 import { useDeathStore } from '../../../stores/deathStore';
 import { useSyncStore } from '../../../stores/syncStore';
 import { useConnectivityStore } from '../../../stores/connectivityStore';
@@ -270,12 +276,8 @@ const AppShell = ({ children }: IAppShellProps) => {
       if (!ch) return;
       const route = location.pathname;
       const inParty = !!partyForDcWatcher;
-      const combatRoutes = new Set<string>([
-        '/combat', '/dungeon', '/boss', '/raid', '/transform',
-      ]);
-      const arenaRoutes = new Set<string>(['/arena', '/arena/match']);
-      const inCombat = combatRoutes.has(route);
-      const inArena = arenaRoutes.has(route);
+      const inCombat = DISCONNECT_COMBAT_ROUTES.has(route);
+      const inArena = DISCONNECT_ARENA_ROUTES.has(route);
       if (useDeathStore.getState().event !== null) return;
 
       // 2026-05-20 spec ("zanim wejdziemy w tryb offline w pierwszej
@@ -291,17 +293,11 @@ const AppShell = ({ children }: IAppShellProps) => {
         useConnectivityStore.getState().setMode('offline', { explicit: false });
       });
 
-      const shouldDie = (inParty && inCombat) || inArena;
+      const shouldDie = shouldDieOnDisconnect({ inParty, inCombat, inArena });
       if (shouldDie) {
         void (async () => {
           const { applyCombatLeaveDeath } = await import('../../../systems/combatLeavePenalty');
-          let source: 'boss' | 'dungeon' | 'raid' | 'transform' | 'monster' = 'monster';
-          if (route === '/boss') source = 'boss';
-          else if (route === '/dungeon') source = 'dungeon';
-          else if (route === '/raid') source = 'raid';
-          else if (route === '/transform') source = 'transform';
-          else if (route === '/combat') source = 'monster';
-          else if (inArena) source = 'boss';
+          const source = resolveDisconnectSource(route, inArena);
           applyCombatLeaveDeath({
             source,
             sourceName: inArena ? 'Arena (DC)' : 'Disconnect',

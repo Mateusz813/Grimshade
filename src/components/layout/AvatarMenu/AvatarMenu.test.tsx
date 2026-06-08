@@ -53,7 +53,15 @@ vi.mock('../../ui/AdminPanel/AdminPanel', () => ({
             <button onClick={onClose}>close-admin</button>
         </div>
     ),
+    // 2026-05-26 refactor: AvatarMenu imports `isAdminEmail` helper now,
+    // not the old `ADMIN_EMAIL` constant. Keep ADMIN_EMAIL exported for
+    // backward compat but the gate logic now uses ADMIN_EMAILS set.
     ADMIN_EMAIL: 'krasek39@gmail.com',
+    ADMIN_EMAILS: new Set<string>(['krasek39@gmail.com', 'e2e-admin@grimshade-test.local']),
+    isAdminEmail: (email: string | null | undefined): boolean => {
+        if (!email) return false;
+        return new Set<string>(['krasek39@gmail.com', 'e2e-admin@grimshade-test.local']).has(email.toLowerCase());
+    },
 }));
 
 vi.mock('../../../systems/connectivityTransitions', () => ({
