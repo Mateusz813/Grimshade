@@ -963,9 +963,25 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
           const handleEnhance = () => {
             if (!canEnhance) return;
+            // 2026-05-26 bug fix (caught przez E2E inventory/upgrade test
+            // flake gdzie success animation pokazywała się ale gold/stones
+            // nie były odjęte): canEnhance check używa wartości z React
+            // render-time, ale rapid-tap lub state race może spowodować
+            // że gold/stones się zmienią między render a spend.
+            // spendGold + useStones zwracają boolean — POPRZEDNIO ignorowane.
+            // Teraz: jeśli któryś zwróci false → bail bez success animation
+            // + bez upgrade itemu. Zapobiega "darmowemu" upgrade'owi gdy
+            // race condition zostawi dane niespójne.
+            const goldOk = spendGold(cost.gold);
+            if (!goldOk) return;
+            const stonesOk = useStones(cost.stoneType, cost.stones);
+            if (!stonesOk) {
+              // Rollback gold spend — nie było stones, więc gold MUSI wrócić.
+              const inv = useInventoryStore.getState();
+              inv.addGold(cost.gold);
+              return;
+            }
             const success = Math.random() * 100 < cost.successRate;
-            spendGold(cost.gold);
-            useStones(cost.stoneType, cost.stones);
             const finishUp = () => {
               if (success) {
                 upgradeItem(item.uuid);

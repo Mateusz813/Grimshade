@@ -135,20 +135,22 @@ describe('useMpRegen — characterless pause', () => {
 });
 
 describe('useMpRegen — out of combat', () => {
-    // TODO: regen accumulator shared across tests (module-level state).
-    // Test interferes with sibling tests in same file. Hook works correctly
-    // — regen pattern verified in browser + other tests in this file.
-    it.skip('writes hp + mp progress to the character when regen > 0', () => {
+    it('writes hp + mp progress to the character when regen > 0', () => {
         useCharacterStore.setState({
             character: makeChar({ hp_regen: 3, mp_regen: 2, hp: 50, mp: 10 }),
         });
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
-        // 1 tick at 1s → +3 HP, +2 MP.
+        // 1 tick at 1s:
+        //   • hp_regen (3) caps at 5% of max_hp (100) = 5 → applied 3.
+        //   • mp_regen (2) caps at 5% of max_mp (30) = 1.5 → fractional
+        //     accumulator gathers 1.5; only the floor (1) is applied
+        //     this tick — the remaining 0.5 carries to the next tick.
+        // Net writes therefore land at hp 53 and mp 11.
         expect(updateCharacterSpy).toHaveBeenCalled();
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
         expect(last.hp).toBe(53);
-        expect(last.mp).toBe(12);
+        expect(last.mp).toBe(11);
     });
 
     it('clamps HP / MP at the effective max', () => {

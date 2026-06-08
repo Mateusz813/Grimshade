@@ -15,6 +15,7 @@ import {
     restoreFromLocalStorageSync,
 } from './stores/characterScope';
 import { characterApi } from './api/v1/characterApi';
+import { markAppReady, markAppRestoring } from './lib/appReady';
 import AppRouter from './routes/AppRouter';
 import LevelUpNotification from './components/ui/LevelUpNotification/LevelUpNotification';
 import Spinner from './components/ui/Spinner/Spinner';
@@ -112,10 +113,16 @@ const App = () => {
         if (!savedCharId) {
             setRestoring(false);
             setLoading(false);
+            // Nothing to restore — app is immediately ready for interaction.
+            markAppReady();
             return;
         }
 
         restoredRef.current = true;
+        // Restore chain starting (cloud loadGame will be in flight). Block
+        // E2E interaction until the `finally` flips this back to ready —
+        // otherwise a tap can race the late applyBlobToStores. See appReady.ts.
+        markAppRestoring();
 
         // Restore character from Supabase and reload all store data
         const restore = async () => {
@@ -141,6 +148,9 @@ const App = () => {
             } finally {
                 setRestoring(false);
                 setLoading(false);
+                // Restore chain settled (cloud load + applyBlobToStores done).
+                // Safe for E2E to interact now.
+                markAppReady();
             }
         };
         void restore();

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, cleanup } from '@testing-library/react';
 
 /**
  * useBackgroundCombat tests
@@ -100,6 +100,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    // Tear down any hooks left mounted by prior tests. Without
+    // `cleanup()` the per-hook setInterval handlers keep ticking
+    // across tests — so a later `vi.advanceTimersByTime()` invokes
+    // the engine spies from previous renders and breaks "not called"
+    // assertions in the unmount / offline-catch-up suites.
+    cleanup();
     vi.useRealTimers();
 });
 
@@ -191,9 +197,7 @@ describe('useBackgroundCombat — fighting phase', () => {
         expect(huntStatusTick).not.toHaveBeenCalled();
     });
 
-    // TODO: cleanup timing — clearInterval is called but spy counter
-    // doesn't reset before next tick. Hook cleanup itself works.
-    it.skip('cleans up intervals on unmount', () => {
+    it('cleans up intervals on unmount', () => {
         const { unmount } = renderHook(() => useBackgroundCombat());
         unmount();
         vi.clearAllMocks();
@@ -219,10 +223,7 @@ describe('useBackgroundCombat — SKIP mode', () => {
 });
 
 describe('useBackgroundCombat — offline catch-up', () => {
-    // TODO: offline catch-up depends on Date.now() vs lastCombatTickAt
-    // diff; test stubs Date.now but engine module loads at vi.mock time
-    // and captures the pre-stub value. Hook works correctly in prod.
-    it.skip('triggers simulateOfflineCombat when lastCombatTickAt is older than threshold', () => {
+    it('triggers simulateOfflineCombat when lastCombatTickAt is older than threshold', () => {
         const oldTs = new Date(Date.now() - 60_000).toISOString();
         useCombatStore.setState({
             phase: 'fighting',

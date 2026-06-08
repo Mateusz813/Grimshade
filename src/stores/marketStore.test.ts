@@ -17,6 +17,7 @@ const {
     getListingMock,
     createSaleNotificationMock,
     dismissSaleNotificationMock,
+    buyListingMock,
 } = vi.hoisted(() => ({
     getListingsMock: vi.fn(),
     getMyListingsMock: vi.fn(),
@@ -28,6 +29,7 @@ const {
     getListingMock: vi.fn(),
     createSaleNotificationMock: vi.fn().mockResolvedValue(undefined),
     dismissSaleNotificationMock: vi.fn().mockResolvedValue(undefined),
+    buyListingMock: vi.fn(),
 }));
 
 vi.mock('../api/v1/marketApi', () => ({
@@ -42,10 +44,12 @@ vi.mock('../api/v1/marketApi', () => ({
         getListing: getListingMock,
         createSaleNotification: createSaleNotificationMock,
         dismissSaleNotification: dismissSaleNotificationMock,
+        buyListing: buyListingMock,
     },
 }));
 
 import { useMarketStore } from './marketStore';
+import { useCharacterStore } from './characterStore';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -76,6 +80,11 @@ beforeEach(() => {
         isLoading: false,
         error: null,
     });
+    // Seed a fake character so buyListing has a buyerCharacterId. Tests
+    // that explicitly want the "no character" path override this.
+    useCharacterStore.setState({
+        character: { id: 'buyer-char-1', name: 'Buyer', class: 'Knight' } as never,
+    });
     getListingsMock.mockReset();
     getMyListingsMock.mockReset();
     getSaleNotificationsMock.mockReset();
@@ -86,6 +95,7 @@ beforeEach(() => {
     getListingMock.mockReset();
     createSaleNotificationMock.mockReset().mockResolvedValue(undefined);
     dismissSaleNotificationMock.mockReset().mockResolvedValue(undefined);
+    buyListingMock.mockReset();
 });
 
 // ── Initial state ────────────────────────────────────────────────────────────
@@ -321,33 +331,78 @@ describe('cancelListing', () => {
 });
 
 // ── buyListing ───────────────────────────────────────────────────────────────
+//
+// Tests target the 2026-05-25 v3 contract: `marketStore.buyListing` calls
+// the SECURITY DEFINER `marketApi.buyListing(listingId, buyerCharacterId)`
+// RPC for each unit, never `getListing()` or `decrementListing()`.
+
+/** Build a successful RPC return shape. */
+const makeRpcOk = (overrides: Partial<{ remainingQty: number; quantityPurchased: number; sellerId: string; itemId: string; itemName: string; kind: IMarketListing['kind']; price: number; rarity: IMarketListing['rarity']; itemLevel: number; slot: string; bonuses: Record<string, number>; upgradeLevel: number; sellerName: string; listingId: string }> = {}) => ({
+    ok: true as const,
+    listingId: 'ml_1',
+    sellerId: 'seller-1',
+    sellerName: 'Alice',
+    kind: 'item' as IMarketListing['kind'],
+    itemId: 'sword',
+    itemName: 'Sword',
+    itemLevel: 10,
+    rarity: 'rare' as IMarketListing['rarity'],
+    slot: 'mainHand',
+    price: 1000,
+    bonuses: {},
+    upgradeLevel: 0,
+    quantityPurchased: 1,
+    remainingQty: 0,
+    ...overrides,
+});
 
 describe('buyListing', () => {
     it('returns null for invalid quantity', async () => {
         const r = await useMarketStore.getState().buyListing('ml_x', 0);
         expect(r).toBeNull();
-        expect(getListingMock).not.toHaveBeenCalled();
+        expect(buyListingMock).not.toHaveBeenCalled();
     });
 
-    it('returns null + error when the listing no longer exists', async () => {
-        getListingMock.mockResolvedValue(null);
+    it('returns null + error when no character is loaded', async () => {
+        useCharacterStore.setState({ character: null });
         const r = await useMarketStore.getState().buyListing('ml_x', 1);
+        expect(r).toBeNull();
+        expect(useMarketStore.getState().error).toMatch(/zaloguj/i);
+        expect(buyListingMock).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a user-facing message when the RPC is missing (migration not applied)', async () => {
+        buyListingMock.mockResolvedValue({ ok: false, reason: 'rpc_missing', error: 'fn missing' });
+        const r = await useMarketStore.getState().buyListing('ml_1', 1);
+        expect(r).toBeNull();
+        expect(useMarketStore.getState().error).toMatch(/buy_market_listing/);
+    });
+
+    it('returns null + error when RPC reports listing not_found', async () => {
+        buyListingMock.mockResolvedValue({ ok: false, reason: 'not_found' });
+        const r = await useMarketStore.getState().buyListing('ml_1', 1);
         expect(r).toBeNull();
         expect(useMarketStore.getState().error).toMatch(/nie istnieje/i);
     });
 
-    it('returns null + error when requesting more than what is left', async () => {
-        getListingMock.mockResolvedValue(makeListing({ quantity: 2 }));
-        const r = await useMarketStore.getState().buyListing('ml_1', 5);
+    it('returns null + error when RPC reports own_listing', async () => {
+        buyListingMock.mockResolvedValue({ ok: false, reason: 'own_listing' });
+        const r = await useMarketStore.getState().buyListing('ml_1', 1);
         expect(r).toBeNull();
-        expect(useMarketStore.getState().error).toMatch(/tylu sztuk/i);
+        expect(useMarketStore.getState().error).toMatch(/własn/i);
     });
 
-    it('full-buy: removes the listing locally and fires a sale notification', async () => {
+    it('returns null + error when RPC reports out_of_stock', async () => {
+        buyListingMock.mockResolvedValue({ ok: false, reason: 'out_of_stock' });
+        const r = await useMarketStore.getState().buyListing('ml_1', 1);
+        expect(r).toBeNull();
+        expect(useMarketStore.getState().error).toMatch(/skończ/i);
+    });
+
+    it('full-buy: drops the listing locally + returns listing metadata', async () => {
         const listing = makeListing({ id: 'ml_1', quantity: 1, price: 1000 });
         useMarketStore.setState({ listings: [listing], myListings: [listing] });
-        getListingMock.mockResolvedValue(listing);
-        decrementListingMock.mockResolvedValue({ ...listing, quantity: 0 });
+        buyListingMock.mockResolvedValue(makeRpcOk({ remainingQty: 0, price: 1000 }));
 
         const r = await useMarketStore.getState().buyListing('ml_1', 1);
         expect(r).not.toBeNull();
@@ -356,23 +411,28 @@ describe('buyListing', () => {
         const s = useMarketStore.getState();
         expect(s.listings).toEqual([]);
         expect(s.myListings).toEqual([]);
-        expect(createSaleNotificationMock).toHaveBeenCalledWith(
-            expect.objectContaining({
-                sellerId: 'seller-1',
-                quantitySold: 1,
-                goldReceived: 1000,
-            }),
-        );
+        // RPC inserts the sale notification server-side — the store no
+        // longer fires the JS-side `createSaleNotification` call.
+        expect(createSaleNotificationMock).not.toHaveBeenCalled();
     });
 
-    it('partial buy: updates remaining quantity in both lists', async () => {
+    it('partial buy: passes qty to RPC + updates remaining quantity locally', async () => {
         const listing = makeListing({ id: 'ml_1', quantity: 10, kind: 'potion', price: 100 });
-        const after = { ...listing, quantity: 7 };
         useMarketStore.setState({ listings: [listing], myListings: [listing] });
-        getListingMock.mockResolvedValue(listing);
-        decrementListingMock.mockResolvedValue(after);
+        // Single RPC call decrements the whole stack of N units. The
+        // function returns remaining_qty after the buy.
+        buyListingMock.mockResolvedValue(makeRpcOk({
+            remainingQty: 7,
+            quantityPurchased: 3,
+            kind: 'potion',
+            price: 100,
+            itemId: 'sword',
+        }));
 
         const r = await useMarketStore.getState().buyListing('ml_1', 3);
+        expect(buyListingMock).toHaveBeenCalledTimes(1);
+        // The store passes (listingId, buyerCharacterId, qty) to the RPC.
+        expect(buyListingMock).toHaveBeenCalledWith('ml_1', 'buyer-char-1', 3);
         expect(r?.quantity).toBe(3);
         expect(r?.totalPaid).toBe(300);
         const s = useMarketStore.getState();
@@ -380,12 +440,24 @@ describe('buyListing', () => {
         expect(s.myListings[0].quantity).toBe(7);
     });
 
-    it('surfaces the Supabase error message in the state error', async () => {
-        getListingMock.mockResolvedValue(makeListing({ quantity: 5 }));
-        decrementListingMock.mockRejectedValue(new Error('RLS denied'));
+    it('reports out_of_stock when RPC rejects a qty larger than available', async () => {
+        // qty=5 requested but listing only has 2 left → server returns
+        // out_of_stock atomically (no partial buys at the RPC layer —
+        // either we get all qty units or nothing).
+        const listing = makeListing({ id: 'ml_1', quantity: 2, kind: 'potion', price: 50 });
+        useMarketStore.setState({ listings: [listing], myListings: [listing] });
+        buyListingMock.mockResolvedValue({ ok: false, reason: 'out_of_stock' });
+
+        const r = await useMarketStore.getState().buyListing('ml_1', 5);
+        expect(r).toBeNull();
+        expect(useMarketStore.getState().error).toMatch(/skończ/i);
+    });
+
+    it('surfaces a transport-layer error message in the state error', async () => {
+        buyListingMock.mockRejectedValue(new Error('network down'));
         const r = await useMarketStore.getState().buyListing('ml_1', 1);
         expect(r).toBeNull();
-        expect(useMarketStore.getState().error).toContain('RLS denied');
+        expect(useMarketStore.getState().error).toContain('network down');
     });
 });
 

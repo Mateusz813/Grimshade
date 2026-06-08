@@ -779,17 +779,31 @@ export const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getSt
     const eq = getTotalEquipmentStats(equipment, ALL_ITEMS);
     const { skillLevels } = useSkillStore.getState();
     const tb = getTrainingBonuses(skillLevels, char.class);
-    const baseAttackSpeed = char.attack_speed + eq.speed * 0.01 + tb.attack_speed;
+    // 2026-05-25 NaN hardening (CLAUDE.md "NaN w combat = krytyczny bug —
+    // waliduj WSZYSTKIE wartości przed obliczeniami, undefined/null → 0"):
+    // every numeric field read from `char` is defaulted via `?? 0` so a
+    // partially-hydrated character (e.g. offline-mode snapshot mid-write,
+    // a fresh row missing a column, or a corrupted save) cannot propagate
+    // NaN through the engine. Without these defaults, the HUD HP bar /
+    // damage rolls / crit checks would silently break — the player would
+    // see "0/NaN HP" and any DMG = NaN comparison would always be false.
+    const baseAttack       = char.attack       ?? 0;
+    const baseDefense      = char.defense      ?? 0;
+    const baseMaxHp        = char.max_hp       ?? 0;
+    const baseMaxMp        = char.max_mp       ?? 0;
+    const baseAttackSpeedV = char.attack_speed ?? 0;
+    const baseCritChance   = char.crit_chance  ?? 0;
+    const baseAttackSpeed = baseAttackSpeedV + eq.speed * 0.01 + tb.attack_speed;
     // Point 7: transform bonuses now apply LIVE instead of being baked at claim time.
     // Flat rewards add to the raw pool, percent rewards multiply the whole (base +
     // equip + training + elixir) total so they scale with future gear / training.
-    const rawMaxHp = char.max_hp + eq.hp + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
-    const rawMaxMp = char.max_mp + eq.mp + tb.max_mp + getElixirMpBonus() + getTransformFlatMp();
-    const rawDefense = char.defense + eq.defense + tb.defense + getElixirDefBonus() + getTransformFlatDefense();
+    const rawMaxHp = baseMaxHp + eq.hp + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
+    const rawMaxMp = baseMaxMp + eq.mp + tb.max_mp + getElixirMpBonus() + getTransformFlatMp();
+    const rawDefense = baseDefense + eq.defense + tb.defense + getElixirDefBonus() + getTransformFlatDefense();
     // Point N5: raw attack pool = base + equip + elixir + flat-transform, then
     // multiplied by the transform % bonus (Archer gets +7% per transform tier,
     // scaling with future gear/level).
-    const rawAttack = char.attack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack();
+    const rawAttack = baseAttack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack();
     return {
         ...char,
         attack: Math.floor(rawAttack * getTransformAtkPctMultiplier()),
@@ -797,7 +811,7 @@ export const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getSt
         max_hp: Math.floor(rawMaxHp * getElixirHpPctMultiplier() * getTransformHpPctMultiplier()),
         max_mp: Math.floor(rawMaxMp * getElixirMpPctMultiplier() * getTransformMpPctMultiplier()),
         attack_speed: baseAttackSpeed * getElixirAttackSpeedMultiplier(),
-        crit_chance: Math.min(0.5, char.crit_chance + eq.critChance * 0.01 + tb.crit_chance),
+        crit_chance: Math.min(0.5, baseCritChance + eq.critChance * 0.01 + tb.crit_chance),
         crit_damage: (char.crit_damage ?? 2.0) + eq.critDmg * 0.01 + tb.crit_dmg,
         hp_regen: (char.hp_regen ?? 0) + tb.hp_regen + getTransformHpRegenFlat(),
         mp_regen: (char.mp_regen ?? 0) + getTransformMpRegenFlat(),

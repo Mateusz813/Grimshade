@@ -13,8 +13,13 @@ import {
   getHighestCompletedTransform,
   getActiveAvatar,
   applyTransformBossStats,
+  applyTransformTierStats,
+  getTransformTierMultiplier,
+  getTransformWaveLineup,
   TRANSFORM_COUNT,
   TRANSFORM_BOSS_MULTIPLIER,
+  TRANSFORM_TIER_MULTIPLIERS,
+  TRANSFORM_SLOT_TIERS,
 } from './transformSystem';
 import type { IMonster } from '../types/monster';
 
@@ -379,6 +384,131 @@ describe('transformSystem', () => {
       expect(TRANSFORM_BOSS_MULTIPLIER.hp).toBe(8.0);
       expect(TRANSFORM_BOSS_MULTIPLIER.atk).toBe(8.0);
       expect(TRANSFORM_BOSS_MULTIPLIER.def).toBe(8.0);
+    });
+  });
+
+  // ── Coverage push 2026-05-26 — tier multiplier + wave lineup ────────────
+
+  describe('getTransformTierMultiplier', () => {
+    it('returns 1.0 for transform 1', () => {
+      expect(getTransformTierMultiplier(1)).toBeCloseTo(1.0, 4);
+    });
+
+    it('grows by 0.3 per tier', () => {
+      expect(getTransformTierMultiplier(2)).toBeCloseTo(1.3, 4);
+      expect(getTransformTierMultiplier(6)).toBeCloseTo(2.5, 4);
+      expect(getTransformTierMultiplier(11)).toBeCloseTo(4.0, 4);
+    });
+
+    it('returns 1.0 for invalid ids (0, negative)', () => {
+      expect(getTransformTierMultiplier(0)).toBe(1.0);
+      expect(getTransformTierMultiplier(-1)).toBe(1.0);
+    });
+  });
+
+  describe('TRANSFORM_TIER_MULTIPLIERS', () => {
+    it('escalates Normal < Strong < Epic in HP and atk', () => {
+      expect(TRANSFORM_TIER_MULTIPLIERS.Strong.hp).toBeGreaterThan(TRANSFORM_TIER_MULTIPLIERS.Normal.hp);
+      expect(TRANSFORM_TIER_MULTIPLIERS.Epic.hp).toBeGreaterThan(TRANSFORM_TIER_MULTIPLIERS.Strong.hp);
+      expect(TRANSFORM_TIER_MULTIPLIERS.Boss.hp).toBe(TRANSFORM_BOSS_MULTIPLIER.hp);
+    });
+
+    it('lists 4 wave tiers (Normal/Strong/Epic/Boss)', () => {
+      expect(TRANSFORM_SLOT_TIERS).toEqual(['Normal', 'Strong', 'Epic', 'Boss']);
+    });
+  });
+
+  describe('applyTransformTierStats', () => {
+    const sampleMonster: IMonster = {
+      id: 'sample',
+      name_pl: 'S',
+      name_en: 'S',
+      level: 10,
+      hp: 100,
+      attack: 20,
+      defense: 5,
+      speed: 10,
+      xp: 50,
+      gold: [10, 20] as [number, number],
+      dropTable: [],
+      sprite: '',
+    };
+
+    it('Normal tier leaves stats unchanged', () => {
+      const r = applyTransformTierStats(sampleMonster, 'Normal');
+      expect(r.hp).toBe(100);
+      expect(r.attack).toBe(20);
+      expect(r.defense).toBe(5);
+    });
+
+    it('Strong tier multiplies stats accordingly', () => {
+      const r = applyTransformTierStats(sampleMonster, 'Strong');
+      expect(r.hp).toBe(200);
+      expect(r.attack).toBe(30);
+      expect(r.defense).toBe(6);
+    });
+
+    it('Epic tier multiplies stats accordingly', () => {
+      const r = applyTransformTierStats(sampleMonster, 'Epic');
+      expect(r.hp).toBe(400);
+      expect(r.attack).toBe(50);
+      expect(r.defense).toBe(9);
+    });
+
+    it('always returns attack_min/max >= 1', () => {
+      const tinyMon: IMonster = { ...sampleMonster, attack: 0 };
+      const r = applyTransformTierStats(tinyMon, 'Normal');
+      expect(r.attack_min).toBeGreaterThanOrEqual(1);
+      expect(r.attack_max).toBeGreaterThanOrEqual(1);
+    });
+
+    it('does not mutate the original monster object', () => {
+      const original = { ...sampleMonster };
+      applyTransformTierStats(sampleMonster, 'Strong');
+      expect(sampleMonster).toEqual(original);
+    });
+  });
+
+  describe('getTransformWaveLineup', () => {
+    const bossMonster: IMonster = {
+      id: 'wave_boss',
+      name_pl: 'B',
+      name_en: 'B',
+      level: 30,
+      hp: 1000,
+      attack: 100,
+      defense: 20,
+      speed: 5,
+      xp: 300,
+      gold: [50, 100] as [number, number],
+      dropTable: [],
+      sprite: '',
+    };
+
+    it('returns 4 slots in order 0..3 with tiers Normal/Strong/Epic/Boss', () => {
+      const wave = getTransformWaveLineup(bossMonster, 30);
+      expect(wave.length).toBe(4);
+      expect(wave[0].slot).toBe(0);
+      expect(wave[0].tier).toBe('Normal');
+      expect(wave[3].tier).toBe('Boss');
+    });
+
+    it('boss slot returns the passed boss monster unchanged in monster ref', () => {
+      const wave = getTransformWaveLineup(bossMonster, 30);
+      expect(wave[3].monster).toBe(bossMonster);
+    });
+
+    it('escort slots get stamped with unique slot prefixes', () => {
+      const wave = getTransformWaveLineup(bossMonster, 30);
+      for (let i = 0; i < 3; i++) {
+        expect(wave[i].monster.id).toContain(`__slot${i}_`);
+        expect(wave[i].monster.level).toBe(30);
+      }
+    });
+
+    it('boss slot has null spriteImageUrl (uses pre-rendered sprite)', () => {
+      const wave = getTransformWaveLineup(bossMonster, 30);
+      expect(wave[3].spriteImageUrl).toBeNull();
     });
   });
 });

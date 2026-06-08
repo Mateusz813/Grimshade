@@ -45,6 +45,9 @@ vi.mock('../src/lib/supabase', () => {
                 signOut: vi.fn().mockResolvedValue({ error: null }),
             },
             from: vi.fn(chain),
+            // RPC mock — tests use `vi.mocked(supabase.rpc).mockResolvedValue(...)`
+            // to script return shapes per call.
+            rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
             channel: vi.fn().mockReturnValue({
                 on: vi.fn().mockReturnThis(),
                 subscribe: vi.fn().mockReturnThis(),

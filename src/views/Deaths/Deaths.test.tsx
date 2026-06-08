@@ -121,6 +121,35 @@ describe('Deaths — load states', () => {
         expect(container.textContent).toContain('Lich King');
         expect(container.textContent).toContain('Crypt');
     });
+
+    // 2026-05-27: raid death-source badge coverage.
+    //
+    // The E2E counterpart (`tests/e2e/city/deaths/per-combat-type.spec.ts`)
+    // covers monster/dungeon/boss/transform end-to-end against the real DB.
+    // The 'raid' source can ONLY be INSERTed into `character_deaths` once
+    // `scripts/deaths_migration.sql` widens the CHECK constraint (DDL — owner
+    // applies via Supabase dashboard, same as the other 3 migrations). Until
+    // then a real-DB raid insert is rejected, so the raid-badge RENDERING is
+    // covered HERE at the component level instead — deterministic, no DB.
+    //
+    // SOURCE_META.raid → { label: 'Rajd', icon: '⚔️' } (Deaths.tsx line 50).
+    // This asserts a source='raid' row renders the 'Rajd' badge so the feed's
+    // source→badge mapping for raid is regression-guarded regardless of the
+    // DB constraint state. When the migration lands, the E2E parametrization
+    // can re-add the 'raid' case for full end-to-end depth.
+    it('renders the "Rajd" badge for a source="raid" death row', async () => {
+        vi.mocked(deathsApi.listRecentDeaths).mockResolvedValueOnce([
+            makeDeath({ id: 'r1', source: 'raid', source_name: 'Smoczy Rajd', source_level: 40 }),
+        ]);
+
+        const { container } = renderDeaths();
+        await waitFor(() => {
+            expect(container.querySelectorAll('.deaths__item').length).toBe(1);
+        });
+        // Badge label comes from SOURCE_META.raid.label = 'Rajd'.
+        expect(container.textContent).toContain('Rajd');
+        expect(container.textContent).toContain('Smoczy Rajd');
+    });
 });
 
 describe('Deaths — filtering', () => {

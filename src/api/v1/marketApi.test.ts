@@ -301,6 +301,120 @@ describe('marketApi.decrementListing', () => {
     });
 });
 
+describe('marketApi.buyListing (RPC)', () => {
+    it('passes (listingId, buyerCharacterId, qty) + returns hydrated fields when RPC succeeds', async () => {
+        const rpcReturn = {
+            ok: true,
+            listing_id: 'L1',
+            seller_id: 's1',
+            seller_name: 'Alice',
+            kind: 'item',
+            item_id: 'sword',
+            item_name: 'Sword',
+            item_level: 10,
+            rarity: 'rare',
+            slot: 'mainHand',
+            price: 1000,
+            bonuses: { dmg: 5 },
+            upgrade_level: 2,
+            quantity_purchased: 1,
+            remaining_qty: 0,
+        };
+        vi.mocked(supabase.rpc).mockResolvedValue({ data: rpcReturn, error: null } as never);
+        const res = await marketApi.buyListing('L1', 'buyer-1', 1);
+        expect(supabase.rpc).toHaveBeenCalledWith('buy_market_listing', {
+            p_listing_id: 'L1',
+            p_buyer_character_id: 'buyer-1',
+            p_quantity: 1,
+        });
+        if (!res.ok) throw new Error('expected ok');
+        expect(res.itemId).toBe('sword');
+        expect(res.itemName).toBe('Sword');
+        expect(res.upgradeLevel).toBe(2);
+        expect(res.bonuses).toEqual({ dmg: 5 });
+        expect(res.quantityPurchased).toBe(1);
+        expect(res.remainingQty).toBe(0);
+    });
+
+    it('forwards a qty > 1 stack buy to the RPC', async () => {
+        vi.mocked(supabase.rpc).mockResolvedValue({
+            data: {
+                ok: true,
+                listing_id: 'L1',
+                seller_id: 's1',
+                seller_name: 'Alice',
+                kind: 'potion',
+                item_id: 'hp_potion_sm',
+                item_name: 'Mały Eliksir HP',
+                item_level: 1,
+                rarity: 'common',
+                slot: '',
+                price: 100,
+                bonuses: {},
+                upgrade_level: 0,
+                quantity_purchased: 3,
+                remaining_qty: 7,
+            },
+            error: null,
+        } as never);
+        const res = await marketApi.buyListing('L1', 'buyer-1', 3);
+        expect(supabase.rpc).toHaveBeenCalledWith('buy_market_listing', {
+            p_listing_id: 'L1',
+            p_buyer_character_id: 'buyer-1',
+            p_quantity: 3,
+        });
+        if (!res.ok) throw new Error('expected ok');
+        expect(res.quantityPurchased).toBe(3);
+        expect(res.remainingQty).toBe(7);
+    });
+
+    it('defaults qty to 1 when omitted', async () => {
+        vi.mocked(supabase.rpc).mockResolvedValue({
+            data: { ok: false, reason: 'not_found' },
+            error: null,
+        } as never);
+        await marketApi.buyListing('L1', 'buyer-1');
+        expect(supabase.rpc).toHaveBeenCalledWith('buy_market_listing', {
+            p_listing_id: 'L1',
+            p_buyer_character_id: 'buyer-1',
+            p_quantity: 1,
+        });
+    });
+
+    it('propagates ok=false / reason when RPC returns the function-side rejection shape', async () => {
+        vi.mocked(supabase.rpc).mockResolvedValue({
+            data: { ok: false, reason: 'own_listing' },
+            error: null,
+        } as never);
+        const res = await marketApi.buyListing('L1', 'seller-1');
+        expect(res.ok).toBe(false);
+        if (res.ok) throw new Error('expected !ok');
+        expect(res.reason).toBe('own_listing');
+    });
+
+    it('reports rpc_missing when PostgREST cannot find the function (PGRST202)', async () => {
+        vi.mocked(supabase.rpc).mockResolvedValue({
+            data: null,
+            error: { code: 'PGRST202', message: 'Could not find the function' },
+        } as never);
+        const res = await marketApi.buyListing('L1', 'buyer-1');
+        expect(res.ok).toBe(false);
+        if (res.ok) throw new Error('expected !ok');
+        expect(res.reason).toBe('rpc_missing');
+    });
+
+    it('reports rpc_error for any other Supabase error', async () => {
+        vi.mocked(supabase.rpc).mockResolvedValue({
+            data: null,
+            error: { code: '500', message: 'network down' },
+        } as never);
+        const res = await marketApi.buyListing('L1', 'buyer-1');
+        if (res.ok) throw new Error('expected !ok');
+        expect(res.reason).toBe('rpc_error');
+        expect(res.error).toMatch(/network down/);
+    });
+});
+
 describe('marketApi.deleteListing', () => {
     it('deletes by id', async () => {
         const chain = buildChain({ data: null, error: null });

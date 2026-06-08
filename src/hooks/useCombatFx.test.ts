@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCombatFx } from './useCombatFx';
+import skillsData from '../data/skills.json';
 
 /**
  * useCombatFx — pure local hook with per-slot float / skill / summon
@@ -188,5 +189,52 @@ describe('useCombatFx — reset helpers', () => {
         expect(result.current.allyFloats).toEqual({});
         expect(result.current.allySkill).toEqual({});
         expect(result.current.allySummonSpawn).toEqual({});
+    });
+});
+
+// ── #14 — EXHAUSTIVE: every skill renders on own + ally screen ───────────────
+//
+// The data-completeness guard lives in `src/data/skillVisualMatrix.test.ts`
+// (every skill resolves to valid anim + icon). This proves the actual render
+// PRIMITIVE both combat-view screens use:
+//   • triggerEnemySkillAnim → MY cast painted on the target card = MY screen
+//   • triggerAllySkillAnim  → an ally's cast painted on the ally card = the
+//                             ally-screen path (same data the Realtime
+//                             broadcast drives in a real party)
+// Looping all 105 active skills through both proves none silently no-ops
+// (the `if (!animData) return` branch) on either screen.
+const ALL_ACTIVE_SKILL_IDS: string[] = Object.values(
+    skillsData.activeSkills as Record<string, Array<{ id: string }>>,
+).flat().map((s) => s.id);
+
+describe('useCombatFx — #14 every skill renders on own + ally screen', () => {
+    it('there are 105 active skill ids to exercise', () => {
+        expect(ALL_ACTIVE_SKILL_IDS.length).toBe(105);
+    });
+
+    it('triggerEnemySkillAnim (own screen) sets a non-empty overlay for ALL 105 skills', () => {
+        const { result } = renderHook(() => useCombatFx());
+        for (const id of ALL_ACTIVE_SKILL_IDS) {
+            act(() => {
+                result.current.triggerEnemySkillAnim(0, id);
+            });
+            const s = result.current.enemySkill[0];
+            expect(s, `own-screen (enemy slot) overlay missing for skill "${id}"`).toBeDefined();
+            expect(s.emoji.length, `own-screen overlay glyph empty for "${id}"`).toBeGreaterThan(0);
+            expect(s.cssClass).toMatch(/^skill-anim--/);
+        }
+    });
+
+    it('triggerAllySkillAnim (ally screen) sets a non-empty overlay for ALL 105 skills', () => {
+        const { result } = renderHook(() => useCombatFx());
+        for (const id of ALL_ACTIVE_SKILL_IDS) {
+            act(() => {
+                result.current.triggerAllySkillAnim(1, id);
+            });
+            const s = result.current.allySkill[1];
+            expect(s, `ally-screen (ally slot) overlay missing for skill "${id}"`).toBeDefined();
+            expect(s.emoji.length, `ally-screen overlay glyph empty for "${id}"`).toBeGreaterThan(0);
+            expect(s.cssClass).toMatch(/^skill-anim--/);
+        }
     });
 });

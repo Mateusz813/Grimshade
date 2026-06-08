@@ -344,20 +344,25 @@ describe('getEffectiveChar', () => {
         expect(result?.attack_speed).toBeGreaterThan(0);
     });
 
-    it('currently returns NaN when attack/defense/crit_chance are undefined', () => {
-        // TODO: verify if this is intentional — per CLAUDE.md "NaN in combat
-        // is a critical bug, validate ALL values before computations". The
-        // current code path leaves undefined fields to flow into Math.floor
-        // and Math.min, producing NaN for attack/defense/crit_chance.
+    it('defaults undefined attack/defense/crit_chance to 0 (NaN hardening 2026-05-25)', () => {
+        // CLAUDE.md "NaN w combat = krytyczny bug — waliduj WSZYSTKIE
+        // wartości przed obliczeniami, undefined/null → 0". This used to
+        // propagate NaN through Math.floor / Math.min when any of these
+        // base fields were undefined — fixed by `?? 0` defaults in
+        // `getEffectiveChar`. Regression test: every output field must
+        // be a finite number even when EVERY input field is undefined.
         const ch = makeCharacter({
             attack: undefined as unknown as number,
             defense: undefined as unknown as number,
             crit_chance: undefined as unknown as number,
         });
         const result = getEffectiveChar(ch);
-        expect(Number.isNaN(result?.attack)).toBe(true);
-        expect(Number.isNaN(result?.defense)).toBe(true);
-        expect(Number.isNaN(result?.crit_chance)).toBe(true);
+        expect(result?.attack).toBe(0);
+        expect(result?.defense).toBe(0);
+        expect(result?.crit_chance).toBe(0);
+        expect(Number.isFinite(result?.attack)).toBe(true);
+        expect(Number.isFinite(result?.defense)).toBe(true);
+        expect(Number.isFinite(result?.crit_chance)).toBe(true);
     });
 });
 

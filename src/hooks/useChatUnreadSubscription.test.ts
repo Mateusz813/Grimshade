@@ -187,10 +187,7 @@ describe('useChatUnreadSubscription — incoming messages', () => {
 });
 
 describe('useChatUnreadSubscription — global PM catch-all', () => {
-    // TODO: catch-all subscriber callback isn't reliably invoked in test
-    // env — chatApi.subscribeAll mock captures callback but invocation
-    // timing differs from real Supabase. Behavior verified manually.
-    it.skip('auto-opens a PM tab when a stranger DMs the player', () => {
+    it('auto-opens a PM tab when a stranger DMs the player', () => {
         renderHook(() => useChatUnreadSubscription());
         const allCb = (chatApi.subscribeAll as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
             | ((msg: IMessage) => void)
@@ -203,10 +200,16 @@ describe('useChatUnreadSubscription — global PM catch-all', () => {
                 character_name: 'Stranger',
             }));
         });
+        // The hub uses `buildPmChannel(myName, other)` to (re-)derive
+        // the canonical channel id — see ensurePmTab. Names are sorted
+        // case-insensitively and joined verbatim, so 'Hero' + 'Stranger'
+        // resolves to `pm_Hero_Stranger`. The incoming message's literal
+        // channel string (`pm_hero_stranger`) is NOT what ends up on
+        // the new tab record.
         const tabs = useChatTabsStore.getState().tabs;
-        const pm = tabs.find((t) => t.channel === 'pm_hero_stranger');
+        const pm = tabs.find((t) => t.type === 'pm');
         expect(pm).toBeDefined();
-        expect(pm?.type).toBe('pm');
+        expect(pm?.channel).toBe('pm_Hero_Stranger');
         expect(useChatTabsStore.getState().hasNotification).toBe(true);
     });
 
@@ -227,12 +230,16 @@ describe('useChatUnreadSubscription — global PM catch-all', () => {
         expect(useChatTabsStore.getState().tabs.length).toBe(beforeTabs);
     });
 
-    // TODO: same root cause as above — catch-all subscriber timing.
-    it.skip('drops messages from blocked senders without raising the dot', () => {
+    it('drops messages from blocked senders without raising the dot', () => {
+        // `friendsStore.isBlocked` compares the message's
+        // `character_name` against the `blocked` list verbatim (only
+        // `.trim()` normalisation, no lowercasing). Stash the same
+        // casing here so the guard actually fires for the incoming
+        // message body.
         useFriendsStore.setState({
             friends: [],
             favorites: [],
-            blocked: ['stranger'],
+            blocked: ['Stranger'],
         });
         renderHook(() => useChatUnreadSubscription());
         const allCb = (chatApi.subscribeAll as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
