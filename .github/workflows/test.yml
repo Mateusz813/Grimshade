@@ -55,7 +55,11 @@ jobs:
     name: Playwright (E2E)
     runs-on: ubuntu-latest
     needs: static
-    timeout-minutes: 15
+    # E2E runs ONLY for master — a push to master OR a PR targeting master.
+    # develop pushes/PRs run Typecheck + Vitest only (fast feedback); the full
+    # ~40-min Playwright suite is reserved for production (master).
+    if: github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
