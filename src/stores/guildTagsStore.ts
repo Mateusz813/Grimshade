@@ -76,7 +76,7 @@ export const useGuildTagsStore = create<IGuildTagsStore>()((set, get) => ({
                 next[n] = { tag: '', fetchedAt: now };
                 fetched[n] = '';
             }
-            for (const row of (data ?? []) as Array<{ character_name: string; guilds: { tag: string } | null }>) {
+            for (const row of (data ?? []) as unknown as Array<{ character_name: string; guilds: { tag: string } | null }>) {
                 const tag = row.guilds?.tag ? `[${row.guilds.tag}]` : '';
                 next[row.character_name] = { tag, fetchedAt: now };
                 fetched[row.character_name] = tag;
@@ -125,7 +125,7 @@ export const useGuildTagsStore = create<IGuildTagsStore>()((set, get) => ({
                 next[id] = { tag: '', fetchedAt: now };
                 fetched[id] = '';
             }
-            for (const row of (data ?? []) as Array<{ character_id: string; guilds: { tag: string } | null }>) {
+            for (const row of (data ?? []) as unknown as Array<{ character_id: string; guilds: { tag: string } | null }>) {
                 const tag = row.guilds?.tag ? `[${row.guilds.tag}]` : '';
                 next[row.character_id] = { tag, fetchedAt: now };
                 fetched[row.character_id] = tag;

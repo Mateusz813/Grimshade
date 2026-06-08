@@ -67,7 +67,7 @@ import {
     routeDamage as effectsRouteDamage,
     type ICombatEffectsSession,
 } from '../../systems/combatEffectsHelpers';
-import { parseEffects, consumeCasterBasicHitMods, consumeTargetMarkAmp, skillTargetsEnemy, applyIncomingHeal } from '../../systems/skillEffectsV2';
+import { consumeCasterBasicHitMods, consumeTargetMarkAmp, skillTargetsEnemy, applyIncomingHeal } from '../../systems/skillEffectsV2';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useSkillAnim } from '../../hooks/useSkillAnim';
 import { useCombatFx } from '../../hooks/useCombatFx';
@@ -284,7 +284,7 @@ const getBestPotion = (
 interface ILogEntry {
     id: number;
     text: string;
-    type: 'player' | 'monster' | 'crit' | 'system' | 'boss-spell';
+    type: 'player' | 'monster' | 'crit' | 'system' | 'boss-spell' | 'block' | 'dodge';
 }
 
 // ── Get attack interval ms ───────────────────────────────────────────────────
@@ -563,7 +563,7 @@ const Boss = () => {
         if (isNonLeaderMember) return;
         setSpeedMode((s) => (s === 'x1' ? 'x2' : s === 'x2' ? 'x4' : 'x1'));
     }, [isNonLeaderMember]);
-    const { overlay: skillAnimOverlay, trigger: triggerSkillAnim } = useSkillAnim();
+    const { trigger: triggerSkillAnim } = useSkillAnim();
     // Per-slot combat VFX. The boss occupies enemy slot 0; player is ally slot
     // 0; bots fill ally slots 1+ in the same order they're rendered. We use
     // a small `botSlotOf(id)` helper inside the damage callbacks so spell
@@ -1024,6 +1024,7 @@ const Boss = () => {
 
     // ── Actually start boss fight with chosen bot party ────────────────────
     const beginBossFight = useCallback((boss: IBoss, chosenBotClasses: TCharacterClass[]) => {
+        if (!character) return;
         lastBossPartyRef.current = chosenBotClasses;
         // Wipe the unified session before a new boss attempt — fresh logs,
         // empty backpack, zero kills/xp/gold for this session.
@@ -1360,7 +1361,7 @@ const Boss = () => {
         let partnerClasses: TCharacterClass[] = [];
         if (party && party.members.length > 1) {
             partnerClasses = party.members
-                .filter((m) => m.id !== character.id)
+                .filter((m) => m.id !== character?.id)
                 .slice(0, 3)
                 .map((m) => m.class as TCharacterClass);
         }
@@ -1403,6 +1404,7 @@ const Boss = () => {
     const handleBossDeath = useCallback(() => {
         const boss = activeBossRef.current;
         if (!boss) return;
+        if (!character) return;
         // 2026-05 v7: idempotency guard — every code path that could
         // land the killing blow (basic attack, spell cast, summon swing,
         // DOT tick, Mroczny Rytuał detonation) calls this handler. The
@@ -2638,6 +2640,7 @@ const Boss = () => {
     const doBossAttack = useCallback(() => {
         if (phaseRef.current !== 'fighting') return;
         if (bossHpRef.current <= 0) return;
+        if (!character) return;
         // 2026-05-14 spec ("bije mnie potwor mimo ze nei zyje, nie moze
         // nigdy niezywych bic potwor, ani lapac na niezywych agroo"):
         // hard gate at the top of every boss swing. If nobody is alive

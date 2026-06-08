@@ -511,12 +511,10 @@ describe('publishTrainerState', () => {
 describe('publishTrainerAttack', () => {
     it('mirrors the attack locally with a monotonic seq starting at 1 (regardless of channel)', () => {
         // Same pre-channel mirror pattern as publishTrainerState — caller's
-        // own UI must render their swing instantly. `seq` is in the
-        // Omit<..., 'sentAt'> contract per the source but the implementation
-        // overwrites it — passing 0 here matches the existing Trainer.tsx
-        // call sites which let the publish path stamp the real value.
+        // own UI must render their swing instantly. `seq` is omitted from the
+        // Omit<..., 'sentAt' | 'seq'> contract because the publish path stamps
+        // the real monotonic value — exactly like the Trainer.tsx call sites.
         usePartyCombatSyncStore.getState().publishTrainerAttack({
-            seq: 0,
             attackerId: 'char-1',
             attackerClass: 'Knight',
             dummyIdx: 0,
@@ -537,9 +535,9 @@ describe('publishTrainerAttack', () => {
         // 2026-05-15 v11 spec: same-ms publishes (DOT ticks, AOE splashes,
         // multistrike basics) must not collide.
         const pub = usePartyCombatSyncStore.getState().publishTrainerAttack;
-        pub({ seq: 0, attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 10, kind: 'basic' });
-        pub({ seq: 0, attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 20, kind: 'basic' });
-        pub({ seq: 0, attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 30, kind: 'basic' });
+        pub({ attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 10, kind: 'basic' });
+        pub({ attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 20, kind: 'basic' });
+        pub({ attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 30, kind: 'basic' });
         const map = usePartyCombatSyncStore.getState().lastTrainerAttackByAttacker;
         // 3 distinct entries — sums to 10+20+30 = 60.
         const total = Object.values(map).reduce((acc, ev) => acc + ev.damage, 0);

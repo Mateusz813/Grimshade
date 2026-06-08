@@ -65,6 +65,7 @@ import { useSkillStore } from '../../stores/skillStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { usePartyStore } from '../../stores/partyStore';
 import { usePartyPresenceStore } from '../../stores/partyPresenceStore';
+import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -96,12 +97,11 @@ beforeEach(() => {
     useCombatStore.setState({ phase: 'idle' });
     useTransformStore.setState({ completedTransforms: [] });
     useNecroSummonStore.setState({ summons: {} });
-    useBuffStore.setState({ activeBuffs: {} });
+    useBuffStore.setState({ allBuffs: [] });
     useSkillStore.setState({ activeSkillSlots: [null, null, null, null], skillLevels: {} });
     useInventoryStore.setState({
-        equipment: {},
-        consumables: [],
-        items: [],
+        equipment: { ...EMPTY_EQUIPMENT },
+        consumables: {},
     });
     usePartyStore.setState({ party: null });
     usePartyPresenceStore.setState({ byMember: {} });

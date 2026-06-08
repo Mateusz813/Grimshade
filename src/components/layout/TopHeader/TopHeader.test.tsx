@@ -58,6 +58,7 @@ vi.mock('../../../hooks/useTransformAccent', () => ({
 import TopHeader from './TopHeader';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { useInventoryStore } from '../../../stores/inventoryStore';
+import { EMPTY_EQUIPMENT } from '../../../systems/itemSystem';
 import { useBuffStore } from '../../../stores/buffStore';
 import { useTransformStore } from '../../../stores/transformStore';
 import { useConnectivityStore } from '../../../stores/connectivityStore';
@@ -95,7 +96,7 @@ beforeEach(() => {
     useInventoryStore.setState({
         gold: 1234,
         consumables: {},
-        equipment: {} as Record<string, never>,
+        equipment: { ...EMPTY_EQUIPMENT },
     });
     useBuffStore.setState({ allBuffs: [], combatSpeedMult: 1 });
     useTransformStore.setState({ completedTransforms: [] });
@@ -203,7 +204,7 @@ describe('TopHeader — buff chip', () => {
         useInventoryStore.setState({
             gold: 0,
             consumables: { amulet_of_loss: 3, death_protection: 1 },
-            equipment: {} as Record<string, never>,
+            equipment: { ...EMPTY_EQUIPMENT },
         });
         renderHeader();
         const buffBtn = screen.getByLabelText('Aktywne buffy');
@@ -238,7 +239,7 @@ describe('TopHeader — gold pill', () => {
         useInventoryStore.setState({
             gold: 1234,
             consumables: {},
-            equipment: {} as Record<string, never>,
+            equipment: { ...EMPTY_EQUIPMENT },
         });
         renderHeader();
         const goldBtn = screen.getByLabelText('Złoto: 1234');

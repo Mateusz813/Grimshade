@@ -56,7 +56,6 @@ import { STONE_GENERIC_ICON, STONE_ICONS } from '../../systems/itemSystem';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
 import { SPELL_CHEST_LEVELS } from '../../systems/skillSystem';
 import dungeonsData from '../../data/dungeons.json';
-import { getSkillAnimation } from '../../data/skillAnimations';
 import { getSkillIcon } from '../../data/skillIcons';
 import { useCombatFx } from '../../hooks/useCombatFx';
 import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
@@ -237,9 +236,6 @@ const getClassActiveSkills = (cls: string): IActiveSkill[] => {
     return list.map((s) => ({ ...s, class: cls }));
 };
 
-const isAoeSkill = (effect: string | null | undefined): boolean =>
-    typeof effect === 'string' && effect.includes('aoe');
-
 type MemberCooldownMap = Record<string, Record<string, number>>;
 interface ISkillFx {
     id: number;
@@ -329,11 +325,6 @@ const Raid = () => {
     // The raid combat tick pops one cast per tick when present, falling back
     // to auto-cast only if `skillMode === 'auto'` and the queue is empty.
     const skillQueueRef = useRef<number[]>([]);
-    // Per-skill cooldown tick counters (raid uses tick-based cooldowns —
-    // line 519 stamps tick+ceil(skill.cooldown / 500) when an auto-cast fires;
-    // we mirror that here for manual casts so spamming a slot can't bypass
-    // the cooldown).
-    const playerSkillCooldownsRef = useRef<Record<string, number>>({});
     // ms-based mirror of the player's skill cooldowns — drives the UI sweep
     // on the action bar so the player can SEE the timer drain. Updated
     // every 100 ms by the same ticker that drains potion cooldowns; set
@@ -3150,7 +3141,7 @@ const Raid = () => {
         const oldLevel = ch.level;
         if (oldLevel > 1) {
             const p = applyDeathPenalty(ch.level, ch.xp);
-            const usedDeathProtection = useInventoryStore.getState().consumeDeathProtection?.() ?? false;
+            const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
             const newLevel = usedDeathProtection ? oldLevel : p.newLevel;
             const newXp = usedDeathProtection ? ch.xp : p.newXp;
             const xpPercent = usedDeathProtection ? 0 : p.xpPercent;

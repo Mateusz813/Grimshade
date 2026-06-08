@@ -6,6 +6,7 @@ import { useCombatStore } from '../../stores/combatStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { usePartyStore } from '../../stores/partyStore';
+import type { IPartyMember } from '../../systems/partySystem';
 import { usePartyPresenceStore } from '../../stores/partyPresenceStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { getCharacterAvatar } from '../../data/classAvatars';
@@ -57,8 +58,8 @@ const SPEED_OPTIONS = [1, 2, 4];
 // selector — without it, `?? []` would mint a fresh `[]` on every render
 // and trip Zustand's `getSnapshot should be cached` infinite loop check.
 // Mirror the IPartyMember shape (the live party returns) so heal pulses
-// can read m.maxHp without the type narrowing to a stripped union.
-const EMPTY_PARTY_MEMBERS: ReadonlyArray<{ id: string; name: string; class: string; level: number; hp: number; maxHp: number }> = [];
+// can read m.maxHp / m.isBot without the type narrowing to a stripped union.
+const EMPTY_PARTY_MEMBERS: ReadonlyArray<IPartyMember> = [];
 // Real-time window for the damage tracker. Scales inversely with speed:
 // at x4 the in-game "5s" reads as ~1.25s of wall-clock time, at x2 it's
 // 2.5s. The display label is also scaled so the player sees the correct
@@ -110,7 +111,7 @@ const Trainer = () => {
     // Bumped every status-tick so the StatusOverlay (stun / immortal
     // countdown badges on the dummy card) re-renders and visibly drains.
     // Without this the badge would freeze when no other state changes.
-    const [statusBeat, setStatusBeat] = useState(0);
+    const [, setStatusBeat] = useState(0);
     // 2026-05 v6: sandbox death state — Set of party-member IDs marked
     // as dead in the Trainer view. Purely cosmetic (no XP / item loss);
     // resets on view exit. Lets the player practise rez / heal / shield
@@ -851,7 +852,7 @@ const Trainer = () => {
     const orderedMembers = (() => {
         if (partyMembers.length === 0) {
             return character
-                ? ([{ id: character.id, name: character.name, class: character.class, level: character.level, color: myColor, hp: 0, maxHp: 0, mp: 0, maxMp: 0, attack: 0, defense: 0, isLeader: true, isBot: false, isDead: false, joinedAt: 0 }] as typeof partyMembers)
+                ? ([{ id: character.id, name: character.name, class: character.class, level: character.level, color: myColor, hp: 0, maxHp: 0, mp: 0, maxMp: 0, attack: 0, defense: 0, isLeader: true, isBot: false, isDead: false, joinedAt: 0 }] as unknown as typeof partyMembers)
                 : [];
         }
         // 2026-05-15 v11 spec ("na widoku innego sojusznika

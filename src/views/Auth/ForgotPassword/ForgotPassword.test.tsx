@@ -22,7 +22,7 @@ import { supabase } from '../../../lib/supabase';
 // method onto the same supabase.auth object so the component import
 // resolves it.
 const resetSpy = vi.fn();
-vi.mocked(supabase.auth as unknown as { resetPasswordForEmail: typeof resetSpy }).resetPasswordForEmail = resetSpy;
+(supabase.auth as unknown as { resetPasswordForEmail: typeof resetSpy }).resetPasswordForEmail = resetSpy;
 
 const renderForgot = () =>
     render(

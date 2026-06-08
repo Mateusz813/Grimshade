@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -90,6 +90,7 @@ import { useBotStore } from '../../stores/botStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useDeathStore } from '../../stores/deathStore';
+import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -128,7 +129,7 @@ beforeEach(() => {
         bossFilterSortDesc: false,
     });
     useSkillStore.setState({ activeSkillSlots: [null, null, null, null], skillLevels: {} });
-    useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+    useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
     usePartyStore.setState({ party: null });
     usePartyPresenceStore.setState({ byMember: {} });
     useTaskStore.setState({ activeTasks: [] });
@@ -136,9 +137,9 @@ beforeEach(() => {
     useDailyQuestStore.setState({ activeQuests: [] });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
     useBotStore.setState({ bots: [] });
-    useBuffStore.setState({ activeBuffs: {} });
+    useBuffStore.setState({ allBuffs: [] });
     useNecroSummonStore.setState({ summons: {} });
-    useDeathStore.setState({ recentDeaths: [], lastDeath: null });
+    useDeathStore.setState({ event: null });
 });
 
 afterEach(() => {
@@ -231,7 +232,7 @@ describe('Boss — graceful with missing data', () => {
     });
 
     it('does not crash with an empty equipment map', () => {
-        useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+        useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
         const { container } = renderBoss();
         expect(container.querySelector('.boss')).not.toBeNull();
     });

@@ -214,6 +214,7 @@ describe('Quests — Daily sub-view (unlocked)', () => {
                 {
                     id: 'dq_kill_50',
                     name_pl: 'Zabij 50 potworow',
+                    name_en: 'Kill 50 monsters',
                     description_pl: 'Zabij dowolne 50 potworow',
                     minLevel: 25,
                     goal: { type: 'kill_any', count: 50 },

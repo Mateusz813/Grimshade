@@ -57,15 +57,14 @@ import {
   calculateDualWieldDamage,
   calculateBlockChance,
   calculateDodgeChance,
-  calculateAttackInterval,
   rollMonsterDamage,
 } from '../../systems/combat';
 import {
   getClassSkillBonus,
   getTotalEquipmentStats,
   flattenItemsData,
-  type IBaseItem,
 } from '../../systems/itemSystem';
+import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import { getTrainingBonuses } from '../../systems/skillSystem';
 import {
   getAtkDamageMultiplier,
@@ -101,7 +100,6 @@ import {
   calculateTransformRewards,
   getTransformWaveLineup,
   type ITransformData,
-  type ITransformColor,
   type ITransformRewards,
 } from '../../systems/transformSystem';
 import { getCharacterAvatar } from '../../data/classAvatars';
@@ -220,7 +218,7 @@ interface IClassData {
 
 const classesData = classesRaw as unknown as Record<string, IClassData>;
 
-const ALL_ITEMS = flattenItemsData(itemsData as Record<string, IBaseItem[]>);
+const ALL_ITEMS = flattenItemsData(itemsData as Parameters<typeof flattenItemsData>[0]);
 
 // Transform avatar lookup table
 const TRANSFORM_AVATARS: Record<string, Record<number, string>> = {
@@ -234,11 +232,6 @@ const TRANSFORM_AVATARS: Record<string, Record<number, string>> = {
 };
 
 const BASE_AVATAR_IMAGES: Record<string, string> = {
-  Knight: knightImg, Mage: mageImg, Cleric: clericImg, Archer: archerImg,
-  Rogue: rogueImg, Necromancer: necromancerImg, Bard: bardImg,
-};
-
-const CLASS_AVATAR_IMAGES: Record<string, string> = {
   Knight: knightImg, Mage: mageImg, Cleric: clericImg, Archer: archerImg,
   Rogue: rogueImg, Necromancer: necromancerImg, Bard: bardImg,
 };
@@ -498,7 +491,7 @@ const Transform = () => {
   const [pctMpCooldown, setPctMpCooldown] = useState(0);
 
   // Skill animation overlay
-  const { overlay: skillAnimOverlay, trigger: triggerSkillAnim } = useSkillAnim();
+  const { trigger: triggerSkillAnim } = useSkillAnim();
 
   // Per-slot floating numbers / per-slot themed skill animations.
   // The hook returns a NEW object every render (object literal), so depending
@@ -864,7 +857,7 @@ const Transform = () => {
       hm: 'hp' | 'mp',
       maxVal: number,
     ) => {
-      const elixir = resolveAutoPotionElixir(elixirIdOrNull, hm, kind, inv.consumables);
+      const elixir = resolveAutoPotionElixir(elixirIdOrNull ?? undefined, hm, kind, inv.consumables);
       if (!elixir) return null;
       const flatRe = hm === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/;
       const pctRe = hm === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/;
@@ -1152,7 +1145,7 @@ const Transform = () => {
   }, [enterAnim, handleStartQuest]);
 
   // ── Start fight with a specific monster ──────────────────────────────────────
-  const startMonsterFight = useCallback((baseMonster: IMonster, transformId: number) => {
+  const startMonsterFight = useCallback((baseMonster: IMonster, _transformId: number) => {
     const char = useCharacterStore.getState().character;
     if (!char) return;
 
@@ -1305,7 +1298,8 @@ const Transform = () => {
 
       const weaponDmg = rollWeaponDamage();
       const { skillLevels } = useSkillStore.getState();
-      const skillBonus = getClassSkillBonus(latestChar.class, skillLevels);
+      const classBonus = getClassSkillBonus(latestChar.class, skillLevels);
+      const skillBonus = classBonus.skillBonus;
       // 2026-05 v6: consume "next basic" buff queues so Precyzyjny / Klon
       // / Knight Ostateczny / Cięcie Boga all land their queued mod on
       // the swing that follows the cast.
@@ -2104,6 +2098,7 @@ const Transform = () => {
 
   // ── Transform list view ──────────────────────────────────────────────────────
   const renderList = () => {
+    if (!character) return null;
     return (
       <div className="transform__list">
         {allTransforms.map((t) => {
@@ -2422,6 +2417,7 @@ const Transform = () => {
   // ally slot (other slots stay empty placeholders so nothing reflows).
   const renderCombat = () => {
     if (!currentMonster) return null;
+    if (!character) return null;
 
     const effChar = getEffectiveChar(character);
     const charMaxHp = effChar?.max_hp ?? 0;
@@ -2812,6 +2808,7 @@ const Transform = () => {
 
   // ── All defeated / rewards view ────────────────────────────────────────────
   const renderAllDefeated = () => {
+    if (!character) return null;
     const colorInfo = getTransformColor(activeTransformId);
     const transformData = getTransformById(activeTransformId);
     const rewardLines: { label: string; value: string; icon: string }[] = rewards
@@ -2918,7 +2915,7 @@ const Transform = () => {
                 >
                   <span className="transform__reward-icon">🗡️</span>
                   <span className="transform__reward-label">Mythic Weapon</span>
-                  <span className="transform__reward-value">{rewards.weapon.item_name}</span>
+                  <span className="transform__reward-value">{getItemDisplayInfo(rewards.weapon.itemId)?.[nameKey]}</span>
                 </motion.div>
               )}
               {rewards.consumables.map((c, cidx) => (
@@ -3052,6 +3049,7 @@ const Transform = () => {
 
   // ── Complete view ──────────────────────────────────────────────────────────
   const renderComplete = () => {
+    if (!character) return null;
     const colorInfo = getTransformColor(activeTransformId);
     return (
       <div className="transform__complete">

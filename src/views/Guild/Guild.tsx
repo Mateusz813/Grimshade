@@ -11,6 +11,7 @@ import {
     type IGuildJoinRequestRow,
     type IGuildBossStateRow,
     type IGuildBossContributionRow,
+    type IGuildBossAttemptRow,
     type IGuildTreasuryItemRow,
     type IGuildTreasuryLogRow,
 } from '../../api/v1/guildApi';
@@ -975,7 +976,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     const [playerHitPulse, setPlayerHitPulse] = useState(0);
     // bossCastFx kept only for the boss-name banner that highlights
     // the currently-casting spell. Pure visual.
-    const [bossCastFx, setBossCastFx] = useState<{ id: number; spell: IGuildBossSpell } | null>(null);
+    const [, setBossCastFx] = useState<{ id: number; spell: IGuildBossSpell } | null>(null);
     // 2026-05-18 v6 spec ("Walka ma wygladac i animacje identycznie
     // jak na widoku pojedynku albo raidu albo areny"): reuse the
     // shared `useCombatFx` hook so the boss tile + player avatar use
@@ -1090,7 +1091,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     // on every speed-scaled tick. Engagement ends when the player
     // deals their daily 10 % HP block OR the boss dies.
     const startEngagement = async () => {
-        if (!canAttackToday || busy || !character) return;
+        if (!canAttackToday || busy || !character || !boss) return;
         if (someoneElseHolds) {
             setErrorMsg('Ktoś inny aktualnie walczy. Poczekaj aż boss straci 10% HP.');
             return;
@@ -1436,7 +1437,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     }, [phase, speedMult, character?.id, boss?.id]);
 
     const handleClaim = async () => {
-        if (!contribution || contribution.rewards_claimed) return;
+        if (!contribution || contribution.rewards_claimed || !boss) return;
         setBusy(true);
         setErrorMsg(null);
         try {

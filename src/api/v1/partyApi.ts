@@ -281,39 +281,38 @@ const NO_EMBED_PARTY_SELECT =
 const FULL_PARTY_SINGLE_SELECT = 'id,leader_id,name,description,max_members,is_public,password,min_join_level,created_at';
 const MIN_PARTY_SINGLE_SELECT  = 'id,leader_id,name,max_members,created_at';
 
-/**
- * Fallback when PostgREST can't embed `party_members` (missing FK between
- * parties.id and party_members.party_id, or party_members table missing).
- * Fetches parties without the embed, then fetches all members in a single
- * follow-up query filtered by the party IDs we just retrieved.
- */
-const hydrateMembersSeparately = async (
-    parties: IRawPartyRow[],
-    api: BaseApi,
-): Promise<IRawPartyRowWithMembers[]> => {
-    if (parties.length === 0) return [];
-    const ids = parties.map((p) => `"${p.id}"`).join(',');
-    let members: IPartyMemberRow[] = [];
-    try {
-        members = await api.get<IPartyMemberRow[]>({
-            url:
-                `/rest/v1/party_members?select=id,party_id,character_id,character_name,character_class,character_level,role,joined_at` +
-                `&party_id=in.(${ids})`,
-        });
-    } catch {
-        // party_members table probably doesn't exist yet — show parties with empty rosters
-        members = [];
-    }
-    const byParty = new Map<string, IPartyMemberRow[]>();
-    for (const m of members) {
-        const arr = byParty.get(m.party_id) ?? [];
-        arr.push(m);
-        byParty.set(m.party_id, arr);
-    }
-    return parties.map((p) => ({ ...p, party_members: byParty.get(p.id) ?? [] }));
-};
-
 class PartyApi extends BaseApi {
+    /**
+     * Fallback when PostgREST can't embed `party_members` (missing FK between
+     * parties.id and party_members.party_id, or party_members table missing).
+     * Fetches parties without the embed, then fetches all members in a single
+     * follow-up query filtered by the party IDs we just retrieved.
+     */
+    private hydrateMembersSeparately = async (
+        parties: IRawPartyRow[],
+    ): Promise<IRawPartyRowWithMembers[]> => {
+        if (parties.length === 0) return [];
+        const ids = parties.map((p) => `"${p.id}"`).join(',');
+        let members: IPartyMemberRow[] = [];
+        try {
+            members = await this.get<IPartyMemberRow[]>({
+                url:
+                    `/rest/v1/party_members?select=id,party_id,character_id,character_name,character_class,character_level,role,joined_at` +
+                    `&party_id=in.(${ids})`,
+            });
+        } catch {
+            // party_members table probably doesn't exist yet — show parties with empty rosters
+            members = [];
+        }
+        const byParty = new Map<string, IPartyMemberRow[]>();
+        for (const m of members) {
+            const arr = byParty.get(m.party_id) ?? [];
+            arr.push(m);
+            byParty.set(m.party_id, arr);
+        }
+        return parties.map((p) => ({ ...p, party_members: byParty.get(p.id) ?? [] }));
+    };
+
     /** Fetch all public parties with their member counts, for the party browser. */
     listPublicParties = async (): Promise<IPartyWithMembers[]> => {
         const fetchRows = async (select: string, filter: string): Promise<IRawPartyRowWithMembers[]> =>
@@ -358,7 +357,7 @@ class PartyApi extends BaseApi {
                 '/rest/v1/parties?select=' + NO_EMBED_PARTY_SELECT +
                 '&order=created_at.desc&limit=50',
         });
-        const hydrated = await hydrateMembersSeparately(plainRows, this);
+        const hydrated = await this.hydrateMembersSeparately(plainRows);
         return await this.cleanupEmptyParties(hydrated.map((r) => ({ ...sanitize(r), members: r.party_members ?? [] })));
     };
 
@@ -401,7 +400,7 @@ class PartyApi extends BaseApi {
                 `&select=${NO_EMBED_PARTY_SELECT}&limit=1`,
         });
         if (!plainRows.length) return null;
-        const hydrated = await hydrateMembersSeparately(plainRows, this);
+        const hydrated = await this.hydrateMembersSeparately(plainRows);
         const row = hydrated[0];
         return { ...sanitize(row), members: row.party_members ?? [] };
     };

@@ -25,6 +25,9 @@ export interface ICharacter {
     equipment: Record<string, string | null>;
     created_at: string;
     updated_at: string;
+    // Optional XP-to-next-level cache mirrored from the level system
+    // (some legacy rows / offline-hunt snapshots read it directly).
+    xp_to_next?: number;
     // 2026-05-19 v15 spec ("Dodać do rankingu arenę"): cross-player
     // arena stats live on the character row so the leaderboard can
     // rank all players by lifetime arena kills / deaths / current

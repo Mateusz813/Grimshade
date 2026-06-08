@@ -103,11 +103,6 @@ const isAutoSellRarity = (rarity: Rarity): boolean => {
 export const MAX_BAG_SIZE = 1000;
 export const MAX_DEPOSIT_SIZE = 10000;
 
-// Rarity order from lowest (auto-sold first) to highest (never auto-sold).
-// When the bag is full and a new item arrives, the lowest-rarity item is
-// sold to make room. 'heroic' items are NEVER auto-sold.
-const AUTO_SELL_RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic'];
-
 const RARITY_RANK: Record<string, number> = {
   common: 0,
   rare: 1,

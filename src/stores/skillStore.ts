@@ -8,7 +8,6 @@ import {
     mlvlXpPerSkillUse,
     doesClassGainMlvlFromAttacks,
     MAX_OFFLINE_TRAINING_SECONDS,
-    getSkillUpgradeCost,
     rollSkillUpgrade,
     GENERAL_TRAINABLE_STATS,
     getSpellChestUpgradeCost,
@@ -96,7 +95,7 @@ interface ISkillStore extends ISkillState {
      * Select a training stat. Immediately starts training at 2x (active) speed.
      * Training runs ALWAYS — 2x when active, 1x when inactive.
      */
-    selectTrainingStat: (skillId: string) => void;
+    selectTrainingStat: (skillId: string | null) => void;
     /** Collect XP accumulated during training, reset counters, restart segment */
     collectOfflineTraining: () => number;
     /** Called when player activity state changes. Flushes current segment and sets new speed. */

@@ -6,8 +6,7 @@ import { getPotionDropInfo } from './lootSystem';
 import { formatGoldShort } from './goldFormat';
 import { MONSTER_STAT_MULTIPLIERS } from './combat';
 import type { IRaid, IRaidBossState, IRaidDropLine, IRaidMemberState } from '../types/raid';
-import type { Rarity } from './itemSystem';
-import type { IInventoryItem } from '../types/inventory';
+import type { Rarity, IInventoryItem } from './itemSystem';
 
 interface IDungeonRow {
     id: string;
@@ -29,7 +28,7 @@ interface IMonsterRow {
 }
 
 const DUNGEONS = dungeonsRaw as IDungeonRow[];
-const MONSTERS = monstersRaw as IMonsterRow[];
+const MONSTERS = monstersRaw as unknown as IMonsterRow[];
 
 /**
  * Boss-tier monster multipliers (from `combat.ts`). Raid spawns are

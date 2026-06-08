@@ -31,7 +31,7 @@ import { supabase } from '../../../lib/supabase';
 // signUp / resetPasswordForEmail aren't in that stub so we add them per
 // describe / per test as needed using vi.spyOn.
 const signUpSpy = vi.fn();
-vi.mocked(supabase.auth as unknown as { signUp: typeof signUpSpy }).signUp = signUpSpy;
+(supabase.auth as unknown as { signUp: typeof signUpSpy }).signUp = signUpSpy;
 
 const renderRegister = () =>
     render(

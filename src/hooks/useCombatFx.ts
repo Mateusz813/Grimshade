@@ -43,6 +43,7 @@ export type TFloatKind =
     | 'ally-spell'   // ally spell on enemy
     | 'monster'      // monster physical hit on player/ally
     | 'monster-spell'// monster spell on player/ally
+    | 'damage'       // generic damage number (no attacker-style colour)
     | 'heal';        // potion / heal received
 
 export interface ICombatFloat {

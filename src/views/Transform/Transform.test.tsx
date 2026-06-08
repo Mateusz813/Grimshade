@@ -74,6 +74,7 @@ import { useMasteryStore } from '../../stores/masteryStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useDeathStore } from '../../stores/deathStore';
+import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -116,14 +117,14 @@ beforeEach(() => {
         autoPotionMpEnabled: false,
     });
     useSkillStore.setState({ activeSkillSlots: [null, null, null, null], skillLevels: {} });
-    useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+    useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
     useTaskStore.setState({ activeTasks: [] });
     useQuestStore.setState({ activeQuests: [] });
     useDailyQuestStore.setState({ activeQuests: [] });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
-    useBuffStore.setState({ activeBuffs: {} });
+    useBuffStore.setState({ allBuffs: [] });
     useNecroSummonStore.setState({ summons: {} });
-    useDeathStore.setState({ recentDeaths: [], lastDeath: null });
+    useDeathStore.setState({ event: null });
 });
 
 afterEach(() => {

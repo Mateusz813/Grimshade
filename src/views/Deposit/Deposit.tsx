@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import {
     RARITY_COLORS,
-    SLOT_ICONS,
     findBaseItem,
     flattenItemsData,
     formatItemName,

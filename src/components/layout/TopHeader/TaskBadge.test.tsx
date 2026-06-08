@@ -36,6 +36,7 @@ import TaskBadge from './TaskBadge';
 import { useTaskStore } from '../../../stores/taskStore';
 import { useQuestStore } from '../../../stores/questStore';
 import { useCharacterStore } from '../../../stores/characterStore';
+import type { ICharacter } from '../../../api/v1/characterApi';
 import { useCombatStore } from '../../../stores/combatStore';
 
 /**
@@ -61,7 +62,7 @@ describe('TaskBadge', () => {
                 hp_regen: 0, mp_regen: 0, attack: 10, defense: 5,
                 attack_speed: 2, crit_chance: 5, crit_damage: 200,
                 magic_level: 0, stat_points: 0, gold: 0,
-            } as unknown as Parameters<typeof useCharacterStore.setState>[0]['character'],
+            } as unknown as ICharacter,
         });
         useCombatStore.setState({
             phase: 'idle',
@@ -153,8 +154,8 @@ describe('TaskBadge', () => {
     it('hides quests whose minLevel exceeds the player level', () => {
         // Player lvl 5, quest requires lvl 100 — should be filtered out.
         useCharacterStore.setState((s) => ({
-            character: { ...(s.character ?? {}), level: 5 } as unknown as typeof s.character,
-        }) as Parameters<typeof useCharacterStore.setState>[0]);
+            character: { ...(s.character ?? {}), level: 5 } as unknown as ICharacter,
+        }));
         useQuestStore.setState({
             activeQuests: [{
                 questId: 'high-lvl-quest',

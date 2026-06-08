@@ -71,7 +71,7 @@ const makeMonster = (): IMonster => ({
     speed: 1,
     xp: 17,
     gold: [1, 5],
-} as IMonster);
+} as unknown as IMonster);
 
 const setupStores = (settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}): void => {
     useSettingsStore.setState({

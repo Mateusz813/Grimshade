@@ -108,7 +108,7 @@ const MP_FRAC_OF_NECRO: Record<NecroSummonType, number> = {
 export const useNecroSummonStore = create<IState & IActions>()((set, get) => ({
     summons: {},
 
-    spawn: (necroId, type, count, necroAttack, necroMaxHp, necroMaxMp = 0) => {
+    spawn: (necroId, type, count, _necroAttack, necroMaxHp, necroMaxMp = 0) => {
         const cap = CAPS[type];
         const cur = get().summons[necroId] ?? [];
         const sameType = cur.filter((s) => s.type === type).length;

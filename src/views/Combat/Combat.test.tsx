@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -104,6 +104,7 @@ import { useCooldownStore } from '../../stores/cooldownStore';
 import { useBotStore } from '../../stores/botStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
+import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -159,7 +160,7 @@ beforeEach(() => {
         autoPotionMpEnabled: false,
     });
     useSkillStore.setState({ activeSkillSlots: [null, null, null, null], skillLevels: {} });
-    useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+    useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
     usePartyStore.setState({ party: null });
     usePartyPresenceStore.setState({ byMember: {} });
     useTaskStore.setState({ activeTasks: [] });
@@ -174,7 +175,7 @@ beforeEach(() => {
         skillCooldowns: {},
     });
     useBotStore.setState({ bots: [] });
-    useBuffStore.setState({ activeBuffs: {} });
+    useBuffStore.setState({ allBuffs: [] });
     useNecroSummonStore.setState({ summons: {} });
 });
 

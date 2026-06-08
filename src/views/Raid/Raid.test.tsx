@@ -81,6 +81,8 @@ import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { useMasteryStore } from '../../stores/masteryStore';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useDeathStore } from '../../stores/deathStore';
+import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
+import type { IPartyInfo } from '../../systems/partySystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -101,22 +103,24 @@ const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
 } as ICharacter);
 
 // Helper: build a 2-human party where the test character is the leader.
-const makeLeaderParty = (characterId: string) => ({
+const makeLeaderParty = (characterId: string): IPartyInfo => ({
     id: 'party-1',
     leaderId: characterId,
+    createdAt: '',
     members: [
-        { id: characterId, name: 'Leader', class: 'Knight', level: 50, isBot: false, hp: 500, maxHp: 500, mp: 200, maxMp: 200 },
-        { id: 'member-2', name: 'Ally', class: 'Mage', level: 48, isBot: false, hp: 300, maxHp: 300, mp: 400, maxMp: 400 },
+        { id: characterId, name: 'Leader', class: 'Knight', level: 50, isBot: false, hp: 500, maxHp: 500 },
+        { id: 'member-2', name: 'Ally', class: 'Mage', level: 48, isBot: false, hp: 300, maxHp: 300 },
     ],
 });
 
 // Helper: 2-human party where the test character is NOT the leader.
-const makeNonLeaderParty = (characterId: string) => ({
+const makeNonLeaderParty = (characterId: string): IPartyInfo => ({
     id: 'party-1',
     leaderId: 'other-leader',
+    createdAt: '',
     members: [
-        { id: 'other-leader', name: 'BossMan', class: 'Knight', level: 60, isBot: false, hp: 600, maxHp: 600, mp: 200, maxMp: 200 },
-        { id: characterId, name: 'Member', class: 'Mage', level: 50, isBot: false, hp: 300, maxHp: 300, mp: 400, maxMp: 400 },
+        { id: 'other-leader', name: 'BossMan', class: 'Knight', level: 60, isBot: false, hp: 600, maxHp: 600 },
+        { id: characterId, name: 'Member', class: 'Mage', level: 50, isBot: false, hp: 300, maxHp: 300 },
     ],
 });
 
@@ -141,7 +145,7 @@ beforeEach(() => {
         autoPotionMpEnabled: false,
     });
     useSkillStore.setState({ activeSkillSlots: [null, null, null, null], skillLevels: {} });
-    useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+    useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
     usePartyStore.setState({ party: null });
     usePartyPresenceStore.setState({ byMember: {} });
     usePartyCombatSyncStore.setState({});
@@ -151,7 +155,7 @@ beforeEach(() => {
     useDailyQuestStore.setState({ activeQuests: [] });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
     useNecroSummonStore.setState({ summons: {} });
-    useDeathStore.setState({ recentDeaths: [], lastDeath: null });
+    useDeathStore.setState({ event: null });
 });
 
 afterEach(() => {
@@ -187,7 +191,8 @@ describe('Raid — gating screens', () => {
             party: {
                 id: 'party-1',
                 leaderId: 'char-1',
-                members: [{ id: 'char-1', name: 'Solo', class: 'Knight', level: 50, isBot: false, hp: 500, maxHp: 500, mp: 200, maxMp: 200 }],
+                createdAt: '',
+                members: [{ id: 'char-1', name: 'Solo', class: 'Knight', level: 50, isBot: false, hp: 500, maxHp: 500 }],
             },
         });
         useCharacterStore.setState({ character: makeChar({ id: 'char-1' }) });
