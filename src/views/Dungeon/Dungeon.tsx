@@ -268,7 +268,7 @@ const getBestPotion = (
 interface ILogEntry {
     id: number;
     text: string;
-    type: 'player' | 'monster' | 'crit' | 'system' | 'wave';
+    type: 'player' | 'monster' | 'crit' | 'system' | 'wave' | 'block' | 'dodge';
 }
 
 // ── Get attack interval ms ───────────────────────────────────────────────────
@@ -398,7 +398,7 @@ const Dungeon = () => {
     // Cleric Błogosławieństwo accumulator — actual useEffect lives
     // below where fx + charMaxHp + playerHpRef are all in scope.
     const partyHealAccumRef = useRef(0);
-    const { overlay: skillAnimOverlay, trigger: triggerSkillAnim } = useSkillAnim();
+    const { trigger: triggerSkillAnim } = useSkillAnim();
     // Per-slot combat VFX (skill overlays + floating damage numbers).
     // Lives in a single hook so each enemy / ally slot has its own
     // independent stream of visuals — no merging when two hits land in
@@ -455,7 +455,7 @@ const Dungeon = () => {
     // that doesn't see the store-side refill. Without this, leveling up
     // mid-wave would leave the player's bars stuck at the pre-level-up value
     // until the next damage tick. We sync the local mirrors here.
-    useLevelUpRefill(phase === 'fighting', useCallback((maxHp, maxMp) => {
+    useLevelUpRefill(phase === 'running', useCallback((maxHp, maxMp) => {
         playerHpRef.current = maxHp;
         playerMpRef.current = maxMp;
         setPlayerHp(maxHp);

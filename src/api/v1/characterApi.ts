@@ -26,32 +26,12 @@ export interface ICharacterPayload {
     highest_level?: number;
 }
 
-export interface ICharacter {
-    id: string;
-    user_id: string;
-    name: string;
-    class: TCharacterClass;
-    level: number;
-    xp: number;
-    hp: number;
-    max_hp: number;
-    mp: number;
-    max_mp: number;
-    attack: number;
-    defense: number;
-    attack_speed: number;
-    crit_chance: number;
-    crit_damage: number;
-    magic_level: number;
-    hp_regen: number;
-    mp_regen: number;
-    gold: number;
-    stat_points: number;
-    highest_level: number;
-    equipment: Record<string, string | null>;
-    created_at: string;
-    updated_at: string;
-}
+// Canonical character shape lives in src/types/character.ts (includes the
+// ranking columns: arena_*, mastery_points, quests_*, market_*, etc.).
+// Re-exported here so existing `import { ICharacter } from '.../characterApi'`
+// sites keep working without a second, drift-prone copy of the interface.
+export type { ICharacter } from '../../types/character';
+import type { ICharacter } from '../../types/character';
 
 const SUPABASE_RETURN_HEADERS = { headers: { 'Prefer': 'return=representation' } };
 

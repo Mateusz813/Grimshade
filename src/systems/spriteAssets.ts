@@ -307,7 +307,7 @@ const SPELL_CHEST_BY_LEVEL = (() => {
         if (!m) continue;
         const lvl = parseInt(m[1], 10);
         if (!Number.isFinite(lvl)) continue;
-        const url = (mod as GlobModule).default;
+        const url = typeof mod === 'string' ? mod : mod.default;
         if (url) map.set(lvl, url);
     }
     return map;
@@ -351,7 +351,7 @@ const STONE_BY_TIER = (() => {
         if (!m) continue;
         const tier = parseInt(m[1], 10);
         if (!Number.isFinite(tier)) continue;
-        const url = (mod as GlobModule).default;
+        const url = typeof mod === 'string' ? mod : mod.default;
         if (url) map.set(tier, url);
     }
     return map;
@@ -399,7 +399,7 @@ const POTION_BY_NAME = (() => {
         const m = path.match(/\/([^/]+)\.png$/);
         if (!m) continue;
         const name = m[1].toLowerCase();
-        const url = (mod as GlobModule).default;
+        const url = typeof mod === 'string' ? mod : mod.default;
         if (url) map.set(name, url);
     }
     return map;
@@ -456,7 +456,7 @@ const ELIXIR_BY_NAME = (() => {
         const m = path.match(/\/([^/]+)\.png$/);
         if (!m) continue;
         const name = m[1].toLowerCase();
-        const url = (mod as GlobModule).default;
+        const url = typeof mod === 'string' ? mod : mod.default;
         if (url) map.set(name, url);
     }
     return map;

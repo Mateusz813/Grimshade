@@ -1090,7 +1090,6 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     // Snapshot base max HP/MP BEFORE addXp so we can compute level-up grants
     const preChar = useCharacterStore.getState().character;
     const preMaxHp = preChar?.max_hp ?? 0;
-    const preMaxMp = preChar?.max_mp ?? 0;
     const xpResult = useCharacterStore.getState().addXp(finalXp);
     if (xpResult.levelsGained > 0) {
         s.addLog(`Awans! Poziom ${xpResult.newLevel}! (+${xpResult.statPointsGained} pkt statystyk) – pełne HP/MP!`, 'system');

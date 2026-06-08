@@ -617,7 +617,7 @@ interface IPartyCombatSyncState {
     /** Any player: broadcast their own swing/cast on the trainer
      *  dummy. Fire-and-forget, no throttle (each tick is a handful
      *  of events). Receivers de-dupe by reference identity per key. */
-    publishTrainerAttack: (ev: Omit<IPartyTrainerAttack, 'sentAt'>) => void;
+    publishTrainerAttack: (ev: Omit<IPartyTrainerAttack, 'sentAt' | 'seq'>) => void;
     /** Leader-only: broadcast a "combat ended, everyone back to town"
      *  signal. Members receive and navigate to `/` to mirror the
      *  leader's exit. Fired by the leader's stopCombat() when they

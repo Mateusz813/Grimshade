@@ -85,10 +85,9 @@ const TopHeader = () => {
 
   // Subscribe to fields that affect getEffectiveChar's max_hp/max_mp so the
   // bars re-scale instantly when buffs/elixirs/equipment swaps occur. The
-  // values themselves aren't used here — `getEffectiveChar` reads them via
-  // store getters — but the subscriptions force a re-render on change.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _eqWatch = useInventoryStore((s) => s.equipment);
+  // returned value isn't used here — `getEffectiveChar` reads it via store
+  // getters — but the subscription forces a re-render on change.
+  useInventoryStore((s) => s.equipment);
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [buffsOpen, setBuffsOpen] = useState(false);

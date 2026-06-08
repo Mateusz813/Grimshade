@@ -686,7 +686,7 @@ const Combat = () => {
     // Skill animation overlay — same pattern as Boss/Dungeon. The hook owns a
     // single `overlay` slot that holds the active skill's emoji + cssClass and
     // auto-clears after `animData.duration`. We pass it down to <CombatArena>.
-    const { overlay: skillAnimOverlay, trigger: triggerSkillAnim } = useSkillAnim();
+    const { trigger: triggerSkillAnim } = useSkillAnim();
     // Per-slot combat VFX. Hunting uses 4 wave-monster slots on the left
     // (engine ships `targetIdx` in events) and player + bots on the right.
     // We bind these into uiEnemies / uiAllies further down so the cards

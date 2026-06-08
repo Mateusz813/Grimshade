@@ -55,7 +55,7 @@ interface IActiveSkill {
 
 // Flatten every active skill of every class from skills.json into
 // [class, skill] pairs so each test row is labelled with both.
-const activeSkills = skillsData.activeSkills as Record<string, IActiveSkill[]>;
+const activeSkills = skillsData.activeSkills as unknown as Record<string, IActiveSkill[]>;
 const ALL_SKILLS: Array<{ cls: string; skill: IActiveSkill }> = [];
 for (const cls of Object.keys(activeSkills)) {
     for (const skill of activeSkills[cls]) {

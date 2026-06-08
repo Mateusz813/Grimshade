@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -74,6 +74,7 @@ import { useMasteryStore } from '../../stores/masteryStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useDeathStore } from '../../stores/deathStore';
+import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -103,7 +104,7 @@ const renderDungeon = () =>
 beforeEach(() => {
     useCharacterStore.setState({ character: makeChar() });
     useCombatStore.setState({ phase: 'idle' });
-    useDungeonStore.setState({ dailyAttempts: {}, clearedDungeons: [], lastResult: null });
+    useDungeonStore.setState({ dailyAttempts: {}, clearedDungeonIds: {}, lastResult: null });
     useTransformStore.setState({ completedTransforms: [] });
     useSettingsStore.setState({
         dungeonFilterAvailableOnly: false,
@@ -114,15 +115,15 @@ beforeEach(() => {
         autoPotionMpEnabled: false,
     });
     useSkillStore.setState({ activeSkillSlots: [null, null, null, null], skillLevels: {} });
-    useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+    useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
     usePartyStore.setState({ party: null });
     useTaskStore.setState({ activeTasks: [] });
     useQuestStore.setState({ activeQuests: [] });
     useDailyQuestStore.setState({ activeQuests: [] });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
-    useBuffStore.setState({ activeBuffs: {} });
+    useBuffStore.setState({ allBuffs: [] });
     useNecroSummonStore.setState({ summons: {} });
-    useDeathStore.setState({ recentDeaths: [], lastDeath: null });
+    useDeathStore.setState({ event: null });
 });
 
 afterEach(() => {
@@ -209,7 +210,7 @@ describe('Dungeon — graceful with edge inputs', () => {
     });
 
     it('does not crash with no consumables / no equipment', () => {
-        useInventoryStore.setState({ equipment: {}, consumables: [], items: [] });
+        useInventoryStore.setState({ equipment: { ...EMPTY_EQUIPMENT }, consumables: {} });
         const { container } = renderDungeon();
         expect(container.querySelector('.dungeon')).not.toBeNull();
     });

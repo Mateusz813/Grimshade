@@ -68,7 +68,7 @@ import { getSpellChestIcon, getSpellChestDisplayName } from '../../systems/lootS
 import itemsRaw from '../../data/items.json';
 import { getItemDisplayInfo, rerollItemBonuses } from '../../systems/itemGenerator';
 import { ELIXIRS } from '../../stores/shopStore';
-import { POTION_CONVERSIONS, checkConversionAvailability, getMaxConversions } from '../../systems/potionConversion';
+import { POTION_CONVERSIONS, checkConversionAvailability } from '../../systems/potionConversion';
 import {
   FLAT_HP_POTIONS,
   FLAT_MP_POTIONS,
@@ -100,15 +100,6 @@ const STAT_DISPLAY_NAMES: Record<string, string> = {
 // ── Upgrade indicator logic ────────────────────────────────────────────────
 
 type UpgradeIndicator = 'upgrade' | 'equal' | 'maybe' | null;
-
-const RARITY_RANK: Record<string, number> = {
-  common: 0,
-  rare: 1,
-  epic: 2,
-  legendary: 3,
-  mythic: 4,
-  heroic: 5,
-};
 
 /**
  * Returns the slot an inventory item belongs to (checking both base items and generated items).
@@ -805,7 +796,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               if (!displayStats || !itemSlot) return null;
               const baseKey = BASE_STAT_BY_SLOT[itemSlot];
               if (!baseKey) return null;
-              const baseVal = displayStats[baseKey];
+              const baseVal = (displayStats as Partial<IStatValues>)[baseKey] ?? 0;
               if (!baseVal) return null;
               const meta = BASE_STAT_META[baseKey];
               return (
@@ -846,7 +837,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           const rows: Array<{ key: keyof IStatValues; value: number; suffix?: string }> = [];
           const pushRow = (k: keyof IStatValues, suffix?: string) => {
             if (skipKeys.has(k)) return;
-            const v = displayStats[k];
+            const v = (displayStats as Partial<IStatValues>)[k] ?? 0;
             if (v > 0) rows.push({ key: k, value: v, suffix });
           };
           pushRow('attack');
@@ -2912,9 +2903,9 @@ const Inventory = () => {
   // The ref pattern keeps the callback identity stable across bulkMode changes
   // — only re-renders of BagTile will be driven by its own props (isChecked /
   // multiSellMode), not by callback identity churn.
-  // NOTE: We inline the toggle logic here (instead of calling `toggleSelect`)
-  // because `toggleSelect` is declared later in the component — referencing it
-  // in the deps array would cause a TDZ ReferenceError at mount time.
+  // NOTE: the selection-toggle logic is inlined here (rather than extracted
+  // into a separate callback declared later in the component) so the deps
+  // array never references a not-yet-initialised binding (TDZ at mount).
   const bulkModeRef = useRef(bulkMode);
   bulkModeRef.current = bulkMode;
   const selectBagItem = useCallback((item: IInventoryItem) => {
@@ -3150,18 +3141,6 @@ const Inventory = () => {
   }
 
   // ── Multi-sell helpers ──────────────────────────────────────────────────────
-
-  const toggleSelect = useCallback((uuid: string) => {
-    setSelectedUuids((prev) => {
-      const next = new Set(prev);
-      if (next.has(uuid)) {
-        next.delete(uuid);
-      } else {
-        next.add(uuid);
-      }
-      return next;
-    });
-  }, []);
 
   const selectAll = useCallback(() => {
     setSelectedUuids(new Set(filteredBag.map((i) => i.uuid)));

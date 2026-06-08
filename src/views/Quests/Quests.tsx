@@ -1676,7 +1676,7 @@ const Quests = () => {
             ) : (
               <div className="quests__history-list">
                 {completedTasks.map((ct) => {
-                  const monster = monstersMiniList.find((m) => m.id === ct.monsterId);
+                  const monster = monstersMiniList.find((m) => m.name_pl === ct.monsterName);
                   const lvl = monster?.level ?? 0;
                   // Always render an actual image — `getMonsterImageNearest`
                   // walks the registry to find the closest available tier

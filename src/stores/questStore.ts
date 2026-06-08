@@ -243,7 +243,6 @@ export const useQuestStore = create<IQuestStore>()(
       refreshMasteryProgress: () => {
         const masteryState = useMasteryStore.getState();
         const allMonsterIds = (monstersData as unknown as { id: string }[]).map((m) => m.id);
-        const totalMonsters = allMonsterIds.length;
 
         // Pre-compute mastery aggregates once
         let totalMasteryLevels = 0;

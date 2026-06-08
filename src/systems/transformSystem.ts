@@ -333,7 +333,7 @@ export const TRANSFORM_SLOT_TIERS: readonly TTransformTier[] = ['Normal', 'Stron
 // ── Data access helpers ───────────────────────────────────────────────────────
 
 const allTransforms: ITransformData[] = transformsData as ITransformData[];
-const allMonsters: IMonster[] = monstersData as IMonster[];
+const allMonsters: IMonster[] = monstersData as unknown as IMonster[];
 
 /** Total number of transforms in the game. */
 export const TRANSFORM_COUNT = allTransforms.length;

@@ -66,7 +66,6 @@ const BuffBar = () => {
     }, [cleanExpired, allBuffs.length]);
 
     const now = Date.now();
-    const hasProtections = !isCharacterless && (aolCount > 0 || deathProtCount > 0);
     if (isCharacterless) return null;
     const totalCount = active.length + (aolCount > 0 ? 1 : 0) + (deathProtCount > 0 ? 1 : 0);
     if (totalCount === 0) return null;
