@@ -63,32 +63,57 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      # E2E hits a REAL Supabase + needs test-account creds. Without those
+      # secrets the suite can't run, so we SKIP gracefully (job stays green)
+      # rather than fail red. Add the secrets (see .github/DEPLOY.md "E2E in CI")
+      # to activate. NOTE: enabling this runs E2E against whatever Supabase
+      # VITE_SUPABASE_URL points at on every push — point it at a dedicated
+      # TEST project, not production, to avoid prod DB load + churn.
+      - name: Check e2e secrets present
+        id: e2eguard
+        run: echo "ready=${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' && secrets.E2E_USER_EMAIL != '' }}" >> "$GITHUB_OUTPUT"
       # Cache browsers — pierwszy run zainstaluje, kolejne biorą z cache.
       - name: Cache Playwright browsers
+        if: steps.e2eguard.outputs.ready == 'true'
         uses: actions/cache@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+      # Install BOTH browsers the config uses: chromium (mobile-chrome /
+      # Pixel 7) + webkit (mobile-safari / iPhone 13).
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        if: steps.e2eguard.outputs.ready == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium webkit
       - name: Install only Playwright system deps (when cache hit)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        if: steps.e2eguard.outputs.ready == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium webkit
       - name: Run E2E
+        if: steps.e2eguard.outputs.ready == 'true'
         run: npm run test:e2e
         env:
           CI: 'true'
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          E2E_USER2_EMAIL: ${{ secrets.E2E_USER2_EMAIL }}
+          E2E_USER2_PASSWORD: ${{ secrets.E2E_USER2_PASSWORD }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      - name: E2E skipped (secrets missing)
+        if: steps.e2eguard.outputs.ready != 'true'
+        run: echo "::notice::E2E secrets not set — skipping Playwright in CI. Add them (see .github/DEPLOY.md) to activate; point VITE_SUPABASE_URL at a TEST Supabase project, not prod."
       - name: Upload Playwright report
-        if: always()
+        if: always() && steps.e2eguard.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
       - name: Upload Playwright traces (on failure)
-        if: failure()
+        if: failure() && steps.e2eguard.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces
