@@ -96,7 +96,10 @@ input,
 textarea,
 select {
   font-family: inherit;
-  font-size: inherit;
+  /* 16px minimum — anything smaller makes iOS Safari auto-zoom the page on
+     focus, and in a PWA the user can't pinch back out. Forcing 16px on every
+     text field app-wide kills that zoom. (Do NOT lower below 16px.) */
+  font-size: 16px;
 }
 
 img,

@@ -13,6 +13,7 @@ import { getCharacterAvatar } from '../../../data/classAvatars';
 import { getEffectiveChar } from '../../../systems/combatEngine';
 import { formatGoldShort, getGoldBreakdown } from '../../../systems/goldFormat';
 import AvatarMenu from '../AvatarMenu/AvatarMenu';
+import ChangePasswordModal from '../../ui/ChangePasswordModal/ChangePasswordModal';
 import BuffPopover from '../BuffPopover/BuffPopover';
 import TaskBadge from './TaskBadge';
 import './TopHeader.scss';
@@ -91,6 +92,9 @@ const TopHeader = () => {
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [buffsOpen, setBuffsOpen] = useState(false);
+  // Change-password modal lives HERE (not inside AvatarMenu) so it survives the
+  // menu closing when the user taps "Zmień hasło".
+  const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [goldOpen, setGoldOpen] = useState(false);
   // Pulse popover — click on the HP/MP mini bars to peek the exact values
   // (shown as "10/100" rows). Same click-outside contract as the gold popover.
@@ -366,7 +370,11 @@ const TopHeader = () => {
         <AvatarMenu
           anchorRef={avatarBtnRef}
           onClose={() => setAvatarOpen(false)}
+          onChangePassword={() => { setAvatarOpen(false); setChangePwdOpen(true); }}
         />
+      )}
+      {changePwdOpen && (
+        <ChangePasswordModal onClose={() => setChangePwdOpen(false)} />
       )}
       {buffsOpen && (
         <BuffPopover
