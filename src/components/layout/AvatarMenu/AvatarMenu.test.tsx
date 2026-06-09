@@ -97,12 +97,18 @@ const makeChar = (): ICharacter => ({
 const Harness = ({
     onClose = () => undefined,
     onChangePassword = () => undefined,
-}: { onClose?: () => void; onChangePassword?: () => void }) => {
+    onOpenTutorial = () => undefined,
+}: { onClose?: () => void; onChangePassword?: () => void; onOpenTutorial?: () => void }) => {
     const ref = useRef<HTMLButtonElement>(null);
     return (
         <MemoryRouter>
             <button ref={ref} data-testid="anchor">anchor</button>
-            <AvatarMenu anchorRef={ref} onClose={onClose} onChangePassword={onChangePassword} />
+            <AvatarMenu
+                anchorRef={ref}
+                onClose={onClose}
+                onChangePassword={onChangePassword}
+                onOpenTutorial={onOpenTutorial}
+            />
         </MemoryRouter>
     );
 };
@@ -252,5 +258,24 @@ describe('AvatarMenu — change password', () => {
         render(<Harness onChangePassword={onChangePassword} />);
         fireEvent.click(screen.getByText('Zmień hasło'));
         expect(onChangePassword).toHaveBeenCalled();
+    });
+});
+
+describe('AvatarMenu — tutorial', () => {
+    it('calls onOpenTutorial when "Tutorial" is tapped', () => {
+        const onOpenTutorial = vi.fn();
+        render(<Harness onOpenTutorial={onOpenTutorial} />);
+        fireEvent.click(screen.getByText('Tutorial'));
+        expect(onOpenTutorial).toHaveBeenCalled();
+    });
+
+    it('renders Tutorial immediately before Wyloguj', () => {
+        render(<Harness />);
+        const labels = Array.from(document.querySelectorAll('.avatar-menu__item-label'))
+            .map((el) => el.textContent);
+        const tut = labels.indexOf('Tutorial');
+        const logout = labels.indexOf('Wyloguj');
+        expect(tut).toBeGreaterThan(-1);
+        expect(logout).toBe(tut + 1);
     });
 });
