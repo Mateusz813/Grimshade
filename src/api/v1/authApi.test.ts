@@ -106,6 +106,78 @@ describe('authApi.resetPassword', () => {
     });
 });
 
+describe('authApi.updatePassword', () => {
+    beforeEach(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.auth as any).updateUser = vi.fn().mockResolvedValue({ data: {}, error: null });
+    });
+
+    it('calls supabase.auth.updateUser with the new password', async () => {
+        await authApi.updatePassword('newSecret123');
+        expect(supabase.auth.updateUser).toHaveBeenCalledWith({ password: 'newSecret123' });
+    });
+
+    it('does not pass email / current password — only { password } (session-scoped)', async () => {
+        await authApi.updatePassword('abcdef');
+        const arg = vi.mocked(supabase.auth.updateUser).mock.calls[0][0];
+        expect(Object.keys(arg as object)).toEqual(['password']);
+    });
+
+    it('throws when supabase returns an error (weak pw / expired session)', async () => {
+        const err = new Error('Password should be at least 6 characters');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.auth as any).updateUser = vi.fn().mockResolvedValueOnce({ data: {}, error: err });
+        await expect(authApi.updatePassword('123')).rejects.toBe(err);
+    });
+});
+
+describe('authApi.verifyCurrentPassword', () => {
+    beforeEach(() => {
+        vi.mocked(supabase.auth.getSession).mockResolvedValue({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: { session: { user: { email: 'me@grimshade.pl' } } } as any,
+            error: null,
+        });
+        vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: { user: { id: 'u1' }, session: { access_token: 't' } } as any,
+            error: null,
+        });
+    });
+
+    it('re-authenticates with the session email + supplied password', async () => {
+        await authApi.verifyCurrentPassword('oldpw');
+        expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+            email: 'me@grimshade.pl',
+            password: 'oldpw',
+        });
+    });
+
+    it('returns true when the password is correct', async () => {
+        await expect(authApi.verifyCurrentPassword('oldpw')).resolves.toBe(true);
+    });
+
+    it('returns false when the password is wrong', async () => {
+        vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: null as any,
+            error: { message: 'Invalid login credentials' } as never,
+        });
+        await expect(authApi.verifyCurrentPassword('bad')).resolves.toBe(false);
+    });
+
+    it('returns false (no re-auth attempt) when there is no active session', async () => {
+        vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: { session: null } as any,
+            error: null,
+        });
+        vi.mocked(supabase.auth.signInWithPassword).mockClear();
+        await expect(authApi.verifyCurrentPassword('whatever')).resolves.toBe(false);
+        expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
+    });
+});
+
 describe('authApi.getSession', () => {
     it('returns the session payload on success', async () => {
         const session = { access_token: 'abc', user: { id: 'u3' } };

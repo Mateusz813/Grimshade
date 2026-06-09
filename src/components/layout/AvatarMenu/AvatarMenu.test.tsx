@@ -94,12 +94,15 @@ const makeChar = (): ICharacter => ({
     created_at: '', updated_at: '',
 } as ICharacter);
 
-const Harness = ({ onClose = () => undefined }: { onClose?: () => void }) => {
+const Harness = ({
+    onClose = () => undefined,
+    onChangePassword = () => undefined,
+}: { onClose?: () => void; onChangePassword?: () => void }) => {
     const ref = useRef<HTMLButtonElement>(null);
     return (
         <MemoryRouter>
             <button ref={ref} data-testid="anchor">anchor</button>
-            <AvatarMenu anchorRef={ref} onClose={onClose} />
+            <AvatarMenu anchorRef={ref} onClose={onClose} onChangePassword={onChangePassword} />
         </MemoryRouter>
     );
 };
@@ -240,5 +243,14 @@ describe('AvatarMenu — play mode toggle', () => {
         render(<Harness />);
         const offlineBtn = screen.getByText('Offline');
         expect(offlineBtn.className.includes('--active')).toBe(true);
+    });
+});
+
+describe('AvatarMenu — change password', () => {
+    it('calls onChangePassword when "Zmień hasło" is tapped (parent closes menu + opens modal)', () => {
+        const onChangePassword = vi.fn();
+        render(<Harness onChangePassword={onChangePassword} />);
+        fireEvent.click(screen.getByText('Zmień hasło'));
+        expect(onChangePassword).toHaveBeenCalled();
     });
 });
