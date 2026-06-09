@@ -21,6 +21,8 @@ interface IAvatarMenuProps {
   /** Opens the change-password modal. The modal is rendered by the PARENT
    *  (TopHeader) so it survives this menu closing on click. */
   onChangePassword: () => void;
+  /** Opens the tutorial modal (also rendered by the parent). */
+  onOpenTutorial: () => void;
 }
 
 /**
@@ -34,7 +36,7 @@ interface IAvatarMenuProps {
  *
  * Closes on outside click and on Escape.
  */
-const AvatarMenu = ({ anchorRef, onClose, onChangePassword }: IAvatarMenuProps) => {
+const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IAvatarMenuProps) => {
   const navigate = useNavigate();
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -262,6 +264,16 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword }: IAvatarMenuProps) 
       >
         <span className="avatar-menu__item-icon">🔑</span>
         <span className="avatar-menu__item-label">Zmień hasło</span>
+      </button>
+
+      <button
+        type="button"
+        className="avatar-menu__item"
+        onClick={onOpenTutorial}
+        role="menuitem"
+      >
+        <span className="avatar-menu__item-icon">📖</span>
+        <span className="avatar-menu__item-label">Tutorial</span>
       </button>
 
       <button
