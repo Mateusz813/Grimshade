@@ -14,6 +14,7 @@ import { getEffectiveChar } from '../../../systems/combatEngine';
 import { formatGoldShort, getGoldBreakdown } from '../../../systems/goldFormat';
 import AvatarMenu from '../AvatarMenu/AvatarMenu';
 import ChangePasswordModal from '../../ui/ChangePasswordModal/ChangePasswordModal';
+import TutorialModal from '../../ui/TutorialModal/TutorialModal';
 import BuffPopover from '../BuffPopover/BuffPopover';
 import TaskBadge from './TaskBadge';
 import './TopHeader.scss';
@@ -92,9 +93,10 @@ const TopHeader = () => {
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [buffsOpen, setBuffsOpen] = useState(false);
-  // Change-password modal lives HERE (not inside AvatarMenu) so it survives the
-  // menu closing when the user taps "Zmień hasło".
+  // Change-password + tutorial modals live HERE (not inside AvatarMenu) so they
+  // survive the menu closing when the user taps the menu item.
   const [changePwdOpen, setChangePwdOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [goldOpen, setGoldOpen] = useState(false);
   // Pulse popover — click on the HP/MP mini bars to peek the exact values
   // (shown as "10/100" rows). Same click-outside contract as the gold popover.
@@ -371,10 +373,14 @@ const TopHeader = () => {
           anchorRef={avatarBtnRef}
           onClose={() => setAvatarOpen(false)}
           onChangePassword={() => { setAvatarOpen(false); setChangePwdOpen(true); }}
+          onOpenTutorial={() => { setAvatarOpen(false); setTutorialOpen(true); }}
         />
       )}
       {changePwdOpen && (
         <ChangePasswordModal onClose={() => setChangePwdOpen(false)} />
+      )}
+      {tutorialOpen && (
+        <TutorialModal onClose={() => setTutorialOpen(false)} />
       )}
       {buffsOpen && (
         <BuffPopover
