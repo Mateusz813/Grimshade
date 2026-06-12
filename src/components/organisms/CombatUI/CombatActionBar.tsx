@@ -1,5 +1,7 @@
 import type { ICombatSkillSlot, TExitConfig } from './types';
 import { isImageUrl } from '../../../systems/spriteAssets';
+import Icon from '../../atoms/Icon/Icon';
+import TinyIcon from '../../ui/TinyIcon/TinyIcon';
 
 interface IProps {
     /** 4 active skill slots — pad with `null` for empty placeholders. */
@@ -23,7 +25,7 @@ const SkillButton = ({ s }: { s: ICombatSkillSlot | null }) => {
             {isImageUrl(s.icon) ? (
                 <img className="combat-ui__action-skill-img" src={s.icon} alt="" draggable={false} />
             ) : (
-                <span className="combat-ui__action-icon">{s.icon}</span>
+                <span className="combat-ui__action-icon"><TinyIcon icon={s.icon} /></span>
             )}
             {s.mpCost > 0 && (
                 <span className="combat-ui__action-mp">{s.mpCost}</span>
@@ -52,7 +54,7 @@ const SkillButton = ({ s }: { s: ICombatSkillSlot | null }) => {
  * Bottom action bar — fixed at the bottom of the viewport, replaces the
  * global BottomNav while a fight is active. Layout:
  *
- *   [Skill1] [Skill2] [Skill3] [Skill4] [← exit]
+ *   [Skill1] [Skill2] [Skill3] [Skill4] [<- exit]
  *
  * Potions live separately in the floating <CombatPotionDock /> so they
  * stay reachable on every screen size without competing with the skill
@@ -79,7 +81,7 @@ const CombatActionBar = ({ skills, exit }: IProps) => {
                 aria-label={exit.kind === 'hunt-popup' ? 'Wyjdź' : 'Ucieknij'}
                 title={exit.kind === 'hunt-popup' ? 'Wyjdź' : 'Ucieknij'}
             >
-                <span className="combat-ui__action-icon">←</span>
+                <span className="combat-ui__action-icon"><Icon name="arrowLeft" /></span>
             </button>
         </nav>
     );

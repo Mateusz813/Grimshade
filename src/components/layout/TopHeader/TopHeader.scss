@@ -56,7 +56,7 @@
     border-radius: 50%;
   }
 
-  // ── Mini HP/MP bars ──────────────────────────────────────────────────────
+  // -- Mini HP/MP bars ------------------------------------------------------
   // Two thin bars stacked vertically, sitting flush next to the avatar. Each
   // bar carries a tiny percentage label inside it ("10%") so the player can
   // read pulse status at a glance without hovering for the title tooltip.
@@ -97,7 +97,7 @@
 
   &__pulse-bar {
     position: relative;
-    // Bumped from 7→11px so the inline percentage label has room to breathe.
+    // Bumped from 711px so the inline percentage label has room to breathe.
     // Total bar cluster: 2*11 + 3 (gap) + 4 (padding) = 29px — still well
     // inside the 50px header even with the avatar (36px) sitting next to it.
     height: 11px;
@@ -149,7 +149,7 @@
     letter-spacing: -0.2px;
   }
 
-  // ── HP/MP popover (click-to-peek exact values) ──────────────────────────
+  // -- HP/MP popover (click-to-peek exact values) --------------------------
   // Mirrors the gold popover layout (small floating box anchored to the
   // bottom-left of the wrap) so the two info popovers feel consistent.
   &__pulse-popover {
@@ -268,7 +268,7 @@
     flex: 1 1 auto;
   }
 
-  // ── Task/quest badge (global) ─────────────────────────────────────────────
+  // -- Task/quest badge (global) ---------------------------------------------
   // Sits between the spacer and the gold pill. The button uses the same chip
   // shape as buffs/gold so the cluster reads as one row of consistent
   // controls. Dropdown floats below the header on click.
@@ -477,7 +477,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  // ── TaskBadge claimable glow ─────────────────────────────────────────────
+  // -- TaskBadge claimable glow ---------------------------------------------
   // When at least one task / quest / daily is ready to claim, the badge
   // pulses with a green halo to draw the eye. The animation runs forever
   // until the player either claims or the rewards drop off the list.
@@ -506,8 +506,8 @@
 
   // Combined status dot — anchored to the top-right corner of the
   // tasks button. Two flavours via the `--{state}` modifier:
-  //   • `--claim`  → purple pulse, "you have rewards waiting"
-  //   • `--live`   → green pulse, "the monster you're fighting RIGHT
+  //   - `--claim`   purple pulse, "you have rewards waiting"
+  //   - `--live`    green pulse, "the monster you're fighting RIGHT
   //                  NOW counts toward an active task / quest"
   // Sits at the corner instead of next to the count so it doesn't push
   // the layout — the button stays the same size whether the dot is on

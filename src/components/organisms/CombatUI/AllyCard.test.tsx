@@ -71,7 +71,10 @@ describe('AllyCard — smoke', () => {
     it('marks the card as dead with skull overlay when isDead is true', () => {
         const { container } = render(<AllyCard ally={makeAlly({ isDead: true })} />);
         expect(container.querySelector('.combat-ui__ally--dead')).toBeTruthy();
-        expect(screen.getByText('💀')).toBeTruthy();
+        // Skull renders via <Emoji> as a Twemoji <img> inside the overlay span.
+        expect(
+            container.querySelector('.combat-ui__ally-skull svg.game-icon[data-icon="skull"]'),
+        ).toBeTruthy();
     });
 
     it('exposes the accent color as a CSS custom property', () => {
@@ -131,9 +134,16 @@ describe('AllyCard — badges & overlays', () => {
 describe('AllyCard — summon badges', () => {
     it('renders per-type summon badges when summonsByType has counts', () => {
         render(<AllyCard ally={makeAlly({ summonsByType: { skeleton: 2, ghost: 1 } })} />);
-        // Combined glyphs+counts present in two button labels.
-        expect(screen.getByText('💀×2')).toBeTruthy();
-        expect(screen.getByText('👻×1')).toBeTruthy();
+        // Each badge renders <Emoji> as a Twemoji <img> followed by ×N text.
+        // Locate the badge by its emoji img, then assert the ×N text sibling.
+        const skeletonBtn = document
+            .querySelector('svg.game-icon[data-icon="skull"]')
+            ?.closest('button.combat-ui__ally-summon-badge');
+        expect(skeletonBtn?.textContent).toBe('×2');
+        const ghostBtn = document
+            .querySelector('svg.game-icon[data-icon="ghost"]')
+            ?.closest('button.combat-ui__ally-summon-badge');
+        expect(ghostBtn?.textContent).toBe('×1');
     });
 
     it('fires onSummonClick with the type when a badge is clicked', () => {
@@ -143,13 +153,18 @@ describe('AllyCard — summon badges', () => {
                 ally={makeAlly({ summonsByType: { demon: 4 }, onSummonClick })}
             />,
         );
-        fireEvent.click(screen.getByText('😈×4'));
+        const demonBtn = document
+            .querySelector('svg.game-icon[data-icon="smiling-face-with-horns"]')
+            ?.closest('button.combat-ui__ally-summon-badge') as HTMLButtonElement;
+        fireEvent.click(demonBtn);
         expect(onSummonClick).toHaveBeenCalledWith('demon');
     });
 
     it('disables badges (no click) when onSummonClick is not provided', () => {
         render(<AllyCard ally={makeAlly({ summonsByType: { lich: 1 } })} />);
-        const btn = screen.getByText('👑×1').closest('button') as HTMLButtonElement;
+        const btn = document
+            .querySelector('svg.game-icon[data-icon="crown"]')
+            ?.closest('button') as HTMLButtonElement;
         expect(btn.disabled).toBe(true);
     });
 
@@ -183,14 +198,15 @@ describe('AllyCard — floats & skill animations', () => {
         const { container } = render(
             <AllyCard
                 ally={makeAlly({
-                    skillAnim: { id: 7, emoji: '🔥', cssClass: 'skill-anim--fire' },
+                    skillAnim: { id: 7, emoji: 'fire', cssClass: 'skill-anim--fire' },
                 })}
             />,
         );
         const overlay = container.querySelector('.skill-anim-overlay.skill-anim--fire');
         expect(overlay).toBeTruthy();
-        // Emoji string falls through as text since it doesn't look like a URL.
-        expect(screen.getByText('🔥')).toBeTruthy();
+        // Non-URL emoji routes through TinyIcon -> <Emoji>, rendering a Twemoji
+        // <img> (not text) inside the overlay's .skill-anim-emoji span.
+        expect(overlay?.querySelector('svg.game-icon[data-icon="fire"]')).toBeTruthy();
     });
 
     it('uses <img> for skill animation when emoji is a URL', () => {

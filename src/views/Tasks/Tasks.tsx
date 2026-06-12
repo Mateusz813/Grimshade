@@ -9,6 +9,9 @@ import tasksRaw from '../../data/tasks.json';
 import monstersData from '../../data/monsters.json';
 import { computeTaskRewards } from '../../systems/taskRewards';
 import { formatGoldShort } from '../../systems/goldFormat';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import './Tasks.scss';
 
 interface IMonsterMini {
@@ -95,7 +98,7 @@ const Tasks = () => {
     return (
       <div className={`tasks__inline-mastery${isMax ? ' tasks__inline-mastery--max' : ''}`}>
         <span className={`tasks__inline-mastery-badge${isMax ? ' tasks__inline-mastery-badge--max' : ''}`}>
-          {isMax ? '👑 MAX' : `Mastery ${level}/${MASTERY_MAX_LEVEL}`}
+          {isMax ? <><GameIcon name="crown" /> MAX</> : `Mastery ${level}/${MASTERY_MAX_LEVEL}`}
         </span>
         {!isMax && (
           <div className="tasks__inline-mastery-bar-wrap">
@@ -117,8 +120,8 @@ const Tasks = () => {
   return (
     <div className="tasks">
       <header className="tasks__header page-header">
-        <button className="tasks__back page-back-btn" onClick={() => navigate('/')}>← Miasto</button>
-        <h1 className="tasks__title page-title">📋 Taski</h1>
+        <button className="tasks__back page-back-btn" onClick={() => navigate('/')}><Icon name="arrowLeft" /> Miasto</button>
+        <h1 className="tasks__title page-title"><GameIcon name="clipboard" /> Taski</h1>
         <span className="tasks__slots-badge">
           {activeTasks.length}/{MAX_ACTIVE_TASKS}
         </span>
@@ -141,7 +144,7 @@ const Tasks = () => {
                     onClick={() => cancelTask(activeTask.id)}
                     title="Anuluj task"
                   >
-                    ✕
+                    <Icon name="x" />
                   </button>
                 </div>
                 <div className="tasks__active-title">
@@ -159,11 +162,11 @@ const Tasks = () => {
                   </span>
                 </div>
                 <div className="tasks__active-reward">
-                  Nagroda: 💰 {formatGoldShort(activeTask.rewardGold)} · ⭐ {activeTask.rewardXp.toLocaleString('pl-PL')} XP
+                  Nagroda: <GameIcon name="money-bag" /> {formatGoldShort(activeTask.rewardGold)} · <GameIcon name="star" /> {activeTask.rewardXp.toLocaleString('pl-PL')} XP
                 </div>
                 {isComplete && (
                   <button className="tasks__claim-btn" onClick={() => handleClaimReward(activeTask.id)}>
-                    🎁 Odbierz nagrode
+                    <GameIcon name="wrapped-gift" /> Odbierz nagrode
                   </button>
                 )}
               </div>
@@ -201,8 +204,8 @@ const Tasks = () => {
                   <div className="tasks__monster-header">
                     <span className="tasks__monster-name">
                       {tasks[0].monsterName}
-                      {monsterTaken && <span className="tasks__monster-active-badge">📋 Aktywny</span>}
-                      {isLocked && <span className="tasks__monster-locked-badge">{unlock.shortLabel}</span>}
+                      {monsterTaken && <span className="tasks__monster-active-badge"><GameIcon name="clipboard" /> Aktywny</span>}
+                      {isLocked && <span className="tasks__monster-locked-badge"><EmojiText>{unlock.shortLabel}</EmojiText></span>}
                     </span>
                     <span className="tasks__monster-level">Lvl {tasks[0].monsterLevel}</span>
                   </div>
@@ -237,9 +240,9 @@ const Tasks = () => {
                             {isActive ? `${activeForThis!.progress}/` : ''}{task.killCount} zabojstw
                           </span>
                           <span className="tasks__threshold-reward">
-                            💰 {formatGoldShort(task.rewardGold)} · ⭐ {task.rewardXp.toLocaleString('pl-PL')} XP
+                            <GameIcon name="money-bag" /> {formatGoldShort(task.rewardGold)} · <GameIcon name="star" /> {task.rewardXp.toLocaleString('pl-PL')} XP
                           </span>
-                          {isCompleted && <span className="tasks__threshold-done">✓ Gotowe!</span>}
+                          {isCompleted && <span className="tasks__threshold-done"><GameIcon name="check-mark-button" /> Gotowe!</span>}
                         </button>
                       );
                     })}
@@ -259,10 +262,10 @@ const Tasks = () => {
             completedTasks.map((ct) => (
               <div key={ct.id} className="tasks__history-item">
                 <div className="tasks__history-name">
-                  ✓ {ct.killCount.toLocaleString('pl-PL')} × {ct.monsterName}
+                  <GameIcon name="check-mark-button" /> {ct.killCount.toLocaleString('pl-PL')} × {ct.monsterName}
                 </div>
                 <div className="tasks__history-reward">
-                  💰 +{formatGoldShort(ct.rewardGold)} · ⭐ +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
+                  <GameIcon name="money-bag" /> +{formatGoldShort(ct.rewardGold)} · <GameIcon name="star" /> +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
                 </div>
                 <div className="tasks__history-date">
                   {new Date(ct.completedAt).toLocaleDateString('pl-PL')}

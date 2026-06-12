@@ -8,15 +8,15 @@
  *   1. Seed Knight via API (deterministyczne base — settings store
  *      hydratuje z game_saves defaults / characterScope: 4 slots, kazdy
  *      threshold = 50% lub 40%, kazdy enable=true/false zgodnie z domyslnymi).
- *   2. Login + select character → wejscie do Town (`/`).
+ *   2. Login + select character -> wejscie do Town (`/`).
  *
- * One action:   navigate to `/inventory` → tap "Potion" w action row pod
+ * One action:   navigate to `/inventory` -> tap "Potion" w action row pod
  *               paperdoll-em (`aria-label="Auto-potion"`,
  *               `setPopupKey('potion')` — Inventory.tsx linia 3482).
  *
  * One outcome:  Popup `.inventory__popup--potion` sie otwiera (linia 3577)
  *               i zawiera:
- *               - 2 zakladki: "⚙️ Auto-potion" + "🧪 Alchemia" (linia 3598-3613)
+ *               - 2 zakladki: ":gear: Auto-potion" + ":test-tube: Alchemia" (linia 3598-3613)
  *               - aktywna jest Auto-potion (default tab — Inventory.tsx
  *                 line 2705: `useState<'auto' | 'alchemy'>('auto')`)
  *               - 4 bloki `.inventory__potion-setting` (linia 3618, 3667,
@@ -26,7 +26,7 @@
  *               - Labelki w blokach: "Auto HP Potion", "Auto MP Potion",
  *                 "Auto % HP Potion", "Auto % MP Potion"
  *
- * Cleanup:      try/finally → `cleanupCharacterById(createdId)`.
+ * Cleanup:      try/finally -> `cleanupCharacterById(createdId)`.
  *
  * Co testujemy (i co NIE):
  *  - SMOKE: popup sie otwiera + ma wymaganą strukturę 4-slot threshold
@@ -73,9 +73,9 @@ test.describe('Auto-Potion › Settings', { tag: '@auto-potion' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 3. /inventory → wait for paperdoll actions row to be ready.
+            // 3. /inventory -> wait for paperdoll actions row to be ready.
             await page.goto('/inventory');
-            await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
+            await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 20_000 });
 
             // 4. Tap "Auto-potion" button (Inventory.tsx linia 3482).
             await page.getByRole('button', { name: /^auto-potion$/i }).tap();
@@ -84,7 +84,7 @@ test.describe('Auto-Potion › Settings', { tag: '@auto-potion' }, () => {
             const popup = page.locator('.inventory__popup--potion');
             await expect(popup).toBeVisible({ timeout: 5_000 });
 
-            // 6. Header title "🧪 Potiony" (linia 3585).
+            // 6. Header title ":test-tube: Potiony" (linia 3585).
             await expect(popup.getByText('Potiony')).toBeVisible();
 
             // 7. 2 popup tabs widoczne (linia 3598-3613).

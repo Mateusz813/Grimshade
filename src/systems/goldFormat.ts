@@ -2,10 +2,10 @@
  * Gold display formatter.
  *
  * Currency tiers (each unit = 100 of the previous):
- *   gp        : 0 – 999          → "0 gp" – "999 gp"
- *   k         : 1 000 – 99 999    → "1,00 k" – "99,99 k"        (1k    = 1 000 gp)
- *   cc        : 100 000 – 9 999 999 → "1,00 cc" – "99,99 cc"     (1cc   = 100 000 gp)
- *   sc        : 10 000 000+        → "1,00 sc" – "Nsc"          (1sc   = 10 000 000 gp)
+ *   gp        : 0 – 999          -> "0 gp" – "999 gp"
+ *   k         : 1 000 – 99 999    -> "1,00 k" – "99,99 k"        (1k    = 1 000 gp)
+ *   cc        : 100 000 – 9 999 999 -> "1,00 cc" – "99,99 cc"     (1cc   = 100 000 gp)
+ *   sc        : 10 000 000+        -> "1,00 sc" – "Nsc"          (1sc   = 10 000 000 gp)
  *
  * The compact form ALWAYS shows just the highest non-zero tier with two
  * decimal places (Polish comma separator). So 5 138 755 gold reads as
@@ -13,7 +13,7 @@
  * the breakdown for the exact split (sc / cc / k / gold).
  *
  * Decimals are TRUNCATED, not rounded — we never want to display a value
- * that exceeds what the player actually has (rounding 51.387 → 51.39 cc
+ * that exceeds what the player actually has (rounding 51.387 -> 51.39 cc
  * would show 0.003 cc more than they own).
  */
 

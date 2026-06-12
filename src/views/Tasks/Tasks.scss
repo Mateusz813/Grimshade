@@ -317,7 +317,7 @@
     font-weight: 700;
   }
 
-  // ── Monster group wrapper (mastery bar + card together) ──────────────────
+  // -- Monster group wrapper (mastery bar + card together) ------------------
   &__monster-group-wrap {
     display: flex;
     flex-direction: column;
@@ -329,7 +329,7 @@
     margin-bottom: 0;
   }
 
-  // ── Inline mastery bar (above each monster card) ───────────────────────
+  // -- Inline mastery bar (above each monster card) -----------------------
   &__inline-mastery {
     display: flex;
     align-items: center;

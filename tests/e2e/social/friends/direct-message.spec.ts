@@ -10,7 +10,7 @@
  * side is delivered to BOTH via Supabase Realtime `postgres_changes`.
  *
  * Why we don't use the Friends list flow:
- *   The canonical "Dodaj znajomego → tap 💌 on friend row" flow can't
+ *   The canonical "Dodaj znajomego -> tap :love-letter: on friend row" flow can't
  *   succeed under the current Supabase RLS policy on `characters`
  *   (SELECT restricted to own rows). Documented at length in
  *   `add-friend.spec.ts`. To avoid coupling this test to that
@@ -34,7 +34,7 @@
  *      observes the `pm` query param, calls `openPm` to create + focus
  *      the PM tab. The Chat component for that tab subscribes to the
  *      `pm_a_b` channel via `chatApi.subscribe`.
- *   3. Primary types message + taps send → INSERT on `messages` with
+ *   3. Primary types message + taps send -> INSERT on `messages` with
  *      channel = `pm_a_b`.
  *   4. Primary sees optimistic local insert (return=representation).
  *   5. Secondary receives via Realtime broadcast on the same channel
@@ -42,7 +42,7 @@
  *
  * Cleanup: characters wiped via multiContext.cleanup. PM message rows
  *   stay (user_id, not character_id) but the channel id is unique to
- *   these two test characters → unreachable orphan rows, harmless.
+ *   these two test characters -> unreachable orphan rows, harmless.
  */
 
 import { test, expect } from '@playwright/test';
@@ -55,7 +55,7 @@ import type { Page } from '@playwright/test';
 test.describe('Social › Friends', { tag: '@social' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary opens PM with secondary → sends message → secondary receives via Realtime', async ({ browser }) => {
+    test('multi-context: primary opens PM with secondary -> sends message -> secondary receives via Realtime', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const token = `E2E-PM-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
@@ -107,14 +107,14 @@ test.describe('Social › Friends', { tag: '@social' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // ── Both navigate to /chat?pm=<other> — bypasses Friends
+            // -- Both navigate to /chat?pm=<other> — bypasses Friends
             //    list dependence; GlobalChat's URL effect calls
             //    `openPm(character.name, target)` for us, creating the
             //    PM tab + making it active + subscribing to the
             //    deterministic `pm_a_b` channel.
             const openPmTab = async (page: Page, ownNick: string, target: string): Promise<void> => {
                 await page.goto(`/chat?pm=${encodeURIComponent(target)}`);
-                // The PM tab title is `💌 ${target}` per chatTabsStore.
+                // The PM tab title is `:love-letter: ${target}` per chatTabsStore.
                 const activeTab = page.locator('.global-chat__tab--active');
                 await expect(activeTab).toBeVisible({ timeout: 15_000 });
                 await expect(activeTab).toContainText(target, { timeout: 10_000 });

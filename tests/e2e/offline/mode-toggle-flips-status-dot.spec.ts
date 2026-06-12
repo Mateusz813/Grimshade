@@ -1,12 +1,12 @@
 /**
- * Atomic E2E — toggle Online → Offline w AvatarMenu zmienia stan
+ * Atomic E2E — toggle Online -> Offline w AvatarMenu zmienia stan
  * `useConnectivityStore.mode` + active class na odpowiednim przycisku
  * + status dot w TopHeader przełącza się z `--online` na `--offline`.
  *
  * Spec (BACKLOG 14.1): "Offline mode: tylko dozwolone widoki dostępne".
  *
  * Ten test pokrywa SAMO przełączenie trybu (visible state). Asercja
- * że online-only routes są zablokowane → osobny atomic test
+ * że online-only routes są zablokowane -> osobny atomic test
  * `offline/mode-blocks-party-route.spec.ts`.
  *
  * AvatarMenu.tsx linie 198-221 — wiersz "Tryb gry" z dwoma buttonami
@@ -23,18 +23,18 @@
  *
  * Setup:
  *   1. Seed character przez API — TopHeader renderuje się TYLKO gdy
- *      `character !== null`. Bez postaci nie ma avatar button-a → nie ma
+ *      `character !== null`. Bez postaci nie ma avatar button-a -> nie ma
  *      jak otworzyć AvatarMenu.
- *   2. Login UI + wybór seedowanej postaci → Town (`/`).
+ *   2. Login UI + wybór seedowanej postaci -> Town (`/`).
  *   3. Open AvatarMenu (tap avatar button `aria-label="Menu postaci"`).
  *
  * Actions + outcomes:
  *   A. Domyślnie active = Online (connectivityStore default po fresh boot,
  *      bez snapshot w sessionStorage). Status dot ma class `--online`.
- *   B. Tap Offline → Offline button dostaje class `--active`, Online ją
+ *   B. Tap Offline -> Offline button dostaje class `--active`, Online ją
  *      traci. Status dot dostaje class `--offline`.
  *   C. Tap Online (wracamy do online) — bidirectional toggle works.
- *      UWAGA: przejście offline → online triggeruje `transitionToOnline`
+ *      UWAGA: przejście offline -> online triggeruje `transitionToOnline`
  *      które robi full Supabase sync; nie czekamy na sync result, tylko
  *      sprawdzamy że store się od razu zmienił (sync side effect żyje
  *      na backgrounder).
@@ -52,7 +52,7 @@ import { cleanupCharacterById } from '../fixtures/cleanup';
 test.describe('Offline › Mode', { tag: '@offline' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('AvatarMenu Tryb gry toggle flips status dot Online ↔ Offline', async ({ page }) => {
+    test('AvatarMenu Tryb gry toggle flips status dot Online <-> Offline', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -66,7 +66,7 @@ test.describe('Offline › Mode', { tag: '@offline' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + wybór NASZEJ postaci → Town.
+            // 2. Login + wybór NASZEJ postaci -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -77,7 +77,7 @@ test.describe('Offline › Mode', { tag: '@offline' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
             // 3. Status dot w TopHeader — domyślnie powinien być `--online`.
-            //    Postać świeża, brak snapshot-u w sessionStorage → boot jako online.
+            //    Postać świeża, brak snapshot-u w sessionStorage -> boot jako online.
             const statusDot = page.locator('.top-header__status-dot');
             await expect(statusDot).toBeVisible({ timeout: 10_000 });
             await expect(statusDot).toHaveClass(/top-header__status-dot--online/);
@@ -100,7 +100,7 @@ test.describe('Offline › Mode', { tag: '@offline' }, () => {
             await expect(onlineBtn).toHaveClass(/avatar-menu__lang-btn--active/);
             await expect(offlineBtn).not.toHaveClass(/avatar-menu__lang-btn--active/);
 
-            // 5B. Tap Offline → active flippa się + status dot zmienia kolor.
+            // 5B. Tap Offline -> active flippa się + status dot zmienia kolor.
             await offlineBtn.tap();
             await expect(offlineBtn).toHaveClass(/avatar-menu__lang-btn--active/);
             await expect(onlineBtn).not.toHaveClass(/avatar-menu__lang-btn--active/);

@@ -20,6 +20,9 @@ import { formatGoldShort } from '../../systems/goldFormat';
 import { STONE_NAMES, STONE_ICONS, RARITY_LABELS } from '../../systems/itemSystem';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
 import { getMonsterImageNearest, getElixirImage, getConsumableImage } from '../../systems/spriteAssets';
 import Spinner from '../../components/ui/Spinner/Spinner';
@@ -42,7 +45,7 @@ import './Quests.scss';
 
 const allQuests = questsRaw as IQuest[];
 
-// ── Lookup maps for display names and sprites ─────────────────────────────
+// -- Lookup maps for display names and sprites -----------------------------
 interface INamedEntity { id: string; name_pl: string; sprite?: string }
 const monsterMap = new Map<string, INamedEntity>(
   (monstersRaw as INamedEntity[]).map((m) => [m.id, m]),
@@ -82,7 +85,7 @@ const resolveGoalTarget = (
  *  match shop IDs (hp_potion_sm). 2026-05-08: extended to cover every
  *  short-name used in `data/quests.json` so `getElixirIcon` resolves
  *  to a real shop entry (and therefore real PNG art) instead of the
- *  generic 🧪 fallback. Anything still unresolved after this map will
+ *  generic :test-tube: fallback. Anything still unresolved after this map will
  *  use the stat-reset PNG as the universal "any elixir" placeholder. */
 const ELIXIR_ALIASES: Record<string, string> = {
   hp_sm: 'hp_potion_sm',
@@ -196,7 +199,7 @@ const allTasks = (tasksRaw as ITask[]).map((t) => {
   return { ...t, rewardGold, rewardXp };
 });
 
-// ── Claim summary types ──────────────────────────────────────────────────────
+// -- Claim summary types ------------------------------------------------------
 
 interface IClaimSummaryEntry {
   icon: string;
@@ -237,8 +240,8 @@ const hexToRgb = (hex: string): string => {
 };
 
 /**
- * Compact pager — `← prev`, page indicator (e.g. "Strona 2 / 7"),
- * `next →`. Shared between the Tasks and Questy sub-views, both of which
+ * Compact pager — `<- prev`, page indicator (e.g. "Strona 2 / 7"),
+ * `next ->`. Shared between the Tasks and Questy sub-views, both of which
  * cap their list at 20 entries per page. Hidden by the caller when there's
  * only one page of content.
  */
@@ -258,7 +261,7 @@ const Pagination = ({
       disabled={page <= 0}
       onClick={() => onChange(Math.max(0, page - 1))}
     >
-      ← Poprzednia
+      <Icon name="arrowLeft" /> Poprzednia
     </button>
     <span className="quests__pagination-info">
       Strona {page + 1} / {totalPages}
@@ -269,7 +272,7 @@ const Pagination = ({
       disabled={page >= totalPages - 1}
       onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
     >
-      Następna →
+      Następna <Icon name="arrowRight" />
     </button>
   </div>
 );
@@ -400,7 +403,7 @@ const Quests = () => {
   const getElixirIcon = (rawId: string): string => {
     const id = resolveElixirId(rawId);
     const elixir = ELIXIRS.find((e) => e.id === id);
-    // 2026-05-08 v2: resolution chain →
+    // 2026-05-08 v2: resolution chain ->
     //   1. unified consumable resolver (covers HP/MP potions AND buff
     //      elixirs in a single lookup)
     //   2. whatever PNG/emoji the elixir record declares
@@ -412,7 +415,7 @@ const Quests = () => {
       getConsumableImage(id)
       ?? (elixir?.icon)
       ?? getElixirImage('stat_reset')
-      ?? '🧪'
+      ?? 'test-tube'
     );
   };
 
@@ -434,7 +437,7 @@ const Quests = () => {
       switch (reward.type) {
         case 'gold': {
           addGold(amount);
-          summaryEntries.push({ icon: '💰', label: formatGoldShort(amount) });
+          summaryEntries.push({ icon: 'money-bag', label: formatGoldShort(amount) });
           break;
         }
 
@@ -442,9 +445,9 @@ const Quests = () => {
           const xpResult = addXp(amount);
           let xpLabel = `${amount.toLocaleString('pl-PL')} XP`;
           if (xpResult.levelsGained > 0) {
-            xpLabel += ` (Level Up! → ${xpResult.newLevel})`;
+            xpLabel += ` (Level Up! -> ${xpResult.newLevel})`;
           }
-          summaryEntries.push({ icon: '✨', label: xpLabel });
+          summaryEntries.push({ icon: 'sparkles', label: xpLabel });
           break;
         }
 
@@ -472,7 +475,7 @@ const Quests = () => {
               addItem(generatedItem);
               const displayInfo = getItemDisplayInfo(generatedItem.itemId);
               const itemName = displayInfo ? displayInfo.name_pl : generatedItem.itemId;
-              const itemIcon = displayInfo ? displayInfo.icon : '🎁';
+              const itemIcon = displayInfo ? displayInfo.icon : 'wrapped-gift';
               const rarityLabel = RARITY_LABELS[itemRarity] ?? itemRarity;
               summaryEntries.push({
                 icon: itemIcon,
@@ -491,7 +494,7 @@ const Quests = () => {
           if (stoneKey) {
             addStones(stoneKey, amount);
             const stoneName = STONE_NAMES[stoneKey] ?? stoneKey;
-            summaryEntries.push({ icon: STONE_ICONS[stoneKey] ?? '💎', label: `${stoneName} x${amount}` });
+            summaryEntries.push({ icon: STONE_ICONS[stoneKey] ?? 'gem-stone', label: `${stoneName} x${amount}` });
           }
           break;
         }
@@ -505,7 +508,7 @@ const Quests = () => {
           updateCharacter({
             stat_points: (character.stat_points ?? 0) + amount,
           });
-          summaryEntries.push({ icon: '⭐', label: `+${amount} punktow statystyk` });
+          summaryEntries.push({ icon: 'star', label: `+${amount} punktow statystyk` });
           break;
         }
       }
@@ -513,7 +516,7 @@ const Quests = () => {
 
     // Gift item: every quest claim grants a bonus random item for the player's
     // class. Rarity is rolled from rare/epic/legendary/mythic (never heroic).
-    // This fulfills the "🎁 prezent" chip shown on the quest card.
+    // This fulfills the ":wrapped-gift: prezent" chip shown on the quest card.
     const hasExplicitItem = quest.rewards.some((r) => r.type === 'item');
     if (!hasExplicitItem) {
       const GIFT_RARITIES: Rarity[] = ['rare', 'epic', 'legendary', 'mythic'];
@@ -538,7 +541,7 @@ const Quests = () => {
         addItem(giftItem);
         const displayInfo = getItemDisplayInfo(giftItem.itemId);
         const itemName = displayInfo ? displayInfo.name_pl : giftItem.itemId;
-        const itemIcon = displayInfo ? displayInfo.icon : '🎁';
+        const itemIcon = displayInfo ? displayInfo.icon : 'wrapped-gift';
         const rarityLabel = RARITY_LABELS[picked] ?? picked;
         summaryEntries.push({
           icon: itemIcon,
@@ -553,7 +556,7 @@ const Quests = () => {
     setClaimSummary({ questName: quest.name_pl, entries: summaryEntries });
   };
 
-  // ── Bulk handlers ─────────────────────────────────────────────────────────
+  // -- Bulk handlers ---------------------------------------------------------
 
   const claimableQuests = activeQuests.filter((aq) =>
     aq.goals.every((g) => (g.progress ?? 0) >= g.count),
@@ -574,16 +577,16 @@ const Quests = () => {
         switch (reward.type) {
           case 'gold': {
             addGold(amount);
-            allEntries.push({ icon: '💰', label: formatGoldShort(amount) });
+            allEntries.push({ icon: 'money-bag', label: formatGoldShort(amount) });
             break;
           }
           case 'xp': {
             const xpResult = addXp(amount);
             let xpLabel = `${amount.toLocaleString('pl-PL')} XP`;
             if (xpResult.levelsGained > 0) {
-              xpLabel += ` (Level Up! → ${xpResult.newLevel})`;
+              xpLabel += ` (Level Up! -> ${xpResult.newLevel})`;
             }
-            allEntries.push({ icon: '✨', label: xpLabel });
+            allEntries.push({ icon: 'sparkles', label: xpLabel });
             break;
           }
           case 'elixir': {
@@ -605,7 +608,7 @@ const Quests = () => {
                 addItem(generatedItem);
                 const displayInfo = getItemDisplayInfo(generatedItem.itemId);
                 const itemName = displayInfo ? displayInfo.name_pl : generatedItem.itemId;
-                const itemIcon = displayInfo ? displayInfo.icon : '🎁';
+                const itemIcon = displayInfo ? displayInfo.icon : 'wrapped-gift';
                 const rarityLabel = RARITY_LABELS[itemRarity] ?? itemRarity;
                 allEntries.push({ icon: itemIcon, label: `${itemName} (${rarityLabel}, lvl ${itemLevel})`, rarity: itemRarity, itemLevel });
               }
@@ -618,13 +621,13 @@ const Quests = () => {
             if (stoneKey) {
               addStones(stoneKey, amount);
               const stoneName = STONE_NAMES[stoneKey] ?? stoneKey;
-              allEntries.push({ icon: STONE_ICONS[stoneKey] ?? '💎', label: `${stoneName} x${amount}` });
+              allEntries.push({ icon: STONE_ICONS[stoneKey] ?? 'gem-stone', label: `${stoneName} x${amount}` });
             }
             break;
           }
           case 'stat_points': {
             updateCharacter({ stat_points: (character.stat_points ?? 0) + amount });
-            allEntries.push({ icon: '⭐', label: `+${amount} punktow statystyk` });
+            allEntries.push({ icon: 'star', label: `+${amount} punktow statystyk` });
             break;
           }
         }
@@ -647,7 +650,7 @@ const Quests = () => {
           addItem(giftItem);
           const displayInfo = getItemDisplayInfo(giftItem.itemId);
           const itemName = displayInfo ? displayInfo.name_pl : giftItem.itemId;
-          const itemIcon = displayInfo ? displayInfo.icon : '🎁';
+          const itemIcon = displayInfo ? displayInfo.icon : 'wrapped-gift';
           const rarityLabel = RARITY_LABELS[picked] ?? picked;
           allEntries.push({ icon: itemIcon, label: `${itemName} (${rarityLabel}, lvl ${quest.minLevel})`, rarity: picked, itemLevel: quest.minLevel });
         }
@@ -686,8 +689,8 @@ const Quests = () => {
       if (!rewards) continue;
       addGold(rewards.gold);
       addXp(rewards.xp);
-      allEntries.push({ icon: '💰', label: formatGoldShort(rewards.gold) });
-      allEntries.push({ icon: '✨', label: `${rewards.xp.toLocaleString('pl-PL')} XP` });
+      allEntries.push({ icon: 'money-bag', label: formatGoldShort(rewards.gold) });
+      allEntries.push({ icon: 'sparkles', label: `${rewards.xp.toLocaleString('pl-PL')} XP` });
       if (rewards.elixir) {
         addConsumable(resolveElixirId(rewards.elixir), 1);
         const elixName = getElixirName(rewards.elixir);
@@ -726,7 +729,7 @@ const Quests = () => {
     if (isDailyLocked) {
       return (
         <div className="quests__daily-locked">
-          <span className="quests__daily-locked-icon">🔒</span>
+          <span className="quests__daily-locked-icon"><GameIcon name="locked" /></span>
           <p>Questy dzienne odblokuja sie na poziomie 25</p>
           <p className="quests__daily-locked-sub">Twoj poziom: {character.level}</p>
         </div>
@@ -743,7 +746,7 @@ const Quests = () => {
              reads as a focused pill rather than a viewport-spanning bar. */
           <div className="quests__bulk-actions quests__bulk-actions--center">
             <button className="quests__bulk-btn quests__bulk-btn--claim" onClick={handleClaimAllDaily}>
-              🎁 Odbierz wszystkie daily ({dailyClaimable.length})
+              <GameIcon name="wrapped-gift" /> Odbierz wszystkie daily ({dailyClaimable.length})
             </button>
           </div>
         )}
@@ -803,11 +806,11 @@ const Quests = () => {
                     so the two card flavours read as siblings. */}
                 <span className="quests__daily-rewards-label">Nagrody:</span>
                 <div className="quests__daily-rewards">
-                  <span className="quests__daily-reward">💰 {formatGoldShort(rewards.gold)}</span>
-                  <span className="quests__daily-reward">✨ {rewards.xp.toLocaleString('pl-PL')} XP</span>
+                  <span className="quests__daily-reward"><GameIcon name="money-bag" /> {formatGoldShort(rewards.gold)}</span>
+                  <span className="quests__daily-reward"><GameIcon name="sparkles" /> {rewards.xp.toLocaleString('pl-PL')} XP</span>
                   {rewards.elixir && (
                     <span className="quests__daily-reward">
-                      <TinyIcon icon={getElixirImage(rewards.elixir) ?? '🧪'} size="sm" /> Eliksir
+                      <TinyIcon icon={getElixirImage(rewards.elixir) ?? 'test-tube'} size="sm" /> Eliksir
                     </span>
                   )}
                 </div>
@@ -815,8 +818,8 @@ const Quests = () => {
                 {/* Action row INSIDE the pergamin — same slot as regular
                     quests so the two card flavours share the same bottom
                     chrome. Renders one of:
-                      • purple "🎁 Odbierz nagrodę" claim button (ready),
-                      • transform-coloured "✓ Odebrane" label (claimed). */}
+                      - purple ":wrapped-gift: Odbierz nagrodę" claim button (ready),
+                      - transform-coloured ":check-mark-button: Odebrane" label (claimed). */}
                 {(active.completed || active.claimed) && (
                   <div className="quests__card-actions-row">
                     <span className="quests__card-actions-spacer" />
@@ -825,11 +828,11 @@ const Quests = () => {
                         className="quests__action-btn quests__action-btn--claim"
                         onClick={() => handleClaimDaily(def.id)}
                       >
-                        🎁 Odbierz nagrodę
+                        <GameIcon name="wrapped-gift" /> Odbierz nagrodę
                       </button>
                     )}
                     {active.claimed && (
-                      <span className="quests__completed-label">✓ Odebrane</span>
+                      <span className="quests__completed-label"><GameIcon name="check-mark-button" /> Odebrane</span>
                     )}
                   </div>
                 )}
@@ -846,11 +849,11 @@ const Quests = () => {
     );
   };
 
-  // ── 3-tile hub picker ────────────────────────────────────────────────
+  // -- 3-tile hub picker ------------------------------------------------
   // 1:1 visual copy of the Battle hub: full-width banner tiles with the
   // background PNG, dark legibility veil, transform-accent border + glow,
   // and the hover wave/scale animation. Top-to-bottom order per spec:
-  // Taski → Questy → Dzienne misje. The wrapper carries `--tile-accent` /
+  // Taski -> Questy -> Dzienne misje. The wrapper carries `--tile-accent` /
   // `--tile-accent-rgb` so every nested rule that references those vars
   // (border, glow, ::before wave) inherits the live transform colour.
   const renderHomeTab = () => {
@@ -900,7 +903,7 @@ const Quests = () => {
     );
   };
 
-  // ── Tasks helpers (moved from the standalone Tasks view) ─────────────
+  // -- Tasks helpers (moved from the standalone Tasks view) -------------
   const characterLevel = character?.level ?? 1;
   const getTaskUnlock = (monsterId: string) => {
     const monster = monstersMiniList.find((m) => m.id === monsterId);
@@ -920,7 +923,7 @@ const Quests = () => {
 
   // Mastery bar shown above each monster group when the player has any
   // kills on that monster. At MAX (25/25) the strip swaps into a
-  // purple-styled "👑 Mastery 25/25" pill — no progress bar, since
+  // purple-styled ":crown: Mastery 25/25" pill — no progress bar, since
   // there's nothing left to grind. The card border also turns purple
   // (handled by the existing `--max + ` selector in Tasks.scss + an
   // override in Quests.scss to widen the visual to the WHOLE card).
@@ -935,7 +938,7 @@ const Quests = () => {
       return (
         <div className="tasks__inline-mastery tasks__inline-mastery--max tasks__inline-mastery--max-pill">
           <span className="tasks__inline-mastery-max-text">
-            👑 Mastery {MASTERY_MAX_LEVEL}/{MASTERY_MAX_LEVEL}
+            <GameIcon name="crown" /> Mastery {MASTERY_MAX_LEVEL}/{MASTERY_MAX_LEVEL}
           </span>
         </div>
       );
@@ -1026,7 +1029,7 @@ const Quests = () => {
             zone capped at 5 rows on phones / 8 on desktop (heights set
             in SCSS). Each row carries the transform-color border, a
             60-px monster thumbnail + name + level on the left, the
-            progress bar centered, and the count + ✕ / 🎁 button on
+            progress bar centered, and the count + :multiply: / :wrapped-gift: button on
             the right. */}
         {activeTasks.length > 0 && (
           <div
@@ -1034,7 +1037,7 @@ const Quests = () => {
             style={{ '--task-accent': tileAccent } as React.CSSProperties}
           >
             <div className="tasks__active-box-head">
-              <span className="tasks__active-box-title">📋 Aktywne taski</span>
+              <span className="tasks__active-box-title"><GameIcon name="clipboard" /> Aktywne taski</span>
               <span className="tasks__active-box-count">{activeTasks.length}</span>
             </div>
             <div className="tasks__active-list tasks__active-list--compact">
@@ -1043,8 +1046,8 @@ const Quests = () => {
                 // Claimable tasks (progress >= killCount) float to the
                 // top so the player can collect rewards without scrolling.
                 // Secondary sort: by monster level ASCENDING within each
-                // group — claimable tasks read low → high level, then
-                // in-progress tasks also read low → high level. Each
+                // group — claimable tasks read low -> high level, then
+                // in-progress tasks also read low -> high level. Each
                 // monster's level is read from the live monsters table
                 // (`monstersMiniList`) so even tasks whose stored
                 // `monsterLevel` is stale (manual data fix later)
@@ -1089,7 +1092,7 @@ const Quests = () => {
                       className="tasks__active-row-claim"
                       onClick={() => claimTaskReward(activeTask.id)}
                     >
-                      🎁 Odbierz
+                      <GameIcon name="wrapped-gift" /> Odbierz
                     </button>
                   ) : (
                     <>
@@ -1111,7 +1114,7 @@ const Quests = () => {
                         title="Zrezygnuj z taska"
                         aria-label="Zrezygnuj z taska"
                       >
-                        ✕
+                        <Icon name="x" />
                       </button>
                     </>
                   )}
@@ -1133,7 +1136,7 @@ const Quests = () => {
             onClick={() => { setTaskAvailableOnly((v) => !v); setTaskPage(0); }}
             title="Pokaż tylko taski, które możesz teraz zacząć"
           >
-            ✅ Dostępne taski
+            <GameIcon name="check-mark-button" /> Dostępne taski
           </button>
           <button
             type="button"
@@ -1141,7 +1144,7 @@ const Quests = () => {
             onClick={() => { setTaskInactiveOnly((v) => !v); setTaskPage(0); }}
             title="Pokaż tylko monstera bez aktywnego taska"
           >
-            🛑 Nieaktywne taski
+            <GameIcon name="stop-sign" /> Nieaktywne taski
           </button>
           <button
             type="button"
@@ -1149,7 +1152,7 @@ const Quests = () => {
             onClick={() => { setTaskSortDesc((v) => !v); setTaskPage(0); }}
             title="Sortuj od najwyższego poziomu"
           >
-            ⬇ Sortuj od najwyższego lvl
+            <GameIcon name="down-arrow" /> Sortuj od najwyższego lvl
           </button>
           <input
             type="number"
@@ -1172,7 +1175,7 @@ const Quests = () => {
               title="Historia ukończonych tasków"
               aria-label="Historia tasków"
             >
-              📚
+              <GameIcon name="books" />
               {completedTasks.length > 0 && (
                 <span className="quests__history-btn-badge">{completedTasks.length}</span>
               )}
@@ -1225,8 +1228,8 @@ const Quests = () => {
                         fill={false}
                       />
                       <span className="tasks__monster-name-label">{tasks[0].monsterName}</span>
-                      {monsterTaken && <span className="tasks__monster-active-badge">📋 Aktywny</span>}
-                      {isLocked && <span className="tasks__monster-locked-badge">{unlock.shortLabel}</span>}
+                      {monsterTaken && <span className="tasks__monster-active-badge"><GameIcon name="clipboard" /> Aktywny</span>}
+                      {isLocked && <span className="tasks__monster-locked-badge"><EmojiText>{unlock.shortLabel}</EmojiText></span>}
                     </span>
                   </div>
                   <div className="tasks__threshold-list">
@@ -1257,9 +1260,9 @@ const Quests = () => {
                             {isActive ? `${activeForThis!.progress}/` : ''}{task.killCount} zabojstw
                           </span>
                           <span className="tasks__threshold-reward">
-                            💰 {formatGoldShort(task.rewardGold)} · ⭐ {task.rewardXp.toLocaleString('pl-PL')} XP
+                            <GameIcon name="money-bag" /> {formatGoldShort(task.rewardGold)} · <GameIcon name="star" /> {task.rewardXp.toLocaleString('pl-PL')} XP
                           </span>
-                          {isCompletedTask && <span className="tasks__threshold-done">✓ Gotowe!</span>}
+                          {isCompletedTask && <span className="tasks__threshold-done"><GameIcon name="check-mark-button" /> Gotowe!</span>}
                         </button>
                       );
                     })}
@@ -1278,7 +1281,7 @@ const Quests = () => {
         )}
 
         {/* Bottom inline history removed — see the modal mounted at the
-            view root, opened by the 📚 button next to the meta counter. */}
+            view root, opened by the :books: button next to the meta counter. */}
       </>
     );
   };
@@ -1295,17 +1298,17 @@ const Quests = () => {
         <div className="quests__bulk-actions quests__bulk-actions--inline">
           {hasClaimable && (
             <button className="quests__bulk-btn quests__bulk-btn--claim" onClick={handleClaimAll}>
-              🎁 Odbierz wszystkie ({claimableQuests.length})
+              <GameIcon name="wrapped-gift" /> Odbierz wszystkie ({claimableQuests.length})
             </button>
           )}
           {hasAvailable && (
             <button className="quests__bulk-btn quests__bulk-btn--accept" onClick={handleAcceptAll}>
-              📜 Weź wszystkie
+              <GameIcon name="scroll" /> Weź wszystkie
             </button>
           )}
           {hasActive && (
             <button className="quests__bulk-btn quests__bulk-btn--abandon" onClick={() => setShowAbandonAllConfirm(true)}>
-              ✖ Porzuć wszystkie ({activeQuests.length})
+              <Icon name="x" /> Porzuć wszystkie ({activeQuests.length})
             </button>
           )}
         </div>
@@ -1393,8 +1396,8 @@ const Quests = () => {
               <div className="quests__card-pergamin">
                 <div className="quests__card-header">
                   <div className="quests__card-title-row">
-                    {completed && <span className="quests__check">✓</span>}
-                    {tooHigh && <span className="quests__lock">🔒</span>}
+                    {completed && <span className="quests__check"><GameIcon name="check-mark-button" /></span>}
+                    {tooHigh && <span className="quests__lock"><GameIcon name="locked" /></span>}
                     <h3 className="quests__card-name">{quest.name_pl}</h3>
                   </div>
                 </div>
@@ -1438,23 +1441,23 @@ const Quests = () => {
               <div className="quests__rewards">
                 <span className="quests__rewards-label">Nagrody:</span>
                 {[...quest.rewards, { type: 'gift' as const, amount: 1 }].map((r, i) => {
-                  let icon = '🎁';
+                  let icon = 'wrapped-gift';
                   let text = '';
                   let titleText = '';
                   // 2026-05-08 v3: utility elixir rewards get the
-                  // gold→purple gradient chip (matches Shop +
+                  // gold->purple gradient chip (matches Shop +
                   // Market + Inventory). HP/MP potion rewards keep
                   // the default chip chrome.
                   let chipClass = 'quests__reward-chip';
                   if (r.type === 'gold') {
-                    icon = '💰';
+                    icon = 'money-bag';
                     // Header-style compact format: "7,35 k" / "1,20 cc" / "1,00 sc".
                     // Keeps reward chips short on small screens and reads the
                     // same way as the gold counter in TopHeader.
                     text = formatGoldShort(r.amount ?? 0);
                     titleText = `${text} zlota`;
                   } else if (r.type === 'xp') {
-                    icon = '✨';
+                    icon = 'sparkles';
                     text = (r.amount ?? 0).toLocaleString('pl-PL');
                     titleText = `${text} XP`;
                   } else if (r.type === 'elixir') {
@@ -1469,21 +1472,21 @@ const Quests = () => {
                       chipClass += ' quests__reward-chip--elixir';
                     }
                   } else if (r.type === 'stat_points') {
-                    icon = '⭐';
+                    icon = 'star';
                     text = `+${r.amount ?? 0}`;
                     titleText = `+${r.amount ?? 0} pkt. statystyk`;
                   } else if (r.type === 'item') {
                     const rarity = (r.rarity ?? 'rare') as Rarity;
-                    icon = '🎁';
+                    icon = 'wrapped-gift';
                     text = `×${r.amount ?? 1}`;
                     titleText = `${RARITY_LABELS[rarity] ?? rarity} Item ×${r.amount ?? 1}`;
                   } else if (r.type === 'stones' || r.type === 'stone') {
                     const stoneKey = r.stoneId ?? r.stoneType ?? '';
-                    icon = STONE_ICONS[stoneKey] ?? '💎';
+                    icon = STONE_ICONS[stoneKey] ?? 'gem-stone';
                     text = `×${r.amount ?? 1}`;
                     titleText = `${STONE_NAMES[stoneKey] ?? stoneKey} ×${r.amount ?? 1}`;
                   } else if (r.type === 'gift') {
-                    icon = '🎁';
+                    icon = 'wrapped-gift';
                     // Spec: keep only the icon for the random-gift chip — the
                     // "losowy" label was redundant noise next to the present.
                     text = '';
@@ -1508,7 +1511,7 @@ const Quests = () => {
                     className="quests__action-btn quests__action-btn--abandon"
                     onClick={() => setAbandonTarget({ id: quest.id, name: quest.name_pl })}
                   >
-                    ✖ Porzuć
+                    <Icon name="x" /> Porzuć
                   </button>
                 )}
                 {/* Spacer keeps the start/claim/status item right-aligned
@@ -1528,15 +1531,15 @@ const Quests = () => {
                     className="quests__action-btn quests__action-btn--claim"
                     onClick={() => handleClaimQuest(quest.id)}
                   >
-                    🎁 Odbierz nagrodę
+                    <GameIcon name="wrapped-gift" /> Odbierz nagrodę
                   </button>
                 )}
                 {completed && (
-                  <span className="quests__completed-label">✓ Ukończono</span>
+                  <span className="quests__completed-label"><GameIcon name="check-mark-button" /> Ukończono</span>
                 )}
                 {tooHigh && !completed && (
                   <span className="quests__locked-label">
-                    🔒 Wymagany poziom {quest.minLevel}
+                    <GameIcon name="locked" /> Wymagany poziom {quest.minLevel}
                   </span>
                 )}
               </div>
@@ -1619,7 +1622,7 @@ const Quests = () => {
         </div>
       )}
 
-      {/* ── Abandon All confirmation modal ────────────────────────────── */}
+      {/* -- Abandon All confirmation modal ------------------------------ */}
       {showAbandonAllConfirm && (
         <div className="quests__overlay" onClick={() => setShowAbandonAllConfirm(false)}>
           <motion.div
@@ -1628,7 +1631,7 @@ const Quests = () => {
             animate={{ opacity: 1, scale: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="quests__abandon-modal-icon">⚠️</span>
+            <span className="quests__abandon-modal-icon"><GameIcon name="warning" /></span>
             <h2 className="quests__abandon-modal-title">Porzucic wszystkie questy?</h2>
             <p className="quests__abandon-modal-quest">{activeQuests.length} aktywnych questow</p>
             <p className="quests__abandon-modal-warn">
@@ -1645,14 +1648,14 @@ const Quests = () => {
                 className="quests__abandon-modal-btn quests__abandon-modal-btn--confirm"
                 onClick={handleAbandonAll}
               >
-                ✖ Porzuc wszystkie
+                <Icon name="x" /> Porzuc wszystkie
               </button>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* ── Task-history modal ─────────────────────────────────────────── */}
+      {/* -- Task-history modal ------------------------------------------- */}
       {taskHistoryOpen && (
         <div className="quests__overlay" onClick={() => setTaskHistoryOpen(false)}>
           <motion.div
@@ -1662,7 +1665,7 @@ const Quests = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="quests__history-modal-head">
-              <span className="quests__history-modal-title">📚 Historia tasków</span>
+              <span className="quests__history-modal-title"><GameIcon name="books" /> Historia tasków</span>
               <button
                 className="quests__modal-close"
                 onClick={() => setTaskHistoryOpen(false)}
@@ -1706,11 +1709,11 @@ const Quests = () => {
                       <div className="quests__history-row-info">
                         <span className="quests__history-row-name">{ct.monsterName}</span>
                         <span className="quests__history-row-task">
-                          ✓ {ct.killCount.toLocaleString('pl-PL')} zabójstw
+                          <GameIcon name="check-mark-button" /> {ct.killCount.toLocaleString('pl-PL')} zabójstw
                         </span>
                       </div>
                       <span className="quests__history-row-rewards">
-                        💰 +{formatGoldShort(ct.rewardGold)} · ⭐ +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
+                        <GameIcon name="money-bag" /> +{formatGoldShort(ct.rewardGold)} · <GameIcon name="star" /> +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
                       </span>
                       <span className="quests__history-row-date">
                         {new Date(ct.completedAt).toLocaleDateString('pl-PL')}
@@ -1724,7 +1727,7 @@ const Quests = () => {
         </div>
       )}
 
-      {/* ── Cancel-task confirmation modal ─────────────────────────────── */}
+      {/* -- Cancel-task confirmation modal ------------------------------- */}
       {cancelTaskTarget && (
         <div className="quests__overlay" onClick={() => setCancelTaskTarget(null)}>
           <motion.div
@@ -1733,7 +1736,7 @@ const Quests = () => {
             animate={{ opacity: 1, scale: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="quests__abandon-modal-icon">⚠️</span>
+            <span className="quests__abandon-modal-icon"><GameIcon name="warning" /></span>
             <h2 className="quests__abandon-modal-title">Zrezygnować z taska?</h2>
             <p className="quests__abandon-modal-quest">{cancelTaskTarget.name}</p>
             <p className="quests__abandon-modal-warn">
@@ -1753,14 +1756,14 @@ const Quests = () => {
                   setCancelTaskTarget(null);
                 }}
               >
-                ✖ Zrezygnuj
+                <Icon name="x" /> Zrezygnuj
               </button>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* ── Abandon confirmation modal ──────────────────────────────────── */}
+      {/* -- Abandon confirmation modal ------------------------------------ */}
       {abandonTarget && (
         <div className="quests__overlay" onClick={() => setAbandonTarget(null)}>
           <motion.div
@@ -1769,7 +1772,7 @@ const Quests = () => {
             animate={{ opacity: 1, scale: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="quests__abandon-modal-icon">⚠️</span>
+            <span className="quests__abandon-modal-icon"><GameIcon name="warning" /></span>
             <h2 className="quests__abandon-modal-title">Porzucić questa?</h2>
             <p className="quests__abandon-modal-quest">{abandonTarget.name}</p>
             <p className="quests__abandon-modal-warn">
@@ -1789,7 +1792,7 @@ const Quests = () => {
                   setAbandonTarget(null);
                 }}
               >
-                ✖ Porzuć
+                <Icon name="x" /> Porzuć
               </button>
             </div>
           </motion.div>

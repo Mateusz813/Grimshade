@@ -8,7 +8,7 @@ import { usePartyStore } from '../stores/partyStore';
  * no popups — clicking the disabled element is just a silent no-op.
  *
  * Routes guarded:
- *   • /boss, /raid, /trainer — these instances are leader-only entries
+ *   - /boss, /raid, /trainer — these instances are leader-only entries
  *     into shared party combat. Members ride along via the leader's
  *     ready-check go-broadcast (see `requestPartyCombatStart`).
  *

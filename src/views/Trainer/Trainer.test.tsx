@@ -10,11 +10,11 @@ import { MemoryRouter } from 'react-router-dom';
  * loot drops, no XP/gold flow.
  *
  * Our coverage focuses on render contract:
- *   • Smoke render with a character.
- *   • Spinner fallback when character is null (mount short-circuits to a
+ *   - Smoke render with a character.
+ *   - Spinner fallback when character is null (mount short-circuits to a
  *     "Wczytywanie postaci…" screen).
- *   • Root .trainer wrapper mounts.
- *   • Combat HUD shell is active by default (CombatHudHost active=true).
+ *   - Root .trainer wrapper mounts.
+ *   - Combat HUD shell is active by default (CombatHudHost active=true).
  *
  * We DON'T try to exercise the spell-cast / sandbox-HP / aggro picker
  * paths — those mutate dozens of refs and would require driving five

@@ -13,7 +13,7 @@
  * localStorage restore (stores already show seeded values) and the
  * asynchronous cloud load completing — and the late applyBlobToStores
  * reverts the user action. This was the root cause of the deposit/gold
- * "3 → 2 → 3" batch flakes that no amount of retries fully killed.
+ * "3 -> 2 -> 3" batch flakes that no amount of retries fully killed.
  *
  * Generous 20s timeout: cold WebKit boot + production-Supabase character
  * fetch + game_saves load can chain to several seconds on a loaded CI box.

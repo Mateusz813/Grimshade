@@ -34,7 +34,7 @@ const requireEnv = (key: string): string => {
     if (!value) {
         throw new Error(
             `[testUsers] Missing env var: ${key}. ` +
-            'Skopiuj `.env.test.example` → `.env.test` i wpisz credentiale, ' +
+            'Skopiuj `.env.test.example` -> `.env.test` i wpisz credentiale, ' +
             'albo wyeksportuj zmienną przed `npm run test:e2e`.',
         );
     }

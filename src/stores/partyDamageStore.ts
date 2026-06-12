@@ -14,7 +14,7 @@ import { create } from 'zustand';
  */
 
 interface IPartyDamageState {
-    /** memberId → damage dealt so far in this activity. */
+    /** memberId -> damage dealt so far in this activity. */
     damage: Record<string, number>;
     /** ISO timestamp of when the current activity started; used for UI. */
     sessionStart: string;

@@ -37,9 +37,9 @@ const ALL_ITEMS_FOR_STATS = flattenItemsData(
  * Fix: every equip / unequip recomputes the equipment HP/MP delta and
  * adjusts `character.hp` / `character.mp` by the SAME amount, clamped
  * to the post-change base + equip range. Net effect:
- *   • Equip +1000 HP gear → current HP jumps by +1000 (bar fills).
- *   • Unequip the gear → current HP drops by 1000 (bar shrinks).
- *   • Swapping a +500 for a +1000 → current HP goes up by +500.
+ *   - Equip +1000 HP gear -> current HP jumps by +1000 (bar fills).
+ *   - Unequip the gear -> current HP drops by 1000 (bar shrinks).
+ *   - Swapping a +500 for a +1000 -> current HP goes up by +500.
  *
  * Uses a deferred microtask + lazy `import('./characterStore')` to
  * break the import cycle (`characterStore` imports `inventoryStore`).
@@ -151,9 +151,9 @@ interface IInventoryStore {
   gold: number;
   /** Arena points — PvP currency, separate from gold. Spent in arena shop / pool. */
   arenaPoints: number;
-  /** consumable id → count owned */
+  /** consumable id -> count owned */
   consumables: Record<string, number>;
-  /** stone id → count owned (stackable enhancement stones) */
+  /** stone id -> count owned (stackable enhancement stones) */
   stones: Record<string, number>;
 
   /** Returns false when bag is full. */
@@ -203,9 +203,9 @@ interface IInventoryStore {
   useSpellChests: (level: number, count: number) => boolean;
   /** Get current count of spell chests at a specific level. */
   getSpellChestCount: (level: number) => number;
-  /** Move an item from bag → deposit. Returns false if deposit full. */
+  /** Move an item from bag -> deposit. Returns false if deposit full. */
   depositItem: (uuid: string) => boolean;
-  /** Move an item from deposit → bag. Returns false if bag full. */
+  /** Move an item from deposit -> bag. Returns false if bag full. */
   withdrawItem: (uuid: string) => boolean;
   /**
    * Apply 5% random item loss across bag + equipped items (deposit untouched).
@@ -240,7 +240,7 @@ export const useInventoryStore = create<IInventoryStore>()(
           set({ bag: [...bag, item] });
           return true;
         }
-        // Bag full → auto-sell lowest-rarity (then lowest-level) item to
+        // Bag full -> auto-sell lowest-rarity (then lowest-level) item to
         // make room. Incoming item must be strictly "better" than the
         // victim (higher rarity, or same rarity with higher level).
         const incomingRank = RARITY_RANK[item.rarity ?? 'common'] ?? 0;

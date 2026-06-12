@@ -11,17 +11,17 @@
  * `inventoryApi.addItem`. To są legacy szczątki — bag + equipment +
  * gold + consumables + stones są serializowane do `game_saves.state`
  * jako jeden JSONB blob per-postać (patrz `src/stores/characterScope.ts`
- * → `STORE_ENTRIES['inventory']`).
+ * -> `STORE_ENTRIES['inventory']`).
  *
  * Konsekwencje:
- *  • Insert do `inventory` table = item POJAWI się w bazie ale NIE w UI.
+ *  - Insert do `inventory` table = item POJAWI się w bazie ale NIE w UI.
  *    Test by się wywalił bo `.inventory__bag-tile` count = 0.
- *  • Musimy upsertować do `game_saves(character_id, user_id, state)` —
+ *  - Musimy upsertować do `game_saves(character_id, user_id, state)` —
  *    state to JSONB z kluczem `inventory.bag` (array of IInventoryItem).
- *  • App przy hydration robi `applyBlobToStores` (characterScope linia 387),
+ *  - App przy hydration robi `applyBlobToStores` (characterScope linia 387),
  *    który WYMAGA `_ownerCharacterId === expectedCharId` — inaczej blob
  *    jest odrzucany i stores wracają do defaults (pusty bag).
- *  • Każdy entry w blob (np. `blob.inventory`) ma per-entry stamp
+ *  - Każdy entry w blob (np. `blob.inventory`) ma per-entry stamp
  *    `_entryOwner === expectedCharId` — też wymagane (linia 410).
  *
  * ## Format IInventoryItem
@@ -37,16 +37,16 @@
  *   }
  *
  * Common item IDs (z `src/data/items.json`):
- *  • wooden_mace, iron_mace, holy_mace, blessed_mace (mace) — Cleric
- *  • short_bow, hunting_bow, composite_bow, war_bow (bow) — Archer
- *  • wooden_sword, iron_sword, steel_sword (sword) — Knight
- *  • apprentice_staff, fire_staff, crystal_staff (staff) — Mage/Necro
- *  • rusty_dagger, steel_dagger, viper_dagger (dagger) — Rogue
- *  • lute, wooden_harp, silver_harp (harp) — Bard
- *  • wooden_shield, iron_shield (shield) — Knight off-hand
- *  • magic_book, arcane_tome — Mage off-hand
- *  • leather_cap, iron_helmet, witch_hat — helmet
- *  • leather_armor, stone_armor — armor
+ *  - wooden_mace, iron_mace, holy_mace, blessed_mace (mace) — Cleric
+ *  - short_bow, hunting_bow, composite_bow, war_bow (bow) — Archer
+ *  - wooden_sword, iron_sword, steel_sword (sword) — Knight
+ *  - apprentice_staff, fire_staff, crystal_staff (staff) — Mage/Necro
+ *  - rusty_dagger, steel_dagger, viper_dagger (dagger) — Rogue
+ *  - lute, wooden_harp, silver_harp (harp) — Bard
+ *  - wooden_shield, iron_shield (shield) — Knight off-hand
+ *  - magic_book, arcane_tome — Mage off-hand
+ *  - leather_cap, iron_helmet, witch_hat — helmet
+ *  - leather_armor, stone_armor — armor
  *
  * Domyślny rarity: 'common'. Domyślne `bonuses: {}` (item bez bonusów),
  * `itemLevel: 1`. UUID jest generowany lokalnie — match z format z
@@ -376,7 +376,7 @@ export const seedEquippedItem = async (
  * Dorzuca consumables (potiony, eliksiry, spell chests, kamienie) do
  * `inventory.consumables` w `game_saves` blob-ie.
  *
- * Consumables to flat `Record<string, number>` (id → count). UI czyta
+ * Consumables to flat `Record<string, number>` (id -> count). UI czyta
  * z `consumables[id]` żeby pokazać licznik w plecaku / w popupie
  * Auto-Potion / w Alchemia tabie / w shop tile-ach.
  *
@@ -399,7 +399,7 @@ export const seedEquippedItem = async (
  */
 export interface ISeedConsumablesArgs {
     characterId: string;
-    /** id → exact count to set (NIE delta). */
+    /** id -> exact count to set (NIE delta). */
     counts: Record<string, number>;
 }
 
@@ -481,9 +481,9 @@ export const seedConsumables = async (args: ISeedConsumablesArgs): Promise<void>
  * = one helper call, not two reaching into different keys.
  *
  * Behaviour:
- *  • If `gold` is provided → REPLACES existing gold (not delta).
- *  • If `stones` is provided → REPLACES existing stones map (not merge).
- *  • Both undefined → no-op write that re-stamps owner ids (harmless).
+ *  - If `gold` is provided -> REPLACES existing gold (not delta).
+ *  - If `stones` is provided -> REPLACES existing stones map (not merge).
+ *  - Both undefined -> no-op write that re-stamps owner ids (harmless).
  *
  * @example
  * await seedInventoryItem({ characterId, itemId: 'iron_helmet' });
@@ -497,7 +497,7 @@ export interface ISeedInventoryResourcesArgs {
     characterId: string;
     /** Override the gold pool. Pass undefined to leave untouched. */
     gold?: number;
-    /** Override the stones map (stoneId → count). Pass undefined to leave untouched. */
+    /** Override the stones map (stoneId -> count). Pass undefined to leave untouched. */
     stones?: Record<string, number>;
 }
 

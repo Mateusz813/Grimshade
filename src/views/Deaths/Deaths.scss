@@ -12,7 +12,7 @@
         padding: 20px 28px 100px;
     }
 
-    // ── Filter chips ────────────────────────────────────────────────────────
+    // -- Filter chips --------------------------------------------------------
     &__filters {
         display: flex;
         flex-wrap: wrap;
@@ -69,7 +69,7 @@
         border-radius: $radius-md;
     }
 
-    // ── Row list ────────────────────────────────────────────────────────────
+    // -- Row list ------------------------------------------------------------
     &__list {
         list-style: none;
         margin: 0;
@@ -153,9 +153,9 @@
         align-self: flex-start;
     }
 
-    // ── Main content row ────────────────────────────────────────────────────
+    // -- Main content row ----------------------------------------------------
     // Mobile = vertical centered stack (matches the original spec'd look).
-    // Desktop ≥768px = horizontal sprite? ▸ name ▸ verb ▸ victim, packed
+    // Desktop ≥768px = horizontal sprite? > name > verb > victim, packed
     // tight on the left ("Caly tekst do lewej na desktopach dawaj zeby
     // napisy zabil nick itp byl zaraz po nazwie potwora dungeonu itp").
     &__item-main {
@@ -204,7 +204,7 @@
         }
     }
 
-    // ── Monster row (icon? + name + level) ──────────────────────────────────
+    // -- Monster row (icon? + name + level) ----------------------------------
     &__monster {
         display: inline-flex;
         align-items: center;
@@ -246,10 +246,10 @@
         font-weight: 600;
     }
 
-    // ── Verb pill ───────────────────────────────────────────────────────────
+    // -- Verb pill -----------------------------------------------------------
     // 2026-05-19 v25 spec:
-    //   "Napis zabil na tle czarnym z czaszka"      → black + 💀
-    //   "Napis przegnal na czerwonym tle z duchem"  → red + 👻
+    //   "Napis zabil na tle czarnym z czaszka"       black + skull
+    //   "Napis przegnal na czerwonym tle z duchem"   red + ghost
     &__verb-wrap {
         display: flex;
         justify-content: center;
@@ -294,7 +294,7 @@
         line-height: 1;
     }
 
-    // ── Victim row (class icon + tag + nick + lvl) ──────────────────────────
+    // -- Victim row (class icon + tag + nick + lvl) --------------------------
     &__victim {
         display: inline-flex;
         align-items: center;
@@ -334,9 +334,9 @@
         color: $color-text;
     }
 
-    // ── Date — pinned bottom-right both layouts ─────────────────────────────
+    // -- Date — pinned bottom-right both layouts -----------------------------
     // 2026-05-19 v25 spec ("Data w prawym dolnym rogu zawsze").
-    // 2026-05-20 spec: color → white + bold; show a relative "X temu" line
+    // 2026-05-20 spec: color  white + bold; show a relative "X temu" line
     // above the absolute timestamp.
     &__item-date {
         position: absolute;
@@ -368,7 +368,7 @@
         color: rgba(255, 255, 255, 0.82);
     }
 
-    // ── Pagination ──────────────────────────────────────────────────────────
+    // -- Pagination ----------------------------------------------------------
     &__pager {
         display: flex;
         align-items: center;

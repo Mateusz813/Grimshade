@@ -57,7 +57,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
                 gold: STARTING_GOLD,
             });
 
-            // Login → select character → Town
+            // Login -> select character -> Town
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -100,7 +100,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
             // Post-buy: ×1 badge
             await expect(potionCard.locator('.shop__card-lvl-badge')).toHaveText('×1', { timeout: 5_000 });
 
-            // Gold decreased by 30 → 99,970
+            // Gold decreased by 30 -> 99,970
             await expect(goldBtn).toHaveAttribute('aria-label', /Złoto:\s*99[\s ]?970/, { timeout: 5_000 });
 
             // Cross-check: tap Postać in BottomNav (preserves stores)

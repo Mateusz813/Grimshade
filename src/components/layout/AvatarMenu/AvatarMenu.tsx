@@ -10,6 +10,8 @@ import { useSync } from '../../../hooks/useSync';
 import { saveCurrentCharacterStores } from '../../../stores/characterScope';
 import { formatLastSynced } from '../../../systems/syncSystem';
 import AdminPanel, { isAdminEmail } from '../../ui/AdminPanel/AdminPanel';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import Icon from '../../atoms/Icon/Icon';
 import { APP_VERSION } from '../../../lib/appVersion';
 import './AvatarMenu.scss';
 
@@ -29,10 +31,10 @@ interface IAvatarMenuProps {
  * Avatar dropdown anchored to the avatar button in TopHeader.
  *
  * Contents (in order):
- *  - Zmień postać   → saves stores, clears character, navigates to /character-select
- *  - Język          → inline PL / EN toggle (no extra navigation)
- *  - Synchronizuj   → triggers manual cloud sync; shows last-synced timestamp
- *  - Wyloguj        → saves stores, signs out of supabase, navigates to /login
+ *  - Zmień postać   -> saves stores, clears character, navigates to /character-select
+ *  - Język          -> inline PL / EN toggle (no extra navigation)
+ *  - Synchronizuj   -> triggers manual cloud sync; shows last-synced timestamp
+ *  - Wyloguj        -> saves stores, signs out of supabase, navigates to /login
  *
  * Closes on outside click and on Escape.
  */
@@ -67,12 +69,12 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
   // explicit choice — separate from `isOnline` which mirrors the OS-
   // level network state.
   //
-  //   • Switching → offline: drop any active party first (teammates
+  //   - Switching -> offline: drop any active party first (teammates
   //     keep playing), then call `transitionToOffline({ explicit })`
   //     which snapshots the trusted baseline IMMEDIATELY before
   //     flipping the mode.
   //
-  //   • Switching → online: call `transitionToOnline()` which forces a
+  //   - Switching -> online: call `transitionToOnline()` which forces a
   //     full sync (Supabase + game_saves) so the canonical row matches
   //     what the player did while offline. The sync prevents the
   //     "double XP / duplicated items" scenario the spec calls out.
@@ -109,7 +111,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
       // 2026-05-21 fix: the admin panel renders via React portal to
       // document.body so it lives OUTSIDE this menu's DOM subtree. Without
       // this guard, every click inside the admin panel triggers the
-      // outside-click handler → closes the menu → unmounts the panel
+      // outside-click handler -> closes the menu -> unmounts the panel
       // before the user's button click can register. Match by the
       // backdrop class so we catch clicks on every panel surface.
       const el = target instanceof Element ? target : (target as Node).parentElement;
@@ -173,12 +175,12 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
         onClick={() => void handleChangeChar()}
         role="menuitem"
       >
-        <span className="avatar-menu__item-icon">👤</span>
+        <span className="avatar-menu__item-icon"><GameIcon name="bust-in-silhouette" /></span>
         <span className="avatar-menu__item-label">Zmień postać</span>
       </button>
 
       <div className="avatar-menu__item avatar-menu__item--row">
-        <span className="avatar-menu__item-icon">🌐</span>
+        <span className="avatar-menu__item-icon"><GameIcon name="globe-with-meridians" /></span>
         <span className="avatar-menu__item-label">Język</span>
         <div className="avatar-menu__lang-toggle">
           <button
@@ -202,7 +204,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
           Offline = solo only (no party, raids, arena, bots, ladder). */}
       <div className="avatar-menu__item avatar-menu__item--row">
         <span className="avatar-menu__item-icon">
-          {playMode === 'online' ? '🟢' : '🔴'}
+          {playMode === 'online' ? <GameIcon name="green-circle" /> : <GameIcon name="red-circle" />}
         </span>
         <span className="avatar-menu__item-label">Tryb gry</span>
         <div className="avatar-menu__lang-toggle">
@@ -232,7 +234,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
         disabled={!isOnline || isSyncing}
         role="menuitem"
       >
-        <span className="avatar-menu__item-icon">{isSyncing ? '⟳' : '☁️'}</span>
+        <span className="avatar-menu__item-icon">{isSyncing ? <Icon name="refresh" className="ui-icon--spin" /> : <GameIcon name="cloud" />}</span>
         <span className="avatar-menu__item-label">
           {isSyncing ? 'Synchronizuje…' : 'Synchronizuj'}
         </span>
@@ -251,7 +253,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
           onClick={() => setAdminOpen(true)}
           role="menuitem"
         >
-          <span className="avatar-menu__item-icon">🛠️</span>
+          <span className="avatar-menu__item-icon"><GameIcon name="hammer-and-wrench" /></span>
           <span className="avatar-menu__item-label">Panel admina</span>
         </button>
       )}
@@ -262,7 +264,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
         onClick={onChangePassword}
         role="menuitem"
       >
-        <span className="avatar-menu__item-icon">🔑</span>
+        <span className="avatar-menu__item-icon"><GameIcon name="key" /></span>
         <span className="avatar-menu__item-label">Zmień hasło</span>
       </button>
 
@@ -272,7 +274,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
         onClick={onOpenTutorial}
         role="menuitem"
       >
-        <span className="avatar-menu__item-icon">📖</span>
+        <span className="avatar-menu__item-icon"><GameIcon name="open-book" /></span>
         <span className="avatar-menu__item-label">Tutorial</span>
       </button>
 
@@ -282,7 +284,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
         onClick={() => void handleLogout()}
         role="menuitem"
       >
-        <span className="avatar-menu__item-icon">🚪</span>
+        <span className="avatar-menu__item-icon"><GameIcon name="door" /></span>
         <span className="avatar-menu__item-label">Wyloguj</span>
       </button>
 

@@ -83,7 +83,7 @@ describe('useActivityTracker', () => {
             window.dispatchEvent(new Event('mousemove'));
             window.dispatchEvent(new Event('mousemove'));
         });
-        // Store reports 2x in our beforeEach baseline → no write.
+        // Store reports 2x in our beforeEach baseline -> no write.
         expect(onActivityChangeSpy).not.toHaveBeenCalled();
     });
 

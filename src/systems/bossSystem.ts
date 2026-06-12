@@ -1,6 +1,6 @@
 import { xpToNextLevel } from './levelSystem';
 
-// ── Data interfaces (matching bosses.json) ────────────────────────────────────
+// -- Data interfaces (matching bosses.json) ------------------------------------
 
 export interface IBossDropEntry {
   itemId: string;
@@ -50,7 +50,7 @@ export const getBossDrops = (boss: IBoss): IBossDropEntry[] =>
 export const getBossCooldown = (boss: IBoss): number =>
   boss.cooldown ?? (boss.dailyAttempts ? Math.floor(86400 / boss.dailyAttempts) : 28800);
 
-// ── Party-balance scaling ─────────────────────────────────────────────────────
+// -- Party-balance scaling -----------------------------------------------------
 // Bosses are designed to be near-impossible solo – balanced for a 4-player party.
 // Solo players should use bot companions.
 
@@ -80,7 +80,7 @@ export const getScaledBossStats = (
   };
 };
 
-// ── Character stats for boss simulation ───────────────────────────────────────
+// -- Character stats for boss simulation ---------------------------------------
 
 export interface IBossCharacter {
   attack: number;
@@ -89,7 +89,7 @@ export interface IBossCharacter {
   level: number;
 }
 
-// ── Result types ──────────────────────────────────────────────────────────────
+// -- Result types --------------------------------------------------------------
 
 export interface IBossResult {
   won: boolean;
@@ -100,7 +100,7 @@ export interface IBossResult {
   xp: number;
 }
 
-// ── Cooldown helpers ──────────────────────────────────────────────────────────
+// -- Cooldown helpers ----------------------------------------------------------
 
 export const canChallengeBoss = (
   boss: IBoss,
@@ -129,7 +129,7 @@ export const formatBossCooldown = (ms: number): string => {
   return `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`;
 };
 
-// ── Phase detection ───────────────────────────────────────────────────────────
+// -- Phase detection -----------------------------------------------------------
 
 /** Returns the attack multiplier for the boss at the given HP fraction. */
 export const getBossPhaseMultiplier = (bossHpFraction: number): number =>
@@ -139,7 +139,7 @@ export const getBossPhaseMultiplier = (bossHpFraction: number): number =>
 export const isBossEnraged = (currentHp: number, maxHp: number): boolean =>
   maxHp > 0 && currentHp / maxHp < 0.3;
 
-// ── Reward curve (level-driven, monotonic) ───────────────────────────────────
+// -- Reward curve (level-driven, monotonic) -----------------------------------
 //
 // Boss rewards are derived purely from `boss.level` so the table is
 // guaranteed to be monotonic — every higher-level boss pays out more than
@@ -189,7 +189,7 @@ export const computeBossRewards = (level: number): IBossRewards => {
  */
 export const BOSS_REWARD_MULTIPLIER = 1;
 
-// ── Gold reward ───────────────────────────────────────────────────────────────
+// -- Gold reward ---------------------------------------------------------------
 
 export const rollBossGold = (boss: IBoss): number => {
   const r = computeBossRewards(boss.level);
@@ -202,18 +202,18 @@ export const getBossGoldRange = (boss: IBoss): [number, number] => {
   return [r.goldMin, r.goldMax];
 };
 
-// ── XP reward ────────────────────────────────────────────────────────────────
+// -- XP reward ----------------------------------------------------------------
 
 /** Returns boss XP from the level-driven curve. */
 export const getBossXp = (boss: IBoss): number =>
   computeBossRewards(boss.level).xp;
 
-// ── Unique drop roll ──────────────────────────────────────────────────────────
+// -- Unique drop roll ----------------------------------------------------------
 
 export const rollBossLoot = (boss: IBoss): IBossUniqueItem[] =>
   (getBossDrops(boss) as IBossUniqueItem[]).filter((drop) => Math.random() < drop.chance);
 
-// ── Boss fight simulation ─────────────────────────────────────────────────────
+// -- Boss fight simulation -----------------------------------------------------
 
 export const resolveBoss = (
   boss: IBoss,
@@ -253,7 +253,7 @@ export const resolveBoss = (
   };
 };
 
-// ── Recommended character level for each boss ─────────────────────────────────
+// -- Recommended character level for each boss ---------------------------------
 
 /** Returns minimum suggested character level to have a reasonable chance. */
 export const getBossRecommendedLevel = (boss: IBoss): number =>

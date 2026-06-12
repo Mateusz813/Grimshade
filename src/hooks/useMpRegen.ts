@@ -32,8 +32,8 @@ let mpRegenAccumulator = 0;
  * is truly zero. Players must train hp_regen / mp_regen or equip items to gain
  * any passive healing.
  *
- * • In combat  → writes to `combatStore.playerCurrentHp/Mp` via heal helpers.
- * • Out of combat → writes directly to `character.hp/mp` via `updateCharacter`.
+ * - In combat  -> writes to `combatStore.playerCurrentHp/Mp` via heal helpers.
+ * - Out of combat -> writes directly to `character.hp/mp` via `updateCharacter`.
  */
 export const useMpRegen = (): void => {
     const tickRef = useRef<() => void>(() => undefined);
@@ -82,7 +82,7 @@ export const useMpRegen = (): void => {
         const hpRegenCapped = Math.min(effectiveMaxHp * MAX_REGEN_PCT, hpRegenFlat);
         const mpRegenCapped = Math.min(effectiveMaxMp * MAX_REGEN_PCT, mpRegenFlat);
 
-        // Accumulate fractional amounts (e.g. 0.1/s → heals 1 HP every 10 seconds)
+        // Accumulate fractional amounts (e.g. 0.1/s -> heals 1 HP every 10 seconds)
         let hpRegen = 0;
         if (hpRegenCapped > 0) {
             hpRegenAccumulator += hpRegenCapped;

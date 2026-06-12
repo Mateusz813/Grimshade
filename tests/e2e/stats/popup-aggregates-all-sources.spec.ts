@@ -9,12 +9,12 @@
  *
  * **Z 6 źródeł w spec-u pokrywamy 4** (base + EQ + skill train + buff/elixir).
  * Pozostałe 2 (transform + upgrade) wymagają osobnych setupów:
- *  • Transform — wymagałby `seedTransformProgress` helper-a + `completedTransforms`
+ *  - Transform — wymagałby `seedTransformProgress` helper-a + `completedTransforms`
  *    slice (nie ma jeszcze w fixtures). Transform bonusy mają osobny path
- *    przez `getLiveTransformBreakdown` → odsetkowy multiplier (np. tier 1
- *    Knight = +5% HP). Bez seedu transformu wartość jest 0 → łatwa do
- *    odfiltrowania jako "0 contribution → skip" w `buildLines`.
- *  • Upgrade — wymagałby seed item z upgradeLevel + base stat key dla slot-u.
+ *    przez `getLiveTransformBreakdown` -> odsetkowy multiplier (np. tier 1
+ *    Knight = +5% HP). Bez seedu transformu wartość jest 0 -> łatwa do
+ *    odfiltrowania jako "0 contribution -> skip" w `buildLines`.
+ *  - Upgrade — wymagałby seed item z upgradeLevel + base stat key dla slot-u.
  *    Już pokryte przez 6.13 (`hp-upgrade-consistency-across-views`) który
  *    weryfikuje upgrade multiplier path w `getTotalEquipmentStats` (linia 668
  *    itemSystem.ts). Tutaj świadomie używamy `upgradeLevel: 0` żeby
@@ -33,10 +33,10 @@
  *   nie wpływa bo `seedEquippedItem` omija UI canEquip check).
  *   Knight base max_hp = 120 (CLASS_BASE_STATS w createCharacter.ts).
  * - Equipped helmet `heavy_helmet_lvl5_common` z `bonuses: { hp: 20 }`,
- *   upgradeLevel=0 → EQ source +20 HP.
- * - Skill `max_hp` level 4 (seedGameSave.skills.skillLevels) →
+ *   upgradeLevel=0 -> EQ source +20 HP.
+ * - Skill `max_hp` level 4 (seedGameSave.skills.skillLevels) ->
  *   `tb.max_hp = 4 × 5 = 20` HP (`skillSystem.ts` linia 303).
- * - Active buff `hp_boost_500` (seedGameSave.buffs) → `getElixirHpBonus`
+ * - Active buff `hp_boost_500` (seedGameSave.buffs) -> `getElixirHpBonus`
  *   returns 500 (combatElixirs.ts linia 31).
  *
  * ## Expected math (StatsPopupBody linia 1603-1606)
@@ -46,17 +46,17 @@
  *        = 660
  * `effMaxHp = floor(rawHp × (1 + tfHpPct/100))` = floor(660 × 1.0) = 660
  *
- * Bez transform → effMaxHp = rawHp.
+ * Bez transform -> effMaxHp = rawHp.
  *
  * ## Breakdown lines (linia 1687-1695)
  *
  * `hpLines = buildLines(
  *    { label: 'Baza', value: '120' },
- *    line('Eq', 20),         // → +20
- *    line('Trening', 20),    // → +20
- *    line('Eliksir', 500),   // → +500
- *    line('TF flat', 0),     // → null (val === 0 → skipped)
- *    tfHpPct > 0 ? ... : null, // → null (no transform)
+ *    line('Eq', 20),         // -> +20
+ *    line('Trening', 20),    // -> +20
+ *    line('Eliksir', 500),   // -> +500
+ *    line('TF flat', 0),     // -> null (val === 0 -> skipped)
+ *    tfHpPct > 0 ? ... : null, // -> null (no transform)
  * )`
  *
  * Po filtracji null-i — 4 lines: Baza, Eq, Trening, Eliksir.
@@ -67,11 +67,11 @@
  * 2. Breakdown zawiera: "Baza" + "120" + "Eq" + "+20" + "Trening" + "+20"
  *    + "Eliksir" + "+500".
  *
- * Cleanup: try/finally → cleanupCharacterById.
+ * Cleanup: try/finally -> cleanupCharacterById.
  *
  * Sanity baseline (popup-shows-base-stats.spec.ts):
- *   Knight bez wszystkich źródeł → Max HP = 120 (raw base). Różnica
- *   120 → 660 = pełna agregacja 4 źródeł. Gdyby JAKAKOLWIEK ścieżka
+ *   Knight bez wszystkich źródeł -> Max HP = 120 (raw base). Różnica
+ *   120 -> 660 = pełna agregacja 4 źródeł. Gdyby JAKAKOLWIEK ścieżka
  *   się rozwaliła, value byłoby <660 i test poległby.
  */
 
@@ -110,13 +110,13 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             //    i przepisuje wszystko co tam było. seedEquippedItem czyta
             //    istniejący state.inventory i merguje swój item nad nim.
             //    Każde źródło osobno: skill train tickuje przez `getTrainingBonuses`,
-            //    buff przez `getElixirHpBonus` → osobne paths w StatsPopupBody.
+            //    buff przez `getElixirHpBonus` -> osobne paths w StatsPopupBody.
             const userId = await findUserIdByEmail(testUsers.primary.email);
             await seedGameSave({
                 characterId: created.id,
                 userId,
                 skills: {
-                    // Pozostałe skill keys nieobecne → default 0. Tylko max_hp =4
+                    // Pozostałe skill keys nieobecne -> default 0. Tylko max_hp =4
                     // żeby `tb.max_hp = 4 × 5 = 20`.
                     skillLevels: { max_hp: 4 },
                 },
@@ -124,7 +124,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                     {
                         id: 'hp_boost_500',
                         name: '+500 Max HP',
-                        icon: '🩸',
+                        icon: 'drop-of-blood',
                         effect: 'hp_boost_500',
                         // Defaults: pausable + 24h remainingMs (won't drain out of combat).
                     },
@@ -133,7 +133,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
 
             // 3. Equip helmet z +20 HP bonusem. Generated item path —
             //    `bonuses: { hp: 20 }` jest sumowany w `getTotalEquipmentStats`
-            //    (eqStats.hp = 20). upgradeLevel=0 → flat 20 (bez scaling).
+            //    (eqStats.hp = 20). upgradeLevel=0 -> flat 20 (bez scaling).
             //    seedEquippedItem czyta istniejący state z poprzedniego
             //    seedGameSave i tylko mutuje equipment.helmet — pozostałe
             //    sliceł (skills + buffs) zostają nietknięte.
@@ -147,7 +147,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                 upgradeLevel: 0,
             });
 
-            // 4. Login → wybierz → Town. switchToCharacter rehydratuje
+            // 4. Login -> wybierz -> Town. switchToCharacter rehydratuje
             //    wszystkie stores (inventory.equipment + skills.skillLevels +
             //    buffs.allBuffs) z game_saves blob.
             await loginViaUI(page, testUsers.primary);
@@ -159,7 +159,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 5. /inventory → tap Statystyki → otwarcie StatsPopupBody.
+            // 5. /inventory -> tap Statystyki -> otwarcie StatsPopupBody.
             await page.goto('/inventory');
             await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
             await page.getByRole('button', { name: /^statystyki$/i }).tap();
@@ -168,7 +168,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await expect(statsPopup).toBeVisible({ timeout: 5_000 });
 
             // 6. KRYTYCZNA ASERCJA — Max HP StatBox value = '660'.
-            //    Selektor: stats-box z labelem "Max HP" → value content === "660".
+            //    Selektor: stats-box z labelem "Max HP" -> value content === "660".
             //    Per StatsPopupBody linia 1735: `<StatBox label="Max HP" value={effMaxHp} ...>`
             //    Bez transform: effMaxHp = rawHp = 120 + 20 + 20 + 500 = 660.
             const hpBox = statsPopup.locator('.inventory__stats-box', {

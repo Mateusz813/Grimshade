@@ -21,7 +21,7 @@
  *    odpalamy. ProtectedRoute przejdzie bo session jest aktywny.
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczna walka w dungeon (tap "Wejdź" → wave run → boss → reward).
+ *  - Faktyczna walka w dungeon (tap "Wejdź" -> wave run -> boss -> reward).
  *  - Party mode / min-level rule (13.16) — wymagałoby multi-context.
  *  - Filter logic (już test 5.4 pokrywa monster list, dungeon parity TODO).
  *
@@ -29,8 +29,8 @@
  * podobnie jak Boss/Transform — early return `if (!character) return …`
  * na linii 505 byl PRZED `useEffect`/`useCallback` hooks (linie 525+).
  * Pierwszy render z character==null pomijał subsequent hooks; drugi render
- * z character hydrated registers them → React Rules of Hooks detector
- * crashował <Dungeon> subtree → `.dungeon__panel` nigdy nie mountuje się.
+ * z character hydrated registers them -> React Rules of Hooks detector
+ * crashował <Dungeon> subtree -> `.dungeon__panel` nigdy nie mountuje się.
  * Fix: przesunięto early return POD wszystkie hooks (analogicznie do
  * Boss.tsx). Komentarz "// Dungeon render guard (after-hooks)" dla
  * przyszłych eyes.
@@ -64,7 +64,7 @@ test.describe('Combat › Dungeon', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -76,7 +76,7 @@ test.describe('Combat › Dungeon', { tag: '@combat' }, () => {
 
             // 2b. Wait dla TopHeader żeby characterStore.character zostal
             //     zhydratowany przed direct-nav. Bez tego /dungeon może
-            //     mountować zanim character store dostał blob → Dungeon.tsx
+            //     mountować zanim character store dostał blob -> Dungeon.tsx
             //     spinner fallback zwraca, a `.dungeon__panel` nigdy się nie
             //     pojawia w time window.
             await expect(page.locator('.top-header')).toBeVisible({ timeout: 10_000 });
@@ -94,7 +94,7 @@ test.describe('Combat › Dungeon', { tag: '@combat' }, () => {
             await expect(page.locator('.dungeon')).toBeVisible({ timeout: 10_000 });
 
             // 6. Dungeon panel (motion.div z `.dungeon__panel` linia 2329).
-            //    Renderowany tylko w phase='list' branch (linia 2299) →
+            //    Renderowany tylko w phase='list' branch (linia 2299) ->
             //    obecność potwierdza że ten gate przeszedł.
             await expect(page.locator('.dungeon__panel')).toBeVisible({ timeout: 15_000 });
 

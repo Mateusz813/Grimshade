@@ -8,6 +8,7 @@ import { usePartyPresenceStore } from '../../../stores/partyPresenceStore';
 import { useTransformStore } from '../../../stores/transformStore';
 import { getCharacterAvatar } from '../../../data/classAvatars';
 import { getEffectiveChar } from '../../../systems/combatEngine';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './PartyWidget.scss';
 
 /**
@@ -38,8 +39,8 @@ const CHARACTERLESS_ROUTES = new Set<string>([
 // visible during combat without overlapping the cards.
 
 const CLASS_ICONS: Record<string, string> = {
-    Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-    Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+    Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+    Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 const CLASS_COLORS: Record<string, string> = {
     Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
@@ -112,7 +113,7 @@ const PartyWidget = () => {
                 title="Party"
                 onClick={() => setOpen((v) => !v)}
             >
-                <span className="party-widget__btn-icon" aria-hidden="true">🛡️</span>
+                <span className="party-widget__btn-icon" aria-hidden="true"><GameIcon name="shield" /></span>
                 <span className="party-widget__btn-count">{party.members.length}</span>
             </button>
 
@@ -194,7 +195,7 @@ const PartyWidget = () => {
                                         <div className="party-widget__row-avatar">
                                             {avatarSrc
                                                 ? <img src={avatarSrc} alt={m.name} />
-                                                : <span>{CLASS_ICONS[cClass] ?? '?'}</span>}
+                                                : <span><GameIcon name={CLASS_ICONS[cClass] ?? '?'} /></span>}
                                         </div>
                                         <div className="party-widget__row-main">
                                             <div className="party-widget__row-name">

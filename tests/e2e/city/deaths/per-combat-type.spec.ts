@@ -14,14 +14,14 @@
  * 'dungeon' | 'boss' | 'transform' | 'raid'`). Arena / trainer / loch
  * are NOT writable to that column (CHECK constraint enforced at DB
  * level + TypeScript narrows the union). The engine maps:
- *   • hunting / city /monsters → `source='monster'`
- *   • boss combat → `source='boss'`
- *   • dungeon combat → `source='dungeon'`
- *   • raid combat → `source='raid'`
- *   • transform combat → `source='transform'`
- *   • arena combat → NOT LOGGED (arena deaths are AP-only, no death row)
- *   • trainer → NOT POSSIBLE (dummy is invincible, player can't die)
- *   • loch (guild boss) → arena-like; NOT LOGGED to character_deaths
+ *   - hunting / city /monsters -> `source='monster'`
+ *   - boss combat -> `source='boss'`
+ *   - dungeon combat -> `source='dungeon'`
+ *   - raid combat -> `source='raid'`
+ *   - transform combat -> `source='transform'`
+ *   - arena combat -> NOT LOGGED (arena deaths are AP-only, no death row)
+ *   - trainer -> NOT POSSIBLE (dummy is invincible, player can't die)
+ *   - loch (guild boss) -> arena-like; NOT LOGGED to character_deaths
  *
  * So the maximally useful coverage is 5 source types × 1 atomic test.
  *
@@ -40,11 +40,11 @@
  * describe block via a runtime for-of loop, idiomatic in this codebase).
  *
  * Per-source label table (from Deaths.tsx line 45-51 SOURCE_META):
- *   monster   → "Potwór"
- *   dungeon   → "Dungeon"
- *   boss      → "Boss"
- *   transform → "Transform"
- *   raid      → "Rajd"
+ *   monster   -> "Potwór"
+ *   dungeon   -> "Dungeon"
+ *   boss      -> "Boss"
+ *   transform -> "Transform"
+ *   raid      -> "Rajd"
  *
  * Strategy per test:
  *  1. Seed Knight lvl 7 on SECONDARY (per task brief — primary is
@@ -52,7 +52,7 @@
  *     find the row deterministically among thousands of public rows.
  *  2. Insert 1 `character_deaths` row via service_role with the given
  *     source + a credible source_name + level.
- *  3. Login on SECONDARY → directly `/deaths` (no character pick
+ *  3. Login on SECONDARY -> directly `/deaths` (no character pick
  *     needed; Deaths.tsx is global, doesn't use characterStore).
  *  4. Find the row via `.deaths__victim-name` matching our nick.
  *  5. Assert `.deaths__item-badge` contains the SOURCE_META.label.
@@ -60,14 +60,14 @@
  *     rendered (proves the full row payload landed and parser ran).
  *
  * Cleanup: try/finally + cleanupCharacterById. character_deaths is in
- * CHARACTER_CHILD_TABLES (cleanup.ts line 80) → deleting the character
+ * CHARACTER_CHILD_TABLES (cleanup.ts line 80) -> deleting the character
  * cascades the death row.
  *
  * Why per-source-spawning instead of one mega-test:
- *  • Atomic E2E pattern (one spec = one assertion path) per CLAUDE.md.
- *  • If 1 source-type label rendering breaks, ONLY that test fails —
+ *  - Atomic E2E pattern (one spec = one assertion path) per CLAUDE.md.
+ *  - If 1 source-type label rendering breaks, ONLY that test fails —
  *    others give a clean signal.
- *  • Each test gets its own character → parallel-safe under any
+ *  - Each test gets its own character -> parallel-safe under any
  *    fullyParallel setting (we run workers=1 globally but the
  *    isolation guarantee is still load-bearing for re-runs after
  *    a single-test failure).
@@ -128,14 +128,14 @@ const DEATH_TYPE_CASES: IDeathTypeCase[] = [
     //   { source: 'raid', sourceName: 'Wielki Rajd Smoka', sourceLevel: 30,
     //     expectedBadgeLabel: 'Rajd' },
     // The 4 sources below are all accepted by the base CHECK constraint and
-    // prove the real-DB → /deaths feed → source-badge mechanism end-to-end.
+    // prove the real-DB -> /deaths feed -> source-badge mechanism end-to-end.
 ];
 
 test.describe('City › Deaths › per-combat-type', { tag: '@city' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
     for (const c of DEATH_TYPE_CASES) {
-        test(`source='${c.source}' → /deaths shows row with badge "${c.expectedBadgeLabel}"`, async ({ page }) => {
+        test(`source='${c.source}' -> /deaths shows row with badge "${c.expectedBadgeLabel}"`, async ({ page }) => {
             const nick = generateTestCharacterName();
             let createdId: string | null = null;
 
@@ -170,14 +170,14 @@ test.describe('City › Deaths › per-combat-type', { tag: '@city' }, () => {
                     sourceLevel: c.sourceLevel,
                 });
 
-                // 3. Login on SECONDARY → direct /deaths. No character pick
+                // 3. Login on SECONDARY -> direct /deaths. No character pick
                 //    needed (Deaths.tsx is global, doesn't touch
                 //    characterStore — see feed-shows-seeded-death.spec.ts
                 //    line 80-83).
                 await loginViaUI(page, testUsers.secondary);
                 await page.goto('/deaths');
 
-                // 4. Spinner unmounts → list visible. Generous timeout for
+                // 4. Spinner unmounts -> list visible. Generous timeout for
                 //    cold WebKit boot.
                 await expect(page.locator('.deaths__list')).toBeVisible({ timeout: 15_000 });
 
@@ -207,7 +207,7 @@ test.describe('City › Deaths › per-combat-type', { tag: '@city' }, () => {
                 // 8. Victim level 7 (matches the level we seeded).
                 await expect(ourDeathRow.locator('.deaths__victim-lvl'))
                     .toContainText('Lvl 7');
-                // 9. Verb "zabił" — result column unset → inferResult()
+                // 9. Verb "zabił" — result column unset -> inferResult()
                 //    defaults to 'killed' (Deaths.tsx line 73-77).
                 await expect(ourDeathRow.locator('.deaths__verb--killed')).toBeVisible();
                 await expect(ourDeathRow.locator('.deaths__verb-text')).toContainText('zabił');

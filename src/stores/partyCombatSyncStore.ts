@@ -15,21 +15,21 @@ import type { TMonsterRarity } from '../systems/lootSystem';
  *
  * Events on `party-combat-<partyId>`:
  *
- *   • `state` — full snapshot of the leader's shared arena: monster,
+ *   - `state` — full snapshot of the leader's shared arena: monster,
  *     monsterCurrentHp, waveMonsters, phase, wavePlannedCount,
  *     activeTargetIdx, monsterRarity. NEVER includes the leader's own
  *     playerCurrentHp/Mp — each member tracks their OWN HP/MP locally.
  *     Throttled to ~120 ms.
  *
- *   • `spell-cast` — any caster (leader or member) broadcasts when they
+ *   - `spell-cast` — any caster (leader or member) broadcasts when they
  *     cast a spell so the OTHER clients animate it. Members' manual
  *     casts go through this path too (auto-cast suppressed for members
  *     since their engine doesn't tick).
  *
- *   • `combat-speed` — leader's combat-speed setting (x1/x2/x4/SKIP).
+ *   - `combat-speed` — leader's combat-speed setting (x1/x2/x4/SKIP).
  *     Members apply the same speed locally so engine ticks match.
  *
- *   • `victory` — leader's `phase === 'victory'` transition. Members
+ *   - `victory` — leader's `phase === 'victory'` transition. Members
  *     mirror it so the post-fight popup opens together.
  *
  * No DB writes; channel is ephemeral.
@@ -75,7 +75,7 @@ export interface IPartyCombatSpeed {
     sentAt: number;
 }
 
-/** Member → leader: "I attacked, please apply this damage on your
+/** Member -> leader: "I attacked, please apply this damage on your
  *  authoritative state." Leader resolves on receipt and broadcasts a
  *  `damage-event` so EVERY client renders the same hit + updates
  *  their damage counter. */
@@ -99,7 +99,7 @@ export interface IPartyAttackAction {
     sentAt: number;
 }
 
-/** Leader → all: "Player X just dealt Y damage to wave slot Z."
+/** Leader -> all: "Player X just dealt Y damage to wave slot Z."
  *  Drives floating numbers, attack animations, and damage counters on
  *  every member's screen. The leader emits this for their OWN swings
  *  too (so members render the animation), and for incoming attack-
@@ -114,7 +114,7 @@ export interface IPartyDamageEvent {
     sentAt: number;
 }
 
-/** Leader → specific member: "Monster Z just hit you for N damage."
+/** Leader -> specific member: "Monster Z just hit you for N damage."
  *  The targeted member applies it to their own `character.hp`. Other
  *  members ignore (they're not the target). */
 export interface IPartyMemberHit {
@@ -126,7 +126,7 @@ export interface IPartyMemberHit {
     sentAt: number;
 }
 
-/** Leader → all members: "Here's a single damage event from the boss
+/** Leader -> all members: "Here's a single damage event from the boss
  *  combat tick." Used to mirror floating numbers + attack-class
  *  animations onto the member's view so their arena doesn't feel
  *  frozen between bossHp / playerHp broadcast snapshots.
@@ -163,7 +163,7 @@ export interface IPartyBossDamageEvent {
     sentAt: number;
 }
 
-/** Leader → all members: "Here's the current raid state."
+/** Leader -> all members: "Here's the current raid state."
  *  Mirrors the leader's authoritative wave-by-wave raid fight onto
  *  the member's Raid.tsx. Members suppress their own combat ticks
  *  and render the leader's currentWave / bosses / members directly.
@@ -184,7 +184,7 @@ export interface IPartyRaidState {
      *  converges to the leader's actual current speed within one
      *  ~120 ms beat. */
     speedMode?: 'x1' | 'x2' | 'x4';
-    /** 2026-05-14: per-boss aggro target map (bossId → memberId
+    /** 2026-05-14: per-boss aggro target map (bossId -> memberId
      *  currently being targeted). Members mirror this so both screens
      *  highlight the same ally as the next victim of each boss. */
     aggroTargetIds?: Record<string, string>;
@@ -211,7 +211,7 @@ export interface IPartyRaidState {
     seq: number;
 }
 
-/** Leader → all members: "Here's a single damage event from the raid
+/** Leader -> all members: "Here's a single damage event from the raid
  *  combat tick." Same shape as `IPartyBossDamageEvent` but with a
  *  `targetBossId` (raids have multiple boss slots) instead of a
  *  singleton 'boss' marker.
@@ -233,8 +233,8 @@ export interface IPartyRaidDamageEvent {
      *  monster-sourced hits. */
     attackerClass?: import('../types/character').TCharacterClass;
     /** Receiver:
-     *   - bossId → one of the raid's bosses
-     *   - memberId → an ally card (own character, bot, or human mate). */
+     *   - bossId -> one of the raid's bosses
+     *   - memberId -> an ally card (own character, bot, or human mate). */
     targetId: string;
     /** When the attacker is a raid boss, this is the SOURCE boss id
      *  (different bosses cleave members concurrently — same `attackerId`
@@ -248,13 +248,13 @@ export interface IPartyRaidDamageEvent {
     /** Optional icon/label for the float (skill icon, status label). */
     icon?: string;
     label?: string;
-    /** Spell cast → ship skillId so the member can fire
+    /** Spell cast -> ship skillId so the member can fire
      *  `triggerEnemySkillAnim` and replay the themed overlay. */
     skillId?: string;
     sentAt: number;
 }
 
-/** Leader → all members: "Here's the current boss-fight state."
+/** Leader -> all members: "Here's the current boss-fight state."
  *  Drives the member's Boss.tsx view: they suppress their own combat
  *  ticks and render the leader's bossHp / phase / members directly.
  *  Throttled internally so the channel doesn't drown during fast
@@ -320,7 +320,7 @@ export interface IPartyBossState {
     earnedGold?: number;
     /** 2026-05-14 spec ("nie zlicza sie suma zadanego DMG"):
      *  authoritative party-damage tally — same shape as hunt's snapshot
-     *  (characterId → cumulative damage dealt this fight). Members SET
+     *  (characterId -> cumulative damage dealt this fight). Members SET
      *  their local partyDamageStore from this map so the floating
      *  PartyWidget reads the same numbers the leader sees. */
     partyDamage?: Record<string, number>;
@@ -337,7 +337,7 @@ export interface IPartyBossState {
     seq: number;
 }
 
-/** Leader → all members: "Monster X just died — apply rewards."
+/** Leader -> all members: "Monster X just died — apply rewards."
  *
  * 2026-05-11 spec ("kazdy ma dostawac tyle samo XP"): the leader's
  * already-computed XP is shipped so EVERY member gets identical XP
@@ -419,7 +419,7 @@ export interface IPartyTrainerState {
      *  sandbox pools live in `memberSandboxHpMp` below. */
     leaderSandboxHp: number;
     leaderSandboxMp: number;
-    /** Per-member sandbox HP/MP — character id → {hp, mp}. When a
+    /** Per-member sandbox HP/MP — character id -> {hp, mp}. When a
      *  member casts a self-cost spell (e.g. Apokalipsa Śmierci)
      *  their HP drops; the entry is broadcast so the leader (and
      *  every other client) shows the matching bar position. */
@@ -454,12 +454,12 @@ export interface IPartyTrainerAttack {
      *  seq` so every published event lands in a distinct map slot. */
     seq: number;
     /** character.id of the attacker (the local player on the
-     *  broadcasting client). For monster→ally events this is the
+     *  broadcasting client). For monster->ally events this is the
      *  literal sentinel 'monster'. */
     attackerId: string;
     /** Class — drives the attack-animation flash. */
     attackerClass: import('../types/character').TCharacterClass;
-    /** Which dummy slot got hit (0..3). For monster→ally events
+    /** Which dummy slot got hit (0..3). For monster->ally events
      *  (`targetAllyId` present) this is ignored. */
     dummyIdx: number;
     /** Damage dealt (already crit-multiplied). */
@@ -467,11 +467,11 @@ export interface IPartyTrainerAttack {
     isCrit?: boolean;
     /** Float style. */
     kind: 'basic' | 'spell' | 'ally-basic' | 'ally-spell' | 'monster';
-    /** Optional icon (skill id → emoji/sprite). */
+    /** Optional icon (skill id -> emoji/sprite). */
     icon?: string;
     /** Optional label (e.g. "STUN", "APOKALIPSA", "BLOCK"). */
     label?: string;
-    /** Spell cast → ship the skillId so the receiver fires the
+    /** Spell cast -> ship the skillId so the receiver fires the
      *  themed enemy + ally overlay. */
     skillId?: string;
     /** 2026-05-15 v9 spec ("Dalem targetowanie na sojusznika i
@@ -636,7 +636,7 @@ interface IPartyCombatSyncState {
      *
      * Fix: members publish `member-skill-request {memberId, skillId}`
      * here. The leader's client consumes them into this map (memberId
-     * → FIFO queue of skill ids) and the engine, when iterating that
+     * -> FIFO queue of skill ids) and the engine, when iterating that
      * member's slot, pops one off and treats it as a manual cast
      * (matching the local-player manual path: MP/CD checks, broadcast
      * the resulting damage). Each consumed entry is shifted out so the
@@ -852,7 +852,7 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
             const ev = payload as IPartyRaidDamageEvent;
             if (!ev?.attackerId || !ev?.targetId) return;
             // 2026-05-14: raids cleave multiple members simultaneously
-            // (4 bosses × 4 members → 16 hits/tick at peak) and a
+            // (4 bosses × 4 members -> 16 hits/tick at peak) and a
             // single ally AOE can tag every boss in one swing — so
             // key includes the source boss id when the attacker is
             // 'monster' to avoid collisions across the 4 boss slots.

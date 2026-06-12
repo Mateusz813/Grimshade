@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDailyQuestStore } from './dailyQuestStore';
 import { getTodayKey, DAILY_QUEST_COUNT } from '../systems/dailyQuestSystem';
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
+// -- Mocks --------------------------------------------------------------------
 // claimReward dynamically imports characterStore + characterApi to bump a
 // leaderboard column. Mock both so the test focuses on store state changes.
 
@@ -20,7 +20,7 @@ vi.mock('../api/v1/characterApi', () => ({
     },
 }));
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useDailyQuestStore.getState().resetDailyQuests();
@@ -32,7 +32,7 @@ const seedTodayQuests = (playerLevel = 100): void => {
     useDailyQuestStore.getState().refreshIfNeeded(playerLevel);
 };
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
 describe('dailyQuestStore — initial state', () => {
     beforeEach(resetStore);
@@ -80,7 +80,7 @@ describe('dailyQuestStore — refreshIfNeeded (refreshDailyQuests)', () => {
         });
         useDailyQuestStore.getState().refreshIfNeeded(100);
         const secondSnapshot = useDailyQuestStore.getState().activeQuests;
-        // No reset → progress kept
+        // No reset -> progress kept
         expect(secondSnapshot[0].progress).toBe(999);
     });
 
@@ -148,7 +148,7 @@ describe('dailyQuestStore — addProgress', () => {
         expect(aq?.completed).toBe(true);
     });
 
-    it('flips completed → true once progress reaches the count', () => {
+    it('flips completed -> true once progress reaches the count', () => {
         const def = useDailyQuestStore.getState().todayQuestDefs[0];
         if (!def) return;
         useDailyQuestStore.getState().addProgress(def.goal.type, def.goal.count);
@@ -219,7 +219,7 @@ describe('dailyQuestStore — claimReward', () => {
         expect(aq?.claimed).toBe(true);
     });
 
-    it('scales the reward with the player level (higher level → bigger rewards)', () => {
+    it('scales the reward with the player level (higher level -> bigger rewards)', () => {
         const def = useDailyQuestStore.getState().todayQuestDefs[0];
         if (!def) return;
         useDailyQuestStore.getState().addProgress(def.goal.type, def.goal.count);

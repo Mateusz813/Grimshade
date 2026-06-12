@@ -50,7 +50,7 @@ import {
     isImageUrl,
 } from './spriteAssets';
 
-// ── getMonsterImage / getMonsterImageNearest ─────────────────────────────────
+// -- getMonsterImage / getMonsterImageNearest ---------------------------------
 
 describe('getMonsterImage', () => {
     it('returns a URL for levels 1..31 (every integer is shipped)', () => {
@@ -85,12 +85,12 @@ describe('getMonsterImageNearest', () => {
         expect(getMonsterImageNearest(10)).toBe(getMonsterImage(10));
     });
 
-    it('falls back UP first when the exact level is missing (lvl 79 → lvl 80)', () => {
+    it('falls back UP first when the exact level is missing (lvl 79 -> lvl 80)', () => {
         expect(getMonsterImageNearest(79)).toBe(getMonsterImage(80));
     });
 
     it('falls back DOWN when no higher level exists', () => {
-        // 9999 is above any shipped level → nearest = max shipped (1000).
+        // 9999 is above any shipped level -> nearest = max shipped (1000).
         expect(getMonsterImageNearest(9999)).toBe(getMonsterImage(1000));
     });
 
@@ -100,7 +100,7 @@ describe('getMonsterImageNearest', () => {
     });
 });
 
-// ── getBossImage / getBossImageNearest ──────────────────────────────────────
+// -- getBossImage / getBossImageNearest --------------------------------------
 
 describe('getBossImage', () => {
     it('returns a URL for shipped boss levels (10, 25, 100, …)', () => {
@@ -117,7 +117,7 @@ describe('getBossImage', () => {
 });
 
 describe('getBossImageNearest', () => {
-    it('walks UP first: lvl 1 → lowest shipped (lvl 10)', () => {
+    it('walks UP first: lvl 1 -> lowest shipped (lvl 10)', () => {
         expect(getBossImageNearest(1)).toBe(getBossImage(10));
         expect(getBossImageNearest(9)).toBe(getBossImage(10));
     });
@@ -131,10 +131,10 @@ describe('getBossImageNearest', () => {
     });
 });
 
-// ── getBossCardImage ────────────────────────────────────────────────────────
+// -- getBossCardImage --------------------------------------------------------
 
 describe('getBossCardImage', () => {
-    it('returns a URL for the first boss (index 0 → boss1.png)', () => {
+    it('returns a URL for the first boss (index 0 -> boss1.png)', () => {
         expect(getBossCardImage(0)).not.toBeNull();
     });
 
@@ -144,7 +144,7 @@ describe('getBossCardImage', () => {
     });
 });
 
-// ── getDungeonImage ─────────────────────────────────────────────────────────
+// -- getDungeonImage ---------------------------------------------------------
 
 describe('getDungeonImage', () => {
     it('returns a URL for the first dungeon (dungeon_1 maps to dung-1.png)', () => {
@@ -162,7 +162,7 @@ describe('getDungeonImage', () => {
     });
 });
 
-// ── getSpellImage ───────────────────────────────────────────────────────────
+// -- getSpellImage -----------------------------------------------------------
 
 describe('getSpellImage', () => {
     it('is case-insensitive on classId', () => {
@@ -174,8 +174,8 @@ describe('getSpellImage', () => {
         expect(c).toBe(a);
     });
 
-    it('resolves the necromancer alias (necromancer → necro-{N}.png)', () => {
-        // The alias map maps "necromancer" → "necro" — we don't assert the
+    it('resolves the necromancer alias (necromancer -> necro-{N}.png)', () => {
+        // The alias map maps "necromancer" -> "necro" — we don't assert the
         // exact URL but we do assert that necromancer queries don't go to
         // a literal `necromancer-1.png` (which doesn't ship). Either the
         // alias finds the file (non-null) or the file genuinely isn't
@@ -196,11 +196,11 @@ describe('getSpellImage', () => {
     });
 });
 
-// ── getSummonImage ──────────────────────────────────────────────────────────
+// -- getSummonImage ----------------------------------------------------------
 
 describe('getSummonImage', () => {
     it('routes English summon types through the Polish alias map', () => {
-        // skeleton → szkielet; ghost → duch; demon → demon; lich → lisz
+        // skeleton -> szkielet; ghost -> duch; demon -> demon; lich -> lisz
         const sk = getSummonImage('skeleton');
         const gh = getSummonImage('ghost');
         const dm = getSummonImage('demon');
@@ -216,12 +216,12 @@ describe('getSummonImage', () => {
     });
 
     it('falls back to the universal "default" art for unknown types', () => {
-        // summon.png ships as the default → unknown types return it, not null.
+        // summon.png ships as the default -> unknown types return it, not null.
         expect(getSummonImage('not_a_summon')).not.toBeNull();
     });
 });
 
-// ── getSpellChestImage ──────────────────────────────────────────────────────
+// -- getSpellChestImage ------------------------------------------------------
 
 describe('getSpellChestImage', () => {
     it('maps known chest levels to their dedicated art tier', () => {
@@ -239,7 +239,7 @@ describe('getSpellChestImage', () => {
     });
 });
 
-// ── getStoneImage ───────────────────────────────────────────────────────────
+// -- getStoneImage -----------------------------------------------------------
 
 describe('getStoneImage', () => {
     it('routes rarity keys to the matching stone tier (1..6)', () => {
@@ -262,20 +262,20 @@ describe('getStoneImage', () => {
     });
 });
 
-// ── getPotionImage ──────────────────────────────────────────────────────────
+// -- getPotionImage ----------------------------------------------------------
 
 describe('getPotionImage', () => {
     it('maps canonical flat HP/MP elixir IDs', () => {
-        expect(getPotionImage('hp_potion_sm')).not.toBeNull(); // → hp-50
-        expect(getPotionImage('hp_potion_md')).not.toBeNull(); // → hp-150
-        expect(getPotionImage('hp_potion_lg')).not.toBeNull(); // → hp-400
-        expect(getPotionImage('mp_potion_sm')).not.toBeNull(); // → mp-30
+        expect(getPotionImage('hp_potion_sm')).not.toBeNull(); // -> hp-50
+        expect(getPotionImage('hp_potion_md')).not.toBeNull(); // -> hp-150
+        expect(getPotionImage('hp_potion_lg')).not.toBeNull(); // -> hp-400
+        expect(getPotionImage('mp_potion_sm')).not.toBeNull(); // -> mp-30
     });
 
     it('maps percentage HP/MP elixir IDs', () => {
-        expect(getPotionImage('hp_potion_great')).not.toBeNull();    // → hp-20-proc
-        expect(getPotionImage('hp_potion_super')).not.toBeNull();    // → hp-35-proc
-        expect(getPotionImage('mp_potion_divine')).not.toBeNull();   // → mp-100-proc
+        expect(getPotionImage('hp_potion_great')).not.toBeNull();    // -> hp-20-proc
+        expect(getPotionImage('hp_potion_super')).not.toBeNull();    // -> hp-35-proc
+        expect(getPotionImage('mp_potion_divine')).not.toBeNull();   // -> mp-100-proc
     });
 
     it('falls back to the hp-50 art when given no ID', () => {
@@ -290,7 +290,7 @@ describe('getPotionImage', () => {
     });
 });
 
-// ── getElixirImage ──────────────────────────────────────────────────────────
+// -- getElixirImage ----------------------------------------------------------
 
 describe('getElixirImage', () => {
     it('maps known buff-elixir IDs to their dedicated art', () => {
@@ -306,7 +306,7 @@ describe('getElixirImage', () => {
     });
 });
 
-// ── getConsumableImage ──────────────────────────────────────────────────────
+// -- getConsumableImage ------------------------------------------------------
 
 describe('getConsumableImage', () => {
     it('routes hp_potion_* / mp_potion_* IDs to getPotionImage', () => {
@@ -324,10 +324,10 @@ describe('getConsumableImage', () => {
     });
 });
 
-// ── getItemImage / getItemFile ──────────────────────────────────────────────
+// -- getItemImage / getItemFile ----------------------------------------------
 
 describe('getItemImage', () => {
-    it('matches via the canonical type field (heavy_helmet → helmet-ciezki.png)', () => {
+    it('matches via the canonical type field (heavy_helmet -> helmet-ciezki.png)', () => {
         expect(getItemImage('whatever_id', undefined, 'heavy_helmet')).not.toBeNull();
         expect(getItemImage('whatever_id', undefined, 'sword')).not.toBeNull();
         expect(getItemImage('whatever_id', undefined, 'bow')).not.toBeNull();
@@ -338,7 +338,7 @@ describe('getItemImage', () => {
         expect(getItemImage('sword_lvl3_common')).not.toBeNull();
     });
 
-    it('detects legacy keyword IDs (iron_sword → miecz, leather_cap → helmet-lekki)', () => {
+    it('detects legacy keyword IDs (iron_sword -> miecz, leather_cap -> helmet-lekki)', () => {
         expect(getItemImage('iron_sword')).not.toBeNull();
         expect(getItemImage('leather_cap', 'helmet')).not.toBeNull();
     });
@@ -354,7 +354,7 @@ describe('getItemImage', () => {
     });
 
     it('falls back via slot for accessories without distinguishing words', () => {
-        // ring1 / ring2 / necklace / earrings → keyed by slot
+        // ring1 / ring2 / necklace / earrings -> keyed by slot
         expect(getItemImage('unknown_xyz', 'ring1')).not.toBeNull();
         expect(getItemImage('unknown_xyz', 'necklace')).not.toBeNull();
         expect(getItemImage('unknown_xyz', 'earrings')).not.toBeNull();
@@ -376,7 +376,7 @@ describe('getItemFile', () => {
     });
 });
 
-// ── isImageUrl ──────────────────────────────────────────────────────────────
+// -- isImageUrl --------------------------------------------------------------
 
 describe('isImageUrl', () => {
     it('returns true for path-prefixed URLs', () => {
@@ -394,7 +394,7 @@ describe('isImageUrl', () => {
     });
 
     it('returns false for emoji / plain text', () => {
-        expect(isImageUrl('⚔️')).toBe(false);
+        expect(isImageUrl('crossed-swords')).toBe(false);
         expect(isImageUrl('hello')).toBe(false);
         expect(isImageUrl('')).toBe(false);
     });

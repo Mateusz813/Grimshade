@@ -10,14 +10,14 @@ import { MemoryRouter } from 'react-router-dom';
  * store's `fetch*` calls catch silently.
  *
  * Coverage:
- *   • Smoke render (root + 3 tab buttons + filter bar).
- *   • Tab swap → active modifier moves.
- *   • Search input is controlled.
- *   • Category select dropdown lists every option.
- *   • Empty-state copy on Browse + My tabs when stores are empty.
- *   • Sale-notifications button shows a badge when notifications exist.
- *   • Notifications modal opens on button click.
- *   • Renders without crashing when character is null.
+ *   - Smoke render (root + 3 tab buttons + filter bar).
+ *   - Tab swap -> active modifier moves.
+ *   - Search input is controlled.
+ *   - Category select dropdown lists every option.
+ *   - Empty-state copy on Browse + My tabs when stores are empty.
+ *   - Sale-notifications button shows a badge when notifications exist.
+ *   - Notifications modal opens on button click.
+ *   - Renders without crashing when character is null.
  *
  * Mocks: framer-motion stubbed.
  */

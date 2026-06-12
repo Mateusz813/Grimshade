@@ -1,6 +1,6 @@
 import type { CharacterClass } from '../api/v1/characterApi';
 
-// ── Skill XP Curve ────────────────────────────────────────────────────────────
+// -- Skill XP Curve ------------------------------------------------------------
 //
 // Weapon / magic skills go from 0 to infinity (no level cap for offline training).
 // Formula: ceil(100 * skillLevel^1.8) – harder at higher levels.
@@ -10,16 +10,16 @@ export const skillXpToNextLevel = (skillLevel: number): number => {
     return Math.ceil(100 * Math.pow(skillLevel, 1.8));
 };
 
-// ── XP gained per combat hit (weapon skills) ──────────────────────────────────
+// -- XP gained per combat hit (weapon skills) ----------------------------------
 // Every hit grants XP base, reduced slightly at high skill levels.
 export const skillXpPerHit = (skillLevel: number): number =>
     Math.max(1, Math.floor(10 / (1 + skillLevel * 0.05)));
 
-// ── XP gained per spell cast (magic skills) ───────────────────────────────────
+// -- XP gained per spell cast (magic skills) -----------------------------------
 export const skillXpPerCast = (skillLevel: number): number =>
     Math.max(1, Math.floor(15 / (1 + skillLevel * 0.05)));
 
-// ── MLVL XP from auto-attacks (magic classes only) ────────────────────────────
+// -- MLVL XP from auto-attacks (magic classes only) ----------------------------
 // Mage/Cleric/Necromancer gain MLVL from both attacks and skills.
 // Knight/Archer/Rogue/Bard gain MLVL ONLY from skills, at 3x slower rate.
 
@@ -41,7 +41,7 @@ export const mlvlXpPerSkillUse = (mlvl: number, characterClass: CharacterClass):
 export const doesClassGainMlvlFromAttacks = (cls: CharacterClass): boolean =>
     MLVL_FROM_ATTACKS_CLASSES.includes(cls);
 
-// ── Shielding skill (Knight) ──────────────────────────────────────────────────
+// -- Shielding skill (Knight) --------------------------------------------------
 // Separate skill from Sword Fighting. Grows passively when blocking in combat.
 // Can also be trained offline (Knight chooses Sword Fighting OR Shielding).
 // Effect: +0.5% block chance per level, +1 DEF per 2 levels.
@@ -58,8 +58,8 @@ export const getShieldingDefBonus = (shieldingLevel: number): number =>
 export const getShieldingBlockBonus = (shieldingLevel: number): number =>
     shieldingLevel * 0.005; // +0.5% per level
 
-// ── Offline training XP gain ──────────────────────────────────────────────────
-// Rate is scaled by current skill level (higher level → slower offline gain).
+// -- Offline training XP gain --------------------------------------------------
+// Rate is scaled by current skill level (higher level -> slower offline gain).
 // Max 24h of accumulated training.
 // Powerful stats (hp_regen, crit_chance, crit_dmg, attack_speed) train MUCH slower.
 export const MAX_OFFLINE_TRAINING_SECONDS = 24 * 60 * 60; // 24 hours
@@ -146,7 +146,7 @@ export const calculateOfflineSkillXp = (
     return Math.floor(totalXpGained);
 };
 
-// ── Process skill XP – may trigger multiple level-ups ────────────────────────
+// -- Process skill XP – may trigger multiple level-ups ------------------------
 export interface ISkillUpResult {
     newLevel: number;
     remainingXp: number;
@@ -171,7 +171,7 @@ export const processSkillXp = (
     return { newLevel: level, remainingXp: xp, levelsGained };
 };
 
-// ── Skill death penalty: –5% of current skill level XP ───────────────────────
+// -- Skill death penalty: –5% of current skill level XP -----------------------
 export const applySkillDeathPenalty = (
     currentXp: number,
     skillLevel: number,
@@ -180,14 +180,14 @@ export const applySkillDeathPenalty = (
     return Math.max(0, currentXp - penalty);
 };
 
-// ── Damage bonus from skill level ─────────────────────────────────────────────
+// -- Damage bonus from skill level ---------------------------------------------
 // damageBonus per level is stored in skills.json (e.g. 0.05 = 5% per level)
 export const getSkillDamageBonus = (
     skillLevel: number,
     damageBonus: number,
 ): number => skillLevel * damageBonus;
 
-// ── Which weapon skill IDs map to each class ─────────────────────────────────
+// -- Which weapon skill IDs map to each class ---------------------------------
 export const CLASS_WEAPON_SKILLS: Record<CharacterClass, string[]> = {
     Knight:      ['sword_fighting', 'shielding'],
     Mage:        ['magic_level'],
@@ -212,7 +212,7 @@ export const CLASS_WEAPON_SKILL: Record<CharacterClass, string> = {
 export const getClassWeaponSkills = (cls: CharacterClass): string[] =>
     CLASS_WEAPON_SKILLS[cls] ?? [];
 
-// ── Offline training skill labels ─────────────────────────────────────────────
+// -- Offline training skill labels ---------------------------------------------
 export const SKILL_NAMES_PL: Record<string, string> = {
     sword_fighting:   'Walka Mieczem',
     shielding:        'Obrona Tarczą',
@@ -231,7 +231,7 @@ export const SKILL_NAMES_PL: Record<string, string> = {
     crit_dmg:         'Obrażenia Krytyczne',
 };
 
-// ── All trainable skill/stat IDs ──────────────────────────────────────────────
+// -- All trainable skill/stat IDs ----------------------------------------------
 /** All weapon skill IDs (class-specific, one per class) */
 export const ALL_WEAPON_SKILL_IDS: string[] = [
     'sword_fighting', 'shielding', 'distance_fighting', 'dagger_fighting', 'magic_level', 'bard_level',
@@ -255,7 +255,7 @@ export const ALL_TRAINABLE_STATS: string[] = [
     ...GENERAL_TRAINABLE_STATS,
 ];
 
-// ── Training stat bonuses (applied to effective character stats) ──────────────
+// -- Training stat bonuses (applied to effective character stats) --------------
 // These bonuses are computed from the trained skill levels (stored in skillStore).
 
 export interface ITrainingBonuses {
@@ -295,7 +295,7 @@ const CLASS_MP_REGEN_RATE: Record<string, number> = {
 
 /**
  * Compute effective stat bonuses from all trained general stats.
- * @param skillLevels - Map of skill/stat ID → trained level (from skillStore)
+ * @param skillLevels - Map of skill/stat ID -> trained level (from skillStore)
  * @param characterClass - optional class for class-specific regen rates
  */
 export const getTrainingBonuses = (skillLevels: Record<string, number>, characterClass?: string): ITrainingBonuses => ({
@@ -309,13 +309,13 @@ export const getTrainingBonuses = (skillLevels: Record<string, number>, characte
     crit_dmg:     (skillLevels['crit_dmg'] ?? 0) * 0.02,
 });
 
-// ── XP progress fraction within current skill level (0–1) ────────────────────
+// -- XP progress fraction within current skill level (0–1) --------------------
 export const skillXpProgress = (currentXp: number, skillLevel: number): number => {
     const needed = skillXpToNextLevel(skillLevel);
     return needed > 0 ? Math.min(1, currentXp / needed) : 0;
 };
 
-// ── Skill Unlock Cost ────────────────────────────────────────────────────────
+// -- Skill Unlock Cost --------------------------------------------------------
 // Skills cost gold to unlock, scaling heavily with unlock level.
 // Formula: 500 * unlockLevel^1.8
 
@@ -328,7 +328,7 @@ export const getSkillUnlockCost = (unlockLevel: number): number => {
     return Math.floor(100 * Math.pow(unlockLevel, 1.8));
 };
 
-// ── Active Skill Upgrade System ──────────────────────────────────────────────
+// -- Active Skill Upgrade System ----------------------------------------------
 // Players can upgrade active skills for gold. Each + gives +8% DMG/Heal.
 // Fail = ONLY gold loss (safe upgrade, skill doesn't lose level).
 // Practically +1 to +10, beyond +10 is ultra hard but theoretically infinite.
@@ -376,7 +376,7 @@ export const getSkillUpgradeCost = (targetLevel: number): ISkillUpgradeCost => {
 /**
  * Damage/Heal bonus per skill upgrade level (returned as additive multiplier, so +1.15 means +115%).
  * Matches the item enhancement curve so upgrades feel meaningful:
- *   +1 → +15%   +5 → +101%   +10 → +305%   +15 → +494%   +20 → +774%
+ *   +1 -> +15%   +5 -> +101%   +10 -> +305%   +15 -> +494%   +20 -> +774%
  * Levels 1-10 use 1.15^level; levels 11+ continue at 1.08^(level-10) on top.
  */
 export const getSkillUpgradeBonus = (upgradeLevel: number): number => {
@@ -387,7 +387,7 @@ export const getSkillUpgradeBonus = (upgradeLevel: number): number => {
     return mult - 1;
 };
 
-// ── Spell Chest System ──────────────────────────────────────────────────────
+// -- Spell Chest System ------------------------------------------------------
 // Spell chests are consumable items required to unlock and upgrade active skills.
 // They drop from monsters level 5+ and stack in inventory.
 

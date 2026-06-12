@@ -8,14 +8,14 @@
  * `{ data: null, error: null }` unless we override the mock here.
  *
  * What we cover per export:
- *   • saveGame    — writes localStorage; calls supabase.upsert iff
+ *   - saveGame    — writes localStorage; calls supabase.upsert iff
  *                   a session exists; swallows storage errors.
- *   • loadGame    — pulls cloud + local; resolves newest-wins;
+ *   - loadGame    — pulls cloud + local; resolves newest-wins;
  *                   mirrors cloud back to localStorage when cloud
  *                   is newer; returns null when both are empty.
- *   • syncToCloud — pushes localStorage payload to Supabase;
+ *   - syncToCloud — pushes localStorage payload to Supabase;
  *                   no-op when localStorage is empty / no session.
- *   • deleteGameSave — removes localStorage; deletes Supabase row
+ *   - deleteGameSave — removes localStorage; deletes Supabase row
  *                   when a session exists; no-op when not.
  *
  * Each test cleans the global mocks via the `afterEach` hook in
@@ -85,7 +85,7 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-// ── saveGame ────────────────────────────────────────────────────────────────
+// -- saveGame ----------------------------------------------------------------
 
 describe('saveGame', () => {
     it('writes the state + ISO timestamp into localStorage', async () => {
@@ -138,7 +138,7 @@ describe('saveGame', () => {
     });
 });
 
-// ── loadGame ────────────────────────────────────────────────────────────────
+// -- loadGame ----------------------------------------------------------------
 
 describe('loadGame', () => {
     it('returns null when nothing exists locally and no session is present', async () => {
@@ -169,14 +169,14 @@ describe('loadGame', () => {
             STORAGE_KEY,
             JSON.stringify({ state: { legacy: true } }),
         );
-        // No timestamp → localUpdated = 0; without cloud data we still
+        // No timestamp -> localUpdated = 0; without cloud data we still
         // return the local state (it's better than null).
         const result = await loadGame(CHAR_ID);
         expect(result).toEqual({ legacy: true });
     });
 });
 
-// ── syncToCloud ─────────────────────────────────────────────────────────────
+// -- syncToCloud -------------------------------------------------------------
 
 describe('syncToCloud', () => {
     it('is a no-op when localStorage has no data for the character', async () => {
@@ -218,7 +218,7 @@ describe('syncToCloud', () => {
     });
 });
 
-// ── deleteGameSave ──────────────────────────────────────────────────────────
+// -- deleteGameSave ----------------------------------------------------------
 
 describe('deleteGameSave', () => {
     it('removes the localStorage entry', async () => {

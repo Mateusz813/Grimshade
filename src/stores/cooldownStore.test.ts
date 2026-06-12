@@ -235,7 +235,7 @@ describe('tick', () => {
         expect(s.mpPotionCooldown).toBe(4500);
         expect(s.pctHpCooldown).toBe(1500);
         expect(s.pctMpCooldown).toBe(1500);
-        // `blink` (200ms) hits zero → pruned. Others survive.
+        // `blink` (200ms) hits zero -> pruned. Others survive.
         expect(s.skillCooldowns).toEqual({ fireball: 5500, heal: 1000 });
     });
 });

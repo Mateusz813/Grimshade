@@ -17,6 +17,7 @@ import ChangePasswordModal from '../../ui/ChangePasswordModal/ChangePasswordModa
 import TutorialModal from '../../ui/TutorialModal/TutorialModal';
 import BuffPopover from '../BuffPopover/BuffPopover';
 import TaskBadge from './TaskBadge';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './TopHeader.scss';
 
 /**
@@ -37,7 +38,7 @@ const TopHeader = () => {
   const gold = useInventoryStore((s) => s.gold);
   // 2026-05-20 spec: drives the offline pill rendered next to the buffs.
   const playMode = useConnectivityStore((s) => s.mode);
-  // ── Gold tick-up animation ───────────────────────────────────────────
+  // -- Gold tick-up animation -------------------------------------------
   // When `gold` jumps (typically because the player just claimed a task
   // / quest / loot drop), the displayed value rolls UP from the previous
   // amount to the new one over ~600 ms instead of snapping. The pill
@@ -112,10 +113,10 @@ const TopHeader = () => {
   //
   // 2026-05 v6 (buff-stuck fix): TopHeader is the SINGLE always-mounted
   // host that ticks the global BuffStore. Each interval pass:
-  //   • Drains every game-time buff by 250ms × combatSpeedMult so a
+  //   - Drains every game-time buff by 250ms × combatSpeedMult so a
   //     20s skill buff cast at x4 burns in 5 wall seconds, while a
   //     buff cast outside combat (mult=1) drains in real time.
-  //   • Calls cleanExpired() to drop realtime buffs whose expiresAt
+  //   - Calls cleanExpired() to drop realtime buffs whose expiresAt
   //     passed, plus pausable / game-time buffs whose remaining time
   //     hit zero.
   // Previously this lived in `<BuffBar>` — but BuffBar was never mounted
@@ -171,7 +172,7 @@ const TopHeader = () => {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [pulseOpen]);
 
-  // ── Claimable rewards detection ──────────────────────────────────────────
+  // -- Claimable rewards detection ------------------------------------------
   // Subscribe to the source data so the glow turns on / off the moment a
   // task or quest crosses its goal threshold (or gets claimed).
   const activeTasks = useTaskStore((s) => s.activeTasks);
@@ -306,7 +307,7 @@ const TopHeader = () => {
             aria-label="Aktywne buffy"
             type="button"
           >
-            <span className="top-header__buffs-icon">✦</span>
+            <span className="top-header__buffs-icon"><GameIcon name="sparkles" /></span>
             <span className="top-header__buffs-count">{totalBuffCount}</span>
           </button>
         )}
@@ -333,13 +334,13 @@ const TopHeader = () => {
             aria-expanded={goldOpen}
             aria-label={`Złoto: ${gold.toLocaleString('pl-PL')}`}
           >
-            <span className="top-header__gold-icon">💰</span>
+            <span className="top-header__gold-icon"><GameIcon name="money-bag" /></span>
             <span className="top-header__gold-value">{goldShort}</span>
           </button>
           {goldOpen && (
             <div className="top-header__gold-popover" role="dialog" aria-label="Pełna wartość złota">
               <div className="top-header__gold-popover-title">
-                <span>💰</span>
+                <span><GameIcon name="money-bag" /></span>
                 <span>Złoto</span>
               </div>
               <div className="top-header__gold-popover-rows">

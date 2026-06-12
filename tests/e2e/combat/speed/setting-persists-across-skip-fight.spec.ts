@@ -14,10 +14,10 @@
  * previous value before returning so the next navigation / test doesn't
  * inherit `'SKIP'` mode in the UI" (combatSim.ts line 84). That promise
  * is load-bearing because:
- *   • If broken, every test that follows runCombatViaSkip would silently
+ *   - If broken, every test that follows runCombatViaSkip would silently
  *     observe SKIP mode in the UI even though the .tap()-on-speed-chip
  *     workflow would still cycle through x1/x2/x4 — masking bugs.
- *   • A real combat test that wants to set speed=x2, observe a few
+ *   - A real combat test that wants to set speed=x2, observe a few
  *     attacks at x2 cadence, would have its speed RESET to x1 by an
  *     earlier SKIP fight if this contract were broken.
  *
@@ -35,18 +35,18 @@
  *     if the restore was a no-op, the value would still be the default
  *     and the test would falsely pass. Using a non-default value
  *     forces the assertion to verify the actual restore wrote x4 back.
- *  3. Snapshot speed → 'x4'.
- *  4. `runCombatViaSkip(page, 'rat')` → fight resolves via SKIP path.
- *  5. Post-fight snapshot speed → MUST equal 'x4' (restored).
+ *  3. Snapshot speed -> 'x4'.
+ *  4. `runCombatViaSkip(page, 'rat')` -> fight resolves via SKIP path.
+ *  5. Post-fight snapshot speed -> MUST equal 'x4' (restored).
  *  6. Sanity: the fight DID resolve to victory — proves SKIP mode was
  *     actually engaged inside the helper (vs. silently no-oping which
  *     could mask the speed-restore problem).
  *
  * What we DON'T test:
- *  • Real-time cadence at x4 vs x1 — that's TIMING coverage which would
+ *  - Real-time cadence at x4 vs x1 — that's TIMING coverage which would
  *    require a live combat tick + setInterval observation. The DPS test
  *    in BACKLOG 13.9 (basic attack cadence) is the right home for that.
- *  • UI chip click ↔ store sync — covered by Combat.tsx unit tests +
+ *  - UI chip click <-> store sync — covered by Combat.tsx unit tests +
  *    the existing 12.6 trainer per-class smoke (which taps action bar
  *    buttons and proves chip clicks work).
  *

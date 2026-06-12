@@ -8,19 +8,19 @@
  * Pragmatic scoping (per session brief 2026-05-25):
  * Sprawdzamy 3 reprezentatywne widoki które renderują efektywne max MP
  * z uwzględnieniem equipment-u:
- *   1. Town `/` → MP `.town__bar-value` (Town.tsx linia 334)
- *      (helper `engineGetEffectiveChar` →
+ *   1. Town `/` -> MP `.town__bar-value` (Town.tsx linia 334)
+ *      (helper `engineGetEffectiveChar` ->
  *      `getTotalEquipmentStats(equipment).mp`)
- *   2. TopHeader pulse popover → `.top-header__pulse-popover-row--mp`
+ *   2. TopHeader pulse popover -> `.top-header__pulse-popover-row--mp`
  *      (helper `getEffectiveChar` — same engine as Town)
- *   3. `/character-select` card → MP `.char-select__bar-value`
+ *   3. `/character-select` card -> MP `.char-select__bar-value`
  *      (helper `getEffectiveMaxStats` — czyta equipment przez
  *      `peekCharacterStore(charId, 'inventory')` z localStorage)
  *
  * Ścieżki dla equipment:
- *  • Town/TopHeader: `useInventoryStore.getState().equipment` (in-memory
+ *  - Town/TopHeader: `useInventoryStore.getState().equipment` (in-memory
  *    Zustand store, populated po `switchToCharacter`).
- *  • CharacterSelect: `peekCharacterStore` (czyta localStorage
+ *  - CharacterSelect: `peekCharacterStore` (czyta localStorage
  *    `dungeon_rpg_save_char_<id>`).
  *
  * Każdy z nich woła `getTotalEquipmentStats(equipment, ALL_ITEMS)` i ma
@@ -34,22 +34,22 @@
  *   `upgradeLevel: 0` (no upgrade — sam bonus z bag).
  *
  * Why `heavy_helmet_lvl5_common` (generated item, NOT legacy `iron_helmet`):
- *  • Legacy items z `items.json` (iron_helmet/leather_cap) używają
+ *  - Legacy items z `items.json` (iron_helmet/leather_cap) używają
  *    `findBaseItem` path w `getTotalEquipmentStats` (linia 651) — czyta
  *    `baseAtk/baseDef` z items.json. NIE bierze pod uwagę `bonuses.mp`
  *    bo legacy gear ma stats wbity w baseDef, nie w bonuses object.
- *  • Generated items (regex `<type>_lvl<N>_<rarity>`) padają w `genInfo`
+ *  - Generated items (regex `<type>_lvl<N>_<rarity>`) padają w `genInfo`
  *    fallback (linia 662) ktory czyta KAŻDY klucz z `bonuses` (linia 665)
  *    — w tym `mp`. Test seeduje `bonuses: { mp: 20 }` i `getTotalEquipmentStats`
  *    to sumuje. Patrz `isBaseStatKey(slot, key)` w itemSystem.ts linia 518:
  *    dla `slot='helmet'` base stat keys = `['hp']`, więc `mp` NIE jest
- *    base → upgrade multiplier NIE jest aplikowany, mp zostaje flat 20.
+ *    base -> upgrade multiplier NIE jest aplikowany, mp zostaje flat 20.
  *
  * Klasa Mage zamiast Knight bo Mage ma większą baseline max_mp (200 vs 30),
- * więc 20 MP od item-u stanowi widoczną deltę w UI (Mage 200 → 220), nie
+ * więc 20 MP od item-u stanowi widoczną deltę w UI (Mage 200 -> 220), nie
  * marginalną zmianę widoczną głównie w pikselu progress bara.
  *
- * Knight by też zadziałało (max_mp 30 → 50) ale w UI to ułamek bara —
+ * Knight by też zadziałało (max_mp 30 -> 50) ale w UI to ułamek bara —
  * dla człowieka który ogląda screenshot trudne do dostrzeżenia.
  *
  * ## Expected math
@@ -65,7 +65,7 @@
  *
  * Jak w testach 3.5/3.6/6.12/6.13: CharacterSelect czyta equipment z
  * localStorage, świeży character bez `switchToCharacter` ma pusty save
- * → wymagamy tap "Wybierz" PRZED finalną asercją w CharacterSelect.
+ * -> wymagamy tap "Wybierz" PRZED finalną asercją w CharacterSelect.
  *
  * Cleanup: try/finally + `cleanupCharacterById(createdId)`.
  */
@@ -80,7 +80,7 @@ import { seedEquippedItem } from '../../fixtures/seedInventory';
 test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('helmet with +20 MP bonus → Town, TopHeader popover, CharacterSelect all show effective max MP', async ({ page }) => {
+    test('helmet with +20 MP bonus -> Town, TopHeader popover, CharacterSelect all show effective max MP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -112,12 +112,12 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
                 upgradeLevel: 0,
             });
 
-            // 3. Login → /character-select.
+            // 3. Login -> /character-select.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
 
-            // 4. Tap "Wybierz" → Town (warm localStorage przy okazji).
+            // 4. Tap "Wybierz" -> Town (warm localStorage przy okazji).
             const card = page.locator('.char-select__card', {
                 has: page.locator('.char-select__card-name', { hasText: nick }),
             });
@@ -127,7 +127,7 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
 
             // 5. Read MP value from Town bar.
             //    Mage base max_mp=200 + 20 (helmet bonus) = 220.
-            //    MP starts at 80 → expect `80/220`.
+            //    MP starts at 80 -> expect `80/220`.
             const townMp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--mp') })
                 .locator('.town__bar-value')
@@ -146,8 +146,8 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
 
             // 7. Wróć do /character-select. localStorage ma teraz świeży save
             //    z equipped helmet. `getEffectiveMaxStats` w CharacterSelect:
-            //      `peekCharacterStore(charId, 'inventory')` → `.equipment.helmet`
-            //      → `getTotalEquipmentStats` → `mp: 20` → effective 220.
+            //      `peekCharacterStore(charId, 'inventory')` -> `.equipment.helmet`
+            //      -> `getTotalEquipmentStats` -> `mp: 20` -> effective 220.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
             const reloadedCard = page.locator('.char-select__card', {

@@ -1,11 +1,11 @@
 /**
- * Atomic E2E — BACKLOG 15.2 (online toggle mid-combat → combat finalizes).
+ * Atomic E2E — BACKLOG 15.2 (online toggle mid-combat -> combat finalizes).
  *
- * Spec: "Offline mode → online mid-combat → combat się kończy poprawnie"
+ * Spec: "Offline mode -> online mid-combat -> combat się kończy poprawnie"
  * — tricky edge case (`connectivityTransitions` running while a fight is
  * in progress). The risk this test guards against:
  *
- *   (a) Transitioning offline → online MUST NOT reset / clear the live
+ *   (a) Transitioning offline -> online MUST NOT reset / clear the live
  *       combat state (combatStore.phase, monster, playerCurrentHp,
  *       earnedXp accumulator).
  *   (b) A fight started while OFFLINE must be able to finalize correctly
@@ -44,7 +44,7 @@
  *   3. Verify `combatStore.phase` is STILL `'fighting'` (transition
  *      didn't reset it).
  *
- *   4. Resolve the fight via SKIP → `phase='victory'`.
+ *   4. Resolve the fight via SKIP -> `phase='victory'`.
  *
  *   5. Assert post-fight state is consistent + canonical:
  *      - `combatStore.phase === 'victory'`
@@ -83,7 +83,7 @@ import { runCombatViaSkip, getCharacterSnapshot } from '../fixtures/combatSim';
 test.describe('Offline › Sync', { tag: '@offline' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('combat staged offline survives online toggle + finalizes via SKIP → phase=victory + rewards persist', async ({ page }) => {
+    test('combat staged offline survives online toggle + finalizes via SKIP -> phase=victory + rewards persist', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 

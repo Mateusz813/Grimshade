@@ -13,11 +13,11 @@
  *   1. Seed Knight via API. Bez seedu consumables — pusty inventory =
  *      kazda recepta będzie disabled ("Za malo") ale grid powinien się
  *      WYRENDEROWAĆ wszystkie 14 conversion rows.
- *   2. Login + select character → wejscie do Town (`/`).
+ *   2. Login + select character -> wejscie do Town (`/`).
  *
  * Actions:
- *   1. /inventory → tap "Auto-potion" → popup z 2 zakladkami.
- *   2. Tap "🧪 Alchemia" tab → switchuje setPotionTab('alchemy').
+ *   1. /inventory -> tap "Auto-potion" -> popup z 2 zakladkami.
+ *   2. Tap ":test-tube: Alchemia" tab -> switchuje setPotionTab('alchemy').
  *
  * Outcome:
  *   - Popup nadal widoczny.
@@ -28,10 +28,10 @@
  *     (POTION_CONVERSIONS.length === 14: tiery 1-6 HP + 1 alt HP tier 7 +
  *     tiery 1-6 MP + 1 alt MP tier 7 — patrz potionConversion.ts).
  *
- * Cleanup: try/finally → cleanupCharacterById.
+ * Cleanup: try/finally -> cleanupCharacterById.
  *
  * Co NIE testujemy:
- *  - Click "🧪 Przetworz" button (10.x feature test).
+ *  - Click ":test-tube: Przetworz" button (10.x feature test).
  *  - Amount adjust przez +/- buttons (osobne mass-convert test).
  *  - Disabled state każdej recepty (zal. od owned count).
  */
@@ -58,7 +58,7 @@ test.describe('Alchemy › UI', { tag: '@alchemy' }, () => {
             });
             createdId = created.id;
 
-            // 1. Login → wybierz postac → Town
+            // 1. Login -> wybierz postac -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -68,7 +68,7 @@ test.describe('Alchemy › UI', { tag: '@alchemy' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 2. /inventory → tap Auto-potion button (popup ma 2 zakladki)
+            // 2. /inventory -> tap Auto-potion button (popup ma 2 zakladki)
             await page.goto('/inventory');
             await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
             await page.getByRole('button', { name: /^auto-potion$/i }).tap();
@@ -95,12 +95,12 @@ test.describe('Alchemy › UI', { tag: '@alchemy' }, () => {
 
             // 7. KRYTYCZNA asercja — 14 conversion rows.
             //    POTION_CONVERSIONS w potionConversion.ts ma:
-            //      HP: tiery 1-6 (6) + alt tier 7 (lg→mega) = 7
-            //      MP: tiery 1-6 (6) + alt tier 7 (lg→mega) = 7
+            //      HP: tiery 1-6 (6) + alt tier 7 (lg->mega) = 7
+            //      MP: tiery 1-6 (6) + alt tier 7 (lg->mega) = 7
             //    Razem 14.
             await expect(grid.locator('.inventory__alchemy-row')).toHaveCount(14);
 
-            // 8. Sanity — pierwszy row to HP tier 1 (5x maly → 1x sredni)
+            // 8. Sanity — pierwszy row to HP tier 1 (5x maly -> 1x sredni)
             //    bo POTION_CONVERSIONS są listed w kolejnosci jak w json.
             //    Sprawdzamy obecnosc nazwy "Maly Eliksir HP" w gdzieś w gridzie
             //    (jako input name pierwszej recepty).

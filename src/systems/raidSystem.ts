@@ -101,9 +101,9 @@ const ITEM_RARITY_CHANCES: Array<{ rarity: Rarity; chance: number }> = [
     { rarity: 'common',    chance: 0.145 },
 ];
 
-// 2026-04 spec adjustment: spell chests dropped from 1.5% → 0.25% per chest
+// 2026-04 spec adjustment: spell chests dropped from 1.5% -> 0.25% per chest
 // level so a single raid no longer drowns the player in chests. The modal
-// "📦 Spell Chests" section advertises the same number, so displayed odds
+// ":package: Spell Chests" section advertises the same number, so displayed odds
 // match what the engine rolls. Potions are now driven directly by
 // `getPotionDropInfo(raid.level)` (mirrors dungeons): two independent
 // rolls (HP + MP) at the level-gated chance — no separate constant.
@@ -125,7 +125,7 @@ export const getAllRaids = (): IRaid[] =>
         name_pl: d.name_pl,
         level: d.level,
         waves: getRaidWaveCount(d.level),
-        // 2026-04 spec bump: 3 → 5 daily attempts. Raids are party-only and
+        // 2026-04 spec bump: 3 -> 5 daily attempts. Raids are party-only and
         // demand more coordination than dungeons, so the cap is a touch
         // more generous to give groups time to actually field a full team.
         dailyAttempts: 5,
@@ -146,7 +146,7 @@ export const getRaidById = (id: string): IRaid | null =>
  * Kept here (as opposed to in Raid.tsx) so the raid view can pull it as a
  * one-liner and any future engine tweaks update both sides at once. The
  * dungeon view uses the same shape via `estimateDungeonRewards`, so the two
- * card layouts read identical: "💰 {min}–{max}" + "⭐ ~{xp} XP".
+ * card layouts read identical: ":money-bag: {min}–{max}" + ":star: ~{xp} XP".
  */
 export const estimateRaidRewards = (raid: IRaid): {
     goldMin: number;
@@ -359,7 +359,7 @@ export const rollMemberRewards = (ctx: IMemberRewardContext): {
         }
     }
 
-    // ── Raid-completion bonus roll ─────────────────────────────────────────
+    // -- Raid-completion bonus roll -----------------------------------------
     // Spec item 5: "per-member loot + extra raid-completion roll". On top of
     // the per-boss drops above, every surviving member gets a single high-
     // weighted item roll for clearing the whole raid. The rarity table
@@ -387,8 +387,8 @@ export const rollMemberRewards = (ctx: IMemberRewardContext): {
     // The completion-roll bonus is GUARANTEED — every surviving member
     // gets one item. If `generateRandomItem` returns null for the rolled
     // rarity (e.g. the bestiary template registry has no entry for that
-    // class/level/rarity combo), fall back through rarities (heroic →
-    // mythic → ... → common) until one generates. The fallback uses the
+    // class/level/rarity combo), fall back through rarities (heroic ->
+    // mythic -> ... -> common) until one generates. The fallback uses the
     // ordered tier list above so a player who rolled a Heroic but the
     // generator failed still ends up with a higher-tier item rather than
     // a missing reward.
@@ -406,7 +406,7 @@ export const rollMemberRewards = (ctx: IMemberRewardContext): {
         drops.push({
             kind: 'item',
             memberId: member.id,
-            label: `🏆 Bonus za rajd: ${finalRarity}`,
+            label: `:trophy: Bonus za rajd: ${finalRarity}`,
             rarity: finalRarity,
             itemId: generated.itemId,
             isBonus: true,

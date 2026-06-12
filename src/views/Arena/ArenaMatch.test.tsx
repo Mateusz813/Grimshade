@@ -10,11 +10,11 @@ import { MemoryRouter } from 'react-router-dom';
  * territory.
  *
  * What we DO cover:
- *   • Smoke render once character + currentArena + sessionStorage ctx
+ *   - Smoke render once character + currentArena + sessionStorage ctx
  *     are seeded — the .arena.arena--match root mounts.
- *   • Fallback render (the "Brak kontekstu walki" guard) when any of
+ *   - Fallback render (the "Brak kontekstu walki" guard) when any of
  *     ctx / character / currentArena is missing.
- *   • The combat HUD shell mounts (the `.combat-ui` from CombatHudHost).
+ *   - The combat HUD shell mounts (the `.combat-ui` from CombatHudHost).
  *
  * Mocks: framer-motion + useCombatFx (same pattern as Combat / Trainer
  * tests) so happy-dom doesn't choke on the animation library and the

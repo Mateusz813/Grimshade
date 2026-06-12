@@ -2,13 +2,13 @@
   "common": {
     "loading": "Loading...",
     "error": "Error",
-    "back_to_town": "← Town",
+    "back_to_town": "Town",
     "save": "Save",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "refresh": "↻",
+    "refresh": "",
     "copy": "Copy",
-    "copied": "✓ Copied",
+    "copied": ":check-mark-button: Copied",
     "online": "Online",
     "offline": "Offline",
     "syncing": "Syncing...",
@@ -16,7 +16,7 @@
     "last_synced": "Sync: {{time}}",
     "never_synced": "Never synced",
     "level": "Lvl",
-    "gold": "💰 {{amount}}"
+    "gold": ":money-bag: {{amount}}"
   },
   "town": {
     "title": "Town",
@@ -111,7 +111,7 @@
     "equip": "Equip",
     "unequip": "Unequip",
     "no_items": "Backpack is empty.",
-    "gold": "💰 {{amount}} gold"
+    "gold": ":money-bag: {{amount}} gold"
   },
   "skills": {
     "title": "Skills",
@@ -160,7 +160,7 @@
     "defeat": "Defeat!",
     "rewards": "Rewards",
     "xp_gained": "+{{xp}} XP",
-    "gold_gained": "+{{gold}} 💰",
+    "gold_gained": "+{{gold}} :money-bag:",
     "item_drop": "Found: {{item}}",
     "return": "Return"
   },
@@ -185,7 +185,7 @@
     "join_error": "Enter a valid party ID.",
     "id_label": "Party ID:",
     "copy_id": "Copy",
-    "copied_id": "✓ Copied",
+    "copied_id": ":check-mark-button: Copied",
     "drop_x": "Drop ×",
     "difficulty_x": "Difficulty ×",
     "avg_level": "Avg level",

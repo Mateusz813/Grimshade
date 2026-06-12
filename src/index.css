@@ -118,7 +118,7 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
 }
 
-/* ── Shared page header / tab styling (matches Friends view) ──────────────
+/* -- Shared page header / tab styling (matches Friends view) --------------
    Use these classes on any subpage so look stays consistent. Wire them up
    alongside (or instead of) a view-local class name. !important keeps them
    authoritative over each view's BEM block styles, which are loaded later

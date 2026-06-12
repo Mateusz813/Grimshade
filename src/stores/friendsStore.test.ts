@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFriendsStore } from './friendsStore';
 
-// ── Reset helper ─────────────────────────────────────────────────────────────
+// -- Reset helper -------------------------------------------------------------
 // friendsStore is a plain Zustand store (no persist, no api) — set lists back
 // to empty before each test so state from prior tests can't leak.
 
@@ -9,7 +9,7 @@ beforeEach(() => {
     useFriendsStore.setState({ friends: [], favorites: [], blocked: [] });
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('friendsStore — initial state', () => {
     it('starts with empty friends, favorites and blocked lists', () => {
@@ -20,7 +20,7 @@ describe('friendsStore — initial state', () => {
     });
 });
 
-// ── addFriend ────────────────────────────────────────────────────────────────
+// -- addFriend ----------------------------------------------------------------
 
 describe('addFriend', () => {
     it('appends a friend to the friends list', () => {
@@ -54,7 +54,7 @@ describe('addFriend', () => {
     });
 });
 
-// ── removeFriend ─────────────────────────────────────────────────────────────
+// -- removeFriend -------------------------------------------------------------
 
 describe('removeFriend', () => {
     it('removes a friend from the list', () => {
@@ -84,7 +84,7 @@ describe('removeFriend', () => {
     });
 });
 
-// ── toggleFavorite ───────────────────────────────────────────────────────────
+// -- toggleFavorite -----------------------------------------------------------
 
 describe('toggleFavorite', () => {
     it('adds a friend to favorites when not yet favorited', () => {
@@ -111,7 +111,7 @@ describe('toggleFavorite', () => {
     });
 });
 
-// ── blockUser ────────────────────────────────────────────────────────────────
+// -- blockUser ----------------------------------------------------------------
 
 describe('blockUser', () => {
     it('adds a user to the blocked list', () => {
@@ -146,7 +146,7 @@ describe('blockUser', () => {
     });
 });
 
-// ── unblockUser ──────────────────────────────────────────────────────────────
+// -- unblockUser --------------------------------------------------------------
 
 describe('unblockUser', () => {
     it('removes the name from the blocked list', () => {
@@ -156,7 +156,7 @@ describe('unblockUser', () => {
     });
 
     it('preserves the friend list per spec (no auto-add or auto-remove)', () => {
-        // Stranger unblocked → does NOT enter friends
+        // Stranger unblocked -> does NOT enter friends
         useFriendsStore.setState({ blocked: ['Stranger'] });
         useFriendsStore.getState().unblockUser('Stranger');
         const s = useFriendsStore.getState();
@@ -178,7 +178,7 @@ describe('unblockUser', () => {
     });
 });
 
-// ── isFriend / isFavorite / isBlocked ───────────────────────────────────────
+// -- isFriend / isFavorite / isBlocked ---------------------------------------
 
 describe('selectors (isFriend / isFavorite / isBlocked)', () => {
     beforeEach(() => {
@@ -217,7 +217,7 @@ describe('selectors (isFriend / isFavorite / isBlocked)', () => {
     });
 });
 
-// ── resetFriends ─────────────────────────────────────────────────────────────
+// -- resetFriends -------------------------------------------------------------
 
 describe('resetFriends', () => {
     it('clears all three lists', () => {
@@ -242,7 +242,7 @@ describe('resetFriends', () => {
     });
 });
 
-// ── Integration: friend + block lifecycle ────────────────────────────────────
+// -- Integration: friend + block lifecycle ------------------------------------
 
 describe('friend + block lifecycle', () => {
     it('block then unblock keeps friend status intact', () => {

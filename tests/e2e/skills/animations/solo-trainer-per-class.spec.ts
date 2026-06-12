@@ -9,16 +9,16 @@
  * `skills/multi-context/party-member-sees-ally-animation.spec.ts`.
  *
  * Why `/trainer` and not `/combat`:
- *   • Trainer is a sandbox — no MP cost, no per-skill MP gate, dummy is
+ *   - Trainer is a sandbox — no MP cost, no per-skill MP gate, dummy is
  *     immortal so the fight doesn't end mid-cast. Skill cooldown is
  *     enforced (8s on Knight `shield_bash`), so one cast per skill per
  *     test is plenty.
- *   • Combat (hunting) requires `phase === 'fighting'` for `doUseSkill`
- *     to do anything, and starting a fight via `/combat` → tap monster
- *     `⚔️` button can resolve in <1s on Knight lvl 5 vs rat (lvl 1 HP=15)
+ *   - Combat (hunting) requires `phase === 'fighting'` for `doUseSkill`
+ *     to do anything, and starting a fight via `/combat` -> tap monster
+ *     `:crossed-swords:` button can resolve in <1s on Knight lvl 5 vs rat (lvl 1 HP=15)
  *     — the action bar may render but the player is already in `victory`
  *     phase before our `.tap()` lands.
- *   • Trainer's action bar always renders (after character hydrates),
+ *   - Trainer's action bar always renders (after character hydrates),
  *     the `doManualSkill` call directly invokes `fx.triggerEnemySkillAnim`
  *     for damage-dealing skills, which appends `.skill-anim-overlay`
  *     onto the dummy's `.combat-ui__enemy` card (EnemyCard.tsx ~line
@@ -37,10 +37,10 @@
  *      `.skill-anim-overlay` count === 0 to prove the lifecycle works.
  *
  * What we do NOT assert (defer):
- *   • Damage delta on the dummy (Trainer dummy is invincible — HP bar
+ *   - Damage delta on the dummy (Trainer dummy is invincible — HP bar
  *     stays at the slider %; not testable here).
- *   • XP / gold / drop side effects (none in trainer).
- *   • Cross-class skill cast on the SAME test (each class needs its
+ *   - XP / gold / drop side effects (none in trainer).
+ *   - Cross-class skill cast on the SAME test (each class needs its
  *     own character).
  *
  * Parametrization: one test per class (7 total). Each test
@@ -49,16 +49,16 @@
  *
  * Per-class tier-1 spell + expected animation category (verified against
  * `src/data/skillAnimations.ts`):
- *   Knight       shield_bash    physical   🛡️
- *   Mage         fireball       fire       🔥
- *   Cleric       holy_strike    holy       ✨
- *   Archer       precise_shot   arrow      🎯
- *   Rogue        backstab       physical   🗡️
- *   Necromancer  life_drain     dark       💜
- *   Bard         battle_hymn    music      🎵   ← buff, no enemy target
+ *   Knight       shield_bash    physical   :shield:
+ *   Mage         fireball       fire       :fire:
+ *   Cleric       holy_strike    holy       :sparkles:
+ *   Archer       precise_shot   arrow      :bullseye:
+ *   Rogue        backstab       physical   :dagger:
+ *   Necromancer  life_drain     dark       :purple-heart:
+ *   Bard         battle_hymn    music      :musical-note:   <- buff, no enemy target
  *
  * Bard caveat: `battle_hymn` has `damage: 0` + `party_attack_up` effect.
- * `doManualSkill` → `skillTargetsEnemy(effect)` returns false for pure
+ * `doManualSkill` -> `skillTargetsEnemy(effect)` returns false for pure
  * self/party buffs, so the animation lands on the PLAYER ally card
  * (`fx.triggerAllySkillAnim(mySlot, …)`) instead of the dummy. We
  * assert the overlay on `.combat-ui__ally` for Bard; on
@@ -97,11 +97,11 @@ const CASES: ReadonlyArray<IClassSkillAnimCase> = [
     { cls: 'Rogue',       skillId: 'backstab',     expectedCategoryClass: 'skill-anim--physical', target: 'enemy' },
     { cls: 'Necromancer', skillId: 'life_drain',   expectedCategoryClass: 'skill-anim--dark',     target: 'enemy' },
     // Bard's battle_hymn is a pure buff (damage:0, party_attack_up effect)
-    // → animation lands on player's own ally card, not the dummy.
+    // -> animation lands on player's own ally card, not the dummy.
     { cls: 'Bard',        skillId: 'battle_hymn',  expectedCategoryClass: 'skill-anim--music',    target: 'ally'  },
 ];
 
-/** Pick the player's seeded character on /character-select → land in Town. */
+/** Pick the player's seeded character on /character-select -> land in Town. */
 const pickCharacter = async (page: Page, nick: string): Promise<void> => {
     await page.goto('/character-select');
     const card = page.locator('.char-select__card', {
@@ -123,7 +123,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
     test.describe.configure({ timeout: 60_000, mode: 'serial' });
 
     for (const { cls, skillId, expectedCategoryClass, target } of CASES) {
-        test(`solo: ${cls} → ${skillId} (${expectedCategoryClass}) animation renders on ${target} card in /trainer`, async ({ page }) => {
+        test(`solo: ${cls} -> ${skillId} (${expectedCategoryClass}) animation renders on ${target} card in /trainer`, async ({ page }) => {
             const nick = generateTestCharacterName();
             let createdId: string | null = null;
 
@@ -140,7 +140,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                 });
                 createdId = created.id;
 
-                // 2. Seed game_save → slot 0 z tier-1 spell-em + flag unlock-u.
+                // 2. Seed game_save -> slot 0 z tier-1 spell-em + flag unlock-u.
                 //    Bez `unlockedSkills[skillId]=true` skill istnieje w slot-cie
                 //    ale `unlockedSkills.get(id)` w `doManualSkill`-equivalent
                 //    nadal go traktuje jako "not purchased" — w trainer-ze
@@ -156,7 +156,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                     },
                 });
 
-                // 3. Login → wybierz postać → Town
+                // 3. Login -> wybierz postać -> Town
                 await loginViaUI(page, testUsers.primary);
                 await pickCharacter(page, nick);
 
@@ -181,7 +181,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                 //     and the button shows `--disabled --cooldown`. Pre-fix
                 //     this caused the test to fail on Cleric (~33s into
                 //     the suite, after Knight + Mage warm-up). The chip
-                //     has title="Auto skille" and renders ✨ ON / OFF.
+                //     has title="Auto skille" and renders :sparkles: ON / OFF.
                 //     Turn it off + give one tick (500ms ≥ trainer's
                 //     250ms tick) so the next `cooldownsRef` check passes
                 //     for whatever auto-cast just landed.
@@ -208,7 +208,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                 //    sets name = slotId). NOT `--disabled` (trainer ignores
                 //    MP, cooldown is 0 on fresh entry — assuming we
                 //    successfully disabled autoSkill above).
-                //    Bumped from 10s → 20s because Cleric's holy_strike has
+                //    Bumped from 10s -> 20s because Cleric's holy_strike has
                 //    6s CD; if auto-skill snuck a cast before our toggle,
                 //    we need to wait for the per-skill cooldown to drain.
                 const skillBtn = actionBar.locator(`button[aria-label="${skillId}"]`);
@@ -228,10 +228,10 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                     { timeout: 2_500, intervals: [100, 250, 500] },
                 ).toBe(0);
 
-                // 8. Tap the skill. doManualSkill → effectsCastSkill → on the
+                // 8. Tap the skill. doManualSkill -> effectsCastSkill -> on the
                 //    next tick the fx.triggerEnemy/AllySkillAnim populates
                 //    fx.enemySkill[i] / fx.allySkill[0], which feeds the
-                //    `skillAnim` prop on EnemyCard / AllyCard → overlay
+                //    `skillAnim` prop on EnemyCard / AllyCard -> overlay
                 //    renders.
                 await skillBtn.tap();
 

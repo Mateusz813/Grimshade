@@ -11,16 +11,16 @@ import {
 /**
  * Unit coverage for the involuntary-disconnect death policy (BACKLOG #17
  * "Gra w trybie offline"). These pure rules drive the AppShell DC watcher:
- * when the network drops (online → offline) the player should die + leave
+ * when the network drops (online -> offline) the player should die + leave
  * the party ONLY in a party-combat or arena context; solo combat must keep
  * running; party + non-combat just drops the party with no death.
  *
  * Spec quadrants (the table the user asked to verify):
- *   party + combat     → DIE + leave party
- *   arena (any party)  → DIE + leave party (if in one)
- *   solo + combat      → NO death, NO party leave (combat continues offline)
- *   party + non-combat → NO death, but LEAVE party
- *   solo + non-combat  → nothing
+ *   party + combat     -> DIE + leave party
+ *   arena (any party)  -> DIE + leave party (if in one)
+ *   solo + combat      -> NO death, NO party leave (combat continues offline)
+ *   party + non-combat -> NO death, but LEAVE party
+ *   solo + non-combat  -> nothing
  */
 
 const ctx = (over: Partial<IDisconnectContext>): IDisconnectContext => ({
@@ -31,27 +31,27 @@ const ctx = (over: Partial<IDisconnectContext>): IDisconnectContext => ({
 });
 
 describe('shouldDieOnDisconnect — the #17 spec quadrants', () => {
-    it('party + combat → DIE', () => {
+    it('party + combat -> DIE', () => {
         expect(shouldDieOnDisconnect(ctx({ inParty: true, inCombat: true }))).toBe(true);
     });
 
-    it('solo + combat → does NOT die (combat continues offline)', () => {
+    it('solo + combat -> does NOT die (combat continues offline)', () => {
         expect(shouldDieOnDisconnect(ctx({ inParty: false, inCombat: true }))).toBe(false);
     });
 
-    it('arena WITH a party → DIE', () => {
+    it('arena WITH a party -> DIE', () => {
         expect(shouldDieOnDisconnect(ctx({ inParty: true, inArena: true }))).toBe(true);
     });
 
-    it('arena SOLO → DIE (arena abandonment is always a loss)', () => {
+    it('arena SOLO -> DIE (arena abandonment is always a loss)', () => {
         expect(shouldDieOnDisconnect(ctx({ inParty: false, inArena: true }))).toBe(true);
     });
 
-    it('party + non-combat → does NOT die', () => {
+    it('party + non-combat -> does NOT die', () => {
         expect(shouldDieOnDisconnect(ctx({ inParty: true, inCombat: false, inArena: false }))).toBe(false);
     });
 
-    it('solo + non-combat → does NOT die', () => {
+    it('solo + non-combat -> does NOT die', () => {
         expect(shouldDieOnDisconnect(ctx({}))).toBe(false);
     });
 
@@ -63,15 +63,15 @@ describe('shouldDieOnDisconnect — the #17 spec quadrants', () => {
 });
 
 describe('shouldLeavePartyOnDisconnect — drop party iff in one', () => {
-    it('in a party → leave (combat case)', () => {
+    it('in a party -> leave (combat case)', () => {
         expect(shouldLeavePartyOnDisconnect(ctx({ inParty: true, inCombat: true }))).toBe(true);
     });
 
-    it('in a party → leave (non-combat case — teammates not stalled)', () => {
+    it('in a party -> leave (non-combat case — teammates not stalled)', () => {
         expect(shouldLeavePartyOnDisconnect(ctx({ inParty: true }))).toBe(true);
     });
 
-    it('solo → nothing to leave', () => {
+    it('solo -> nothing to leave', () => {
         expect(shouldLeavePartyOnDisconnect(ctx({ inParty: false, inCombat: true }))).toBe(false);
     });
 });
@@ -93,35 +93,35 @@ describe('die + leave-party combined contract (full quadrant matrix)', () => {
     ];
 
     for (const { name, c, die, leave } of cases) {
-        it(`${name} → die=${die}, leaveParty=${leave}`, () => {
+        it(`${name} -> die=${die}, leaveParty=${leave}`, () => {
             expect(shouldDieOnDisconnect(c)).toBe(die);
             expect(shouldLeavePartyOnDisconnect(c)).toBe(leave);
         });
     }
 });
 
-describe('resolveDisconnectSource — route → death source', () => {
-    it('/boss → boss', () => {
+describe('resolveDisconnectSource — route -> death source', () => {
+    it('/boss -> boss', () => {
         expect(resolveDisconnectSource('/boss', false)).toBe('boss');
     });
 
-    it('/dungeon → dungeon', () => {
+    it('/dungeon -> dungeon', () => {
         expect(resolveDisconnectSource('/dungeon', false)).toBe('dungeon');
     });
 
-    it('/raid → raid', () => {
+    it('/raid -> raid', () => {
         expect(resolveDisconnectSource('/raid', false)).toBe('raid');
     });
 
-    it('/transform → transform', () => {
+    it('/transform -> transform', () => {
         expect(resolveDisconnectSource('/transform', false)).toBe('transform');
     });
 
-    it('/combat → monster', () => {
+    it('/combat -> monster', () => {
         expect(resolveDisconnectSource('/combat', false)).toBe('monster');
     });
 
-    it('arena route → boss (arena has no own source enum)', () => {
+    it('arena route -> boss (arena has no own source enum)', () => {
         expect(resolveDisconnectSource('/arena/match', true)).toBe('boss');
     });
 

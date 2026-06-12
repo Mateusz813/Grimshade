@@ -2,43 +2,43 @@
  * Atomic E2E — sprzedaż upgrade-owanego itemu zwraca pełny refund
  * (base sell price + 100% gold spent na upgrade + 100% stones back).
  *
- * Spec (BACKLOG.md punkt 6.10): "Sell upgraded → zwraca tyle samo golda
+ * Spec (BACKLOG.md punkt 6.10): "Sell upgraded -> zwraca tyle samo golda
  * + kamieni". Polityka per `getEnhancementRefund` w itemSystem.ts linia
  * 681-697 oraz `handleSell` w Inventory.tsx linia 625-634.
  *
  * Co testujemy:
  *  1. Seed iron_mace (common) z `upgradeLevel=2` — symuluje że gracz
- *     wcześniej upgrade-ował z +0 → +1 → +2. NIE odpalamy faktycznego
+ *     wcześniej upgrade-ował z +0 -> +1 -> +2. NIE odpalamy faktycznego
  *     upgrade flow (osobny test `applies-stones.spec.ts` to robi), tylko
  *     prepopulujemy state ze postać "ma już ulepszony item".
- *  2. Sell tile → asercja:
+ *  2. Sell tile -> asercja:
  *     - gold counter rośnie o EXACTLY `basePrice + refund.gold` = 616g
  *     - stones (common_stone) dostają back refund.stones = 2 sztuki
  *
  * Math (z `itemSystem.ts`):
- *  • iron_mace `basePrice` = 80g (items.json), rarity=common → mult=0.20
- *    → base sell = floor(80 * 0.20) = 16g.
- *  • `getEnhancementRefund(2, 'common')` iteruje lvl 1..2:
+ *  - iron_mace `basePrice` = 80g (items.json), rarity=common -> mult=0.20
+ *    -> base sell = floor(80 * 0.20) = 16g.
+ *  - `getEnhancementRefund(2, 'common')` iteruje lvl 1..2:
  *    - lvl 1: { stones: 1, gold: 100 }
  *    - lvl 2: { stones: 1, gold: 500 }
- *    → total: { gold: 600, stones: 2, stoneType: 'common_stone' }
- *  • `getSellPrice(item)` zwraca basePrice + enhanceRefund.gold = 16 + 600 = 616g.
- *  • `handleSell` (Inventory.tsx 625-634):
- *    - sellItem(uuid, 616) → +616g
- *    - if (enhanceRefund.stones > 0) addStones('common_stone', 2) → +2 stones
- *  • Init gold = 0 (default z createCharacterViaApi), więc post-sell
+ *    -> total: { gold: 600, stones: 2, stoneType: 'common_stone' }
+ *  - `getSellPrice(item)` zwraca basePrice + enhanceRefund.gold = 16 + 600 = 616g.
+ *  - `handleSell` (Inventory.tsx 625-634):
+ *    - sellItem(uuid, 616) -> +616g
+ *    - if (enhanceRefund.stones > 0) addStones('common_stone', 2) -> +2 stones
+ *  - Init gold = 0 (default z createCharacterViaApi), więc post-sell
  *    gold = 616 ("616 gp" format dla < 1000).
- *  • Init stones = 0 (default z seedInventoryItem brak stones field).
+ *  - Init stones = 0 (default z seedInventoryItem brak stones field).
  *    Post-sell common_stone count = 2.
  *
  * Asercje:
- *  • Pre-sell: 1 bag tile (iron_mace +2 overlay), gold = "0 gp",
+ *  - Pre-sell: 1 bag tile (iron_mace +2 overlay), gold = "0 gp",
  *    brak stones tile.
- *  • Tap tile → DetailPanel widoczny.
- *  • Sell button text zawiera "Sprzedaj (616 gp +2💎)" — sanity że
+ *  - Tap tile -> DetailPanel widoczny.
+ *  - Sell button text zawiera "Sprzedaj (616 gp +2:gem-stone:)" — sanity że
  *    formuła refund w PRE-sell display jest poprawna (Inventory.tsx
  *    linia 1172).
- *  • Tap "Sprzedaj" → tile znika + gold = "616 gp" + stones tile widoczny
+ *  - Tap "Sprzedaj" -> tile znika + gold = "616 gp" + stones tile widoczny
  *    z name "Zwykly Kamien" + count badge "2".
  *
  * Cleanup: try/finally + cleanupCharacterById.
@@ -58,7 +58,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
     // pomiędzy sell action + cloud loadGame revert na page.goto).
     test.describe.configure({ retries: 8 });
 
-    test('sell +2 upgraded item → gold = base + 100% refund AND stones returned', async ({ page }) => {
+    test('sell +2 upgraded item -> gold = base + 100% refund AND stones returned', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -118,26 +118,29 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             await expect(upgradeOverlay).toBeVisible({ timeout: 5_000 });
             await expect(upgradeOverlay).toHaveText('+2');
 
-            // 6. Tap tile → DetailPanel.
+            // 6. Tap tile -> DetailPanel.
             await bagTiles.first().tap();
             await expect(page.locator('.inventory__detail')).toBeVisible({ timeout: 5_000 });
 
             // 7. Sell button text — formuła refund w PRE-sell label.
             //    Inventory.tsx linia 1172:
-            //      `Sprzedaj ({formatGoldShort(sellPrice)}{enhanceRefund.stones > 0 ? ` +${refund.stones}💎` : ''})`
-            //    Dla iron_mace +2: sellPrice = 616 → "616 gp", refund.stones = 2.
+            //      `Sprzedaj ({formatGoldShort(sellPrice)}{enhanceRefund.stones > 0 ? ` +${refund.stones}:gem-stone:` : ''})`
+            //    Dla iron_mace +2: sellPrice = 616 -> "616 gp", refund.stones = 2.
             //    Asercja na `.inventory__action-btn--sell` żeby uniknąć
             //    multi-button kolizji.
             const sellBtn = page.locator('.inventory__action-btn--sell');
             await expect(sellBtn).toBeVisible({ timeout: 5_000 });
             await expect(sellBtn).toContainText('Sprzedaj');
             await expect(sellBtn).toContainText('616 gp');
-            await expect(sellBtn).toContainText('+2💎');
+            // :gem-stone: renders as a Twemoji <img> (alt-preserved), so assert the
+            // refund count as text + the gem icon via its alt.
+            await expect(sellBtn).toContainText('+2');
+            await expect(sellBtn.locator('svg.game-icon[data-icon="gem-stone"]')).toBeVisible();
 
-            // 8. Tap "Sprzedaj" → handleSell odpala:
-            //    - sellItem(uuid, 616) → gold += 616
-            //    - addStones('common_stone', 2) → stones[common_stone] = 2
-            //    - onClose() → DetailPanel zamyka się
+            // 8. Tap "Sprzedaj" -> handleSell odpala:
+            //    - sellItem(uuid, 616) -> gold += 616
+            //    - addStones('common_stone', 2) -> stones[common_stone] = 2
+            //    - onClose() -> DetailPanel zamyka się
             await sellBtn.tap();
 
             // 9. DetailPanel zamknięty.

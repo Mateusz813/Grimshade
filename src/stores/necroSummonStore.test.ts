@@ -156,7 +156,7 @@ describe('healAllPct', () => {
                     .summons[NECRO].map((s) => ({ ...s, hp: 0 })),
             },
         });
-        // 1% of maxHp 1 = 0.01 → floor 0 → clamped to 1.
+        // 1% of maxHp 1 = 0.01 -> floor 0 -> clamped to 1.
         useNecroSummonStore.getState().healAllPct(NECRO, 1);
         const s = useNecroSummonStore.getState().summons[NECRO][0];
         expect(s.hp).toBe(1);
@@ -178,7 +178,7 @@ describe('healAllPct', () => {
     });
 });
 
-describe('damageFirst (type-priority soak: skeleton → ghost → demon → lich)', () => {
+describe('damageFirst (type-priority soak: skeleton -> ghost -> demon -> lich)', () => {
     it('returns {dmgConsumed:0, queueEmpty:true} when queue is empty', () => {
         const res = useNecroSummonStore.getState().damageFirst(NECRO, 50);
         expect(res).toEqual({ dmgConsumed: 0, queueEmpty: true });
@@ -214,7 +214,7 @@ describe('damageFirst (type-priority soak: skeleton → ghost → demon → lich
     });
 
     it('splices out the dead summon and promotes the next of the same tier', () => {
-        // Two skeletons in queue. First one dies → second moves up.
+        // Two skeletons in queue. First one dies -> second moves up.
         useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 2, 50, 200);
         const initial = useNecroSummonStore.getState().summons[NECRO];
         const firstSkeletonId = initial[0].id;
@@ -250,7 +250,7 @@ describe('damageAll (AOE)', () => {
         useNecroSummonStore.getState().spawn(NECRO, 'lich', 1, 50, 400); // hp 800
         useNecroSummonStore.getState().damageAll(NECRO, 200);
         const queue = useNecroSummonStore.getState().summons[NECRO];
-        // Skeletons die (100 - 200 = -100 clamped to 0 → removed).
+        // Skeletons die (100 - 200 = -100 clamped to 0 -> removed).
         // Lich survives with 600 HP left.
         expect(queue.length).toBe(1);
         expect(queue[0].type).toBe('lich');
@@ -283,8 +283,8 @@ describe('count', () => {
 
 describe('totalAttackBonus', () => {
     it('sums floor(necroAttack * dmgMult) across all summons', () => {
-        useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 2, 100, 400); // 0.25 → 25 each
-        useNecroSummonStore.getState().spawn(NECRO, 'demon', 1, 100, 400); // 1.20 → 120
+        useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 2, 100, 400); // 0.25 -> 25 each
+        useNecroSummonStore.getState().spawn(NECRO, 'demon', 1, 100, 400); // 1.20 -> 120
         // 25 + 25 + 120 = 170
         expect(useNecroSummonStore.getState().totalAttackBonus(NECRO, 100)).toBe(170);
     });
@@ -294,7 +294,7 @@ describe('totalAttackBonus', () => {
     });
 
     it('floors fractional results per summon', () => {
-        useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 1, 7, 400); // 7 * 0.25 = 1.75 → 1
+        useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 1, 7, 400); // 7 * 0.25 = 1.75 -> 1
         expect(useNecroSummonStore.getState().totalAttackBonus(NECRO, 7)).toBe(1);
     });
 });
@@ -362,7 +362,7 @@ describe('despawnOne', () => {
 
     it('removing the last summon of a type leaves room to re-summon (caps re-apply)', () => {
         useNecroSummonStore.getState().spawn(NECRO, 'demon', CAPS.demon, 50, 400);
-        // Now demon cap full. Despawn one → can spawn one more.
+        // Now demon cap full. Despawn one -> can spawn one more.
         useNecroSummonStore.getState().despawnOne(NECRO, 'demon');
         const spawned = useNecroSummonStore.getState().spawn(NECRO, 'demon', 1, 50, 400);
         expect(spawned).toBe(1);

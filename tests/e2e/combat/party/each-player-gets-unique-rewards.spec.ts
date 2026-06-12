@@ -12,10 +12,10 @@
  *
  * ## Pragmatic adaptation vs. spec
  *
- * Full path = leader's hunt fight kills mob → `handleMonsterDeath` →
- * `broadcastMonsterKillIfInParty` (combatEngine.ts line 1148) → Realtime
- * broadcast → secondary's `usePartyCombatSync` subscriber (usePartyCombatSync.ts
- * line 200-212) consumes → calls `applyMonsterKillRewardsForMember`.
+ * Full path = leader's hunt fight kills mob -> `handleMonsterDeath` ->
+ * `broadcastMonsterKillIfInParty` (combatEngine.ts line 1148) -> Realtime
+ * broadcast -> secondary's `usePartyCombatSync` subscriber (usePartyCombatSync.ts
+ * line 200-212) consumes -> calls `applyMonsterKillRewardsForMember`.
  *
  * Reproducing the leader-side kill via real combat takes 60s+ and adds
  * non-deterministic timing (mob speed × tick cadence + Realtime hops).
@@ -34,19 +34,19 @@
  * hop (which has its OWN test in `skills/multi-context/...spec.ts`).
  *
  * What this proves about the multi-context experience:
- *   • Both clients can independently process a kill — if there were a
+ *   - Both clients can independently process a kill — if there were a
  *     bug where `applyMonsterKillRewardsForMember` mutated GLOBAL state
  *     (e.g. shared inventory or shared XP counter), we'd see one client's
  *     XP unchanged or one client's drops empty.
- *   • Each client's `useCharacterStore.character.xp` grew by ~the same
+ *   - Each client's `useCharacterStore.character.xp` grew by ~the same
  *     amount because both used the same `finalXpFromLeader` (XP-uniformity
  *     rule from spec line 1219).
- *   • Each client's `useTaskStore` progress incremented on their OWN
+ *   - Each client's `useTaskStore` progress incremented on their OWN
  *     character (no leaking of secondary's task progress to primary or
  *     vice versa).
  *
  * Why solo-equivalent test isn't enough:
- *   • Solo combat goes through `handleMonsterDeath` (not the member-path)
+ *   - Solo combat goes through `handleMonsterDeath` (not the member-path)
  *     — entirely different reward flow. Member path's drops/gold are rolled
  *     independently of the leader's roll — that's the "unique drop per
  *     player" spec headline.
@@ -60,7 +60,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { openMultiContext } from '../../fixtures/multiContext';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -185,7 +185,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
         let handles: Awaited<ReturnType<typeof openMultiContext>> | null = null;
 
         try {
-            // 1. Seed two characters lvl 10 (well below rat's lvl 1 → both
+            // 1. Seed two characters lvl 10 (well below rat's lvl 1 -> both
             //    one-shot it normally; here we directly invoke the reward
             //    fn so XP/gold scaling is what matters, not the live kill).
             const primaryCreated = await createCharacterViaApi({
@@ -212,7 +212,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town.
+            // 3. Both pick character -> Town.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),

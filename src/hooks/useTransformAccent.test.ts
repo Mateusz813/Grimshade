@@ -9,10 +9,10 @@ import type { ICharacter, CharacterClass } from '../api/v1/characterApi';
  * useTransformAccent picks the dominant accent color shown in the
  * top-header and bottom-nav chrome. Resolution order:
  *
- *   1. If a transform with `solid` is unlocked → use solid hex.
- *   2. Else if a transform with `gradient` is unlocked → use gradient[0].
- *   3. Else → class-specific fallback color (Knight=red, Mage=purple…).
- *   4. Else (no character at all) → hardcoded FALLBACK_HEX (#e94560).
+ *   1. If a transform with `solid` is unlocked -> use solid hex.
+ *   2. Else if a transform with `gradient` is unlocked -> use gradient[0].
+ *   3. Else -> class-specific fallback color (Knight=red, Mage=purple…).
+ *   4. Else (no character at all) -> hardcoded FALLBACK_HEX (#e94560).
  *
  * The hook also mirrors the resolved values onto `:root` CSS vars
  * (--nav-accent / --nav-accent-rgb) for global rules like the scrollbar.
@@ -148,7 +148,7 @@ describe('useTransformAccent — transform color overrides class color', () => {
             css: '',
         });
         const { result } = renderHook(() => useTransformAccent());
-        // No solid, no gradient → Knight class color.
+        // No solid, no gradient -> Knight class color.
         expect(result.current.accent).toBe('#e53935');
     });
 });

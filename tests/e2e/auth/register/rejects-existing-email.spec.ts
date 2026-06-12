@@ -7,7 +7,7 @@
  *
  * Nie możemy użyć stałych test-kont (`test@grimshade.pl` /
  * `test2@grimshade.pl`) — to są realne konta właściciela i każda
- * pomyłka w teście (np. krzywa asercja → cleanup leci na nich)
+ * pomyłka w teście (np. krzywa asercja -> cleanup leci na nich)
  * skasowałaby ich game state.
  *
  * Workaround: w jednym tescie rejestrujemy ŚWIEŻY `e2e-register-*`
@@ -25,12 +25,12 @@
  *  1. Pierwsza rejestracja kończy się sukcesem (`/character-select`).
  *  2. Logout czyści session — możemy wrócić na `/register` bez auto-redirect-u.
  *  3. Druga próba rejestracji TYM samym emailem:
- *     • URL pozostaje na `/register` (Supabase odrzucił → router NIE
+ *     - URL pozostaje na `/register` (Supabase odrzucił -> router NIE
  *       robi nawigacji w `onSubmit`).
- *     • Pojawia się komunikat błędu w `.register__error` (root-level,
+ *     - Pojawia się komunikat błędu w `.register__error` (root-level,
  *       nie powiązany z konkretnym polem — bo to error z Supabase, nie
  *       walidacja Zod).
- *     • Komunikat zawiera substring który sugeruje duplikat — match
+ *     - Komunikat zawiera substring który sugeruje duplikat — match
  *       lowercase na "registered" / "already" / "exists" / "in use" —
  *       Supabase historycznie używa różnych dokładnych fraz, wszystkie
  *       jednoznaczne dla użytkownika.
@@ -41,7 +41,7 @@
  * przebiega przez AvatarMenu (TopHeader nie pokazuje się gdy nie ma
  * wybranej postaci, więc AvatarMenu też nie jest dostępne na
  * `/character-select`). Najprostszy reliable path: `page.evaluate`
- * → `supabase.auth.signOut()` + redirect na `/login`. Pomija UI flow
+ * -> `supabase.auth.signOut()` + redirect na `/login`. Pomija UI flow
  * ale dla tego testu logout NIE jest tym co testujemy — testujemy
  * rejection drugiej rejestracji.
  *
@@ -62,13 +62,13 @@
  *
  * ## Co NIE testujemy tutaj
  *
- *  • Case-sensitivity emaila (czy `Foo@x.com` vs `foo@x.com` to ta
+ *  - Case-sensitivity emaila (czy `Foo@x.com` vs `foo@x.com` to ta
  *    sama tożsamość). Supabase domyślnie traktuje email
  *    case-insensitive, ale to osobna sprawa — tutaj generujemy
  *    deterministyczny lowercase email z helpera.
- *  • Rate-limiting (jak szybko Supabase odrzuci kolejne attempty).
+ *  - Rate-limiting (jak szybko Supabase odrzuci kolejne attempty).
  *    Tests są atomowe, nie próbujemy 100× pod rząd.
- *  • Wygląd komunikatu błędu (kolor, ikona). Tylko jego obecność +
+ *  - Wygląd komunikatu błędu (kolor, ikona). Tylko jego obecność +
  *    treść matching "duplikatowych" słów-kluczy.
  */
 
@@ -81,12 +81,12 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
     // bezpieczny zapas.
     test.describe.configure({ timeout: 60_000 });
 
-    test('second signup with same email → inline error + no second account created', async ({ page }) => {
+    test('second signup with same email -> inline error + no second account created', async ({ page }) => {
         const email = generateTestEmail();
         const password = 'Test123456!!';
 
         try {
-            // ─── Krok 1: pierwsza rejestracja (happy path) ─────────────
+            // --- Krok 1: pierwsza rejestracja (happy path) -------------
             // Wzorzec identyczny z redirect-on-success.spec.ts. Sukces
             // = URL ląduje na /character-select.
             await page.goto('/register');
@@ -103,12 +103,12 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
             // Supabase czasem wolniejszy niż signIn.
             await expect(page).toHaveURL(/\/character-select$/, { timeout: 20_000 });
 
-            // ─── Krok 2: logout przez supabase SDK ─────────────────────
+            // --- Krok 2: logout przez supabase SDK ---------------------
             // AvatarMenu nie jest dostępne na /character-select (brak
             // wybranej postaci), więc bypass-ujemy UI logout flow przez
             // bezpośredni call do supabase.auth.signOut(). Tak samo jak
             // robi to AvatarMenu pod spodem (patrz src/components/layout/
-            // AvatarMenu/AvatarMenu.tsx → handleLogout).
+            // AvatarMenu/AvatarMenu.tsx -> handleLogout).
             //
             // Dynamic import URL działa w dev (Vite serwuje source).
             // eslint-disable-next-line @typescript-eslint/no-explicit-any —
@@ -128,7 +128,7 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
             // leftover state z poprzedniej rejestracji).
             await expect(page.locator('input[type="email"]')).toHaveValue('');
 
-            // ─── Krok 3: druga rejestracja TYM samym emailem ───────────
+            // --- Krok 3: druga rejestracja TYM samym emailem -----------
             await page.locator('input[type="email"]').fill(email);
             const secondPasswordInputs = page.locator('input[type="password"]');
             await secondPasswordInputs.first().fill(password);
@@ -136,10 +136,10 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
 
             await page.getByRole('button', { name: /zarejestruj/i }).tap();
 
-            // ─── Asercje: rejection, error message, URL bez zmian ──────
+            // --- Asercje: rejection, error message, URL bez zmian ------
 
             // Komunikat błędu z `errors.root.message` (Register.tsx
-            // linia 37 → linia 80). Selektor `.register__error` jest
+            // linia 37 -> linia 80). Selektor `.register__error` jest
             // współdzielony z field-errors, ale jako jedyny zawiera
             // ROOT error (po niewalidacji email/password format).
             // Match na "already" / "registered" / "exists" / "in use" —
@@ -150,7 +150,7 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
             });
             await expect(errorEl).toBeVisible({ timeout: 15_000 });
 
-            // URL pozostał na /register (Supabase odrzucił → onSubmit
+            // URL pozostał na /register (Supabase odrzucił -> onSubmit
             // wrócił WCZEŚNIEJ z `setError` zamiast `navigate('/')`).
             await expect(page).toHaveURL(/\/register$/);
         } finally {

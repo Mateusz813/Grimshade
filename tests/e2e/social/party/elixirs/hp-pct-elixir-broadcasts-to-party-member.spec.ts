@@ -3,7 +3,7 @@
  * `usePartyPresence` so the secondary's Town view of primary's party row
  * shows the BOOSTED effective max HP.
  *
- * Spec (BACKLOG.md punkt 3.5 expansion): "Eliksir +25% HP → HP identyczne
+ * Spec (BACKLOG.md punkt 3.5 expansion): "Eliksir +25% HP -> HP identyczne
  * na: Town + TopHeader + CharacterSelect + każda walka + **party** + gildia"
  *
  * Pokrywa PARTY view (3.5-party slice).
@@ -49,7 +49,7 @@
  *
  * ## Setup
  *
- * - Primary: Knight, lvl 10, hp=40, buff hp_pct_25 → expected 150 max HP.
+ * - Primary: Knight, lvl 10, hp=40, buff hp_pct_25 -> expected 150 max HP.
  * - Secondary: Mage, lvl 10, vanilla (no buff).
  * - Both join party (primary creates, secondary joins via Refresh).
  * - Both navigate Town with `town__party-strip--expanded` (tap to expand
@@ -68,7 +68,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../../fixtu
 import { seedGameSave, findUserIdByEmail } from '../../../fixtures/seedGameSave';
 import { openMultiContext } from '../../../fixtures/multiContext';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -96,7 +96,7 @@ const navToParty = async (page: Page): Promise<void> => {
 test.describe('Social › Party › Elixirs', { tag: '@party' }, () => {
     test.describe.configure({ timeout: 180_000 });
 
-    test('primary hp_pct_25 buff → secondary sees primary boosted HP in Town party row via usePartyPresence broadcast', async ({ browser }) => {
+    test('primary hp_pct_25 buff -> secondary sees primary boosted HP in Town party row via usePartyPresence broadcast', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const partyName = `Pres ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -106,7 +106,7 @@ test.describe('Social › Party › Elixirs', { tag: '@party' }, () => {
         let handles: Awaited<ReturnType<typeof openMultiContext>> | null = null;
 
         try {
-            // 1. Seed characters. Primary = Knight (max_hp baseline=120 → 150
+            // 1. Seed characters. Primary = Knight (max_hp baseline=120 -> 150
             //    with hp_pct_25). Secondary = Mage for the standard contrast.
             //    Both at lvl 10 to avoid level-gate complications.
             const primaryCreated = await createCharacterViaApi({
@@ -137,7 +137,7 @@ test.describe('Social › Party › Elixirs', { tag: '@party' }, () => {
                     {
                         id: 'hp_pct_25',
                         name: 'Max HP +25%',
-                        icon: '❤️‍🔥',
+                        icon: 'heart-on-fire',
                         effect: 'hp_pct_25',
                     },
                 ],
@@ -151,7 +151,7 @@ test.describe('Social › Party › Elixirs', { tag: '@party' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 4. Both pick character → Town.
+            // 4. Both pick character -> Town.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),

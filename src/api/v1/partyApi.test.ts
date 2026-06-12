@@ -4,7 +4,7 @@
  * partyApi is the most complex API in the project — it has to cope with
  * THREE possible schema states:
  *   1. Fully migrated (description / password / is_public / min_join_level columns + RLS).
- *   2. Partially migrated (some columns missing → schema-missing errors).
+ *   2. Partially migrated (some columns missing -> schema-missing errors).
  *   3. Pre-migration (no extended columns, RLS may block).
  *
  * We mock the underlying axios instance + supabase here so we can:
@@ -52,7 +52,7 @@ const makeAxiosError = (status: number, data?: unknown, config?: { url?: string 
     return err;
 };
 
-// ── extractApiError ──────────────────────────────────────────────────────
+// -- extractApiError ------------------------------------------------------
 
 describe('extractApiError', () => {
     it('returns the message field from PostgREST JSON', () => {
@@ -79,7 +79,7 @@ describe('extractApiError', () => {
     });
 });
 
-// ── PartyMigrationMissingError ────────────────────────────────────────────
+// -- PartyMigrationMissingError --------------------------------------------
 
 describe('PartyMigrationMissingError', () => {
     it('produces the schema-missing prefix', () => {
@@ -100,7 +100,7 @@ describe('PartyMigrationMissingError', () => {
     });
 });
 
-// ── listPublicParties ─────────────────────────────────────────────────────
+// -- listPublicParties -----------------------------------------------------
 
 describe('partyApi.listPublicParties', () => {
     it('queries with the full schema first and returns sanitized parties', async () => {
@@ -166,7 +166,7 @@ describe('partyApi.listPublicParties', () => {
     });
 });
 
-// ── getPartyWithMembers ───────────────────────────────────────────────────
+// -- getPartyWithMembers ---------------------------------------------------
 
 describe('partyApi.getPartyWithMembers', () => {
     it('returns sanitized party with members', async () => {
@@ -205,7 +205,7 @@ describe('partyApi.getPartyWithMembers', () => {
     });
 });
 
-// ── getMyActiveParty ──────────────────────────────────────────────────────
+// -- getMyActiveParty ------------------------------------------------------
 
 describe('partyApi.getMyActiveParty', () => {
     it('resolves the membership lookup to the full party row', async () => {
@@ -236,7 +236,7 @@ describe('partyApi.getMyActiveParty', () => {
     });
 });
 
-// ── deleteMyStaleMemberships ─────────────────────────────────────────────
+// -- deleteMyStaleMemberships ---------------------------------------------
 
 describe('partyApi.deleteMyStaleMemberships', () => {
     it('issues DELETE on party_members filtered by character_id', async () => {
@@ -252,7 +252,7 @@ describe('partyApi.deleteMyStaleMemberships', () => {
     });
 });
 
-// ── createParty ────────────────────────────────────────────────────────────
+// -- createParty ------------------------------------------------------------
 
 describe('partyApi.createParty', () => {
     it('inserts party + leader member then fetches the full row', async () => {
@@ -477,7 +477,7 @@ describe('partyApi.createParty', () => {
     });
 });
 
-// ── joinParty ─────────────────────────────────────────────────────────────
+// -- joinParty -------------------------------------------------------------
 
 describe('partyApi.joinParty', () => {
     const baseInput = {
@@ -560,7 +560,7 @@ describe('partyApi.joinParty', () => {
             max_members: 4, is_public: true, password: null, created_at: '2026',
             party_members: [],
         }]));
-        // insertMemberWithRetry → post
+        // insertMemberWithRetry -> post
         mockApi.post.mockResolvedValueOnce(mkRes([]));
         // final getPartyWithMembers
         mockApi.get.mockResolvedValueOnce(mkRes([{
@@ -585,7 +585,7 @@ describe('partyApi.joinParty', () => {
     });
 });
 
-// ── leaveParty ────────────────────────────────────────────────────────────
+// -- leaveParty ------------------------------------------------------------
 
 describe('partyApi.leaveParty', () => {
     it('returns early when party not found', async () => {
@@ -642,7 +642,7 @@ describe('partyApi.leaveParty', () => {
     });
 });
 
-// ── kickMember ────────────────────────────────────────────────────────────
+// -- kickMember ------------------------------------------------------------
 
 describe('partyApi.kickMember', () => {
     it('deletes by row id + party id', async () => {
@@ -654,7 +654,7 @@ describe('partyApi.kickMember', () => {
     });
 });
 
-// ── transferLeadership ────────────────────────────────────────────────────
+// -- transferLeadership ----------------------------------------------------
 
 describe('partyApi.transferLeadership', () => {
     it('patches parties.leader_id', async () => {
@@ -671,7 +671,7 @@ describe('partyApi.transferLeadership', () => {
     });
 });
 
-// ── updatePartyMeta ───────────────────────────────────────────────────────
+// -- updatePartyMeta -------------------------------------------------------
 
 describe('partyApi.updatePartyMeta', () => {
     it('patches the parties row with the partial', async () => {

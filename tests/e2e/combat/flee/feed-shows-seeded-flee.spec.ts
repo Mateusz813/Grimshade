@@ -17,7 +17,7 @@
  * oba result-y kolumny `character_deaths.result` (`'killed'` / `'fled'`).
  *
  * **Pełny solo + party flee flow** (real combat with player tap "Uciekaj"
- * button) → osobna sesja gdy będzie napisany combat flow framework. To
+ * button) -> osobna sesja gdy będzie napisany combat flow framework. To
  * jest wariant "API-seed-only" — pokrywa rendering layer w `/deaths`,
  * nie engine layer.
  *
@@ -41,8 +41,8 @@
  * korzysta z full source_name z suffix-em.
  *
  * Gdy migration zostanie odpalony na env-zie + `result` column będzie
- * exist → seedDeath wpisze również `result='fled'` (linia 119 seedDeath.ts)
- * → `inferResult` zwróci 'fled' przez pierwszy if-branch zamiast drugi.
+ * exist -> seedDeath wpisze również `result='fled'` (linia 119 seedDeath.ts)
+ * -> `inferResult` zwróci 'fled' przez pierwszy if-branch zamiast drugi.
  * Test pozostanie zielony, pokrywa oba branche.
  *
  * Deterministycznie znajdujemy nasz flee-row przez unique character_name

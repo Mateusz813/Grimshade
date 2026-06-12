@@ -1,15 +1,15 @@
-// ── XP Curve ──────────────────────────────────────────────────────────────────
+// -- XP Curve ------------------------------------------------------------------
 //
 // Below level 100 we keep the legacy `300 * L^1.5` curve — cheap early levels
 // so new players see progress fast. From 100 onwards the curve bends up so a
 // level's worth of XP roughly equals the reward from a single bulk kill-task
 // at the player's tier, following these player-defined anchors:
 //
-//   Level  200 → 5 000   kills = 1 level   → ~7.3M  XP / level
-//   Level  400 → 10 000  kills = 1 level   → ~31.9M XP / level
-//   Level  600 → 20 000  kills = 1 level   → ~100.7M XP / level   (2× @400)
-//   Level  800 → 100 000 kills = 1 level   → ~696.8M XP / level   (10× @800)
-//   Level 1000 → 100 000 kills = 1 level   → ~897.2M XP / level
+//   Level  200 -> 5 000   kills = 1 level   -> ~7.3M  XP / level
+//   Level  400 -> 10 000  kills = 1 level   -> ~31.9M XP / level
+//   Level  600 -> 20 000  kills = 1 level   -> ~100.7M XP / level   (2× @400)
+//   Level  800 -> 100 000 kills = 1 level   -> ~696.8M XP / level   (10× @800)
+//   Level 1000 -> 100 000 kills = 1 level   -> ~897.2M XP / level
 //
 // 2026-05-11 spec ("Mozna lvlowac powyzej 1000lvl tylko kazdy kolejny
 // poziom jest o 10% trudniejszy do wbicia niz poprzedni"): above 1000
@@ -53,7 +53,7 @@ const interpolateAnchors = (level: number): number => {
   return last.xp;
 };
 
-/** XP required to advance from `level` → `level + 1`. */
+/** XP required to advance from `level` -> `level + 1`. */
 export const xpToNextLevel = (level: number): number => {
   if (level <= 0) return 300;
   if (level < XP_ANCHORS[0].level) return legacyXp(level);
@@ -68,7 +68,7 @@ export const xpToNextLevel = (level: number): number => {
   return interpolateAnchors(level);
 };
 
-// ── Total XP from level 1 to reach `level` ────────────────────────────────────
+// -- Total XP from level 1 to reach `level` ------------------------------------
 export const totalXpForLevel = (level: number): number => {
   if (level <= 1) return 0;
   let total = 0;
@@ -76,7 +76,7 @@ export const totalXpForLevel = (level: number): number => {
   return total;
 };
 
-// ── Stat points awarded per level-up (fixed per class) ──────────────────────
+// -- Stat points awarded per level-up (fixed per class) ----------------------
 const STAT_POINTS_PER_CLASS: Record<string, number> = {
   Knight: 2,
   Mage: 2,
@@ -90,7 +90,7 @@ const STAT_POINTS_PER_CLASS: Record<string, number> = {
 export const statPointsForLevelUp = (characterClass?: string): number =>
   STAT_POINTS_PER_CLASS[characterClass ?? ''] ?? 2;
 
-// ── Process accumulated XP – may trigger multiple level-ups ──────────────────
+// -- Process accumulated XP – may trigger multiple level-ups ------------------
 export interface ILevelUpResult {
   newLevel: number;
   remainingXp: number;
@@ -125,15 +125,15 @@ export const processXpGain = (
   return { newLevel: level, remainingXp: xp, levelsGained, statPointsGained };
 };
 
-// ── Death penalty ─────────────────────────────────────────────────────────────
+// -- Death penalty -------------------------------------------------------------
 // Player-spec'd (2026-05): the curve is now flat-percentage, not a tier
 // table. Death takes 2% of current level + 50% of every skill's trained
 // XP. Examples:
-//   Level 1   → 0 levels lost (floor below 1 → keeps you at 1)
-//   Level 50  → 1 level lost  (50  × 0.02 = 1.0)
-//   Level 100 → 2 levels lost (100 × 0.02 = 2.0)
-//   Level 500 → 10 levels lost
-//   Level 1000 → 20 levels lost (the spec's anchor — "20 lvls at 1000")
+//   Level 1   -> 0 levels lost (floor below 1 -> keeps you at 1)
+//   Level 50  -> 1 level lost  (50  × 0.02 = 1.0)
+//   Level 100 -> 2 levels lost (100 × 0.02 = 2.0)
+//   Level 500 -> 10 levels lost
+//   Level 1000 -> 20 levels lost (the spec's anchor — "20 lvls at 1000")
 //
 // Skill XP: every trained skill drops by 50% of its banked XP. So a skill
 // trained to half of level 50 ends up at ~level 25's worth — meaningful
@@ -154,11 +154,11 @@ export interface IDeathPenaltyResult {
 /**
  * Calculate how many levels are lost on death.
  *   formula: floor(level * 0.02)
- *   • lvl 1   → 0
- *   • lvl 50  → 1
- *   • lvl 100 → 2
- *   • lvl 500 → 10
- *   • lvl 1000 → 20
+ *   - lvl 1   -> 0
+ *   - lvl 50  -> 1
+ *   - lvl 100 -> 2
+ *   - lvl 500 -> 10
+ *   - lvl 1000 -> 20
  */
 const calculateLevelsLost = (level: number): number => {
     if (level <= 1) return 0;
@@ -202,8 +202,8 @@ export const applyDeathPenalty = (
  * Flee penalty — applied when the player presses "Ucieknij" mid-fight in
  * non-hunting combat (Boss / Dungeon / Transform / Raid). Equipment is
  * never lost. Per 2026-05 spec:
- *   • level loss: floor(level * 0.003)  → 3 at lvl 1000, 0 below ~333
- *   • skill XP:   0.1% of every trained skill's banked XP
+ *   - level loss: floor(level * 0.003)  -> 3 at lvl 1000, 0 below ~333
+ *   - skill XP:   0.1% of every trained skill's banked XP
  *
  * Returns the SAME shape as `applyDeathPenalty` so the UI overlay can
  * render a unified "you lost X" panel for both flows — only the copy
@@ -246,7 +246,7 @@ export const applyFleePenalty = (
     };
 };
 
-// ── Legacy death penalty (kept for backwards compat) ─────────────────────────
+// -- Legacy death penalty (kept for backwards compat) -------------------------
 export const applyDeathXpPenalty = (
     currentXp: number,
     currentLevel: number,
@@ -255,13 +255,13 @@ export const applyDeathXpPenalty = (
     return Math.max(0, currentXp - penalty);
 };
 
-// ── XP progress within current level (0–1) ───────────────────────────────────
+// -- XP progress within current level (0–1) -----------------------------------
 export const xpProgress = (currentXp: number, currentLevel: number): number => {
   const needed = xpToNextLevel(currentLevel);
   return needed > 0 ? Math.min(1, currentXp / needed) : 0;
 };
 
-// ── HP & MP gained per level (from classes.json; used in level-up reward) ────
+// -- HP & MP gained per level (from classes.json; used in level-up reward) ----
 // Returns base level gains for each class (fallback if class data not loaded)
 export const BASE_HP_PER_LEVEL: Record<string, number> = {
   Knight: 8, Mage: 3, Cleric: 5, Archer: 4,

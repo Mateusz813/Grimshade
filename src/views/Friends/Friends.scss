@@ -18,7 +18,7 @@
         color: $color-text-muted;
     }
 
-    // ── Header ────────────────────────────────────────────────────────────────
+    // -- Header ----------------------------------------------------------------
     // Negate root side padding so the shared sticky .page-header stretches edge-to-edge.
     &__header {
         margin-left: -20px;
@@ -53,7 +53,7 @@
         margin: 0;
     }
 
-    // ── Tabs ──────────────────────────────────────────────────────────────────
+    // -- Tabs ------------------------------------------------------------------
     &__tabs {
         display: flex;
         gap: 8px;
@@ -87,7 +87,7 @@
         &:disabled { opacity: 0.4; cursor: not-allowed; }
     }
 
-    // ── Add friend section ────────────────────────────────────────────────────
+    // -- Add friend section ----------------------------------------------------
     &__add {
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -224,7 +224,7 @@
         }
     }
 
-    // ── List ──────────────────────────────────────────────────────────────────
+    // -- List ------------------------------------------------------------------
     &__list {
         display: flex;
         flex-direction: column;
@@ -301,6 +301,19 @@
         &:hover { transform: scale(1.15); }
 
         &--on { color: #ffc107; }
+
+        // The star is rendered as a Twemoji <img>, which can't inherit text color.
+        // Show it dimmed/desaturated for the not-favorite state, full for --on.
+        img.twemoji {
+            opacity: 0.4;
+            filter: grayscale(1);
+            transition: opacity 120ms ease, filter 120ms ease;
+        }
+
+        &--on img.twemoji {
+            opacity: 1;
+            filter: none;
+        }
     }
 
     &__row-icon {
@@ -385,7 +398,7 @@
         }
     }
 
-    // ── Empty state ───────────────────────────────────────────────────────────
+    // -- Empty state -----------------------------------------------------------
     &__empty-list {
         padding: 24px 20px;
         background: rgba(0, 0, 0, 0.25);
@@ -406,7 +419,7 @@
         color: $color-text-muted;
     }
 
-    // ── PM view ───────────────────────────────────────────────────────────────
+    // -- PM view ---------------------------------------------------------------
     &__pm {
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(33, 150, 243, 0.25);

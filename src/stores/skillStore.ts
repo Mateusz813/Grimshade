@@ -31,7 +31,7 @@ const isOfflineHuntActive = (): boolean => {
     return mod?.getState().isActive === true;
 };
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface ISkillUpgradeResult {
     success: boolean;
@@ -41,13 +41,13 @@ export interface ISkillUpgradeResult {
 }
 
 export interface ISkillState {
-    /** weapon/magic skill id → level (0–∞) */
+    /** weapon/magic skill id -> level (0–∞) */
     skillLevels: Record<string, number>;
-    /** weapon/magic skill id → current XP towards next level */
+    /** weapon/magic skill id -> current XP towards next level */
     skillXp: Record<string, number>;
     /** active skill slot ids (max 4) – ordered array of active skill IDs */
     activeSkillSlots: [string | null, string | null, string | null, string | null];
-    /** active skill id → upgrade level (0+) */
+    /** active skill id -> upgrade level (0+) */
     skillUpgradeLevels: Record<string, number>;
     /** Set of active skill IDs that have been purchased/unlocked with gold */
     unlockedSkills: Record<string, boolean>;
@@ -142,7 +142,7 @@ interface ISkillStore extends ISkillState {
     resetSkills: () => void;
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// -- Store ---------------------------------------------------------------------
 
 const INITIAL_STATE: ISkillState = {
     skillLevels: {},
@@ -377,7 +377,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return xpEarned;
             },
 
-            // ── Shielding XP on block (Knight) ───────────────────────────────
+            // -- Shielding XP on block (Knight) -------------------------------
             addShieldingXpOnBlock: () => {
                 const state = get();
                 const shieldingLevel = state.skillLevels['shielding'] ?? 0;
@@ -385,7 +385,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp('shielding', xpGain);
             },
 
-            // ── MLVL from auto-attack (magic classes only) ───────────────────
+            // -- MLVL from auto-attack (magic classes only) -------------------
             addMlvlXpFromAttack: (cls) => {
                 if (!doesClassGainMlvlFromAttacks(cls)) return 0;
                 const state = get();
@@ -394,7 +394,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp('magic_level', xpGain);
             },
 
-            // ── Weapon skill XP from auto-attack (all classes, 1 XP per hit) ──
+            // -- Weapon skill XP from auto-attack (all classes, 1 XP per hit) --
             addWeaponSkillXpFromAttack: (cls) => {
                 const skillId = CLASS_WEAPON_SKILL[cls];
                 if (!skillId) return 0;
@@ -403,7 +403,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp(skillId, 1);
             },
 
-            // ── MLVL from skill use (all classes, slower for non-magic) ──────
+            // -- MLVL from skill use (all classes, slower for non-magic) ------
             addMlvlXpFromSkill: (cls) => {
                 const state = get();
                 const mlvl = state.skillLevels['magic_level'] ?? 0;
@@ -411,7 +411,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp('magic_level', xpGain);
             },
 
-            // ── Active skill unlock (purchase) ───────────────────────────────
+            // -- Active skill unlock (purchase) -------------------------------
             unlockSkill: (skillId, goldCost, spendGoldFn, chestLevel, useChestsFn) => {
                 const state = get();
                 if (state.unlockedSkills[skillId]) return true; // already unlocked
@@ -444,7 +444,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().unlockedSkills[skillId] === true;
             },
 
-            // ── Active skill upgrade ──────────────────────────────────────────
+            // -- Active skill upgrade ------------------------------------------
             upgradeActiveSkill: (skillId, playerGold, spendGoldFn, skillUnlockLevel, useChestsFn, getChestCountFn) => {
                 const state = get();
                 const currentLevel = state.skillUpgradeLevels[skillId] ?? 0;

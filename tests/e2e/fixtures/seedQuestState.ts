@@ -13,25 +13,25 @@
  *
  * Per `src/stores/characterScope.ts` (STORE_ENTRIES, lines 173-354):
  *
- *  • `tasks` baseKey persists `{ activeTask, activeTasks, completedTasks }`
+ *  - `tasks` baseKey persists `{ activeTask, activeTasks, completedTasks }`
  *    (stateKeys line 204). Shape per `useTaskStore` (`src/stores/taskStore.ts`).
- *  • `quests` baseKey persists `{ activeQuests, completedQuestIds }`
+ *  - `quests` baseKey persists `{ activeQuests, completedQuestIds }`
  *    (stateKeys line 211). Shape per `useQuestStore`
  *    (`src/stores/questStore.ts`).
- *  • `dailyQuests` baseKey persists `{ lastRefreshDate, activeQuests,
+ *  - `dailyQuests` baseKey persists `{ lastRefreshDate, activeQuests,
  *    todayQuestDefs }` (stateKeys line 277). Shape per
  *    `useDailyQuestStore` (`src/stores/dailyQuestStore.ts`). To pin
  *    seeded daily state we MUST also set `lastRefreshDate = today` so
  *    `refreshIfNeeded` (Quests.tsx line 365) doesn't blow away our
  *    seed on mount.
- *  • Each per-store slice MUST carry `_entryOwner: characterId`, AND the
+ *  - Each per-store slice MUST carry `_entryOwner: characterId`, AND the
  *    root state object MUST carry `_ownerCharacterId: characterId` —
  *    `applyBlobToStores` (characterScope ~line 410-420) refuses to
  *    rehydrate any slice with mismatched owner stamps, defaulting that
  *    slice back to empty.
- *  • Hydration runs ONCE per character switch (on `/character-select` →
+ *  - Hydration runs ONCE per character switch (on `/character-select` ->
  *    `Wybierz`). Subsequent navigations re-read in-memory store, not
- *    blob. So our test pattern is: seed → login → select character →
+ *    blob. So our test pattern is: seed -> login -> select character ->
  *    navigate to whatever. By the time the test reaches `/quests` the
  *    blob is already applied.
  *
@@ -90,7 +90,7 @@ const findUserIdForCharacter = async (
     return data.user_id as string;
 };
 
-// ── Task shapes (mirror src/stores/taskStore.ts) ─────────────────────────
+// -- Task shapes (mirror src/stores/taskStore.ts) -------------------------
 
 export interface ISeedActiveTask {
     /** Stable id from `src/data/tasks.json` — e.g. 'rat_10', 'rat_50'. */
@@ -117,7 +117,7 @@ export interface ISeedCompletedTask {
     completedAt?: string;
 }
 
-// ── Quest shapes (mirror src/stores/questStore.ts) ───────────────────────
+// -- Quest shapes (mirror src/stores/questStore.ts) -----------------------
 
 export interface ISeedQuestGoal {
     type: string;
@@ -136,7 +136,7 @@ export interface ISeedActiveQuest {
     startedAt?: string;
 }
 
-// ── Daily quest shapes (mirror src/systems/dailyQuestSystem.ts) ─────────
+// -- Daily quest shapes (mirror src/systems/dailyQuestSystem.ts) ---------
 
 export type DailySeedGoalType =
     | 'kill_any'

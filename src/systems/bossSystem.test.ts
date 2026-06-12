@@ -17,7 +17,7 @@ import {
   type IBossCharacter,
 } from './bossSystem';
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// -- Fixtures ------------------------------------------------------------------
 
 const BOSS: IBoss = {
   id: 'goblin_king',
@@ -31,7 +31,7 @@ const BOSS: IBoss = {
   xp: 5000,
   gold: [200, 500],
   cooldown: 3600,
-  sprite: '👑',
+  sprite: 'crown',
   uniqueDrops: [
     {
       itemId: 'crown',
@@ -59,7 +59,7 @@ const BOSS: IBoss = {
 const STRONG_CHAR: IBossCharacter = { attack: 500, defense: 200, max_hp: 50000, level: 50 };
 const WEAK_CHAR: IBossCharacter   = { attack: 1,   defense: 0,   max_hp: 1,     level: 1 };
 
-// ── canChallengeBoss ──────────────────────────────────────────────────────────
+// -- canChallengeBoss ----------------------------------------------------------
 
 describe('canChallengeBoss', () => {
   it('allows challenge when level >= boss.level and no cooldown', () => {
@@ -83,7 +83,7 @@ describe('canChallengeBoss', () => {
   });
 });
 
-// ── getBossRemainingMs ────────────────────────────────────────────────────────
+// -- getBossRemainingMs --------------------------------------------------------
 
 describe('getBossRemainingMs', () => {
   it('returns 0 with no lastDefeatedAt', () => {
@@ -101,7 +101,7 @@ describe('getBossRemainingMs', () => {
   });
 });
 
-// ── getBossPhaseMultiplier ────────────────────────────────────────────────────
+// -- getBossPhaseMultiplier ----------------------------------------------------
 
 describe('getBossPhaseMultiplier', () => {
   it('returns 1.0 above 30% HP', () => {
@@ -117,7 +117,7 @@ describe('getBossPhaseMultiplier', () => {
   });
 });
 
-// ── isBossEnraged ─────────────────────────────────────────────────────────────
+// -- isBossEnraged -------------------------------------------------------------
 
 describe('isBossEnraged', () => {
   it('is not enraged above 30%', () => {
@@ -131,7 +131,7 @@ describe('isBossEnraged', () => {
   });
 });
 
-// ── rollBossLoot ──────────────────────────────────────────────────────────────
+// -- rollBossLoot --------------------------------------------------------------
 
 describe('rollBossLoot', () => {
   it('drops guaranteed items (chance 1.0)', () => {
@@ -152,7 +152,7 @@ describe('rollBossLoot', () => {
   });
 });
 
-// ── rollBossGold ──────────────────────────────────────────────────────────────
+// -- rollBossGold --------------------------------------------------------------
 
 describe('rollBossGold', () => {
   it('stays within the level-driven gold range', () => {
@@ -190,12 +190,12 @@ describe('computeBossRewards', () => {
 
   it('caps top-end XP at ≲2% of next-level XP', () => {
     const r = computeBossRewards(1000);
-    // 897.15M anchor at lvl 1000 → 2% = 17.94M
+    // 897.15M anchor at lvl 1000 -> 2% = 17.94M
     expect(r.xp).toBeLessThanOrEqual(18_000_000);
   });
 });
 
-// ── getScaledBossStats (party balance) ────────────────────────────────────────
+// -- getScaledBossStats (party balance) ----------------------------------------
 
 describe('getScaledBossStats', () => {
   it('multiplies HP by BOSS_HP_MULTIPLIER', () => {
@@ -219,7 +219,7 @@ describe('getScaledBossStats', () => {
   });
 });
 
-// ── resolveBoss ───────────────────────────────────────────────────────────────
+// -- resolveBoss ---------------------------------------------------------------
 
 describe('resolveBoss', () => {
   // 2026-05-21: replaces deleted test "strong character beats the boss" — now tests current logic

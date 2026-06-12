@@ -2,7 +2,7 @@
  * Tests for the potion-conversion (Alchemy) helpers.
  *
  * The data table `POTION_CONVERSIONS` ships verbatim from the spec
- * (5×sm → 1×md, 4×md → 1×lg, …) — the tests assert the canonical recipe
+ * (5×sm -> 1×md, 4×md -> 1×lg, …) — the tests assert the canonical recipe
  * shape AND that the helpers (`getMaxConversions`, `checkConversionAvailability`)
  * report the right batch counts for various inventory sizes.
  */
@@ -24,7 +24,7 @@ const findConv = (
         (c) => c.family === family && c.inputId === inputId && c.outputId === outputId,
     );
 
-// ── POTION_CONVERSIONS table ────────────────────────────────────────────────
+// -- POTION_CONVERSIONS table ------------------------------------------------
 
 describe('POTION_CONVERSIONS table', () => {
     it('lists 14 conversions total (6 main HP + 1 mega HP + 6 main MP + 1 mega MP)', () => {
@@ -52,7 +52,7 @@ describe('POTION_CONVERSIONS table', () => {
         }
     });
 
-    it('main HP chain: 5×sm→md, 4×md→lg, 4×lg→great, 4×great→super, 4×super→ultimate, 5×ultimate→divine', () => {
+    it('main HP chain: 5×sm->md, 4×md->lg, 4×lg->great, 4×great->super, 4×super->ultimate, 5×ultimate->divine', () => {
         expect(findConv('hp', 'hp_potion_sm', 'hp_potion_md')?.inputCount).toBe(5);
         expect(findConv('hp', 'hp_potion_md', 'hp_potion_lg')?.inputCount).toBe(4);
         expect(findConv('hp', 'hp_potion_lg', 'hp_potion_great')?.inputCount).toBe(4);
@@ -70,7 +70,7 @@ describe('POTION_CONVERSIONS table', () => {
         expect(findConv('mp', 'mp_potion_ultimate', 'mp_potion_divine')?.inputCount).toBe(5);
     });
 
-    it('alternate mega branch: 4×lg → mega for both families', () => {
+    it('alternate mega branch: 4×lg -> mega for both families', () => {
         const hpMega = findConv('hp', 'hp_potion_lg', 'hp_potion_mega');
         const mpMega = findConv('mp', 'mp_potion_lg', 'mp_potion_mega');
         expect(hpMega).toBeDefined();
@@ -110,7 +110,7 @@ describe('POTION_CONVERSIONS table', () => {
     });
 });
 
-// ── getMaxConversions ───────────────────────────────────────────────────────
+// -- getMaxConversions -------------------------------------------------------
 
 describe('getMaxConversions', () => {
     const conv5 = findConv('hp', 'hp_potion_sm', 'hp_potion_md')!;
@@ -136,7 +136,7 @@ describe('getMaxConversions', () => {
     });
 });
 
-// ── checkConversionAvailability ─────────────────────────────────────────────
+// -- checkConversionAvailability ---------------------------------------------
 
 describe('checkConversionAvailability', () => {
     const conv = findConv('hp', 'hp_potion_sm', 'hp_potion_md')!;

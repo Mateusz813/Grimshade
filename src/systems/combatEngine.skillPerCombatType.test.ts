@@ -8,14 +8,14 @@
  * combat-effects session and calls the SAME `castSkill` helper from
  * `combatEffectsHelpers.ts` with the matching ally/enemy id model:
  *
- *   • hunting    — 1 player + ≤3 bots vs 1-4 wave monsters
- *   • dungeon    — 1 player + ≤3 bots vs N stage enemies (single-target focus)
- *   • raid       — 1 player + ≤3 bots vs 1 boss (aggro mechanic)
- *   • boss       — 1 player + ≤3 bots vs 1 boss
- *   • transform  — 1 player vs swarms of bursting monsters (solo)
- *   • arena      — 1 player vs 1 opponent (PvP simulated)
- *   • trainer    — 1 player vs 1 immortal dummy (no rewards)
- *   • loch       — guild boss: N party members vs 1 raid-style boss
+ *   - hunting    — 1 player + ≤3 bots vs 1-4 wave monsters
+ *   - dungeon    — 1 player + ≤3 bots vs N stage enemies (single-target focus)
+ *   - raid       — 1 player + ≤3 bots vs 1 boss (aggro mechanic)
+ *   - boss       — 1 player + ≤3 bots vs 1 boss
+ *   - transform  — 1 player vs swarms of bursting monsters (solo)
+ *   - arena      — 1 player vs 1 opponent (PvP simulated)
+ *   - trainer    — 1 player vs 1 immortal dummy (no rewards)
+ *   - loch       — guild boss: N party members vs 1 raid-style boss
  *
  * All 8 funnel through `castSkill({...})`. The view-side wrapper differs
  * only in WHAT goes into `targetId` / `allyIds` / `enemyIds` — the helper
@@ -79,7 +79,7 @@ if (SHIELD_BASH.effect !== 'stun:3000') {
     throw new Error(`shield_bash.effect changed to "${SHIELD_BASH.effect}" - test assumptions broken`);
 }
 
-// ── Combat-type matrix (8 configurations) ───────────────────────────────────
+// -- Combat-type matrix (8 configurations) -----------------------------------
 
 interface ICombatTypeCase {
     /** Name shown in test description. */
@@ -215,7 +215,7 @@ describe('castSkill: shield_bash (stun:3000) lands on every combat type', () => 
         });
     }
 
-    // ── Cross-cutting invariant: caster status is initialised on every cast ──
+    // -- Cross-cutting invariant: caster status is initialised on every cast --
     it('every cast creates a status entry for the caster (ensureStatus path)', () => {
         for (const cs of CASES) {
             const session = newCombatEffectsSession();

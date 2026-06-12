@@ -11,7 +11,7 @@
     "xp": 3,
     "gold": [1, 1],
     "dropTable": [],
-    "sprite": "🐀"
+    "sprite": "rat"
   },
   {
     "id": "cave_spider",
@@ -25,7 +25,7 @@
     "xp": 6,
     "gold": [1, 2],
     "dropTable": [],
-    "sprite": "🕷️"
+    "sprite": "spider"
   },
   {
     "id": "goblin",
@@ -39,7 +39,7 @@
     "xp": 10,
     "gold": [1, 3],
     "dropTable": [],
-    "sprite": "👺"
+    "sprite": "goblin"
   },
   {
     "id": "skeleton",
@@ -53,7 +53,7 @@
     "xp": 14,
     "gold": [2, 4],
     "dropTable": [],
-    "sprite": "💀"
+    "sprite": "skull"
   },
   {
     "id": "orc",
@@ -67,7 +67,7 @@
     "xp": 18,
     "gold": [2, 5],
     "dropTable": [],
-    "sprite": "👹"
+    "sprite": "ogre"
   },
   {
     "id": "zombie",
@@ -81,7 +81,7 @@
     "xp": 22,
     "gold": [3, 6],
     "dropTable": [],
-    "sprite": "🧟"
+    "sprite": "zombie"
   },
   {
     "id": "cave_bear",
@@ -95,7 +95,7 @@
     "xp": 27,
     "gold": [3, 7],
     "dropTable": [],
-    "sprite": "🐻"
+    "sprite": "bear"
   },
   {
     "id": "troll",
@@ -109,7 +109,7 @@
     "xp": 31,
     "gold": [4, 8],
     "dropTable": [],
-    "sprite": "👾"
+    "sprite": "alien-monster"
   },
   {
     "id": "giant_ant",
@@ -123,7 +123,7 @@
     "xp": 36,
     "gold": [4, 9],
     "dropTable": [],
-    "sprite": "🐜"
+    "sprite": "ant"
   },
   {
     "id": "dark_elf",
@@ -137,7 +137,7 @@
     "xp": 41,
     "gold": [5, 10],
     "dropTable": [],
-    "sprite": "🧝"
+    "sprite": "elf"
   },
   {
     "id": "bandit",
@@ -151,7 +151,7 @@
     "xp": 46,
     "gold": [5, 11],
     "dropTable": [],
-    "sprite": "🥷"
+    "sprite": "ninja"
   },
   {
     "id": "lizardman",
@@ -165,7 +165,7 @@
     "xp": 51,
     "gold": [6, 12],
     "dropTable": [],
-    "sprite": "🦎"
+    "sprite": "lizard"
   },
   {
     "id": "harpy",
@@ -179,7 +179,7 @@
     "xp": 56,
     "gold": [6, 13],
     "dropTable": [],
-    "sprite": "🦅"
+    "sprite": "eagle"
   },
   {
     "id": "vampire",
@@ -193,7 +193,7 @@
     "xp": 62,
     "gold": [7, 14],
     "dropTable": [],
-    "sprite": "🧛"
+    "sprite": "vampire"
   },
   {
     "id": "cyclops",
@@ -207,7 +207,7 @@
     "xp": 67,
     "gold": [7, 15],
     "dropTable": [],
-    "sprite": "👁️"
+    "sprite": "eye"
   },
   {
     "id": "werewolf",
@@ -221,7 +221,7 @@
     "xp": 59,
     "gold": [8, 16],
     "dropTable": [],
-    "sprite": "🐺"
+    "sprite": "wolf"
   },
   {
     "id": "sea_serpent",
@@ -235,7 +235,7 @@
     "xp": 63,
     "gold": [8, 17],
     "dropTable": [],
-    "sprite": "🐍"
+    "sprite": "snake"
   },
   {
     "id": "earth_elemental",
@@ -249,7 +249,7 @@
     "xp": 68,
     "gold": [9, 18],
     "dropTable": [],
-    "sprite": "🪨",
+    "sprite": "rock",
     "magical": true
   },
   {
@@ -264,7 +264,7 @@
     "xp": 72,
     "gold": [9, 19],
     "dropTable": [],
-    "sprite": "🧙‍♀️",
+    "sprite": "woman-mage",
     "magical": true
   },
   {
@@ -279,7 +279,7 @@
     "xp": 76,
     "gold": [10, 20],
     "dropTable": [],
-    "sprite": "🧙",
+    "sprite": "mage",
     "magical": true
   },
   {
@@ -294,7 +294,7 @@
     "xp": 80,
     "gold": [10, 21],
     "dropTable": [],
-    "sprite": "🗿"
+    "sprite": "moai"
   },
   {
     "id": "minotaur",
@@ -308,7 +308,7 @@
     "xp": 84,
     "gold": [11, 22],
     "dropTable": [],
-    "sprite": "🐂"
+    "sprite": "ox"
   },
   {
     "id": "wyvern",
@@ -322,7 +322,7 @@
     "xp": 89,
     "gold": [11, 23],
     "dropTable": [],
-    "sprite": "🐉"
+    "sprite": "dragon"
   },
   {
     "id": "fire_salamander",
@@ -336,7 +336,7 @@
     "xp": 93,
     "gold": [12, 24],
     "dropTable": [],
-    "sprite": "🔥",
+    "sprite": "fire",
     "magical": true
   },
   {
@@ -351,7 +351,7 @@
     "xp": 97,
     "gold": [12, 25],
     "dropTable": [],
-    "sprite": "☠️",
+    "sprite": "skull-and-crossbones",
     "magical": true
   },
   {
@@ -366,7 +366,7 @@
     "xp": 101,
     "gold": [13, 26],
     "dropTable": [],
-    "sprite": "🧊"
+    "sprite": "ice"
   },
   {
     "id": "thunder_bird",
@@ -380,7 +380,7 @@
     "xp": 106,
     "gold": [13, 27],
     "dropTable": [],
-    "sprite": "⚡"
+    "sprite": "high-voltage"
   },
   {
     "id": "shadow_assassin",
@@ -394,7 +394,7 @@
     "xp": 110,
     "gold": [14, 28],
     "dropTable": [],
-    "sprite": "🗡️"
+    "sprite": "dagger"
   },
   {
     "id": "medusa",
@@ -408,7 +408,7 @@
     "xp": 114,
     "gold": [14, 29],
     "dropTable": [],
-    "sprite": "🐛"
+    "sprite": "bug"
   },
   {
     "id": "demon_imp",
@@ -422,7 +422,7 @@
     "xp": 119,
     "gold": [15, 30],
     "dropTable": [],
-    "sprite": "😈",
+    "sprite": "smiling-face-with-horns",
     "magical": true
   },
   {
@@ -437,7 +437,7 @@
     "xp": 123,
     "gold": [15, 31],
     "dropTable": [],
-    "sprite": "🐕"
+    "sprite": "dog"
   },
   {
     "id": "orc_warlord",
@@ -451,7 +451,7 @@
     "xp": 141,
     "gold": [17, 35],
     "dropTable": [],
-    "sprite": "⚔️"
+    "sprite": "crossed-swords"
   },
   {
     "id": "swamp_troll",
@@ -465,7 +465,7 @@
     "xp": 163,
     "gold": [20, 40],
     "dropTable": [],
-    "sprite": "🐸"
+    "sprite": "frog"
   },
   {
     "id": "dark_knight",
@@ -479,7 +479,7 @@
     "xp": 186,
     "gold": [22, 45],
     "dropTable": [],
-    "sprite": "🛡️"
+    "sprite": "shield"
   },
   {
     "id": "greater_demon",
@@ -493,7 +493,7 @@
     "xp": 209,
     "gold": [25, 50],
     "dropTable": [],
-    "sprite": "👿",
+    "sprite": "angry-face-with-horns",
     "magical": true
   },
   {
@@ -508,7 +508,7 @@
     "xp": 256,
     "gold": [30, 60],
     "dropTable": [],
-    "sprite": "🌋",
+    "sprite": "volcano",
     "magical": true
   },
   {
@@ -523,7 +523,7 @@
     "xp": 303,
     "gold": [35, 70],
     "dropTable": [],
-    "sprite": "🐲",
+    "sprite": "dragon-face",
     "magical": true
   },
   {
@@ -538,7 +538,7 @@
     "xp": 352,
     "gold": [40, 80],
     "dropTable": [],
-    "sprite": "🌀",
+    "sprite": "cyclone",
     "magical": true
   },
   {
@@ -553,7 +553,7 @@
     "xp": 401,
     "gold": [45, 90],
     "dropTable": [],
-    "sprite": "💀",
+    "sprite": "skull",
     "magical": true
   },
   {
@@ -568,7 +568,7 @@
     "xp": 451,
     "gold": [50, 100],
     "dropTable": [],
-    "sprite": "🔱",
+    "sprite": "trident-emblem",
     "magical": true
   },
   {
@@ -583,7 +583,7 @@
     "xp": 578,
     "gold": [62, 125],
     "dropTable": [],
-    "sprite": "🐉",
+    "sprite": "dragon",
     "magical": true
   },
   {
@@ -598,7 +598,7 @@
     "xp": 708,
     "gold": [75, 150],
     "dropTable": [],
-    "sprite": "🧛"
+    "sprite": "vampire"
   },
   {
     "id": "void_behemoth",
@@ -612,7 +612,7 @@
     "xp": 841,
     "gold": [87, 175],
     "dropTable": [],
-    "sprite": "🌑"
+    "sprite": "new-moon"
   },
   {
     "id": "chaos_titan",
@@ -626,7 +626,7 @@
     "xp": 977,
     "gold": [100, 200],
     "dropTable": [],
-    "sprite": "🌪️"
+    "sprite": "tornado"
   },
   {
     "id": "primordial_serpent",
@@ -640,7 +640,7 @@
     "xp": 1254,
     "gold": [125, 250],
     "dropTable": [],
-    "sprite": "🐍"
+    "sprite": "snake"
   },
   {
     "id": "death_knight",
@@ -654,7 +654,7 @@
     "xp": 1538,
     "gold": [150, 300],
     "dropTable": [],
-    "sprite": "⚰️"
+    "sprite": "coffin"
   },
   {
     "id": "elder_lich",
@@ -668,7 +668,7 @@
     "xp": 1829,
     "gold": [175, 350],
     "dropTable": [],
-    "sprite": "🦴",
+    "sprite": "bone",
     "magical": true
   },
   {
@@ -683,7 +683,7 @@
     "xp": 2125,
     "gold": [200, 400],
     "dropTable": [],
-    "sprite": "🔮",
+    "sprite": "crystal-ball",
     "magical": true
   },
   {
@@ -698,7 +698,7 @@
     "xp": 2427,
     "gold": [225, 450],
     "dropTable": [],
-    "sprite": "👿",
+    "sprite": "angry-face-with-horns",
     "magical": true
   },
   {
@@ -713,7 +713,7 @@
     "xp": 2732,
     "gold": [250, 500],
     "dropTable": [],
-    "sprite": "⭐"
+    "sprite": "star"
   },
   {
     "id": "world_serpent",
@@ -727,7 +727,7 @@
     "xp": 3042,
     "gold": [275, 550],
     "dropTable": [],
-    "sprite": "🌍"
+    "sprite": "globe-showing-europe-africa"
   },
   {
     "id": "storm_titan",
@@ -741,7 +741,7 @@
     "xp": 3356,
     "gold": [300, 600],
     "dropTable": [],
-    "sprite": "⛈️"
+    "sprite": "cloud-with-lightning-and-rain"
   },
   {
     "id": "void_emperor",
@@ -755,7 +755,7 @@
     "xp": 3674,
     "gold": [325, 650],
     "dropTable": [],
-    "sprite": "🌌"
+    "sprite": "milky-way"
   },
   {
     "id": "time_devourer",
@@ -769,7 +769,7 @@
     "xp": 3994,
     "gold": [350, 700],
     "dropTable": [],
-    "sprite": "⏳"
+    "sprite": "hourglass-not-done"
   },
   {
     "id": "reality_breaker",
@@ -783,7 +783,7 @@
     "xp": 4318,
     "gold": [375, 750],
     "dropTable": [],
-    "sprite": "💫"
+    "sprite": "dizzy"
   },
   {
     "id": "ancient_god_spawn",
@@ -797,7 +797,7 @@
     "xp": 4645,
     "gold": [400, 800],
     "dropTable": [],
-    "sprite": "🌟"
+    "sprite": "glowing-star"
   },
   {
     "id": "omega_destroyer",
@@ -811,7 +811,7 @@
     "xp": 4975,
     "gold": [425, 850],
     "dropTable": [],
-    "sprite": "💥"
+    "sprite": "collision"
   },
   {
     "id": "death_incarnate",
@@ -825,7 +825,7 @@
     "xp": 5308,
     "gold": [450, 900],
     "dropTable": [],
-    "sprite": "☠️"
+    "sprite": "skull-and-crossbones"
   },
   {
     "id": "apocalypse_herald",
@@ -839,7 +839,7 @@
     "xp": 5643,
     "gold": [475, 950],
     "dropTable": [],
-    "sprite": "🌠"
+    "sprite": "shooting-star"
   },
   {
     "id": "world_ender",
@@ -853,6 +853,6 @@
     "xp": 5981,
     "gold": [500, 1000],
     "dropTable": [],
-    "sprite": "🌑"
+    "sprite": "new-moon"
   }
 ]

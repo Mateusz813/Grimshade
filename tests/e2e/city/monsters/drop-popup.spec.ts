@@ -1,10 +1,10 @@
 /**
- * Atomic E2E — Drop info modal opens after tap on monster card's 📦 button.
+ * Atomic E2E — Drop info modal opens after tap on monster card's :package: button.
  *
  * Spec (BACKLOG.md punkt 5.2): "Drop popup pokazuje poprawnie".
  *
  * Co testujemy:
- *  - W `/monsters` każda karta ma przycisk `📦` (`combat__mcard-action--info`).
+ *  - W `/monsters` każda karta ma przycisk `:package:` (`combat__mcard-action--info`).
  *  - Tap na ten przycisk dla ODBLOKOWANEGO potwora otwiera modal
  *    `.combat__drop-modal` z dropami / wariantami / mastery progress.
  *  - Modal pokazuje nazwę potwora w nagłówku + warianty rzadkości
@@ -15,7 +15,7 @@
  * gate, ale to nie przeszkadza — testujemy popup pierwszego unlocked.
  *
  * Selektor: `.combat__mcard:not(.combat__mcard--locked)` — pierwsza nie-locked
- * karta. Jej button 📦 jest enabled (locked button ma disabled=true co blokuje
+ * karta. Jej button :package: jest enabled (locked button ma disabled=true co blokuje
  * tap).
  *
  * Cleanup: try/finally + cleanupCharacterById.
@@ -30,14 +30,14 @@ import { cleanupCharacterById } from '../../fixtures/cleanup';
 test.describe('City › Monsters', { tag: '@city' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('tapping 📦 info button opens drop modal for unlocked monster', async ({ page }) => {
+    test('tapping :package: info button opens drop modal for unlocked monster', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
         try {
             // 1. Seed Knight lvl 1 — Szczur (lvl 1, idx 0 w sorted list) jest UNLOCKED.
             //    Pozostałe potwory mają mastery prereq na poprzedniego (0/1 mastery
-            //    na świeżej postaci → locked), więc 📦 button na nich jest disabled.
+            //    na świeżej postaci -> locked), więc :package: button na nich jest disabled.
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
                 name: nick,
@@ -59,7 +59,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             // 3. Czekamy aż grid się załaduje
             await expect(page.locator('.combat__mcard').first()).toBeVisible({ timeout: 10_000 });
 
-            // 4. Znajdź pierwszą nie-locked kartę i tap 📦 (info button).
+            // 4. Znajdź pierwszą nie-locked kartę i tap :package: (info button).
             //    Locked cards mają class `combat__mcard--locked` i ich button
             //    `combat__mcard-action--info` jest disabled. Selektor :not()
             //    daje nam tylko enabled cards.
@@ -89,7 +89,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             const nameText = (await modalName.textContent())?.trim();
             expect(nameText && nameText.length > 0).toBeTruthy();
 
-            // 8. Sanity: close button works — modal znika po tap ✕
+            // 8. Sanity: close button works — modal znika po tap x
             await modal.locator('.combat__drop-modal-close').tap();
             await expect(modal).toHaveCount(0, { timeout: 5_000 });
         } finally {

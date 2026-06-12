@@ -34,7 +34,7 @@ import { useMasteryStore, MASTERY_KILL_THRESHOLD } from '../../src/stores/master
 import { useQuestStore, type IQuest } from '../../src/stores/questStore';
 import { EMPTY_EQUIPMENT } from '../../src/systems/itemSystem';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-int-1',
@@ -111,7 +111,7 @@ const simulateMonsterKill = (params: {
     useMasteryStore.getState().addMasteryKills(params.monsterId, taskKills);
 };
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
 describe('combat tick: kill propagates to every collaborating store', () => {
     it('credits XP onto the character', () => {
@@ -219,7 +219,7 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             goldReward: 1,
         });
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(1);
-        // Overflow carries to the next level's bucket; one extra kill →
+        // Overflow carries to the next level's bucket; one extra kill ->
         // 0 overflow.
         expect(useMasteryStore.getState().getMasteryKills('rat')).toBe(0);
     });
@@ -381,7 +381,7 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             xpReward: 10,
             goldReward: 1,
         });
-        // Today: gate bypassed → progress IS recorded.
+        // Today: gate bypassed -> progress IS recorded.
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(1);
     });
 });

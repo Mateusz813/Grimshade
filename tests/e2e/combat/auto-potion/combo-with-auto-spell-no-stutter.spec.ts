@@ -6,9 +6,9 @@
  * subsystems trigger on the same `doPlayerAttackTick` invocation
  * (player HP below auto-potion threshold AND a skill is unlocked +
  * slotted + off-cooldown), the engine must:
- *   • cast the skill (damage applied to monster, MP consumed, cooldown set)
- *   • fire the auto-potion (consumable -1, HP healed, cooldown set, log)
- *   • NOT crash, NOT throw, NOT leave any store in a half-mutated state
+ *   - cast the skill (damage applied to monster, MP consumed, cooldown set)
+ *   - fire the auto-potion (consumable -1, HP healed, cooldown set, log)
+ *   - NOT crash, NOT throw, NOT leave any store in a half-mutated state
  *
  * ## Pragmatic adaptation vs. spec
  *
@@ -37,21 +37,21 @@
  *   5. Invoke `doPlayerAttackTick(false)` ONCE — same call site
  *      Combat.tsx's tick effect uses.
  *   6. Assert no exception bubbled + assert BOTH effects applied:
- *      • Monster took damage (basic attack + shield_bash skill hit)
- *      • Player MP decreased by skill cost (15 for shield_bash)
- *      • Skill cooldown registered (`skillCooldownMap` populated)
- *      • Player HP healed from 30 → 80 (+50 from hp_potion_sm)
- *      • hp_potion_sm count 5 → 4
- *      • Potion cooldown set
- *      • Auto-Potion log entry written
- *      • Skill cast log entry written (text contains skill name or
+ *      - Monster took damage (basic attack + shield_bash skill hit)
+ *      - Player MP decreased by skill cost (15 for shield_bash)
+ *      - Skill cooldown registered (`skillCooldownMap` populated)
+ *      - Player HP healed from 30 -> 80 (+50 from hp_potion_sm)
+ *      - hp_potion_sm count 5 -> 4
+ *      - Potion cooldown set
+ *      - Auto-Potion log entry written
+ *      - Skill cast log entry written (text contains skill name or
  *        damage marker — proves skill resolution wrote to log)
  *
  * Negative branches verified by absence:
- *   • engine still in `phase === 'fighting'` (not 'victory'/'dead' —
+ *   - engine still in `phase === 'fighting'` (not 'victory'/'dead' —
  *     means no spurious win/loss transition)
- *   • playerCurrentHp > 0 (the auto-potion saved us)
- *   • monsterCurrentHp > 0 (monster survived the tick, normal post-state)
+ *   - playerCurrentHp > 0 (the auto-potion saved us)
+ *   - monsterCurrentHp > 0 (monster survived the tick, normal post-state)
  *
  * Why direct `doPlayerAttackTick` invocation:
  *   Real-time combat runs this at attack_speed cadence. Real-time
@@ -120,7 +120,7 @@ test.describe('Combat › Auto-Potion', { tag: '@combat' }, () => {
                 counts: { hp_potion_sm: 5 },
             });
 
-            // 4. Login + Town hydration → forces character + inventory +
+            // 4. Login + Town hydration -> forces character + inventory +
             //    skills + settings stores to hydrate from the seeded
             //    game_save blob.
             await loginViaUI(page, testUsers.primary);
@@ -169,8 +169,8 @@ test.describe('Combat › Auto-Potion', { tag: '@combat' }, () => {
 
             // 6. Stage combat (rat with high HP so it survives the tick),
             //    clear cooldowns, fire ONE doPlayerAttackTick. Inside the
-            //    tick: basic attack lands → auto-skill (shield_bash) casts
-            //    → auto-potion check fires. Snapshot all stores after.
+            //    tick: basic attack lands -> auto-skill (shield_bash) casts
+            //    -> auto-potion check fires. Snapshot all stores after.
             const result = await page.evaluate(async () => {
                 // @ts-expect-error — dev-time Vite URL not resolvable by tsc
                 const engineMod = await import('/src/systems/combatEngine.ts');
@@ -254,7 +254,7 @@ test.describe('Combat › Auto-Potion', { tag: '@combat' }, () => {
                 const prePlayerMp = preCombat.playerCurrentMp;
                 const prePotionCount = preInv.consumables['hp_potion_sm'] ?? 0;
 
-                // ACTION: run one full tick. autoSkillOnly=false → basic
+                // ACTION: run one full tick. autoSkillOnly=false -> basic
                 // attack + auto-skill + auto-potion all execute.
                 let crashed = false;
                 let crashMsg = '';

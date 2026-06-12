@@ -23,6 +23,9 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { STONE_ICONS } from '../../systems/itemSystem';
 import { getPotionImage, getSpellChestImage } from '../../systems/spriteAssets';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import monstersRaw from '../../data/monsters.json';
 import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
 import { formatGoldShort } from '../../systems/goldFormat';
@@ -141,7 +144,7 @@ const MonsterList = () => {
 
   // 2026-05-19 v23 spec ("Guzik walki nie powinien przenosic do
   // walki tylko do podstrony z polowaniem i widoku /combat"): the
-  // ⚔️ button just navigates to the /combat hub now — the player
+  // :crossed-swords: button just navigates to the /combat hub now — the player
   // re-picks the monster there and the leader-only ready-check
   // fires from that screen, matching the hunt flow exactly.
   const handleFight = (m: IMonster) => {
@@ -247,7 +250,7 @@ const MonsterList = () => {
                 }}
                 title="Wyczyść filtry"
               >
-                ✕ Wyczyść
+                <Icon name="x" /> Wyczyść
               </button>
             )}
           </div>
@@ -299,7 +302,7 @@ const MonsterList = () => {
                         title={locked ? unlock.reason : 'Kliknij, aby powiększyć'}
                       >
                         {locked
-                          ? '🔒'
+                          ? <GameIcon name="locked" />
                           : <MonsterSprite level={m.level} sprite={m.sprite} name={m.name_pl} style={{ objectFit: 'contain' }} />}
                       </button>
                       <span className="combat__mcard-name">{m.name_pl}</span>
@@ -311,7 +314,7 @@ const MonsterList = () => {
                           className={`combat__mcard-mastery${isMaxMasteryHere ? ' combat__mcard-mastery--max' : ''}`}
                           title={`Mastery ${masteryLvl}/${MASTERY_MAX_LEVEL}`}
                         >
-                          <span className="combat__mcard-mastery-icon" aria-hidden="true">🎖️</span>
+                          <span className="combat__mcard-mastery-icon" aria-hidden="true"><GameIcon name="military-medal" /></span>
                           {masteryLvl}/{MASTERY_MAX_LEVEL}
                         </span>
                       </div>
@@ -319,28 +322,28 @@ const MonsterList = () => {
 
                     <div className="combat__mcard-stats">
                       <span className="combat__mcard-stat" title="Atak (min - max)">
-                        <span className="combat__mcard-stat-icon" aria-hidden="true">⚔️</span>
+                        <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="crossed-swords" /></span>
                         <span className="combat__mcard-stat-label">ATK</span>
                         <span className="combat__mcard-stat-value">{range.min}-{range.max}</span>
                       </span>
                       <span className="combat__mcard-stat" title="Punkty życia">
-                        <span className="combat__mcard-stat-icon" aria-hidden="true">❤️</span>
+                        <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="red-heart" /></span>
                         <span className="combat__mcard-stat-label">HP</span>
                         <span className="combat__mcard-stat-value">{m.hp.toLocaleString('pl-PL')}</span>
                       </span>
                       <span className="combat__mcard-stat" title="Obrona">
-                        <span className="combat__mcard-stat-icon" aria-hidden="true">🛡️</span>
+                        <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="shield" /></span>
                         <span className="combat__mcard-stat-label">DEF</span>
                         <span className="combat__mcard-stat-value">{m.defense}</span>
                       </span>
                       <span className="combat__mcard-stat" title="Szybkość ataku (Attack Speed)">
-                        <span className="combat__mcard-stat-icon" aria-hidden="true">🏃</span>
+                        <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="person-running" /></span>
                         <span className="combat__mcard-stat-label">AS</span>
                         <span className="combat__mcard-stat-value">{m.speed}</span>
                       </span>
                       {m.magical && (
                         <span className="combat__mcard-stat combat__mcard-stat--magical" title="Atak magiczny — omija blok i unik">
-                          <span className="combat__mcard-stat-icon" aria-hidden="true">✨</span>
+                          <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="sparkles" /></span>
                           <span className="combat__mcard-stat-label">MAG</span>
                           <span className="combat__mcard-stat-value">tak</span>
                         </span>
@@ -349,7 +352,7 @@ const MonsterList = () => {
 
                     <div className="combat__mcard-rewards">
                       <span className="combat__mcard-reward" title="XP za zabicie">
-                        <span className="combat__mcard-reward-icon" aria-hidden="true">✨</span>
+                        <span className="combat__mcard-reward-icon" aria-hidden="true"><GameIcon name="sparkles" /></span>
                         <span className="combat__mcard-reward-label">XP</span>
                         <span className="combat__mcard-reward-value">
                           {m.xp.toLocaleString('pl-PL')}
@@ -361,7 +364,7 @@ const MonsterList = () => {
                         </span>
                       </span>
                       <span className="combat__mcard-reward" title="Gold za zabicie">
-                        <span className="combat__mcard-reward-icon" aria-hidden="true">💰</span>
+                        <span className="combat__mcard-reward-icon" aria-hidden="true"><GameIcon name="money-bag" /></span>
                         <span className="combat__mcard-reward-label">Gold</span>
                         <span className="combat__mcard-reward-value">
                           {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
@@ -378,7 +381,7 @@ const MonsterList = () => {
                       <div className="combat__mcard-goals">
                         {hasTask && monsterTask && (
                           <div className="combat__mcard-goal combat__mcard-goal--task" title={`Task: zabij ${monsterTask.killCount}× ${m.name_pl}`}>
-                            <span className="combat__mcard-goal-icon" aria-hidden="true">📋</span>
+                            <span className="combat__mcard-goal-icon" aria-hidden="true"><GameIcon name="clipboard" /></span>
                             <span className="combat__mcard-goal-text">
                               Task {monsterTask.progress}/{monsterTask.killCount}
                             </span>
@@ -391,7 +394,7 @@ const MonsterList = () => {
                             title={`Quest: ${qb.questName}`}
                           >
                             <span className="combat__mcard-goal-icon" aria-hidden="true">
-                              {qb.done ? '✅' : '📜'}
+                              {qb.done ? <GameIcon name="check-mark-button" /> : <GameIcon name="scroll" />}
                             </span>
                             <span className="combat__mcard-goal-text">
                               {qb.questName} {qb.progress}/{qb.count}
@@ -406,12 +409,12 @@ const MonsterList = () => {
                       const killsNow = masteryKills[req.id] ?? 0;
                       return (
                         <div className="combat__mcard-locked-note" title={`Zdobądź Mastery 1/25 na ${req.name_pl}`}>
-                          🔒 {req.name_pl}: {killsNow.toLocaleString('pl-PL')}/{MASTERY_KILL_THRESHOLD.toLocaleString('pl-PL')}
+                          <GameIcon name="locked" /> {req.name_pl}: {killsNow.toLocaleString('pl-PL')}/{MASTERY_KILL_THRESHOLD.toLocaleString('pl-PL')}
                         </div>
                       );
                     })()}
                     {locked && unlock.lockKind !== 'mastery' && (
-                      <div className="combat__mcard-locked-note">{unlock.shortLabel}</div>
+                      <div className="combat__mcard-locked-note"><EmojiText>{unlock.shortLabel}</EmojiText></div>
                     )}
 
                     <div className="combat__mcard-actions">
@@ -421,7 +424,7 @@ const MonsterList = () => {
                         disabled={locked}
                         title="Pokaż szczegóły dropu"
                         aria-label={`Drop dla ${m.name_pl}`}
-                      >📦</button>
+                      ><GameIcon name="package" /></button>
                       <button
                         className="combat__mcard-action combat__mcard-action--fight"
                         onClick={() => handleFight(m)}
@@ -434,7 +437,7 @@ const MonsterList = () => {
                               : 'Walcz!'
                         }
                         aria-label={`Walcz z ${m.name_pl}`}
-                      >⚔️</button>
+                      ><GameIcon name="crossed-swords" /></button>
                     </div>
                   </article>
                 );
@@ -491,13 +494,13 @@ const MonsterList = () => {
                   onClick={() => setDropModalMonsterId(null)}
                   aria-label="Zamknij"
                   title="Zamknij"
-                >✕</button>
+                ><Icon name="x" /></button>
               </header>
 
               <div className="combat__drop-modal-body">
                 <div className="combat__drop-modal-summary">
                   <span>
-                    💰 Gold: {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
+                    <GameIcon name="money-bag" /> Gold: {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
                     {mLvl > 0 && (
                       <span className="combat__monster-xp-bonus" title={masteryTooltip}>
                         {' '}+{formatGoldShort(Math.floor(m.gold[0] * (masteryPct / 100)))}–{formatGoldShort(Math.floor(m.gold[1] * (masteryPct / 100)))}
@@ -505,7 +508,7 @@ const MonsterList = () => {
                     )}
                   </span>
                   <span>
-                    ✨ XP: {m.xp.toLocaleString('pl-PL')}
+                    <GameIcon name="sparkles" /> XP: {m.xp.toLocaleString('pl-PL')}
                     {mLvl > 0 && (
                       <span className="combat__monster-xp-bonus" title={masteryTooltip}>
                         {' '}+{Math.floor(m.xp * (masteryPct / 100)).toLocaleString('pl-PL')}
@@ -514,7 +517,7 @@ const MonsterList = () => {
                   </span>
                 </div>
                 <div className="combat__drop-modal-info">
-                  🎒 Losowy ekwipunek Lvl {m.level} (bronie, zbroje, akcesoria)
+                  <GameIcon name="backpack" /> Losowy ekwipunek Lvl {m.level} (bronie, zbroje, akcesoria)
                 </div>
 
                 <div className="combat__drop-modal-variants">
@@ -545,15 +548,15 @@ const MonsterList = () => {
                         </span>
                         <span className="combat__variant-xp">
                           <span className="combat__variant-xp-row">
-                            ⭐ {effXp.toLocaleString('pl-PL')} XP
+                            <GameIcon name="star" /> {effXp.toLocaleString('pl-PL')} XP
                             {mLvl > 0 && (
                               <span className="combat__monster-xp-bonus" title={masteryTooltip}>
                                 {' '}+{masteryPct}%
                               </span>
                             )}
                           </span>
-                          <span className="combat__variant-xp-row">💰 {formatGoldShort(effGoldMin)}–{formatGoldShort(effGoldMax)}</span>
-                          <span className="combat__variant-xp-row">📋 Task: ×{v.taskKills}</span>
+                          <span className="combat__variant-xp-row"><GameIcon name="money-bag" /> {formatGoldShort(effGoldMin)}–{formatGoldShort(effGoldMax)}</span>
+                          <span className="combat__variant-xp-row"><GameIcon name="clipboard" /> Task: ×{v.taskKills}</span>
                         </span>
                         <div className="combat__variant-drops">
                           {bd.tiers.map((tier) => (
@@ -571,7 +574,7 @@ const MonsterList = () => {
                             </div>
                           ))}
                           <div className="combat__variant-stone">
-                            <TinyIcon icon={STONE_ICONS[VARIANT_TO_STONE_ID[v.key] ?? ''] ?? '💎'} size="sm" /> {stoneName} ({(stoneChance * 100).toFixed(0)}%)
+                            <TinyIcon icon={STONE_ICONS[VARIANT_TO_STONE_ID[v.key] ?? ''] ?? 'gem-stone'} size="sm" /> {stoneName} ({(stoneChance * 100).toFixed(0)}%)
                           </div>
                         </div>
                       </div>
@@ -581,18 +584,18 @@ const MonsterList = () => {
 
                 {/* Potion drops */}
                 <div className="combat__drops-potions">
-                  <div className="combat__drops-potions-title"><TinyIcon icon={getPotionImage(null) ?? '🧪'} size="sm" /> Potiony</div>
+                  <div className="combat__drops-potions-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                   <div className="combat__variant-tier">
                     <span className="combat__tier-dot" style={{ background: '#e57373' }} />
                     <span className="combat__tier-name" style={{ color: '#e57373' }}>
-                      <TinyIcon icon={getPotionImage('hp_potion_sm') ?? '❤️'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
+                      <TinyIcon icon={getPotionImage('hp_potion_sm') ?? 'red-heart'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
                     </span>
                     <span className="combat__tier-chance">{(potionInfo.hpChance * 100).toFixed(2)}%</span>
                   </div>
                   <div className="combat__variant-tier">
                     <span className="combat__tier-dot" style={{ background: '#64b5f6' }} />
                     <span className="combat__tier-name" style={{ color: '#64b5f6' }}>
-                      <TinyIcon icon={getPotionImage('mp_potion_sm') ?? '💧'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
+                      <TinyIcon icon={getPotionImage('mp_potion_sm') ?? 'droplet'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
                     </span>
                     <span className="combat__tier-chance">{(potionInfo.mpChance * 100).toFixed(2)}%</span>
                   </div>
@@ -601,14 +604,14 @@ const MonsterList = () => {
                       <div className="combat__variant-tier">
                         <span className="combat__tier-dot" style={{ background: '#ff7043' }} />
                         <span className="combat__tier-name" style={{ color: '#ff7043' }}>
-                          <TinyIcon icon={getPotionImage('hp_potion_mega') ?? '❤️‍🔥'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
+                          <TinyIcon icon={getPotionImage('hp_potion_mega') ?? 'heart-on-fire'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
                         </span>
                         <span className="combat__tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                       </div>
                       <div className="combat__variant-tier">
                         <span className="combat__tier-dot" style={{ background: '#7e57c2' }} />
                         <span className="combat__tier-name" style={{ color: '#7e57c2' }}>
-                          <TinyIcon icon={getPotionImage('mp_potion_mega') ?? '💎'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
+                          <TinyIcon icon={getPotionImage('mp_potion_mega') ?? 'gem-stone'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
                         </span>
                         <span className="combat__tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                       </div>
@@ -620,7 +623,7 @@ const MonsterList = () => {
                 {chestInfo.levels.length > 0 && (
                   <div className="combat__drops-potions">
                     <div className="combat__drops-potions-title">
-                      <TinyIcon icon={getSpellChestImage(1000) ?? '📦'} size="sm" />
+                      <TinyIcon icon={getSpellChestImage(1000) ?? 'package'} size="sm" />
                       {' '}Spell Chest (Lvl {chestInfo.levels[0]}{chestInfo.levels.length > 1 ? `–${chestInfo.levels[chestInfo.levels.length - 1]}` : ''})
                     </div>
                     {chestInfo.rates.map((r) => (
@@ -643,7 +646,7 @@ const MonsterList = () => {
                   return (
                     <div className={`monster-list__mastery${isMaxMasteryHere ? ' monster-list__mastery--max' : ''}`}>
                       <div className="monster-list__mastery-header">
-                        <span>{isMaxMasteryHere ? '👑' : '🏅'} Mastery</span>
+                        <span>{isMaxMasteryHere ? <GameIcon name="crown" /> : <GameIcon name="sports-medal" />} Mastery</span>
                         <span className="monster-list__mastery-level">
                           {mLvl}/{MASTERY_MAX_LEVEL}{isMaxMasteryHere && ' MAX'}
                         </span>
@@ -715,7 +718,7 @@ const MonsterList = () => {
               aria-label="Zamknij podgląd"
               title="Zamknij (ESC)"
             >
-              ✕
+              <Icon name="x" />
             </button>
           </div>
         );

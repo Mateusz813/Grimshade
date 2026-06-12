@@ -1,26 +1,26 @@
 /**
- * Atomic E2E — claim ready quest → reward modal opens with prize chips.
+ * Atomic E2E — claim ready quest -> reward modal opens with prize chips.
  *
  * Spec (BACKLOG.md punkt 7.10): "Quest: odbierz nagrody".
  *
  * Test sprawdza claim flow w wąskim zakresie:
  *   1. Seed character + 1 ACTIVE quest with goals.progress >= count
  *      (canClaim = true).
- *   2. Open /quests/quests → tap "🎁 Odbierz nagrodę" on the card.
+ *   2. Open /quests/quests -> tap ":wrapped-gift: Odbierz nagrodę" on the card.
  *   3. ASSERT: claim summary modal `.quests__claim-modal` opens with
  *      quest name + at least one reward entry inside.
  *   4. ASSERT: after tap "OK", the quest moves from "Aktywne" to
- *      "Ukończone" (counter shift: Aktywne 1→0, Ukończone 0→1).
+ *      "Ukończone" (counter shift: Aktywne 1->0, Ukończone 0->1).
  *
  * Why we don't assert exact gold/XP delta:
- *   • Gold is rendered via `formatGoldShort` (k / cc / sc / gp) and the
+ *   - Gold is rendered via `formatGoldShort` (k / cc / sc / gp) and the
  *     TopHeader pulse may regen-tick mid-test which makes "gold + 100"
  *     fragile.
- *   • The CLAIM-MODAL itself is the source of truth for "what dropped" —
+ *   - The CLAIM-MODAL itself is the source of truth for "what dropped" —
  *     it iterates `summaryEntries` (Quests.tsx ~line 1586). Asserting
  *     the modal exists + has entries proves the reward pipeline ran
  *     end-to-end without over-coupling to formatting details.
- *   • Bonus: a side-effect "gift" item also drops (line 517-549), so
+ *   - Bonus: a side-effect "gift" item also drops (line 517-549), so
  *     entry count is ALWAYS >= rewards.length + 1. We assert >= 2
  *     (gold + gift at minimum for quest_first_steps).
  *
@@ -74,8 +74,8 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
             createdId = created.id;
 
             // 2. Seed quest_first_steps active with ALL goals satisfied
-            //    (progress = count). Drives canClaim = true → action row
-            //    renders "🎁 Odbierz nagrodę" instead of "Porzuć".
+            //    (progress = count). Drives canClaim = true -> action row
+            //    renders ":wrapped-gift: Odbierz nagrodę" instead of "Porzuć".
             await seedQuestState({
                 characterId: created.id,
                 activeQuests: [
@@ -89,7 +89,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
                 ],
             });
 
-            // 3. Login → select → /quests/quests sub-view.
+            // 3. Login -> select -> /quests/quests sub-view.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -129,7 +129,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
             const rewardRows = claimModal.locator('.quests__claim-modal-row');
             expect(await rewardRows.count()).toBeGreaterThanOrEqual(2);
 
-            // 6. Close modal → counters shift.
+            // 6. Close modal -> counters shift.
             await claimModal.locator('.quests__claim-modal-btn').tap();
             await expect(claimModal).toHaveCount(0, { timeout: 5_000 });
 

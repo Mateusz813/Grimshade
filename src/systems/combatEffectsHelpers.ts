@@ -7,19 +7,19 @@
  * identical. This module exposes a tiny per-session container the view
  * keeps in a ref, plus 4 verbs:
  *
- *   • `ensureStatus(id)`              — get-or-init a status state
- *   • `tickAll(combatants, deltaMs)`  — drain timers + apply DOT to every
+ *   - `ensureStatus(id)`              — get-or-init a status state
+ *   - `tickAll(combatants, deltaMs)`  — drain timers + apply DOT to every
  *                                       provided combatant; returns the DOT
  *                                       deltas so the view can render
  *                                       floating numbers
- *   • `castSkill({...})`              — apply a skill's parsed effects
+ *   - `castSkill({...})`              — apply a skill's parsed effects
  *                                       (AOE / instant-kill / multistrike /
  *                                       marks / heals / immortal / etc.)
  *                                       and return the side-effects the
  *                                       view still has to commit
  *                                       (multistrike count, summon spec,
  *                                       aggro-steal flag, AOE flag, …)
- *   • `resolveBasicAttack({...})`     — single-hit resolution honouring
+ *   - `resolveBasicAttack({...})`     — single-hit resolution honouring
  *                                       stun / dodge / amp queues / marks /
  *                                       crit-next / lifesteal queue
  */
@@ -44,7 +44,7 @@ export interface ICombatEffectsRef {
 }
 
 export interface ICombatEffectsSession {
-    /** id → live status. Created lazily on first `ensureStatus`. */
+    /** id -> live status. Created lazily on first `ensureStatus`. */
     statuses: Map<string, IStatusState>;
 }
 
@@ -70,7 +70,7 @@ export const isCombatantStunned = (s: ICombatEffectsSession, id: string): boolea
 /** Drain timers + accumulate DOT damage per combatant. Also surfaces
  *  Necromancer Mroczny Rytuał damage when its countdown expires this
  *  tick — caller subtracts both from the same target HP and pushes
- *  whatever floats they want for each (☠️ DOT vs 💀 RITUAL). */
+ *  whatever floats they want for each (:skull-and-crossbones: DOT vs :skull: RITUAL). */
 export const tickAll = (
     s: ICombatEffectsSession,
     combatants: ICombatEffectsRef[],
@@ -93,7 +93,7 @@ export const tickAll = (
     return out;
 };
 
-// ── Skill cast / basic-hit thin wrappers ────────────────────────────────────
+// -- Skill cast / basic-hit thin wrappers ------------------------------------
 
 export interface ICastSkillParams {
     session: ICombatEffectsSession;
@@ -135,7 +135,7 @@ export const resolveBasicAttack = (p: IResolveBasicParams) => {
     return resolveBasicHit(a, p.attackerClass, p.baseDmg, t);
 };
 
-// ── Damage / heal routing ──────────────────────────────────────────────────
+// -- Damage / heal routing --------------------------------------------------
 
 /**
  * Apply raw damage to a combatant honouring `immortal` and `cannotDie`. The

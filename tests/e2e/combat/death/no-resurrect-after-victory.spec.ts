@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — death penalty survives the victory transition; no
  * auto-revive after fight (BACKLOG 13.23 — "Sojusznik umiera + nikt
- * nie wskrzesza + party wygrywa → animacja śmierci + nie bierze
+ * nie wskrzesza + party wygrywa -> animacja śmierci + nie bierze
  * udziału w next").
  *
  * Spec: in shared party combat, when a member dies WITHOUT being revived
@@ -16,18 +16,18 @@
  *   1. Knight primary + Mage secondary (no Cleric) in party
  *   2. Combat starts, both attack monster
  *   3. Primary's HP drains to 0 via monster swings
- *   4. Primary's PartyDeathChoice popup: picks "Wróć do miasta" → death
+ *   4. Primary's PartyDeathChoice popup: picks "Wróć do miasta" -> death
  *      penalty applies + nav home
- *   5. OR primary picks "Czekaj na wskrzeszenie" → no Cleric → fight
- *      finishes → Combat.tsx auto-death-on-victory useEffect (line
- *      521-527) fires `handleDeathReturnToTown` → death penalty applies
+ *   5. OR primary picks "Czekaj na wskrzeszenie" -> no Cleric -> fight
+ *      finishes -> Combat.tsx auto-death-on-victory useEffect (line
+ *      521-527) fires `handleDeathReturnToTown` -> death penalty applies
  *
  * Reproducing the full chain requires:
- *   • Multi-context (2 browsers)
- *   • Live combat with predictable HP drain
- *   • Cleric absence guard (don't accidentally give either side Cleric)
- *   • Wait for victory phase (could take 10s+ of mob HP grind)
- *   • UI interaction with PartyDeathChoice popup OR observation of the
+ *   - Multi-context (2 browsers)
+ *   - Live combat with predictable HP drain
+ *   - Cleric absence guard (don't accidentally give either side Cleric)
+ *   - Wait for victory phase (could take 10s+ of mob HP grind)
+ *   - UI interaction with PartyDeathChoice popup OR observation of the
  *     auto-popup-after-victory effect
  *
  * Per the task brief ("Use `triggerPlayerDeath` + force victory phase
@@ -41,37 +41,37 @@
  *      `handlePlayerDeath(forceConfirm=true)` — same call site
  *      `handleDeathReturnToTown` uses (Combat.tsx line 498) when
  *      victory comes for a dead player.
- *   3. Snapshot post-death state: level dropped from 50 → 49, xp reset
+ *   3. Snapshot post-death state: level dropped from 50 -> 49, xp reset
  *      to 0, hp at max (fullHealEffective ran inside handlePlayerDeath).
  *   4. Now force `combatStore.phase = 'victory'` via `setPhase` — the
  *      same transition the engine fires at line 1186/1192 when a wave
  *      clears.
  *   5. Re-snapshot character + verify:
- *      • level STILL at 49 (victory didn't undo the level loss)
- *      • xp STILL at 0 (victory didn't restore pre-death XP)
- *      • hp STILL at max (no extra revive — it was already max from
+ *      - level STILL at 49 (victory didn't undo the level loss)
+ *      - xp STILL at 0 (victory didn't restore pre-death XP)
+ *      - hp STILL at max (no extra revive — it was already max from
  *        the death's fullHealEffective)
- *      • phase NOW 'victory' (sanity that setPhase took effect)
+ *      - phase NOW 'victory' (sanity that setPhase took effect)
  *
  * What this proves:
- *   • The victory phase is purely a UI/state transition — it doesn't
+ *   - The victory phase is purely a UI/state transition — it doesn't
  *     touch character.level / character.xp / character.hp. So no
  *     "phantom revive" path can sneak in via the victory branch.
- *   • The death penalty is COMMITTED to the character store before the
+ *   - The death penalty is COMMITTED to the character store before the
  *     fight resolution code runs (handlePlayerDeath writes via
  *     updateCharacter line 1414-1418). Even if the victory transition
  *     came moments later, the persisted penalty is what the next
  *     `/character-select` would show.
  *
  * Contrast with `real-death-applies-xp-penalty.spec.ts`:
- *   • That test proves the death-penalty branch fires AT ALL.
- *   • THIS test proves the death-penalty branch fires AND PERSISTS
+ *   - That test proves the death-penalty branch fires AT ALL.
+ *   - THIS test proves the death-penalty branch fires AND PERSISTS
  *     ACROSS the subsequent victory phase. The pair together cover the
  *     full death-during-victory contract.
  *
  * ## What we don't test (deferred to multi-context follow-up)
  *
- *   • The PartyDeathChoice popup auto-trigger from Combat.tsx's
+ *   - The PartyDeathChoice popup auto-trigger from Combat.tsx's
  *     auto-death-on-victory effect (line 521-527). Requires:
  *       - Real multi-context party with HP=0 leader-in-multi-human-party
  *       - phase transition observed in React render cycle
@@ -113,7 +113,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → Town.
+            // 2. Login -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -183,7 +183,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             //       awarded XP that drifted us past 0, this would be > 0
             //       — but earnedXp from a fight-with-dead-player should
             //       not flow into character.xp via the victory transition
-            //       itself (only via `handleMonsterDeath` → addXp, which
+            //       itself (only via `handleMonsterDeath` -> addXp, which
             //       fires DURING the kill, not at phase-set time).
             expect(afterVictory!.xp).toBe(0);
 

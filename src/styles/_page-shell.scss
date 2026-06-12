@@ -1,10 +1,10 @@
 @use 'variables' as *;
 
-// ── Shared page header / back button / tabs style ─────────────────────────
+// -- Shared page header / back button / tabs style -------------------------
 // Matches the Friends view. Apply these classes on any subpage so the look
 // stays consistent across the app:
 //   <header class="page-header">
-//     <button class="page-back-btn">← Miasto</button>
+//     <button class="page-back-btn"> Miasto</button>
 //     <h1 class="page-title">Tytuł</h1>
 //     ... optional right-side content
 //   </header>

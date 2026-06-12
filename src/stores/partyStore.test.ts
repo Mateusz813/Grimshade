@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
+// -- Hoisted mocks ------------------------------------------------------------
 // partyStore wraps `partyApi` end-to-end; we mock every method it calls so
 // no real Supabase round-trip happens. `vi.hoisted` ensures the spies are
 // defined BEFORE `vi.mock` factories run (those factories are hoisted to
@@ -131,7 +131,7 @@ beforeEach(() => {
     ].forEach((fn) => fn.mockClear());
 });
 
-// ── createParty ──────────────────────────────────────────────────────────────
+// -- createParty --------------------------------------------------------------
 
 describe('createParty', () => {
     it('round-trips through partyApi and stores the adapted party on success', async () => {
@@ -185,7 +185,7 @@ describe('createParty', () => {
     });
 });
 
-// ── joinPartyById ────────────────────────────────────────────────────────────
+// -- joinPartyById ------------------------------------------------------------
 
 describe('joinPartyById', () => {
     it('stores the party on a successful join', async () => {
@@ -218,7 +218,7 @@ describe('joinPartyById', () => {
     });
 });
 
-// ── leaveParty ───────────────────────────────────────────────────────────────
+// -- leaveParty ---------------------------------------------------------------
 
 describe('leaveParty', () => {
     it('is a no-op when no party is loaded', async () => {
@@ -257,7 +257,7 @@ describe('leaveParty', () => {
     });
 });
 
-// ── transferLeadership ───────────────────────────────────────────────────────
+// -- transferLeadership -------------------------------------------------------
 
 describe('transferLeadership', () => {
     it('optimistically updates leaderId locally then commits via partyApi', async () => {
@@ -307,7 +307,7 @@ describe('transferLeadership', () => {
     });
 });
 
-// ── kickByRowId ──────────────────────────────────────────────────────────────
+// -- kickByRowId --------------------------------------------------------------
 
 describe('kickByRowId', () => {
     it('calls partyApi.kickMember when a party is loaded', async () => {
@@ -339,7 +339,7 @@ describe('kickByRowId', () => {
     });
 });
 
-// ── removeMember (local-only, bot path) ──────────────────────────────────────
+// -- removeMember (local-only, bot path) --------------------------------------
 
 describe('removeMember', () => {
     it('drops the member by id from the local roster', () => {
@@ -387,7 +387,7 @@ describe('removeMember', () => {
     });
 });
 
-// ── hydrateActiveParty ───────────────────────────────────────────────────────
+// -- hydrateActiveParty -------------------------------------------------------
 
 describe('hydrateActiveParty', () => {
     it('adopts a server-side party when one is found', async () => {
@@ -416,7 +416,7 @@ describe('hydrateActiveParty', () => {
     });
 });
 
-// ── refreshPublicParties ─────────────────────────────────────────────────────
+// -- refreshPublicParties -----------------------------------------------------
 
 describe('refreshPublicParties', () => {
     it('fills publicParties on success', async () => {
@@ -438,7 +438,7 @@ describe('refreshPublicParties', () => {
     });
 });
 
-// ── addBotHelper ─────────────────────────────────────────────────────────────
+// -- addBotHelper -------------------------------------------------------------
 
 describe('addBotHelper', () => {
     it('is a no-op when no party is loaded', () => {

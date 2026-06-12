@@ -19,7 +19,7 @@ beforeEach(() => {
     resetStore();
 });
 
-// ── addDamage ────────────────────────────────────────────────────────────────
+// -- addDamage ----------------------------------------------------------------
 
 describe('addDamage', () => {
     it('records a first hit for a brand-new member', () => {
@@ -86,7 +86,7 @@ describe('addDamage', () => {
     });
 });
 
-// ── setMemberDamage ──────────────────────────────────────────────────────────
+// -- setMemberDamage ----------------------------------------------------------
 
 describe('setMemberDamage', () => {
     it('writes an absolute total for a member (replaces, does not add)', () => {
@@ -128,7 +128,7 @@ describe('setMemberDamage', () => {
     });
 });
 
-// ── reset ────────────────────────────────────────────────────────────────────
+// -- reset --------------------------------------------------------------------
 
 describe('reset', () => {
     it('wipes every member bucket', () => {
@@ -161,7 +161,7 @@ describe('reset', () => {
     });
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('initial state', () => {
     it('exposes an empty damage map + a parseable sessionStart on boot', () => {

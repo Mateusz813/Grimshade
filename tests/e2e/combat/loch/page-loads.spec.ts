@@ -10,8 +10,8 @@
  * Co testujemy (smoke only — NIE testujemy walki z boss-em):
  *  - Pre-seed character as member of a guild via direct INSERT (seedGuild)
  *    so the /guild view hydrates straight to the GuildHome screen.
- *  - Navigate Town → Społeczność → Gildia → tap Loch nav tile.
- *  - `.guild__boss-stage` mounts → proves GuildBoss sub-view rendered
+ *  - Navigate Town -> Społeczność -> Gildia -> tap Loch nav tile.
+ *  - `.guild__boss-stage` mounts -> proves GuildBoss sub-view rendered
  *    + `fetchOrCreateWeeklyBoss` succeeded (the boss view's early
  *    return at line 1497 shows skeleton when boss undefined; after
  *    fetch lands, the full JSX renders with `.guild__boss-stage`).
@@ -22,7 +22,7 @@
  *    `getLochBackground` / `getGuildBossLabel` all resolve for tier 1.
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczna walka z bossem (claim arena → attack ticks → damage
+ *  - Faktyczna walka z bossem (claim arena -> attack ticks -> damage
  *    + reward). 4.5 multi-context covers the API-side wire path;
  *    UI combat is brittle (per the 4.5 doc, the visual loop has
  *    timing + RNG + claim-race instabilities).
@@ -68,7 +68,7 @@ import { cleanupGuildsByLeaderIds } from '../../fixtures/guildCleanup';
 test.describe('Combat › Loch', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('smoke: /guild → Loch tile renders guild boss stage without errors', async ({ page }) => {
+    test('smoke: /guild -> Loch tile renders guild boss stage without errors', async ({ page }) => {
         const nick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
         const guildName = `E2E Loch ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -104,7 +104,7 @@ test.describe('Combat › Loch', { tag: '@combat' }, () => {
             });
             guildId = guild.id;
 
-            // 4. Login on SECONDARY → wybierz postać → Town.
+            // 4. Login on SECONDARY -> wybierz postać -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -115,7 +115,7 @@ test.describe('Combat › Loch', { tag: '@combat' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
             await expect(page.locator('.town__char-name')).toHaveText(nick, { timeout: 10_000 });
 
-            // 5. Navigate Town → Społeczność → Gildia.
+            // 5. Navigate Town -> Społeczność -> Gildia.
             await page.getByRole('button', { name: /^Społeczność$/i }).tap();
             await expect(page).toHaveURL(/\/social$/, { timeout: 10_000 });
             await page.locator('.social__tile--gildia').tap();
@@ -128,7 +128,7 @@ test.describe('Combat › Loch', { tag: '@combat' }, () => {
             await expect(page.locator('.guild__home-banner')).toBeVisible({ timeout: 20_000 });
 
             // 7. Tap Loch nav tile. Guild.tsx line 749-752: button with
-            //    `.guild__nav-tile` class, label "Loch", onClick → setPhase('boss').
+            //    `.guild__nav-tile` class, label "Loch", onClick -> setPhase('boss').
             //    The label span is the most stable anchor (emojis + image
             //    paths can shift; "Loch" is the user-facing label spec).
             await page.locator('.guild__nav-tile-label', { hasText: /^Loch$/i }).tap();
@@ -139,8 +139,8 @@ test.describe('Combat › Loch', { tag: '@combat' }, () => {
             //    (early return at line 1497 shows a skeleton with
             //    "Ładowanie bossa…" until `fetchOrCreateWeeklyBoss`
             //    returns). Visibility within 20s proves the full flow
-            //    landed: phase='boss' → GuildBoss mount → server fetch
-            //    → boss row hydrated → JSX renders.
+            //    landed: phase='boss' -> GuildBoss mount -> server fetch
+            //    -> boss row hydrated -> JSX renders.
             await expect(page.locator('.guild__boss-stage')).toBeVisible({ timeout: 20_000 });
 
             // 9. Sanity — boss preview img + HP bar both visible. Confirms

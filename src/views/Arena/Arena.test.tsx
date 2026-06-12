@@ -9,13 +9,13 @@ import { MemoryRouter } from 'react-router-dom';
  * promotion math (that's covered by `arenaSystem.test.ts`) — only the
  * render contract:
  *
- *   • Smoke render once a character + currentArena are seeded.
- *   • Spinner fallback when character is missing.
- *   • Spinner fallback when currentArena is missing (post-character).
- *   • League strip, defense snapshot card, leaderboard list, my-position
+ *   - Smoke render once a character + currentArena are seeded.
+ *   - Spinner fallback when character is missing.
+ *   - Spinner fallback when currentArena is missing (post-character).
+ *   - League strip, defense snapshot card, leaderboard list, my-position
  *     summary all mount.
- *   • Rewards / Log / Fight modal buttons open + close the popups.
- *   • Disabled "Walcz" button when daily attempts are exhausted.
+ *   - Rewards / Log / Fight modal buttons open + close the popups.
+ *   - Disabled "Walcz" button when daily attempts are exhausted.
  *
  * We mock framer-motion (Arena does NOT import it directly, but the
  * Spinner / TinyIcon dependencies might) and stub characterApi so the

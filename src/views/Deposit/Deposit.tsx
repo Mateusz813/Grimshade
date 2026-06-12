@@ -13,12 +13,14 @@ import {
 } from '../../systems/itemSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import itemsRaw from '../../data/items.json';
 import './Deposit.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-// Mirrors the inventoryStore cap so Deposit → Bag never races past it.
+// Mirrors the inventoryStore cap so Deposit -> Bag never races past it.
 const MAX_BAG_SIZE = 1000;
 const MAX_DEPOSIT_SIZE = 10000;
 
@@ -46,21 +48,21 @@ type TSlotFilter =
 interface ISlotFilterDef { id: TSlotFilter; label: string; icon: string }
 
 const SLOT_FILTERS: ISlotFilterDef[] = [
-    { id: 'all',          label: 'Wszystkie',    icon: '🎒' },
-    { id: 'weapons',      label: 'Bronie',       icon: '⚔️' },
-    { id: 'armor-group',  label: 'Zbroja',       icon: '🛡️' },
-    { id: 'jewelry',      label: 'Biżuteria',    icon: '💍' },
-    { id: 'mainHand',     label: 'Główna',       icon: '⚔️' },
-    { id: 'offHand',      label: 'Pomocnicza',   icon: '🛡️' },
-    { id: 'helmet',       label: 'Hełm',         icon: '⛑️' },
-    { id: 'shoulders',    label: 'Naramienniki', icon: '🎖️' },
-    { id: 'armor',        label: 'Napierśnik',   icon: '🦺' },
-    { id: 'gloves',       label: 'Rękawice',     icon: '🧤' },
-    { id: 'pants',        label: 'Spodnie',      icon: '👖' },
-    { id: 'boots',        label: 'Buty',         icon: '👢' },
-    { id: 'necklace',     label: 'Naszyjnik',    icon: '📿' },
-    { id: 'earrings',     label: 'Kolczyki',     icon: '✨' },
-    { id: 'ring1',        label: 'Pierścienie',  icon: '💍' },
+    { id: 'all',          label: 'Wszystkie',    icon: 'backpack' },
+    { id: 'weapons',      label: 'Bronie',       icon: 'crossed-swords' },
+    { id: 'armor-group',  label: 'Zbroja',       icon: 'shield' },
+    { id: 'jewelry',      label: 'Biżuteria',    icon: 'ring' },
+    { id: 'mainHand',     label: 'Główna',       icon: 'crossed-swords' },
+    { id: 'offHand',      label: 'Pomocnicza',   icon: 'shield' },
+    { id: 'helmet',       label: 'Hełm',         icon: 'rescue-worker-s-helmet' },
+    { id: 'shoulders',    label: 'Naramienniki', icon: 'military-medal' },
+    { id: 'armor',        label: 'Napierśnik',   icon: 'safety-vest' },
+    { id: 'gloves',       label: 'Rękawice',     icon: 'gloves' },
+    { id: 'pants',        label: 'Spodnie',      icon: 'jeans' },
+    { id: 'boots',        label: 'Buty',         icon: 'woman-s-boot' },
+    { id: 'necklace',     label: 'Naszyjnik',    icon: 'prayer-beads' },
+    { id: 'earrings',     label: 'Kolczyki',     icon: 'sparkles' },
+    { id: 'ring1',        label: 'Pierścienie',  icon: 'ring' },
 ];
 
 const Deposit = () => {
@@ -137,7 +139,7 @@ const Deposit = () => {
                     {getDisplayName(item)}
                 </span>
                 <span className={`deposit__tile-action deposit__tile-action--${action}`}>
-                    {action === 'deposit' ? '↓ Wpłać' : '↑ Wypłać'}
+                    {action === 'deposit' ? <><Icon name="arrowDown" /> Wpłać</> : <><Icon name="arrowUp" /> Wypłać</>}
                 </span>
             </div>
         );
@@ -157,9 +159,9 @@ const Deposit = () => {
         <div className="deposit">
             <header className="deposit__header page-header">
                 <button className="deposit__back page-back-btn" onClick={() => navigate('/')}>
-                    ← Miasto
+                    <Icon name="arrowLeft" /> Miasto
                 </button>
-                <h1 className="deposit__title page-title">🏦 Depozyt</h1>
+                <h1 className="deposit__title page-title"><GameIcon name="bank" /> Depozyt</h1>
             </header>
             <p className="deposit__subtitle">
                 Przedmioty w depozycie nigdy nie zostaną utracone przy śmierci.
@@ -192,7 +194,7 @@ const Deposit = () => {
                             onClick={() => setSlotFilter(f.id)}
                             title={f.label}
                         >
-                            <span className="deposit__filter-icon">{f.icon}</span>
+                            <span className="deposit__filter-icon"><GameIcon name={f.icon} /></span>
                             <span className="deposit__filter-label">{f.label}</span>
                         </button>
                     ))}
@@ -203,7 +205,7 @@ const Deposit = () => {
                 {/* Bag panel */}
                 <section className="deposit__panel">
                     <div className="deposit__panel-header">
-                        <h2 className="deposit__panel-title">🎒 Plecak</h2>
+                        <h2 className="deposit__panel-title"><GameIcon name="backpack" /> Plecak</h2>
                         <span className="deposit__panel-count">
                             {bag.length} / {MAX_BAG_SIZE}
                         </span>
@@ -212,7 +214,7 @@ const Deposit = () => {
                             onClick={handleDepositAll}
                             disabled={filteredBag.length === 0 || deposit.length >= MAX_DEPOSIT_SIZE}
                         >
-                            ↓ Wpłać wszystkie
+                            <Icon name="arrowDown" /> Wpłać wszystkie
                         </button>
                     </div>
                     {filteredBag.length === 0 ? (
@@ -227,7 +229,7 @@ const Deposit = () => {
                 {/* Deposit panel */}
                 <section className="deposit__panel">
                     <div className="deposit__panel-header">
-                        <h2 className="deposit__panel-title">🏦 Depozyt</h2>
+                        <h2 className="deposit__panel-title"><GameIcon name="bank" /> Depozyt</h2>
                         <span className="deposit__panel-count">
                             {deposit.length} / {MAX_DEPOSIT_SIZE}
                         </span>
@@ -236,7 +238,7 @@ const Deposit = () => {
                             onClick={handleWithdrawAll}
                             disabled={filteredDeposit.length === 0 || bag.length >= MAX_BAG_SIZE}
                         >
-                            ↑ Wypłać wszystkie
+                            <Icon name="arrowUp" /> Wypłać wszystkie
                         </button>
                     </div>
                     {filteredDeposit.length === 0 ? (

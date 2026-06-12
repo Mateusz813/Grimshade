@@ -1,5 +1,5 @@
 /**
- * Atomic E2E — Death without AOL → items lost from bag via
+ * Atomic E2E — Death without AOL -> items lost from bag via
  * `applyDeathItemLoss(false)`.
  *
  * BACKLOG 13.20 extension. The sibling `real-death-applies-xp-penalty.spec.ts`
@@ -9,24 +9,24 @@
  * ## Contract (from `inventoryStore.ts` lines 526-565)
  *
  * `applyDeathItemLoss(protectedByAol)`:
- *   • Early return 0 if `protectedByAol === true` (AOL branch).
- *   • Builds pool of {bag items + equipped items} — deposit excluded.
- *   • If pool empty → return 0.
- *   • lossCount = max(1, floor(pool.length * 0.05)).
- *   • Shuffles pool with Math.random (Fisher-Yates), picks first
+ *   - Early return 0 if `protectedByAol === true` (AOL branch).
+ *   - Builds pool of {bag items + equipped items} — deposit excluded.
+ *   - If pool empty -> return 0.
+ *   - lossCount = max(1, floor(pool.length * 0.05)).
+ *   - Shuffles pool with Math.random (Fisher-Yates), picks first
  *     `lossCount` victims, removes them from bag / clears equip slots.
  *
- * ## Strategy: seed BIG bag → predictable loss count
+ * ## Strategy: seed BIG bag -> predictable loss count
  *
  * `Math.max(1, floor(N * 0.05))`:
- *   • N=1..19 → 1 item lost (Math.max kicks in).
- *   • N=20 → 1 item (20 * 0.05 = 1).
- *   • N=40 → 2 items.
+ *   - N=1..19 -> 1 item lost (Math.max kicks in).
+ *   - N=20 -> 1 item (20 * 0.05 = 1).
+ *   - N=40 -> 2 items.
  *
- * To get a DETERMINISTIC, multi-item loss we seed 20 items → exactly
+ * To get a DETERMINISTIC, multi-item loss we seed 20 items -> exactly
  * 1 victim lost (floor(20 * 0.05) = 1, ties Math.max). Why 20 over 1:
  * with a single item, the test technically passes if EITHER bag goes
- * 1→0 OR (regression) the engine no-ops; with 20 items, asserting
+ * 1->0 OR (regression) the engine no-ops; with 20 items, asserting
  * bagSize === 19 (or 18, etc.) gives more specific signal vs zero.
  *
  * We DON'T stub Math.random — we don't care WHICH item drops, only
@@ -39,30 +39,30 @@
  *  2. Seed 20 common items in the bag.
  *  3. Login + Town. Snapshot: bagSize=20.
  *  4. `triggerPlayerDeath(page)` — engine fires:
- *       • line 1396: useConsumable('amulet_of_loss') → FALSE
- *         (count=0) → `usedAol=false`.
- *       • line 1430: applyDeathItemLoss(false) — runs the loss path:
+ *       - line 1396: useConsumable('amulet_of_loss') -> FALSE
+ *         (count=0) -> `usedAol=false`.
+ *       - line 1430: applyDeathItemLoss(false) — runs the loss path:
  *           - pool = 20 (bag) + 0 (equipped) = 20.
  *           - lossCount = max(1, floor(20 * 0.05)) = max(1, 1) = 1.
  *           - 1 victim removed from bag.
- *       • Returns 1 → line 1434 log "💀 Stracileś 1 przedmiot(ow)…".
+ *       - Returns 1 -> line 1434 log ":skull: Stracileś 1 przedmiot(ow)…".
  *  5. Post-assert:
- *       • bagSize === 19 (exactly 1 lost).
- *       • The remaining 19 UUIDs are a SUBSET of the original 20
+ *       - bagSize === 19 (exactly 1 lost).
+ *       - The remaining 19 UUIDs are a SUBSET of the original 20
  *         (no items appeared from nowhere).
- *       • character.gold unchanged (death penalty doesn't touch gold,
+ *       - character.gold unchanged (death penalty doesn't touch gold,
  *         per spec — gold penalty would be a separate column).
- *       • level dropped 50 → 49 (penalty branch also fired — sanity
+ *       - level dropped 50 -> 49 (penalty branch also fired — sanity
  *         that we actually reached the death code path).
  *
  * ## What we DON'T verify (kept for separate tests)
  *
- *  • Equipment slot clearing — would need `seedEquippedItem` for
+ *  - Equipment slot clearing — would need `seedEquippedItem` for
  *    every slot + assertion that some equipment slot got nulled. The
  *    pool randomisation may pick a bag item, missing the equip branch
  *    in any single test run. Covered atomically in unit tests via
  *    `inventoryStore.test.ts` if anyone writes one.
- *  • WHICH specific item drops — Math.random-driven; not stable.
+ *  - WHICH specific item drops — Math.random-driven; not stable.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  *
@@ -83,7 +83,7 @@ import { triggerPlayerDeath, getCharacterSnapshot } from '../../fixtures/combatS
 test.describe('Combat › Death', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('Knight lvl 50 no protection + 20 bag items dies → exactly 1 item lost, gold unchanged, level drops', async ({ page }) => {
+    test('Knight lvl 50 no protection + 20 bag items dies -> exactly 1 item lost, gold unchanged, level drops', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -103,7 +103,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Seed 20 common bag items. Pool size 20 → lossCount=1
+            // 2. Seed 20 common bag items. Pool size 20 -> lossCount=1
             //    (deterministic from `max(1, floor(20*0.05))`).
             //
             //    We iterate a mix of common cheap items to avoid all-same
@@ -138,7 +138,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
                 gold: 100,
             });
 
-            // 3. Login → Town.
+            // 3. Login -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -171,8 +171,8 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             });
             expect(preUuids).toHaveLength(20);
 
-            // 5. Trigger death. No protection consumables → usedAol=false →
-            //    applyDeathItemLoss(false) runs the loss path → 1 item
+            // 5. Trigger death. No protection consumables -> usedAol=false ->
+            //    applyDeathItemLoss(false) runs the loss path -> 1 item
             //    removed from bag (pool=20, lossCount=max(1, floor(1.0))=1).
             await triggerPlayerDeath(page, 'rat');
 
@@ -180,7 +180,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             const after = await getCharacterSnapshot(page);
             expect(after).not.toBeNull();
 
-            // (a) Level dropped 50 → 49 — sanity that the death actually
+            // (a) Level dropped 50 -> 49 — sanity that the death actually
             //     ran (not a no-op). Without this check, a regression that
             //     made `triggerPlayerDeath` a no-op would silently pass
             //     "bagSize === 20" both before and after.

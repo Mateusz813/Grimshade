@@ -151,7 +151,7 @@ describe('buildPmChannel', () => {
     });
 
     it('sorts case-insensitively', () => {
-        // 'alice' < 'BOB' case-insensitively → alice first.
+        // 'alice' < 'BOB' case-insensitively -> alice first.
         expect(buildPmChannel('BOB', 'alice')).toBe('pm_alice_BOB');
     });
 

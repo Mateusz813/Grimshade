@@ -4,27 +4,27 @@
  * Spec (BACKLOG.md punkt 7.3): "Task: filtry działają" — 3 chip toggles
  * + "Lvl od…" input MUST narrow the list deterministically.
  *
- * Covered here (3 of 4 controls — the 4th, "✅ Dostępne taski", is gated
+ * Covered here (3 of 4 controls — the 4th, ":check-mark-button: Dostępne taski", is gated
  * on a multi-monster mastery cascade per `getMonsterUnlockStatus` in
  * `src/systems/progression.ts`. Without seeding mastery for every
  * prerequisite monster only the level-1 "Szczur" is unlocked at any
  * character level. That requires its own setup helper — left to a future
  * spec dedicated to the unlock cascade):
  *
- *   1. "Lvl od…" input (`.quests__lvl-filter`) → `monsterLevel >= N`
- *      (Quests.tsx line 977). Seed Knight + type "5" → every monster
+ *   1. "Lvl od…" input (`.quests__lvl-filter`) -> `monsterLevel >= N`
+ *      (Quests.tsx line 977). Seed Knight + type "5" -> every monster
  *      group of level <5 disappears (rat lvl1, cave_spider lvl2,
  *      green_slime lvl3, goblin lvl4 — see `tasks.json`). Level-5+
  *      groups stay.
  *
- *   2. "🛑 Nieaktywne taski" chip (`.quests__filter-chip`) → drops every
+ *   2. ":stop-sign: Nieaktywne taski" chip (`.quests__filter-chip`) -> drops every
  *      monster the player already has an active task on (Quests.tsx line
- *      994). Seed `rat_10` active → toggle the chip → "Szczur" group
+ *      994). Seed `rat_10` active -> toggle the chip -> "Szczur" group
  *      disappears.
  *
- *   3. "⬇ Sortuj od najwyższego lvl" chip → flips the sort order
+ *   3. ":down-arrow: Sortuj od najwyższego lvl" chip -> flips the sort order
  *      (Quests.tsx line 999). With "Lvl od…" pinned at 5 we get a small
- *      deterministic window. Toggle the desc chip → first monster card
+ *      deterministic window. Toggle the desc chip -> first monster card
  *      changes from low-level to high-level (the page slice flips end
  *      to start).
  *
@@ -86,7 +86,7 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
                 ],
             });
 
-            // 3. Login → select → navigate to /quests/tasks.
+            // 3. Login -> select -> navigate to /quests/tasks.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -110,8 +110,8 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             // Baseline meta — at least 1 active task because we seeded it.
             await expect(page.locator('.quests__sub-controls-meta')).toContainText('1 aktywne');
 
-            // ── ASSERTION 1: Lvl od filter ─────────────────────────────
-            // Type "5" → keep only monsterLevel >= 5. Rat (lvl 1), spider
+            // -- ASSERTION 1: Lvl od filter -----------------------------
+            // Type "5" -> keep only monsterLevel >= 5. Rat (lvl 1), spider
             // (lvl 2), slime (lvl 3), goblin (lvl 4) all drop. The rat
             // group MUST disappear entirely (count = 0).
             const lvlInput = page.locator('.quests__lvl-filter').first();
@@ -122,10 +122,10 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             await lvlInput.fill('');
             await expect(ratGroup).toBeVisible({ timeout: 5_000 });
 
-            // ── ASSERTION 2: Nieaktywne chip ───────────────────────────
-            // Toggle "🛑 Nieaktywne taski" → drops every monster the
+            // -- ASSERTION 2: Nieaktywne chip ---------------------------
+            // Toggle ":stop-sign: Nieaktywne taski" -> drops every monster the
             // player has an active task on. Rat is our only seeded
-            // active monster → its group MUST disappear.
+            // active monster -> its group MUST disappear.
             const inactiveChip = page.locator('.quests__filter-chip', {
                 hasText: /Nieaktywne/,
             });
@@ -138,10 +138,10 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             await expect(inactiveChip).not.toHaveClass(/quests__filter-chip--on/);
             await expect(ratGroup).toBeVisible({ timeout: 5_000 });
 
-            // ── ASSERTION 3: Sortuj desc chip ──────────────────────────
+            // -- ASSERTION 3: Sortuj desc chip --------------------------
             // Pin "Lvl od" to 5 so the list has a small deterministic
             // window (level 5..N monsters). Capture the FIRST group's
-            // monster name. Toggle "⬇ Sortuj od najwyższego lvl" → first
+            // monster name. Toggle ":down-arrow: Sortuj od najwyższego lvl" -> first
             // group MUST be a different name (it's now sorted desc =
             // highest-level first).
             await lvlInput.fill('5');
@@ -167,7 +167,7 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             await expect(sortChip).toHaveClass(/quests__filter-chip--on/);
 
             const descFirst = await firstGroupName();
-            // KRYTYCZNA ASERCJA: sort flipped → first monster name
+            // KRYTYCZNA ASERCJA: sort flipped -> first monster name
             // changed. (We don't assert exact level because tasks.json
             // can grow/shrink; we only assert order changed.)
             expect(descFirst).not.toEqual(ascFirst);

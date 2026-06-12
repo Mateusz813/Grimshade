@@ -8,10 +8,10 @@
  * happening — start fight, mob takes damage, mob dies, drop spawns,
  * character XP/level/gold update. Pure UI tap-attack-button-N-times
  * approach is:
- *   • Slow (each attack tick = 500-2000ms wall clock).
- *   • Fragile (timing depends on `attack_speed`, monster `speed`, RNG
+ *   - Slow (each attack tick = 500-2000ms wall clock).
+ *   - Fragile (timing depends on `attack_speed`, monster `speed`, RNG
  *     for crits / dodge / block; one bad seed and the test sticks).
- *   • Auto-fight + auto-cast + auto-potion side effects bleed into the
+ *   - Auto-fight + auto-cast + auto-potion side effects bleed into the
  *     measurement (every kill triggers a fresh `startNewFight` after the
  *     `AUTO_FIGHT_DELAY_MS` countdown).
  *
@@ -28,24 +28,24 @@
  *
  * That's the same code path the in-game SKIP button uses, so we're
  * exercising real production logic — not a test double. Result:
- *   • `combatStore.phase` flips `idle → fighting → victory` (or `dead`).
- *   • `combatStore.earnedXp` / `earnedGold` populated.
- *   • `combatStore.sessionKills[rarity]` incremented.
- *   • `combatStore.sessionLog` populated with kill / drop log lines.
- *   • `inventoryStore.gold` increased.
- *   • `inventoryStore.bag` has any dropped items appended.
- *   • `characterStore.xp` increased (or level bumped if XP threshold hit).
+ *   - `combatStore.phase` flips `idle -> fighting -> victory` (or `dead`).
+ *   - `combatStore.earnedXp` / `earnedGold` populated.
+ *   - `combatStore.sessionKills[rarity]` incremented.
+ *   - `combatStore.sessionLog` populated with kill / drop log lines.
+ *   - `inventoryStore.gold` increased.
+ *   - `inventoryStore.bag` has any dropped items appended.
+ *   - `characterStore.xp` increased (or level bumped if XP threshold hit).
  *
  * ## What we DON'T cover
  *
- * • Wave combat with multi-monster aggro (SKIP processes per-monster but
+ * - Wave combat with multi-monster aggro (SKIP processes per-monster but
  *   simpler than the live combat loop). For wave-aggro-specific tests
  *   (e.g. "spell retargets on ally kill") consider a different approach.
- * • Animations / particle effects — invisible to engine-driven tests.
- * • Real attack-speed cadence — SKIP collapses the entire fight into one
+ * - Animations / particle effects — invisible to engine-driven tests.
+ * - Real attack-speed cadence — SKIP collapses the entire fight into one
  *   tick. Use a different strategy if you need to assert "one log entry
  *   every `attack_speed` seconds".
- * • Multi-context party Realtime — each browser ctx has its own combat
+ * - Multi-context party Realtime — each browser ctx has its own combat
  *   engine; SKIP would resolve each independently, missing the broadcast
  *   path that's the whole point of party tests.
  *
@@ -53,7 +53,7 @@
  *
  *   1. Player must already be in the app with `characterStore.character`
  *      hydrated — i.e. logged in + character picked + Town view reached.
- *      Call `loginViaUI` + character-select tap → wait for Town BEFORE
+ *      Call `loginViaUI` + character-select tap -> wait for Town BEFORE
  *      navigating to `/combat`.
  *   2. The chosen monster's `level` must be ≤ character `level` (engine
  *      bails with a log line otherwise). For the easiest fast kill, use
@@ -72,10 +72,10 @@
  * for tasks, drops fill bag). All those mutations persist into
  * `game_saves` via the auto-save subscription. So:
  *
- *   • In-memory state — restored by the next page navigation (Combat.tsx
+ *   - In-memory state — restored by the next page navigation (Combat.tsx
  *     re-mount re-reads stores; new login = fresh hydration).
- *   • DB state — cleaned by `cleanupCharacterById(id)` in `finally` of
- *     each test (kills the character row → CASCADE deletes game_saves +
+ *   - DB state — cleaned by `cleanupCharacterById(id)` in `finally` of
+ *     each test (kills the character row -> CASCADE deletes game_saves +
  *     all character-scoped tables).
  *
  * ## Restoring the speed setting between tests
@@ -224,12 +224,12 @@ export const getCharacterSnapshot = async (page: Page): Promise<ICharacterSnapsh
  *
  * Returns the post-fight snapshot so the caller can chain assertions
  * without an extra `getCombatSnapshot` call. After return:
- *   • combatStore.phase === 'victory' (typical) or 'dead' (if monster
+ *   - combatStore.phase === 'victory' (typical) or 'dead' (if monster
  *     killed the player — only possible if you crank the monster level
  *     way above the char or seed the char with damaged HP).
- *   • All reward systems applied (xp / gold / drops / task / quest /
+ *   - All reward systems applied (xp / gold / drops / task / quest /
  *     mastery / daily quest).
- *   • Speed setting restored to its previous value.
+ *   - Speed setting restored to its previous value.
  *
  * @param page Playwright page with the app hydrated.
  * @param monsterId Monster id from `src/data/monsters.json` (e.g. 'rat').
@@ -359,8 +359,8 @@ export const runCombatViaSkip = async (
  *   3. Returns the resulting character + combat snapshot for asserts.
  *
  * Pre-conditions:
- *   • Character hydrated (`useCharacterStore.character !== null`).
- *   • NOT in a multi-human party (the party-leader / party-member gates
+ *   - Character hydrated (`useCharacterStore.character !== null`).
+ *   - NOT in a multi-human party (the party-leader / party-member gates
  *     in `handlePlayerDeath` would either show a popup or no-op for
  *     non-leaders). Solo characters skip both gates and run the full
  *     death flow.
@@ -493,21 +493,21 @@ export const forceSaveAfterCombat = async (page: Page): Promise<void> => {
  *     are populated (handleMonsterDeath bails at line 977 if no
  *     `s.monster`).
  *  2. `handleMonsterDeath(rarity)` — runs the production reward flow:
- *       • `dropLootToInventory` → `inventoryStore.addItem` for any drops
+ *       - `dropLootToInventory` -> `inventoryStore.addItem` for any drops
  *         + `inventoryStore.addGold` for the rolled gold.
- *       • `useCharacterStore.addXp(finalXp)` → may trigger level-up.
- *       • `taskStore.addKill`, `questStore.addProgress`, masteryStore +
+ *       - `useCharacterStore.addXp(finalXp)` -> may trigger level-up.
+ *       - `taskStore.addKill`, `questStore.addProgress`, masteryStore +
  *         dailyQuestStore progress.
- *       • `incrementSessionKill(rarity)`.
- *       • `saveCurrentCharacterStores` fire-and-forget (throttled).
+ *       - `incrementSessionKill(rarity)`.
+ *       - `saveCurrentCharacterStores` fire-and-forget (throttled).
  *  3. After return, every reward downstream of a real kill has applied.
  *
  * Rarity defaults to 'normal' — pass 'strong'/'epic'/'legendary'/'boss'
  * if you want to test rarity-multiplier paths.
  *
  * Pre-conditions:
- *   • Character hydrated.
- *   • NOT in a multi-human party (would early-return at line 1002 since
+ *   - Character hydrated.
+ *   - NOT in a multi-human party (would early-return at line 1002 since
  *     local member's `handleMonsterDeath` is broadcast-driven for
  *     non-leaders). Solo / single-bot party is fine.
  *

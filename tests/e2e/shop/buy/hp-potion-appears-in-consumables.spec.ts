@@ -5,12 +5,12 @@
  * pairs purchase with using the potion in combat, but combat setup
  * requires monster seeding + combat engine readiness — that's a
  * separate scenario. This test covers ONLY the purchase half:
- *  1. Open Shop → tap Potions tab.
+ *  1. Open Shop -> tap Potions tab.
  *  2. Tap "Kup" on the cheapest HP potion (Mały Eliksir HP, 30 gold).
  *  3. Toast confirms purchase.
  *  4. Card now shows "×1" owned badge.
  *  5. Gold decreased by 30.
- *  6. Inventory → Potions filter shows the potion stack.
+ *  6. Inventory -> Potions filter shows the potion stack.
  *
  * "Use in combat" is left for a separate test in `combat/potion/`
  * (item 13.x in BACKLOG.md) — coupling the purchase test to combat
@@ -18,10 +18,10 @@
  * use broken?").
  *
  * Why Mały Eliksir HP (`hp_potion_sm`):
- *   • Cheapest in the registry (30 gold), so 100k starting gold is
+ *   - Cheapest in the registry (30 gold), so 100k starting gold is
  *     overkill — never hits no_gold.
- *   • minLevel: 1 (no level gate, our Knight is Lv 1).
- *   • Deterministic name_pl ("Mały Eliksir HP") for selector.
+ *   - minLevel: 1 (no level gate, our Knight is Lv 1).
+ *   - Deterministic name_pl ("Mały Eliksir HP") for selector.
  *
  * Pattern mirrors `item-appears-in-inventory-and-deducts-gold.spec.ts`.
  * Cleanup: `cleanupCharacterById` in finally (also wipes game_save).
@@ -63,7 +63,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
                 gold: STARTING_GOLD,
             });
 
-            // Login → pick character → Town
+            // Login -> pick character -> Town
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -82,7 +82,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
 
             // Navigate to Shop via BottomNav (SPA — preserves stores).
             // page.goto('/shop') would full-reload and reset the character
-            // store → Shop stays on spinner. See sibling test
+            // store -> Shop stays on spinner. See sibling test
             // `item-appears-in-inventory-and-deducts-gold.spec.ts` for full
             // rationale.
             await page.getByRole('button', { name: /^Sklep$/i }).tap();
@@ -110,10 +110,10 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
             // Post-buy: card now shows "×1" owned badge.
             await expect(potionCard.locator('.shop__card-lvl-badge')).toHaveText('×1', { timeout: 5_000 });
 
-            // Gold decreased by 30 → 99,970.
+            // Gold decreased by 30 -> 99,970.
             await expect(goldBtn).toHaveAttribute('aria-label', /Złoto:\s*99[\s ]?970/, { timeout: 5_000 });
 
-            // Cross-check: tap Postać in BottomNav → /inventory and confirm
+            // Cross-check: tap Postać in BottomNav -> /inventory and confirm
             // the potion appears as a stack tile under the bag grid.
             await page.getByRole('button', { name: /^Postać$/i }).tap();
             await expect(page).toHaveURL(/\/inventory$/, { timeout: 10_000 });

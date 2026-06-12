@@ -103,5 +103,5 @@ describe('clearLevelUp', () => {
 
 // TODO: the banner component (LevelUpBanner / similar) subscribes via
 // `useLevelUpStore((s) => s.event)`. Component-level tests asserting that
-// trigger → banner appears + clear → banner unmounts belong in a Testing
+// trigger -> banner appears + clear -> banner unmounts belong in a Testing
 // Library suite for that view, not here.

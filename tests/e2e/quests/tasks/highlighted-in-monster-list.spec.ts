@@ -39,7 +39,7 @@
  *
  * ## Flow
  *
- *  1. Login → pick character → Town.
+ *  1. Login -> pick character -> Town.
  *  2. Navigate to /monsters.
  *  3. Find the Szczur card by `combat__mcard-name` text.
  *  4. Assert card has `combat__mcard--task` modifier.
@@ -48,7 +48,7 @@
  *     unlocked by default for Knight per progression.getMonsterUnlockStatus).
  *  7. Assert that OTHER card lacks `combat__mcard--task` modifier.
  *
- * ## Cleanup: try/finally → cleanupCharacterById.
+ * ## Cleanup: try/finally -> cleanupCharacterById.
  */
 
 import { test, expect } from '@playwright/test';
@@ -92,7 +92,7 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
                 }],
             });
 
-            // 3. Login → pick character → Town.
+            // 3. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

@@ -120,7 +120,7 @@
         z-index: 1;
     }
 
-    // ── Enhancement shimmer (+5/+7/+9/+12/+15/+20) ──────────────────────────
+    // -- Enhancement shimmer (+5/+7/+9/+12/+15/+20) --------------------------
     // Sits ABOVE the icon art (z-index 2 vs image's z-index 1) so the rotating
     // swoosh stays visible even when the underlying PNG has dark/opaque areas.
     // `mix-blend-mode: screen` means the transparent parts of the gradient

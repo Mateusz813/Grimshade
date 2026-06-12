@@ -10,7 +10,7 @@ import {
     type Rarity,
 } from '../systems/itemSystem';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 let uuidCounter = 0;
 const makeItem = (overrides: Partial<IInventoryItem> = {}): IInventoryItem => {
@@ -83,7 +83,7 @@ beforeEach(() => {
     useCharacterStore.setState({ character: null, isLoading: false });
 });
 
-// ── addItem / restoreItem ────────────────────────────────────────────────────
+// -- addItem / restoreItem ----------------------------------------------------
 
 describe('addItem', () => {
     it('appends item to the bag and returns true', () => {
@@ -131,7 +131,7 @@ describe('restoreItem', () => {
     });
 });
 
-// ── removeItem ───────────────────────────────────────────────────────────────
+// -- removeItem ---------------------------------------------------------------
 
 describe('removeItem', () => {
     it('removes the item with the given uuid', () => {
@@ -151,7 +151,7 @@ describe('removeItem', () => {
     });
 });
 
-// ── equipItem / unequipItem (HP / MP delta integration) ──────────────────────
+// -- equipItem / unequipItem (HP / MP delta integration) ----------------------
 
 describe('equipItem', () => {
     it('moves item from bag into the named slot', () => {
@@ -242,7 +242,7 @@ describe('unequipItem', () => {
     });
 });
 
-// ── sellItem / sellMultiple ──────────────────────────────────────────────────
+// -- sellItem / sellMultiple --------------------------------------------------
 
 describe('sellItem', () => {
     it('removes item from bag and adds gold', () => {
@@ -277,7 +277,7 @@ describe('sellMultiple', () => {
     });
 });
 
-// ── Gold ─────────────────────────────────────────────────────────────────────
+// -- Gold ---------------------------------------------------------------------
 
 describe('addGold', () => {
     it('adds the given amount', () => {
@@ -303,7 +303,7 @@ describe('spendGold', () => {
     });
 });
 
-// ── Stones ────────────────────────────────────────────────────────────────────
+// -- Stones --------------------------------------------------------------------
 
 describe('addStones / getStoneCount / useStones', () => {
     it('adds + reads stone count', () => {
@@ -376,7 +376,7 @@ describe('convertStones', () => {
     });
 });
 
-// ── Consumables ──────────────────────────────────────────────────────────────
+// -- Consumables --------------------------------------------------------------
 
 describe('addConsumable / useConsumable', () => {
     it('adds a consumable and uses one at a time', () => {
@@ -420,10 +420,10 @@ describe('addSpellChest / useSpellChests / getSpellChestCount', () => {
     });
 });
 
-// ── Deposit ──────────────────────────────────────────────────────────────────
+// -- Deposit ------------------------------------------------------------------
 
 describe('depositItem / withdrawItem', () => {
-    it('moves an item bag → deposit', () => {
+    it('moves an item bag -> deposit', () => {
         const item = makeItem();
         useInventoryStore.setState({ bag: [item] });
         const ok = useInventoryStore.getState().depositItem(item.uuid);
@@ -434,7 +434,7 @@ describe('depositItem / withdrawItem', () => {
         expect(s.deposit[0].uuid).toBe(item.uuid);
     });
 
-    it('moves an item deposit → bag', () => {
+    it('moves an item deposit -> bag', () => {
         const item = makeItem();
         useInventoryStore.setState({ deposit: [item] });
         const ok = useInventoryStore.getState().withdrawItem(item.uuid);
@@ -464,7 +464,7 @@ describe('depositItem / withdrawItem', () => {
     });
 });
 
-// ── Arena Points ─────────────────────────────────────────────────────────────
+// -- Arena Points -------------------------------------------------------------
 
 describe('addArenaPoints / spendArenaPoints', () => {
     it('adds arena points', () => {
@@ -490,7 +490,7 @@ describe('addArenaPoints / spendArenaPoints', () => {
     });
 });
 
-// ── Item upgrade / bonuses ───────────────────────────────────────────────────
+// -- Item upgrade / bonuses ---------------------------------------------------
 
 describe('upgradeItem', () => {
     it('bumps upgradeLevel on a bag item', () => {
@@ -534,7 +534,7 @@ describe('updateItemBonuses', () => {
     });
 });
 
-// ── Death loss ───────────────────────────────────────────────────────────────
+// -- Death loss ---------------------------------------------------------------
 
 describe('applyDeathItemLoss', () => {
     it('returns 0 and changes nothing when protected by AOL', () => {
@@ -557,7 +557,7 @@ describe('applyDeathItemLoss', () => {
     });
 });
 
-// ── Disassemble ──────────────────────────────────────────────────────────────
+// -- Disassemble --------------------------------------------------------------
 
 describe('disassembleMultiple', () => {
     it('removes the listed bag items from the bag', () => {

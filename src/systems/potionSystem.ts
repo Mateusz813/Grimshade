@@ -1,6 +1,6 @@
 import { ELIXIRS, type IElixir } from '../stores/shopStore';
 
-// ── Potion categorization ────────────────────────────────────────────────────
+// -- Potion categorization ----------------------------------------------------
 
 /** IDs of percentage-based HP potions (Great, Super, Ultimate, Divine). */
 export const PCT_HP_POTION_IDS = new Set([
@@ -44,7 +44,7 @@ export const isPctPotionId = (potionId: string): boolean =>
 export const isFlatPotionId = (potionId: string): boolean =>
   FLAT_HP_POTION_IDS.has(potionId) || FLAT_MP_POTION_IDS.has(potionId);
 
-// ── Cooldown durations ───────────────────────────────────────────────────────
+// -- Cooldown durations -------------------------------------------------------
 
 /** Cooldown for flat potions (ms) – 1 second. */
 export const FLAT_POTION_COOLDOWN_MS = 1000;
@@ -56,7 +56,7 @@ export const PCT_POTION_COOLDOWN_MS = 500;
 export const getPotionCooldownMs = (potionId: string): number =>
   isPctPotionId(potionId) ? PCT_POTION_COOLDOWN_MS : FLAT_POTION_COOLDOWN_MS;
 
-// ── Potion lists ─────────────────────────────────────────────────────────────
+// -- Potion lists -------------------------------------------------------------
 
 /** All HP potions from ELIXIRS. */
 export const ALL_HP_POTIONS: IElixir[] = ELIXIRS.filter((e) => e.effect.startsWith('heal_hp'));
@@ -76,7 +76,7 @@ export const PCT_HP_POTIONS: IElixir[] = ALL_HP_POTIONS.filter((e) => isPctPotio
 /** Percentage MP potions only. */
 export const PCT_MP_POTIONS: IElixir[] = ALL_MP_POTIONS.filter((e) => isPctPotion(e.effect));
 
-// ── Display helpers ──────────────────────────────────────────────────────────
+// -- Display helpers ----------------------------------------------------------
 
 /** Extract display label from potion effect string. */
 export const getPotionLabel = (effect: string): string => {

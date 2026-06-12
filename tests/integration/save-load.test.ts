@@ -1,18 +1,18 @@
 /**
- * Integration: characterScope save → reset → restore round-trip.
+ * Integration: characterScope save -> reset -> restore round-trip.
  *
  * The character-scope module owns persistence for 12+ gameplay stores.
  * Every store change debounces into a single JSON blob written to
  * `dungeon_rpg_save_char_<id>`; on character load the blob is replayed
  * back into the same store list. This file exercises the full
- * round-trip: populate every relevant store → flush → wipe → restore →
+ * round-trip: populate every relevant store -> flush -> wipe -> restore ->
  * verify the original values are back.
  *
  * The point is to catch regressions where someone adds a new store /
  * field but forgets to:
- *   • include it in STORE_ENTRIES' stateKeys list (won't be saved),
- *   • include it in defaults() (won't be reset properly), or
- *   • match keys between save / restore.
+ *   - include it in STORE_ENTRIES' stateKeys list (won't be saved),
+ *   - include it in defaults() (won't be reset properly), or
+ *   - match keys between save / restore.
  *
  * We use `saveCurrentCharacterStoresSync` (the localStorage-only path
  * used by `beforeunload`) + `restoreFromLocalStorageSync` because both
@@ -34,7 +34,7 @@ import { useQuestStore } from '../../src/stores/questStore';
 import { useMasteryStore } from '../../src/stores/masteryStore';
 import { EMPTY_EQUIPMENT, buildItem } from '../../src/systems/itemSystem';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const CHAR_ID = 'char-roundtrip-1';
 
@@ -202,9 +202,9 @@ const captureSnapshot = (swordUuid: string) => ({
     masteryKills: { ...useMasteryStore.getState().masteryKills },
 });
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
-describe('characterScope: save → restore round-trip preserves state', () => {
+describe('characterScope: save -> restore round-trip preserves state', () => {
     it('restores inventory (bag, gold, consumables, stones)', async () => {
         const { sword } = await fullStateRoundTrip();
         const inv = useInventoryStore.getState();

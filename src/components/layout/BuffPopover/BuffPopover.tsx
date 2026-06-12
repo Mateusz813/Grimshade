@@ -5,6 +5,7 @@ import { useCombatStore } from '../../../stores/combatStore';
 import { useInventoryStore } from '../../../stores/inventoryStore';
 import { getElixirImage } from '../../../systems/spriteAssets';
 import TinyIcon from '../../ui/TinyIcon/TinyIcon';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './BuffPopover.scss';
 
 interface IBuffPopoverProps {
@@ -31,7 +32,7 @@ const formatTimeLeft = (ms: number): string => {
 
 /**
  * Popup that lists every active buff for the current character with a live
- * countdown. Pausable buffs (e.g. elixirs that only tick in combat) show a ⏸
+ * countdown. Pausable buffs (e.g. elixirs that only tick in combat) show a :pause-button:
  * indicator when combat is idle.
  *
  * Also surfaces the passive death-protection counters (Amulet of Loss, Death
@@ -106,7 +107,7 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
           {deathProtCount > 0 && (
             <li className="buff-popover__row buff-popover__row--protection">
               <span className="buff-popover__row-icon">
-                <TinyIcon icon={getElixirImage('death_protection') ?? '🛡️'} size="md" />
+                <TinyIcon icon={getElixirImage('death_protection') ?? 'shield'} size="md" />
               </span>
               <span className="buff-popover__row-name">Eliksir ochrony</span>
               <span className="buff-popover__row-time">×{deathProtCount}</span>
@@ -115,7 +116,7 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
           {aolCount > 0 && (
             <li className="buff-popover__row buff-popover__row--protection">
               <span className="buff-popover__row-icon">
-                <TinyIcon icon={getElixirImage('amulet_of_loss') ?? '🔱'} size="md" />
+                <TinyIcon icon={getElixirImage('amulet_of_loss') ?? 'trident-emblem'} size="md" />
               </span>
               <span className="buff-popover__row-name">Amulet of Loss</span>
               <span className="buff-popover__row-time">×{aolCount}</span>
@@ -141,7 +142,7 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
                 <span className="buff-popover__row-time">
                   {isCharge
                     ? `×${buff.charges}${buff.maxCharges ? ` / ${buff.maxCharges}` : ''}`
-                    : (isPaused ? `⏸ ${formatTimeLeft(remaining)}` : formatTimeLeft(remaining))}
+                    : (isPaused ? <><GameIcon name="pause-button" /> {formatTimeLeft(remaining)}</> : formatTimeLeft(remaining))}
                 </span>
               </li>
             );

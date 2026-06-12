@@ -14,11 +14,11 @@
  *
  * Setup: Knight lvl 12 (above minLevel=10 of both seeded quests).
  * Quests picked:
- *   • `quest_first_steps`  (Pierwsze Kroki) — kill rat ×50 + goblin ×20
- *   • `quest_undead_hunter` (Lowca Nieumarych) — kill skeleton ×30 +
+ *   - `quest_first_steps`  (Pierwsze Kroki) — kill rat ×50 + goblin ×20
+ *   - `quest_undead_hunter` (Lowca Nieumarych) — kill skeleton ×30 +
  *     zombie ×30
  * Both seeded with progress=0 so neither lights up the claim button
- * (canClaim=false → action row stays in the "Porzuć" state, which is
+ * (canClaim=false -> action row stays in the "Porzuć" state, which is
  * irrelevant for the test but keeps the UI in the cleanest assertion
  * surface — no claim modal popping during the test run).
  *
@@ -84,7 +84,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
                 ],
             });
 
-            // 3. Login → select character → /quests → tap Questy hub tile.
+            // 3. Login -> select character -> /quests -> tap Questy hub tile.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

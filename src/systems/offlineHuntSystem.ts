@@ -73,7 +73,7 @@ export interface IOfflineHuntPreview {
 
 /** Aggregated detailed reward result (claim only). */
 export interface IOfflineHuntClaimResult {
-    // ─── Basic numbers ────────────────────────────────────────────────
+    // --- Basic numbers ------------------------------------------------
     elapsedSeconds: number;
     cappedSeconds: number;
     kills: number;
@@ -84,7 +84,7 @@ export interface IOfflineHuntClaimResult {
     monster: IMonster;
     speedMultiplier: number;
 
-    // ─── Level progression (player) ───────────────────────────────────
+    // --- Level progression (player) -----------------------------------
     levelBefore: number;
     levelAfter: number;
     levelsGained: number;
@@ -94,23 +94,23 @@ export interface IOfflineHuntClaimResult {
     xpProgressAfter: number;
     xpNeededAfter: number;
 
-    // ─── Skill progression ────────────────────────────────────────────
+    // --- Skill progression --------------------------------------------
     skillLevelBefore: number;
     skillLevelAfter: number;
     skillLevelsGained: number;
     skillXpPctOfLevel: number;
 
-    // ─── Kills by rarity ──────────────────────────────────────────────
+    // --- Kills by rarity ----------------------------------------------
     killsByRarity: Record<TMonsterRarity, number>;
 
-    // ─── Drops (aggregated) ───────────────────────────────────────────
+    // --- Drops (aggregated) -------------------------------------------
     /** Equipment drops: one entry per rarity+level+slot group with count. */
     itemDrops: IOfflineItemDropSummary[];
-    /** Potion drops: potionId → count. */
+    /** Potion drops: potionId -> count. */
     potionDrops: Record<string, number>;
-    /** Spell chest drops: chestLevel → count. */
+    /** Spell chest drops: chestLevel -> count. */
     spellChestDrops: Record<number, number>;
-    /** Stone drops: stoneType → count (includes base stones + gained stones). */
+    /** Stone drops: stoneType -> count (includes base stones + gained stones). */
     stoneDrops: Record<string, number>;
 }
 
@@ -122,7 +122,7 @@ export interface IOfflineItemDropSummary {
     count: number;
 }
 
-// ── Preview (read-only, no randomness) ───────────────────────────────────────
+// -- Preview (read-only, no randomness) ---------------------------------------
 
 /**
  * Preview how many kills / rewards would be earned right now.
@@ -185,7 +185,7 @@ export const previewOfflineHunt = (): IOfflineHuntPreview | null => {
     };
 };
 
-// ── Helper: bulk-roll rarity distribution for N kills ────────────────────────
+// -- Helper: bulk-roll rarity distribution for N kills ------------------------
 // Rolling rollMonsterRarity() N times for N up to ~43k (12h @ 1 kill/s) is
 // perfectly fine performance-wise, but we want per-kill variance so stronger
 // monsters can produce their own rarity-scaled loot rolls.
@@ -198,7 +198,7 @@ const emptyKillsByRarity = (): Record<TMonsterRarity, number> => ({
     boss: 0,
 });
 
-// ── Claim (randomized, mutates stores) ───────────────────────────────────────
+// -- Claim (randomized, mutates stores) ---------------------------------------
 
 /**
  * Claim the current offline hunt: roll per-kill drops + rarity, apply all
@@ -225,7 +225,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const bStore = useBuffStore.getState();
     const xpMult = bStore.getBuffMultiplier('xp_boost') * bStore.getBuffMultiplier('premium_xp_boost');
 
-    // ── Roll per-kill rarity + drops ─────────────────────────────────────────
+    // -- Roll per-kill rarity + drops -----------------------------------------
     const killsByRarity = emptyKillsByRarity();
     const itemsByKey = new Map<string, IOfflineItemDropSummary>();
     const potionDrops: Record<string, number> = {};
@@ -295,7 +295,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
         }
     }
 
-    // ── Grant player XP (captures level-ups + fires epic LevelUpNotification) ─
+    // -- Grant player XP (captures level-ups + fires epic LevelUpNotification) -
     const charBefore = useCharacterStore.getState().character;
     const levelBefore = charBefore?.level ?? 1;
     const xpNeededAtStart = xpToNextLevel(levelBefore);
@@ -306,10 +306,10 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const xpNeededAfter = charAfter?.xp_to_next ?? xpToNextLevel(levelAfter);
     const xpPctOfLevel = xpNeededAtStart > 0 ? (totalXp / xpNeededAtStart) * 100 : 0;
 
-    // ── Grant gold ───────────────────────────────────────────────────────────
+    // -- Grant gold -----------------------------------------------------------
     useInventoryStore.getState().addGold(totalGold);
 
-    // ── Grant items to inventory ─────────────────────────────────────────────
+    // -- Grant items to inventory ---------------------------------------------
     // generatedItems are already full IInventoryItem objects from
     // generateRandomItem() — pass them straight to addItem.
     const invStore = useInventoryStore.getState();
@@ -317,22 +317,22 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
         invStore.addItem(item);
     }
 
-    // ── Grant potions (consumables) ──────────────────────────────────────────
+    // -- Grant potions (consumables) ------------------------------------------
     for (const [potionId, count] of Object.entries(potionDrops)) {
         invStore.addConsumable(potionId, count);
     }
 
-    // ── Grant spell chests (consumables keyed by level) ──────────────────────
+    // -- Grant spell chests (consumables keyed by level) ----------------------
     for (const [levelStr, count] of Object.entries(spellChestDrops)) {
         invStore.addConsumable(`spell_chest_${levelStr}`, count);
     }
 
-    // ── Grant stones ─────────────────────────────────────────────────────────
+    // -- Grant stones ---------------------------------------------------------
     for (const [stoneType, count] of Object.entries(stoneDrops)) {
         invStore.addStones(stoneType, count);
     }
 
-    // ── Skill XP ─────────────────────────────────────────────────────────────
+    // -- Skill XP -------------------------------------------------------------
     const skillLevelBefore = useSkillStore.getState().skillLevels[preview.skillId] ?? 0;
     const skillXpBeforeNeeded = skillXpToNextLevel(skillLevelBefore);
     useSkillStore.getState().addSkillXp(preview.skillId, preview.skillXpGained);
@@ -340,7 +340,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const skillLevelsGained = Math.max(0, skillLevelAfter - skillLevelBefore);
     const skillXpPctOfLevel = skillXpBeforeNeeded > 0 ? (preview.skillXpGained / skillXpBeforeNeeded) * 100 : 0;
 
-    // ── Task / quest / daily / mastery progress (rarity-weighted) ────────────
+    // -- Task / quest / daily / mastery progress (rarity-weighted) ------------
     // Weighted by rarity — matches live combat handleMonsterDeath() which
     // applies MONSTER_RARITY_TASK_KILLS[rarity] per kill. Raw kills would
     // drastically undercount tasks AND mastery for high-rarity hunts.
@@ -363,7 +363,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     useDailyQuestStore.getState().addProgress('kill_any', weightedTaskKills);
     useDailyQuestStore.getState().addProgress('earn_gold', totalGold);
 
-    // ── Stop the hunt ────────────────────────────────────────────────────────
+    // -- Stop the hunt --------------------------------------------------------
     useOfflineHuntStore.getState().stopHunt();
 
     return {

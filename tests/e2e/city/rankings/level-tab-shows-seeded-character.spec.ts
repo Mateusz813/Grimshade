@@ -1,8 +1,8 @@
 /**
  * Atomic E2E — `/leaderboard` LVL tab pokazuje naszą seedowaną postać.
  *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria (test akcja → ranking
- * się aktualizuje → cleanup postaci → ranking się czyści)". Pełny
+ * Spec (BACKLOG 5.11): "Rankingi: każda kategoria (test akcja -> ranking
+ * się aktualizuje -> cleanup postaci -> ranking się czyści)". Pełny
  * E×N wariant (każda z 30+ kategorii: MLVL / Sword / Dagger / HP /
  * Crit / Arena / Gildie / Śmierci / Mastery / Daily / etc.) zostawiony
  * do kolejnej sesji. Ten test pokrywa SAM flow:
@@ -13,7 +13,7 @@
  * **Defensive seeding**: production / local DB ma realnych graczy,
  * leaderboard top-100. Żeby NASZA postać GWARANTOWANIE wpadła w top-100
  * LVL, seedujemy `level=500` — wystarczy nadlecieć każdego realnego
- * gracza w tej fazie projektu. Po teście cleanup usuwa postać →
+ * gracza w tej fazie projektu. Po teście cleanup usuwa postać ->
  * leaderboard wraca do stanu pre-test (Leaderboard.tsx czyta z
  * `characters` table direct, delete = entry znika).
  *

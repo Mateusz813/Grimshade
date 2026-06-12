@@ -11,7 +11,7 @@ import skillsData from '../data/skills.json';
  *
  * Note: `triggerEnemySkillAnim` / `triggerAllySkillAnim` resolve the
  * animation through `getSkillAnimation`. Unknown skill IDs return
- * undefined → the hook silently no-ops, so we use real skill IDs
+ * undefined -> the hook silently no-ops, so we use real skill IDs
  * (e.g. `fireball`) for those tests.
  */
 
@@ -192,13 +192,13 @@ describe('useCombatFx — reset helpers', () => {
     });
 });
 
-// ── #14 — EXHAUSTIVE: every skill renders on own + ally screen ───────────────
+// -- #14 — EXHAUSTIVE: every skill renders on own + ally screen ---------------
 //
 // The data-completeness guard lives in `src/data/skillVisualMatrix.test.ts`
 // (every skill resolves to valid anim + icon). This proves the actual render
 // PRIMITIVE both combat-view screens use:
-//   • triggerEnemySkillAnim → MY cast painted on the target card = MY screen
-//   • triggerAllySkillAnim  → an ally's cast painted on the ally card = the
+//   - triggerEnemySkillAnim -> MY cast painted on the target card = MY screen
+//   - triggerAllySkillAnim  -> an ally's cast painted on the ally card = the
 //                             ally-screen path (same data the Realtime
 //                             broadcast drives in a real party)
 // Looping all 105 active skills through both proves none silently no-ops

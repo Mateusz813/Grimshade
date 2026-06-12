@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ICharacter } from './characterStore';
 import type { IShopItem } from './shopStore';
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
+// -- Hoisted mocks ------------------------------------------------------------
 // shopStore.buyShopItem / buyElixir call into a number of game systems
 // (inventoryStore, itemGenerator). Mock each so tests focus on the
 // store's own gold / daily-cap / refund logic without depending on real
@@ -90,7 +90,7 @@ vi.mock('../systems/dailyQuestSystem', async () => {
 import { useShopStore, ELIXIRS, type IElixir, generateShopItems, buyArenaItem } from './shopStore';
 import { getTodayKey } from '../systems/dailyQuestSystem';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -124,7 +124,7 @@ const makeShopItem = (overrides: Partial<IShopItem> = {}): IShopItem => ({
     id: 'shop_sword_1_common',
     name_pl: 'Miecz',
     name_en: 'Sword',
-    icon: '⚔️',
+    icon: 'crossed-swords',
     slot: 'mainHand',
     type: 'sword',
     rarity: 'common',
@@ -168,7 +168,7 @@ beforeEach(() => {
     });
 });
 
-// ── Initial state ───────────────────────────────────────────────────────────
+// -- Initial state -----------------------------------------------------------
 
 describe('shopStore — initial state', () => {
     it('has no last notification', () => {
@@ -181,7 +181,7 @@ describe('shopStore — initial state', () => {
     });
 });
 
-// ── clearNotification ───────────────────────────────────────────────────────
+// -- clearNotification -------------------------------------------------------
 
 describe('clearNotification', () => {
     it('clears any pending lastNotification', () => {
@@ -191,7 +191,7 @@ describe('clearNotification', () => {
     });
 });
 
-// ── getDailyPurchased ───────────────────────────────────────────────────────
+// -- getDailyPurchased -------------------------------------------------------
 
 describe('getDailyPurchased', () => {
     it('returns 0 for an unused capped id today', () => {
@@ -220,7 +220,7 @@ describe('getDailyPurchased', () => {
     });
 });
 
-// ── getDailyRemaining ───────────────────────────────────────────────────────
+// -- getDailyRemaining -------------------------------------------------------
 
 describe('getDailyRemaining', () => {
     it('returns +Infinity for non-capped ids', () => {
@@ -248,7 +248,7 @@ describe('getDailyRemaining', () => {
     });
 });
 
-// ── buyShopItem ─────────────────────────────────────────────────────────────
+// -- buyShopItem -------------------------------------------------------------
 
 describe('buyShopItem', () => {
     it('returns no_gold when the player cannot afford it', () => {
@@ -306,7 +306,7 @@ describe('buyShopItem', () => {
     });
 });
 
-// ── buyElixir ───────────────────────────────────────────────────────────────
+// -- buyElixir ---------------------------------------------------------------
 
 describe('buyElixir', () => {
     it('rejects when character level is below the elixir minLevel', () => {
@@ -367,7 +367,7 @@ describe('buyElixir', () => {
     it('increments daily counter only for capped elixirs', () => {
         invState.gold = 999_999_999;
         useShopStore.getState().buyElixir(findElixir('hp_potion_sm'), makeCharacter());
-        // hp_potion_sm is NOT capped → counter untouched.
+        // hp_potion_sm is NOT capped -> counter untouched.
         expect(useShopStore.getState().dailyPurchases['hp_potion_sm']).toBeUndefined();
 
         useShopStore.getState().buyElixir(findElixir('boss_reset'), makeCharacter());
@@ -388,7 +388,7 @@ describe('buyElixir', () => {
     });
 });
 
-// ── generateShopItems (pure helper) ─────────────────────────────────────────
+// -- generateShopItems (pure helper) -----------------------------------------
 
 describe('generateShopItems', () => {
     it('returns at least the weapon entry for a known class', () => {
@@ -407,7 +407,7 @@ describe('generateShopItems', () => {
     });
 
     it('returns an empty list when the class is unknown', () => {
-        // Unknown class has no CLASS_WEAPON_TYPES entry → still returns
+        // Unknown class has no CLASS_WEAPON_TYPES entry -> still returns
         // array, but with no weapon/offhand/armor entries (might still
         // hit accessories which iterate templates regardless).
         const items = generateShopItems('NoSuchClass', 5);
@@ -416,13 +416,13 @@ describe('generateShopItems', () => {
     });
 });
 
-// ── buyArenaItem ─────────────────────────────────────────────────────────────
+// -- buyArenaItem -------------------------------------------------------------
 
 describe('buyArenaItem', () => {
     it('rejects when arena points are insufficient', () => {
         invState.arenaPoints = 10;
         const r = buyArenaItem(
-            { id: 'arena_stone_common', name_pl: 'X', description_pl: '', icon: '⚪', apPrice: 50, kind: 'stone', payloadId: 'common_stone' },
+            { id: 'arena_stone_common', name_pl: 'X', description_pl: '', icon: 'white-circle', apPrice: 50, kind: 'stone', payloadId: 'common_stone' },
             10,
         );
         expect(r).toBe('no_gold');
@@ -432,7 +432,7 @@ describe('buyArenaItem', () => {
     it('adds a stone after spending arena points', () => {
         invState.arenaPoints = 100;
         const r = buyArenaItem(
-            { id: 'arena_stone_common', name_pl: 'X', description_pl: '', icon: '⚪', apPrice: 50, kind: 'stone', payloadId: 'common_stone' },
+            { id: 'arena_stone_common', name_pl: 'X', description_pl: '', icon: 'white-circle', apPrice: 50, kind: 'stone', payloadId: 'common_stone' },
             10,
         );
         expect(r).toBe('ok');
@@ -443,7 +443,7 @@ describe('buyArenaItem', () => {
     it('adds a consumable for kind=potion / elixir', () => {
         invState.arenaPoints = 1000;
         buyArenaItem(
-            { id: 'arena_hp_25', name_pl: 'X', description_pl: '', icon: '❤️', apPrice: 300, kind: 'potion', payloadId: 'hp_potion_great' },
+            { id: 'arena_hp_25', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 300, kind: 'potion', payloadId: 'hp_potion_great' },
             10,
         );
         expect(addConsumableMock).toHaveBeenCalledWith('hp_potion_great', 1);
@@ -451,7 +451,7 @@ describe('buyArenaItem', () => {
 
     it('scales price with level for mythic weapons', () => {
         invState.arenaPoints = 100_000;
-        const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: '⚔️', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
+        const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: 'crossed-swords', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
         buyArenaItem(item, 50, 'Knight');
         // 1000 × 50 = 50 000 AP spent.
         expect(spendArenaPointsMock).toHaveBeenCalledWith(50_000);
@@ -460,7 +460,7 @@ describe('buyArenaItem', () => {
     it('refunds AP when generator returns null on a mythic purchase', () => {
         invState.arenaPoints = 100_000;
         generateWeaponMock.mockReturnValueOnce(null);
-        const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: '⚔️', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
+        const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: 'crossed-swords', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
         const r = buyArenaItem(item, 50, 'Knight');
         expect(r).toBe('bag_full');
         expect(addArenaPointsMock).toHaveBeenCalled();
@@ -469,7 +469,7 @@ describe('buyArenaItem', () => {
     it('refunds AP when bag is full on a mythic purchase', () => {
         invState.arenaPoints = 100_000;
         addItemMock.mockReturnValueOnce(false);
-        const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: '⚔️', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
+        const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: 'crossed-swords', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
         const r = buyArenaItem(item, 50, 'Knight');
         expect(r).toBe('bag_full');
         expect(addArenaPointsMock).toHaveBeenCalled();

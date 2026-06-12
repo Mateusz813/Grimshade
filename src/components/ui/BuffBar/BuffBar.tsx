@@ -5,6 +5,8 @@ import { useCombatStore } from '../../../stores/combatStore';
 import { useInventoryStore } from '../../../stores/inventoryStore';
 import { getElixirImage } from '../../../systems/spriteAssets';
 import TinyIcon from '../TinyIcon/TinyIcon';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import Icon from '../../atoms/Icon/Icon';
 import './BuffBar.scss';
 
 /** Routes where no character is active – never show buffs/protections here. */
@@ -80,7 +82,7 @@ const BuffBar = () => {
                 onClick={() => setCollapsed((c) => !c)}
                 title={collapsed ? 'Pokaż buffy' : 'Schowaj buffy'}
             >
-                {collapsed ? `✦ ${totalCount}` : '✕'}
+                {collapsed ? <><GameIcon name="sparkles" /> {totalCount}</> : <Icon name="x" />}
             </button>
 
             {!collapsed && (
@@ -88,7 +90,7 @@ const BuffBar = () => {
                     {deathProtCount > 0 && (
                         <div className="buff-bar__pill buff-bar__pill--protection" title="Eliksir Ochrony – chroni przed utratą poziomu i przedmiotów przy następnej śmierci">
                             <span className="buff-bar__icon">
-                                <TinyIcon icon={getElixirImage('death_protection') ?? '🛡️'} size="sm" />
+                                <TinyIcon icon={getElixirImage('death_protection') ?? 'shield'} size="sm" />
                             </span>
                             <span className="buff-bar__name">Ochrona</span>
                             <span className="buff-bar__time">×{deathProtCount}</span>
@@ -97,7 +99,7 @@ const BuffBar = () => {
                     {aolCount > 0 && (
                         <div className="buff-bar__pill buff-bar__pill--protection" title="Amulet of Loss – chroni przedmioty przy następnej śmierci">
                             <span className="buff-bar__icon">
-                                <TinyIcon icon={getElixirImage('amulet_of_loss') ?? '🔱'} size="sm" />
+                                <TinyIcon icon={getElixirImage('amulet_of_loss') ?? 'trident-emblem'} size="sm" />
                             </span>
                             <span className="buff-bar__name">AOL</span>
                             <span className="buff-bar__time">×{aolCount}</span>
@@ -108,7 +110,7 @@ const BuffBar = () => {
                         const isGame = buff.timerMode === 'game';
                         const isPausable = buff.timerMode === 'pausable';
                         // Game-time buffs render their gameMsRemaining
-                        // (always shows in-game seconds, e.g. 20s → 0s
+                        // (always shows in-game seconds, e.g. 20s -> 0s
                         // regardless of speed). The actual rate is set
                         // by tickGameTimeBuffs in combat views.
                         const remaining = isGame
@@ -124,7 +126,7 @@ const BuffBar = () => {
                                 <span className="buff-bar__time">
                                     {isCharge
                                         ? `×${buff.charges}${buff.maxCharges ? ` / ${buff.maxCharges}` : ''}`
-                                        : (isPaused ? `⏸ ${formatTimeLeft(remaining)}` : formatTimeLeft(remaining))}
+                                        : (isPaused ? <><GameIcon name="pause-button" /> {formatTimeLeft(remaining)}</> : formatTimeLeft(remaining))}
                                 </span>
                             </div>
                         );

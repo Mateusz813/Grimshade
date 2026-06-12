@@ -2,8 +2,8 @@
  * Skill manual cast — integration tests for `huntApplySkillEffectV2`.
  *
  * Covers BACKLOG.md 12.3 ("Skill manual cast"). The manual cast path
- * lives in Combat.tsx → `doUseSkill` → `huntApplySkillEffectV2` (engine);
- * the auto-cast path lives in `doPlayerAttackTick` → same engine fn. Both
+ * lives in Combat.tsx -> `doUseSkill` -> `huntApplySkillEffectV2` (engine);
+ * the auto-cast path lives in `doPlayerAttackTick` -> same engine fn. Both
  * funnel through `huntApplySkillEffectV2` which is the single integration
  * surface tested here.
  *
@@ -11,35 +11,35 @@
  *   1. **Damage skill** (`shield_bash` — Knight tier-1, 1.5× weapon dmg +
  *      stun:3000 effect) — calling `huntApplySkillEffectV2('shield_bash', 0)`
  *      directly (mimicking what Combat.tsx does on user tap):
- *        • Returns a non-null `IApplyResult` (cast was not refused).
- *        • The active wave monster's effect-session status has `stunMs ≥ 3000`
- *          (stun atom applied via `castSkill` → `applyEffects`).
- *        • Result flag `stunApplied === true`.
- *        • Result `aoe === false` (single-target cast, no AOE atom in effect).
- *        • Result `castDmgMult ≈ 1` (no `dmg_amp_next`-style multiplier
+ *        - Returns a non-null `IApplyResult` (cast was not refused).
+ *        - The active wave monster's effect-session status has `stunMs ≥ 3000`
+ *          (stun atom applied via `castSkill` -> `applyEffects`).
+ *        - Result flag `stunApplied === true`.
+ *        - Result `aoe === false` (single-target cast, no AOE atom in effect).
+ *        - Result `castDmgMult ≈ 1` (no `dmg_amp_next`-style multiplier
  *          in `stun:3000`; baseline damage path).
  *
  *   2. **Buff/self-buff skill** (`berserker_rage` — Knight,
  *      `attack_up:50:6000` effect) — verifies the buff lands on the caster's
  *      effect-session status:
- *        • Returns non-null result.
- *        • Caster status `atkBuffPct === 50` + `atkBuffMs === 6000` (the
+ *        - Returns non-null result.
+ *        - Caster status `atkBuffPct === 50` + `atkBuffMs === 6000` (the
  *          atom translated to the status mutation `applyEffects` performs).
- *        • Result `aoe === false`, `stunApplied === false` (it's a pure buff).
+ *        - Result `aoe === false`, `stunApplied === false` (it's a pure buff).
  *
  *   3. **Party buff** (`battle_cry` — Knight, `party_attack_up:20:5000`
  *      effect, ALL ally bots get the buff) — verifies buff propagation:
- *        • Returns non-null result.
- *        • All ally bots in `useBotStore.bots` (we seed 2 bots) get
+ *        - Returns non-null result.
+ *        - All ally bots in `useBotStore.bots` (we seed 2 bots) get
  *          their `atkBuffPct === 20` + `atkBuffMs === 5000` via the
  *          shared session (`huntApplySkillEffectV2` passes
  *          `allyIds = [HUNT_PLAYER_FX_ID, ...aliveBotIds]` to `castSkill`).
- *        • Player's own status also got the buff (`allyIds[0]` is the player).
+ *        - Player's own status also got the buff (`allyIds[0]` is the player).
  *
  *   4. **Refused cast — no alive monster** (regression guard) —
  *      `huntApplySkillEffectV2('shield_bash', 0)` with all wave monsters
  *      `isDead=true` returns `null` (the "spell wasted on a corpse" guard
- *      from line 372: `findIndex !alive → -1 → return null`).
+ *      from line 372: `findIndex !alive -> -1 -> return null`).
  *
  *   5. **Refused cast — caster dead** (regression guard) — when
  *      `character.hp = 0`, the engine refuses to cast (line 362). This
@@ -56,7 +56,7 @@
  *   on real stores.
  *
  * Why not E2E:
- *   The full Combat.tsx → doUseSkill chain involves DOM tap events,
+ *   The full Combat.tsx -> doUseSkill chain involves DOM tap events,
  *   action-bar render, skill animation overlay, and HP bar updates —
  *   all of which would need a full hunt-flow E2E (and is partially
  *   covered by `skills/animations/solo-trainer-per-class.spec.ts`).
@@ -86,7 +86,7 @@ import { useCooldownStore } from '../stores/cooldownStore';
 import type { ICharacter } from '../api/v1/characterApi';
 import type { IMonster } from '../types/monster';
 
-// ── Fixtures ────────────────────────────────────────────────────────────────
+// -- Fixtures ----------------------------------------------------------------
 
 const makeKnight = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'r11d_char_1',
@@ -120,7 +120,7 @@ const makeMonster = (overrides: Partial<IMonster> = {}): IMonster => ({
     id: 'rat',
     name_pl: 'Szczur',
     name_en: 'Rat',
-    icon: '🐀',
+    icon: 'rat',
     level: 1,
     hp: 100,
     attack: 4,
@@ -180,7 +180,7 @@ const stageSingleWaveFight = (char: ICharacter, monster: IMonster): void => {
     useCombatStore.getState().initCombat(monster, char.hp, char.mp, 'normal');
 };
 
-// ── Test suite ──────────────────────────────────────────────────────────────
+// -- Test suite --------------------------------------------------------------
 
 describe('huntApplySkillEffectV2: damage + stun skill (shield_bash)', () => {
     beforeEach(() => resetAllStores());
@@ -274,7 +274,7 @@ describe('huntApplySkillEffectV2: refuses cast when all wave monsters dead', () 
 
         const result = huntApplySkillEffectV2('shield_bash', 0);
 
-        // line 372-373: aliveIdx=-1 → return null.
+        // line 372-373: aliveIdx=-1 -> return null.
         // Cast refused, MP NOT burned, no broadcast.
         expect(result).toBeNull();
     });
@@ -292,7 +292,7 @@ describe('huntApplySkillEffectV2: refuses cast when caster is dead', () => {
 
         const result = huntApplySkillEffectV2('shield_bash', 0);
 
-        // line 362: (ch.hp <= 0 || playerCurrentHp <= 0) → return null.
+        // line 362: (ch.hp <= 0 || playerCurrentHp <= 0) -> return null.
         expect(result).toBeNull();
     });
 

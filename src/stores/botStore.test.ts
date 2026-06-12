@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useBotStore } from './botStore';
 import type { IBot } from '../types/bot';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeBot = (overrides?: Partial<IBot>): IBot => ({
     id: 'bot_test_1',
@@ -30,7 +30,7 @@ beforeEach(() => {
     useBotStore.setState({ bots: [] });
 });
 
-// ── generateBots ─────────────────────────────────────────────────────────────
+// -- generateBots -------------------------------------------------------------
 
 describe('generateBots', () => {
     it('produces a roster of 3 bots for the given player level', () => {
@@ -62,7 +62,7 @@ describe('generateBots', () => {
     });
 });
 
-// ── generateBotsCustom ───────────────────────────────────────────────────────
+// -- generateBotsCustom -------------------------------------------------------
 
 describe('generateBotsCustom', () => {
     it('creates exactly the requested classes in order', () => {
@@ -84,7 +84,7 @@ describe('generateBotsCustom', () => {
     });
 });
 
-// ── updateBotHp ──────────────────────────────────────────────────────────────
+// -- updateBotHp --------------------------------------------------------------
 
 describe('updateBotHp', () => {
     it('overwrites the bot\'s HP with the new value', () => {
@@ -127,7 +127,7 @@ describe('updateBotHp', () => {
     });
 });
 
-// ── updateBotMp ──────────────────────────────────────────────────────────────
+// -- updateBotMp --------------------------------------------------------------
 
 describe('updateBotMp', () => {
     it('overwrites MP with the new value', () => {
@@ -149,7 +149,7 @@ describe('updateBotMp', () => {
     });
 });
 
-// ── killBot ──────────────────────────────────────────────────────────────────
+// -- killBot ------------------------------------------------------------------
 
 describe('killBot', () => {
     it('zeros HP and flips alive to false', () => {
@@ -167,7 +167,7 @@ describe('killBot', () => {
     });
 });
 
-// ── getAliveBots ─────────────────────────────────────────────────────────────
+// -- getAliveBots -------------------------------------------------------------
 
 describe('getAliveBots', () => {
     it('returns only bots flagged alive', () => {
@@ -190,7 +190,7 @@ describe('getAliveBots', () => {
     });
 });
 
-// ── clearBots ────────────────────────────────────────────────────────────────
+// -- clearBots ----------------------------------------------------------------
 
 describe('clearBots', () => {
     it('empties the bot roster', () => {

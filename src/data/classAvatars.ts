@@ -109,7 +109,7 @@ export const BASE_CLASS_AVATARS: Record<string, string> = {
     Bard: bardImg,
 };
 
-/** Transform avatars per class → transform id (1..11). */
+/** Transform avatars per class -> transform id (1..11). */
 export const TRANSFORM_AVATARS: Record<string, Record<number, string>> = {
     Knight: { 1: knight1, 2: knight2, 3: knight3, 4: knight4, 5: knight5, 6: knight6, 7: knight7, 8: knight8, 9: knight9, 10: knight10, 11: knight11 },
     Mage: { 1: mage1, 2: mage2, 3: mage3, 4: mage4, 5: mage5, 6: mage6, 7: mage7, 8: mage8, 9: mage9, 10: mage10, 11: mage11 },

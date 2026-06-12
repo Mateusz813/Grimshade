@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — HP consistency on `/combat` view with active `hp_pct_25` buff.
  *
- * Spec (BACKLOG.md punkt 3.5 expansion): "Eliksir +25% HP → HP identyczne na:
+ * Spec (BACKLOG.md punkt 3.5 expansion): "Eliksir +25% HP -> HP identyczne na:
  * Town + TopHeader + CharacterSelect + każda walka (polowanie/raid/dungeon/
  * boss/arena/trainer/loch/transform) + party + gildia"
  *
@@ -16,7 +16,7 @@
  *      Combat.tsx (line 638) passes into `playerMaxHpC` for AllyCard rendering
  *      and into auto-potion max HP comparisons. Guards against the bug where
  *      `playerMaxHp` would silently fall back to raw 120 (potion would fire
- *      "at 50% max" computing from 120 instead of 150 → wrong threshold).
+ *      "at 50% max" computing from 120 instead of 150 -> wrong threshold).
  *
  *   2. **TopHeader pulse popover ON /combat** — TopHeader mounts on every
  *      route (AppShell.tsx line 409 `{showChrome && <TopHeader />}`), and
@@ -59,7 +59,7 @@
  *   raw = 120 + 0 + 0 + 0 + 0 = 120
  *   eff = floor(120 × 1.25) = 150
  *
- * HP starts at 40 → expect `40/150` on TopHeader popover.
+ * HP starts at 40 -> expect `40/150` on TopHeader popover.
  *
  * Cleanup: try/finally + `cleanupCharacterById`.
  */
@@ -75,7 +75,7 @@ import { runCombatViaSkip } from '../../fixtures/combatSim';
 test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('hp_pct_25 buff active → /combat TopHeader popover shows boosted max HP + engine getEffectiveChar agrees + SKIP fight resolves', async ({ page }) => {
+    test('hp_pct_25 buff active -> /combat TopHeader popover shows boosted max HP + engine getEffectiveChar agrees + SKIP fight resolves', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -91,7 +91,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
             createdId = created.id;
 
             // 2. Seed buff via game_saves blob. effect `hp_pct_25` is read by
-            //    `getElixirHpPctMultiplier` (combatElixirs.ts) → returns 1.25
+            //    `getElixirHpPctMultiplier` (combatElixirs.ts) -> returns 1.25
             //    when buff active. Pausable timerMode means buff doesn't
             //    drain out-of-combat AND drains slowly in combat (2000ms tick
             //    per SKIP fight — well within 24h remainingMs).
@@ -103,7 +103,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
                     {
                         id: 'hp_pct_25',
                         name: 'Max HP +25%',
-                        icon: '❤️‍🔥',
+                        icon: 'heart-on-fire',
                         effect: 'hp_pct_25',
                         // Defaults: timerMode='pausable', remainingMs=24h.
                     },
@@ -157,7 +157,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
             //    effective max HP regardless of which view we sit on.
             //    Format: `liveHp.toLocaleString('pl-PL') + '/' + maxHp.toLocaleString('pl-PL')`.
             //    For values < 1000 (40 and 150 both) pl-PL toLocaleString
-            //    inserts no separator → `40/150`.
+            //    inserts no separator -> `40/150`.
             const pulseBtn = page.locator('.top-header__pulse').first();
             await expect(pulseBtn).toBeVisible({ timeout: 5_000 });
             await pulseBtn.tap();
@@ -205,7 +205,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
 
             // 9. SKIP fight against rat — proves the combat path doesn't
             //    blow up with the buff active. The 1.25× multiplier flows
-            //    through `resolveInstantFight` → player max HP capping. If
+            //    through `resolveInstantFight` -> player max HP capping. If
             //    a NaN crept into the multiplier, the engine's
             //    `Math.min(effectiveChar.max_hp, ...)` clamp would NaN-out
             //    and combat would never resolve to 'victory'.
@@ -215,7 +215,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
             expect(result.sessionKills.normal).toBeGreaterThanOrEqual(1);
 
             // 10. Buff survived the fight (pausable drain at SKIP=2000ms vs
-            //     24h remainingMs → still active). Same guard as 3.4: if the
+            //     24h remainingMs -> still active). Same guard as 3.4: if the
             //     buff got wiped mid-combat, the UX claim "buff lasts 15
             //     minutes" would silently break.
             const hasBuffAfter = await page.evaluate(async () => {

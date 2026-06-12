@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useBossStore } from './bossStore';
 
-// ── Initial state helper ─────────────────────────────────────────────────────
+// -- Initial state helper -----------------------------------------------------
 // `bossStore` doesn't export its initial values, so we mirror the literal
 // shape declared in the create() body. Keep this in sync with bossStore.ts.
 
@@ -16,7 +16,7 @@ beforeEach(() => {
     resetStore();
 });
 
-// ── setBossDefeated ──────────────────────────────────────────────────────────
+// -- setBossDefeated ----------------------------------------------------------
 
 describe('setBossDefeated', () => {
     it('records the first attempt with count = 1 + today as date', () => {
@@ -60,7 +60,7 @@ describe('setBossDefeated', () => {
     });
 });
 
-// ── setLastResult ────────────────────────────────────────────────────────────
+// -- setLastResult ------------------------------------------------------------
 
 describe('setLastResult', () => {
     it('stores the result object as-is', () => {
@@ -79,7 +79,7 @@ describe('setLastResult', () => {
     });
 });
 
-// ── getAttemptsUsed ──────────────────────────────────────────────────────────
+// -- getAttemptsUsed ----------------------------------------------------------
 
 describe('getAttemptsUsed', () => {
     it('returns 0 when no entry exists for the boss', () => {
@@ -102,7 +102,7 @@ describe('getAttemptsUsed', () => {
     });
 });
 
-// ── getAttemptsMax ───────────────────────────────────────────────────────────
+// -- getAttemptsMax -----------------------------------------------------------
 
 describe('getAttemptsMax', () => {
     it('returns the hard cap (3) — boss daily limit per CLAUDE.md', () => {
@@ -110,7 +110,7 @@ describe('getAttemptsMax', () => {
     });
 });
 
-// ── canChallenge ─────────────────────────────────────────────────────────────
+// -- canChallenge -------------------------------------------------------------
 
 describe('canChallenge', () => {
     it('returns true when the boss has not been challenged today', () => {

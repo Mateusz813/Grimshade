@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 
 /**
- * TutorialModal — new-player guide. Portal to document.body → query via
+ * TutorialModal — new-player guide. Portal to document.body -> query via
  * document.querySelector. Data-driven from TUTORIAL_SECTIONS.
  *
  * Coverage: dialog chrome, one section per data entry (numbered + bulleted),
@@ -66,7 +66,7 @@ describe('TutorialModal — close paths', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
-    it('closes on the ✕ button', () => {
+    it('closes on the x button', () => {
         const onClose = vi.fn();
         render(<TutorialModal onClose={onClose} />);
         fireEvent.click(document.querySelector('.tutorial__close') as HTMLElement);

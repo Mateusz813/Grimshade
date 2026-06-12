@@ -40,13 +40,13 @@ import type { ICharacter } from '../../../api/v1/characterApi';
 import { useCombatStore } from '../../../stores/combatStore';
 
 /**
- * TaskBadge — globalna ikonka "📋 N" w TopHeader.
+ * TaskBadge — globalna ikonka ":clipboard: N" w TopHeader.
  *
  * Renderuje listę aktywnych tasków + kill-quest goals. Każdy row ma
  * status (done / live / pending), badge ma color-coded dot:
- *   purple → claimable (claimableCount > 0)
- *   green  → live (właśnie walczę z monstrum który ma task aktywny)
- *   none   → nic
+ *   purple -> claimable (claimableCount > 0)
+ *   green  -> live (właśnie walczę z monstrum który ma task aktywny)
+ *   none   -> nic
  *
  * Renderuje `null` gdy zero aktywnych tasków + quest goals.
  */
@@ -136,7 +136,7 @@ describe('TaskBadge', () => {
         expect(container.querySelector('.top-header__tasks-dropdown')).not.toBeNull();
     });
 
-    it('uses 🎁 icon when claimable, 📋 otherwise', () => {
+    it('uses :wrapped-gift: icon when claimable, :clipboard: otherwise', () => {
         useTaskStore.setState({
             activeTasks: [{
                 id: 't1', taskId: 'rat-task', monsterId: 'rat',
@@ -145,10 +145,10 @@ describe('TaskBadge', () => {
             }],
         } as unknown as Parameters<typeof useTaskStore.setState>[0]);
         const { container: claimable } = render(<TaskBadge claimableCount={1} />);
-        expect(claimable.querySelector('.top-header__tasks-icon')?.textContent).toBe('🎁');
+        expect(claimable.querySelector('.top-header__tasks-icon svg.game-icon')?.getAttribute('data-icon')).toBe('wrapped-gift');
 
         const { container: pending } = render(<TaskBadge />);
-        expect(pending.querySelector('.top-header__tasks-icon')?.textContent).toBe('📋');
+        expect(pending.querySelector('.top-header__tasks-icon svg.game-icon')?.getAttribute('data-icon')).toBe('clipboard');
     });
 
     it('hides quests whose minLevel exceeds the player level', () => {
@@ -164,7 +164,7 @@ describe('TaskBadge', () => {
             }],
         } as unknown as Parameters<typeof useQuestStore.setState>[0]);
         const { container } = render(<TaskBadge />);
-        // No tasks + quest hidden → returns null
+        // No tasks + quest hidden -> returns null
         expect(container.firstChild).toBeNull();
     });
 });

@@ -184,7 +184,7 @@ describe('TopHeader — buff chip', () => {
                     id: 'b1',
                     characterId: 'char-1',
                     name: 'Tarcza',
-                    icon: '🛡️',
+                    icon: 'shield',
                     effect: 'shield',
                     expiresAt: Date.now() + 60_000,
                     timerMode: 'realtime',
@@ -208,7 +208,7 @@ describe('TopHeader — buff chip', () => {
         });
         renderHeader();
         const buffBtn = screen.getByLabelText('Aktywne buffy');
-        // No active buffs, only 2 passive counters → count = 2.
+        // No active buffs, only 2 passive counters -> count = 2.
         expect(buffBtn.textContent).toContain('2');
     });
 
@@ -219,7 +219,7 @@ describe('TopHeader — buff chip', () => {
                     id: 'b1',
                     characterId: 'char-1',
                     name: 'X',
-                    icon: '✨',
+                    icon: 'sparkles',
                     effect: 'x',
                     expiresAt: Date.now() + 60_000,
                     timerMode: 'realtime',

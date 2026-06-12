@@ -8,7 +8,7 @@ import { useCombatStore } from '../stores/combatStore';
 import { deathsApi } from '../api/v1/deathsApi';
 import type { ICharacter } from '../api/v1/characterApi';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-test-1',
@@ -90,7 +90,7 @@ afterEach(() => {
     logDeathSpy.mockRestore();
 });
 
-// ── applyCombatLeaveDeath: guard clauses ─────────────────────────────────────
+// -- applyCombatLeaveDeath: guard clauses -------------------------------------
 
 describe('applyCombatLeaveDeath – guard clauses', () => {
     it('no-ops cleanly when there is no active character', () => {
@@ -115,7 +115,7 @@ describe('applyCombatLeaveDeath – guard clauses', () => {
     });
 });
 
-// ── applyCombatLeaveDeath: side effects on stores ────────────────────────────
+// -- applyCombatLeaveDeath: side effects on stores ----------------------------
 
 describe('applyCombatLeaveDeath – store effects', () => {
     it('logs the leave via deathsApi with result=fled', () => {
@@ -222,7 +222,7 @@ describe('applyCombatLeaveDeath – store effects', () => {
         useCombatStore.setState({
             sessionXpEarned: 999,
             sessionGoldEarned: 999,
-            sessionDrops: [{ icon: '⚔️', name: 'X', rarity: 'common' }],
+            sessionDrops: [{ icon: 'crossed-swords', name: 'X', rarity: 'common' }],
         });
         applyCombatLeaveDeath({
             source: 'raid',
@@ -260,7 +260,7 @@ describe('applyCombatLeaveDeath – store effects', () => {
     });
 });
 
-// ── applyCombatLeaveDeath: level-1 corner case ──────────────────────────────
+// -- applyCombatLeaveDeath: level-1 corner case ------------------------------
 
 describe('applyCombatLeaveDeath – level 1 corner case', () => {
     it('keeps level 1 at level 1 (no level to strip)', () => {
@@ -289,7 +289,7 @@ describe('applyCombatLeaveDeath – level 1 corner case', () => {
     });
 });
 
-// ── applyCombatLeaveDeath: leave-source coverage ─────────────────────────────
+// -- applyCombatLeaveDeath: leave-source coverage -----------------------------
 
 describe('applyCombatLeaveDeath – source coverage', () => {
     const sources: TLeaveSource[] = ['monster', 'dungeon', 'boss', 'raid', 'transform'];
@@ -306,7 +306,7 @@ describe('applyCombatLeaveDeath – source coverage', () => {
     }
 });
 
-// ── applyCombatLeaveDeath: high-level penalty math ───────────────────────────
+// -- applyCombatLeaveDeath: high-level penalty math ---------------------------
 
 describe('applyCombatLeaveDeath – penalty math anchors', () => {
     it('lvl 1000 loses 20 levels (the spec anchor)', () => {
@@ -345,7 +345,7 @@ describe('applyCombatLeaveDeath – penalty math anchors', () => {
     });
 });
 
-// ── applyCombatLeaveDeath: idempotency-from-call-site responsibility ─────────
+// -- applyCombatLeaveDeath: idempotency-from-call-site responsibility ---------
 
 describe('applyCombatLeaveDeath – callers must guard idempotency', () => {
     it('a second consecutive call applies penalty again (no internal guard)', () => {

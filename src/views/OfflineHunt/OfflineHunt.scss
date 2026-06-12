@@ -1,7 +1,7 @@
 @use '../../styles/variables' as *;
 @use '../../styles/breakpoints' as *;
 
-// ── Main container ──────────────────────────────────────────────────────────
+// -- Main container ----------------------------------------------------------
 .oh {
     min-height: 100dvh;
     padding: 0 20px 120px;
@@ -19,7 +19,7 @@
         color: $color-text-muted;
     }
 
-    // ── Header ──────────────────────────────────────────────────────────
+    // -- Header ----------------------------------------------------------
     // &__header / &__back / &__title inherit from .page-header / .page-back-btn / .page-title.
     // Negate the root's side padding so the shared header padding (20/28px) isn't doubled.
     &__header {
@@ -53,7 +53,7 @@
         margin: 0;
     }
 
-    // ── Active hunt card ────────────────────────────────────────────────
+    // -- Active hunt card ------------------------------------------------
     &__active {
         background: linear-gradient(180deg, rgba(33, 150, 243, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%);
         border: 2px solid rgba(33, 150, 243, 0.35);
@@ -92,7 +92,7 @@
         font-weight: 600;
     }
 
-    // ── Target card ─────────────────────────────────────────────────────
+    // -- Target card -----------------------------------------------------
     &__target-card {
         display: flex;
         align-items: center;
@@ -138,7 +138,7 @@
         span:last-child { color: #ffc107; }
     }
 
-    // ── Progress bar ────────────────────────────────────────────────────
+    // -- Progress bar ----------------------------------------------------
     &__progress {
         margin-bottom: 12px;
     }
@@ -167,7 +167,7 @@
         color: $color-text-muted;
     }
 
-    // ── Live stats grid ─────────────────────────────────────────────────
+    // -- Live stats grid -------------------------------------------------
     &__live-stats {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -192,7 +192,7 @@
         strong { color: $color-text; font-size: 13px; }
     }
 
-    // ── Active buttons ──────────────────────────────────────────────────
+    // -- Active buttons --------------------------------------------------
     &__active-btns {
         display: flex;
         gap: 8px;
@@ -202,14 +202,14 @@
         }
     }
 
-    // ── Setup section ───────────────────────────────────────────────────
+    // -- Setup section ---------------------------------------------------
     &__setup {
         display: flex;
         flex-direction: column;
         gap: 16px;
     }
 
-    // ── Card (generic dark section) ─────────────────────────────────────
+    // -- Card (generic dark section) -------------------------------------
     &__card {
         background: linear-gradient(180deg, rgba(255, 193, 7, 0.06) 0%, rgba(20, 20, 30, 0.9) 100%);
         border: 1px solid rgba(255, 193, 7, 0.18);
@@ -243,7 +243,7 @@
         flex-shrink: 0;
     }
 
-    // ── Skill grid ──────────────────────────────────────────────────────
+    // -- Skill grid ------------------------------------------------------
     &__skill-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -293,7 +293,7 @@
         color: $color-text-muted;
     }
 
-    // ── Sort toggle row ─────────────────────────────────────────────────
+    // -- Sort toggle row -------------------------------------------------
     // 2026-05-20 spec: above the monster grid. Two pill toggles painted in
     // the transform accent (--oh-accent) when active; muted otherwise.
     &__sort-row {
@@ -339,7 +339,7 @@
         }
     }
 
-    // ── Monster list ────────────────────────────────────────────────────
+    // -- Monster list ----------------------------------------------------
     &__monster-list {
         display: grid;
         grid-template-columns: 1fr;
@@ -431,7 +431,7 @@
         flex-shrink: 0;
     }
 
-    // ── Info box ────────────────────────────────────────────────────────
+    // -- Info box --------------------------------------------------------
     &__info {
         padding: 10px 14px;
         background: rgba(255, 193, 7, 0.06);
@@ -442,7 +442,7 @@
         color: $color-text-muted;
     }
 
-    // ── Buttons ─────────────────────────────────────────────────────────
+    // -- Buttons ---------------------------------------------------------
     &__btn {
         padding: 12px 20px;
         border: none;
@@ -502,14 +502,14 @@
     }
 }
 
-// ── Animations ──────────────────────────────────────────────────────────────
+// -- Animations --------------------------------------------------------------
 
 @keyframes oh-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
 }
 
-// ── Epic claim FX overlay ───────────────────────────────────────────────────
+// -- Epic claim FX overlay ---------------------------------------------------
 
 .oh__fx {
     position: fixed;
@@ -581,7 +581,7 @@
     pointer-events: none;
 }
 
-// ── Reward modal ────────────────────────────────────────────────────────────
+// -- Reward modal ------------------------------------------------------------
 
 .oh-modal {
     &__backdrop {
@@ -623,7 +623,7 @@
         color: #4caf50;
     }
 
-    // ── Quick stat pills ────────────────────────────────────────────────
+    // -- Quick stat pills ------------------------------------------------
     &__stats {
         display: flex;
         gap: 8px;
@@ -651,7 +651,7 @@
     &__stat-icon { font-size: 14px; }
     &__stat-val { font-size: 13px; }
 
-    // ── Rarity pills row ────────────────────────────────────────────────
+    // -- Rarity pills row ------------------------------------------------
     &__rarity-row {
         display: flex;
         flex-wrap: wrap;
@@ -669,7 +669,7 @@
         letter-spacing: 0.03em;
     }
 
-    // ── XP rows ─────────────────────────────────────────────────────────
+    // -- XP rows ---------------------------------------------------------
     &__xp-row {
         display: flex;
         align-items: center;
@@ -709,7 +709,7 @@
         white-space: nowrap;
     }
 
-    // ── Drops grid ──────────────────────────────────────────────────────
+    // -- Drops grid ------------------------------------------------------
     &__drops {
         margin-top: 10px;
         padding: 10px;
@@ -753,7 +753,7 @@
         font-weight: 700;
     }
 
-    // ── No drops text ───────────────────────────────────────────────────
+    // -- No drops text ---------------------------------------------------
     &__no-drops {
         text-align: center;
         padding: 10px;
@@ -763,7 +763,7 @@
         margin-top: 8px;
     }
 
-    // ── OK button ───────────────────────────────────────────────────────
+    // -- OK button -------------------------------------------------------
     &__ok-btn {
         width: 100%;
         padding: 12px;

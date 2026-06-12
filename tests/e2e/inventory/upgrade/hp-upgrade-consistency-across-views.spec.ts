@@ -2,7 +2,7 @@
  * Atomic E2E — HP konsystencja across 3 widoków po założeniu UPGRADED
  * helmet-a z +20 HP bonusem (+3 enhance).
  *
- * Spec (BACKLOG.md punkt 6.13): "Upgrade EQ z +HP → ta sama konsystencja"
+ * Spec (BACKLOG.md punkt 6.13): "Upgrade EQ z +HP -> ta sama konsystencja"
  *
  * Komplementarny do punktu 6.12 (`hp-equip-consistency-across-views`)
  * — różnica: ten test ustawia `upgradeLevel: 3` żeby zweryfikować że
@@ -11,18 +11,18 @@
  *
  * Pragmatic scoping (per session brief 2026-05-25):
  * Sprawdzamy 3 reprezentatywne widoki:
- *   1. Town `/` → `.town__bar-value`
- *   2. TopHeader pulse popover → `.top-header__pulse-popover-row--hp`
- *   3. `/character-select` card → `.char-select__bar-value`
+ *   1. Town `/` -> `.town__bar-value`
+ *   2. TopHeader pulse popover -> `.top-header__pulse-popover-row--hp`
+ *   3. `/character-select` card -> `.char-select__bar-value`
  *
  * Wszystkie 3 czytają equipment przez `getTotalEquipmentStats`, ktore
  * dla generated items (linia 662-670 itemSystem.ts) sprawdza
- * `isBaseStatKey(slot, key)`. Dla `slot='helmet'` + `key='hp'` → true →
+ * `isBaseStatKey(slot, key)`. Dla `slot='helmet'` + `key='hp'` -> true ->
  * stosuje `getUpgradedBaseStat(20, 3) = 30`.
  *
  * Test guard przeciw regresji typu "upgrade multiplier działa w Town ale
  * w CharacterSelect helper nie jest aktualizowany". Bez tej spójności
- * gracz widzi inne HP zależnie od widoku → frustracja.
+ * gracz widzi inne HP zależnie od widoku -> frustracja.
  *
  * ## Setup
  *
@@ -70,7 +70,7 @@ import { seedEquippedItem } from '../../fixtures/seedInventory';
 test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('helmet +3 with +20 HP base → Town, TopHeader popover, CharacterSelect all show upgraded max HP', async ({ page }) => {
+    test('helmet +3 with +20 HP base -> Town, TopHeader popover, CharacterSelect all show upgraded max HP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -85,9 +85,9 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             createdId = created.id;
 
             // 2. Equip upgraded helmet z +20 HP base bonusem.
-            //    helmet's base stat to `hp` (per `getBaseStatKeysForSlot`) →
+            //    helmet's base stat to `hp` (per `getBaseStatKeysForSlot`) ->
             //    `getTotalEquipmentStats` wywołuje `getUpgradedBaseStat(20, 3)`
-            //    → 30 effective HP od tego helmet-a.
+            //    -> 30 effective HP od tego helmet-a.
             await seedEquippedItem({
                 characterId: created.id,
                 slot: 'helmet',
@@ -98,12 +98,12 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
                 upgradeLevel: 3,
             });
 
-            // 3. Login → /character-select.
+            // 3. Login -> /character-select.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
 
-            // 4. Tap "Wybierz" → Town (warm localStorage).
+            // 4. Tap "Wybierz" -> Town (warm localStorage).
             const card = page.locator('.char-select__card', {
                 has: page.locator('.char-select__card-name', { hasText: nick }),
             });
@@ -113,7 +113,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
 
             // 5. Read HP value from Town bar.
             //    Knight base 120 + 30 (upgraded helmet) = 150.
-            //    HP=40 → expect `40/150`.
+            //    HP=40 -> expect `40/150`.
             const townHp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--hp') })
                 .locator('.town__bar-value')
@@ -132,7 +132,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
 
             // 7. Wróć do /character-select. `getEffectiveMaxStats` w
             //    CharacterSelect ma TĄ SAMĄ ścieżkę `getTotalEquipmentStats`
-            //    → applies `getUpgradedBaseStat(20, 3) = 30`. Effective 150.
+            //    -> applies `getUpgradedBaseStat(20, 3) = 30`. Effective 150.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
             const reloadedCard = page.locator('.char-select__card', {

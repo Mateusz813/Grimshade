@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
+// -- Hoisted mocks ------------------------------------------------------------
 // guildStore makes Supabase realtime + guildApi calls in `hydrateForCharacter`
 // and `setGuild`. Mock both so tests stay deterministic and offline.
 
@@ -56,13 +56,13 @@ vi.mock('../lib/supabase', () => ({
 import { useGuildStore, isCurrentCharacterGuildLeader } from './guildStore';
 import type { IGuildRow, IGuildMemberRow, IGuildJoinRequestRow } from '../api/v1/guildApi';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeGuild = (overrides: Partial<IGuildRow> = {}): IGuildRow => ({
     id: 'g1',
     name: 'Test Guild',
     tag: 'TST',
-    logo: '⚔️',
+    logo: 'crossed-swords',
     color: '#888',
     leader_id: 'char-1',
     level: 1,
@@ -117,7 +117,7 @@ beforeEach(() => {
     removeChannelMock.mockClear();
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('guildStore — initial state', () => {
     it('starts unaffiliated', () => {
@@ -131,7 +131,7 @@ describe('guildStore — initial state', () => {
     });
 });
 
-// ── hydrateForCharacter ──────────────────────────────────────────────────────
+// -- hydrateForCharacter ------------------------------------------------------
 
 describe('hydrateForCharacter', () => {
     it('is a no-op when characterId is empty', async () => {
@@ -139,7 +139,7 @@ describe('hydrateForCharacter', () => {
         expect(findGuildForCharacterMock).not.toHaveBeenCalled();
     });
 
-    it('clears state and maps characterId → null when no guild membership exists', async () => {
+    it('clears state and maps characterId -> null when no guild membership exists', async () => {
         findGuildForCharacterMock.mockResolvedValue(null);
         await useGuildStore.getState().hydrateForCharacter('char-1');
         const s = useGuildStore.getState();
@@ -206,7 +206,7 @@ describe('hydrateForCharacter', () => {
     });
 });
 
-// ── refreshMembers ───────────────────────────────────────────────────────────
+// -- refreshMembers -----------------------------------------------------------
 
 describe('refreshMembers', () => {
     it('is a no-op when no guild is active', async () => {
@@ -232,7 +232,7 @@ describe('refreshMembers', () => {
     });
 });
 
-// ── refreshRequests ──────────────────────────────────────────────────────────
+// -- refreshRequests ----------------------------------------------------------
 
 describe('refreshRequests', () => {
     it('is a no-op when no guild is active', async () => {
@@ -257,7 +257,7 @@ describe('refreshRequests', () => {
     });
 });
 
-// ── setGuild ─────────────────────────────────────────────────────────────────
+// -- setGuild -----------------------------------------------------------------
 
 describe('setGuild', () => {
     it('replaces the current guild', () => {
@@ -273,7 +273,7 @@ describe('setGuild', () => {
     });
 
     it('does NOT push a cap update when stored member_cap already matches level', () => {
-        // level=1 → cap=20 per guildMemberCap; matches the stored cap so
+        // level=1 -> cap=20 per guildMemberCap; matches the stored cap so
         // no API call is made.
         const g = makeGuild({ level: 1, member_cap: 20 });
         useGuildStore.getState().setGuild(g);
@@ -281,7 +281,7 @@ describe('setGuild', () => {
     });
 
     it('pushes a cap update when the level implies a different cap than what is stored', () => {
-        // level=5 → cap=24 (20 + 4) per guildMemberCap. Stored cap is stale (20).
+        // level=5 -> cap=24 (20 + 4) per guildMemberCap. Stored cap is stale (20).
         const g = makeGuild({ level: 5, xp: 999, member_cap: 20 });
         useGuildStore.getState().setGuild(g);
         expect(updateGuildLevelXpMock).toHaveBeenCalledWith(
@@ -295,7 +295,7 @@ describe('setGuild', () => {
     });
 });
 
-// ── clear ────────────────────────────────────────────────────────────────────
+// -- clear --------------------------------------------------------------------
 
 describe('clear', () => {
     it('resets guild/members/requests/loading/channel', () => {
@@ -327,7 +327,7 @@ describe('clear', () => {
     });
 });
 
-// ── isCurrentCharacterGuildLeader ────────────────────────────────────────────
+// -- isCurrentCharacterGuildLeader --------------------------------------------
 
 describe('isCurrentCharacterGuildLeader', () => {
     it('returns true when the character is the guild leader', () => {

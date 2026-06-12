@@ -1,6 +1,6 @@
-// ── Disconnect-death policy (AppShell DC watcher) ─────────────────────────────
+// -- Disconnect-death policy (AppShell DC watcher) -----------------------------
 //
-// Pure decision rules for an INVOLUNTARY network drop (online → offline)
+// Pure decision rules for an INVOLUNTARY network drop (online -> offline)
 // detected by the AppShell connectivity watcher. Extracted from the component
 // so the rules are unit-testable game logic in /systems/ rather than UI glue
 // (CLAUDE.md: "logika gry zawsze w /systems/").
@@ -13,16 +13,16 @@
 //
 // Spec (2026-05-20 + BACKLOG #17 "Gra w trybie offline"): losing connection
 // should …
-//   • in a PARTY *and* on a combat route → DIE (combat-leave death) + be
+//   - in a PARTY *and* on a combat route -> DIE (combat-leave death) + be
 //     dropped from the party. A live party can't be held hostage by a
 //     teammate's dead connection.
-//   • in the ARENA (with or without a party) → DIE. Arena match abandonment
+//   - in the ARENA (with or without a party) -> DIE. Arena match abandonment
 //     is always a loss.
-//   • SOLO on a combat route (not in a party) → do NOT die; combat keeps
+//   - SOLO on a combat route (not in a party) -> do NOT die; combat keeps
 //     running locally in offline mode.
-//   • in a PARTY on a NON-combat route → no death, but still drop the party
+//   - in a PARTY on a NON-combat route -> no death, but still drop the party
 //     (handled by the caller) so teammates aren't stalled.
-//   • SOLO on a non-combat route → nothing; just enter offline mode.
+//   - SOLO on a non-combat route -> nothing; just enter offline mode.
 
 import type { TLeaveSource } from './combatLeavePenalty';
 
@@ -60,7 +60,7 @@ export const DISCONNECT_ARENA_ROUTES: ReadonlySet<string> = new Set([
     '/arena', '/arena/match',
 ]);
 
-// Route → death `source` mapping for a disconnect death. Mirrors the deaths
+// Route -> death `source` mapping for a disconnect death. Mirrors the deaths
 // feed's source enum so the graveyard shows the correct icon/filter.
 const DISCONNECT_SOURCE_BY_ROUTE: Record<string, TLeaveSource> = {
     '/boss': 'boss',

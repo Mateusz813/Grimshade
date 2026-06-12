@@ -387,7 +387,7 @@ describe('transformSystem', () => {
     });
   });
 
-  // ── Coverage push 2026-05-26 — tier multiplier + wave lineup ────────────
+  // -- Coverage push 2026-05-26 — tier multiplier + wave lineup ------------
 
   describe('getTransformTierMultiplier', () => {
     it('returns 1.0 for transform 1', () => {

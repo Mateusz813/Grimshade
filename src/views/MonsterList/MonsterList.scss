@@ -350,7 +350,7 @@
     50% { opacity: 0.7; }
   }
 
-  // ── Mastery card modifier ───────────────────────────────────────────────
+  // -- Mastery card modifier -----------------------------------------------
   &__card--mastery-max {
     border-color: rgba(#9c27b0, 0.6);
     box-shadow: 0 0 12px rgba(#9c27b0, 0.25), inset 0 0 20px rgba(#9c27b0, 0.06);
@@ -372,7 +372,7 @@
     }
   }
 
-  // ── Mastery XP/Gold bonus inline chip ─────────────────────────────────────
+  // -- Mastery XP/Gold bonus inline chip -------------------------------------
   &__mastery-xp-bonus {
     color: #ffb74d;
     font-weight: 700;
@@ -380,7 +380,7 @@
     cursor: help;
   }
 
-  // ── Mastery badge ─────────────────────────────────────────────────────────
+  // -- Mastery badge ---------------------------------------------------------
   &__mastery-badge {
     display: inline-flex;
     align-items: center;
@@ -405,7 +405,7 @@
     50% { box-shadow: 0 0 10px rgba(#9c27b0, 0.6); }
   }
 
-  // ── Mastery section in details ────────────────────────────────────────────
+  // -- Mastery section in details --------------------------------------------
   &__mastery {
     margin-top: $spacing-sm;
     margin-bottom: $spacing-xs;

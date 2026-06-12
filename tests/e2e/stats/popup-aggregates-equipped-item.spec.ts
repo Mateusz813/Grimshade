@@ -27,17 +27,17 @@
  *   3. Login + select character.
  *
  * Actions:
- *   1. /inventory → tap "Statystyki" w action row.
+ *   1. /inventory -> tap "Statystyki" w action row.
  *   2. Popup `.inventory__popup--stats` się otwiera.
  *
  * Outcome:
  *   - Atak StatBox value === "22" (10 base + 12 iron_sword baseAtk).
  *   - Breakdown row "Baza: 10" + "Eq: +12" widoczne (linia 1666-1671).
  *
- * Cleanup: try/finally → cleanupCharacterById.
+ * Cleanup: try/finally -> cleanupCharacterById.
  *
  * Sanity baseline (popup-shows-base-stats test):
- *   Knight bez EQ → Atak = 10. Roznica 10 → 22 = +12 dowod że eq stats
+ *   Knight bez EQ -> Atak = 10. Roznica 10 -> 22 = +12 dowod że eq stats
  *   sa aggregated. Gdyby agregacja nie dzialala albo iron_sword nie
  *   pickowal się — wartość zostalaby na 10.
  */
@@ -79,7 +79,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                 itemLevel: 5,
             });
 
-            // 3. Login → Town
+            // 3. Login -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -89,7 +89,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 4. /inventory → Statystyki popup
+            // 4. /inventory -> Statystyki popup
             await page.goto('/inventory');
             await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
             await page.getByRole('button', { name: /^statystyki$/i }).tap();
@@ -101,7 +101,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await expect(statsPopup.getByText('Statystyki Walki')).toBeVisible();
 
             // 6. KRYTYCZNA asercja — Atak StatBox value = 22 (10 base + 12 eq).
-            //    Selektor: stats-box z labelem "Atak" → value content === "22".
+            //    Selektor: stats-box z labelem "Atak" -> value content === "22".
             //    Pattern z popup-shows-base-stats.spec.ts (poprzednia sesja).
             const atakBox = statsPopup.locator('.inventory__stats-box', {
                 has: page.locator('.inventory__stats-box-label', { hasText: /^Atak$/ }),

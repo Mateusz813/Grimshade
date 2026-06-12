@@ -9,16 +9,16 @@
  * z runtime fallbackiem dla naszych wiadomości (Chat.tsx linia 315:
  * `msg.character_level ?? (isMe ? characterLevel : null)`).
  *
- * **Test pokrywa primary path**: msg.character_level z DB → pill pokazuje
- * tę wartość. Fallback path (msg.character_level NULL → isMe → użyj
+ * **Test pokrywa primary path**: msg.character_level z DB -> pill pokazuje
+ * tę wartość. Fallback path (msg.character_level NULL -> isMe -> użyj
  * runtime characterLevel) zostawiony do unit testu Chat komponentu
  * (`Chat.test.tsx` już istnieje, można dorzucić case).
  *
- * **Adaptacja vs spec "po level-up"**: pełen flow "send msg na lvl 5 →
- * kill mob → level up na lvl 6 → send msg → verify pill = 6" wymaga
+ * **Adaptacja vs spec "po level-up"**: pełen flow "send msg na lvl 5 ->
+ * kill mob -> level up na lvl 6 -> send msg -> verify pill = 6" wymaga
  * combat sym. Tutaj symulujemy POST-level-up state przez seed:
  * postać już na lvl 25, w DB jest jej wiadomość z `character_level: 25`
- * → pill renderuje "25". Gdy ktoś zepsuje contract między
+ * -> pill renderuje "25". Gdy ktoś zepsuje contract między
  * `messages.character_level` a `.chat__msg-level` (np. zamiast `level`
  * pokazuje `msg.character_class`), regresja jest złapana.
  *
@@ -31,7 +31,7 @@
  *
  * ## Actions
  *
- * 1. Login → Town → /chat.
+ * 1. Login -> Town -> /chat.
  * 2. Wait for messages list to hydrate (city tab is default).
  * 3. Find our seeded message row by content text.
  * 4. Verify `.chat__msg-level` w tym rowie = "25".
@@ -44,7 +44,7 @@
  * Aby uniknąć spam-u w chat history, jawnie kasujemy w `finally`
  * przez admin client (delete WHERE id = <seedMsgId>).
  *
- * Cleanup: try/finally → admin.from('messages').delete().eq('id', msgId)
+ * Cleanup: try/finally -> admin.from('messages').delete().eq('id', msgId)
  *                     + cleanupCharacterById(createdId).
  *
  * ## Why anchor on content text (not nick)
@@ -73,7 +73,7 @@ test.describe('Chat › City', { tag: '@chat' }, () => {
         let seededMsgId: string | null = null;
 
         try {
-            // 1. Seed Knight na lvl 25. character.level = 25 → handleSend
+            // 1. Seed Knight na lvl 25. character.level = 25 -> handleSend
             //    z prawdziwego UI flow zapisałby `character_level: 25` w DB.
             //    My pomijamy UI flow i wsadzamy bezpośrednio rekord do DB
             //    z tym levelem.
@@ -119,7 +119,7 @@ test.describe('Chat › City', { tag: '@chat' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 4. Navigate to /chat → GlobalChat mount-uje city tab as default
+            // 4. Navigate to /chat -> GlobalChat mount-uje city tab as default
             //    (chatTabsStore.ensureCityTab w GlobalChat.tsx linia 30).
             await page.goto('/chat');
             await expect(page.locator('.global-chat')).toBeVisible({ timeout: 10_000 });
@@ -142,7 +142,7 @@ test.describe('Chat › City', { tag: '@chat' }, () => {
             //    pokazuje "25" (z `msg.character_level`).
             //    Chat.tsx linia 324-328: `<span className="chat__msg-level">{level}</span>`
             //    gdzie level = msg.character_level ?? (isMe ? characterLevel : null).
-            //    Nasza msg ma character_level=25 → primary path, level=25.
+            //    Nasza msg ma character_level=25 -> primary path, level=25.
             await expect(myMsg.locator('.chat__msg-level')).toHaveText('25');
 
             // 7. Tooltip pill = "Poziom 25" (linia 325 title attr) — sanity.

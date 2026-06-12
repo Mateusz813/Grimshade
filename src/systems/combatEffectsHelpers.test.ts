@@ -10,7 +10,7 @@ import {
     routeHeal,
 } from './combatEffectsHelpers';
 
-// ── newCombatEffectsSession ──────────────────────────────────────────────────
+// -- newCombatEffectsSession --------------------------------------------------
 
 describe('newCombatEffectsSession', () => {
     it('returns a session with an empty status map', () => {
@@ -27,7 +27,7 @@ describe('newCombatEffectsSession', () => {
     });
 });
 
-// ── ensureStatus ─────────────────────────────────────────────────────────────
+// -- ensureStatus -------------------------------------------------------------
 
 describe('ensureStatus', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -61,7 +61,7 @@ describe('ensureStatus', () => {
     });
 });
 
-// ── isCombatantStunned ───────────────────────────────────────────────────────
+// -- isCombatantStunned -------------------------------------------------------
 
 describe('isCombatantStunned', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -91,7 +91,7 @@ describe('isCombatantStunned', () => {
     });
 });
 
-// ── tickAll ──────────────────────────────────────────────────────────────────
+// -- tickAll ------------------------------------------------------------------
 
 describe('tickAll', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -122,7 +122,7 @@ describe('tickAll', () => {
         const st = ensureStatus(session, 'a');
         st.stunMs = 1000;
         const out = tickAll(session, [{ id: 'a', maxHp: 100 }], 500);
-        expect(out).toEqual([]); // no DOT, no ritual → no row
+        expect(out).toEqual([]); // no DOT, no ritual -> no row
         expect(st.stunMs).toBe(500);
     });
 
@@ -161,7 +161,7 @@ describe('tickAll', () => {
     });
 });
 
-// ── castSkill ────────────────────────────────────────────────────────────────
+// -- castSkill ----------------------------------------------------------------
 
 describe('castSkill', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -180,7 +180,7 @@ describe('castSkill', () => {
             allyIds: ['p'],
             enemyIds: ['m'],
         });
-        // No atoms → blank() returns aoe=false / castDmgMult=1 / no special flags.
+        // No atoms -> blank() returns aoe=false / castDmgMult=1 / no special flags.
         expect(out.aoe).toBe(false);
         expect(out.castDmgMult).toBe(1);
         expect(out.instantKill).toBe(false);
@@ -276,7 +276,7 @@ describe('castSkill', () => {
     });
 });
 
-// ── resolveBasicAttack ───────────────────────────────────────────────────────
+// -- resolveBasicAttack -------------------------------------------------------
 
 describe('resolveBasicAttack', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -293,7 +293,7 @@ describe('resolveBasicAttack', () => {
             targetId: 'm',
             baseDmg: 50,
         });
-        // No buffs, no crits → damage is just floor(50).
+        // No buffs, no crits -> damage is just floor(50).
         expect(r.damage).toBe(50);
         expect(r.dodged).toBe(false);
         expect(r.wasCrit).toBe(false);
@@ -369,7 +369,7 @@ describe('resolveBasicAttack', () => {
     });
 });
 
-// ── routeDamage ──────────────────────────────────────────────────────────────
+// -- routeDamage --------------------------------------------------------------
 
 describe('routeDamage', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -420,7 +420,7 @@ describe('routeDamage', () => {
     });
 });
 
-// ── routeHeal ────────────────────────────────────────────────────────────────
+// -- routeHeal ----------------------------------------------------------------
 
 describe('routeHeal', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;

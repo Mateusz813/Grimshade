@@ -16,7 +16,7 @@ interface ILocalSave {
   updated_at: string;
 }
 
-// ── Save ────────────────────────────────────────────────────────────────────
+// -- Save --------------------------------------------------------------------
 
 export const saveGame = async (
   characterId: string,
@@ -53,7 +53,7 @@ export const saveGame = async (
   }
 };
 
-// ── Load ────────────────────────────────────────────────────────────────────
+// -- Load --------------------------------------------------------------------
 
 /**
  * Load game state for a character.
@@ -121,7 +121,7 @@ export const loadGame = async (
   return cloudState;
 };
 
-// ── Sync to Cloud ───────────────────────────────────────────────────────────
+// -- Sync to Cloud -----------------------------------------------------------
 
 /**
  * Push localStorage data to Supabase for a specific character.
@@ -153,7 +153,7 @@ export const syncToCloud = async (characterId: string): Promise<void> => {
   }
 };
 
-// ── Delete ──────────────────────────────────────────────────────────────────
+// -- Delete ------------------------------------------------------------------
 
 /**
  * Remove saved data for a deleted character (both local and cloud).

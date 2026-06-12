@@ -6,27 +6,27 @@
  * (1 skill per class w jednym combat type)". Adapted: instead of going
  * through full combat, we open the Active Skills popup on `/inventory`
  * and assert the class's tier-1 spell is slotted + visible. This proves:
- *   • `src/data/skills.json` has a non-empty `activeSkills[<class>]` list
+ *   - `src/data/skills.json` has a non-empty `activeSkills[<class>]` list
  *     for that class (catches "class X has zero skills" regressions).
- *   • Seeding the `skills` slice in `game_saves.state` rehydrates
+ *   - Seeding the `skills` slice in `game_saves.state` rehydrates
  *     `useSkillStore.activeSkillSlots` + `unlockedSkills` correctly.
- *   • The popup body filters skills by lowercase class key
+ *   - The popup body filters skills by lowercase class key
  *     (`character.class.toLowerCase()`) and renders the per-class list.
  *
  * **Why popup, not combat**: full combat sim is brittle (rat HP vs lvl-5
- * character → fight may end in <1s before the action bar renders) and
+ * character -> fight may end in <1s before the action bar renders) and
  * timing-sensitive. The Skills popup hits the same data path (skills.json
- * → ACTIVE_SKILLS_BY_CLASS_INV → render cards) without the combat state
+ * -> ACTIVE_SKILLS_BY_CLASS_INV -> render cards) without the combat state
  * machine. Combat-flow skill tests live in TODO 12.6 / 12.8.
  *
  * Per-class tier-1 spell (unlockLevel=5 for all classes per skills.json):
- *   • Knight      → shield_bash       (Uderzenie Tarczą)
- *   • Mage        → fireball          (Kula Ognia)
- *   • Cleric      → holy_strike       (Uderzenie Święte)
- *   • Archer      → precise_shot      (Precyzyjny Strzał)
- *   • Rogue       → backstab          (Cios w Plecy)
- *   • Necromancer → life_drain        (Pochłonięcie Życia)
- *   • Bard        → battle_hymn       (Hymn Bitewny)
+ *   - Knight      -> shield_bash       (Uderzenie Tarczą)
+ *   - Mage        -> fireball          (Kula Ognia)
+ *   - Cleric      -> holy_strike       (Uderzenie Święte)
+ *   - Archer      -> precise_shot      (Precyzyjny Strzał)
+ *   - Rogue       -> backstab          (Cios w Plecy)
+ *   - Necromancer -> life_drain        (Pochłonięcie Życia)
+ *   - Bard        -> battle_hymn       (Hymn Bitewny)
  *
  * Setup per test:
  *   1. createCharacterViaApi with `level: 5` (== unlockLevel of tier-1
@@ -36,13 +36,13 @@
  *   2. seedGameSave with `skills.activeSkillSlots = [tier1, null, null, null]`
  *      + `skills.unlockedSkills = { [tier1]: true }`. Without the unlock
  *      flag the slot would render but the card would show `--needs-purchase`
- *      ("🗝️ Odblokuj") instead of `Aktywny`. Without slotting, slot 1
+ *      (":old-key: Odblokuj") instead of `Aktywny`. Without slotting, slot 1
  *      stays `—` and the test couldn't assert the per-class skill is
  *      properly equipped.
  *
  * Actions:
- *   1. Login → /character-select → tap our card → Town (`/`).
- *   2. /inventory → tap "Skille" button (aria-label "Aktywne skille").
+ *   1. Login -> /character-select -> tap our card -> Town (`/`).
+ *   2. /inventory -> tap "Skille" button (aria-label "Aktywne skille").
  *
  * Outcome (smoke — UI render, NOT functional cast):
  *   - Popup `.inventory__popup--skills` visible with title "Aktywne Skille".
@@ -62,10 +62,10 @@
  * Serial mode: 7 tests run kolejno na primary account (workers=1 anyway
  * per playwright.config.ts linia 78, ale eksplicit `mode: 'serial'` chroni
  * future-self gdyby ktoś bumpnął workers=2). Each test creates exactly
- * 1 postać + cleanup w finally → never more than 1 postać na koncie
- * w danym momencie → no risk of hitting 7-char-per-user limit.
+ * 1 postać + cleanup w finally -> never more than 1 postać na koncie
+ * w danym momencie -> no risk of hitting 7-char-per-user limit.
  *
- * Cleanup: try/finally per-test → cleanupCharacterById. Idempotent
+ * Cleanup: try/finally per-test -> cleanupCharacterById. Idempotent
  * defensive guard chroni przed sierotami gdy assertion crashuje przed
  * teardown-em.
  */
@@ -120,9 +120,9 @@ test.describe('Skills › Per-Class Smoke', { tag: '@skills' }, () => {
                 });
                 createdId = created.id;
 
-                // 2. Seed game_save → wstawia skill w slot 0 + flag unlock-u.
+                // 2. Seed game_save -> wstawia skill w slot 0 + flag unlock-u.
                 //    Bez `unlockedSkills[skillId]=true` karta renderuje sie
-                //    jako --needs-purchase z "🗝️ Odblokuj" zamiast "Aktywny".
+                //    jako --needs-purchase z ":old-key: Odblokuj" zamiast "Aktywny".
                 const userId = await findUserIdByEmail(testUsers.primary.email);
                 await seedGameSave({
                     characterId: created.id,
@@ -133,7 +133,7 @@ test.describe('Skills › Per-Class Smoke', { tag: '@skills' }, () => {
                     },
                 });
 
-                // 3. Login → /character-select → wybierz postać → Town
+                // 3. Login -> /character-select -> wybierz postać -> Town
                 await loginViaUI(page, testUsers.primary);
                 await page.goto('/character-select');
                 const card = page.locator('.char-select__card', {
@@ -143,7 +143,7 @@ test.describe('Skills › Per-Class Smoke', { tag: '@skills' }, () => {
                 await card.getByRole('button', { name: /Wybierz/i }).tap();
                 await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-                // 4. /inventory → tap "Skille" button (aria-label "Aktywne skille"
+                // 4. /inventory -> tap "Skille" button (aria-label "Aktywne skille"
                 //    per Inventory.tsx linia 3473).
                 await page.goto('/inventory');
                 await expect(page.locator('.inventory__paperdoll-actions'))
@@ -154,7 +154,7 @@ test.describe('Skills › Per-Class Smoke', { tag: '@skills' }, () => {
                 const popup = page.locator('.inventory__popup--skills');
                 await expect(popup).toBeVisible({ timeout: 5_000 });
 
-                // 6. Header title "✨ Aktywne Skille" (linia 3984).
+                // 6. Header title ":sparkles: Aktywne Skille" (linia 3984).
                 await expect(popup.getByText('Aktywne Skille')).toBeVisible();
 
                 // 7. Body widoczny (linia 2217 `.inventory__skills-popup-body`).
@@ -183,7 +183,7 @@ test.describe('Skills › Per-Class Smoke', { tag: '@skills' }, () => {
 
                 // 10. Tier-1 skill card present z polish name + "Aktywny" badge
                 //     (linia 2296 — renderuje sie tylko gdy activeSkillSlots
-                //     zawiera ten skillId → potwierdza ze seed dotarl do
+                //     zawiera ten skillId -> potwierdza ze seed dotarl do
                 //     skillStore).
                 const tier1Card = list.locator('.inventory__skills-card', {
                     has: page.locator('.inventory__skills-card-name', { hasText: skillNamePl }),

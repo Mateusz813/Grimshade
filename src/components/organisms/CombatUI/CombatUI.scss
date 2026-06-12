@@ -1,8 +1,8 @@
-// ══════════════════════════════════════════════════════════════════════════════
+// ==============================================================================
 // Unified Combat UI — shared across hunting, boss, dungeon, transform, raid,
 // trainer. One block (`combat-ui`) so the whole experience is identical
 // regardless of the view that mounted it.
-// ══════════════════════════════════════════════════════════════════════════════
+// ==============================================================================
 
 @use '../../../styles/combat-animations' as *;
 
@@ -20,7 +20,7 @@
     // sub-components are referenced via & nesting below for cascade clarity.
     display: contents;
 
-    // ── Top-right toggles (under the header) ──────────────────────────────
+    // -- Top-right toggles (under the header) ------------------------------
     // Sits flush with the underside of the fixed TopHeader — `top: 0`
     // makes it stick once the page scrolls, and zero top-padding means the
     // chip pills touch the gradient's top edge so the strip looks visually
@@ -73,7 +73,7 @@
         }
     }
 
-    // ── Top-left task badge (📜 + counter) ────────────────────────────────
+    // -- Top-left task badge (scroll + counter) --------------------------------
     &__task-badge {
         position: fixed;
         top: 80px;
@@ -146,7 +146,7 @@
         &-progress { color: #ffc107; font-weight: 700; }
     }
 
-    // ── Wave banner (shared by Dungeon / Transform / Raid) ────────────────
+    // -- Wave banner (shared by Dungeon / Transform / Raid) ----------------
     // Sits between the top-controls chip cluster and the arena. Compact
     // pill — uppercased label on the left, big bold value on the right.
     // Per-view wording lives in the JSX (e.g. "Fala 1/4", "Potwory 3/8");
@@ -194,7 +194,7 @@
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
 
-    // ── Arena (4v4 grid) ──────────────────────────────────────────────────
+    // -- Arena (4v4 grid) --------------------------------------------------
     &__arena {
         position: relative;
         display: grid;
@@ -243,7 +243,7 @@
         // getBossCardHue(activeBoss.level) so the gradient matches the
         // tier-coloured border the player saw on the list card). The
         // five-stop gradient cycles through tonal variations of the
-        // single hue (light → mid → deep → dark → mid) so it still feels
+        // single hue (light  mid  deep  dark  mid) so it still feels
         // animated without fighting the boss's identity colour. Falls
         // back to the original red palette when --boss-hue is missing
         // (e.g. legacy "daily boss" callers in other views).
@@ -332,7 +332,7 @@
         100% { background-position: 0% 50%; }
     }
 
-    // ── Enemy card ────────────────────────────────────────────────────────
+    // -- Enemy card --------------------------------------------------------
     &__enemy {
         position: relative;
         display: flex;
@@ -403,7 +403,7 @@
         100% { transform: scale(1); }
     }
 
-    // ── Per-attack hit pulse overlay ─────────────────────────────────────────
+    // -- Per-attack hit pulse overlay -----------------------------------------
     // Mounted as a keyed transient `<span>` inside EnemyCard / AllyCard for
     // every distinct hit (counter increments). Each fresh mount runs the
     // CSS animation from frame 0 — that's what makes rapid hits land as
@@ -436,7 +436,7 @@
         box-shadow: inset 0 0 14px rgba(255, 50, 50, 0.55);
     }
 
-    // ── Side-strike modifiers (enemy side) ──────────────────────────────
+    // -- Side-strike modifiers (enemy side) ------------------------------
     // EnemyCard alternates `--strike-l` / `--strike-r` based on `hitPulse`
     // parity. Two purposes:
     //
@@ -519,7 +519,7 @@
         100% { opacity: 0;    transform: scale(1);    }
     }
 
-    // ── Ally hit shake ───────────────────────────────────────────────────
+    // -- Ally hit shake ---------------------------------------------------
     // Every monster hit on an ally bumps `ally.hitPulse`. AllyCard maps that
     // counter onto one of two parity-toggled modifier classes (`--shake-a` /
     // `--shake-b`) — each binds the SAME visual shake to a UNIQUE keyframes
@@ -616,7 +616,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 44px;
+        font-size: 22px;
         opacity: 0.65;
         pointer-events: none;
     }
@@ -729,7 +729,7 @@
         50%      { opacity: 0.78; }
     }
 
-    // ── Ally card (mirrors enemy layout) ──────────────────────────────────
+    // -- Ally card (mirrors enemy layout) ----------------------------------
     &__ally {
         position: relative;
         display: flex;
@@ -785,7 +785,7 @@
             // `ally.accentColor`) so the whole tile reads as "this is YOUR
             // transform" at a glance — the previous radial wash at 35% mix
             // was barely visible against the base dark slate. Bumped to a
-            // 70%→25% diagonal so the top-left corner is unmistakably the
+            // 70%25% diagonal so the top-left corner is unmistakably the
             // transform colour while the bottom-right keeps enough contrast
             // for the white name/level text underneath. Falls back to the
             // generic blue when no accent is set (lobby/idle).
@@ -882,14 +882,14 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 44px;
+        font-size: 22px;
         opacity: 0.65;
         pointer-events: none;
     }
 
     // 2026-05 v7: Necromancer summon-stack — vertical column of per-type
     // pills in the bottom-right of the avatar. Each pill shows one
-    // summon type (💀 Szkielety / 👻 Duchy / 😈 Demony / 👑 Liche)
+    // summon type (skull Szkielety / ghost Duchy / smiling-face-with-horns Demony / crown Liche)
     // with its live count. Pills with an `onClick` handler (the local
     // player's card) double as a despawn button — tapping one removes
     // the oldest summon of that type from the queue.
@@ -936,7 +936,7 @@
     }
 
     // 2026-05 v7: Necromancer summon-spawn overlay (~2s, per-type theme).
-    // The container fills the avatar; one glyph (💀/👻/😈/👑) bursts out
+    // The container fills the avatar; one glyph (skull/ghost/smiling-face-with-horns/crown) bursts out
     // and a coloured aura ring expands behind it. Each type has its own
     // colour palette + motion curve so the player can tell summons apart
     // at a glance.
@@ -967,7 +967,7 @@
             animation-fill-mode: forwards;
         }
 
-        // ── Skeleton: gray bone-dust burst ───────────────────────────
+        // -- Skeleton: gray bone-dust burst ---------------------------
         &--skeleton {
             color: #d6d6d6;
             .combat-ui__summon-spawn-glyph {
@@ -977,7 +977,7 @@
                 animation: summon-skeleton-aura 2s ease-out;
             }
         }
-        // ── Ghost: cyan ethereal swirl ───────────────────────────────
+        // -- Ghost: cyan ethereal swirl -------------------------------
         &--ghost {
             color: #6ee0ff;
             .combat-ui__summon-spawn-glyph {
@@ -988,7 +988,7 @@
                 box-shadow: 0 0 24px #6ee0ff inset, 0 0 24px #6ee0ff;
             }
         }
-        // ── Demon: red/orange flame eruption ─────────────────────────
+        // -- Demon: red/orange flame eruption -------------------------
         &--demon {
             color: #ff6a3d;
             .combat-ui__summon-spawn-glyph {
@@ -1000,7 +1000,7 @@
                 box-shadow: 0 0 32px #ff3d00 inset, 0 0 32px #ff6a3d;
             }
         }
-        // ── Lich: epic purple vortex with golden runes ───────────────
+        // -- Lich: epic purple vortex with golden runes ---------------
         &--lich {
             color: #c779ff;
             .combat-ui__summon-spawn-glyph {
@@ -1059,7 +1059,7 @@
         strong { color: #fff; font-weight: 800; }
     }
 
-    // ── Sub-controls (under arena: pots + bag + logs + xp) ────────────────
+    // -- Sub-controls (under arena: pots + bag + logs + xp) ----------------
     &__sub-controls {
         display: flex;
         flex-direction: column;
@@ -1098,10 +1098,10 @@
 
     // Hunting-view variant — shares the same row with the wave +/- pill AND
     // the "Upolowano:" tally. Layout swaps between two responsive shapes:
-    //   • mobile  →  3-col grid  [bag][wave][logs]   then row 2 = [tally]
-    //   • desktop →  3-col grid  [tally:1fr][wave:auto][actions:1fr]   single row
+    //   - mobile    3-col grid  [bag][wave][logs]   then row 2 = [tally]
+    //   - desktop   3-col grid  [tally:1fr][wave:auto][actions:1fr]   single row
     //
-    // The DOM order is `tally → wave → actions(bag+logs)` and the actions
+    // The DOM order is `tally  wave  actions(bag+logs)` and the actions
     // wrapper's `display: contents` (mobile) lets bag/logs spill back as
     // direct grid items so the `bag` and `logs` grid areas can pick them up
     // individually. On desktop the wrapper becomes a flex cluster so the
@@ -1230,7 +1230,7 @@
 
     &__sub-xp {
         position: relative;
-        // Bumped from 14 → 18px so the white in-bar text sits comfortably
+        // Bumped from 14  18px so the white in-bar text sits comfortably
         // without crowding the gradient fill underneath.
         height: 18px;
         background: rgba(0, 0, 0, 0.55);
@@ -1276,7 +1276,7 @@
         font-weight: 800;
     }
 
-    // ── Hunted tally (hunting only) ───────────────────────────────────────
+    // -- Hunted tally (hunting only) ---------------------------------------
     &__hunted {
         max-width: 980px;
         margin: 8px auto 0;
@@ -1335,7 +1335,7 @@
     &__hunted-icon { font-size: 14px; }
     &__hunted-count { font-weight: 800; }
 
-    // ── Wave +/- strip (hunting only — picks how many mobs spawn next) ───
+    // -- Wave +/- strip (hunting only — picks how many mobs spawn next) ---
     &__wave-ctl {
         display: flex;
         align-items: center;
@@ -1384,7 +1384,7 @@
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     }
 
-    // ── Post-victory footer (hunting only — Walcz ponownie / Zmień potwora)
+    // -- Post-victory footer (hunting only — Walcz ponownie / Zmień potwora)
     // Pinned to the centre of the viewport so the player always sees the two
     // primary post-victory choices regardless of where they were scrolled when
     // the wave ended. Sits below the modal layer (1500) and above the action
@@ -1420,7 +1420,7 @@
     // right under the TopHeader. Replaces the in-popup countdown: when the
     // player has auto-fight ON we hide the entire victory footer (no
     // "Walcz ponownie / Zmień potwora" choice), and instead surface a thin
-    // L→R progress bar in the player's transform accent colour so they can
+    // LR progress bar in the player's transform accent colour so they can
     // see at a glance how long until the next wave fires. Disappears the
     // moment the next fight starts (`phase` flips off 'victory').
     //
@@ -1467,8 +1467,8 @@
         to   { opacity: 1; }
     }
 
-    // ── Monster-spawn timer bar (Dungeon / Raid / Transform) ─────────────
-    // Slim L→R progress bar pinned right under the TopHeader, fills over
+    // -- Monster-spawn timer bar (Dungeon / Raid / Transform) -------------
+    // Slim LR progress bar pinned right under the TopHeader, fills over
     // the per-view "next monster will appear in X ms" timeout. Visually
     // identical to `&__auto-fight-bar` so the player learns one cue:
     // "thin bar pinned to header = something is about to happen". The
@@ -1539,7 +1539,7 @@
         }
     }
 
-    // ── Bottom action bar (replaces global nav) ──────────────────────────
+    // -- Bottom action bar (replaces global nav) --------------------------
     &__action-bar {
         position: fixed;
         bottom: 0;
@@ -1744,7 +1744,7 @@
         }
     }
 
-    // ── Potion strip (one row, pinned just above the action bar) ─────────
+    // -- Potion strip (one row, pinned just above the action bar) ---------
     // Always 4 slots in a row: HP / %HP / MP / %MP. Empty slots render as
     // transparent placeholders so the row never shifts when the player runs
     // out of one tier. Sits flush over the action bar with a small gap so it
@@ -1872,7 +1872,7 @@
         z-index: 2;
     }
 
-    // ── Modals (backpack / logs / hunt-exit) ─────────────────────────────
+    // -- Modals (backpack / logs / hunt-exit) -----------------------------
     &__modal-bg {
         position: fixed;
         inset: 0;
@@ -2037,13 +2037,13 @@
     }
 }
 
-// ── AppShell — when combat HUD is active, ensure body keeps room for the
+// -- AppShell — when combat HUD is active, ensure body keeps room for the
 //    fixed action bar AND the floating potion dock so nothing gets clipped
 //    underneath / behind them.
 //
 //    Action bar = 72px (64px on mobile)
 //    Potion strip = ~54px tall, sits on top of the action bar with 6px gap
-//      → cumulative bottom obstruction ≈ 132px desktop / 120px mobile
+//       cumulative bottom obstruction ≈ 132px desktop / 120px mobile
 //
 //    Bottom padding has to clear BOTH the action bar AND the potion strip
 //    so the player can scroll the last row of arena/sub-controls into view
@@ -2063,7 +2063,7 @@
         padding-bottom: 140px;
     }
 
-    // ── Release per-view viewport locks during unified-HUD combat ─────────
+    // -- Release per-view viewport locks during unified-HUD combat ---------
     // Pre-refactor `.combat` and `.boss--fighting` both pinned themselves to
     // `height: 100dvh; overflow: hidden` because each view scrolled its own
     // arena internally. The new unified UI lays out the arena, wave-ctl,
@@ -2085,7 +2085,7 @@
         // (`height: 100dvh; overflow: hidden`) — combined with
         // `.app-shell__main`'s 50px header padding that produced a phantom
         // scrollbar on desktop (the lock claimed exactly viewport height,
-        // the shell's top padding pushed it further → page-level scroll
+        // the shell's top padding pushed it further  page-level scroll
         // for nothing). Same release rule applies across all four:
         // natural flow, scroll only when the unified arena genuinely
         // exceeds the viewport (narrow / tall layouts), and the carve-out
@@ -2100,7 +2100,7 @@
     }
 }
 
-// ── Compact combat HUD (Dungeon / Boss / Raid / Arena) ───────────────────
+// -- Compact combat HUD (Dungeon / Boss / Raid / Arena) -------------------
 // Goal: the combat screen NEVER scrolls on a normal phone/desktop viewport.
 // The bag pill is hidden in JSX, the logs icon is portalled to the top-right
 // corner of the screen, the sub-row is gone, and the AppShell's bottom
@@ -2197,7 +2197,7 @@
     }
 }
 
-// ── Per-class attack animations ───────────────────────────────────────────
+// -- Per-class attack animations -------------------------------------------
 // Emitted at the BOTTOM of the file on purpose — see the comment at the top
 // of this file. The mixin builds rules like `.combat-ui__enemy--attack-Knight`
 // (slash) / `--attack-Mage` (cast bolt) / `--attack-Archer` (arrow trail)
@@ -2211,23 +2211,23 @@
 @include class-attack-animations('combat-ui__ally');
 @include class-attack-animations('combat-ui__enemy');
 
-// ── Floating damage / heal numbers ────────────────────────────────────────
+// -- Floating damage / heal numbers ----------------------------------------
 // Spawned by `useCombatFx` (pushEnemyFloat / pushAllyFloat) and rendered as
 // `.combat-ui__float` children of `.combat-ui__floats` inside Enemy/Ally
 // cards. Each entry self-prunes after 1.5s on the JS side; the CSS
 // animation runs that same length so it lines up with the unmount.
 //
 // Layout decisions:
-//   • The container is absolutely positioned over the upper portion of the
+//   - The container is absolutely positioned over the upper portion of the
 //     card so floats rise from "where the hit landed" rather than from the
 //     name foot — the player's eye is on the sprite, not the bar.
-//   • Each float is `display: inline-flex` with the icon on the left and
+//   - Each float is `display: inline-flex` with the icon on the left and
 //     the number on the right; crit floats append a bright "CRIT" chip.
-//   • Multiple simultaneous floats stack horizontally and wrap — they all
+//   - Multiple simultaneous floats stack horizontally and wrap — they all
 //     share the rise-and-fade animation but with no explicit positioning,
 //     letting the inline-flex layout fan them out so they don't overlap
 //     even when 4 monsters take damage on the same frame.
-//   • Every kind has its own colour family so the player can tell at a
+//   - Every kind has its own colour family so the player can tell at a
 //     glance whether they hit the monster, the ally hit the monster, the
 //     monster hit them, or a heal landed — see the per-modifier blocks
 //     below for the exact palette rationale.
@@ -2361,7 +2361,7 @@
     }
 }
 
-// ── Float colour palette (one per kind, see TFloatKind) ───────────────
+// -- Float colour palette (one per kind, see TFloatKind) ---------------
 // Player physical hit on enemy — clean white, the "default" damage colour.
 .combat-ui__float--basic        { color: #f5f5f5; }
 // Player spell — purple/pink so spell vs. basic is immediately legible.
@@ -2413,13 +2413,13 @@
         // Travel only ~22px upward from the centre anchor (45% of card) so
         // the number stays within the visible sprite area for its entire
         // lifetime. Combined with the smaller starting offset (translateY 8px
-        // → -22px = ~30px total), back-to-back floats still separate cleanly
+        //  -22px = ~30px total), back-to-back floats still separate cleanly
         // because spawn #2 is ~3 frames behind spawn #1's drift.
         transform: translateY(-22px) scale(0.95);
     }
 }
 
-// ─── 2026-05 v7: Necromancer summon-spawn keyframes ───────────────────────
+// --- 2026-05 v7: Necromancer summon-spawn keyframes -----------------------
 // Each summon type plays its own 2-second animation when the necro raises
 // a new minion. Glyph bursts UP-AND-OUT of the avatar, aura ring expands.
 

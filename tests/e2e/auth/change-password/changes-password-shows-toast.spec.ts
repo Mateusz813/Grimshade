@@ -4,9 +4,9 @@
  * Flow (mirror logout spec for the menu-open pattern):
  *   1. Seed character (TopHeader renders the avatar button only when
  *      character !== null).
- *   2. Login UI → pick character → Town.
- *   3. Open AvatarMenu → tap "Zmień hasło".
- *   4. Modal (portal) → fill new password + confirm → tap "Zmień hasło".
+ *   2. Login UI -> pick character -> Town.
+ *   3. Open AvatarMenu -> tap "Zmień hasło".
+ *   4. Modal (portal) -> fill new password + confirm -> tap "Zmień hasło".
  *   5. Assert success toast "Hasło zmienione pomyślnie".
  *
  * Because this changes a REAL Supabase account password, `finally` ALWAYS
@@ -46,7 +46,7 @@ test.describe('Auth › Change Password', { tag: '@auth' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → pick character → Town.
+            // 2. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -57,7 +57,7 @@ test.describe('Auth › Change Password', { tag: '@auth' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
             await waitForAppReady(page);
 
-            // 3. Open AvatarMenu → "Zmień hasło".
+            // 3. Open AvatarMenu -> "Zmień hasło".
             const avatarBtn = page.getByRole('button', { name: /menu postaci/i });
             await expect(avatarBtn).toBeVisible({ timeout: 10_000 });
             await avatarBtn.tap();
@@ -65,7 +65,7 @@ test.describe('Auth › Change Password', { tag: '@auth' }, () => {
             await expect(changePwdItem).toBeVisible({ timeout: 5_000 });
             await changePwdItem.tap();
 
-            // 4. Modal appears (portal to body) → fill all 3 fields:
+            // 4. Modal appears (portal to body) -> fill all 3 fields:
             //    current password (security gate) + new + confirm.
             const inputs = page.locator('.change-password__input');
             await expect(inputs).toHaveCount(3, { timeout: 5_000 });

@@ -4,22 +4,22 @@
  * (BACKLOG 7.5).
  *
  * Spec coverage:
- *  • 7.5 → "Task + quest pokazują się w header podczas walki". The
+ *  - 7.5 -> "Task + quest pokazują się w header podczas walki". The
  *    `TaskBadge` is the global task/quest chip in `TopHeader`
  *    (TopHeader.tsx line 316) — visible on every character-loaded
  *    screen including Combat (AppShell mounts `<TopHeader>` whenever
  *    `showChrome===true`, regardless of `combatHudActive`).
  *
  *  The badge contract per `TaskBadge.tsx`:
- *    • Renders nothing when `activeTasks.length === 0 && activeQuests.length === 0`.
- *    • Renders `.top-header__tasks-btn` with `.top-header__tasks-count`
+ *    - Renders nothing when `activeTasks.length === 0 && activeQuests.length === 0`.
+ *    - Renders `.top-header__tasks-btn` with `.top-header__tasks-count`
  *      = total active rows (line 159-170).
- *    • Adds `--live` modifier (line 163) when at least one row's
+ *    - Adds `--live` modifier (line 163) when at least one row's
  *      monster matches `combatStore.baseMonster.id` and the player is
  *      in active combat (`phase !== 'idle' || backgroundActive`).
- *    • Tapping the button reveals `.top-header__tasks-dropdown` with
+ *    - Tapping the button reveals `.top-header__tasks-dropdown` with
  *      one `.top-header__task-row` per task/quest (line 181-209).
- *    • A live row gets `.top-header__task-row--live` modifier + a
+ *    - A live row gets `.top-header__task-row--live` modifier + a
  *      visible "LIVE" tag (`.top-header__task-row-live-tag`).
  *
  * Test strategy:
@@ -45,7 +45,7 @@
  *  B) After `initCombat(rat)` — `.top-header__tasks-btn--live` modifier
  *     applied (the rat task row is now "live").
  *  C) Dropdown open — the single task row has `--live` modifier + LIVE
- *     tag visible. Proves the visual treatment cascades from button →
+ *     tag visible. Proves the visual treatment cascades from button ->
  *     row.
  *
  * Why we use SECONDARY account:
@@ -65,7 +65,7 @@ import { seedQuestState } from '../../fixtures/seedQuestState';
 test.describe('Quests › Tasks', { tag: '@progression' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('rat_10 active + combat phase=fighting against rat → TopHeader TaskBadge gets --live + LIVE tag on the row', async ({ page }) => {
+    test('rat_10 active + combat phase=fighting against rat -> TopHeader TaskBadge gets --live + LIVE tag on the row', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -98,7 +98,7 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
                 }],
             });
 
-            // 3. Login → pick → Town. TopHeader mounts, TaskBadge sees
+            // 3. Login -> pick -> Town. TopHeader mounts, TaskBadge sees
             //    the seeded activeTask and renders the button.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
@@ -110,7 +110,7 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
             await expect(page.locator('.town__char-name')).toHaveText(nick, { timeout: 10_000 });
 
-            // ── Bucket A — pre-combat baseline ─────────────────────────
+            // -- Bucket A — pre-combat baseline -------------------------
             //
             // Button visible with count "1". --live MUST NOT be set
             // (we're in Town, phase=idle, baseMonster=null).
@@ -119,14 +119,14 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             await expect(tasksBtn.locator('.top-header__tasks-count')).toHaveText('1');
             await expect(tasksBtn).not.toHaveClass(/top-header__tasks-btn--live/);
 
-            // ── Bucket B — stage combat against rat, expect --live ──────
+            // -- Bucket B — stage combat against rat, expect --live ------
             //
             // Same engine call live combat would do at fight start:
             // `useCombatStore.getState().initCombat(monster, hp, mp, rarity)`
             // sets `phase='fighting'` + `baseMonster=monster` + `monster=monster`
             // synchronously (combatStore.ts initCombat impl). The badge's
             // `inActiveCombat` predicate (TaskBadge.tsx line 68) flips
-            // to true → `liveMonsterId` = rat → row.live = true → button
+            // to true -> `liveMonsterId` = rat -> row.live = true -> button
             // gets --live class.
             await page.evaluate(async () => {
                 // @ts-expect-error — dev-time Vite URL not resolvable by tsc
@@ -164,9 +164,9 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             // killCount=10, so claimableCount param to TaskBadge stays 0.
             await expect(tasksBtn).not.toHaveClass(/top-header__tasks-btn--claimable/);
 
-            // ── Bucket C — open dropdown, assert live tag on the row ───
+            // -- Bucket C — open dropdown, assert live tag on the row ---
             //
-            // Tap the badge button → `.top-header__tasks-dropdown` opens.
+            // Tap the badge button -> `.top-header__tasks-dropdown` opens.
             // Inside, the single row gets the `--live` modifier + a
             // visible LIVE tag span (TaskBadge.tsx line 197-202).
             await tasksBtn.tap();

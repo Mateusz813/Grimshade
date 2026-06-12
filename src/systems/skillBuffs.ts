@@ -80,38 +80,38 @@ const buffFromAtom = (atom: string, skillIcon: string): IBuffSpec | null => {
     // Helper — choose `icon` first, fall back to a stat-themed default.
     const ic = (fallback: string) => skillIcon || fallback;
     switch (head) {
-        // ── Self timed buffs ─────────────────────────────────────────────
-        case 'crit_buff':       return { label: `+${n1.toFixed(0)}% Crit`,  icon: ic('🎯'), durationMs: n2 };
-        case 'attack_up':       return { label: `+${n1.toFixed(0)}% ATK`,   icon: ic('⚔️'), durationMs: n2 };
-        case 'dodge_buff':      return { label: `+${n1.toFixed(0)}% Unik`,  icon: ic('💨'), durationMs: n2 };
-        case 'immortal':        return { label: 'Niewrażliwość',           icon: ic('✨'), durationMs: n1 };
-        case 'mana_shield':     return { label: 'Tarcza Many (MP→HP)',      icon: ic('🛡️'), durationMs: n1 };
-        // ── Party timed buffs ────────────────────────────────────────────
-        case 'party_attack_up':    return { label: `Party +${n1.toFixed(0)}% ATK`,  icon: ic('⚔️'), durationMs: n2 };
-        case 'party_defense_up':   return { label: `Party +${n1.toFixed(0)}% DEF`,  icon: ic('🛡️'), durationMs: n2 };
-        case 'party_def_pen':      return { label: `Party Ignore ${n1.toFixed(0)}% DEF`, icon: ic('🗡️'), durationMs: n2 };
-        case 'party_as_up':        return { label: `Party ×${n1} AS`,              icon: ic('⚡'), durationMs: n2 };
-        case 'party_crit_up':      return { label: `Party +${n1.toFixed(0)}% Crit`, icon: ic('🎯'), durationMs: n2 };
-        case 'party_immortal':     return { label: 'Party Niewrażliwość',          icon: ic('✨'), durationMs: n1 };
+        // -- Self timed buffs ---------------------------------------------
+        case 'crit_buff':       return { label: `+${n1.toFixed(0)}% Crit`,  icon: ic('bullseye'), durationMs: n2 };
+        case 'attack_up':       return { label: `+${n1.toFixed(0)}% ATK`,   icon: ic('crossed-swords'), durationMs: n2 };
+        case 'dodge_buff':      return { label: `+${n1.toFixed(0)}% Unik`,  icon: ic('dashing-away'), durationMs: n2 };
+        case 'immortal':        return { label: 'Niewrażliwość',           icon: ic('sparkles'), durationMs: n1 };
+        case 'mana_shield':     return { label: 'Tarcza Many (MP->HP)',      icon: ic('shield'), durationMs: n1 };
+        // -- Party timed buffs --------------------------------------------
+        case 'party_attack_up':    return { label: `Party +${n1.toFixed(0)}% ATK`,  icon: ic('crossed-swords'), durationMs: n2 };
+        case 'party_defense_up':   return { label: `Party +${n1.toFixed(0)}% DEF`,  icon: ic('shield'), durationMs: n2 };
+        case 'party_def_pen':      return { label: `Party Ignore ${n1.toFixed(0)}% DEF`, icon: ic('dagger'), durationMs: n2 };
+        case 'party_as_up':        return { label: `Party ×${n1} AS`,              icon: ic('high-voltage'), durationMs: n2 };
+        case 'party_crit_up':      return { label: `Party +${n1.toFixed(0)}% Crit`, icon: ic('bullseye'), durationMs: n2 };
+        case 'party_immortal':     return { label: 'Party Niewrażliwość',          icon: ic('sparkles'), durationMs: n1 };
         // Cleric Błogosławieństwo — heal_party_dot:durationMs:pctPerSec.
         // Shows the timer in the BuffBar; the actual HP regen tick is
         // driven by TopHeader's centralised tick (so it works in town
         // too) plus per-view ticks (so bots / raid members get healed
         // when in combat).
-        case 'heal_party_dot':     return { label: `Party Regen ${n2}%/s`,          icon: ic('💚'), durationMs: n1 };
-        // ── Marker effects (no duration in the engine but worth showing) ─
-        case 'aggro_steal':        return { label: 'Aggro Steal',          icon: ic('💢'), durationMs: 2000 };
-        // ── Charge-style "next N attacks" buffs — show a short flash so
+        case 'heal_party_dot':     return { label: `Party Regen ${n2}%/s`,          icon: ic('green-heart'), durationMs: n1 };
+        // -- Marker effects (no duration in the engine but worth showing) -
+        case 'aggro_steal':        return { label: 'Aggro Steal',          icon: ic('anger-symbol'), durationMs: 2000 };
+        // -- Charge-style "next N attacks" buffs — show a short flash so
         //    the player knows their buff is queued (real consumption is
-        //    tracked in the v2 status; bar entry is purely visual). ─────
-        case 'crit_buff_next':     return { label: `+${n1.toFixed(0)}% Crit (next)`, icon: ic('🎯'), durationMs: 6000 };
-        case 'crit_next':          return { label: `Gwarant. crit ×${n2 || 1}`,      icon: ic('💥'), durationMs: 6000 };
-        case 'dmg_amp_next':       return { label: `× ${n1} DMG (next ${n2 || 1})`,  icon: ic('🔥'), durationMs: 6000 };
-        case 'dodge_next':         return { label: `Unik 100% (next ${n1})`,         icon: ic('💨'), durationMs: 6000 };
+        //    tracked in the v2 status; bar entry is purely visual). -----
+        case 'crit_buff_next':     return { label: `+${n1.toFixed(0)}% Crit (next)`, icon: ic('bullseye'), durationMs: 6000 };
+        case 'crit_next':          return { label: `Gwarant. crit ×${n2 || 1}`,      icon: ic('collision'), durationMs: 6000 };
+        case 'dmg_amp_next':       return { label: `× ${n1} DMG (next ${n2 || 1})`,  icon: ic('fire'), durationMs: 6000 };
+        case 'dodge_next':         return { label: `Unik 100% (next ${n1})`,         icon: ic('dashing-away'), durationMs: 6000 };
         // party_lifesteal_next + next_ally_heal are CHARGE buffs now
         // (CHARGE_ATOMS list above) — BuffBar renders them as "×N"
         // instead of a timer, consumed per qualifying basic attack.
-        case 'party_instant_kill_chance_next': return { label: `Party IK ${n1.toFixed(0)}% (next ${n2 || 1})`,      icon: ic('💀'), durationMs: 10000 };
+        case 'party_instant_kill_chance_next': return { label: `Party IK ${n1.toFixed(0)}% (next ${n2 || 1})`,      icon: ic('skull'), durationMs: 10000 };
         // block_next_party is now a charge buff (CHARGE_ATOMS list above);
         // BuffBar renders it as "×N" instead of a timer, consumed on the
         // next basic monster hit. Don't return a timed spec here — the
@@ -125,13 +125,13 @@ const buffFromAtom = (atom: string, skillIcon: string): IBuffSpec | null => {
  * Stack cap for charge buffs = chargesToAdd × 2. Stackable to "two
  * casts worth" so a player can pre-load one cast in advance but can't
  * spam-stack indefinitely. Maps cleanly to spec values:
- *   • Krok Cienia    `dodge_next:3`        → 3 × 2 = 6
- *   • Strzał Boga    `dmg_amp_next:2:8`    → 8 × 2 = 16
- *   • Cięcie Boga    `dmg_amp_next:5:1`    → 1 × 2 = 2
- *   • Cięcie Boga    `crit_next:1:1`       → 1 × 2 = 2
- *   • Knight Ostat.  `crit_next:1:1`       → 1 × 2 = 2
- *   • Klon Cienia    `dmg_amp_next:2:1`    → 1 × 2 = 2
- *   • Precyzyjny     `crit_buff_next:30`   → 1 × 2 = 2
+ *   - Krok Cienia    `dodge_next:3`        -> 3 × 2 = 6
+ *   - Strzał Boga    `dmg_amp_next:2:8`    -> 8 × 2 = 16
+ *   - Cięcie Boga    `dmg_amp_next:5:1`    -> 1 × 2 = 2
+ *   - Cięcie Boga    `crit_next:1:1`       -> 1 × 2 = 2
+ *   - Knight Ostat.  `crit_next:1:1`       -> 1 × 2 = 2
+ *   - Klon Cienia    `dmg_amp_next:2:1`    -> 1 × 2 = 2
+ *   - Precyzyjny     `crit_buff_next:30`   -> 1 × 2 = 2
  */
 const chargeStackCap = (chargesToAdd: number): number => Math.max(1, chargesToAdd * 2);
 
@@ -140,26 +140,26 @@ const chargeStackCap = (chargesToAdd: number): number => Math.max(1, chargesToAd
  * (rendered as "×N" instead of a timer; consumed per relevant action
  * via `consumeBuffCharge`).
  *
- * dodge_next         → consumed when the player takes a basic enemy hit
- * dmg_amp_next       → consumed when the player lands a basic attack
+ * dodge_next         -> consumed when the player takes a basic enemy hit
+ * dmg_amp_next       -> consumed when the player lands a basic attack
  *                      (×N dmg multiplier comes from the v2 status queue;
  *                      charge buff is the visible counter)
- * crit_next          → consumed when the player lands a basic attack
- * crit_buff_next     → consumed on the next basic attack (one-shot bump)
- * block_next_party   → Cleric Boska Tarcza. Consumed when the player
+ * crit_next          -> consumed when the player lands a basic attack
+ * crit_buff_next     -> consumed on the next basic attack (one-shot bump)
+ * block_next_party   -> Cleric Boska Tarcza. Consumed when the player
  *                      takes a basic monster hit; eats the entire hit
  *                      (BLOCK float). Stacks per cast up to 2 max
  *                      (chargesToAdd × 2 = 1 × 2 = 2). Was previously
  *                      time-based (8s timer) which never blocked
  *                      anything because no consumer was wired.
- * next_ally_heal     → Cleric Sąd Boży. Each charge fires a
+ * next_ally_heal     -> Cleric Sąd Boży. Each charge fires a
  *                      heal-lowest-ally pulse on the player's next
- *                      basic attack (`next_ally_heal:7.5:3` → 3
+ *                      basic attack (`next_ally_heal:7.5:3` -> 3
  *                      charges, cap 6).
- * party_lifesteal_next → Cleric Boski Filar. Each charge heals the
+ * party_lifesteal_next -> Cleric Boski Filar. Each charge heals the
  *                      attacker for pct% of damage dealt this swing.
  *                      Per spec uses a FLAT cap (chargesToAdd, no
- *                      ×2) so `party_lifesteal_next:100:5` → 5 max.
+ *                      ×2) so `party_lifesteal_next:100:5` -> 5 max.
  */
 const CHARGE_ATOMS = new Set<string>([
     'dodge_next', 'dmg_amp_next', 'crit_next', 'crit_buff_next',
@@ -201,7 +201,7 @@ export const applySkillBuff = (
 
     // 2026-05 v6: prefer the per-class spell PNG (assets/images/spells/
     // {class}-{idx}.png) over the legacy emoji map so the BuffBar shows
-    // the actual spell artwork instead of "✨". `getSkillIcon` falls back
+    // the actual spell artwork instead of "sparkles". `getSkillIcon` falls back
     // to the emoji and finally a generic sparkle so this is safe for any
     // skill id even before the artwork registry is fully populated.
     const skillIcon = getSkillIcon(skillId);
@@ -215,19 +215,19 @@ export const applySkillBuff = (
     for (let i = 0; i < atoms.length; i++) {
         const atom = atoms[i].trim();
         const head = atom.toLowerCase().split(':')[0];
-        // ── Charge-based buff branch (Krok Cienia / Unik) ─────────────────
+        // -- Charge-based buff branch (Krok Cienia / Unik) -----------------
         // Stacks ×N up to 6 instead of using a timer. Engine consumes one
         // charge per qualifying enemy basic hit via consumeBuffCharge().
         if (CHARGE_ATOMS.has(head)) {
             const parts = atom.split(':');
             // Per-atom charge count layout:
-            //   dodge_next:N:scope         → N is parts[1]
-            //   dmg_amp_next:M:N           → N is parts[2] (M is mult)
-            //   crit_next:N:chance         → N is parts[1]
-            //   crit_buff_next:N           → 1 charge (N is the % bump)
-            //   block_next_party:N         → N is parts[1]
-            //   next_ally_heal:pct:N       → N is parts[2] (pct is heal %)
-            //   party_lifesteal_next:pct:N → N is parts[2] (pct is steal %)
+            //   dodge_next:N:scope         -> N is parts[1]
+            //   dmg_amp_next:M:N           -> N is parts[2] (M is mult)
+            //   crit_next:N:chance         -> N is parts[1]
+            //   crit_buff_next:N           -> 1 charge (N is the % bump)
+            //   block_next_party:N         -> N is parts[1]
+            //   next_ally_heal:pct:N       -> N is parts[2] (pct is heal %)
+            //   party_lifesteal_next:pct:N -> N is parts[2] (pct is steal %)
             let chargesToAdd: number;
             if (head === 'dmg_amp_next' || head === 'next_ally_heal' || head === 'party_lifesteal_next') {
                 chargesToAdd = parseInt(parts[2] ?? '1', 10) || 1;
@@ -239,9 +239,9 @@ export const applySkillBuff = (
             if (chargesToAdd <= 0) continue;
             const effectKey = CHARGE_BUFF_EFFECT_KEY(head);
             // Per-spec cap rules:
-            //   • Boski Filar → flat cap (no ×2). User explicitly asked
+            //   - Boski Filar -> flat cap (no ×2). User explicitly asked
             //     for max stack 5 on `party_lifesteal_next:100:5`.
-            //   • Other charge atoms → standard chargesToAdd × 2 rule.
+            //   - Other charge atoms -> standard chargesToAdd × 2 rule.
             const cap = head === 'party_lifesteal_next'
                 ? Math.max(1, chargesToAdd)
                 : chargeStackCap(chargesToAdd);

@@ -23,7 +23,7 @@ import { resolve } from 'node:path';
  * Multi-context dla testów party (Supabase Realtime):
  *   const ctx1 = await browser.newContext();
  *   const ctx2 = await browser.newContext();
- *   // każdy ctx ma własne cookies / localStorage → osobny gracz
+ *   // każdy ctx ma własne cookies / localStorage -> osobny gracz
  *
  * Decision log (2026-05-24):
  * - .env.test loading — zerowy dep, parsujemy inline z fs/path. Plik
@@ -40,7 +40,7 @@ import { resolve } from 'node:path';
  * `.env.test`.
  */
 const loadEnvFile = (path: string): void => {
-    // Playwright loads ten config zawsze z project root → process.cwd()
+    // Playwright loads ten config zawsze z project root -> process.cwd()
     // jest stabilny i nie cierpi na ESM-vs-CJS __dirname quirki.
     const abs = resolve(process.cwd(), path);
     if (!existsSync(abs)) return;
@@ -66,8 +66,8 @@ export default defineConfig({
     forbidOnly: isCI,
     // 2026-05-26: retries=1 lokalnie (było 0). Powód: ~1-2% testów w
     // pełnym suicie (147+ spec files × 2 mobile profile) flakuje przez
-    // server-side timing — character cleanup async DELETE → kolejny test
-    // CREATE → game_save row hydration race. Każdy taki test PASS-uje
+    // server-side timing — character cleanup async DELETE -> kolejny test
+    // CREATE -> game_save row hydration race. Każdy taki test PASS-uje
     // w isolation, ale w batch może upaść raz na ~50 runów. Retries=1
     // łapie wszystkie te flake-y bez zmiany assertion. CI nadal ma
     // retries=2 (na CI również Realtime/websocket bywa kapryśny).
@@ -78,13 +78,13 @@ export default defineConfig({
     retries: 2,
     // 2026-05-25 (incident): workers: 1 globalnie. Wcześniej 2 (1 per profile)
     // ale w połączeniu z agresywnym spawnowaniem agentów + listUsers per cleanup
-    // wybiło DB Supabase NANO compute z 10% do 82% CPU → unhealthy state.
+    // wybiło DB Supabase NANO compute z 10% do 82% CPU -> unhealthy state.
     // Workers=1 = mobile-safari i mobile-chrome biegną SEQUENTIAL (nie
     // concurrent). Wolniej (1.5×-2× czas) ale max 1 char create/cleanup
-    // jednocześnie na primary account → DB-friendly. Po:
-    //   1. Refactor cleanup → shared `adminClient.ts` z cached findUserIdByEmail
+    // jednocześnie na primary account -> DB-friendly. Po:
+    //   1. Refactor cleanup -> shared `adminClient.ts` z cached findUserIdByEmail
     //      (1 listUsers per worker zamiast 80+)
-    //   2. Supabase Pro free-upgrade (Nano → Micro, 2× pamięć)
+    //   2. Supabase Pro free-upgrade (Nano -> Micro, 2× pamięć)
     // można wrócić do workers=2 + zweryfikować CPU graph w dashboard.
     workers: 1,
     reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
@@ -94,8 +94,8 @@ export default defineConfig({
     globalSetup: './tests/e2e/global-setup.ts',
     // 2026-05-26: globalTeardown — auto-wipes stale `e2e-register-*` users
     // + leftover characters on stable test accounts po KAŻDYM runie suite-a.
-    // Safety-net za try/finally per-test (fail mid-flow → afterEach nie leci
-    // → zostaje syf w `auth.users`). Patrz `tests/e2e/global-teardown.ts`.
+    // Safety-net za try/finally per-test (fail mid-flow -> afterEach nie leci
+    // -> zostaje syf w `auth.users`). Patrz `tests/e2e/global-teardown.ts`.
     globalTeardown: './tests/e2e/global-teardown.ts',
 
     use: {

@@ -53,7 +53,7 @@ import {
     stopCombat,
 } from '../systems/combatEngine';
 
-// ── Fixtures ────────────────────────────────────────────────────────────────
+// -- Fixtures ----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -84,7 +84,7 @@ const makeMonster = () => ({
     xp: 3,
     gold: [1, 1] as [number, number],
     dropTable: [],
-    sprite: '🐀',
+    sprite: 'rat',
 });
 
 beforeEach(() => {
@@ -298,7 +298,7 @@ describe('useBackgroundCombat — auto-fight on victory', () => {
 
 describe('useBackgroundCombat — 10h cap', () => {
     it('calls stopCombat when backgroundStartedAt + 10h has already elapsed', () => {
-        // 11h ago — past the cap → stops immediately on mount.
+        // 11h ago — past the cap -> stops immediately on mount.
         const longAgo = new Date(Date.now() - 11 * 60 * 60 * 1000).toISOString();
         useCombatStore.setState({ backgroundStartedAt: longAgo });
         renderHook(() => useBackgroundCombat());

@@ -41,7 +41,7 @@ import { supabase } from '../lib/supabase';
 const mockApi = api as unknown as Record<string, any>;
 const mkRes = <T>(data: T) => ({ data });
 
-// ── isUpgradeMilestone ──────────────────────────────────────────────────────
+// -- isUpgradeMilestone ------------------------------------------------------
 
 describe('isUpgradeMilestone', () => {
     it('treats +5 and +7 as the early-tier hype milestones', () => {
@@ -75,7 +75,7 @@ describe('isUpgradeMilestone', () => {
     });
 });
 
-// ── formatSystemMessage ─────────────────────────────────────────────────────
+// -- formatSystemMessage -----------------------------------------------------
 
 describe('formatSystemMessage', () => {
     it('prefixes the marker and serialises the upgrade payload', () => {
@@ -115,7 +115,7 @@ describe('formatSystemMessage', () => {
     });
 });
 
-// ── parseSystemMessage ──────────────────────────────────────────────────────
+// -- parseSystemMessage ------------------------------------------------------
 
 describe('parseSystemMessage', () => {
     it('parses a valid upgrade payload', () => {
@@ -139,7 +139,7 @@ describe('parseSystemMessage', () => {
         });
     });
 
-    it('round-trips through format → parse', () => {
+    it('round-trips through format -> parse', () => {
         const payload: ISystemUpgradePayload = {
             type: 'upgrade',
             itemId: 'iron_sword',
@@ -194,7 +194,7 @@ describe('parseSystemMessage', () => {
     });
 });
 
-// ── Integration: chatApi.postSystemEvent + format + parse round-trip ─────────
+// -- Integration: chatApi.postSystemEvent + format + parse round-trip ---------
 //
 // The chatApi insert is mocked at axiosInstance level (declared at top
 // of file). Each test intercepts the wire body, asserts the encoded
@@ -206,9 +206,9 @@ describe('parseSystemMessage', () => {
 describe('Integration › chatApi.postSystemEvent + format + parse (item upgrade)', () => {
     // BACKLOG 6.11 closure. Pin the contract:
     //   formatSystemMessage({ type: 'upgrade', ... })
-    //     → chatApi.postSystemEvent  (wire = `[SYS]{...}` string)
-    //     → DB stores `messages.content`
-    //     → parseSystemMessage(wire) yields ALL fields Chat.tsx renders
+    //     -> chatApi.postSystemEvent  (wire = `[SYS]{...}` string)
+    //     -> DB stores `messages.content`
+    //     -> parseSystemMessage(wire) yields ALL fields Chat.tsx renders
     //
     // Why this matters: the E2E spec (`inventory/upgrade/system-chat-message.spec.ts`)
     // seeds the wire content directly via service_role to avoid running
@@ -243,7 +243,7 @@ describe('Integration › chatApi.postSystemEvent + format + parse (item upgrade
         const insertedRow = {
             id: 'sys-msg-1',
             channel: 'system',
-            content: wire, // ← server echoes the wire content back
+            content: wire, // <- server echoes the wire content back
             character_name: 'Hero',
             character_class: 'Knight',
             character_level: 25,
@@ -279,16 +279,16 @@ describe('Integration › chatApi.postSystemEvent + format + parse (item upgrade
         // sys.upgradeLevel / sys.itemName. If any field is missing/typo'd
         // the rarity-tinted span class collapses to `--rarity-undefined`
         // and the strong tags render `undefined`.
-        expect(parsed.itemId).toBe('iron_sword');          // → getItemDisplayInfo(sys.itemId)
-        expect(parsed.rarity).toBe('rare');                // → className `chat__msg-text--rarity-rare`
-        expect(parsed.upgradeLevel).toBe(10);              // → <strong>+{sys.upgradeLevel}</strong>
-        expect(parsed.itemName).toBe('Żelazny Miecz');     // → <strong>{sys.itemName}</strong>
+        expect(parsed.itemId).toBe('iron_sword');          // -> getItemDisplayInfo(sys.itemId)
+        expect(parsed.rarity).toBe('rare');                // -> className `chat__msg-text--rarity-rare`
+        expect(parsed.upgradeLevel).toBe(10);              // -> <strong>+{sys.upgradeLevel}</strong>
+        expect(parsed.itemName).toBe('Żelazny Miecz');     // -> <strong>{sys.itemName}</strong>
     });
 
     it('round-trip preserves Polish characters in itemName (renderer prints them as <strong> verbatim)', () => {
         // Guard against future JSON-stringify mishaps (e.g. someone forces
         // ASCII escape). Polish letters in itemName MUST survive the
-        // serialize → parse cycle so Chat.tsx renders `Żelazny Miecz`,
+        // serialize -> parse cycle so Chat.tsx renders `Żelazny Miecz`,
         // not `Żelazny Miecz` or a UTF-mangled string.
         const wire = formatSystemMessage({
             type: 'upgrade',
@@ -356,9 +356,9 @@ describe('Integration › chatApi.postSystemEvent + format + parse (skill upgrad
 
         // Step 5 — every field Chat.tsx skillUpgrade branch reads
         // (lines 359-381) MUST survive the round-trip:
-        //   - sys.skillId → getSkillIcon(sys.skillId) → TinyIcon
-        //   - sys.skillName → <strong>{sys.skillName}</strong>
-        //   - sys.upgradeLevel → <strong>+{sys.upgradeLevel}</strong>
+        //   - sys.skillId -> getSkillIcon(sys.skillId) -> TinyIcon
+        //   - sys.skillName -> <strong>{sys.skillName}</strong>
+        //   - sys.upgradeLevel -> <strong>+{sys.upgradeLevel}</strong>
         expect(parsed.skillId).toBe('shield_bash');
         expect(parsed.skillName).toBe('Uderzenie Tarczą');
         expect(parsed.upgradeLevel).toBe(10);

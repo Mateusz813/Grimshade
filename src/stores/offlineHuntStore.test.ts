@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Mock combatStore + skillStore ────────────────────────────────────────────
+// -- Mock combatStore + skillStore --------------------------------------------
 // `startHunt` calls into both stores (reset combat + flush + pause active
 // training) and `stopHunt` resumes training. We don't care what those stores
 // actually do here — we just want to assert the right side-effects fire.
@@ -49,7 +49,7 @@ const makeMonster = (overrides?: Partial<IMonster>): IMonster => ({
     xpReward: 17,
     goldMin: 1,
     goldMax: 3,
-    icon: '🐀',
+    icon: 'rat',
     drops: [],
     ...overrides,
 } as unknown as IMonster);
@@ -67,7 +67,7 @@ beforeEach(() => {
     resumeTrainingMock.mockClear();
 });
 
-// ── startHunt ────────────────────────────────────────────────────────────────
+// -- startHunt ----------------------------------------------------------------
 
 describe('startHunt', () => {
     it('sets isActive=true, records target + skill + a fresh ISO startedAt', () => {
@@ -102,7 +102,7 @@ describe('startHunt', () => {
     });
 });
 
-// ── stopHunt ─────────────────────────────────────────────────────────────────
+// -- stopHunt -----------------------------------------------------------------
 
 describe('stopHunt', () => {
     it('clears every hunt field and resumes active training', () => {
@@ -133,7 +133,7 @@ describe('stopHunt', () => {
     });
 });
 
-// ── resetHunt ────────────────────────────────────────────────────────────────
+// -- resetHunt ----------------------------------------------------------------
 
 describe('resetHunt', () => {
     it('wipes the hunt without resuming training (character-switch path)', () => {
@@ -154,7 +154,7 @@ describe('resetHunt', () => {
     });
 });
 
-// ── globalThis registration ──────────────────────────────────────────────────
+// -- globalThis registration --------------------------------------------------
 
 describe('module side effects', () => {
     it('registers itself on globalThis as __offlineHuntStore (skillStore probe path)', () => {
@@ -163,7 +163,7 @@ describe('module side effects', () => {
     });
 });
 
-// ── getOfflineHuntSpeedMultiplier ────────────────────────────────────────────
+// -- getOfflineHuntSpeedMultiplier --------------------------------------------
 
 describe('getOfflineHuntSpeedMultiplier', () => {
     it('returns x1 for mastery levels below 5', () => {
@@ -189,7 +189,7 @@ describe('getOfflineHuntSpeedMultiplier', () => {
     });
 });
 
-// ── constants sanity ────────────────────────────────────────────────────────
+// -- constants sanity --------------------------------------------------------
 
 describe('constants', () => {
     it('base rate is 10 seconds per kill', () => {

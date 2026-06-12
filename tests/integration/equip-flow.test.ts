@@ -11,7 +11,7 @@
  * actually moves when gear is swapped.
  *
  * IMPORTANT: the delta apply uses a deferred microtask + lazy dynamic
- * `import('./characterStore')` to break the inventory↔character import
+ * `import('./characterStore')` to break the inventory<->character import
  * cycle. We `await` a microtask between mutating + asserting so the
  * deferred work lands before our expectations run.
  */
@@ -25,7 +25,7 @@ import {
     type IInventoryItem,
 } from '../../src/systems/itemSystem';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-equip-1',
@@ -98,7 +98,7 @@ beforeEach(() => {
     resetStores();
 });
 
-// ── Equip / unequip / replace ─────────────────────────────────────────────────
+// -- Equip / unequip / replace -------------------------------------------------
 
 describe('equip flow: HP delta tracks the cap', () => {
     it('equipping +500 HP gear raises current HP by 500', async () => {
@@ -246,7 +246,7 @@ describe('equip flow: HP delta tracks the cap', () => {
     });
 });
 
-// ── MP delta sanity check (same mechanism, different stat key) ───────────────
+// -- MP delta sanity check (same mechanism, different stat key) ---------------
 
 describe('equip flow: MP delta tracks the cap', () => {
     /**

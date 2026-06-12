@@ -196,9 +196,11 @@ import bard10 from '../../assets/images/classes/bard-10.png';
 import bard11 from '../../assets/images/classes/bard-11.png';
 import { ELIXIRS } from '../../stores/shopStore';
 import { getSkillIcon } from '../../data/skillIcons';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import './Transform.scss';
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// -- Constants ------------------------------------------------------------------
 
 // CLASS_ICONS removed — the unified AllyCard handles class iconography.
 
@@ -277,7 +279,7 @@ const getTransformAvatarImage = (cls: string, transformNumber: number): string =
   return TRANSFORM_AVATARS[cls]?.[transformNumber] ?? BASE_AVATAR_IMAGES[cls] ?? mageImg;
 };
 
-// ── Transform card background images ──────────────────────────────────────
+// -- Transform card background images --------------------------------------
 // Mirrors the boss-card-background pattern: the user drops PNGs named
 // `transform-1.png`, `transform-2.png`, … into `src/assets/images/transforms/`
 // and they map 1:1 to the transform tier id. Missing files leave that card
@@ -333,7 +335,7 @@ const hexToHue = (hex: string): number => {
   return Math.round(h);
 };
 
-// ── Combat log entry ─────────────────────────────────────────────────────────
+// -- Combat log entry ---------------------------------------------------------
 
 interface ICombatLogEntry {
   id: number;
@@ -343,7 +345,7 @@ interface ICombatLogEntry {
 
 let _logId = 0;
 
-// ── Phases ──────────────────────────────────────────────────────────────────
+// -- Phases ------------------------------------------------------------------
 
 type ScreenPhase = 'list' | 'entering' | 'fighting' | 'allDefeated' | 'transforming' | 'complete';
 
@@ -356,7 +358,7 @@ const ENTRY_ANIM_TOTAL_MS = 2000;
 // in at the very end.
 const ENTRY_ANIM_COMBAT_START_AT_MS = 1340;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const rollWeaponDamage = (): number => {
   const { equipment } = useInventoryStore.getState();
@@ -408,7 +410,7 @@ const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getState>['c
 const getAttackMs = (speed: number): number =>
   Math.max(500, Math.floor(3000 / Math.max(1, speed || 1)));
 
-// ── Component ────────────────────────────────────────────────────────────────
+// -- Component ----------------------------------------------------------------
 
 const Transform = () => {
   const navigate = useNavigate();
@@ -436,7 +438,7 @@ const Transform = () => {
   // The 3 escort slots (Normal / Strong / Epic — top-left / top-right /
   // bottom-left) live in `escortSlots` so each tile carries its own HP, sprite
   // and tier label. Player auto-attacks chain through the escorts in order
-  // (slot 0 → 1 → 2) before reaching the boss; the wave clears only when all
+  // (slot 0 -> 1 -> 2) before reaching the boss; the wave clears only when all
   // four are dead. See `getTransformWaveLineup` for the per-tier scaling.
   const [currentMonster, setCurrentMonster] = useState<IMonster | null>(null);
   const [monsterHp, setMonsterHp] = useState(0);
@@ -497,7 +499,7 @@ const Transform = () => {
   // The hook returns a NEW object every render (object literal), so depending
   // directly on `fx` inside any `useCallback` makes that callback recreate
   // every render. That cascades into the death-effect deps array below
-  // (`startMonsterFight` is in those deps) and re-fires `addLog → setCombatLog`
+  // (`startMonsterFight` is in those deps) and re-fires `addLog -> setCombatLog`
   // every render once `monsterHp <= 0`, exploding into "Maximum update depth
   // exceeded". Solution: keep `fx` itself for reactive JSX reads, but use
   // `fxRef.current.method(...)` inside callbacks so we depend on a stable ref
@@ -541,7 +543,7 @@ const Transform = () => {
 
   // Spawn-bar progress — flips ON the moment a monster dies and OFF when
   // the next monster spawns. While ON, an rAF loop fills `spawnProgress`
-  // 0→1 over the speed-scaled `MONSTER_SPAWN_DELAY_MS`. The bar shares
+  // 0->1 over the speed-scaled `MONSTER_SPAWN_DELAY_MS`. The bar shares
   // the under-header pinned visual with hunting auto-fight + dungeon /
   // raid spawn timers so the player learns one cue across the app.
   const [waitingForSpawn, setWaitingForSpawn] = useState(false);
@@ -549,7 +551,7 @@ const Transform = () => {
   const spawnStartRef = useRef<number>(0);
   const spawnDurationRef = useRef<number>(MONSTER_SPAWN_DELAY_MS);
 
-  // ── Tile-zoom entry animation ─────────────────────────────────────────────
+  // -- Tile-zoom entry animation ---------------------------------------------
   // Mirrors Dungeon.tsx: when the player clicks Walcz on a transform card,
   // we capture the source card's bounding box + visual identity (hue + per-
   // tier phoenix image), animate a fixed overlay growing from that rect to
@@ -624,7 +626,7 @@ const Transform = () => {
 
   const allTransforms = useMemo(() => getAllTransforms(), []);
 
-  // ── Cleanup timers ──────────────────────────────────────────────────────────
+  // -- Cleanup timers ----------------------------------------------------------
   const clearTimers = useCallback(() => {
     if (combatTimerRef.current) { clearInterval(combatTimerRef.current); combatTimerRef.current = null; }
     if (monsterTimerRef.current) { clearInterval(monsterTimerRef.current); monsterTimerRef.current = null; }
@@ -646,7 +648,7 @@ const Transform = () => {
     }
   }, [clearTimers]);
 
-  // ── URL-leave / tab-close = death (anti-cheat) ───────────────────────────
+  // -- URL-leave / tab-close = death (anti-cheat) ---------------------------
   // Same anti-cheat guard as Dungeon/Boss/Raid. Transform fights have a
   // weird wrinkle: the monster CHANGES during a quest, so we need refs that
   // track BOTH the active transform meta AND the current monster so the
@@ -720,7 +722,7 @@ const Transform = () => {
   useEffect(() => { monsterHpRef.current = monsterHp; }, [monsterHp]);
   useEffect(() => { escortSlotsRef.current = escortSlots; }, [escortSlots]);
 
-  // ── Live HP/MP mirror → characterStore ───────────────────────────────────
+  // -- Live HP/MP mirror -> characterStore -----------------------------------
   // Same pattern as Dungeon/Boss — mirror local fight HP/MP into characterStore
   // every change so the global TopHeader bars stay live. Gated by 'fighting'
   // phase so the 0 initial state we hold before `startMonsterFight` runs
@@ -743,8 +745,8 @@ const Transform = () => {
     useCharacterStore.getState().updateCharacter({ hp: safeHp, mp: safeMp });
   }, [playerHp, playerMp, phase]);
 
-  // ── Spawn-bar progress driver (rAF) ────────────────────────────────────
-  // While `waitingForSpawn` is true, fill `spawnProgress` 0→1 over the
+  // -- Spawn-bar progress driver (rAF) ------------------------------------
+  // While `waitingForSpawn` is true, fill `spawnProgress` 0->1 over the
   // duration captured when the post-kill timeout was armed. Cancelled on
   // unmount or when the flag flips off.
   useEffect(() => {
@@ -772,7 +774,7 @@ const Transform = () => {
     }
   }, [phase]);
 
-  // ── Cooldown tick (100ms, scaled by speedMult) ───────────────────────────
+  // -- Cooldown tick (100ms, scaled by speedMult) ---------------------------
   useEffect(() => {
     if (phase !== 'fighting') return;
     const TICK_MS = 100;
@@ -794,7 +796,7 @@ const Transform = () => {
     return () => clearInterval(id);
   }, [phase, speedMult]);
 
-  // ── Add log helper ──────────────────────────────────────────────────────────
+  // -- Add log helper ----------------------------------------------------------
   // Mirrors every entry to the shared combatStore session log so the unified
   // CombatLogsModal (popup persists across waves) sees the same feed every
   // other view sees. Local type is a strict subset of the store union — no
@@ -804,7 +806,7 @@ const Transform = () => {
     useCombatStore.getState().addSessionLog(text, type);
   }, []);
 
-  // ── Heal / cooldown helpers ─────────────────────────────────────────────
+  // -- Heal / cooldown helpers ---------------------------------------------
   const healPlayerHp = useCallback((amount: number, max: number) => {
     const newHp = Math.min(max, playerHpRef.current + amount);
     playerHpRef.current = newHp;
@@ -827,7 +829,7 @@ const Transform = () => {
     mpPotionCooldownRef.current = POTION_COOLDOWN_MS;
   }, []);
 
-  // ── Auto-potion helper ──────────────────────────────────────────────────
+  // -- Auto-potion helper --------------------------------------------------
   const tryAutoPotion = useCallback(() => {
     const char = useCharacterStore.getState().character;
     if (!char) return;
@@ -951,7 +953,7 @@ const Transform = () => {
             setMonsterHp(monsterHpRef.current);
             // 2026-05 v6: per-tick DOT visual on the opponent card.
             if (apply.appliedDmg > 0) {
-              fxRef.current.pushEnemyFloat(0, apply.appliedDmg, 'spell', { icon: '☠️' });
+              fxRef.current.pushEnemyFloat(0, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
             }
           }
           // 2026-05 v7: Mroczny Rytuał detonation. % of opponent max
@@ -961,7 +963,7 @@ const Transform = () => {
             const ritualDmg = Math.min(monsterHpRef.current, r.darkRitualDamage);
             monsterHpRef.current = Math.max(0, monsterHpRef.current - ritualDmg);
             setMonsterHp(monsterHpRef.current);
-            fxRef.current.pushEnemyFloat(0, ritualDmg, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+            fxRef.current.pushEnemyFloat(0, ritualDmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
           }
         }
       }
@@ -969,7 +971,7 @@ const Transform = () => {
     return () => clearInterval(id);
   }, [phase, monsterMaxHp]);
 
-  // ── Manual potion use ───────────────────────────────────────────────────
+  // -- Manual potion use ---------------------------------------------------
   const doUsePotion = useCallback((elixirId: string) => {
     const elixir = ELIXIRS.find((e) => e.id === elixirId);
     if (!elixir) return;
@@ -1007,7 +1009,7 @@ const Transform = () => {
     }
   }, [addLog, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown]);
 
-  // ── Get status of a transform ──────────────────────────────────────────────
+  // -- Get status of a transform ----------------------------------------------
   const getTransformStatus = useCallback((t: ITransformData): 'locked' | 'available' | 'in_progress' | 'completed' => {
     if (completedTransforms.includes(t.id)) return 'completed';
     if (currentQuest?.transformId === t.id && currentQuest.inProgress) return 'in_progress';
@@ -1023,7 +1025,7 @@ const Transform = () => {
     return 'available';
   }, [completedTransforms, currentQuest, character]);
 
-  // ── Start quest ──────────────────────────────────────────────────────────────
+  // -- Start quest --------------------------------------------------------------
   const handleStartQuest = useCallback((transformId: number) => {
     if (!character) return;
     const started = useTransformStore.getState().startTransformQuest(transformId, character.level);
@@ -1052,7 +1054,7 @@ const Transform = () => {
     }
   }, [character]);
 
-  // ── Resume quest (if player left and came back) ──────────────────────────────
+  // -- Resume quest (if player left and came back) ------------------------------
   const handleResumeQuest = useCallback(() => {
     if (!currentQuest?.inProgress) return;
     setActiveTransformId(currentQuest.transformId);
@@ -1078,14 +1080,14 @@ const Transform = () => {
     }
   }, [currentQuest]);
 
-  // ── Cinematic entry: card → fullscreen morph + reveal ────────────────────
+  // -- Cinematic entry: card -> fullscreen morph + reveal --------------------
   // Triggered by the per-card "Walcz" button. Captures the source card's
   // bounding box + per-tier hue/image, flips into the new 'entering' phase
   // (combat does NOT mount yet — no ticks, no damage), then schedules:
-  //   • T+1.34s — `handleStartQuest` so the combat HUD mounts UNDER the
+  //   - T+1.34s — `handleStartQuest` so the combat HUD mounts UNDER the
   //     still-opaque overlay; the reveal portion of the animation crossfades
   //     from black straight into the live arena.
-  //   • T+2.0s — drop the overlay so the combat HUD is the sole visible layer.
+  //   - T+2.0s — drop the overlay so the combat HUD is the sole visible layer.
   // Click anywhere on the overlay during the cinematic to skip — handled by
   // `skipEntryAnimation` below, which cancels the queued timeouts and starts
   // combat immediately. Reduced-motion users + missing card element bypass
@@ -1144,7 +1146,7 @@ const Transform = () => {
     setEnterAnim(null);
   }, [enterAnim, handleStartQuest]);
 
-  // ── Start fight with a specific monster ──────────────────────────────────────
+  // -- Start fight with a specific monster --------------------------------------
   const startMonsterFight = useCallback((baseMonster: IMonster, _transformId: number) => {
     const char = useCharacterStore.getState().character;
     if (!char) return;
@@ -1177,7 +1179,7 @@ const Transform = () => {
     }
     setEscortSlots(newEscorts);
     escortSlotsRef.current = newEscorts;
-    // Fresh wave → fresh kill-tally tracking. Without this, a player who
+    // Fresh wave -> fresh kill-tally tracking. Without this, a player who
     // killed an escort in the previous wave would never get a tally for the
     // matching slot in the next wave (the key would already be in the set).
     escortKillsCountedRef.current = new Set();
@@ -1222,8 +1224,8 @@ const Transform = () => {
     // Clear old timers
     clearTimers();
 
-    // ── Target resolver ────────────────────────────────────────────────────
-    // Walks slots 0 → 1 → 2 → 3 (Normal / Strong / Epic / Boss) and returns
+    // -- Target resolver ----------------------------------------------------
+    // Walks slots 0 -> 1 -> 2 -> 3 (Normal / Strong / Epic / Boss) and returns
     // the first one still alive. Slots 0-2 read from `escortSlotsRef`; slot 3
     // is always the boss (`bossMonster` + `monsterHpRef`). Returns `null` once
     // every slot is dead — the wave ends there.
@@ -1334,10 +1336,10 @@ const Transform = () => {
         totalDmg = dual.totalDamage;
         // Per-hit floats so the targeted card shows two distinct numbers
         // (one per swing) rather than collapsing to a single sum.
-        fxRef.current.pushEnemyFloat(targetSlot, dual.hit1.finalDamage, 'basic', { isCrit: dual.hit1.isCrit, icon: '🗡️' });
-        fxRef.current.pushEnemyFloat(targetSlot, dual.hit2.finalDamage, 'basic', { isCrit: dual.hit2.isCrit, icon: '🗡️' });
+        fxRef.current.pushEnemyFloat(targetSlot, dual.hit1.finalDamage, 'basic', { isCrit: dual.hit1.isCrit, icon: 'dagger' });
+        fxRef.current.pushEnemyFloat(targetSlot, dual.hit2.finalDamage, 'basic', { isCrit: dual.hit2.isCrit, icon: 'dagger' });
         addLog(
-          `[Ty → ${target.name}] Podwojny atak za ${dual.hit1.finalDamage} + ${dual.hit2.finalDamage} = ${totalDmg} dmg${dual.hit1.isCrit || dual.hit2.isCrit ? ' CRIT!' : ''}`,
+          `[Ty -> ${target.name}] Podwojny atak za ${dual.hit1.finalDamage} + ${dual.hit2.finalDamage} = ${totalDmg} dmg${dual.hit1.isCrit || dual.hit2.isCrit ? ' CRIT!' : ''}`,
           dual.hit1.isCrit || dual.hit2.isCrit ? 'crit' : 'dualwield',
         );
       } else {
@@ -1361,7 +1363,7 @@ const Transform = () => {
         fxRef.current.pushEnemyFloat(targetSlot, totalDmg, 'basic', { isCrit: result.isCrit });
         const logType = result.isCrit ? 'crit' : 'player';
         addLog(
-          `[Ty → ${target.name}] Atak za ${totalDmg} dmg${result.isCrit ? ' CRIT!' : ''} (HP: ${Math.max(0, target.prevHp - totalDmg)}/${target.maxHp})`,
+          `[Ty -> ${target.name}] Atak za ${totalDmg} dmg${result.isCrit ? ' CRIT!' : ''} (HP: ${Math.max(0, target.prevHp - totalDmg)}/${target.maxHp})`,
           logType,
         );
       }
@@ -1409,8 +1411,8 @@ const Transform = () => {
                 playerHpRef.current = newPlayerHp;
                 setPlayerHp(newPlayerHp);
                 useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
-                fxRef.current.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                addLog(`💔 Apokalipsa: -${lost} HP`, 'crit');
+                fxRef.current.pushAllyFloat(0, lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                addLog(`:broken-heart: Apokalipsa: -${lost} HP`, 'crit');
               }
             }
           }
@@ -1455,11 +1457,11 @@ const Transform = () => {
           triggerSkillAnim(skillId);
           if (isPureBuff) {
             fxRef.current.triggerAllySkillAnim(0, skillId);
-            addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
+            addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
           } else {
             fxRef.current.triggerEnemySkillAnim(targetSlot, skillId);
             fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
-            addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
+            addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
           }
           // 1v1 setup — AOE/multistrike stay no-ops. Suppress lint.
           void apply.aoe; void apply.multistrike;
@@ -1476,10 +1478,10 @@ const Transform = () => {
             if (heal > 0) {
               const cappedTag = actual < heal ? ' (MAX)' : '';
               fxRef.current.pushAllyFloat(0, heal, 'heal', {
-                icon: '✨',
+                icon: 'sparkles',
                 label: cappedTag ? `+${heal}${cappedTag}` : undefined,
               });
-              addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+              addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
             }
           }
           if (apply.healCasterPctOfMaxHp > 0) {
@@ -1491,7 +1493,7 @@ const Transform = () => {
             if (heal > 0) {
               const cappedTag = actual < heal ? ' (MAX)' : '';
               fxRef.current.pushAllyFloat(0, heal, 'heal', {
-                icon: '✨',
+                icon: 'sparkles',
                 label: cappedTag ? `+${heal}${cappedTag}` : undefined,
               });
             }
@@ -1508,11 +1510,11 @@ const Transform = () => {
             if (heal > 0) {
               const cappedTag = actual < heal ? ' (MAX)' : '';
               fxRef.current.pushAllyFloat(0, heal, 'heal', {
-                icon: '✨',
+                icon: 'sparkles',
                 label: cappedTag ? `+${heal}${cappedTag}` : undefined,
               });
               fxRef.current.triggerAllySkillAnim(0, skillId);
-              addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+              addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
             }
           }
           // Necro summon spawn — only when caster is a necro.
@@ -1529,8 +1531,8 @@ const Transform = () => {
           if (apply.deathApocalypse && latestChar.class === 'Necromancer') {
             const apocDmg = Math.max(1, Math.floor(target.maxHp * (apply.deathApocalypseTargetMaxHpPct / 100)));
             extraDmg += apocDmg;
-            fxRef.current.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
-            addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
+            fxRef.current.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
+            addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
           }
           break;
         }
@@ -1553,8 +1555,8 @@ const Transform = () => {
             dmg = Math.max(1, Math.floor(dmg * ampSum.mult));
           }
           newHp = Math.max(0, newHp - dmg);
-          fxRef.current.pushEnemyFloat(targetSlot, dmg, 'basic', { icon: '💀' });
-          addLog(`💀 Summony zadają ${dmg} dmg`, 'player');
+          fxRef.current.pushEnemyFloat(targetSlot, dmg, 'basic', { icon: 'skull' });
+          addLog(`:skull: Summony zadają ${dmg} dmg`, 'player');
         }
       }
 
@@ -1592,8 +1594,8 @@ const Transform = () => {
       // attack tick.
       if (useBuffStore.getState().getBuffCharges('skill_charge_block_next_party') > 0) {
         useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
-        fxRef.current.pushAllyFloat(0, 0, 'heal', { icon: '🛡️', label: 'BLOCK' });
-        addLog(`🛡️ Boska Tarcza! Blok!`, 'crit');
+        fxRef.current.pushAllyFloat(0, 0, 'heal', { icon: 'shield', label: 'BLOCK' });
+        addLog(`:shield: Boska Tarcza! Blok!`, 'crit');
         return;
       }
       // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000) — % chance
@@ -1601,8 +1603,8 @@ const Transform = () => {
       const tfPlayerSt = ensureStatus(effectsRef.current, PLAYER_FX_ID);
       if (tfPlayerSt.dodgeBuffMs > 0 && tfPlayerSt.dodgeBuffPct > 0) {
         if (Math.random() * 100 < tfPlayerSt.dodgeBuffPct) {
-          fxRef.current.pushAllyFloat(0, 0, 'heal', { icon: '💨', label: 'UNIK' });
-          addLog(`💨 Bomba Dymna! Unik (${tfPlayerSt.dodgeBuffPct}%)`, 'crit');
+          fxRef.current.pushAllyFloat(0, 0, 'heal', { icon: 'dashing-away', label: 'UNIK' });
+          addLog(`:dashing-away: Bomba Dymna! Unik (${tfPlayerSt.dodgeBuffPct}%)`, 'crit');
           return;
         }
       }
@@ -1617,7 +1619,7 @@ const Transform = () => {
       if (!eff) return;
 
       // Build the list of attackers (alive escorts + alive boss). Order is
-      // top-left → top-right → bottom-left → bottom-right so the floats stack
+      // top-left -> top-right -> bottom-left -> bottom-right so the floats stack
       // in a predictable reading order on the player card.
       type TAttacker = { monster: IMonster; name: string };
       const attackers: TAttacker[] = [];
@@ -1675,12 +1677,12 @@ const Transform = () => {
     // and re-fire `addLog` once monsterHp ≤ 0, blowing the update-depth limit.
   }, [addLog, clearTimers]);
 
-  // ── Check monster death / player death ────────────────────────────────────
+  // -- Check monster death / player death ------------------------------------
   useEffect(() => {
     if (phase !== 'fighting') return;
 
     // Wave cleared — only when EVERY slot (3 escorts + boss) is dead. The boss
-    // is always killed last (the player auto-attack walks slots 0→1→2→3, so
+    // is always killed last (the player auto-attack walks slots 0->1->2->3, so
     // the boss is the final target), but we still gate on the escorts being
     // dead too in case some future change reorders targeting. Each escort kill
     // also fires a session/combat tally so the per-tier monsters count toward
@@ -1698,7 +1700,7 @@ const Transform = () => {
         const key = `${currentMonster.id}__slot${s}`;
         if (escortKillsCountedRef.current.has(key)) continue;
         escortKillsCountedRef.current.add(key);
-        // Tier → kill bucket mapping. Normal/Strong/Epic mirror the dungeon
+        // Tier -> kill bucket mapping. Normal/Strong/Epic mirror the dungeon
         // monster types so the unified backpack popup counts them in the
         // matching rows. (Boss is counted on the wave clear branch below.)
         const bucket = e.tier === 'Normal' ? 'normal'
@@ -1761,7 +1763,7 @@ const Transform = () => {
         clearTimeout(postKillTimeoutRef.current);
       }
       const spawnDelayMs = Math.max(60, Math.floor(MONSTER_SPAWN_DELAY_MS / speedMultRef.current));
-      // Arm the spawn-bar countdown so the slim header bar fills L→R
+      // Arm the spawn-bar countdown so the slim header bar fills L->R
       // over the wait. Cleared either when the timeout fires or when
       // the player flees / dies / claims (the phase-watching effect
       // below zeroes it whenever phase ≠ 'fighting').
@@ -1918,7 +1920,7 @@ const Transform = () => {
     }
   }, [monsterHp, playerHp, phase, currentMonster, escortSlots, activeTransformId, clearTimers, addLog, startMonsterFight]);
 
-  // ── Handle "Uciekaj" button ─────────────────────────────────────────────────
+  // -- Handle "Uciekaj" button -------------------------------------------------
   // Point 11: Ucieknij must be fully cancellable — abandon the quest, cancel
   // any pending post-kill / death timers, and go straight to Miasto so no
   // stray setTimeout can fire an "allDefeated" state and award bogus rewards.
@@ -1997,7 +1999,7 @@ const Transform = () => {
     setPhase('allDefeated');
   }, [clearTimers]);
 
-  // ── Handle rewards / complete transform ──────────────────────────────────────
+  // -- Handle rewards / complete transform --------------------------------------
   const handleShowRewards = useCallback(() => {
     if (!character) return;
     const transformId = activeTransformId;
@@ -2083,7 +2085,7 @@ const Transform = () => {
     navigate('/');
   }, [navigate]);
 
-  // ── Render helpers ──────────────────────────────────────────────────────────
+  // -- Render helpers ----------------------------------------------------------
 
   // NOTE: `if (!character)` early-return moved DOWN past every hook in this
   // component (after `doManualSkill` useCallback below). Returning early up
@@ -2096,7 +2098,7 @@ const Transform = () => {
 
   const nameKey = language === 'pl' ? 'name_pl' : 'name_en';
 
-  // ── Transform list view ──────────────────────────────────────────────────────
+  // -- Transform list view ------------------------------------------------------
   const renderList = () => {
     if (!character) return null;
     return (
@@ -2140,10 +2142,10 @@ const Transform = () => {
                   <span className="transform__card-level-pill">{t.level} LVL</span>
                 </div>
                 <div className="transform__card-status">
-                  {status === 'locked' && <span className="transform__status-icon">🔒</span>}
-                  {status === 'available' && <span className="transform__status-icon">⚡</span>}
-                  {status === 'in_progress' && <span className="transform__status-icon">⚔️</span>}
-                  {status === 'completed' && <span className="transform__status-icon">🏆</span>}
+                  {status === 'locked' && <span className="transform__status-icon"><GameIcon name="locked" /></span>}
+                  {status === 'available' && <span className="transform__status-icon"><GameIcon name="high-voltage" /></span>}
+                  {status === 'in_progress' && <span className="transform__status-icon"><GameIcon name="crossed-swords" /></span>}
+                  {status === 'completed' && <span className="transform__status-icon"><GameIcon name="trophy" /></span>}
                 </div>
               </div>
 
@@ -2206,7 +2208,7 @@ const Transform = () => {
     );
   };
 
-  // ── Manual skill use (click a slot when skillMode === 'manual') ──────────
+  // -- Manual skill use (click a slot when skillMode === 'manual') ----------
   const doManualSkill = useCallback((slotIdx: 0 | 1 | 2 | 3) => {
     if (phase !== 'fighting') return;
     // Stun gate — caster cannot cast while paralysed.
@@ -2232,7 +2234,7 @@ const Transform = () => {
     if ((sDefGateT?.effect ?? '').includes('death_apocalypse')) {
       const hpPctT = playerHpRef.current / Math.max(1, eff.max_hp);
       if (hpPctT < 0.05) {
-        addLog('💔 Apokalipsa zablokowana: < 5% HP', 'system');
+        addLog(':broken-heart: Apokalipsa zablokowana: < 5% HP', 'system');
         return;
       }
       let newPlayerHp: number;
@@ -2246,13 +2248,13 @@ const Transform = () => {
         playerHpRef.current = newPlayerHp;
         setPlayerHp(newPlayerHp);
         useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
-        fxRef.current.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-        addLog(`💔 Apokalipsa: -${lost} HP`, 'crit');
+        fxRef.current.pushAllyFloat(0, lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+        addLog(`:broken-heart: Apokalipsa: -${lost} HP`, 'crit');
       }
     }
 
     // Manual skill targets whichever monster the auto-attack would currently
-    // be hitting (first alive slot in 0→1→2→3 order). Without this, manual
+    // be hitting (first alive slot in 0->1->2->3 order). Without this, manual
     // casts always landed on slot 0 even after the Normal escort died.
     const escorts = escortSlotsRef.current;
     let targetSlot: 0 | 1 | 2 | 3 = 3;
@@ -2310,8 +2312,8 @@ const Transform = () => {
     if (apply.deathApocalypse && latestChar.class === 'Necromancer') {
       const apocDmg = Math.max(1, Math.floor((targetMaxHp || prevTargetHp || 1) * (apply.deathApocalypseTargetMaxHpPct / 100)));
       skillDmg += apocDmg;
-      fxRef.current.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
-      addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
+      fxRef.current.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
+      addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
     }
     const newTargetHp = isPureBuff ? prevTargetHp : Math.max(0, prevTargetHp - skillDmg);
     void apply.aoe; void apply.multistrike;
@@ -2349,11 +2351,11 @@ const Transform = () => {
     triggerSkillAnim(skillId);
     if (isPureBuff) {
       fxRef.current.triggerAllySkillAnim(0, skillId);
-      addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
+      addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
     } else {
       fxRef.current.triggerEnemySkillAnim(targetSlot, skillId);
       fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
-      addLog(`✨ ${formatSkillName(skillId)} → ${targetName}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
+      addLog(`:sparkles: ${formatSkillName(skillId)} -> ${targetName}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
     }
     // 2026-05 v6: heal-on-cast also wired in the manual-cast path
     // (the auto-attack tick branch above handles it for auto). Without
@@ -2369,10 +2371,10 @@ const Transform = () => {
       if (heal > 0) {
         const cappedTag = actual < heal ? ' (MAX)' : '';
         fxRef.current.pushAllyFloat(0, heal, 'heal', {
-          icon: '✨',
+          icon: 'sparkles',
           label: cappedTag ? `+${heal}${cappedTag}` : undefined,
         });
-        addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+        addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
       }
     }
     if (apply.healCasterPctOfMaxHp > 0) {
@@ -2384,7 +2386,7 @@ const Transform = () => {
       if (heal > 0) {
         const cappedTag = actual < heal ? ' (MAX)' : '';
         fxRef.current.pushAllyFloat(0, heal, 'heal', {
-          icon: '✨',
+          icon: 'sparkles',
           label: cappedTag ? `+${heal}${cappedTag}` : undefined,
         });
       }
@@ -2398,11 +2400,11 @@ const Transform = () => {
       if (heal > 0) {
         const cappedTag = actual < heal ? ' (MAX)' : '';
         fxRef.current.pushAllyFloat(0, heal, 'heal', {
-          icon: '✨',
+          icon: 'sparkles',
           label: cappedTag ? `+${heal}${cappedTag}` : undefined,
         });
         fxRef.current.triggerAllySkillAnim(0, skillId);
-        addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
+        addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'crit');
       }
     }
     useSkillStore.getState().addMlvlXpFromSkill(latestChar.class);
@@ -2410,7 +2412,7 @@ const Transform = () => {
     // `startMonsterFight` above.
   }, [addLog, phase, triggerSkillAnim]);
 
-  // ── Combat view (unified CombatUI) ───────────────────────────────────────
+  // -- Combat view (unified CombatUI) ---------------------------------------
   // Transform feeds into the same shared component tree as every other combat
   // view. Each transform monster is a boss-tier solo encounter, so we use the
   // shimmering daily-boss bg variant and show only one enemy slot + the player
@@ -2447,8 +2449,8 @@ const Transform = () => {
     const arenaImageUrl = getTransformCardImage(activeTransformId);
     const arenaHue = hexToHue(tfColor);
 
-    // ── Enemy slots (Normal / Strong / Epic / Boss = slots 0..3) ──────────
-    // The player auto-attack walks slots 0→1→2→3 in order, so only the first
+    // -- Enemy slots (Normal / Strong / Epic / Boss = slots 0..3) ----------
+    // The player auto-attack walks slots 0->1->2->3 in order, so only the first
     // alive slot shows the yellow target ring. Once a slot dies the next one
     // inherits the ring without any explicit retargeting click.
     const firstAliveSlot = (() => {
@@ -2459,7 +2461,7 @@ const Transform = () => {
       return 3; // boss is always the last alive
     })();
 
-    // Tier → rarity mapping for the slot card backdrops. Normal/Strong/Epic
+    // Tier -> rarity mapping for the slot card backdrops. Normal/Strong/Epic
     // map to the matching dungeon-style rarity tints; Boss keeps its boss
     // gold/red treatment so the bottom-right tile still reads as a boss.
     const tierToRarity = (tier: 'Normal' | 'Strong' | 'Epic'): TMonsterRarity =>
@@ -2474,7 +2476,7 @@ const Transform = () => {
         id: e.monster.id,
         name: e.monster.name_pl,
         level: e.monster.level,
-        sprite: e.monster.sprite ?? '👹',
+        sprite: e.monster.sprite ?? 'ogre',
         kind: 'monster' as const,
         // Use the pre-resolved sprite URL (captured from the original
         // template level before stamp rewrote it to bossLevel). This makes
@@ -2506,7 +2508,7 @@ const Transform = () => {
         id: currentMonster.id,
         name: currentMonster.name_pl,
         level: currentMonster.level,
-        sprite: currentMonster.sprite ?? '👹',
+        sprite: currentMonster.sprite ?? 'ogre',
         kind: 'boss' as const,
         // Use the per-tier phoenix card image as the boss sprite — overrides
         // the bestiary boss-N.png lookup so the bottom-right tile actually
@@ -2531,7 +2533,7 @@ const Transform = () => {
         skillAnim: fx.enemySkill[3] ?? null,
         floats: fx.enemyFloats[3] ?? [],
         // 2026-05 v7: live status countdowns on the transform boss —
-        // ☠️ Klątwa Śmierci ×N · Ts and 💀 Mroczny Rytuał N% · Ts both
+        // :skull-and-crossbones: Klątwa Śmierci ×N · Ts and :skull: Mroczny Rytuał N% · Ts both
         // render so the player can time their burst window.
         statusOverlay: (() => {
           const st = effectsRef.current.statuses.get(OPPONENT_FX_ID);
@@ -2555,7 +2557,7 @@ const Transform = () => {
       },
     ];
 
-    // ── Ally slots (player only — solo fight; pad to 4) ────────────────────
+    // -- Ally slots (player only — solo fight; pad to 4) --------------------
     const playerSummonList = necroSummons[PLAYER_FX_ID] ?? [];
     const playerSummonsByType: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>> = {};
     for (const sm of playerSummonList) {
@@ -2604,7 +2606,7 @@ const Transform = () => {
         summonsByType: playerSummonsByType,
         onSummonClick: (type) => {
             useNecroSummonStore.getState().despawnOne(PLAYER_FX_ID, type);
-            addLog(`💨 Odesłano: ${type}`, 'system');
+            addLog(`:dashing-away: Odesłano: ${type}`, 'system');
         },
         // Solo fight — the one boss is always aggro'd onto the player.
         aggroCount: 1,
@@ -2624,7 +2626,7 @@ const Transform = () => {
       null, null, null,
     ];
 
-    // ── Skill slots (4 active slots — pad nulls for empty) ────────────────
+    // -- Skill slots (4 active slots — pad nulls for empty) ----------------
     const uiSkills: Array<ICombatSkillSlot | null> =
       (activeSkillSlots as (string | null)[]).map((skillId, i) => {
         if (!skillId) return null;
@@ -2643,7 +2645,7 @@ const Transform = () => {
         };
       });
 
-    // ── Potion slots ──────────────────────────────────────────────────────
+    // -- Potion slots ------------------------------------------------------
     const bestHpPotion    = getBestPotion(hpPotions,    consumables);
     const bestMpPotion    = getBestPotion(mpPotions,    consumables);
     const bestPctHpPotion = getBestPotion(pctHpPotions, consumables);
@@ -2806,20 +2808,20 @@ const Transform = () => {
     );
   };
 
-  // ── All defeated / rewards view ────────────────────────────────────────────
+  // -- All defeated / rewards view --------------------------------------------
   const renderAllDefeated = () => {
     if (!character) return null;
     const colorInfo = getTransformColor(activeTransformId);
     const transformData = getTransformById(activeTransformId);
     const rewardLines: { label: string; value: string; icon: string }[] = rewards
       ? [
-          { icon: '⚔️', label: 'Damage',   value: `+${rewards.permanentBonuses.dmgPercent}%` },
-          { icon: '❤️', label: 'Max HP',   value: `+${rewards.permanentBonuses.hpPercent}% · +${rewards.permanentBonuses.flatHp}` },
-          { icon: '🔮', label: 'Max MP',   value: `+${rewards.permanentBonuses.mpPercent}% · +${rewards.permanentBonuses.flatMp}` },
-          { icon: '💪', label: 'Attack',   value: `+${rewards.permanentBonuses.attack}` },
-          { icon: '🛡️', label: 'Defense',  value: `+${rewards.permanentBonuses.defPercent}% · +${rewards.permanentBonuses.defense}` },
-          { icon: '💚', label: 'HP Regen', value: `+${rewards.permanentBonuses.hpRegenFlat.toFixed(1)}/s` },
-          { icon: '💙', label: 'MP Regen', value: `+${rewards.permanentBonuses.mpRegenFlat.toFixed(1)}/s` },
+          { icon: 'crossed-swords', label: 'Damage',   value: `+${rewards.permanentBonuses.dmgPercent}%` },
+          { icon: 'red-heart', label: 'Max HP',   value: `+${rewards.permanentBonuses.hpPercent}% · +${rewards.permanentBonuses.flatHp}` },
+          { icon: 'crystal-ball', label: 'Max MP',   value: `+${rewards.permanentBonuses.mpPercent}% · +${rewards.permanentBonuses.flatMp}` },
+          { icon: 'flexed-biceps', label: 'Attack',   value: `+${rewards.permanentBonuses.attack}` },
+          { icon: 'shield', label: 'Defense',  value: `+${rewards.permanentBonuses.defPercent}% · +${rewards.permanentBonuses.defense}` },
+          { icon: 'green-heart', label: 'HP Regen', value: `+${rewards.permanentBonuses.hpRegenFlat.toFixed(1)}/s` },
+          { icon: 'blue-heart', label: 'MP Regen', value: `+${rewards.permanentBonuses.mpRegenFlat.toFixed(1)}/s` },
         ]
       : [];
 
@@ -2831,7 +2833,7 @@ const Transform = () => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 140, damping: 12 }}
         >
-          ⭐ Zwyciestwo! ⭐
+          <GameIcon name="star" /> Zwyciestwo! <GameIcon name="star" />
         </motion.h2>
         <motion.p
           className="transform__victory-subtitle"
@@ -2852,7 +2854,7 @@ const Transform = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            ✨ Pokaz nagrody ✨
+            <GameIcon name="sparkles" /> Pokaz nagrody <GameIcon name="sparkles" />
           </motion.button>
         )}
 
@@ -2880,7 +2882,7 @@ const Transform = () => {
               animate={{ opacity: 1, letterSpacing: '0.1em' }}
               transition={{ duration: 0.6 }}
             >
-              🏆 Nagrody Permanentne 🏆
+              <GameIcon name="trophy" /> Nagrody Permanentne <GameIcon name="trophy" />
             </motion.h3>
             <div className="transform__rewards-list">
               {rewardLines.map((line, idx) => (
@@ -2896,7 +2898,7 @@ const Transform = () => {
                     damping: 14,
                   }}
                 >
-                  <span className="transform__reward-icon">{line.icon}</span>
+                  <span className="transform__reward-icon"><TinyIcon icon={line.icon} /></span>
                   <span className="transform__reward-label">{line.label}</span>
                   <span className="transform__reward-value">{line.value}</span>
                 </motion.div>
@@ -2913,7 +2915,7 @@ const Transform = () => {
                     damping: 10,
                   }}
                 >
-                  <span className="transform__reward-icon">🗡️</span>
+                  <span className="transform__reward-icon"><GameIcon name="dagger" /></span>
                   <span className="transform__reward-label">Mythic Weapon</span>
                   <span className="transform__reward-value">{getItemDisplayInfo(rewards.weapon.itemId)?.[nameKey]}</span>
                 </motion.div>
@@ -2926,7 +2928,7 @@ const Transform = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + (rewardLines.length + cidx) * 0.08, duration: 0.4 }}
                 >
-                  <span className="transform__reward-icon">🎁</span>
+                  <span className="transform__reward-icon"><GameIcon name="wrapped-gift" /></span>
                   <span className="transform__reward-label">{c.id.replace(/_/g, ' ')}</span>
                   <span className="transform__reward-value">x{c.count}</span>
                 </motion.div>
@@ -2948,7 +2950,7 @@ const Transform = () => {
               whileHover={{ scale: 1.06, boxShadow: '0 0 32px var(--tf-color1)' }}
               whileTap={{ scale: 0.95 }}
             >
-              ✨ TRANSFORMUJ SIE ✨
+              <GameIcon name="sparkles" /> TRANSFORMUJ SIE <GameIcon name="sparkles" />
             </motion.button>
           </motion.div>
         )}
@@ -3047,7 +3049,7 @@ const Transform = () => {
     );
   };
 
-  // ── Complete view ──────────────────────────────────────────────────────────
+  // -- Complete view ----------------------------------------------------------
   const renderComplete = () => {
     if (!character) return null;
     const colorInfo = getTransformColor(activeTransformId);
@@ -3085,7 +3087,7 @@ const Transform = () => {
     );
   };
 
-  // ── Main render ────────────────────────────────────────────────────────────
+  // -- Main render ------------------------------------------------------------
 
   // Guard placed AFTER every hook in this component so we never alter hook
   // call order between renders (Rules of Hooks). Render helpers above are
@@ -3106,12 +3108,12 @@ const Transform = () => {
       {phase === 'allDefeated' && renderAllDefeated()}
       {(phase === 'transforming' || phase === 'complete') && renderComplete()}
 
-      {/* ── Cinematic entry overlay ─────────────────────────────────────────
+      {/* -- Cinematic entry overlay -----------------------------------------
           Three layers (z-index ladder inside the overlay):
-            1 — phoenix image, morphs from card rect → fullscreen + soft zoom
-            2 — black panel, fades 0→1→1→0 (peaks at 33%, lifts at 67%)
+            1 — phoenix image, morphs from card rect -> fullscreen + soft zoom
+            2 — black panel, fades 0->1->1->0 (peaks at 33%, lifts at 67%)
             3 — "kliknij aby pominąć" hint, surfaces during the dark hold
-          The wrapper itself owns the click → skip handler. */}
+          The wrapper itself owns the click -> skip handler. */}
       <AnimatePresence>
         {enterAnim && (
           <motion.div

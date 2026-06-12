@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { TUTORIAL_SECTIONS } from '../../../data/tutorial';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import Icon from '../../atoms/Icon/Icon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './TutorialModal.scss';
 
 interface ITutorialModalProps {
@@ -33,14 +36,14 @@ const TutorialModal = ({ onClose }: ITutorialModalProps) => {
         onClick={(e) => e.stopPropagation()}
       >
         <header className="tutorial__header">
-          <h2 className="tutorial__title">📖 Jak grać w Grimshade</h2>
+          <h2 className="tutorial__title"><GameIcon name="open-book" /> Jak grać w Grimshade</h2>
           <button
             type="button"
             className="tutorial__close"
             onClick={onClose}
             aria-label="Zamknij tutorial"
           >
-            ✕
+            <Icon name="x" />
           </button>
         </header>
 
@@ -58,13 +61,13 @@ const TutorialModal = ({ onClose }: ITutorialModalProps) => {
             >
               <h3 className="tutorial__section-title">
                 <span className="tutorial__section-num">{idx + 1}.</span>
-                <span className="tutorial__section-icon">{section.icon}</span>
+                <span className="tutorial__section-icon"><GameIcon name={section.icon} /></span>
                 <strong>{section.title}</strong>
               </h3>
-              <p className="tutorial__section-summary">{section.summary}</p>
+              <p className="tutorial__section-summary"><EmojiText>{section.summary}</EmojiText></p>
               <ul className="tutorial__section-list">
                 {section.bullets.map((b, i) => (
-                  <li key={i} className="tutorial__section-bullet">{b}</li>
+                  <li key={i} className="tutorial__section-bullet"><EmojiText>{b}</EmojiText></li>
                 ))}
               </ul>
             </section>

@@ -6,7 +6,7 @@ import { useLevelUpStore } from './levelUpStore';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 import { xpToNextLevel } from '../systems/levelSystem';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 /**
  * Minimal valid ICharacter payload. The DB row has more columns than this,
@@ -76,7 +76,7 @@ beforeEach(() => {
     resetStores();
 });
 
-// ── setCharacter ─────────────────────────────────────────────────────────────
+// -- setCharacter -------------------------------------------------------------
 
 describe('setCharacter', () => {
     it('stores the provided character', () => {
@@ -107,7 +107,7 @@ describe('setCharacter', () => {
     });
 });
 
-// ── updateCharacter ──────────────────────────────────────────────────────────
+// -- updateCharacter ----------------------------------------------------------
 
 describe('updateCharacter', () => {
     it('merges partial fields into existing character', () => {
@@ -125,7 +125,7 @@ describe('updateCharacter', () => {
     });
 });
 
-// ── addXp ────────────────────────────────────────────────────────────────────
+// -- addXp --------------------------------------------------------------------
 
 describe('addXp', () => {
     it('returns a zero result and does nothing when no character is set', () => {
@@ -166,8 +166,8 @@ describe('addXp', () => {
         expect(c.mp).toBe(c.max_mp);
     });
 
-    // ── GAP #4 — level-up grants 100% HP/MP, no free heal without leveling ──
-    // Source: characterStore.addXp → `didLevelUp ? effectiveMaxHp : clamp`.
+    // -- GAP #4 — level-up grants 100% HP/MP, no free heal without leveling --
+    // Source: characterStore.addXp -> `didLevelUp ? effectiveMaxHp : clamp`.
     // On a genuine level-up HP and MP must snap to the FULL effective max
     // (base + per-level gain + equip + training). Without a level-up the XP
     // pointer moves but HP/MP must NOT be topped up — XP alone never heals.
@@ -185,7 +185,7 @@ describe('addXp', () => {
         useCharacterStore.getState().addXp(xpToNextLevel(1));
         const c = useCharacterStore.getState().character!;
         expect(c.level).toBe(2);
-        // No equipment / training in this test → effective max == base max,
+        // No equipment / training in this test -> effective max == base max,
         // which already includes the per-level HP/MP bump. Full heal means
         // current == max for BOTH pools.
         expect(c.hp).toBe(c.max_hp);
@@ -267,7 +267,7 @@ describe('addXp', () => {
         // a corrupt save with negative XP from blocking levelups entirely.
         useCharacterStore.getState().setCharacter(makeChar({ level: 1, xp: -5000 }));
         const result = useCharacterStore.getState().addXp(xpToNextLevel(1));
-        // With xp clamped to 0, adding exactly xpToNextLevel(1) → level 2.
+        // With xp clamped to 0, adding exactly xpToNextLevel(1) -> level 2.
         expect(result.newLevel).toBe(2);
     });
 
@@ -350,7 +350,7 @@ describe('addXp', () => {
     });
 });
 
-// ── spendStatPoint / spendAllStatPoints ─────────────────────────────────────
+// -- spendStatPoint / spendAllStatPoints -------------------------------------
 
 describe('spendStatPoint', () => {
     it('spends 1 point on max_hp and bumps current HP by the same amount', () => {
@@ -427,7 +427,7 @@ describe('spendAllStatPoints', () => {
     });
 });
 
-// ── fullHealEffective ────────────────────────────────────────────────────────
+// -- fullHealEffective --------------------------------------------------------
 
 describe('fullHealEffective', () => {
     it('tops up HP and MP to the effective max (base + equipment + training)', () => {
@@ -450,7 +450,7 @@ describe('fullHealEffective', () => {
     });
 });
 
-// ── clearCharacter ───────────────────────────────────────────────────────────
+// -- clearCharacter -----------------------------------------------------------
 
 describe('clearCharacter', () => {
     it('clears the character to null', () => {

@@ -13,7 +13,7 @@ beforeEach(() => {
     resetStore();
 });
 
-// ── setDungeonCompleted ──────────────────────────────────────────────────────
+// -- setDungeonCompleted ------------------------------------------------------
 
 describe('setDungeonCompleted', () => {
     it('records a fresh attempt with `used = 1` + today as date', () => {
@@ -68,7 +68,7 @@ describe('setDungeonCompleted', () => {
     });
 });
 
-// ── setLastResult ────────────────────────────────────────────────────────────
+// -- setLastResult ------------------------------------------------------------
 
 describe('setLastResult', () => {
     it('stores the result reference verbatim', () => {
@@ -84,7 +84,7 @@ describe('setLastResult', () => {
     });
 });
 
-// ── getAttemptsUsed / getAttemptsMax ─────────────────────────────────────────
+// -- getAttemptsUsed / getAttemptsMax -----------------------------------------
 
 describe('getAttemptsUsed', () => {
     it('returns 0 when no record exists', () => {
@@ -113,7 +113,7 @@ describe('getAttemptsMax', () => {
     });
 });
 
-// ── canEnter ─────────────────────────────────────────────────────────────────
+// -- canEnter -----------------------------------------------------------------
 
 describe('canEnter', () => {
     it('returns true on a fresh dungeon', () => {
@@ -142,7 +142,7 @@ describe('canEnter', () => {
     });
 });
 
-// ── isDungeonCleared ─────────────────────────────────────────────────────────
+// -- isDungeonCleared ---------------------------------------------------------
 
 describe('isDungeonCleared', () => {
     it('returns false for an untouched dungeon', () => {

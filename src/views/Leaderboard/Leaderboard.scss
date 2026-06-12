@@ -7,7 +7,7 @@
   color: $color-text;
   padding-bottom: $spacing-xl;
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // -- Header -----------------------------------------------------------------
   &__header {
     display: flex;
     align-items: center;
@@ -46,7 +46,7 @@
     &:hover { border-color: $color-accent; color: $color-accent; }
   }
 
-  // ── My rank ────────────────────────────────────────────────────────────────
+  // -- My rank ----------------------------------------------------------------
   &__my-rank {
     font-size: $font-sm;
     color: $color-text-muted;
@@ -57,7 +57,7 @@
     strong { color: $color-accent; }
   }
 
-  // ── Tabs (scrollable) ─────────────────────────────────────────────────────
+  // -- Tabs (scrollable) -----------------------------------------------------
   // 2026-05-19 v18 spec ("Nie widze wszystkich tabow"): with 20+
   // ranking tabs the bar overflows the viewport on every breakpoint.
   // Switched to a free-flowing horizontal scroll with thicker (8px)
@@ -122,7 +122,7 @@
     line-height: 1;
   }
 
-  // ── Info banner ────────────────────────────────────────────────────────────
+  // -- Info banner ------------------------------------------------------------
   &__info {
     font-size: $font-xs;
     color: $color-text-muted;
@@ -133,7 +133,7 @@
     font-style: italic;
   }
 
-  // ── States ─────────────────────────────────────────────────────────────────
+  // -- States -----------------------------------------------------------------
   &__loading, &__error, &__empty {
     text-align: center;
     padding: $spacing-xl $spacing-md;
@@ -143,7 +143,7 @@
 
   &__error { color: $color-accent; }
 
-  // ── List ───────────────────────────────────────────────────────────────────
+  // -- List -------------------------------------------------------------------
   &__list {
     padding: $spacing-md;
     display: flex;

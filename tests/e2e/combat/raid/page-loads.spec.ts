@@ -9,13 +9,13 @@
  * Co testujemy (smoke only):
  *  - Direct nav na `/raid` z aktywną solo postacią poprawnie renderuje
  *    `.raid` root + `.raid__gate` (no-party gate). Raid.tsx linia 3209
- *    `const noParty = !party;` → renderuje `.raid__gate` z "Potrzebujesz
- *    Party" heading + CTA → /party.
+ *    `const noParty = !party;` -> renderuje `.raid__gate` z "Potrzebujesz
+ *    Party" heading + CTA -> /party.
  *  - URL pozostaje `/raid` — OnlineOnlyGuard PASSES (online by default
  *    fresh boot), CombatGuard PASSES (phase='idle').
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczna walka raidowa (wymaga party 2+ → multi-context).
+ *  - Faktyczna walka raidowa (wymaga party 2+ -> multi-context).
  *  - Raid list z filterami (wymaga `showList` = party + leader).
  *  - Party-too-small / not-leader gates (osobne party-state setups).
  *
@@ -24,7 +24,7 @@
  *  - `partyTooSmall = false` (no party = skipped)
  *  - `notLeader = false` (no party = skipped)
  *  - `showList = false`
- *  - Renderuje TYLKO `<div className="raid__gate">` z icon 🔒 +
+ *  - Renderuje TYLKO `<div className="raid__gate">` z icon :locked: +
  *    `<h2>Potrzebujesz Party</h2>` + CTA "Przejdź do Party"
  *  - `.raid__panel` / `.raid__hub-filters` NIE renderowane bez party
  *
@@ -60,7 +60,7 @@ test.describe('Combat › Raid', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

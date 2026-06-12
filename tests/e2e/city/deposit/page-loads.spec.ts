@@ -10,12 +10,12 @@
  * Na razie testujemy **smoke layer**:
  *  - Po nawigacji na /deposit widok ładuje się bez błędu.
  *  - Pokazuje nagłówek z napisem "Depozyt".
- *  - Pokazuje dwa panele: 🎒 Plecak + 🏦 Depozyt.
+ *  - Pokazuje dwa panele: :backpack: Plecak + :bank: Depozyt.
  *  - Panel Plecak pokazuje counter 0/1000 (lub > 0 jeśli seed dorzucił coś).
  *  - Empty state "Brak przedmiotów" jest widoczny (świeża postać bez itemów).
  *
  * Full put/take TODO: dorzucić gdy będzie `seedInventory` helper —
- * wtedy seed → tap tile → assert item przeniósł się między panelami.
+ * wtedy seed -> tap tile -> assert item przeniósł się między panelami.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -54,7 +54,7 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
 
             await page.goto('/deposit');
 
-            // 3. Nagłówek strony — tytuł "🏦 Depozyt"
+            // 3. Nagłówek strony — tytuł ":bank: Depozyt"
             await expect(page.locator('.deposit__title')).toContainText('Depozyt');
 
             // 4. Dwa panele (plecak + depozyt) — Deposit.tsx renderuje
@@ -68,7 +68,7 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
             await expect(panelTitles.nth(1)).toContainText('Depozyt');
 
             // 6. Counter formatu "N / MAX" w nagłówku każdego panelu.
-            //    Świeża postać → plecak=0/1000, depozyt=0/10000.
+            //    Świeża postać -> plecak=0/1000, depozyt=0/10000.
             const bagCounter = panels.nth(0).locator('.deposit__panel-count');
             const depCounter = panels.nth(1).locator('.deposit__panel-count');
             await expect(bagCounter).toContainText('/ 1000');

@@ -2,16 +2,16 @@
  * Tests for the guild-boss spell registry + resolvers.
  *
  * The registry holds:
- *   • A `SPELLS` map keyed by id (private — exercised through pick/cast).
- *   • A `TIER_KITS` map for tiers 1..50 (label, pool, cast interval,
+ *   - A `SPELLS` map keyed by id (private — exercised through pick/cast).
+ *   - A `TIER_KITS` map for tiers 1..50 (label, pool, cast interval,
  *     damage multiplier).
  *
  * Exposed resolvers:
- *   • getGuildBossKit          — clamp tier into [1..50], return kit.
- *   • pickGuildBossSpell       — random pick from the tier's pool.
- *   • computeBossSpellDamage   — floor(playerMaxHp * spell% * mult), min 1.
- *   • getBossCastIntervalMs    — interval / speed, floor 250.
- *   • getGuildBossLabel        — pass-through to kit.label.
+ *   - getGuildBossKit          — clamp tier into [1..50], return kit.
+ *   - pickGuildBossSpell       — random pick from the tier's pool.
+ *   - computeBossSpellDamage   — floor(playerMaxHp * spell% * mult), min 1.
+ *   - getBossCastIntervalMs    — interval / speed, floor 250.
+ *   - getGuildBossLabel        — pass-through to kit.label.
  *
  * For pickGuildBossSpell we stub `Math.random` so the test is
  * deterministic — RNG seams in unit tests should always be mocked.
@@ -26,7 +26,7 @@ import {
     getGuildBossLabel,
 } from './guildBossSpells';
 
-// ── getGuildBossKit (clamp behaviour) ───────────────────────────────────────
+// -- getGuildBossKit (clamp behaviour) ---------------------------------------
 
 describe('getGuildBossKit', () => {
     it('returns the tier 1 kit for tier=1', () => {
@@ -72,7 +72,7 @@ describe('getGuildBossKit', () => {
     });
 });
 
-// ── pickGuildBossSpell (deterministic via mocked RNG) ───────────────────────
+// -- pickGuildBossSpell (deterministic via mocked RNG) -----------------------
 
 describe('pickGuildBossSpell', () => {
     it('always picks a spell from the tier pool', () => {
@@ -88,7 +88,7 @@ describe('pickGuildBossSpell', () => {
         // tail without going out of bounds.
         const spy = vi.spyOn(Math, 'random').mockReturnValue(0.9999);
         const spell = pickGuildBossSpell(1);
-        // Tier 1 pool = ['cios', 'pozoga'] → tail = 'pozoga'.
+        // Tier 1 pool = ['cios', 'pozoga'] -> tail = 'pozoga'.
         expect(spell.id).toBe('pozoga');
         spy.mockRestore();
     });
@@ -114,7 +114,7 @@ describe('pickGuildBossSpell', () => {
     });
 });
 
-// ── computeBossSpellDamage ──────────────────────────────────────────────────
+// -- computeBossSpellDamage --------------------------------------------------
 
 describe('computeBossSpellDamage', () => {
     const spell = {
@@ -123,11 +123,11 @@ describe('computeBossSpellDamage', () => {
         kind: 'fire' as const,
         dmgPctOfPlayerMaxHp: 0.045,
         color: '#ff5722',
-        icon: '🔥',
+        icon: 'fire',
     };
 
     it('computes floor(playerMaxHp * pct * tierMult)', () => {
-        // Tier 1 damageMult = 0.95 → 1000 * 0.045 * 0.95 = 42.75 → floor = 42.
+        // Tier 1 damageMult = 0.95 -> 1000 * 0.045 * 0.95 = 42.75 -> floor = 42.
         expect(computeBossSpellDamage(spell, 1, 1000)).toBe(42);
     });
 
@@ -136,7 +136,7 @@ describe('computeBossSpellDamage', () => {
         expect(computeBossSpellDamage(spell, 1, 1)).toBe(1);
     });
 
-    it('scales with tier (higher tier → bigger hit)', () => {
+    it('scales with tier (higher tier -> bigger hit)', () => {
         const lo = computeBossSpellDamage(spell, 1, 10_000);
         const hi = computeBossSpellDamage(spell, 10, 10_000);
         expect(hi).toBeGreaterThan(lo);
@@ -150,7 +150,7 @@ describe('computeBossSpellDamage', () => {
     });
 });
 
-// ── getBossCastIntervalMs ───────────────────────────────────────────────────
+// -- getBossCastIntervalMs ---------------------------------------------------
 
 describe('getBossCastIntervalMs', () => {
     it('divides the kit interval by speedMult', () => {
@@ -178,7 +178,7 @@ describe('getBossCastIntervalMs', () => {
     });
 });
 
-// ── getGuildBossLabel ───────────────────────────────────────────────────────
+// -- getGuildBossLabel -------------------------------------------------------
 
 describe('getGuildBossLabel', () => {
     it('returns the documented tier-1 label', () => {

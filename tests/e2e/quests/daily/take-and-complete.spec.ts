@@ -3,37 +3,37 @@
  * and renders them as active + claimable cards.
  *
  * Spec (BACKLOG.md punkt 7.11): "Daily missions: pobierz + wykonaj
- * (open daily tab → take daily → verify in active)".
+ * (open daily tab -> take daily -> verify in active)".
  *
  * App-side reality check (vs the loose "pobierz + wykonaj" wording):
- *   • Daily quests are NOT manually pickable — `refreshIfNeeded` in
+ *   - Daily quests are NOT manually pickable — `refreshIfNeeded` in
  *     `useDailyQuestStore` (dailyQuestStore.ts line 45) auto-seeds 12
  *     random daily defs + activeQuests with `progress: 0` the FIRST
  *     time the player opens the panel on a new day. There is no
  *     "Weź daily" button — the test "takes" by being on the panel.
- *   • "Wykonaj" (complete) happens through gameplay (combat, dungeons,
+ *   - "Wykonaj" (complete) happens through gameplay (combat, dungeons,
  *     potion use, …) which feeds `addProgress(goalType, amount)`. To
- *     test the complete → claimable transition deterministically we
+ *     test the complete -> claimable transition deterministically we
  *     seed a daily quest with `progress = goal.count, completed: true`
  *     and assert the claim flow.
  *
  * What this test asserts:
  *   1. Daily tab unlocks at level 25 (`isDailyLocked = level < 25`,
- *      Quests.tsx line 715). Seed Knight lvl 30 → "🔒 Questy dzienne
+ *      Quests.tsx line 715). Seed Knight lvl 30 -> ":locked: Questy dzienne
  *      odblokuja sie na poziomie 25" placeholder MUST NOT render.
- *   2. After hub-tile tap → `.quests__daily-list` mounts with our
+ *   2. After hub-tile tap -> `.quests__daily-list` mounts with our
  *      seeded daily defs.
  *   3. Both seeded daily quest cards visible by name:
- *        • "Rozgrzewka" — pre-completed (progress = goal.count) →
+ *        - "Rozgrzewka" — pre-completed (progress = goal.count) ->
  *          card carries `quests__daily-quest--completed` modifier +
- *          "🎁 Odbierz nagrodę" claim button.
- *        • "Polowanie" — in-progress (progress = 3, goal = 10) → card
+ *          ":wrapped-gift: Odbierz nagrodę" claim button.
+ *        - "Polowanie" — in-progress (progress = 3, goal = 10) -> card
  *          has NEITHER `--completed` NOR `--claimed` modifier.
  *   4. Bulk "Odbierz wszystkie daily (N)" CTA visible because at least
  *      one daily is claimable (Quests.tsx line 740-748).
  *   5. Tapping the "Rozgrzewka" claim button transitions the card from
  *      `--completed` to `--claimed` (UI source of truth for the
- *      "wykonaj" flow). The "✓ Odebrane" label appears in the action
+ *      "wykonaj" flow). The "v Odebrane" label appears in the action
  *      row (line 832).
  *
  * Why seed both states: covers both "freshly picked / in progress" AND
@@ -79,9 +79,9 @@ test.describe('Quests › Daily', { tag: '@progression' }, () => {
             //    in the Quests.tsx mount effect (line 365) and keeps our
             //    pinned `todayQuestDefs` + `activeQuests`.
             //
-            //    First daily: pre-completed → claim button. Values
+            //    First daily: pre-completed -> claim button. Values
             //    mirror `src/data/dailyQuests.json` rows 1-19.
-            //    Second daily: progress mid-flight → in-progress UI.
+            //    Second daily: progress mid-flight -> in-progress UI.
             await seedQuestState({
                 characterId: created.id,
                 dailyQuests: {
@@ -106,15 +106,15 @@ test.describe('Quests › Daily', { tag: '@progression' }, () => {
                         },
                     ],
                     activeQuests: [
-                        // Pre-completed (progress >= goal.count) → renders
-                        // "🎁 Odbierz nagrodę" button.
+                        // Pre-completed (progress >= goal.count) -> renders
+                        // ":wrapped-gift: Odbierz nagrodę" button.
                         {
                             questId: 'daily_kill_5',
                             progress: 5,
                             completed: true,
                             claimed: false,
                         },
-                        // In-progress (3/10) → neither --completed nor
+                        // In-progress (3/10) -> neither --completed nor
                         // --claimed; no claim button.
                         {
                             questId: 'daily_kill_10',
@@ -126,7 +126,7 @@ test.describe('Quests › Daily', { tag: '@progression' }, () => {
                 },
             });
 
-            // 3. Login → character select → Town → /quests.
+            // 3. Login -> character select -> Town -> /quests.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -137,7 +137,7 @@ test.describe('Quests › Daily', { tag: '@progression' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
 
             await page.goto('/quests');
-            // Daily hub tile (id='daily' → class `quests__hub-tile--daily`).
+            // Daily hub tile (id='daily' -> class `quests__hub-tile--daily`).
             const dailyHubTile = page.locator('.quests__hub-tile--daily');
             await expect(dailyHubTile).toBeVisible({ timeout: 10_000 });
             await dailyHubTile.tap();
@@ -177,8 +177,8 @@ test.describe('Quests › Daily', { tag: '@progression' }, () => {
             await expect(bulkClaimBtn).toBeVisible();
             await expect(bulkClaimBtn).toContainText('Odbierz wszystkie daily (1)');
 
-            // 9. ASSERTION #5: tap the per-card claim button → Rozgrzewka
-            //    transitions from --completed to --claimed; "✓ Odebrane"
+            // 9. ASSERTION #5: tap the per-card claim button -> Rozgrzewka
+            //    transitions from --completed to --claimed; "v Odebrane"
             //    label replaces the claim button (Quests.tsx line 832).
             await claimBtn.tap();
             await expect(rozgrzewkaCard).toHaveClass(/quests__daily-quest--claimed/, {

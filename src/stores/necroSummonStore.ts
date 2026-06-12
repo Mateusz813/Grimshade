@@ -7,13 +7,13 @@ import { create } from 'zustand';
  * own ally slot. The store keeps a list per necro id; the view renders a
  * count badge + iterates the list when applying damage so:
  *
- *   • Single-target hits on the necro consume the FIRST summon's HP first.
+ *   - Single-target hits on the necro consume the FIRST summon's HP first.
  *     When the summon dies it's spliced out and the next one becomes the
  *     active "shield". Once all summons are dead, the necro takes hits.
- *   • AOE hits split across every summon AND the necro (each takes the
+ *   - AOE hits split across every summon AND the necro (each takes the
  *     full hit, like normal AOE — summons are independent entities under
  *     the same icon).
- *   • On the attack tick, summons swing alongside the necro — each summon
+ *   - On the attack tick, summons swing alongside the necro — each summon
  *     deals a fraction of the necro's attack (skeleton 25%, ghost 50%,
  *     demon 120%, lich 200%).
  */
@@ -31,7 +31,7 @@ export interface INecroSummon {
 }
 
 interface IState {
-    /** necro-id → ordered list of live summons (head = oldest). */
+    /** necro-id -> ordered list of live summons (head = oldest). */
     summons: Record<string, INecroSummon[]>;
 }
 

@@ -9,7 +9,7 @@ import type { CharacterClass } from './characterApi';
  * tables and streams membership changes over Supabase Realtime so every
  * client in a party sees joins/leaves/kicks instantly.
  *
- * ── Schema migration ───────────────────────────────────────────────────────
+ * -- Schema migration -------------------------------------------------------
  * The client expects these optional columns on `parties`:
  *
  *   description TEXT DEFAULT '',
@@ -20,7 +20,7 @@ import type { CharacterClass } from './characterApi';
  * The full migration (columns + RLS + realtime publication) is in
  *   scripts/party_migration.sql
  *
- * Run it ONCE in Supabase Dashboard → SQL Editor. The API below gracefully
+ * Run it ONCE in Supabase Dashboard -> SQL Editor. The API below gracefully
  * degrades if the migration hasn't been run yet: it detects PostgREST
  * "column does not exist" / "schema cache" errors and retries with only
  * the columns that existed in the original schema so /party still renders
@@ -32,7 +32,7 @@ import type { CharacterClass } from './characterApi';
  * without saying hi in chat"), not authentication.
  */
 
-// ── Schema-tolerance helpers ────────────────────────────────────────────────
+// -- Schema-tolerance helpers ------------------------------------------------
 // Set to `false` as soon as we see a PostgREST error that mentions a missing
 // column. Once flipped we stop asking for those columns in subsequent calls,
 // so the browser keeps working on un-migrated Supabase instances.
@@ -150,7 +150,7 @@ export const extractApiError = (err: unknown): string => {
 /**
  * Friendly migration-missing error — shown in the UI when the user hasn't
  * run `scripts/party_migration.sql` yet. The message tells her exactly what
- * to do (open Supabase → SQL Editor → paste the script → Run).
+ * to do (open Supabase -> SQL Editor -> paste the script -> Run).
  */
 export class PartyMigrationMissingError extends Error {
     constructor(kind: 'schema' | 'rls' | 'rls-members', underlying: string) {
@@ -159,7 +159,7 @@ export class PartyMigrationMissingError extends Error {
           : kind === 'rls-members' ? 'Brak uprawnień do tabeli `party_members` (RLS).'
           : 'Brak uprawnień do tabeli `parties` (RLS).';
         super(
-            `${prefix} Otwórz Supabase → SQL Editor → New query i wklej zawartość pliku ` +
+            `${prefix} Otwórz Supabase -> SQL Editor -> New query i wklej zawartość pliku ` +
             `scripts/party_migration.sql z repo, a potem kliknij Run. ` +
             `Skrypt dodaje kolumny description/password/is_public, czyści stare ` +
             `unikalne ograniczenia i ustawia permisywne polityki RLS. ` +
@@ -177,7 +177,7 @@ const onSchemaMissing = (where: string): void => {
     console.warn(
         `[partyApi] ${where}: Supabase "parties" table is missing the browser columns ` +
         `(description/password/is_public). Running in fallback mode — run scripts/party_migration.sql ` +
-        `in Supabase Dashboard → SQL Editor to enable the full party browser.`,
+        `in Supabase Dashboard -> SQL Editor to enable the full party browser.`,
     );
 };
 
@@ -266,7 +266,7 @@ const sanitize = (row: IRawPartyRow): IPartyRow => ({
  *  2026-05-09: dropped `role` from the embedded `party_members(...)` select.
  *  The DB column doesn't exist on every install, and selecting it 400's the
  *  WHOLE query with `column party_members_1.role does not exist`, which then
- *  cascaded into the no-embed fallback that drops members entirely → roster
+ *  cascaded into the no-embed fallback that drops members entirely -> roster
  *  rendered as 0/4 even though the membership row was there. The client
  *  doesn't read `role` anywhere (leader detection uses `parties.leader_id`),
  *  so removing it from the projection is a pure win. */

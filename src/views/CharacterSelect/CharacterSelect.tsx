@@ -9,6 +9,7 @@ import { getTrainingBonuses } from '../../systems/skillSystem';
 import itemsRaw from '../../data/items.json';
 import { getCharacterAvatar } from '../../data/classAvatars';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import { getTransformColor, getClassTransformBonuses, getTransformById } from '../../systems/transformSystem';
 import pwaIcon from '../../assets/images/pwa.png';
 import './CharacterSelect.scss';
@@ -353,7 +354,7 @@ const CharacterSelect = () => {
                     onClick={() => setConfirmDeleteId(char.id)}
                     title="Usuń postać"
                   >
-                    🗑️
+                    <GameIcon name="wastebasket" />
                   </button>
                 )}
               </div>

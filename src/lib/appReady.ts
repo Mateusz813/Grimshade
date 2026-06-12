@@ -3,7 +3,7 @@
  *
  * Flips `window.__grimshadeReady` so Playwright tests can deterministically
  * wait until the boot-time restore() chain has FULLY completed:
- *   character fetch → switchToCharacter → cloud loadGame → applyBlobToStores.
+ *   character fetch -> switchToCharacter -> cloud loadGame -> applyBlobToStores.
  *
  * WHY THIS EXISTS (2026-05-27):
  *   After a hard navigation (`page.goto('/deposit')`) the app remounts and
@@ -12,7 +12,7 @@
  *   restore, but the asynchronous cloud `loadGame()` is STILL in flight. If a
  *   test taps during that window, the user mutation lands, then the late
  *   `applyBlobToStores(cloudBlob)` overwrites it — reverting the action
- *   (observed as deposit panel "3 → 2 → 3", gold "200 → 100 → 200").
+ *   (observed as deposit panel "3 -> 2 -> 3", gold "200 -> 100 -> 200").
  *
  *   Polling the store values does NOT help: they read "correct" both BEFORE
  *   and AFTER the cloud load, so a poll can't distinguish "hydrating" from

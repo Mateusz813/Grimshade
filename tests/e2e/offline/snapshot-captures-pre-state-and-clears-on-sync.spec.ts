@@ -1,5 +1,5 @@
 /**
- * Atomic E2E — BACKLOG 14.2 (anti-hack — no duplication on offline ↔ online).
+ * Atomic E2E — BACKLOG 14.2 (anti-hack — no duplication on offline <-> online).
  *
  * Pragmatic scope (per task brief): instead of trying to reproduce a full
  * "duplicate items in offline mode" exploit (which would need a planted
@@ -20,7 +20,7 @@
  * 12345 gp means we can both (a) assert the snapshot captured that
  * exact pre-state and (b) confirm no inflation happened by checking
  * the canonical Supabase row carries the SAME value after the
- * full online → offline → online cycle (no offline-action this run —
+ * full online -> offline -> online cycle (no offline-action this run —
  * "no-op offline session" should produce zero delta).
  *
  * Spec source: `src/systems/connectivityTransitions.ts` (captureOfflineSnapshot,
@@ -30,7 +30,7 @@
  *
  * Why this is the contract worth pinning:
  *   - If captureOfflineSnapshot ever silently no-ops, anti-cheat audit
- *     trail goes dark (no baseline → no delta).
+ *     trail goes dark (no baseline -> no delta).
  *   - If transitionToOnline clears the snapshot WITHOUT first persisting
  *     the live state, a player could keep playing offline-mode forever
  *     with no canonical row to roll back to.
@@ -41,12 +41,12 @@
  *   1. Seed character with gold=12345 (deterministic anchor) via
  *      seedGameSave — switchToCharacter reads inventory.gold from the
  *      blob.
- *   2. Login + select character → Town hydrates inventoryStore.gold to
+ *   2. Login + select character -> Town hydrates inventoryStore.gold to
  *      12345.
- *   3. Tap Offline in AvatarMenu → captureOfflineSnapshot runs.
+ *   3. Tap Offline in AvatarMenu -> captureOfflineSnapshot runs.
  *   4. Read sessionStorage to confirm snapshot.gold === 12345 (baseline
  *      captured pre-state, not inflated).
- *   5. Tap Online → transitionToOnline runs → snapshot should clear
+ *   5. Tap Online -> transitionToOnline runs -> snapshot should clear
  *      after sync resolves.
  *   6. Query game_saves directly to confirm canonical row matches
  *      seeded 12345 (no inflation since we didn't actually act offline).
@@ -96,7 +96,7 @@ test.describe('Offline › Sync', { tag: '@offline' }, () => {
                 gold: SEEDED_GOLD,
             });
 
-            // 2. Login + select character → Town hydrates inventoryStore.gold.
+            // 2. Login + select character -> Town hydrates inventoryStore.gold.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -111,7 +111,7 @@ test.describe('Offline › Sync', { tag: '@offline' }, () => {
             await expect(page.locator('.town__char-name')).toHaveText(nick, { timeout: 10_000 });
 
             // Sanity: TopHeader gold reflects seeded value. pl-PL
-            //    toLocaleString uses NBSP between thousands → "12 345".
+            //    toLocaleString uses NBSP between thousands -> "12 345".
             //    aria-label format: "Złoto: <localized>".
             const goldBtn = page.locator('.top-header__gold-btn');
             await expect(goldBtn).toHaveAttribute('aria-label', /Złoto:\s+12[\s\xa0]?345/, { timeout: 10_000 });
@@ -132,8 +132,8 @@ test.describe('Offline › Sync', { tag: '@offline' }, () => {
             await offlineBtn.tap();
 
             // 5. Snapshot landed in sessionStorage with seeded gold value.
-            //    Poll because setSnapshot → sessionStorage write happens
-            //    inside transitionToOffline → captureOfflineSnapshot → which
+            //    Poll because setSnapshot -> sessionStorage write happens
+            //    inside transitionToOffline -> captureOfflineSnapshot -> which
             //    is sync but mounted via dynamic-import (await on caller).
             await expect.poll(
                 () => page.evaluate(() => {
@@ -152,7 +152,7 @@ test.describe('Offline › Sync', { tag: '@offline' }, () => {
             const statusDot = page.locator('.top-header__status-dot');
             await expect(statusDot).toHaveClass(/top-header__status-dot--offline/, { timeout: 5_000 });
 
-            // 7. Tap Online → transitionToOnline → forces save + clears
+            // 7. Tap Online -> transitionToOnline -> forces save + clears
             //    snapshot. The button is still rendered (menu didn't close).
             const onlineBtn = modeToggle.locator('.avatar-menu__lang-btn', { hasText: /^Online$/ });
             await onlineBtn.tap();
@@ -173,7 +173,7 @@ test.describe('Offline › Sync', { tag: '@offline' }, () => {
             });
 
             // 9. Snapshot was cleared once sync resolved. Poll because the
-            //    setSnapshot(null) → sessionStorage.removeItem hop is
+            //    setSnapshot(null) -> sessionStorage.removeItem hop is
             //    behind the saveCurrentCharacterStores promise.
             await expect.poll(
                 () => page.evaluate(() => sessionStorage.getItem('grimshade.offlineSnapshot')),
@@ -181,8 +181,8 @@ test.describe('Offline › Sync', { tag: '@offline' }, () => {
             ).toBeNull();
 
             // 10. Canonical Supabase row carries the SAME gold (no offline
-            //     action this run → zero delta → no inflation). This is the
-            //     "anti-hack" pin: even after a full online→offline→online
+            //     action this run -> zero delta -> no inflation). This is the
+            //     "anti-hack" pin: even after a full online->offline->online
             //     cycle, the trusted state is preserved unchanged.
             const admin = getAdminClient();
             const { data, error } = await admin

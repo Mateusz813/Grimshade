@@ -8,7 +8,7 @@
  *    Regen=0 KRYTYCZNE — w przeciwnym razie passive regen tickuje co
  *    sekundę i wartości rosną zanim zdążymy tapnąć Rest (~przed
  *    asserycją).
- *  - Login → Town → bar HP pokazuje 10/120, MP pokazuje 5/30.
+ *  - Login -> Town -> bar HP pokazuje 10/120, MP pokazuje 5/30.
  *  - Tap "Odpoczynek" tile (`.town__nav-tile--rest`).
  *  - Wyświetla się overlay regeneracji (`.town__rest-overlay`) z napisem
  *    "Odpoczywasz przy ognisku..."
@@ -39,7 +39,7 @@ test.describe('City › Rest', { tag: '@city' }, () => {
         try {
             // 1. Seed Knight z bardzo niskim HP/MP + regen=0.
             //    Knight base: max_hp=120, max_mp=30 (z CLASS_BASE_STATS w fixture).
-            //    overrides.hp=10, overrides.mp=5 → znaczna luka do max.
+            //    overrides.hp=10, overrides.mp=5 -> znaczna luka do max.
             //    hp_regen=0 + mp_regen=0 — passive tick wyłączony, więc 10 i 5
             //    pozostają stabilne aż do tap-u Odpoczynek.
             const created = await createCharacterViaApi({
@@ -50,7 +50,7 @@ test.describe('City › Rest', { tag: '@city' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + tap Wybierz na NASZEJ karcie → Town
+            // 2. Login + tap Wybierz na NASZEJ karcie -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

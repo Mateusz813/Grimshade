@@ -174,7 +174,7 @@ describe('Quests — claimable dot on hub tiles', () => {
                 killCount: 10,
                 rewardGold: 100,
                 rewardXp: 50,
-                progress: 10, // = killCount → claimable
+                progress: 10, // = killCount -> claimable
                 startedAt: '2026-05-22T00:00:00.000Z',
             }],
         } as never);

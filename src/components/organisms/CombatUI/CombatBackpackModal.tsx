@@ -3,6 +3,7 @@ import { useCombatStore } from '../../../stores/combatStore';
 import type { IDropDisplay } from '../../../systems/combatEngine';
 import { formatGoldShort } from '../../../systems/goldFormat';
 import ItemIcon from '../../ui/ItemIcon/ItemIcon';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import { useBuffStore } from '../../../stores/buffStore';
 import { usePartyStore } from '../../../stores/partyStore';
 import { calculateXpMultiplier, calculateDropMultiplier } from '../../../systems/partySystem';
@@ -67,7 +68,7 @@ const CombatBackpackModal = ({ onClose }: IProps) => {
         <div className="combat-ui__modal-bg" onClick={onClose}>
             <div className="combat-ui__modal" onClick={(e) => e.stopPropagation()}>
                 <header className="combat-ui__modal-head">
-                    <span className="combat-ui__modal-title">🎒 Łup tej sesji</span>
+                    <span className="combat-ui__modal-title"><GameIcon name="backpack" /> Łup tej sesji</span>
                     <button type="button" className="combat-ui__modal-close" onClick={onClose} aria-label="Zamknij">×</button>
                 </header>
 

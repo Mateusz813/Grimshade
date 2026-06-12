@@ -6,11 +6,11 @@
  * — Arena Victims tab (`arena_deaths` column ranking).
  *
  * Tab definition (Leaderboard.tsx linia 154):
- *   { key: 'arena_victims', label: 'Ofiary', icon: '💀',
+ *   { key: 'arena_victims', label: 'Ofiary', icon: 'skull',
  *     source: 'characters', characterColumn: 'arena_deaths',
  *     order: 'desc', valueLabel: 'Śmierci' }
  *
- * Display format: fallback formatValue → `Śmierci 999`. Sync-hook SAFE
+ * Display format: fallback formatValue -> `Śmierci 999`. Sync-hook SAFE
  * (same as arena_kills — only arenaStore bumps this column).
  *
  * Cleanup: try/finally + cleanupCharacterById.

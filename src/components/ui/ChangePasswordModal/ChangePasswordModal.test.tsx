@@ -11,13 +11,13 @@ import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
  * BEFORE the new password is set (authApi.updatePassword).
  *
  * Coverage:
- *   • Smoke: title + three password inputs + cancel/submit buttons.
- *   • zod validation: short new password → "Min. 6 znaków".
- *   • zod validation: mismatch → "Hasła muszą być takie same".
- *   • Wrong current password → "Nieprawidłowe obecne hasło", no update.
- *   • Success: verify + update called, success toast rendered.
- *   • Server error on update → root error, no toast.
- *   • Cancel / backdrop / Escape call onClose.
+ *   - Smoke: title + three password inputs + cancel/submit buttons.
+ *   - zod validation: short new password -> "Min. 6 znaków".
+ *   - zod validation: mismatch -> "Hasła muszą być takie same".
+ *   - Wrong current password -> "Nieprawidłowe obecne hasło", no update.
+ *   - Success: verify + update called, success toast rendered.
+ *   - Server error on update -> root error, no toast.
+ *   - Cancel / backdrop / Escape call onClose.
  */
 
 vi.mock('../../../api/v1/authApi', () => ({

@@ -124,10 +124,10 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  # ── Production deploy — GATED on tests ──────────────────────────────────────
+  # -- Production deploy — GATED on tests --------------------------------------
   # `needs: [unit, e2e]` (and those need `static`) means this job ONLY runs when
   # Typecheck + Vitest (unit+integration) + Playwright (E2E) all pass. If any
-  # test fails, the deploy is skipped → broken code never reaches production.
+  # test fails, the deploy is skipped -> broken code never reaches production.
   #
   # Runs only on a real push to `master` (production branch), never on PRs/develop.
   #

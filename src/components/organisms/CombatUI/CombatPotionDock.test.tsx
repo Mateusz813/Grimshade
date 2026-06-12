@@ -61,8 +61,8 @@ describe('CombatPotionDock — smoke', () => {
 
     it('uses fallback emoji glyph when no icon URL is provided', () => {
         render(<CombatPotionDock hpPotion={makePot({ kind: 'hp', icon: undefined })} />);
-        // HP fallback is '❤️'.
-        expect(screen.getByText('❤️')).toBeTruthy();
+        // HP fallback is 'red-heart'.
+        expect(screen.getByText('red-heart')).toBeTruthy();
     });
 
     it('uses custom icon URL when provided', () => {

@@ -11,13 +11,13 @@
  *
  * `combat/party/ally-resurrect-broadcasts-through-channel.spec.ts` proves
  * the channel works UNIDIRECTIONALLY — secondary publishes, primary
- * receives. Good for the Cleric→Knight revive scenario.
+ * receives. Good for the Cleric->Knight revive scenario.
  *
  * THIS test proves the channel works in BOTH directions on the SAME
  * party session:
- *   • PRIMARY casts a damage skill → BOTH primary's own state AND
+ *   - PRIMARY casts a damage skill -> BOTH primary's own state AND
  *     SECONDARY's `lastSpellByCaster` map populate.
- *   • SECONDARY casts a different skill → BOTH primary's
+ *   - SECONDARY casts a different skill -> BOTH primary's
  *     `lastSpellByCaster` AND secondary's own state populate.
  *
  * That's the canonical multi-context animation-sync contract: "if I see
@@ -39,30 +39,30 @@
  *
  * Action:
  *   1. PRIMARY publishes `shield_bash` spell-cast.
- *      → poll SECONDARY's `lastSpellByCaster[primaryCharId]` until populated.
- *      → ALSO verify PRIMARY's OWN `lastSpellByCaster[primaryCharId]`
+ *      -> poll SECONDARY's `lastSpellByCaster[primaryCharId]` until populated.
+ *      -> ALSO verify PRIMARY's OWN `lastSpellByCaster[primaryCharId]`
  *        was populated (the publishSpellCast also mirrors local — line
  *        977-980 of partyCombatSyncStore.ts).
  *   2. SECONDARY publishes `shield_bash` spell-cast (their own).
- *      → poll PRIMARY's `lastSpellByCaster[secondaryCharId]` until populated.
- *      → ALSO verify SECONDARY's OWN `lastSpellByCaster[secondaryCharId]`
+ *      -> poll PRIMARY's `lastSpellByCaster[secondaryCharId]` until populated.
+ *      -> ALSO verify SECONDARY's OWN `lastSpellByCaster[secondaryCharId]`
  *        was populated.
  *
  * Assertions:
- *   • PRIMARY's view sees BOTH casters' entries (their own + secondary's).
- *   • SECONDARY's view sees BOTH casters' entries (their own + primary's).
- *   • `skillId` payload matches the published value on both sides
+ *   - PRIMARY's view sees BOTH casters' entries (their own + secondary's).
+ *   - SECONDARY's view sees BOTH casters' entries (their own + primary's).
+ *   - `skillId` payload matches the published value on both sides
  *     (proves wire transport preserves the skill identity — animation
  *     needs the right skill name/effect lookup).
- *   • Both casts carry distinct `casterId`s in the receivers' map
+ *   - Both casts carry distinct `casterId`s in the receivers' map
  *     (no overwrite collision — proves the map keys are per-character).
  *
  * ## What this does NOT prove (deferred)
  *
- *   • The actual DOM animation overlay rendering. That's covered for
+ *   - The actual DOM animation overlay rendering. That's covered for
  *     solo class casts in `tests/e2e/skills/animations/solo-trainer-per-class.spec.ts`
  *     — a render-side regression would be caught there.
- *   • Multi-context damage broadcast (`lastDamageByAttacker`) — separate
+ *   - Multi-context damage broadcast (`lastDamageByAttacker`) — separate
  *     channel event with its own publisher path. We focus on `spell-cast`
  *     here because that's the primary animation trigger (basic-attack
  *     dmg events are covered by the leader-authoritative state snapshot).
@@ -76,7 +76,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { openMultiContext } from '../../fixtures/multiContext';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -209,7 +209,7 @@ test.describe('Combat › Multi-Context', { tag: '@combat' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town.
+            // 3. Both pick character -> Town.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),
@@ -264,7 +264,7 @@ test.describe('Combat › Multi-Context', { tag: '@combat' }, () => {
             expect(primaryActiveId).toBe(primaryCharId);
             expect(secondaryActiveId).toBe(secondaryCharId);
 
-            // 8. LEG 1 — PRIMARY publishes spell-cast → SECONDARY receives.
+            // 8. LEG 1 — PRIMARY publishes spell-cast -> SECONDARY receives.
             //    isDamageHit=true (shield_bash damage=1.5) — Combat.tsx
             //    receiver routes damage-hits to the enemy-card animation
             //    overlay (not the caster's ally card).
@@ -303,7 +303,7 @@ test.describe('Combat › Multi-Context', { tag: '@combat' }, () => {
             expect(primaryOwnCast).not.toBeNull();
             expect(primaryOwnCast?.skillId).toBe('shield_bash');
 
-            // 9. LEG 2 — SECONDARY publishes spell-cast → PRIMARY receives.
+            // 9. LEG 2 — SECONDARY publishes spell-cast -> PRIMARY receives.
             //    Same skill (shield_bash) but different caster — proves
             //    the receiver map keys per-caster (no overwrite collision).
             await publishSpellCastFromPage(secondaryPage, {

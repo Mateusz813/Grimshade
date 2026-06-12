@@ -33,7 +33,7 @@
     .transform__header { display: none; }
   }
 
-  // ── Header ──────────────────────────────────────────────────────────────────
+  // -- Header ------------------------------------------------------------------
   &__header {
     display: flex;
     align-items: center;
@@ -60,7 +60,7 @@
     margin: 0;
   }
 
-  // ── List view ───────────────────────────────────────────────────────────────
+  // -- List view ---------------------------------------------------------------
   &__list {
     display: flex;
     flex-direction: column;
@@ -80,7 +80,7 @@
     }
   }
 
-  // ── Card ────────────────────────────────────────────────────────────────────
+  // -- Card --------------------------------------------------------------------
   &__card {
     background: $color-bg-secondary;
     border: 2px solid $color-border;
@@ -327,7 +327,7 @@
     letter-spacing: 0.02em;
   }
 
-  // ── Progress bar (in-progress quest) ────────────────────────────────────────
+  // -- Progress bar (in-progress quest) ----------------------------------------
   &__progress-wrap {
     display: flex;
     align-items: center;
@@ -355,7 +355,7 @@
     white-space: nowrap;
   }
 
-  // ── Completed avatar preview ────────────────────────────────────────────────
+  // -- Completed avatar preview ------------------------------------------------
   &__card-avatar {
     display: flex;
     justify-content: center;
@@ -370,7 +370,7 @@
     border: 2px solid var(--transform-color, $color-border);
   }
 
-  // ── Action buttons ──────────────────────────────────────────────────────────
+  // -- Action buttons ----------------------------------------------------------
   &__card-actions {
     display: flex;
     gap: $spacing-sm;
@@ -475,7 +475,7 @@
     // that `&--start` uses on the list view, so the same per-tier palette
     // (gold for T1, etc.) reads on this button too — instant visual link
     // back to the transform the player just completed. Outlined idle state
-    // (so it doesn't compete with the title's solid fill) → hover fills
+    // (so it doesn't compete with the title's solid fill)  hover fills
     // with the gradient, mirroring how `&--start` looks at rest. The glow
     // uses the same `color-mix` recipe as `&--start` so the box-shadow
     // halo matches whatever colour the transform carries.
@@ -511,7 +511,7 @@
     100% { transform: translateX(100%) rotate(45deg); }
   }
 
-  // ── Combat view ─────────────────────────────────────────────────────────────
+  // -- Combat view -------------------------------------------------------------
   &__combat {
     padding: 0;
     display: flex;
@@ -628,7 +628,7 @@
     transition: width 0.5s ease;
   }
 
-  // ── Monster card ────────────────────────────────────────────────────────────
+  // -- Monster card ------------------------------------------------------------
   &__monster-card {
     background: $color-bg-card;
     border: 2px solid #f44336;
@@ -677,7 +677,7 @@
     color: $color-text-muted;
   }
 
-  // ── Player card ─────────────────────────────────────────────────────────────
+  // -- Player card -------------------------------------------------------------
   &__player-card {
     background: $color-bg-card;
     border: 2px solid var(--transform-color, $color-border);
@@ -743,7 +743,7 @@
     color: $color-text-muted;
   }
 
-  // ── HP / MP bars ────────────────────────────────────────────────────────────
+  // -- HP / MP bars ------------------------------------------------------------
   &__bar {
     position: relative;
     height: 20px;
@@ -779,7 +779,7 @@
     white-space: nowrap;
   }
 
-  // ── Combat log ──────────────────────────────────────────────────────────────
+  // -- Combat log --------------------------------------------------------------
   &__log {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid $color-border;
@@ -805,7 +805,7 @@
     &--dualwield { color: #ce93d8; }
   }
 
-  // ── Victory / rewards ───────────────────────────────────────────────────────
+  // -- Victory / rewards -------------------------------------------------------
   &__victory {
     padding: $spacing-lg;
     text-align: center;
@@ -938,7 +938,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  // ── Transform Animation Overlay ─────────────────────────────────────────────
+  // -- Transform Animation Overlay ---------------------------------------------
   &__animation-overlay {
     position: fixed;
     top: 0;
@@ -1015,7 +1015,7 @@
     100% { background-position: 0% 100%; }
   }
 
-  // ── Particles ───────────────────────────────────────────────────────────────
+  // -- Particles ---------------------------------------------------------------
   &__particles {
     position: absolute;
     top: 0;
@@ -1047,7 +1047,7 @@
     100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
   }
 
-  // ── Fullscreen avatar reveal ────────────────────────────────────────────────
+  // -- Fullscreen avatar reveal ------------------------------------------------
   &__fullscreen-avatar {
     position: relative;
     z-index: 10;
@@ -1104,7 +1104,7 @@
     }
   }
 
-  // ── Complete screen ─────────────────────────────────────────────────────────
+  // -- Complete screen ---------------------------------------------------------
   &__complete {
     padding: $spacing-xl;
     text-align: center;
@@ -1142,7 +1142,7 @@
     margin-bottom: $spacing-lg;
   }
 
-  // ── Player avatar in combat ───────────────────────────────────────────────
+  // -- Player avatar in combat -----------------------------------------------
   &__player-avatar-wrap {
     position: relative;
     flex-shrink: 0;
@@ -1200,7 +1200,7 @@
     z-index: 1;
   }
 
-  // ── Combat toggles ────────────────────────────────────────────────────────
+  // -- Combat toggles --------------------------------------------------------
   &__combat-toggles {
     display: flex;
     gap: 6px;
@@ -1260,7 +1260,7 @@
     }
   }
 
-  // ── Skill slots ──────────────────────────────────────────────────────────
+  // -- Skill slots ----------------------------------------------------------
   &__skill-slots {
     display: flex;
     gap: 4px;
@@ -1321,7 +1321,7 @@
     z-index: 1;
   }
 
-  // ── Potions ──────────────────────────────────────────────────────────────
+  // -- Potions --------------------------------------------------------------
   &__potions {
     display: flex;
     gap: 6px;
@@ -1363,7 +1363,7 @@
   &__potion-label { z-index: 1; font-weight: 600; }
   &__potion-count { z-index: 1; font-size: 10px; opacity: 0.7; }
 
-  // ── Cinematic entry overlay ───────────────────────────────────────────────
+  // -- Cinematic entry overlay -----------------------------------------------
   // Mirrors `dungeon__enter-*` exactly so the two views feel like siblings.
   // Z-index ladder inside this block:
   //   wrapper   — 9000 (above TopHeader at ~1000 and spawn-bar at ~1290)

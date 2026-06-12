@@ -115,7 +115,8 @@ describe('ReadyCheckModal — visibility', () => {
             payload: null,
         });
         render(<ReadyCheckModal />);
-        expect(screen.getByText('⚔ Gotowość do walki')).toBeTruthy();
+        // :crossed-swords: is now an <Emoji> img, so match the text portion only.
+        expect(screen.getByText(/Gotowość do walki/)).toBeTruthy();
         // Trainer label.
         expect(screen.getByText('Trainer')).toBeTruthy();
     });
@@ -129,7 +130,7 @@ describe('ReadyCheckModal — destination preview', () => {
             requesterId: 'char-1',
             requiredIds: ['char-1'],
             readyIds: [],
-            payload: { monster: { id: 'goblin', name_pl: 'Goblin', level: 5, sprite: '👹' } },
+            payload: { monster: { id: 'goblin', name_pl: 'Goblin', level: 5, sprite: 'ogre' } },
         });
         render(<ReadyCheckModal />);
         expect(screen.getByText('Polowanie')).toBeTruthy();
@@ -211,7 +212,10 @@ describe('ReadyCheckModal — interactions', () => {
             payload: null,
         });
         render(<ReadyCheckModal />);
-        const btn = screen.getByText(/Gotowy/) as HTMLButtonElement;
+        // The label sits inside a fragment with an <Emoji> now, so target the
+        // button by role (accessible name still contains "Gotowy") rather than
+        // getByText, which would return the inner text node.
+        const btn = screen.getByRole('button', { name: /Gotowy/ }) as HTMLButtonElement;
         expect(btn.disabled).toBe(true);
     });
 

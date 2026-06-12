@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — Wypłata z depozytu blokowana gdy plecak jest pełny.
  *
- * Spec (BACKLOG.md punkt 5.9): "Depozyt: take z pełnym plecakiem →
+ * Spec (BACKLOG.md punkt 5.9): "Depozyt: take z pełnym plecakiem ->
  * komunikat".
  *
  * **App caveat** (sprawdzone w `src/views/Deposit/Deposit.tsx` 2026-05-25):
@@ -12,14 +12,14 @@
  * Item silentily zostaje w deposit.
  *
  * Jedynym widocznym "komunikatem" jest **disabled state** bulk-button-a
- * `↑ Wypłać wszystkie` (linia 238): `disabled={bag.length >= MAX_BAG_SIZE}`.
+ * `^ Wypłać wszystkie` (linia 238): `disabled={bag.length >= MAX_BAG_SIZE}`.
  *
  * Co testujemy:
  *  - Seed 1000 itemów w bagu (filler, `generateFillerBagItems(1000)`) +
  *    1 item w deposit (`generateDepositItem`).
- *  - Nawigacja na `/deposit` → counter "1000 / 1000" w panelu Plecak;
+ *  - Nawigacja na `/deposit` -> counter "1000 / 1000" w panelu Plecak;
  *    counter "1 / 10000" w panelu Depozyt; 1 tile widoczny w deposit panel-u.
- *  - **Bulk button** `↑ Wypłać wszystkie` jest DISABLED (selektor:
+ *  - **Bulk button** `^ Wypłać wszystkie` jest DISABLED (selektor:
  *    `.deposit__panel:has(.deposit__panel-title:has-text("Depozyt"))
  *    .deposit__bulk-btn`).
  *  - **Per-tile** tap na deposit tile — sprawdzamy że item NIE zniknął
@@ -87,7 +87,7 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
 
             // 4. Panele — Plecak (panel #0), Depozyt (panel #1).
             //    Counter format: `{count} / {MAX}`. Z MAX_BAG_SIZE=1000 + 1000
-            //    seeded items → text exact "1000 / 1000".
+            //    seeded items -> text exact "1000 / 1000".
             const panels = page.locator('.deposit__panel');
             await expect(panels).toHaveCount(2);
 
@@ -98,12 +98,12 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
 
             // 5. **Bulk button** w deposit panelu disabled (linia 238 Deposit.tsx:
             //    `disabled={filteredDeposit.length === 0 || bag.length >= MAX_BAG_SIZE}`).
-            //    Z naszego seedu: filteredDeposit.length=1 (>0), bag.length=1000 → disabled.
+            //    Z naszego seedu: filteredDeposit.length=1 (>0), bag.length=1000 -> disabled.
             const depositBulkBtn = depositPanel.locator('.deposit__bulk-btn');
             await expect(depositBulkBtn).toContainText('Wypłać wszystkie');
             await expect(depositBulkBtn).toBeDisabled();
 
-            // 6. **Per-tile** silent-fail flow. Tap tile w deposit panelu →
+            // 6. **Per-tile** silent-fail flow. Tap tile w deposit panelu ->
             //    `withdrawItem` zwraca false silently, item zostaje.
             //    Asercja PRZED tap: 1 tile w deposit panelu.
             const depositTiles = depositPanel.locator('.deposit__tile');

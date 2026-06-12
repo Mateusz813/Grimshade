@@ -18,7 +18,7 @@ import { useTransformStore } from '../stores/transformStore';
 import { getClassTransformBonuses } from './transformSystem';
 import type { ICharacter, TCharacterClass } from '../api/v1/characterApi';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const makeChar = (cls: TCharacterClass = 'Knight', overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-tx-test',
@@ -65,7 +65,7 @@ beforeEach(() => {
     });
 });
 
-// ── getTransformDmgMultiplier ────────────────────────────────────────────────
+// -- getTransformDmgMultiplier ------------------------------------------------
 
 describe('getTransformDmgMultiplier', () => {
     it('returns 1.0 when there is no character', () => {
@@ -107,7 +107,7 @@ describe('getTransformDmgMultiplier', () => {
     });
 });
 
-// ── Flat bonus getters ───────────────────────────────────────────────────────
+// -- Flat bonus getters -------------------------------------------------------
 
 describe('getTransformFlatHp', () => {
     it('returns 0 with no completed transforms', () => {
@@ -212,7 +212,7 @@ describe('getTransformMpRegenFlat', () => {
     });
 });
 
-// ── Percent multipliers ──────────────────────────────────────────────────────
+// -- Percent multipliers ------------------------------------------------------
 
 describe('getTransformHpPctMultiplier', () => {
     it('returns 1.0 with no transforms', () => {
@@ -233,7 +233,7 @@ describe('getTransformHpPctMultiplier', () => {
 
     it('stacks additively across transforms', () => {
         setCompleted([1, 2, 3]);
-        // 4 + 4 + 4 = 12 → 1.12
+        // 4 + 4 + 4 = 12 -> 1.12
         expect(getTransformHpPctMultiplier()).toBeCloseTo(1 + 12 / 100, 5);
     });
 });
@@ -245,7 +245,7 @@ describe('getTransformMpPctMultiplier', () => {
 
     it('returns 1 + Σ mpPercent / 100 for completed transforms', () => {
         setCompleted([1, 2]);
-        // Knight mpPercent = 1 per transform → 2/100
+        // Knight mpPercent = 1 per transform -> 2/100
         expect(getTransformMpPctMultiplier()).toBeCloseTo(1 + 2 / 100, 5);
     });
 });
@@ -270,12 +270,12 @@ describe('getTransformAtkPctMultiplier', () => {
     it('returns 1 + Σ atkPercent / 100 for Archer (atkPercent=7)', () => {
         useCharacterStore.setState({ character: makeChar('Archer') });
         setCompleted([1, 2]);
-        // Archer atkPercent = 7 per transform → 14/100
+        // Archer atkPercent = 7 per transform -> 14/100
         expect(getTransformAtkPctMultiplier()).toBeCloseTo(1 + 14 / 100, 5);
     });
 });
 
-// ── getLiveTransformBreakdown ────────────────────────────────────────────────
+// -- getLiveTransformBreakdown ------------------------------------------------
 
 describe('getLiveTransformBreakdown', () => {
     it('returns inactive breakdown with no character', () => {

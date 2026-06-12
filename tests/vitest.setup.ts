@@ -13,7 +13,7 @@
 
 import { afterEach, vi } from 'vitest';
 
-// ── Supabase mock ────────────────────────────────────────────────────
+// -- Supabase mock ----------------------------------------------------
 // Wszystkie metody to no-opy zwracające `{ data: null, error: null }`.
 // Konkretne testy mogą override-ować przez `vi.mocked(supabase.from)...`.
 vi.mock('../src/lib/supabase', () => {
@@ -57,8 +57,8 @@ vi.mock('../src/lib/supabase', () => {
     };
 });
 
-// ── localStorage mock — happy-dom ma własny, ale resetujemy między
-//    testami żeby state nie wyciekał ─────────────────────────────────
+// -- localStorage mock — happy-dom ma własny, ale resetujemy między
+//    testami żeby state nie wyciekał ---------------------------------
 afterEach(() => {
     if (typeof window !== 'undefined') {
         window.localStorage.clear();

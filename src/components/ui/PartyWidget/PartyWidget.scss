@@ -1,9 +1,9 @@
 @use '../../../styles/variables' as *;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Floating party widget — a fixed-position shield button + popover roster.
 // Visible on every screen when the player is in a party.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 // 2026-05-19 v14: the legacy combat-HUD hide is gone. The shield
 // button now sits in the bottom-right corner above the chat icon
@@ -75,7 +75,7 @@
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
   }
 
-  // ── Popover ──────────────────────────────────────────────────────────────
+  // -- Popover --------------------------------------------------------------
   // 2026-05-19 v13: anchored to the BOTTOM-right so it grows upward
   // off the screen (away from the chat popup which opens to the
   // left of the icon stack and away from the bottom-nav). Top is

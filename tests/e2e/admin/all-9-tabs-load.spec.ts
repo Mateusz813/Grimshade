@@ -31,19 +31,21 @@ import { createCharacterViaApi, generateTestCharacterName } from '../fixtures/cr
 import { cleanupCharacterById } from '../fixtures/cleanup';
 
 /** Tab definitions — must match `AdminPanel.tsx` `<TabBtn>` lines 709-717. */
+// Tab labels render the leading icon as an inline <svg> (shortcode → GameIcon),
+// so only the plain text word remains as matchable text content.
 const TABS = [
-    { value: 'char',   label: /🧙\s*Postać/ },
-    { value: 'inv',    label: /🎒\s*Inv/ },
-    { value: 'skill',  label: /✨\s*Skille/ },
-    { value: 'tasks',  label: /📜\s*Tasks/ },
-    { value: 'quests', label: /📖\s*Questy/ },
-    { value: 'walki',  label: /🏰\s*Walki/ },
-    { value: 'social', label: /👥\s*Społ/ },
-    { value: 'system', label: /⚙️\s*System/ },
-    { value: 'nuke',   label: /💀\s*Reset/ },
+    { value: 'char',   label: /Postać/ },
+    { value: 'inv',    label: /Inv/ },
+    { value: 'skill',  label: /Skille/ },
+    { value: 'tasks',  label: /Tasks/ },
+    { value: 'quests', label: /Questy/ },
+    { value: 'walki',  label: /Walki/ },
+    { value: 'social', label: /Społ/ },
+    { value: 'system', label: /System/ },
+    { value: 'nuke',   label: /Reset/ },
 ] as const;
 
-/** Pick character → land in Town. */
+/** Pick character -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     await page.goto('/character-select');
     const card = page.locator('.char-select__card', {
@@ -72,7 +74,7 @@ test.describe('Admin › Panel', { tag: '@admin' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login as admin + pick character → Town.
+            // 2. Login as admin + pick character -> Town.
             await loginViaUI(page, testUsers.admin);
             await pickCharacterAndEnterTown(page, nick);
 

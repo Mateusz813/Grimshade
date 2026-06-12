@@ -11,24 +11,24 @@
  * `src/stores/characterStore.ts` linia 84). 10 punktów × 5 = +50.
  *
  * **Adaptation vs spec**: spec opisuje "atrybuty +HP" jako klikanie w
- * Postać tab tile `❤️ +5 HP` (Inventory.tsx ~3424). Ten test SYMULUJE
+ * Postać tab tile `:red-heart: +5 HP` (Inventory.tsx ~3424). Ten test SYMULUJE
  * post-spend state przez override `max_hp` w `characters` row (przez
  * `createCharacterViaApi.overrides.max_hp`) zamiast realnego flow klikania.
  * Powod: spend logic jest unit-testowalna (`spendStatPoint`/`spendAllStatPoints`
  * w characterStore.ts) — E2E sens to weryfikacja że
  * `characters.max_hp` po-spend propaguje spójnie do każdego renderera.
- * Realne UI flow click → spend testowane będzie w osobnym pliku
+ * Realne UI flow click -> spend testowane będzie w osobnym pliku
  * `inventory/stats/spend-stat-point-on-hp.spec.ts` (TODO, wymaga
  * widoczności tile-i tylko gdy stat_points > 0).
  *
  * Pragmatic scoping (mirrors 6.12 pattern):
  * Sprawdzamy 3 reprezentatywne widoki które renderują efektywne max HP:
- *   1. Town `/` → `.town__bar-value`
- *      (helper `engineGetEffectiveChar` → czyta `character.max_hp` z
+ *   1. Town `/` -> `.town__bar-value`
+ *      (helper `engineGetEffectiveChar` -> czyta `character.max_hp` z
  *      characterStore + ewentualne bonusy z equip/training/elixir/transform)
- *   2. TopHeader pulse popover → `.top-header__pulse-popover-row--hp`
+ *   2. TopHeader pulse popover -> `.top-header__pulse-popover-row--hp`
  *      (helper `getEffectiveChar` — same engine as Town)
- *   3. `/character-select` card → `.char-select__bar-value`
+ *   3. `/character-select` card -> `.char-select__bar-value`
  *      (helper `getEffectiveMaxStats` — czyta `char.max_hp` z `characters`
  *      row + bonusy z `peekCharacterStore`)
  *
@@ -44,7 +44,7 @@
  * - **max_hp=170** (Knight base 120 + 50 z rozdanych 10 punktów na HP).
  * - **stat_points=0** (już rozdane — żeby UI Postać tab nie pokazywał
  *   tile-ów do rozdania, co mogłoby zaciemnić co testujemy).
- * - Brak equip / brak buffów / brak transformu → bonusy = 0, więc
+ * - Brak equip / brak buffów / brak transformu -> bonusy = 0, więc
  *   effective max HP = raw max_hp = 170.
  *
  * Level 11 zamiast 1 bo na lvl 1 character ma 0 stat_points możliwych do
@@ -73,8 +73,8 @@
  * czyta `char.max_hp` ze świeżego DB fetch (`characterApi.getCharacters`)
  * + peeked stores z localStorage. Brak warm-up nie jest potrzebny dla
  * SAMEGO `max_hp` (idzie direct z DB), ale dla SPÓJNOŚCI test-flow z
- * pozostałymi consistency tests używamy tego samego pattern-u: Wybierz →
- * Town (warm) → /character-select.
+ * pozostałymi consistency tests używamy tego samego pattern-u: Wybierz ->
+ * Town (warm) -> /character-select.
  *
  * Cleanup: try/finally + `cleanupCharacterById(createdId)`.
  */
@@ -88,7 +88,7 @@ import { cleanupCharacterById } from '../../fixtures/cleanup';
 test.describe('Inventory › Stats', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('HP attribute (max_hp 170 from spent stat points) → Town, TopHeader popover, CharacterSelect all show same effective max HP', async ({ page }) => {
+    test('HP attribute (max_hp 170 from spent stat points) -> Town, TopHeader popover, CharacterSelect all show same effective max HP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -113,12 +113,12 @@ test.describe('Inventory › Stats', { tag: '@inventory' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → /character-select.
+            // 2. Login -> /character-select.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
 
-            // 3. Tap "Wybierz" → Town (warm-flow per 6.12 pattern, choć dla
+            // 3. Tap "Wybierz" -> Town (warm-flow per 6.12 pattern, choć dla
             //    samego max_hp z DB nie jest wymagany).
             const card = page.locator('.char-select__card', {
                 has: page.locator('.char-select__card-name', { hasText: nick }),
@@ -129,7 +129,7 @@ test.describe('Inventory › Stats', { tag: '@inventory' }, () => {
 
             // 4. Read HP value from Town bar.
             //    Knight max_hp=170 (override) + 0 bonusy = effective 170.
-            //    HP starts at 40 → expect `40/170`.
+            //    HP starts at 40 -> expect `40/170`.
             const townHp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--hp') })
                 .locator('.town__bar-value')

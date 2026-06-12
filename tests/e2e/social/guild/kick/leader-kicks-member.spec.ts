@@ -2,11 +2,11 @@
  * Multi-context E2E — leader kicks a member (BACKLOG 4.9).
  *
  * Spec ("Wywal kogoś z gildii"): two members of the same guild, primary
- * is the leader. Primary opens the guild home, taps the ✕ kick icon
+ * is the leader. Primary opens the guild home, taps the x kick icon
  * next to secondary's row, confirms the modal. Secondary's view should
  * snap from "guild home" back to the "list browser" (Realtime
- * postgres_changes on guild_members fires the DELETE → store hydrate
- * re-fetches → returns null → screen flips to 'list').
+ * postgres_changes on guild_members fires the DELETE -> store hydrate
+ * re-fetches -> returns null -> screen flips to 'list').
  *
  * Primary's roster shrinks to 1 (just themselves). Secondary's UI
  * reflects loss of membership.
@@ -35,7 +35,7 @@ import { cleanupGuildsByLeaderIds } from '../../../fixtures/guildCleanup';
 test.describe('Social › Guild', { tag: '@guild' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: leader kicks member → secondary loses guild membership + primary roster shrinks to 1', async ({ browser }) => {
+    test('multi-context: leader kicks member -> secondary loses guild membership + primary roster shrinks to 1', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
@@ -115,7 +115,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             ]);
 
             // 7. PRIMARY: roster has 2 members. Secondary's row has a
-            //    visible kick (✕) button because primary is leader and
+            //    visible kick (x) button because primary is leader and
             //    secondary is not themselves (Guild.tsx ~773 `showKick`
             //    = isLeader && !isMe).
             await expect(primaryPage.locator('.guild__home-level'))
@@ -127,7 +127,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             const kickBtn = secondaryRowInPrimary.locator('.guild__member-kick');
             await expect(kickBtn).toBeVisible();
 
-            // 8. PRIMARY: tap kick → confirm modal → confirm.
+            // 8. PRIMARY: tap kick -> confirm modal -> confirm.
             await kickBtn.tap();
             await expect(primaryPage.locator('.guild__modal-title', { hasText: /Wyrzuć gracza/i }))
                 .toBeVisible({ timeout: 5_000 });
@@ -136,7 +136,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await confirmKick.tap();
 
             // 9. PRIMARY: modal closes. Roster update relies on the
-            //    Realtime channel sub on guild_members firing DELETE →
+            //    Realtime channel sub on guild_members firing DELETE ->
             //    `refreshMembers` re-pulls and the row drops. The
             //    `handleKickConfirm` (Guild.tsx ~677) does NOT call
             //    refresh directly — it just hits the API and closes the
@@ -156,7 +156,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
 
             // Wait up to 30s for the Realtime path; if it fails, force a
             // re-hydrate by re-navigating to /guild (which calls
-            // hydrateForCharacter → freshly pulls members).
+            // hydrateForCharacter -> freshly pulls members).
             // Same fallback for the member-count assertion — both
             // depend on the same channel, so when one is slow the other
             // is too.
@@ -186,8 +186,8 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             //     So we DON'T rely on the home banner / member count
             //     updating in-place. Instead we force a re-navigation
             //     to /guild which calls `hydrateForCharacter` fresh and
-            //     definitively detects the lost membership →
-            //     `findGuildForCharacter` returns null → store clears →
+            //     definitively detects the lost membership ->
+            //     `findGuildForCharacter` returns null -> store clears ->
             //     view flips back to the list browser.
             //
             //     This is the deterministic proof that the kick

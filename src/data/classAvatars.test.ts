@@ -2,9 +2,9 @@
  * Tests for the shared class-avatar registry.
  *
  * The module owns two lookup maps and one resolver:
- *   • BASE_CLASS_AVATARS — base portrait per class.
- *   • TRANSFORM_AVATARS  — `class -> transform id (1..11) -> url`.
- *   • getCharacterAvatar — pulls the highest-completed transform from
+ *   - BASE_CLASS_AVATARS — base portrait per class.
+ *   - TRANSFORM_AVATARS  — `class -> transform id (1..11) -> url`.
+ *   - getCharacterAvatar — pulls the highest-completed transform from
  *     `transformSystem.getHighestCompletedTransform()` and routes to
  *     the matching art, falling back to the base portrait (or Mage's
  *     when the class id is unknown).
@@ -22,7 +22,7 @@ import {
     getCharacterAvatar,
 } from './classAvatars';
 
-// ── BASE_CLASS_AVATARS ──────────────────────────────────────────────────────
+// -- BASE_CLASS_AVATARS ------------------------------------------------------
 
 describe('BASE_CLASS_AVATARS', () => {
     it('ships an entry for every gameplay class', () => {
@@ -40,7 +40,7 @@ describe('BASE_CLASS_AVATARS', () => {
     });
 });
 
-// ── TRANSFORM_AVATARS ───────────────────────────────────────────────────────
+// -- TRANSFORM_AVATARS -------------------------------------------------------
 
 describe('TRANSFORM_AVATARS', () => {
     it('has 11 transform tiers for every class', () => {
@@ -62,7 +62,7 @@ describe('TRANSFORM_AVATARS', () => {
     });
 });
 
-// ── getCharacterAvatar ──────────────────────────────────────────────────────
+// -- getCharacterAvatar ------------------------------------------------------
 
 describe('getCharacterAvatar', () => {
     it('returns the base portrait when no transform is completed', () => {
@@ -77,7 +77,7 @@ describe('getCharacterAvatar', () => {
     });
 
     it('falls back to the base portrait when the highest id has no matching transform art', () => {
-        // Highest completed id (99) is outside the 1..11 transform grid →
+        // Highest completed id (99) is outside the 1..11 transform grid ->
         // resolver should NOT crash, just return the base.
         expect(getCharacterAvatar('Bard', [99])).toBe(BASE_CLASS_AVATARS.Bard);
     });

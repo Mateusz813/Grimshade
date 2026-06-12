@@ -4,7 +4,7 @@
  *
  * ## What we're proving
  *
- * Spec ("Realtime: dropped WebSocket → auto-reconnect → state restored"):
+ * Spec ("Realtime: dropped WebSocket -> auto-reconnect -> state restored"):
  * the canonical "resilience" check is that broken WebSocket connections
  * heal themselves and the user keeps receiving updates. Simulating a
  * real WebSocket disconnect from the test (`page.route` to block ws://,
@@ -13,10 +13,10 @@
  * Pragmatic smoke: **page reload mid-session** exercises the same
  * underlying contract — that subscriptions re-establish cleanly after
  * the channel is torn down. On a hard reload:
- *   1. React unmounts (Chat.tsx `useEffect` cleanup runs →
+ *   1. React unmounts (Chat.tsx `useEffect` cleanup runs ->
  *      `supabase.removeChannel(sub)` for every active channel).
  *   2. JS env resets — no leftover sockets, no stale subscriber state.
- *   3. React re-mounts after page load → `Chat.tsx useEffect` re-runs →
+ *   3. React re-mounts after page load -> `Chat.tsx useEffect` re-runs ->
  *      `chatApi.subscribe('city', onMessage)` creates a fresh
  *      `supabase.channel(...).on('postgres_changes', ...).subscribe()`.
  *   4. Subsequent INSERTs on the `messages` table land via the NEW
@@ -29,8 +29,8 @@
  *
  * ## Test flow
  *
- *   1. Open 2 contexts, parallel login, both pick characters → Town.
- *   2. Both navigate Town → Społeczność → Czat → /chat (city tab).
+ *   1. Open 2 contexts, parallel login, both pick characters -> Town.
+ *   2. Both navigate Town -> Społeczność -> Czat -> /chat (city tab).
  *   3. PRIMARY sends message #1. SECONDARY receives via initial WS sub.
  *      Sanity check that the channel is healthy before we tear it down.
  *   4. SECONDARY `page.reload()` — kills the entire JS env + WebSocket.
@@ -54,26 +54,26 @@
  *
  * ## What this does NOT cover (intentional)
  *
- *   • Real WebSocket disconnect (network drop, server restart) —
+ *   - Real WebSocket disconnect (network drop, server restart) —
  *     simulating these from a Playwright test is too brittle. The
  *     reload covers the SAME underlying re-subscribe path.
- *   • Persistent state restoration (chat history, message catch-up
+ *   - Persistent state restoration (chat history, message catch-up
  *     during downtime). Chat is ephemeral by design — messages sent
  *     while the secondary was reloading are lost (no message buffer
  *     between unmount and re-mount). That's a separate test if needed
  *     (would have to query DB for messages WHERE created_at >
  *     disconnect_time AND channel='city' and assert UI shows them on
  *     re-mount).
- *   • Multiple reload cycles. One reload exercises the full path; N+1
+ *   - Multiple reload cycles. One reload exercises the full path; N+1
  *     reloads test the same code N more times for no extra coverage.
  *
  * ## Timing
  *
- *   • Initial sub + broadcast: typically 1-3 s, up to 15 s on cold
+ *   - Initial sub + broadcast: typically 1-3 s, up to 15 s on cold
  *     WebKit. We give 20 s.
- *   • page.reload + chat re-mount + new sub: ~3-5 s. We give 25 s for
+ *   - page.reload + chat re-mount + new sub: ~3-5 s. We give 25 s for
  *     mobile-chrome cold paths.
- *   • Post-reload broadcast: 20 s like the initial wait. The full test
+ *   - Post-reload broadcast: 20 s like the initial wait. The full test
  *     budget needs ~60-90 s on the slowest profile — 180 s in
  *     `test.describe.configure` is comfortable.
  *
@@ -93,7 +93,7 @@ import { openMultiContext } from '../fixtures/multiContext';
 test.describe('Realtime › Reconnect', { tag: '@realtime' }, () => {
     test.describe.configure({ timeout: 180_000 });
 
-    test('multi-context: secondary page.reload mid-chat → still receives subsequent primary message via Realtime', async ({ browser }) => {
+    test('multi-context: secondary page.reload mid-chat -> still receives subsequent primary message via Realtime', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         // Two unique tokens — one per message — so the assertions can
@@ -134,7 +134,7 @@ test.describe('Realtime › Reconnect', { tag: '@realtime' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 4. Both pick characters → Town.
+            // 4. Both pick characters -> Town.
             const pickCharacter = async (page: Page, nick: string): Promise<void> => {
                 if (!page.url().endsWith('/character-select')) {
                     await page.goto('/character-select');
@@ -153,7 +153,7 @@ test.describe('Realtime › Reconnect', { tag: '@realtime' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // 5. Both navigate Town → Społeczność → Czat → /chat (city
+            // 5. Both navigate Town -> Społeczność -> Czat -> /chat (city
             //    tab active by default per `ensureCityTab` in chatStore).
             const navToChat = async (page: Page): Promise<void> => {
                 await page.getByRole('button', { name: /^Społeczność$/i }).tap();
@@ -198,10 +198,10 @@ test.describe('Realtime › Reconnect', { tag: '@realtime' }, () => {
                 .toBeVisible({ timeout: 45_000 });
 
             // 8. SECONDARY: trigger reconnect by reloading the page. This:
-            //    • Unmounts every component (Chat.tsx useEffect cleanup
-            //      fires → `supabase.removeChannel` on every active sub).
-            //    • Throws away the entire JS env (no state survives).
-            //    • After reload, App.tsx re-runs `getSession()` against
+            //    - Unmounts every component (Chat.tsx useEffect cleanup
+            //      fires -> `supabase.removeChannel` on every active sub).
+            //    - Throws away the entire JS env (no state survives).
+            //    - After reload, App.tsx re-runs `getSession()` against
             //      localStorage — the Supabase session is preserved across
             //      reload (stored in localStorage), so the user stays
             //      logged in + character pick state survives.

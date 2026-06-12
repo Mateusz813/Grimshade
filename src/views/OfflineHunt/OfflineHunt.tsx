@@ -27,6 +27,8 @@ import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import { MONSTER_RARITY_LABELS, getSpellChestEmoji } from '../../systems/lootSystem';
 import { getStoneImage, getSpellChestImage, getConsumableImage } from '../../systems/spriteAssets';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
 import { ELIXIRS } from '../../stores/shopStore';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
 import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
@@ -47,14 +49,14 @@ const MONSTER_RARITY_BORDER: Record<TMonsterRarity, string> = {
 };
 
 // 2026-05: stone icons resolve via getStoneImage (PNG art) per rarity tier;
-// fall back to the legacy 💎 emoji if the registry hasn't loaded.
+// fall back to the legacy :gem-stone: emoji if the registry hasn't loaded.
 const STONE_ICON_BY_TYPE: Record<string, { icon: string; label: string; color: string }> = {
-    common_stone:    { icon: getStoneImage('common_stone')    ?? '💎', label: 'Kamień Zwykły',      color: '#9e9e9e' },
-    rare_stone:      { icon: getStoneImage('rare_stone')      ?? '💎', label: 'Kamień Rzadki',      color: '#2196f3' },
-    epic_stone:      { icon: getStoneImage('epic_stone')      ?? '💎', label: 'Kamień Epicki',      color: '#4caf50' },
-    legendary_stone: { icon: getStoneImage('legendary_stone') ?? '💎', label: 'Kamień Legendarny',  color: '#f44336' },
-    mythic_stone:    { icon: getStoneImage('mythic_stone')    ?? '💎', label: 'Kamień Mityczny',    color: '#ffc107' },
-    heroic_stone:    { icon: getStoneImage('heroic_stone')    ?? '💎', label: 'Kamień Heroiczny',   color: '#9c27b0' },
+    common_stone:    { icon: getStoneImage('common_stone')    ?? 'gem-stone', label: 'Kamień Zwykły',      color: '#9e9e9e' },
+    rare_stone:      { icon: getStoneImage('rare_stone')      ?? 'gem-stone', label: 'Kamień Rzadki',      color: '#2196f3' },
+    epic_stone:      { icon: getStoneImage('epic_stone')      ?? 'gem-stone', label: 'Kamień Epicki',      color: '#4caf50' },
+    legendary_stone: { icon: getStoneImage('legendary_stone') ?? 'gem-stone', label: 'Kamień Legendarny',  color: '#f44336' },
+    mythic_stone:    { icon: getStoneImage('mythic_stone')    ?? 'gem-stone', label: 'Kamień Mityczny',    color: '#ffc107' },
+    heroic_stone:    { icon: getStoneImage('heroic_stone')    ?? 'gem-stone', label: 'Kamień Heroiczny',   color: '#9c27b0' },
 };
 
 const formatInt = (n: number): string => Math.floor(n).toLocaleString('pl-PL');
@@ -66,7 +68,7 @@ const ALL_MONSTERS = (monstersRaw as unknown as IMonster[]).slice().sort((a, b) 
 type TSortMode = 'level' | 'mastery';
 
 // Default class colour fallback used when the player has no completed
-// transforms yet — matches the Town hub's class-color → accent rule so
+// transforms yet — matches the Town hub's class-color -> accent rule so
 // the OfflineHunt view looks visually consistent before any transform is
 // unlocked.
 const CLASS_COLORS: Record<string, string> = {
@@ -92,7 +94,7 @@ const formatDuration = (seconds: number): string => {
     return `${s}s`;
 };
 
-// ── Compact Reward Modal ────────────────────────────────────────────────────
+// -- Compact Reward Modal ----------------------------------------------------
 
 interface IRewardModalProps {
     result: IOfflineHuntClaimResult;
@@ -126,22 +128,22 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
             >
                 {/* Header */}
                 <div className="oh-modal__header">
-                    <span className="oh-modal__trophy">🏆</span>
+                    <span className="oh-modal__trophy"><GameIcon name="trophy" /></span>
                     <span className="oh-modal__title">Nagrody odebrane!</span>
                 </div>
 
                 {/* Quick stats row */}
                 <div className="oh-modal__stats">
                     <div className="oh-modal__stat">
-                        <span className="oh-modal__stat-icon">⏱</span>
+                        <span className="oh-modal__stat-icon"><GameIcon name="stopwatch" /></span>
                         <span className="oh-modal__stat-val">{formatDuration(result.cappedSeconds)}</span>
                     </div>
                     <div className="oh-modal__stat">
-                        <span className="oh-modal__stat-icon">👾</span>
+                        <span className="oh-modal__stat-icon"><GameIcon name="alien-monster" /></span>
                         <span className="oh-modal__stat-val">{formatInt(result.kills)}×</span>
                     </div>
                     <div className="oh-modal__stat oh-modal__stat--gold">
-                        <span className="oh-modal__stat-icon">💰</span>
+                        <span className="oh-modal__stat-icon"><GameIcon name="money-bag" /></span>
                         <span className="oh-modal__stat-val">+{formatGoldShort(result.goldGained)}</span>
                     </div>
                 </div>
@@ -161,20 +163,20 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
 
                 {/* XP + Skill — two compact rows */}
                 <div className="oh-modal__xp-row oh-modal__xp-row--char">
-                    <span className="oh-modal__xp-label">⭐ XP</span>
+                    <span className="oh-modal__xp-label"><GameIcon name="star" /> XP</span>
                     <span className="oh-modal__xp-value">+{formatInt(result.xpGained)}</span>
                     <span className="oh-modal__xp-detail">
                         {result.levelsGained > 0
-                            ? `Lvl ${result.levelBefore} → ${result.levelAfter}`
+                            ? `Lvl ${result.levelBefore} -> ${result.levelAfter}`
                             : `+${formatPct(result.xpPctOfLevel)} lvl`}
                     </span>
                 </div>
                 <div className="oh-modal__xp-row oh-modal__xp-row--skill">
-                    <span className="oh-modal__xp-label">✨ {SKILL_NAMES_PL[result.skillId] ?? result.skillId}</span>
+                    <span className="oh-modal__xp-label"><GameIcon name="sparkles" /> {SKILL_NAMES_PL[result.skillId] ?? result.skillId}</span>
                     <span className="oh-modal__xp-value">+{formatInt(result.skillXpGained)}</span>
                     <span className="oh-modal__xp-detail">
                         {result.skillLevelsGained > 0
-                            ? `Lvl ${result.skillLevelBefore} → ${result.skillLevelAfter}`
+                            ? `Lvl ${result.skillLevelBefore} -> ${result.skillLevelAfter}`
                             : `+${formatPct(result.skillXpPctOfLevel)} lvl`}
                     </span>
                 </div>
@@ -182,7 +184,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                 {/* Drops — compact grid */}
                 {hasAnyDrops && (
                     <div className="oh-modal__drops">
-                        <div className="oh-modal__drops-title">🎁 Drop</div>
+                        <div className="oh-modal__drops-title"><GameIcon name="wrapped-gift" /> Drop</div>
                         <div className="oh-modal__drops-grid">
                             {result.itemDrops.map((drop) => {
                                 const genInfo = getItemDisplayInfo(drop.itemId);
@@ -206,7 +208,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                                 // 2026-05-08: prefer the unified consumable
                                 // image resolver — covers HP/MP potion art
                                 // AND the new buff/utility elixir PNGs.
-                                const dropIcon = getConsumableImage(potionId) ?? elixir?.icon ?? '⚗️';
+                                const dropIcon = getConsumableImage(potionId) ?? elixir?.icon ?? 'alembic';
                                 return (
                                     <div key={potionId} className="oh-modal__drop-chip" title={elixir?.name_pl ?? potionId}>
                                         <TinyIcon icon={dropIcon} size="md" />
@@ -224,7 +226,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                                     </div>
                                 ))}
                             {Object.entries(result.stoneDrops).map(([stoneType, count]) => {
-                                const meta = STONE_ICON_BY_TYPE[stoneType] ?? { icon: '💎', label: stoneType, color: '#9e9e9e' };
+                                const meta = STONE_ICON_BY_TYPE[stoneType] ?? { icon: 'gem-stone', label: stoneType, color: '#9e9e9e' };
                                 return (
                                     <div key={stoneType} className="oh-modal__drop-chip" title={meta.label} style={{ borderColor: meta.color }}>
                                         <TinyIcon icon={meta.icon} size="md" />
@@ -246,7 +248,7 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
     );
 };
 
-// ── Main component ──────────────────────────────────────────────────────────
+// -- Main component ----------------------------------------------------------
 
 const OfflineHunt = () => {
     const character = useCharacterStore((s) => s.character);
@@ -401,7 +403,7 @@ const OfflineHunt = () => {
                                 animate={{ y: [0, -10, 0], scale: [1, 1.08, 1] }}
                                 transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
                             >
-                                🏆
+                                <GameIcon name="trophy" />
                             </motion.div>
                             <div className="oh__fx-text">NAGRODA!</div>
                         </motion.div>
@@ -416,7 +418,7 @@ const OfflineHunt = () => {
                                     animate={{ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, opacity: 0, scale: 1.2, rotate: 360 }}
                                     transition={{ duration: 1.2, ease: 'easeOut' }}
                                 >
-                                    {i % 3 === 0 ? '⭐' : i % 3 === 1 ? '✨' : '💫'}
+                                    {i % 3 === 0 ? <GameIcon name="star" /> : i % 3 === 1 ? <GameIcon name="sparkles" /> : <GameIcon name="dizzy" />}
                                 </motion.span>
                             );
                         })}
@@ -429,13 +431,13 @@ const OfflineHunt = () => {
                 {claimResult && <RewardModal result={claimResult} onClose={handleDismissResult} />}
             </AnimatePresence>
 
-            {/* ── Active hunt card ────────────────────────────────────── */}
+            {/* -- Active hunt card -------------------------------------- */}
             {isActive && targetMonster && trainedSkillId && (
                 <div className="oh__active">
                     <div className="oh__active-top">
                         <span className="oh__active-dot" />
                         <span className="oh__active-label">Polowanie aktywne</span>
-                        {isCapReached && <span className="oh__active-cap">⚠️ 12h cap</span>}
+                        {isCapReached && <span className="oh__active-cap"><GameIcon name="warning" /> 12h cap</span>}
                     </div>
 
                     <div className="oh__target-card">
@@ -445,8 +447,8 @@ const OfflineHunt = () => {
                         <div className="oh__target-info">
                             <div className="oh__target-name">{targetMonster.name_pl} <span className="oh__target-lvl">Lvl {targetMonster.level}</span></div>
                             <div className="oh__target-meta">
-                                <span>🎓 {SKILL_NAMES_PL[trainedSkillId] ?? trainedSkillId}</span>
-                                <span>⚡ x{livePreview?.speedMultiplier ?? 1} ({(OFFLINE_HUNT_BASE_SECONDS_PER_KILL / (livePreview?.speedMultiplier ?? 1)).toFixed(1)}s/kill)</span>
+                                <span><GameIcon name="graduation-cap" /> {SKILL_NAMES_PL[trainedSkillId] ?? trainedSkillId}</span>
+                                <span><GameIcon name="high-voltage" /> x{livePreview?.speedMultiplier ?? 1} ({(OFFLINE_HUNT_BASE_SECONDS_PER_KILL / (livePreview?.speedMultiplier ?? 1)).toFixed(1)}s/kill)</span>
                             </div>
                         </div>
                     </div>
@@ -460,10 +462,10 @@ const OfflineHunt = () => {
 
                     {livePreview && (
                         <div className="oh__live-stats">
-                            <div className="oh__live-stat"><span>👾 Zabite</span><strong>{livePreview.kills.toLocaleString('pl-PL')}</strong></div>
-                            <div className="oh__live-stat"><span>⭐ XP</span><strong>+{livePreview.xpGained.toLocaleString('pl-PL')}</strong></div>
-                            <div className="oh__live-stat"><span>💰 Gold</span><strong>+{formatGoldShort(livePreview.goldGained)}</strong></div>
-                            <div className="oh__live-stat"><span>✨ Skill</span><strong>+{livePreview.skillXpGained.toLocaleString('pl-PL')}</strong></div>
+                            <div className="oh__live-stat"><span><GameIcon name="alien-monster" /> Zabite</span><strong>{livePreview.kills.toLocaleString('pl-PL')}</strong></div>
+                            <div className="oh__live-stat"><span><GameIcon name="star" /> XP</span><strong>+{livePreview.xpGained.toLocaleString('pl-PL')}</strong></div>
+                            <div className="oh__live-stat"><span><GameIcon name="money-bag" /> Gold</span><strong>+{formatGoldShort(livePreview.goldGained)}</strong></div>
+                            <div className="oh__live-stat"><span><GameIcon name="sparkles" /> Skill</span><strong>+{livePreview.skillXpGained.toLocaleString('pl-PL')}</strong></div>
                         </div>
                     )}
 
@@ -471,12 +473,12 @@ const OfflineHunt = () => {
                         {/* 2026-05-20 spec ("Jak polowanie jest juz aktywne
                             to skasowac guzik anuluj"): claim is the only
                             option once a hunt is running — no escape button. */}
-                        <button className="oh__btn oh__btn--claim" onClick={handleClaim}>🏆 Odbierz nagrody</button>
+                        <button className="oh__btn oh__btn--claim" onClick={handleClaim}><GameIcon name="trophy" /> Odbierz nagrody</button>
                     </div>
                 </div>
             )}
 
-            {/* ── Setup (when no active hunt) ────────────────────────── */}
+            {/* -- Setup (when no active hunt) -------------------------- */}
             {!isActive && (
                 <div className="oh__setup">
                     {/* Step 1: Skill */}
@@ -517,13 +519,13 @@ const OfflineHunt = () => {
                                 className={`oh__sort-chip${sortMode === 'level' ? ' oh__sort-chip--active' : ''}`}
                                 onClick={() => setSortMode('level')}
                             >
-                                ⚔️ Lvl ↓
+                                <GameIcon name="crossed-swords" /> Lvl <Icon name="arrowDown" />
                             </button>
                             <button
                                 className={`oh__sort-chip${sortMode === 'mastery' ? ' oh__sort-chip--active' : ''}`}
                                 onClick={() => setSortMode('mastery')}
                             >
-                                ⭐ Mastery ↓
+                                <GameIcon name="star" /> Mastery <Icon name="arrowDown" />
                             </button>
                         </div>
 
@@ -546,7 +548,7 @@ const OfflineHunt = () => {
                                         </div>
                                         <span className={`oh__monster-row-speed oh__monster-row-speed--x${mult}`}>x{mult}</span>
                                         {masteryLevel > 0 && (
-                                            <span className="oh__monster-row-mastery">⭐{masteryLevel}</span>
+                                            <span className="oh__monster-row-mastery"><GameIcon name="star" />{masteryLevel}</span>
                                         )}
                                     </button>
                                 );
@@ -564,7 +566,7 @@ const OfflineHunt = () => {
                         onClick={handleStart}
                         disabled={!pickedSkillId || !pickedMonsterId}
                     >
-                        🎯 Rozpocznij polowanie
+                        <GameIcon name="bullseye" /> Rozpocznij polowanie
                     </button>
                 </div>
             )}

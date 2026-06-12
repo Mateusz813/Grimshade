@@ -21,10 +21,10 @@ import { usePartyStore } from '../stores/partyStore';
  * deliver the dot regardless of realtime publication health.
  *
  * Channels we watch:
- *   • `system`                  — always.
- *   • `guild_${myGuildId}`      — whenever the player is in a guild.
- *   • `party_${myPartyId}`      — whenever the player is in a party.
- *   • `pm_*` (via subscribeAll) — kept for first-time PM auto-open;
+ *   - `system`                  — always.
+ *   - `guild_${myGuildId}`      — whenever the player is in a guild.
+ *   - `party_${myPartyId}`      — whenever the player is in a party.
+ *   - `pm_*` (via subscribeAll) — kept for first-time PM auto-open;
  *     once a PM tab exists the per-channel subscription below picks
  *     it up.
  */
@@ -70,7 +70,7 @@ export const useChatUnreadSubscription = (): void => {
     /**
      * Wire a channel (system / guild_X / party_Y / pm tab) with the
      * full belt-and-braces flow:
-     *   1. Pull current messages → seed `seenRef` so we don't fire
+     *   1. Pull current messages -> seed `seenRef` so we don't fire
      *      the dot for chatter the player already had on screen.
      *   2. Open the realtime subscription for fast delivery.
      *   3. Poll every 4s as the fallback for setups where realtime

@@ -7,14 +7,14 @@
 -- (existing policies only let the seller modify their own listings).
 --
 -- Symptom in production:
---   • Buyer taps "Zatwierdź" on a foreign listing → UI shows the toast
+--   - Buyer taps "Zatwierdź" on a foreign listing -> UI shows the toast
 --     "Kupiono: <item> ×N" + the buyer's local `inventoryStore` updates
 --     (consumable count + gold spend) + the buyer's local market state
 --     splices the listing out of the browse feed.
---   • BUT — the underlying `market_listings` row on the SERVER is
+--   - BUT — the underlying `market_listings` row on the SERVER is
 --     UNTOUCHED because the buyer's RLS-scoped DELETE/UPDATE is a no-op.
---   • The listing remains visible to OTHER buyers on their next fetch
---     → the same listing can be "bought" by an unlimited number of
+--   - The listing remains visible to OTHER buyers on their next fetch
+--     -> the same listing can be "bought" by an unlimited number of
 --     players, each receiving the item from their local optimistic
 --     update. Effectively infinite money / item duping.
 --
@@ -42,24 +42,24 @@
 --
 -- The CLIENT (`marketApi.buyListing` after this migration) is responsible
 -- for:
---   • Deducting the buyer's gold (own row, regular PATCH — RLS-safe).
---   • Pushing the item into the buyer's local inventory.
---   • Bumping `market_items_bought` + `market_gold_spent` on buyer's
+--   - Deducting the buyer's gold (own row, regular PATCH — RLS-safe).
+--   - Pushing the item into the buyer's local inventory.
+--   - Bumping `market_items_bought` + `market_gold_spent` on buyer's
 --     characters row (own row PATCH).
---   • Bumping `market_items_sold` + `market_gold_earned` on the SELLER's
+--   - Bumping `market_items_sold` + `market_gold_earned` on the SELLER's
 --     row via the existing `bump_market_sale` RPC.
 --
 -- ## SECURITY notes
---   • Function is SECURITY DEFINER: runs as the function owner (postgres
+--   - Function is SECURITY DEFINER: runs as the function owner (postgres
 --     in Supabase), bypassing RLS.
---   • Guards: own-listing buy is rejected (returns `{ok: false,
+--   - Guards: own-listing buy is rejected (returns `{ok: false,
 --     reason: 'own_listing'}`) so a player can't game their own
 --     `market_items_bought` counter — also matches the UI's
 --     `isOwn = l.sellerId === character.id` guard at Market.tsx line 915
 --     which already routes own-listing taps to EditModal not BuyModal.
---   • `p_quantity` is validated (≥ 1, ≤ remaining stock) so a malicious
+--   - `p_quantity` is validated (≥ 1, ≤ remaining stock) so a malicious
 --     caller can't drain a stack of 10 with a single qty=999 call.
---   • The caller passes `p_buyer_character_id` rather than the function
+--   - The caller passes `p_buyer_character_id` rather than the function
 --     inferring `auth.uid()` because the buyer's CHARACTER id (not their
 --     auth user id) is what the leaderboard counters care about, and a
 --     user can have multiple characters per account.
@@ -71,8 +71,8 @@
 --   DROP FUNCTION IF EXISTS buy_market_listing(UUID, UUID);
 --
 -- ## Apply
---   1. Open Supabase Dashboard → SQL Editor → New query.
---   2. Paste the entire contents of this file → Run.
+--   1. Open Supabase Dashboard -> SQL Editor -> New query.
+--   2. Paste the entire contents of this file -> Run.
 --   3. Verify by opening the SQL editor again and running
 --      `SELECT proname, prosecdef FROM pg_proc WHERE proname =
 --      'buy_market_listing';` — should return 1 row with `prosecdef = t`.
@@ -105,7 +105,7 @@ BEGIN
     v_qty := COALESCE(p_quantity, 1);
 
     -- Reject obviously-bad quantities. Caller-side validation also exists
-    -- (marketStore.buyListing → isValidQuantity) but we belt-and-brace it
+    -- (marketStore.buyListing -> isValidQuantity) but we belt-and-brace it
     -- so a hand-crafted RPC call can't drain a stack with a 0/negative qty.
     IF v_qty < 1 THEN
         RETURN jsonb_build_object(
@@ -208,7 +208,7 @@ $$;
 -- so a logged-out caller can't drain listings.
 GRANT EXECUTE ON FUNCTION buy_market_listing(UUID, UUID, INTEGER) TO authenticated;
 
--- ── Sanity checks ───────────────────────────────────────────────────────────
+-- -- Sanity checks -----------------------------------------------------------
 -- Should return 1 row with prosecdef='t' (security definer).
 SELECT 'rpc installed (should be 1)' AS check,
        COUNT(*)

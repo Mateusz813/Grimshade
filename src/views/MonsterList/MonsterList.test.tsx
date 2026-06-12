@@ -8,14 +8,14 @@ import { MemoryRouter } from 'react-router-dom';
  * + monster card grid + drop info modal + fullscreen sprite preview.
  *
  * Coverage:
- *   • Smoke: root + filter bar + monster grid mount.
- *   • Filter toggles (available + tasked + sort) flip the active modifier.
- *   • Min-level input filters out lower-level cards.
- *   • Clear-filters button only renders when at least one filter is on.
- *   • Fight button on an unlocked monster navigates to /combat.
- *   • Drop info button opens the modal.
- *   • Fullscreen sprite preview opens on sprite click + ESC closes.
- *   • Party non-leader disables fight buttons.
+ *   - Smoke: root + filter bar + monster grid mount.
+ *   - Filter toggles (available + tasked + sort) flip the active modifier.
+ *   - Min-level input filters out lower-level cards.
+ *   - Clear-filters button only renders when at least one filter is on.
+ *   - Fight button on an unlocked monster navigates to /combat.
+ *   - Drop info button opens the modal.
+ *   - Fullscreen sprite preview opens on sprite click + ESC closes.
+ *   - Party non-leader disables fight buttons.
  */
 
 const navigateMock = vi.fn();
@@ -110,7 +110,7 @@ describe('MonsterList — filters', () => {
 
     it('renders the clear-filters button only when at least one filter is on', () => {
         const { container } = renderMonsterList();
-        // No filter active → no clear button.
+        // No filter active -> no clear button.
         expect(container.querySelector('.combat__filter-clear')).toBeNull();
 
         // Turn on "Tylko dostępne".
@@ -144,7 +144,7 @@ describe('MonsterList — filters', () => {
 });
 
 describe('MonsterList — fight + drop actions', () => {
-    it('opens the drop info modal when 📦 is clicked on an unlocked monster', () => {
+    it('opens the drop info modal when :package: is clicked on an unlocked monster', () => {
         const { container } = renderMonsterList();
         // Find first unlocked card's drop button.
         const dropBtn = container.querySelector('.combat__mcard-action--info:not(:disabled)') as HTMLButtonElement;

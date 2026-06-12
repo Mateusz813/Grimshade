@@ -8,7 +8,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
  *
  * Heavy gameplay stores are not exercised directly here. Instead the
  * test focuses on:
- *   - auth gating (admin email → renders; other / null → bails)
+ *   - auth gating (admin email -> renders; other / null -> bails)
  *   - tab navigation buttons
  *   - close button wiring
  *   - toast feedback after an action click
@@ -100,7 +100,9 @@ describe('AdminPanel — chrome', () => {
         await waitFor(() => {
             expect(document.querySelector('.admin-panel')).toBeTruthy();
         });
-        fireEvent.click(screen.getByText(/🎒 Inv/));
+        // Tab labels render via <EmojiText>; the :backpack: shortcode is now an
+        // inline <svg> icon, so only the trailing plain text " Inv" remains.
+        fireEvent.click(screen.getByText(/Inv/));
         // Inventory tab shows the rarity dropdown row label.
         expect(screen.getByText('Generator przedmiotów')).toBeTruthy();
     });
@@ -146,18 +148,30 @@ describe('AdminPanel — tab navigation', () => {
         await waitFor(() => {
             expect(document.querySelector('.admin-panel')).toBeTruthy();
         });
-        const tabs: Array<[label: RegExp, marker: string]> = [
-            [/🎒 Inv/, 'Generator przedmiotów'],
-            [/✨ Skille/, 'Akcje masowe'],
-            [/📜 Tasks/, 'Zabijanie potworów (taski + mastery)'],
-            [/📖 Questy/, 'Questy fabularne'],
-            [/🏰 Walki/, 'Bossy'],
-            [/👥 Społ\./, 'Arena'],
-            [/⚙️ System/, 'Tryb gry'],
-            [/💀 Reset/, 'Strefa wybuchu'],
+        // Tab labels render via <EmojiText>; each :shortcode: is now an inline
+        // <svg> icon, so only the trailing plain text remains. Locate the tab
+        // by its trimmed button text among the `.admin-panel__tab` buttons —
+        // body content (e.g. <h3>Skille</h3>, "Reset wszystkiego" buttons)
+        // shares the same words so a bare text match would be ambiguous.
+        const clickTab = (label: string) => {
+            const btn = Array.from(
+                document.querySelectorAll<HTMLButtonElement>('.admin-panel__tab'),
+            ).find((b) => (b.textContent ?? '').trim() === label);
+            if (!btn) throw new Error(`Tab "${label}" not found`);
+            fireEvent.click(btn);
+        };
+        const tabs: Array<[label: string, marker: string]> = [
+            ['Inv', 'Generator przedmiotów'],
+            ['Skille', 'Akcje masowe'],
+            ['Tasks', 'Zabijanie potworów (taski + mastery)'],
+            ['Questy', 'Questy fabularne'],
+            ['Walki', 'Bossy'],
+            ['Społ.', 'Arena'],
+            ['System', 'Tryb gry'],
+            ['Reset', 'Strefa wybuchu'],
         ];
         for (const [label, marker] of tabs) {
-            fireEvent.click(screen.getByText(label));
+            clickTab(label);
             expect(screen.getByText(marker)).toBeTruthy();
         }
     });

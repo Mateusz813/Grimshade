@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { useChatTabsStore } from '../../../stores/chatTabsStore';
 import Chat from '../Chat/Chat';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './ChatPopup.scss';
 
 /**
@@ -79,7 +81,7 @@ const ChatPopup = ({ open, onClose }: IProps) => {
     return (
         <div className="chat-popup" role="dialog" aria-label="Czat" ref={panelRef}>
             <header className="chat-popup__header">
-                <span className="chat-popup__title">💬 Czat</span>
+                <span className="chat-popup__title"><GameIcon name="speech-balloon" /> Czat</span>
                 <button
                     type="button"
                     className="chat-popup__close"
@@ -104,7 +106,7 @@ const ChatPopup = ({ open, onClose }: IProps) => {
                             onClick={() => setActive(t.id)}
                             title={t.title}
                         >
-                            <span className="chat-popup__tab-title">{t.title}</span>
+                            <span className="chat-popup__tab-title"><EmojiText>{t.title}</EmojiText></span>
                             {t.unread > 0 && (
                                 <span className="chat-popup__tab-badge">
                                     {t.unread > 99 ? '99+' : t.unread}

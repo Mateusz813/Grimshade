@@ -35,7 +35,7 @@
  *
  * `deathsApi.listRecentDeaths(1000)` (czytane przez `/deaths` view)
  * pobiera ostatnie 1000 wpisów `ORDER BY died_at DESC LIMIT 1000`.
- * Świeżo zainsertowany row idzie na top listy → widoczny od razu po
+ * Świeżo zainsertowany row idzie na top listy -> widoczny od razu po
  * nawigacji na `/deaths`.
  */
 
@@ -129,7 +129,7 @@ export const seedDeath = async (args: ISeedDeathArgs): Promise<ISeededDeath> => 
     );
 
     if (error) {
-        // Jeśli result column nie istnieje → retry bez result (best-effort
+        // Jeśli result column nie istnieje -> retry bez result (best-effort
         // dla envów z legacy schema bez deaths_migration.sql).
         if (args.result && (error.message ?? '').includes("'result'")) {
             delete payload.result;

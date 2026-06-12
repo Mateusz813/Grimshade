@@ -5,10 +5,10 @@
  *   1. Seed character przez API dla primary konta (TopHeader renderuje
  *      się TYLKO gdy `character !== null` — bez postaci nie ma avatar
  *      button-a, więc nie ma jak otworzyć AvatarMenu).
- *   2. Login UI flow → karta postaci w `/character-select` → tap "Wybierz".
+ *   2. Login UI flow -> karta postaci w `/character-select` -> tap "Wybierz".
  *   3. Czekamy aż wejdziemy do Town (`/`) — TopHeader z avatarem dostępny.
  *
- * One action:   tap avatar button (otwiera AvatarMenu) → tap "Wyloguj".
+ * One action:   tap avatar button (otwiera AvatarMenu) -> tap "Wyloguj".
  * One outcome:  Po `handleLogout` (`AvatarMenu.tsx` linie 155-161):
  *               - `supabase.auth.signOut()` kasuje session
  *               - `useCharacterStore.clearCharacter()` czyści store
@@ -46,11 +46,11 @@ test.describe('Auth › Logout', { tag: '@auth' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → /character-select
+            // 2. Login -> /character-select
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
 
-            // 3. Wybierz NASZĄ postać → Town
+            // 3. Wybierz NASZĄ postać -> Town
             const card = page.locator('.char-select__card', {
                 has: page.locator('.char-select__card-name', { hasText: nick }),
             });
@@ -77,7 +77,7 @@ test.describe('Auth › Logout', { tag: '@auth' }, () => {
             await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
 
             // 7. Sanity — formularz login się wyrenderował (session jest faktycznie
-            //    czysta, AppRouter widzi `!session` → renderuje Login zamiast Navigate).
+            //    czysta, AppRouter widzi `!session` -> renderuje Login zamiast Navigate).
             await expect(page.locator('input[type="email"]')).toBeVisible();
             await expect(page.locator('input[type="password"]')).toBeVisible();
         } finally {

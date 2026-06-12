@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { chatApi, type IMessage } from '../../../api/v1/chatApi';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import { useFriendsStore } from '../../../stores/friendsStore';
 import { buildPmChannel } from '../../../api/v1/friendsApi';
 import { useGuildStore } from '../../../stores/guildStore';
@@ -11,13 +12,15 @@ import { getItemDisplayInfo } from '../../../systems/itemGenerator';
 import { getSkillIcon } from '../../../data/skillIcons';
 import ItemIcon from '../ItemIcon/ItemIcon';
 import TinyIcon from '../TinyIcon/TinyIcon';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import Icon from '../../atoms/Icon/Icon';
 import './Chat.scss';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 const CLASS_ICONS: Record<string, string> = {
-    Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-    Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+    Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+    Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 interface IChatProps {
@@ -68,7 +71,7 @@ interface IContextMenuState {
     targetLevel: number | null;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 const formatTime = (iso: string): string => {
     const d = new Date(iso);
@@ -76,11 +79,11 @@ const formatTime = (iso: string): string => {
 };
 
 const getClassIcon = (cls?: string | null): string => {
-    if (!cls) return '👤';
-    return CLASS_ICONS[cls] ?? '👤';
+    if (!cls) return 'bust-in-silhouette';
+    return CLASS_ICONS[cls] ?? 'bust-in-silhouette';
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 const Chat = ({
     channel,
@@ -128,7 +131,7 @@ const Chat = ({
     // 2026-05-18 spec ("przed naszym nickiem wszedzie dodaje sie tag
     // gildii w nawiasach [XXX] Krasek"): for the LOCAL player pull the
     // tag straight from their own guild; for OTHER message authors look
-    // up the cached name→tag map, refilling it whenever the visible
+    // up the cached name->tag map, refilling it whenever the visible
     // message list changes.
     const ownGuildTag = useGuildStore((s) => s.guild?.tag ?? '');
     const tagsByName = useGuildTagsStore((s) => s.tagsByName);
@@ -282,7 +285,7 @@ const Chat = ({
         navigate(`/chat?pm=${encodeURIComponent(target)}`);
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // -- Render ----------------------------------------------------------------
 
     const rootStyle: React.CSSProperties = {};
     if (!active) rootStyle.display = 'none';
@@ -299,7 +302,7 @@ const Chat = ({
     return (
         <div className={`chat${fillHeight ? ' chat--fill' : ''}`} style={rootStyle}>
             <div className="chat__header">
-                <span className="chat__title">{title}</span>
+                <span className="chat__title"><EmojiText>{title}</EmojiText></span>
             </div>
 
             <div className="chat__messages" ref={messagesRef} style={messagesStyle}>
@@ -326,14 +329,14 @@ const Chat = ({
                                             {level}
                                         </span>
                                     )}
-                                    <span className="chat__msg-icon">{icon}</span>
+                                    <span className="chat__msg-icon"><GameIcon name={icon} /></span>
                                     <button
                                         type="button"
                                         className={`chat__msg-name${friend ? ' chat__msg-name--friend' : ''}`}
                                         onClick={(e) => openMenu(e, msg)}
                                         disabled={disableContextMenu || isMe}
                                     >
-                                        {friend && !isMe && <span className="chat__msg-name-star">★</span>}
+                                        {friend && !isMe && <span className="chat__msg-name-star"><GameIcon name="star" /></span>}
                                         {(() => {
                                             // Prefix guild tag if the sender belongs to one.
                                             // For me, read from my own guild store; for others
@@ -381,7 +384,7 @@ const Chat = ({
                                         }
                                         if (sys && sys.type === 'upgrade') {
                                             const info = getItemDisplayInfo(sys.itemId);
-                                            const icon = info?.icon ?? '⚔️';
+                                            const icon = info?.icon ?? 'crossed-swords';
                                             // 2026-05-19 v15 spec ("zrob
                                             // tak zeby ten tekst sie
                                             // zawijal w dol a nie tak ze
@@ -415,7 +418,7 @@ const Chat = ({
                                                 </span>
                                             );
                                         }
-                                        return <span className="chat__msg-text">{msg.content}</span>;
+                                        return <span className="chat__msg-text"><EmojiText>{msg.content}</EmojiText></span>;
                                     })()}
                                 </div>
                             );
@@ -439,7 +442,7 @@ const Chat = ({
                             onClick={handleSend}
                             disabled={sending || !input.trim()}
                         >
-                            {sending ? '…' : '↑'}
+                            {sending ? '…' : <Icon name="arrowUp" />}
                         </button>
                     </div>
 
@@ -450,7 +453,7 @@ const Chat = ({
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="chat__menu-header">
-                        <span className="chat__menu-icon">{getClassIcon(menu.targetClass)}</span>
+                        <span className="chat__menu-icon"><GameIcon name={getClassIcon(menu.targetClass)} /></span>
                         <span className="chat__menu-name">{menu.targetName}</span>
                         {menu.targetLevel !== null && (
                             <span className="chat__menu-level">Lv {menu.targetLevel}</span>
@@ -462,7 +465,7 @@ const Chat = ({
                             className="chat__menu-item"
                             onClick={() => { removeFriend(menu.targetName); setMenu(null); }}
                         >
-                            ✖ Usuń ze znajomych
+                            <EmojiText>:multiply: Usuń ze znajomych</EmojiText>
                         </button>
                     ) : (
                         <button
@@ -470,7 +473,7 @@ const Chat = ({
                             className="chat__menu-item"
                             onClick={() => { addFriend(menu.targetName); setMenu(null); }}
                         >
-                            ➕ Dodaj do znajomych
+                            <Icon name="plus" /> Dodaj do znajomych
                         </button>
                     )}
                     <button
@@ -478,7 +481,7 @@ const Chat = ({
                         className="chat__menu-item"
                         onClick={onSendPm}
                     >
-                        💌 Wyślij prywatną wiadomość
+                        <EmojiText>:love-letter: Wyślij prywatną wiadomość</EmojiText>
                     </button>
                     {isBlocked(menu.targetName) ? (
                         <button
@@ -486,7 +489,7 @@ const Chat = ({
                             className="chat__menu-item chat__menu-item--danger"
                             onClick={() => { unblockUser(menu.targetName); setMenu(null); }}
                         >
-                            🔓 Odblokuj gracza
+                            <GameIcon name="unlocked" /> Odblokuj gracza
                         </button>
                     ) : (
                         <button
@@ -494,7 +497,7 @@ const Chat = ({
                             className="chat__menu-item chat__menu-item--danger"
                             onClick={() => { blockUser(menu.targetName); setMenu(null); }}
                         >
-                            🚫 Zablokuj gracza
+                            <GameIcon name="prohibited" /> Zablokuj gracza
                         </button>
                     )}
                 </div>,

@@ -20,9 +20,9 @@
  *
  * Testujemy `/party` jako reprezentatywny (atomic — jedna route, nie
  * sprawdzamy każdej z osobna, bo to ten sam Guard component dla
- * wszystkich → wystarczy 1 test pokrywający contract).
+ * wszystkich -> wystarczy 1 test pokrywający contract).
  *
- * Strategy: przełączamy tryb przez AvatarMenu (Online → Offline)
+ * Strategy: przełączamy tryb przez AvatarMenu (Online -> Offline)
  * ZANIM próbujemy wejść na `/party`. Test 1
  * (`mode-toggle-flips-status-dot.spec.ts`) pokrywa że UI toggle DZIAŁA;
  * tu zakładamy że po `setMode('offline')` Guard wykryje stan z
@@ -30,9 +30,9 @@
  *
  * Setup:
  *   1. Seed character przez API.
- *   2. Login UI + wybór seedowanej postaci → Town (`/`).
- *   3. Open AvatarMenu → tap "Offline" → status dot --offline.
- *   4. Próba nawigacji na `/party` przez page.goto → redirect.
+ *   2. Login UI + wybór seedowanej postaci -> Town (`/`).
+ *   3. Open AvatarMenu -> tap "Offline" -> status dot --offline.
+ *   4. Próba nawigacji na `/party` przez page.goto -> redirect.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -60,7 +60,7 @@ test.describe('Offline › Mode', { tag: '@offline' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + wybór NASZEJ postaci → Town.
+            // 2. Login + wybór NASZEJ postaci -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -84,7 +84,7 @@ test.describe('Offline › Mode', { tag: '@offline' }, () => {
             await expect(offlineBtn).toBeVisible({ timeout: 5_000 });
             await offlineBtn.tap();
 
-            // 4. Sanity: status dot pokazuje --offline → state przeszedł.
+            // 4. Sanity: status dot pokazuje --offline -> state przeszedł.
             const statusDot = page.locator('.top-header__status-dot');
             await expect(statusDot).toHaveClass(/top-header__status-dot--offline/, { timeout: 5_000 });
 

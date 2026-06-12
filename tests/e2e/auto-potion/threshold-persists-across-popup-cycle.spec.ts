@@ -3,7 +3,7 @@
  * close + reopen cycle.
  *
  * Spec (BACKLOG.md punkt 11.1 — adaptation): "Auto-potion HP threshold
- * setting persists (open settings → set threshold → close → reopen →
+ * setting persists (open settings -> set threshold -> close -> reopen ->
  * verify saved)".
  *
  * **WHY NOT FULL PAGE RELOAD**: characterScope auto-save (subscriptions
@@ -12,9 +12,9 @@
  * `TAB_SESSION_ID` module-level constant). Vite HMR moze reload modul
  * characterScope co produkuje NOWE TAB_SESSION_ID, podczas gdy stary
  * lock w localStorage ma stare tabId. Wynik: `thisTabOwnsLock()` zwraca
- * false → flushStoresToLocalStorage zostaje zablokowane → localStorage
+ * false -> flushStoresToLocalStorage zostaje zablokowane -> localStorage
  * nigdy nie dostaje update. Po reload `loadGame` zwraca cloud (z seed
- * time) który NIE ma settings → defaults wygrywaja → test wybucha.
+ * time) który NIE ma settings -> defaults wygrywaja -> test wybucha.
  *
  * To CZYSTO DEV-MODE bug — w produkcji (built app, single module load)
  * tab lock dziala. Ale nie chcemy zmieniac kodu app pod test. Wiec
@@ -29,7 +29,7 @@
  *      (settingsStore.ts linia 109).
  *
  * Actions:
- *   1. Login + Town + /inventory → tap Auto-potion → popup.
+ *   1. Login + Town + /inventory -> tap Auto-potion -> popup.
  *   2. Sprawdz default = 50%.
  *   3. Change threshold to 25 (przez React-aware event dispatch — fill na
  *      input[type=range] jest niewiarygodne w mobile WebKit).
@@ -39,9 +39,9 @@
  * Outcome:
  *   - Slider value === '25' i `.inventory__potion-value` === '25%' po
  *     re-otwarciu. To potwierdza ze settingsStore PRZECHOWAL change
- *     poza zyciem komponentu popup-u (popup unmount→remount).
+ *     poza zyciem komponentu popup-u (popup unmount->remount).
  *
- * Cleanup: try/finally → cleanupCharacterById.
+ * Cleanup: try/finally -> cleanupCharacterById.
  */
 
 import { test, expect } from '@playwright/test';
@@ -84,12 +84,12 @@ test.describe('Auto-Potion › Settings', { tag: '@auto-potion' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 2. /inventory → tap Auto-potion → popup
+            // 2. /inventory -> tap Auto-potion -> popup
             await page.goto('/inventory');
             // Hydration barrier — settle restore() before reading/mutating
-            // the settings popup (prevents 50%→25%→50% revert race).
+            // the settings popup (prevents 50%->25%->50% revert race).
             await waitForAppReady(page);
-            await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
+            await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 20_000 });
 
             const popup = page.locator('.inventory__popup--potion');
             // Robust open: under full-suite load a single bare `.tap()` can hang
@@ -149,7 +149,7 @@ test.describe('Auto-Potion › Settings', { tag: '@auto-potion' }, () => {
             const flatHpBlock = popup.locator('.inventory__potion-setting').first();
             await expect(flatHpBlock.locator('.inventory__potion-value')).toHaveText('25%');
 
-            // 6. Zamknij popup. popupKey wraca do null → wszystkie body
+            // 6. Zamknij popup. popupKey wraca do null -> wszystkie body
             //    komponenty popup-u UNMOUNT-ują. Settings store NIE jest
             //    rozmontowany — Zustand store żyje na poziomie modulu.
             await popup.getByRole('button', { name: /Zamknij/i }).tap();

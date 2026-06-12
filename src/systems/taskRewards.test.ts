@@ -8,7 +8,7 @@ import {
 } from './taskRewards';
 import monstersData from '../data/monsters.json';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 const makeMonster = (overrides?: Partial<IMonsterRewardSource>): IMonsterRewardSource => ({
     level: 1,
     xp: 10,
@@ -16,7 +16,7 @@ const makeMonster = (overrides?: Partial<IMonsterRewardSource>): IMonsterRewardS
     ...overrides,
 });
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// -- Constants ----------------------------------------------------------------
 
 describe('TASK_XP_CURVE_THRESHOLD', () => {
     it('is 300', () => {
@@ -30,7 +30,7 @@ describe('TASK_XP_GEOMETRIC_RATIO', () => {
     });
 });
 
-// ── getEffectiveTaskXpPerKill ────────────────────────────────────────────────
+// -- getEffectiveTaskXpPerKill ------------------------------------------------
 
 describe('getEffectiveTaskXpPerKill', () => {
     it('returns the monster native xp below the threshold', () => {
@@ -95,7 +95,7 @@ describe('getEffectiveTaskXpPerKill', () => {
     });
 });
 
-// ── computeTaskRewards ───────────────────────────────────────────────────────
+// -- computeTaskRewards -------------------------------------------------------
 
 describe('computeTaskRewards', () => {
     it('computes xp = floor(xp * killCount * 1.5) for a sub-threshold monster', () => {
@@ -127,7 +127,7 @@ describe('computeTaskRewards', () => {
     });
 
     it('returns 0 gold when monster.gold is missing or malformed', () => {
-        // monster.gold has only 1 element → falls through the length check
+        // monster.gold has only 1 element -> falls through the length check
         const monster = { level: 5, xp: 10, gold: [5] as unknown as [number, number] };
         const result = computeTaskRewards(monster, 100);
         expect(result.rewardGold).toBe(0);
@@ -137,7 +137,7 @@ describe('computeTaskRewards', () => {
 
     it('floors fractional xp results', () => {
         const monster = makeMonster({ level: 5, xp: 7, gold: [1, 2] });
-        // 7 * 3 * 1.5 = 31.5 → floor → 31
+        // 7 * 3 * 1.5 = 31.5 -> floor -> 31
         expect(computeTaskRewards(monster, 3).rewardXp).toBe(31);
     });
 

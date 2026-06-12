@@ -30,7 +30,7 @@
  *
  * 3. **Whitelist pattern dla character-delete.** `cleanupCharactersForEmail`
  *    akceptuje TYLKO emaile z listy `STABLE_TEST_ACCOUNTS` (primary +
- *    secondary). Każdy inny → Error. Tak żeby nie skasować postaci
+ *    secondary). Każdy inny -> Error. Tak żeby nie skasować postaci
  *    realnemu graczowi nawet jak ktoś przekaże losowy email.
  *
  * 4. **Defensive cleanup of child tables.** Nie ufamy że cascade FK
@@ -146,7 +146,7 @@ export const cleanupTestUserByEmail = async (
 
     // 1. Find user by email — używamy CACHED lookup (adminClient.ts).
     //    Pierwsza call w worker procesie = 1 listUsers, kolejne = O(1) Map.
-    //    Przed refactorem każdy cleanup robił własny listUsers → CPU NANO 82%.
+    //    Przed refactorem każdy cleanup robił własny listUsers -> CPU NANO 82%.
     const userId = await findUserIdByEmail(email);
     if (!userId) {
         return { deleted: false, reason: 'user not found (already deleted)' };
@@ -192,7 +192,7 @@ const cleanupCharactersForUser = async (
         return results;
     }
     if (!chars || chars.length === 0) {
-        // No characters → nothing to clean up
+        // No characters -> nothing to clean up
         return results;
     }
 
@@ -208,6 +208,16 @@ const cleanupCharactersForUser = async (
             ? { ok: false, error: error.message ?? JSON.stringify(error) }
             : { ok: true };
     }
+
+    // Chat messages have no `character_id` FK (they link by character_name +
+    // user_id), so they're not in CHARACTER_CHILD_TABLES. Wipe ALL chat lines
+    // posted by this test user — keeps the shared city chat free of E2E spam.
+    const { error: msgErr } = await withSupabaseRetry(
+        () => admin.from('messages').delete().eq('user_id', userId),
+    );
+    results.messages = msgErr
+        ? { ok: false, error: msgErr.message ?? JSON.stringify(msgErr) }
+        : { ok: true };
 
     // Delete characters themselves
     const { error: charDelErr } = await withSupabaseRetry(
@@ -243,11 +253,13 @@ export const cleanupCharacterById = async (
 ): Promise<ICleanupResult> => {
     const admin = getAdminClient();
 
-    // Sprawdź czy postać istnieje (idempotent guard)
+    // Sprawdź czy postać istnieje (idempotent guard). Pobieramy też `name`
+    // + `user_id` — chat `messages` nie ma kolumny `character_id`, linkuje
+    // się przez `character_name` (+ `user_id`), więc czyścimy je osobno.
     const { data: existing, error: selectErr } = await withSupabaseRetry(
         () => admin
             .from('characters')
-            .select('id')
+            .select('id, name, user_id')
             .eq('id', characterId)
             .maybeSingle(),
     );
@@ -259,6 +271,8 @@ export const cleanupCharacterById = async (
         return { deleted: false, reason: 'not found (already deleted)' };
     }
 
+    const { name: charName, user_id: charUserId } = existing as { id: string; name?: string; user_id?: string };
+
     // Bottom-up child cleanup, scoped do tej jednej postaci
     const childCleanup: Record<string, { ok: boolean; error?: string }> = {};
     for (const { table, key } of CHARACTER_CHILD_TABLES) {
@@ -266,6 +280,20 @@ export const cleanupCharacterById = async (
             () => admin.from(table).delete().eq(key, characterId),
         );
         childCleanup[table] = error ? { ok: false, error: error.message ?? JSON.stringify(error) } : { ok: true };
+    }
+
+    // Chat messages (city/global/guild/party) — no `character_id` FK, so they
+    // survive the loop above. Delete THIS character's lines (scoped by both
+    // character_name AND user_id so a same-named real player is never touched)
+    // so E2E chat spam doesn't linger in the shared city chat for real players.
+    if (charName) {
+        const { error: msgErr } = await withSupabaseRetry(
+            () => {
+                const q = admin.from('messages').delete().eq('character_name', charName);
+                return charUserId ? q.eq('user_id', charUserId) : q;
+            },
+        );
+        childCleanup.messages = msgErr ? { ok: false, error: msgErr.message ?? JSON.stringify(msgErr) } : { ok: true };
     }
 
     // Delete the character itself
@@ -347,6 +375,47 @@ export const cleanupCharacterByName = async (
         reason: allDeleted ? 'ok' : `partial: ${results.map((r) => r.reason).join('; ')}`,
         childCleanup: results[0]?.childCleanup,
     };
+};
+
+/**
+ * One-shot bulk wipe of leftover E2E chat spam from the SHARED channels
+ * (city / global / guild / party), WITHOUT deleting any characters.
+ *
+ * Per-test `try/finally` cleanup (cleanupCharacterById / …ForEmail) already
+ * removes a test's own chat lines, so new runs stay clean. This helper is for
+ * clearing HISTORICAL spam accumulated before chat cleanup existed — run it
+ * once via `npx playwright test wipe-test-chat`.
+ *
+ * Two passes, both safe (only ever touch test data):
+ *  1. Every message authored by a STABLE_TEST_ACCOUNTS user (those accounts
+ *     only ever post E2E traffic).
+ *  2. Belt-and-suspenders: any message whose `character_name` starts with the
+ *     `E2E` prefix used by `generateTestCharacterName`.
+ */
+export const cleanupTestChatMessages = async (): Promise<{
+    deleted: boolean;
+    passes: Record<string, { ok: boolean; error?: string }>;
+}> => {
+    const admin = getAdminClient();
+    const passes: Record<string, { ok: boolean; error?: string }> = {};
+
+    for (const email of STABLE_TEST_ACCOUNTS) {
+        const userId = await findUserIdByEmail(email);
+        if (!userId) { passes[email] = { ok: false, error: 'account not found' }; continue; }
+        const { error } = await withSupabaseRetry(
+            () => admin.from('messages').delete().eq('user_id', userId),
+        );
+        passes[email] = error ? { ok: false, error: error.message ?? JSON.stringify(error) } : { ok: true };
+    }
+
+    // Any E2E-prefixed sender on any account (e.g. registration-flow throwaways).
+    const { error: e2eErr } = await withSupabaseRetry(
+        () => admin.from('messages').delete().like('character_name', 'E2E%'),
+    );
+    passes['E2E-named'] = e2eErr ? { ok: false, error: e2eErr.message ?? JSON.stringify(e2eErr) } : { ok: true };
+
+    const deleted = Object.values(passes).every((p) => p.ok);
+    return { deleted, passes };
 };
 
 /**

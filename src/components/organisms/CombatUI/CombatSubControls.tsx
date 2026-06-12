@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useCombatHudStore } from '../../../stores/combatHudStore';
 import CombatBackpackModal from './CombatBackpackModal';
 import CombatLogsModal from './CombatLogsModal';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 
 interface IProps {
     /** XP bar — `null` hides it (when XP-bar toggle is off). */
@@ -28,7 +29,7 @@ interface IProps {
     tally?: ReactNode;
 }
 
-/** Compact number formatter — 1234 → 1.2k, 1234567 → 1.2M. Mirrors the style
+/** Compact number formatter — 1234 -> 1.2k, 1234567 -> 1.2M. Mirrors the style
  *  used elsewhere in the HUD so the in-bar text doesn't get clipped on phones. */
 const formatRate = (n: number): string => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -38,9 +39,9 @@ const formatRate = (n: number): string => {
 
 /**
  * Strip just under the arena. Holds:
- *   • backpack icon (glows green after a win → click opens session totals)
- *   • logs icon (opens full session log popup)
- *   • XP bar (below the row)
+ *   - backpack icon (glows green after a win -> click opens session totals)
+ *   - logs icon (opens full session log popup)
+ *   - XP bar (below the row)
  *
  * Potions used to live here too — they're now in the floating
  * <CombatPotionDock /> pinned to the viewport's bottom-left so the player
@@ -70,8 +71,8 @@ const CombatSubControls = ({
 
     // When the hunting view passes BOTH a wave control AND a tally widget we
     // switch the row into a CSS-grid layout so we can do the responsive shuffle:
-    //   • mobile  →  [bag][wave][logs]   then   [tally] full-width row below
-    //   • desktop →  [tally][wave][bag][logs]   one row, tally on the left
+    //   - mobile  ->  [bag][wave][logs]   then   [tally] full-width row below
+    //   - desktop ->  [tally][wave][bag][logs]   one row, tally on the left
     // Other views (Boss, Dungeon) get the original simple flex layout — the
     // modifier class flips on the grid only when the slots are present.
     const hasExtras = Boolean(waveControl || tally);
@@ -106,7 +107,7 @@ const CombatSubControls = ({
                             onClick={() => setBagOpen(true)}
                             aria-label="Łup tej sesji"
                         >
-                            🎒
+                            <GameIcon name="backpack" />
                         </button>
                         <button
                             type="button"
@@ -114,7 +115,7 @@ const CombatSubControls = ({
                             onClick={() => setLogOpen(true)}
                             aria-label="Logi walki"
                         >
-                            📋
+                            <GameIcon name="clipboard" />
                         </button>
                     </div>
                 </div>
@@ -127,7 +128,7 @@ const CombatSubControls = ({
                     onClick={() => setLogOpen(true)}
                     aria-label="Logi walki"
                 >
-                    📋
+                    <GameIcon name="clipboard" />
                 </button>
             )}
 

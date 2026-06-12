@@ -16,7 +16,7 @@ import {
 } from './dungeonSystem';
 import type { IBaseItem } from './itemSystem';
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// -- Fixtures ------------------------------------------------------------------
 
 const DUNGEON: IDungeon = {
   id: 'test_dungeon',
@@ -35,9 +35,9 @@ const DUNGEON: IDungeon = {
   description_pl: 'Test',
 };
 
-const RAT: IDungeonMonster = { id: 'rat', name_pl: 'Szczur', hp: 20, attack: 3, defense: 1, level: 1, xp: 5, sprite: '🐀' };
-const GOBLIN: IDungeonMonster = { id: 'goblin', name_pl: 'Goblin', hp: 45, attack: 8, defense: 3, level: 3, xp: 18, sprite: '👺' };
-const ORC: IDungeonMonster = { id: 'orc', name_pl: 'Ork', hp: 70, attack: 13, defense: 6, level: 5, xp: 35, sprite: '👹' };
+const RAT: IDungeonMonster = { id: 'rat', name_pl: 'Szczur', hp: 20, attack: 3, defense: 1, level: 1, xp: 5, sprite: 'rat' };
+const GOBLIN: IDungeonMonster = { id: 'goblin', name_pl: 'Goblin', hp: 45, attack: 8, defense: 3, level: 3, xp: 18, sprite: 'goblin' };
+const ORC: IDungeonMonster = { id: 'orc', name_pl: 'Ork', hp: 70, attack: 13, defense: 6, level: 5, xp: 35, sprite: 'ogre' };
 const ALL_MONSTERS = [RAT, GOBLIN, ORC];
 
 const STRONG_CHAR: IDungeonCharacter = { attack: 100, defense: 50, max_hp: 1000, level: 20 };
@@ -49,7 +49,7 @@ const MOCK_ITEMS: IBaseItem[] = [
   { id: 'legendary_armor', name_pl: 'Leg', name_en: 'Leg', slot: 'armor', minLevel: 15, baseDef: 50, basePrice: 2000, rarity: 'legendary' },
 ];
 
-// ── canEnterDungeon ───────────────────────────────────────────────────────────
+// -- canEnterDungeon -----------------------------------------------------------
 
 describe('canEnterDungeon', () => {
   it('allows entry when level >= minLevel and no cooldown', () => {
@@ -73,7 +73,7 @@ describe('canEnterDungeon', () => {
   });
 });
 
-// ── getDungeonRemainingMs ─────────────────────────────────────────────────────
+// -- getDungeonRemainingMs -----------------------------------------------------
 
 describe('getDungeonRemainingMs', () => {
   it('returns 0 when no cooldown', () => {
@@ -91,7 +91,7 @@ describe('getDungeonRemainingMs', () => {
   });
 });
 
-// ── resolveWave ───────────────────────────────────────────────────────────────
+// -- resolveWave ---------------------------------------------------------------
 
 describe('resolveWave', () => {
   it('player wins when much stronger than monster', () => {
@@ -108,7 +108,7 @@ describe('resolveWave', () => {
   });
 
   it('player with exactly enough HP barely wins', () => {
-    // Player does 9 dmg/hit (10-1 def), monster has 9 HP → 1 hit to kill, no retaliation
+    // Player does 9 dmg/hit (10-1 def), monster has 9 HP -> 1 hit to kill, no retaliation
     const result = resolveWave(100, 10, 0, 9, 5, 0);
     expect(result.won).toBe(true);
   });
@@ -120,7 +120,7 @@ describe('resolveWave', () => {
   });
 });
 
-// ── scaleDungeonMonster ───────────────────────────────────────────────────────
+// -- scaleDungeonMonster -------------------------------------------------------
 
 describe('scaleDungeonMonster', () => {
   // Easy dungeon (lvl 1-15): reduced stats
@@ -154,7 +154,7 @@ describe('scaleDungeonMonster', () => {
   // round down on small-attack monsters at low dLvl so we test with GOBLIN
   // (atk=8) and a high dLvl to ensure the increase survives floor().
   it('hard dungeon (lvl 20+) non-boss wave has HP and ATK > base', () => {
-    // wave 0, totalWaves 3, dLvl 60 → levelBonus = 0.2, baseScale = 1.3
+    // wave 0, totalWaves 3, dLvl 60 -> levelBonus = 0.2, baseScale = 1.3
     // hpScale = 1.3 (Normal type), atkScale = 1.18
     const scaled = scaleDungeonMonster(GOBLIN, 0, 3, 60);
     expect(scaled.hp).toBeGreaterThan(GOBLIN.hp);   // floor(45 * 1.3) = 58
@@ -181,7 +181,7 @@ describe('scaleDungeonMonster', () => {
   });
 });
 
-// ── pickWaveMonster ───────────────────────────────────────────────────────────
+// -- pickWaveMonster -----------------------------------------------------------
 
 describe('pickWaveMonster', () => {
   it('returns boss monster on last wave', () => {
@@ -196,7 +196,7 @@ describe('pickWaveMonster', () => {
   });
 });
 
-// ── rollDungeonRarity ─────────────────────────────────────────────────────────
+// -- rollDungeonRarity ---------------------------------------------------------
 
 describe('rollDungeonRarity', () => {
   it('never exceeds maxRarity', () => {
@@ -215,7 +215,7 @@ describe('rollDungeonRarity', () => {
   });
 });
 
-// ── rollDungeonGold ───────────────────────────────────────────────────────────
+// -- rollDungeonGold -----------------------------------------------------------
 
 describe('rollDungeonGold', () => {
   it('returns value within the specified range', () => {
@@ -227,7 +227,7 @@ describe('rollDungeonGold', () => {
   });
 });
 
-// ── rollDungeonItemDrop ───────────────────────────────────────────────────────
+// -- rollDungeonItemDrop -------------------------------------------------------
 
 describe('rollDungeonItemDrop', () => {
   it('respects maxRarity – never returns above it', () => {
@@ -264,7 +264,7 @@ describe('rollDungeonItemDrop', () => {
   });
 });
 
-// ── resolveDungeon ────────────────────────────────────────────────────────────
+// -- resolveDungeon ------------------------------------------------------------
 
 describe('resolveDungeon', () => {
   it('strong character clears all waves', () => {

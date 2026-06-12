@@ -11,14 +11,14 @@ import { MemoryRouter } from 'react-router-dom';
  * `itemSystem.test.ts` + `inventoryStore.test.ts`.
  *
  * What we DO cover (smoke / render contract):
- *   • Smoke render with a character + empty bag.
- *   • Paperdoll mounts (avatar + HP/MP bars + 12 slot frames).
- *   • Character-less render — paperdoll guard kicks in, root still mounts.
- *   • Bag header renders the "Plecak: 0 / 1000" counter.
- *   • Multi-sell toggle puts the bag into bulk mode (Cancel button surfaces).
- *   • Filter chips render for every rarity + slot.
- *   • Bag tile click selects the item (opens detail popup overlay).
- *   • Auto-sell row renders 5 buttons (one per rarity).
+ *   - Smoke render with a character + empty bag.
+ *   - Paperdoll mounts (avatar + HP/MP bars + 12 slot frames).
+ *   - Character-less render — paperdoll guard kicks in, root still mounts.
+ *   - Bag header renders the "Plecak: 0 / 1000" counter.
+ *   - Multi-sell toggle puts the bag into bulk mode (Cancel button surfaces).
+ *   - Filter chips render for every rarity + slot.
+ *   - Bag tile click selects the item (opens detail popup overlay).
+ *   - Auto-sell row renders 5 buttons (one per rarity).
  *
  * Mocks: framer-motion stubbed so AnimatePresence doesn't pin happy-dom.
  */
@@ -295,7 +295,7 @@ describe('Inventory — edge cases', () => {
 });
 
 // TODO: Detail popup interaction (clicking a bag tile to open the
-//       comparison overlay → equip / sell / upgrade buttons) requires
+//       comparison overlay -> equip / sell / upgrade buttons) requires
 //       wiring a known itemId from `data/items.json` so the comparison
 //       column can resolve a base item. Skipped here — that depth is
 //       carried by Playwright in tests/e2e/inventory/ once authored.
@@ -307,6 +307,6 @@ describe('Inventory — edge cases', () => {
 //       seeding for a render check. Add per-popup smoke tests when the
 //       popup bodies become refactored components.
 // TODO: Sell click + upgrade click flows are routed through
-//       `selectBagItem` → DetailPanel → action button. The DetailPanel
+//       `selectBagItem` -> DetailPanel -> action button. The DetailPanel
 //       is heavy (~700 lines of its own) and merits a dedicated test
 //       file once it's pulled out as a top-level component.

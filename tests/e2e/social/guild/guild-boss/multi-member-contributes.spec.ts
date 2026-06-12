@@ -25,16 +25,16 @@
  *
  * ## Why this is hybrid UI + page.evaluate (not full UI combat)
  *
- * The full UI flow ("Atakuj bossa" → "claim arena" → run the basic-tick
- * + spell-tick + boss-tick loops at the chosen speed multiplier → ~10-
- * 30 attacks → "Zakończ walkę") would be brittle: it depends on
+ * The full UI flow ("Atakuj bossa" -> "claim arena" -> run the basic-tick
+ * + spell-tick + boss-tick loops at the chosen speed multiplier -> ~10-
+ * 30 attacks -> "Zakończ walkę") would be brittle: it depends on
  * (a) timing of the per-tick interval (1500 ms / speed mult), (b) RNG
  * cooldowns for spells, (c) winning the `claimBossArena` race between
  * the two contexts, (d) the boss surviving long enough for the second
  * member's turn (Sunday lock would 1-shot the test if it ticked over
  * mid-run).
  *
- * Instead — we navigate both contexts to /guild → Loch (so each context
+ * Instead — we navigate both contexts to /guild -> Loch (so each context
  * gets the live `useGuildStore` + `boss_state` row hydrated), then
  * use `page.evaluate` to call `guildApi.applyBossDamage` +
  * `guildApi.addContribution` + `guildApi.logAttempt` DIRECTLY on each
@@ -43,11 +43,11 @@
  * same multi-member contribution path).
  *
  * The "happy path" being verified:
- *   • Both members can register damage against the same `guild_boss_state`
+ *   - Both members can register damage against the same `guild_boss_state`
  *     row (proves no global lock or RLS gating that would block one).
- *   • Each member's contribution lands in their OWN `guild_boss_contributions`
+ *   - Each member's contribution lands in their OWN `guild_boss_contributions`
  *     row keyed by `(guild_id, character_id, week_start)`.
- *   • Both contributions are positive — the per-member entry isn't
+ *   - Both contributions are positive — the per-member entry isn't
  *     overwriting the other (regression guard against a bug where one
  *     member's `addContribution` zeroes the other's row).
  *
@@ -55,14 +55,14 @@
  * via `seedGuild` (skips create+apply+accept dance).
  *
  * Cleanup:
- *   • cleanupGuildsByLeaderIds — CASCADE wipes guild_boss_state,
+ *   - cleanupGuildsByLeaderIds — CASCADE wipes guild_boss_state,
  *     guild_boss_contributions, guild_boss_attempts via FK on guild_id.
- *   • characters cleaned via multiContext.cleanup.
+ *   - characters cleaned via multiContext.cleanup.
  *
  * ## Sunday guard
  *
  * `isGuildBossClaimDay()` returns true on Sunday UTC and the UI shows
- * "🌅 Niedziela — atakowanie zablokowane." This test does NOT cover
+ * ":sunrise: Niedziela — atakowanie zablokowane." This test does NOT cover
  * that branch (it's a UI-only render check). Run any day Mon-Sat to
  * hit the assertion path. If a CI run happens to start on Sunday and
  * the UI loaded a different week's boss row, the test still passes
@@ -82,7 +82,7 @@ import { getAdminClient } from '../../../fixtures/adminClient';
 test.describe('Social › Guild', { tag: '@guild' }, () => {
     test.describe.configure({ timeout: 180_000 });
 
-    test('multi-context: 2 members deal boss damage → both rows in guild_boss_contributions', async ({ browser }) => {
+    test('multi-context: 2 members deal boss damage -> both rows in guild_boss_contributions', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
@@ -133,7 +133,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 5. Both pick characters → Town.
+            // 5. Both pick characters -> Town.
             const pickCharacter = async (page: Page, nick: string): Promise<void> => {
                 if (!page.url().endsWith('/character-select')) {
                     await page.goto('/character-select');
@@ -152,7 +152,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // 6. Both navigate Town → Społeczność → Gildia → Loch (boss).
+            // 6. Both navigate Town -> Społeczność -> Gildia -> Loch (boss).
             //    The boss view fetches/creates the weekly boss row on
             //    mount via `fetchOrCreateWeeklyBoss`. We need this so
             //    `guildApi.applyBossDamage` has a row to clamp against
@@ -165,7 +165,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 await page.locator('.social__tile--gildia').tap();
                 await expect(page).toHaveURL(/\/guild$/, { timeout: 10_000 });
                 await expect(page.locator('.guild__home-banner')).toBeVisible({ timeout: 20_000 });
-                // Tap "Loch" nav tile → GuildBoss sub-screen.
+                // Tap "Loch" nav tile -> GuildBoss sub-screen.
                 await page.locator('.guild__nav-tile-label', { hasText: /^Loch$/i }).tap();
                 // GuildBoss renders `.guild__boss-stage` — wait for it.
                 await expect(page.locator('.guild__boss-stage'))
@@ -242,9 +242,9 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await driveDamage(secondaryPage, guildId, secondaryCharId, secondaryNick, secondaryDamage);
 
             // 8. DB validation via service_role:
-            //    • guild_boss_contributions: 2 rows, one per character.
-            //    • Each row's `total_damage` matches what we sent.
-            //    • guild_boss_state: HP decreased by primary+secondary (or
+            //    - guild_boss_contributions: 2 rows, one per character.
+            //    - Each row's `total_damage` matches what we sent.
+            //    - guild_boss_state: HP decreased by primary+secondary (or
             //      reached 0 if boss too weak — we use tier 1's 15M HP which
             //      our 50k+30k attacks won't dent past ~0.5%).
             const admin = getAdminClient();

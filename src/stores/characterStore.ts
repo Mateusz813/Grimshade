@@ -190,7 +190,7 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const mpPerLevel = BASE_MP_PER_LEVEL[char.class] ?? 5;
 
     // Only award stat points, HP/MP for levels ABOVE highest_level ever reached
-    // This prevents exploit: die → lose level → re-level → get free stat points
+    // This prevents exploit: die -> lose level -> re-level -> get free stat points
     const highestLevel = char.highest_level ?? char.level;
     const newHighest = Math.max(highestLevel, result.newLevel);
     const newLevelsCount = Math.max(0, result.newLevel - highestLevel);
@@ -210,7 +210,7 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const milestoneAtk = milestonesCrossed * milestoneBonus.attack;
     const milestoneDef = milestonesCrossed * milestoneBonus.defense;
 
-    // Gold milestone rewards: 10/20/30/40/50/100/150/200/… → 10k × level.
+    // Gold milestone rewards: 10/20/30/40/50/100/150/200/… -> 10k × level.
     // Gated on highest_level — re-leveling after death never re-awards gold.
     const goldMilestoneLevels = collectGoldMilestones(highestLevel, newHighest);
     const milestoneGoldGain = goldMilestoneLevels.reduce(

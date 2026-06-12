@@ -24,7 +24,7 @@
  * buff / equipment input.
  *
  * Additionally, the shop sells `cd_reduction_elixir` (effect
- * `cooldown_reduction_0.20_30m` → buff `cooldown_reduction` returns
+ * `cooldown_reduction_0.20_30m` -> buff `cooldown_reduction` returns
  * multiplier `0.8` in `buffStore.ts` line 473). But the multiplier is NEVER
  * READ by any combat / potion code path — searched
  * `getBuffMultiplier('cooldown_reduction')` across the codebase, zero hits
@@ -36,10 +36,10 @@
  * Rather than testing a feature that doesn't exist, this test pins the
  * current behaviour as a regression guard:
  *
- *   1. Without any cooldown-reduction equipment OR buff → potion cooldown
+ *   1. Without any cooldown-reduction equipment OR buff -> potion cooldown
  *      lands at exactly `FLAT_POTION_COOLDOWN_MS = 1000` after auto-potion
  *      fires.
- *   2. With the `cooldown_reduction` buff active → potion cooldown STILL
+ *   2. With the `cooldown_reduction` buff active -> potion cooldown STILL
  *      lands at exactly `1000` (the buff doesn't affect potion cooldown,
  *      only spell cooldowns per the elixir's tooltip — though it doesn't
  *      affect those either as of 2026-05-25).
@@ -72,10 +72,10 @@
  *  4. Run the test inside ONE `page.evaluate`:
  *     a. Stage combat with HP 40/120 (below 50% threshold).
  *     b. Clear cooldowns.
- *     c. Fire `tryAutoPotion(40, 120, 30, 30)` → snapshot CD (BASELINE).
+ *     c. Fire `tryAutoPotion(40, 120, 30, 30)` -> snapshot CD (BASELINE).
  *     d. Reset cooldown + HP back to 40, re-seed consumable count.
  *     e. Add `cooldown_reduction` buff to live buffStore.
- *     f. Fire `tryAutoPotion(40, 120, 30, 30)` again → snapshot CD (WITH_BUFF).
+ *     f. Fire `tryAutoPotion(40, 120, 30, 30)` again -> snapshot CD (WITH_BUFF).
  *  5. Assert:
  *     - baseline_cd === 1000 (FLAT_POTION_COOLDOWN_MS contract).
  *     - with_buff_cd === 1000 (buff has no effect — current behaviour).
@@ -204,7 +204,7 @@ test.describe('Auto-Potion › Cooldown vs Equipment', { tag: '@auto-potion' }, 
                 const rat = engine.getAllMonsters().find((m) => m.id === 'rat');
                 if (!rat) throw new Error('[11.5 test] rat monster missing');
 
-                // ─── ROUND 1: BASELINE (no buff, no equipment) ───────────
+                // --- ROUND 1: BASELINE (no buff, no equipment) -----------
                 useCooldownStore.getState().clearAll();
                 useBuffStore.getState().clearCharacterBuffs();
                 // Reset HP to 40 inside the combat store via fresh init.
@@ -219,7 +219,7 @@ test.describe('Auto-Potion › Cooldown vs Equipment', { tag: '@auto-potion' }, 
                 const baselineCd = useCooldownStore.getState().hpPotionCooldown;
                 const baselineCount = useInventoryStore.getState().consumables['hp_potion_sm'] ?? 0;
 
-                // ─── ROUND 2: WITH cooldown_reduction buff ───────────────
+                // --- ROUND 2: WITH cooldown_reduction buff ---------------
                 // Reset state: replenish consumable, clear cooldown, restage HP.
                 useInventoryStore.getState().addConsumable('hp_potion_sm', 1);
                 useCooldownStore.getState().clearAll();
@@ -239,7 +239,7 @@ test.describe('Auto-Potion › Cooldown vs Equipment', { tag: '@auto-potion' }, 
                     {
                         id: 'cooldown_reduction',
                         name: 'CD -20%',
-                        icon: '🌀',
+                        icon: 'cyclone',
                         effect: 'cooldown_reduction',
                     },
                     24 * 60 * 60 * 1000,

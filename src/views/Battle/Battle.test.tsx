@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
- * Battle hub tests — the simple view from BottomNav → Walka.
+ * Battle hub tests — the simple view from BottomNav -> Walka.
  *
  * Battle.tsx renders 7 banner tiles (one per battle mode) and decides
  * which are locked (party-member-locked = leader-only routes; offline-
@@ -11,18 +11,18 @@ import { MemoryRouter } from 'react-router-dom';
  * Trainer tile click to fire the party ready-check.
  *
  * What we cover:
- *   • Smoke render with a character loaded.
- *   • All 7 tiles appear.
- *   • Clicking a normal tile navigates to its path.
- *   • Trainer click fires `requestPartyCombatStart` instead of direct nav.
- *   • Offline lock: raid + arena tiles become non-clickable when the
+ *   - Smoke render with a character loaded.
+ *   - All 7 tiles appear.
+ *   - Clicking a normal tile navigates to its path.
+ *   - Trainer click fires `requestPartyCombatStart` instead of direct nav.
+ *   - Offline lock: raid + arena tiles become non-clickable when the
  *     connectivity store reports offline.
- *   • Party-member lock: leader-only routes (boss/raid/trainer/combat)
+ *   - Party-member lock: leader-only routes (boss/raid/trainer/combat)
  *     are silent no-ops for non-leader members.
- *   • Null character: still renders without crashing.
+ *   - Null character: still renders without crashing.
  */
 
-// ── Mock the dynamic transform color hook so we don't have to drive
+// -- Mock the dynamic transform color hook so we don't have to drive
 //    transformStore from outside. Battle just calls `getHighestTransformColor`
 //    once for its accent — return null = fall back to class color.
 vi.mock('../../hooks/usePartyMemberRouteGate', () => ({
@@ -137,7 +137,7 @@ describe('Battle — navigation', () => {
     });
 
     it('routes the Trainer click through requestPartyCombatStart, not a direct navigate', () => {
-        // Simulate the helper returning true (leader / solo path → fires
+        // Simulate the helper returning true (leader / solo path -> fires
         // onConfirmed which would navigate). Battle's own onClick should NOT
         // call navigate directly for /trainer — only via the helper.
         requestPartyCombatStartMock.mockReturnValue(true);
@@ -191,7 +191,7 @@ describe('Battle — party-member lock', () => {
     it('marks leader-only routes as locked when isMemberLocked is true', () => {
         vi.mocked(useIsPartyMemberLocked).mockReturnValue(true);
         renderBattle();
-        // /boss /raid /trainer /combat → all locked for non-leader members.
+        // /boss /raid /trainer /combat -> all locked for non-leader members.
         expect(screen.getByLabelText('Polowanie').className).toContain('battle__tile--locked');
         expect(screen.getByLabelText('Boss').className).toContain('battle__tile--locked');
         expect(screen.getByLabelText('Raid').className).toContain('battle__tile--locked');

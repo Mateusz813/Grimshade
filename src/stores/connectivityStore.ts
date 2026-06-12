@@ -4,11 +4,11 @@
  * 2026-05-20 spec ("Ogarnac przelacznik do gry offline i online ..."):
  * the player has TWO modes:
  *
- *   • `online`  — full access (party, raids, arena, bot helpers, ladder,
+ *   - `online`  — full access (party, raids, arena, bot helpers, ladder,
  *                  market, rankings, deaths feed, chat).
  *                  Default for every fresh app launch.
  *
- *   • `offline` — solo-only. Allowed: hunting, solo bosses, transforms,
+ *   - `offline` — solo-only. Allowed: hunting, solo bosses, transforms,
  *                  tasks, quests, trainer (solo). Blocked: party, raids,
  *                  arena, bot helpers, market, rankings, deaths feed,
  *                  chat — everything that depends on another live player
@@ -25,8 +25,8 @@
  *      clicked the Offline button in the avatar menu. Reset on every
  *      page reload (= app boot). Determines whether a network
  *      reconnect should auto-flip the player back to online:
- *        - explicit offline → STAY offline through DC + reconnect
- *        - automatic offline (DC) → auto-flip back to online on
+ *        - explicit offline -> STAY offline through DC + reconnect
+ *        - automatic offline (DC) -> auto-flip back to online on
  *          reconnect.
  *
  *   3. `isNetworkUp` — mirrored from `useSyncStore.isOnline` (which
@@ -34,7 +34,7 @@
  *      watcher.
  *
  * Snapshot system
- * ───────────────
+ * ---------------
  * 2026-05-20 spec ("Zawsze dokladnie sprawdzaj stan przed i po
  * synchronizacji z gry offline czy nie bedzie sytuacji ze cos zostalo
  * zduplikowane itp"): whenever we enter offline mode (DC OR user click)
@@ -56,7 +56,7 @@ export type TPlayMode = 'online' | 'offline';
 
 /**
  * Per-character snapshot captured at the moment the player transitions
- * from `online → offline`. Compared against current state when they
+ * from `online -> offline`. Compared against current state when they
  * flip back to detect impossible offline-play deltas.
  */
 export interface IOfflineSnapshot {

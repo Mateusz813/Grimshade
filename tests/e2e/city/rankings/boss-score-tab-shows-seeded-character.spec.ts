@@ -6,7 +6,7 @@
  * — Boss Score ranking.
  *
  * Tab definition (Leaderboard.tsx linia 150):
- *   { key: 'boss_score', label: 'Boss', icon: '👹',
+ *   { key: 'boss_score', label: 'Boss', icon: 'ogre',
  *     source: 'weapon_skill', skillName: 'boss_score',
  *     valueLabel: 'Boss' }
  *
@@ -17,7 +17,7 @@
  * jak Sword / MLVL.
  *
  * Seed: direct INSERT do `character_weapon_skills` z skill_name='boss_score'.
- * Live `bossScoreStore` ZE STATE 0 → stray `syncWeaponSkillsToSupabase`
+ * Live `bossScoreStore` ZE STATE 0 -> stray `syncWeaponSkillsToSupabase`
  * przepisałby boss_score na 0 (linia 1051: `skill_level: bossScoreState.totalScore`).
  * Read-only nav nie triggera sync, więc seedujemy JUST PRZED `page.goto('/leaderboard')`.
  *
@@ -61,7 +61,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
 
             // Seed boss_score row JUST PRZED nav na /leaderboard — żeby
             // character switch sync (jeśli wystrzeli) nie nadpisał na 0.
-            // bossScoreStore live state ZE STATE = 0 → bezpieczne TYLKO
+            // bossScoreStore live state ZE STATE = 0 -> bezpieczne TYLKO
             // po wszystkich sync-ach wynikających z character switch.
             await seedWeaponSkill({
                 characterId: created.id,
@@ -73,7 +73,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await page.goto('/leaderboard');
             await waitForAppReady(page);
 
-            // valueLabel='Boss' + value=9999 → "Boss 9999" (pl-PL).
+            // valueLabel='Boss' + value=9999 -> "Boss 9999" (pl-PL).
             // 9999 toLocaleString('pl-PL') daje "9999" (poniżej threshold
             // formatowania separatorem dla pl-PL przy 4-cyfrowych liczbach).
             await assertSeededRankingRow(page, {

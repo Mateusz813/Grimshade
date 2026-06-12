@@ -11,46 +11,46 @@
  * What this test proves:
  *  Combat hub idle-phase top controls — the speed chip + skill-mode
  *  chip + auto-fight chip + wave +/- buttons — remain **tappable** at
- *  every cycle position (x1 → x2 → x4 → SKIP → x1). Tappable means:
- *    • Button is `visible`.
- *    • Button is `enabled` (no `disabled` attribute, no aria-disabled).
- *    • A `.tap()` succeeds without timeout (Playwright auto-actionability
+ *  every cycle position (x1 -> x2 -> x4 -> SKIP -> x1). Tappable means:
+ *    - Button is `visible`.
+ *    - Button is `enabled` (no `disabled` attribute, no aria-disabled).
+ *    - A `.tap()` succeeds without timeout (Playwright auto-actionability
  *      check waits for the button to be touchable — covers pointer-events,
  *      opacity-0 overlays, dispatched-but-not-yet-rendered modals, etc.).
  *
  * Why the IDLE-PHASE controls are the canonical test target:
- *  • They are RENDERED CONDITIONALLY on `phase === 'idle'` (Combat.tsx
+ *  - They are RENDERED CONDITIONALLY on `phase === 'idle'` (Combat.tsx
  *    line 1680), which is the player's pre-fight state — every fresh
  *    visit to /combat lands here.
- *  • The speed button itself is the cycle hook — tapping it advances
+ *  - The speed button itself is the cycle hook — tapping it advances
  *    the speed. So we test the full loop via cycle taps:
- *      x1 (default) → tap → x2 → tap → x4 → tap → SKIP → tap → x1.
+ *      x1 (default) -> tap -> x2 -> tap -> x4 -> tap -> SKIP -> tap -> x1.
  *    Four cycles touch every speed value at least once.
- *  • Other idle controls (skill-mode, auto-fight) are independent of
+ *  - Other idle controls (skill-mode, auto-fight) are independent of
  *    `combatSpeed` — but they SHARE the `.combat__top-controls`
  *    container which could be obscured by any `position: fixed` overlay
  *    leaking from the fighting-phase layer. Tapping them at each speed
  *    cycle proves the container isn't getting accidentally covered.
  *
  * What we DON'T test (and why):
- *  • IN-FIGHT clickability (action-bar skill buttons, potion buttons
+ *  - IN-FIGHT clickability (action-bar skill buttons, potion buttons
  *    during `phase === 'fighting'`) — those depend on a live fight tick.
  *    Smoke version here covers the most-touched path; in-fight version
  *    requires a controlled HP/MP pre-state that's a separate session
  *    of work (see `combat/death/triggerPlayerDeath` for the deepest
  *    in-fight test we have so far).
- *  • Animation rendering correctness at each speed — visual regression
+ *  - Animation rendering correctness at each speed — visual regression
  *    test territory, not E2E.
- *  • Per-component contracts (e.g. CombatActionBar disabled-state when
+ *  - Per-component contracts (e.g. CombatActionBar disabled-state when
  *    MP < cost) — those are unit/integration tests in
  *    `src/components/organisms/CombatUI/CombatActionBar.test.tsx`.
  *
  * Strategy:
  *  1. Seed Knight lvl 1 (default base stats).
- *  2. Login + pick character → Town.
- *  3. Navigate `/combat` → land on idle hub.
+ *  2. Login + pick character -> Town.
+ *  3. Navigate `/combat` -> land on idle hub.
  *  4. Speed button starts at default (settingsStore.combatSpeed='x1').
- *     Cycle 4 times: x1 → x2 → x4 → SKIP → x1. After each tap, assert:
+ *     Cycle 4 times: x1 -> x2 -> x4 -> SKIP -> x1. After each tap, assert:
  *       (a) speed button has the new speed text rendered (label flips).
  *       (b) speed button is still enabled + visible (we'll tap it again
  *           next iteration).
@@ -69,7 +69,7 @@ import { cleanupCharacterById } from '../../fixtures/cleanup';
 test.describe('Combat › UI', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('idle-hub speed + skill-mode + auto-fight chips remain tappable across x1 → x2 → x4 → SKIP cycle', async ({ page }) => {
+    test('idle-hub speed + skill-mode + auto-fight chips remain tappable across x1 -> x2 -> x4 -> SKIP cycle', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -84,7 +84,7 @@ test.describe('Combat › UI', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -125,7 +125,7 @@ test.describe('Combat › UI', { tag: '@combat' }, () => {
             //        time out at Playwright's actionTimeout=5_000).
             //    (c) sibling skill-mode + auto-fight chips remain
             //        enabled + visible (no overlay covering chip row).
-            //    The full cycle (x1 → x2 → x4 → SKIP → x1) needs 4 taps.
+            //    The full cycle (x1 -> x2 -> x4 -> SKIP -> x1) needs 4 taps.
             const speedOrder = ['x1', 'x2', 'x4', 'SKIP'];
             let currentIdx = speedOrder.indexOf(initialSpeedText);
             if (currentIdx === -1) currentIdx = 0;

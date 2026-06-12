@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — Shop "Items" tab buy flow.
  *
- * Backlog item 3.1 ("Kup item w sklepie → pojawia się w plecaku +
+ * Backlog item 3.1 ("Kup item w sklepie -> pojawia się w plecaku +
  * odjęło gold"): the player has gold, opens the Shop, taps "Kup" on
  * a Lv 1 common weapon, and we verify:
  *  1. Toast confirms the purchase ("Kupiono: Miecz").
@@ -9,24 +9,24 @@
  *  3. The bought item appears in the bag when we open `/inventory`.
  *
  * Setup pattern:
- *   • `createCharacterViaApi` creates a fresh Knight at level 1 with
+ *   - `createCharacterViaApi` creates a fresh Knight at level 1 with
  *     `characters.gold = 100000` (DB row only).
- *   • `seedGameSave` writes a matching `game_saves` blob with
+ *   - `seedGameSave` writes a matching `game_saves` blob with
  *     `inventory.gold = 100000` so when `switchToCharacter` rehydrates
  *     the stores on character pick, inventoryStore.gold lands at
  *     100,000 — NOT 0. Without the seed, `characters.gold` is never
  *     read back into inventoryStore (it's a write-only column for
  *     cross-character ranking and offline-save backup).
- *   • Knight is chosen so the Shop renders a "Miecz" sword (its common
+ *   - Knight is chosen so the Shop renders a "Miecz" sword (its common
  *     name_pl in `itemTemplates.json`) — deterministic selector text.
- *   • Lv 1 common weapon price is `floor((30 * 1 + 20) * 1) = 50` gold
+ *   - Lv 1 common weapon price is `floor((30 * 1 + 20) * 1) = 50` gold
  *     (see `calculateShopPrice` in shopStore.ts).
  *
  * Why we navigate via BottomNav tap instead of `.goto('/shop')`:
  *   Grimshade is a Zustand-based SPA; `page.goto()` performs a full
  *   page reload that wipes the in-memory store. After reload the
- *   characterStore is null → Shop renders only `<Spinner>` (per
- *   Shop.tsx line 214-216) → `.shop__tabs` never appears.
+ *   characterStore is null -> Shop renders only `<Spinner>` (per
+ *   Shop.tsx line 214-216) -> `.shop__tabs` never appears.
  *   BottomNav uses React Router's `navigate()` (SPA route change),
  *   preserving the characterStore + inventoryStore hydration.
  *
@@ -76,7 +76,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
                 gold: STARTING_GOLD,
             });
 
-            // 2. Login + go to /character-select → pick our character → Town.
+            // 2. Login + go to /character-select -> pick our character -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');

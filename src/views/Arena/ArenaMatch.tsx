@@ -33,6 +33,7 @@ import {
     newStatusState,
     type IStatusState,
 } from '../../systems/skillEffectsV2';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import './Arena.scss';
 
 const CLASS_COLORS: Record<string, string> = {
@@ -202,7 +203,7 @@ const ArenaMatch = () => {
             if (!me || !op) return;
             if (me.hp <= 0 || op.hp <= 0) return;
 
-            // ── Status tick: drain timers + apply DOTs ──────────────────────
+            // -- Status tick: drain timers + apply DOTs ----------------------
             const meDot = tickStatus(me.status, TICK_MS / speedMult, me.maxHp);
             const opDot = tickStatus(op.status, TICK_MS / speedMult, op.maxHp);
             if (meDot.dotDamage > 0) {
@@ -381,7 +382,7 @@ const ArenaMatch = () => {
             // myself" — the bug the player just flagged.
             if (myBasic > 0) {
                 setOpponentHitPulse((p) => p + 1);
-                // me (player) attacks → opponent card shows the slash.
+                // me (player) attacks -> opponent card shows the slash.
                 setOpponentAttackingClass(`attack-${me.class}`);
                 window.setTimeout(() => setOpponentAttackingClass(null), ATTACK_FLASH_MS);
             }
@@ -391,7 +392,7 @@ const ArenaMatch = () => {
             }
             if (opBasic > 0) {
                 setPlayerHitPulse((p) => p + 1);
-                // opponent attacks → player card shows the slash.
+                // opponent attacks -> player card shows the slash.
                 setPlayerAttackingClass(`attack-${op.class}`);
                 window.setTimeout(() => setPlayerAttackingClass(null), ATTACK_FLASH_MS);
             }
@@ -482,7 +483,7 @@ const ArenaMatch = () => {
             id: op.id,
             name: op.name,
             level: op.level,
-            sprite: '👤',
+            sprite: 'bust-in-silhouette',
             kind: 'monster' as const,
             currentHp: Math.max(0, op.hp),
             maxHp: op.maxHp,
@@ -532,7 +533,7 @@ const ArenaMatch = () => {
         setSpeedMult(opts[(idx + 1) % opts.length]);
     };
 
-    // ── Skill bar (read-only) — show the player's loadout with cooldown
+    // -- Skill bar (read-only) — show the player's loadout with cooldown
     // sweeps. Arena combat is fully automatic so the slots aren't
     // clickable (`disabled: true`); the visual purpose is to give the
     // player situational awareness ("my big AOE is coming back in 4s").
@@ -664,7 +665,7 @@ const ArenaMatch = () => {
                             }}
                         >
                             <h1 style={{ fontSize: 48, margin: 0 }}>
-                                {phase === 'win' ? '🏆 ZWYCIĘSTWO' : '💀 PORAŻKA'}
+                                {phase === 'win' ? <><GameIcon name="trophy" /> ZWYCIĘSTWO</> : <><GameIcon name="skull" /> PORAŻKA</>}
                             </h1>
                             <p style={{ fontSize: 18, margin: '16px 0' }}>
                                 vs {ctx.opponentName} (L{ctx.opponentLevel})

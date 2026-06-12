@@ -2,14 +2,14 @@
  * Atomic E2E — arena finalizeMatch reward integrity for solo player win.
  *
  * BACKLOG 13.18: "Arena: poprawne nagrody". Full UI flow (navigate
- * `/arena` → pick opponent → live combat in `ArenaMatch.tsx` → assert
+ * `/arena` -> pick opponent -> live combat in `ArenaMatch.tsx` -> assert
  * post-victory `arenaPoints` += 100) is fragile:
- *  • Live arena combat is RNG (attack rolls, crits, dodges) — even
+ *  - Live arena combat is RNG (attack rolls, crits, dodges) — even
  *    with skilled tuning the result is non-deterministic.
- *  • Opponents on the picker are bot-generated; bot stats depend on
+ *  - Opponents on the picker are bot-generated; bot stats depend on
  *    `generateBotsForArena` randomisation hooks. Seeding deterministic
  *    bots is intrusive.
- *  • The auto-fight loop in `ArenaMatch.tsx` line 405-437 only
+ *  - The auto-fight loop in `ArenaMatch.tsx` line 405-437 only
  *    finalizes on HP=0; intermediate ticks burn 125ms wall clock each.
  *
  * We instead invoke `useArenaStore.finalizeMatch` DIRECTLY via
@@ -19,34 +19,34 @@
  * the RNG combat layer in between.
  *
  * What this proves:
- *  • Winning attacker (`attackerWon: true, attackerIsHigher: false`)
+ *  - Winning attacker (`attackerWon: true, attackerIsHigher: false`)
  *    receives `getMatchReward().attacker.arenaPoints = 100` and
  *    `leaguePoints = 1` per `arenaSystem.ts` line 88-91 (down-stack win).
- *  • `inventoryStore.arenaPoints` increments by exactly 100 — this is
+ *  - `inventoryStore.arenaPoints` increments by exactly 100 — this is
  *    the LOCAL credit (arenaStore line 313-316:
  *    `if (localGain > 0) useInventoryStore.addArenaPoints(localGain)`).
- *  • `currentArena.competitors[me].seasonArenaPoints` += 100, and
+ *  - `currentArena.competitors[me].seasonArenaPoints` += 100, and
  *    `leaguePoints` += 1 — the same player object's per-season totals
  *    used by the leaderboard renderer and the league-promotion
  *    calculator.
- *  • `matchLog` grows by 1 with the won=true entry.
- *  • `stats.matchesWon` += 1 — the dashboard tile counter.
+ *  - `matchLog` grows by 1 with the won=true entry.
+ *  - `stats.matchesWon` += 1 — the dashboard tile counter.
  *
  * What we DON'T assert (and why):
- *  • `arena_kills` DB column increment — `bumpArenaStats` is fire-and-
+ *  - `arena_kills` DB column increment — `bumpArenaStats` is fire-and-
  *    forget over HTTP, eventual consistency. Inventory + store changes
  *    are synchronous so we test the IN-MEMORY contract that the player
  *    sees instantly. DB sync is covered by `characterApi.test.ts`
  *    unit tests.
- *  • `arena_league` promotion — only triggers at season boundaries via
+ *  - `arena_league` promotion — only triggers at season boundaries via
  *    `getSeasonOutcome` in `refreshIfNeeded`, NOT per-match. Out of
  *    scope here.
- *  • Loss / defender path — covered separately in
+ *  - Loss / defender path — covered separately in
  *    `combat/arena/correct-rewards-loss.spec.ts` (TODO).
  *
  * Strategy:
  *  1. Seed Knight lvl 10 with 0 starting AP.
- *  2. Login + pick character → Town.
+ *  2. Login + pick character -> Town.
  *  3. Navigate `/arena` to force `useArenaStore.refreshIfNeeded(level)`
  *     which builds `currentArena` with `buildPlayerCompetitor` + 9 bots.
  *  4. Pull pre-snapshot: arena AP from inventoryStore, player's
@@ -147,7 +147,7 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -160,7 +160,7 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
 
             // 3. Navigate to /arena. Arena.tsx mount calls
             //    `useArenaStore.refreshIfNeeded(character.level)` which
-            //    invokes `buildFreshArena` → builds the player competitor
+            //    invokes `buildFreshArena` -> builds the player competitor
             //    + 9 bots. This is the SAME path live players use to
             //    arrive at the arena hub.
             await page.goto('/arena');

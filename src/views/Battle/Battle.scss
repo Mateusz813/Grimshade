@@ -35,7 +35,7 @@
     }
   }
 
-  // ── Tile shell ───────────────────────────────────────────────────────────
+  // -- Tile shell -----------------------------------------------------------
   // Banner-style button. The background image lives on a child layer so we
   // can sit a dark gradient on top for legibility without dimming the border.
   // Title sits horizontally centered at the very top of the banner.
@@ -135,11 +135,13 @@
       }
 
       &::after {
-        content: '🔒';
+        content: '';
         position: absolute;
         top: 8px;
         right: 10px;
-        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        background: url('../../assets/icons/locked.svg') center / contain no-repeat;
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
         z-index: 4;
       }

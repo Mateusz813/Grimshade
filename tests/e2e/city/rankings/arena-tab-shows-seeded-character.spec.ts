@@ -11,7 +11,7 @@
  *      ARENA_LEAGUES) + `arena_league_points=999` — gwarantuje top spot
  *      bo żaden realny gracz nie ma jeszcze legend rangi w fazie projektu.
  *   2. Open /leaderboard (default tab to LVL).
- *   3. Tap tab "Arena" → ranking się przewija.
+ *   3. Tap tab "Arena" -> ranking się przewija.
  *   4. Verify nasz wiersz na liście z wartością `Legend · 999 LP`.
  *
  * **Defensive seeding**: arena_league + arena_league_points to nowo
@@ -21,7 +21,7 @@
  *
  * Tab definition (Leaderboard.tsx linia 155):
  *   ```
- *   { key: 'arena_league', label: 'Arena', icon: '🏟️',
+ *   { key: 'arena_league', label: 'Arena', icon: 'stadium',
  *     source: 'characters', characterColumn: 'arena_league_points',
  *     order: 'desc', valueLabel: 'LP' }
  *   ```
@@ -34,16 +34,16 @@
  *
  * Display format (linia 300):
  *   `${icon} ${LABEL} · ${LP} LP`
- *   np. `⚡ Legend · 999 LP`
+ *   np. `:high-voltage: Legend · 999 LP`
  *
  * formatValue (linia 402) ignoruje valueLabel gdy entry ma `valueOverride`
  * — używa override directly. Więc tekst w `.leaderboard__level` to całe
- * `⚡ Legend · 999 LP`, NIE `LP 999`.
+ * `:high-voltage: Legend · 999 LP`, NIE `LP 999`.
  *
  * Selektory:
  *  - `.leaderboard__tab` z hasText "Arena".
  *  - `.leaderboard__list` + `.leaderboard__row`.
- *  - `.leaderboard__level` z `⚡ Legend · 999 LP`.
+ *  - `.leaderboard__level` z `:high-voltage: Legend · 999 LP`.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -69,9 +69,9 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
         try {
             // 1. Seed Knight z legendarną ligą + 999 LP.
             //    `arena_league='legend'` to index 8 w ARENA_LEAGUES (najwyższa).
-            //    LEAGUE_ORDER w Leaderboard.tsx mapuje 'legend' → 8 (most
+            //    LEAGUE_ORDER w Leaderboard.tsx mapuje 'legend' -> 8 (most
             //    significant sort criterion).
-            //    Bez seedu LP postać miałaby DEFAULT 'bronze' + 0 LP →
+            //    Bez seedu LP postać miałaby DEFAULT 'bronze' + 0 LP ->
             //    znikałaby pod tysiącami innych graczy.
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
@@ -104,7 +104,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await waitForAppReady(page);
 
             // 3. Tap Arena tab + assert seeded row. valueOverride format:
-            //    `${icon} ${LABEL} · ${LP} LP` → `⚡ Legend · 999 LP` for
+            //    `${icon} ${LABEL} · ${LP} LP` -> `:high-voltage: Legend · 999 LP` for
             //    'legend' + 999 LP. Combined regex matches BOTH the Legend
             //    label AND the 999 LP value in one pattern. The re-fetch poll
             //    helper absorbs full-suite DB contention (stale first read)

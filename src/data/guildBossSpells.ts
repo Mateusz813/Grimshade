@@ -9,8 +9,8 @@
  * `color` so the player can read at a glance what hit them.
  *
  * Difficulty scales TWO axes:
- *   • `castIntervalMs` falls with tier — boss casts more often.
- *   • `damageMult` multiplies the base hit so every cast at tier 10
+ *   - `castIntervalMs` falls with tier — boss casts more often.
+ *   - `damageMult` multiplies the base hit so every cast at tier 10
  *     drops a meaningful chunk of the player's max HP.
  *
  * Damage formula (in GuildBoss combat loop):
@@ -45,24 +45,24 @@ export interface IGuildBossSpell {
 }
 
 const SPELLS: Record<string, IGuildBossSpell> = {
-    cios:           { id: 'cios',           name: 'Cios',              kind: 'physical',   dmgPctOfPlayerMaxHp: 0.030, color: '#bdbdbd', icon: '⚔️' },
-    pozoga:         { id: 'pozoga',         name: 'Pożoga',            kind: 'fire',       dmgPctOfPlayerMaxHp: 0.045, color: '#ff5722', icon: '🔥' },
-    mroz:           { id: 'mroz',           name: 'Lodowa Lanca',      kind: 'ice',        dmgPctOfPlayerMaxHp: 0.050, color: '#29b6f6', icon: '❄️' },
-    burza:          { id: 'burza',          name: 'Burza Pioruna',     kind: 'lightning',  dmgPctOfPlayerMaxHp: 0.060, color: '#ffeb3b', icon: '⚡' },
-    klatwa:         { id: 'klatwa',         name: 'Klątwa Cienia',     kind: 'dark',       dmgPctOfPlayerMaxHp: 0.055, color: '#9c27b0', icon: '👁️' },
-    krwawienie:     { id: 'krwawienie',     name: 'Krwawienie',        kind: 'poison',     dmgPctOfPlayerMaxHp: 0.045, color: '#4caf50', icon: '🩸' },
-    eksplozja:      { id: 'eksplozja',      name: 'Eksplozja Ognia',   kind: 'fire',       dmgPctOfPlayerMaxHp: 0.075, color: '#f4511e', icon: '💥' },
-    swietlistosc:   { id: 'swietlistosc',   name: 'Świetlistość',      kind: 'holy',       dmgPctOfPlayerMaxHp: 0.080, color: '#fff176', icon: '✨' },
-    mrocznaAura:    { id: 'mrocznaAura',    name: 'Mroczna Aura',      kind: 'dark',       dmgPctOfPlayerMaxHp: 0.090, color: '#673ab7', icon: '🌌' },
-    apokalipsa:     { id: 'apokalipsa',     name: 'Apokalipsa',        kind: 'apocalypse', dmgPctOfPlayerMaxHp: 0.130, color: '#e91e63', icon: '☠️' },
-    apokalipsaCienia: { id: 'apokalipsaCienia', name: 'Apokalipsa Cienia', kind: 'apocalypse', dmgPctOfPlayerMaxHp: 0.160, color: '#d500f9', icon: '💀' },
+    cios:           { id: 'cios',           name: 'Cios',              kind: 'physical',   dmgPctOfPlayerMaxHp: 0.030, color: '#bdbdbd', icon: 'crossed-swords' },
+    pozoga:         { id: 'pozoga',         name: 'Pożoga',            kind: 'fire',       dmgPctOfPlayerMaxHp: 0.045, color: '#ff5722', icon: 'fire' },
+    mroz:           { id: 'mroz',           name: 'Lodowa Lanca',      kind: 'ice',        dmgPctOfPlayerMaxHp: 0.050, color: '#29b6f6', icon: 'snowflake' },
+    burza:          { id: 'burza',          name: 'Burza Pioruna',     kind: 'lightning',  dmgPctOfPlayerMaxHp: 0.060, color: '#ffeb3b', icon: 'high-voltage' },
+    klatwa:         { id: 'klatwa',         name: 'Klątwa Cienia',     kind: 'dark',       dmgPctOfPlayerMaxHp: 0.055, color: '#9c27b0', icon: 'eye' },
+    krwawienie:     { id: 'krwawienie',     name: 'Krwawienie',        kind: 'poison',     dmgPctOfPlayerMaxHp: 0.045, color: '#4caf50', icon: 'drop-of-blood' },
+    eksplozja:      { id: 'eksplozja',      name: 'Eksplozja Ognia',   kind: 'fire',       dmgPctOfPlayerMaxHp: 0.075, color: '#f4511e', icon: 'collision' },
+    swietlistosc:   { id: 'swietlistosc',   name: 'Świetlistość',      kind: 'holy',       dmgPctOfPlayerMaxHp: 0.080, color: '#fff176', icon: 'sparkles' },
+    mrocznaAura:    { id: 'mrocznaAura',    name: 'Mroczna Aura',      kind: 'dark',       dmgPctOfPlayerMaxHp: 0.090, color: '#673ab7', icon: 'milky-way' },
+    apokalipsa:     { id: 'apokalipsa',     name: 'Apokalipsa',        kind: 'apocalypse', dmgPctOfPlayerMaxHp: 0.130, color: '#e91e63', icon: 'skull-and-crossbones' },
+    apokalipsaCienia: { id: 'apokalipsaCienia', name: 'Apokalipsa Cienia', kind: 'apocalypse', dmgPctOfPlayerMaxHp: 0.160, color: '#d500f9', icon: 'skull' },
 };
 
 interface ITierKit {
     /** Spell ids this boss draws from each cast. */
     pool: string[];
     /** Milliseconds between casts at speedMult=1. Scales down per tier
-     *  → higher tiers cast more often. */
+     *  -> higher tiers cast more often. */
     castIntervalMs: number;
     /** Damage multiplier applied on top of `spell.dmgPctOfPlayerMaxHp`. */
     damageMult: number;
@@ -76,7 +76,7 @@ interface ITierKit {
 // chip the 10% block-gate. Cast intervals tightened ~12% so spells
 // land more often, especially at higher tiers.
 //
-// 2026-05-18 v13: roster extended 10 → 20 tiers ("Dodalem kolejne
+// 2026-05-18 v13: roster extended 10 -> 20 tiers ("Dodalem kolejne
 // bossy do lochu gildii do numer 20"). Tiers 11–20 continue the
 // curve — cast cadence shaves ~75ms / tier and damageMult climbs
 // ~0.45 / tier, so a tier-20 boss casts every ~1.05s with a 9.10×
@@ -172,8 +172,8 @@ export const computeBossSpellDamage = (
     return Math.max(1, Math.floor(raw));
 };
 
-/** Tier-1 → ~3 700 ms, tier-10 → ~1 700 ms, tier-20 → ~1 050 ms,
- *  tier-50 → ~700 ms (floor). Scales by combat-speed multiplier
+/** Tier-1 -> ~3 700 ms, tier-10 -> ~1 700 ms, tier-20 -> ~1 050 ms,
+ *  tier-50 -> ~700 ms (floor). Scales by combat-speed multiplier
  *  (X1/X2/X4) on top. */
 export const getBossCastIntervalMs = (tier: number, speedMult: number): number => {
     const kit = getGuildBossKit(tier);

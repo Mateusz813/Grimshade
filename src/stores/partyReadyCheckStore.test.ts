@@ -49,7 +49,7 @@ afterEach(() => {
     try { usePartyReadyCheckStore.getState().clear(); } catch { /* ignore */ }
 });
 
-// ── subscribe (smoke) ────────────────────────────────────────────────────────
+// -- subscribe (smoke) --------------------------------------------------------
 
 describe('subscribe', () => {
     it('opens a channel + records the partyId on first call', () => {
@@ -98,11 +98,11 @@ describe('subscribe', () => {
     });
 });
 
-// ── start ───────────────────────────────────────────────────────────────────
+// -- start -------------------------------------------------------------------
 
 describe('start', () => {
     it('is a no-op when no channel is open (early return)', () => {
-        // No subscribe before this call → channel is null → start exits.
+        // No subscribe before this call -> channel is null -> start exits.
         usePartyReadyCheckStore.getState().start({
             destination: '/combat',
             requesterId: 'char-1',
@@ -140,7 +140,7 @@ describe('start', () => {
     });
 });
 
-// ── ready ───────────────────────────────────────────────────────────────────
+// -- ready -------------------------------------------------------------------
 
 describe('ready', () => {
     it('is a no-op when no channel is open', () => {
@@ -206,7 +206,7 @@ describe('ready', () => {
     });
 });
 
-// ── cancel ──────────────────────────────────────────────────────────────────
+// -- cancel ------------------------------------------------------------------
 
 describe('cancel', () => {
     it('is a no-op when no channel is open', () => {
@@ -220,12 +220,12 @@ describe('cancel', () => {
     });
 });
 
-// ── fireGo ──────────────────────────────────────────────────────────────────
+// -- fireGo ------------------------------------------------------------------
 
 describe('fireGo', () => {
     it('is a no-op when destination is null even with an open channel', () => {
         const unsub = usePartyReadyCheckStore.getState().subscribe('party-1');
-        // destination is null in the baseline state → fireGo short-circuits.
+        // destination is null in the baseline state -> fireGo short-circuits.
         expect(() => usePartyReadyCheckStore.getState().fireGo()).not.toThrow();
         unsub();
     });
@@ -257,7 +257,7 @@ describe('fireGo', () => {
     });
 });
 
-// ── instantStart ────────────────────────────────────────────────────────────
+// -- instantStart ------------------------------------------------------------
 
 describe('instantStart', () => {
     it('is a no-op when no channel is open', () => {
@@ -291,7 +291,7 @@ describe('instantStart', () => {
     });
 });
 
-// ── consumeDestination ──────────────────────────────────────────────────────
+// -- consumeDestination ------------------------------------------------------
 
 describe('consumeDestination', () => {
     it('clears destination + payload + label (called after navigation lands)', () => {
@@ -336,7 +336,7 @@ describe('consumeDestination', () => {
     });
 });
 
-// ── clear ───────────────────────────────────────────────────────────────────
+// -- clear -------------------------------------------------------------------
 
 describe('clear', () => {
     it('wipes every public field back to the initial baseline', () => {
@@ -371,7 +371,7 @@ describe('clear', () => {
     });
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('initial state', () => {
     it('boots with everything null / empty / closed', () => {

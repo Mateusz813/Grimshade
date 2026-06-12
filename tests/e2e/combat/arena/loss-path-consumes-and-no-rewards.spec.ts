@@ -4,7 +4,7 @@
  *
  * BACKLOG 13.18 expansion. The sibling `correct-rewards.spec.ts` proves
  * the WIN path (attacker AP+=100, LP+=1, matchesWon+=1). This test
- * proves the LOSS path: `attackerWon=false` → attacker gets nothing,
+ * proves the LOSS path: `attackerWon=false` -> attacker gets nothing,
  * defender gets the bounty (defender pays out per spec).
  *
  * ## Contract from `arenaSystem.ts` line 93-105 + `arenaStore.ts` line 268-336
@@ -14,13 +14,13 @@
  *    defender: { arenaPoints: 250, leaguePoints: 2 }
  *
  *  `finalizeMatch` then:
- *    • Bumps myComp (attacker) by `reward.attacker.*` = 0/0 → NO change.
- *    • Bumps opponent (defender, here a bot) by `reward.defender.*` = 250/2.
- *    • `localGain = reward.attacker.arenaPoints = 0` → skips
+ *    - Bumps myComp (attacker) by `reward.attacker.*` = 0/0 -> NO change.
+ *    - Bumps opponent (defender, here a bot) by `reward.defender.*` = 250/2.
+ *    - `localGain = reward.attacker.arenaPoints = 0` -> skips
  *      `useInventoryStore.addArenaPoints` entirely (line 314 `if (localGain > 0)`).
- *    • `matchLog` gets new entry with `won: false`, `arenaPointsDelta: 0`,
+ *    - `matchLog` gets new entry with `won: false`, `arenaPointsDelta: 0`,
  *      `leaguePointsDelta: 0`.
- *    • `stats.matchesWon` += `attackerWon ? 1 : 0` = +0 → stays at 0.
+ *    - `stats.matchesWon` += `attackerWon ? 1 : 0` = +0 -> stays at 0.
  *
  * ## Test assertions
  *
@@ -38,7 +38,7 @@
  *    (b) mySeasonAp STILL 0 (no attacker delta).
  *    (c) myLeaguePoints STILL 0 (no LP awarded for losing).
  *    (d) matchLogLength === 1 (entry was written even though we lost).
- *    (e) matchesWon STILL 0 (attackerWon=false → no increment).
+ *    (e) matchesWon STILL 0 (attackerWon=false -> no increment).
  *    (f) Log entry's `won === false` + deltas === 0.
  *    (g) Opponent (bot) seasonAp +=250 + leaguePoints +=2 — proves the
  *        defender-pays-out branch fired (not a silent no-op for both
@@ -172,7 +172,7 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -184,7 +184,7 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
             await expect(page.locator('.top-header')).toBeVisible({ timeout: 10_000 });
 
             // 3. Navigate to /arena. Forces `useArenaStore.refreshIfNeeded`
-            //    → `buildFreshArena` builds player competitor + 9 bots.
+            //    -> `buildFreshArena` builds player competitor + 9 bots.
             await page.goto('/arena');
             await expect(page).toHaveURL(/\/arena$/, { timeout: 10_000 });
             await expect(page.locator('.arena__league-strip')).toBeVisible({ timeout: 15_000 });
@@ -207,7 +207,7 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
 
             // 5. Invoke finalizeMatch with loss params:
             //    `attackerWon: false, attackerIsHigher: false` triggers
-            //    `getMatchReward(false, false)` → defender bucket
+            //    `getMatchReward(false, false)` -> defender bucket
             //    (250 AP, 2 LP for the defender, 0/0 for attacker) per
             //    arenaSystem.ts line 102-105.
             await page.evaluate(async (args) => {
@@ -234,8 +234,8 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
             // 6. Post-snapshot.
             const after = await getArenaSnapshot(page, before.firstBotId!);
 
-            // (a) Inventory AP UNCHANGED. Loss → `localGain = 0` → branch
-            //     line 314 `if (localGain > 0)` skipped → addArenaPoints
+            // (a) Inventory AP UNCHANGED. Loss -> `localGain = 0` -> branch
+            //     line 314 `if (localGain > 0)` skipped -> addArenaPoints
             //     never called.
             expect(after.arenaPointsInInventory).toBe(before.arenaPointsInInventory);
 

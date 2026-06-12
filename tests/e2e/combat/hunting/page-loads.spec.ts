@@ -25,7 +25,7 @@
  *    raid/transform).
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczne rozpoczęcie walki (tap na monster card → spawn → damage).
+ *  - Faktyczne rozpoczęcie walki (tap na monster card -> spawn -> damage).
  *    Wymagałoby setupu z auto-fight off + manual attack tap + monster HP
  *    delta. Pełna walka = 13.6+ scenariusze.
  *  - Filter logic (Available Only / Tasked Only / sort) — covered w
@@ -64,7 +64,7 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

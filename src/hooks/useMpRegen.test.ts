@@ -6,9 +6,9 @@ import { renderHook, act } from '@testing-library/react';
  *
  * The hook drives a 1s interval that regenerates HP and (out of combat)
  * MP based on flat stats. Behaviour shifts by combat phase:
- *   • fighting → heals HP only when there's headroom
- *   • victory  → heals HP only
- *   • idle     → heals both HP and MP up to the effective max
+ *   - fighting -> heals HP only when there's headroom
+ *   - victory  -> heals HP only
+ *   - idle     -> heals both HP and MP up to the effective max
  *
  * `useAppRouteStore.isCharacterless` short-circuits the entire tick so
  * regen pauses on login / character-select screens.
@@ -142,8 +142,8 @@ describe('useMpRegen — out of combat', () => {
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
         // 1 tick at 1s:
-        //   • hp_regen (3) caps at 5% of max_hp (100) = 5 → applied 3.
-        //   • mp_regen (2) caps at 5% of max_mp (30) = 1.5 → fractional
+        //   - hp_regen (3) caps at 5% of max_hp (100) = 5 -> applied 3.
+        //   - mp_regen (2) caps at 5% of max_mp (30) = 1.5 -> fractional
         //     accumulator gathers 1.5; only the floor (1) is applied
         //     this tick — the remaining 0.5 carries to the next tick.
         // Net writes therefore land at hp 53 and mp 11.
@@ -160,7 +160,7 @@ describe('useMpRegen — out of combat', () => {
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
-        // Cap is 5% of max per second → max(5, regen) for max_hp 100 → 5
+        // Cap is 5% of max per second -> max(5, regen) for max_hp 100 -> 5
         // We just confirm we never exceed max_hp / max_mp.
         expect(last.hp).toBeLessThanOrEqual(100);
         expect(last.mp).toBeLessThanOrEqual(30);
@@ -254,14 +254,14 @@ describe('useMpRegen — between waves (victory)', () => {
 
 describe('useMpRegen — regen cap', () => {
     it('caps regen at 5% of effective max even with massive raw values', () => {
-        // Set hp_regen so high that the cap dominates. Max HP = 100 → cap = 5/s.
+        // Set hp_regen so high that the cap dominates. Max HP = 100 -> cap = 5/s.
         useCharacterStore.setState({
             character: makeChar({ hp_regen: 9999, max_hp: 100, hp: 10 }),
         });
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
-        // After 1 tick at 5/s cap → hp goes 10 → 15.
+        // After 1 tick at 5/s cap -> hp goes 10 -> 15.
         expect(last.hp).toBe(15);
     });
 });

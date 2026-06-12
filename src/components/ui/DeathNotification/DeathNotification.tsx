@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useDeathStore } from '../../../stores/deathStore';
 import { useCombatStore } from '../../../stores/combatStore';
 import { stopCombat } from '../../../systems/combatEngine';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import Icon from '../../atoms/Icon/Icon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './DeathNotification.scss';
 
 // Flee is a SOFT event with a low-stakes penalty — the popup auto-dismisses
@@ -95,7 +98,7 @@ const DeathNotification = () => {
 
       {/* Center content */}
       <div className="death__center">
-        <span className="death__skull">{isFlee ? '🏃' : '💀'}</span>
+        <span className="death__skull">{isFlee ? <GameIcon name="person-running" /> : <GameIcon name="skull" />}</span>
         <span className="death__label">{isFlee ? 'UCIEKŁEŚ' : 'ZGINĄŁEŚ'}</span>
 
         {!isFlee && (
@@ -112,28 +115,28 @@ const DeathNotification = () => {
         <div className="death__penalties">
           {event.protectionUsed ? (
             <span className="death__penalty death__penalty--protected">
-              🛡️ Eliksir Ochrony uchronił od utraty poziomu!
+              <EmojiText>:shield: Eliksir Ochrony uchronił od utraty poziomu!</EmojiText>
             </span>
           ) : isFlee ? (
             <>
               {event.levelsLost > 0 && (
                 <span className="death__penalty death__penalty--level">
-                  📉 Poziom {event.oldLevel} → {event.newLevel} (-{event.levelsLost})
+                  <GameIcon name="chart-decreasing" /> Poziom {event.oldLevel} <Icon name="arrowRight" /> {event.newLevel} (-{event.levelsLost})
                 </span>
               )}
               <span className="death__penalty death__penalty--skill">
-                ⚔️ -{(event.skillXpLossPercent ?? 0.1).toFixed(1)}% Skill XP
+                <GameIcon name="crossed-swords" /> -{(event.skillXpLossPercent ?? 0.1).toFixed(1)}% Skill XP
               </span>
             </>
           ) : (
             <>
               {event.levelsLost > 0 ? (
                 <span className="death__penalty death__penalty--level">
-                  📉 Poziom {event.oldLevel} → {event.newLevel} (-{event.levelsLost})
+                  <GameIcon name="chart-decreasing" /> Poziom {event.oldLevel} <Icon name="arrowRight" /> {event.newLevel} (-{event.levelsLost})
                 </span>
               ) : null}
               <span className="death__penalty death__penalty--skill">
-                ⚔️ -{(event.skillXpLossPercent ?? 50).toFixed(0)}% Skill XP
+                <GameIcon name="crossed-swords" /> -{(event.skillXpLossPercent ?? 50).toFixed(0)}% Skill XP
               </span>
             </>
           )}

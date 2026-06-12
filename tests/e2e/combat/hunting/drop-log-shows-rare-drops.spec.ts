@@ -5,9 +5,9 @@
  * Spec (BACKLOG.md punkt 13.13): "Drop + logi wyświetlają się poprawnie".
  *
  * Status before this test:
- *  • LOG half — covered by `combat-log-captures-kill-entries.spec.ts`
+ *  - LOG half — covered by `combat-log-captures-kill-entries.spec.ts`
  *    (SKIP-fight opener "Walka z Szczur (Poziom 1) rozpoczęta" logged).
- *  • DROP half — `kill-awards-gold-and-runs-reward-flow.spec.ts` proves
+ *  - DROP half — `kill-awards-gold-and-runs-reward-flow.spec.ts` proves
  *    the kill-line "Szczur ginie! +X XP, +Y Gold" lands, but the drop
  *    suffix ("· Drop: <name>") is RNG-gated and the test intentionally
  *    didn't assert on it (rat's drop chance is BASE_DROP_CHANCES.normal
@@ -25,9 +25,9 @@
  * Constant stub `() => 0.01` would BREAK app-side ID generators that
  * rely on `Math.random().toString(36)` for uniqueness (chatApi channel
  * names, necroSummonStore summon ids, arenaStore match ids). When every
- * call returns the same value, those IDs collide → Realtime channel
+ * call returns the same value, those IDs collide -> Realtime channel
  * subscribe throws "cannot add postgres_changes callbacks after
- * subscribe()" → React crash → test fails with app in "spinner" state.
+ * subscribe()" -> React crash -> test fails with app in "spinner" state.
  *
  * Mitigation (same pattern as `inventory/disassemble/single-disassemble.spec.ts`
  * lines 134-137): incrementing counter `() => 0.01 + (counter++ % 9e6) * 1e-8`
@@ -54,10 +54,10 @@
  *   `Szczur ginie! +3 XP, +1 Gold · Drop: <icon> <displayName>[, ...]`
  *
  * The exact item dropped is deterministic given the seeded counter:
- *   • iteration 0: random < 0.08 → drop rolled
- *   • rollRarity: roll < 0.55 → common rarity
- *   • generateRandomItem picks item category by weighted roll, then
- *     specific item — all subsequent reads return ~0.01 → first
+ *   - iteration 0: random < 0.08 -> drop rolled
+ *   - rollRarity: roll < 0.55 -> common rarity
+ *   - generateRandomItem picks item category by weighted roll, then
+ *     specific item — all subsequent reads return ~0.01 -> first
  *     branch wins each time.
  * We don't pin the exact item name (regression-fragile if templates
  * change order in items.json) — we assert the structural presence of
@@ -146,7 +146,7 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
 
             // 4. Drive the live-combat kill path. killMonsterViaEngine
             //    runs handleMonsterDeath directly — that's the function
-            //    that calls dropLootToInventory → addLog with "ginie!"
+            //    that calls dropLootToInventory -> addLog with "ginie!"
             //    + drop suffix (combatEngine.ts line 1059-1062).
             //
             //    With the Math.random stub installed, BOTH drop-roll
@@ -156,7 +156,7 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
             const result = await killMonsterViaEngine(page, 'rat', 'normal');
 
             // 5. sessionDrops populated. Proves dropLootToInventory ran
-            //    and emitted IDropDisplay rows via setLastDrops →
+            //    and emitted IDropDisplay rows via setLastDrops ->
             //    sessionDrops cumulative append (combatStore.ts line
             //    339-343).
             expect(result.sessionDrops.length).toBeGreaterThan(0);
@@ -182,7 +182,7 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
 
             // 8. The drop suffix names at least one item — `dropNames`
             //    join in line 1057 puts the icon (if any) before the name,
-            //    then commas between items. Format: "🔪 Iron Sword" or
+            //    then commas between items. Format: "knife Iron Sword" or
             //    just "Iron Sword" (when icon is empty per safeIcon
             //    guard at line 1048). We assert non-empty content after
             //    "· Drop:" — at least 1 char of name follows. Regex

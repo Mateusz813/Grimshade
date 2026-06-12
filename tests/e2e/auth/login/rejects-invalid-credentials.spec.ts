@@ -9,8 +9,8 @@
  *               pozostaje na `/login` (BEZ redirect).
  *
  * Login.tsx (linie 26-36) na error z `signInWithPassword` woła
- * `setError('root', { message: error.message })` → react-hook-form
- * podpina message do `errors.root` → JSX renderuje
+ * `setError('root', { message: error.message })` -> react-hook-form
+ * podpina message do `errors.root` -> JSX renderuje
  * `<span className="login__error">{errors.root.message}</span>`.
  *
  * Supabase zwraca dla złego hasła generic
@@ -26,7 +26,7 @@ import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
 
 test.describe('Auth › Login', { tag: '@auth' }, () => {
-    test('rejects invalid password → renders error message + stays on /login', async ({ page }) => {
+    test('rejects invalid password -> renders error message + stays on /login', async ({ page }) => {
         await page.goto('/login');
 
         await expect(page.locator('input[type="email"]')).toBeVisible();

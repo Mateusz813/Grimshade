@@ -9,7 +9,7 @@ import {
     xpProgress,
 } from './levelSystem';
 
-// ── xpToNextLevel ─────────────────────────────────────────────────────────────
+// -- xpToNextLevel -------------------------------------------------------------
 
 describe('xpToNextLevel', () => {
     it('returns at least 300 for any level', () => {
@@ -25,7 +25,7 @@ describe('xpToNextLevel', () => {
     });
 });
 
-// ── totalXpForLevel ───────────────────────────────────────────────────────────
+// -- totalXpForLevel -----------------------------------------------------------
 
 describe('totalXpForLevel', () => {
     it('returns 0 for level 1', () => {
@@ -42,7 +42,7 @@ describe('totalXpForLevel', () => {
     });
 });
 
-// ── processXpGain ─────────────────────────────────────────────────────────────
+// -- processXpGain -------------------------------------------------------------
 
 describe('processXpGain', () => {
     it('accumulates XP without levelling up', () => {
@@ -98,7 +98,7 @@ describe('processXpGain', () => {
     });
 });
 
-// ── applyDeathPenalty (NEW spec, 2026-05) ────────────────────────────────────
+// -- applyDeathPenalty (NEW spec, 2026-05) ------------------------------------
 // Death takes floor(level * 0.02) levels and 50% of every skill's banked XP.
 
 describe('applyDeathPenalty', () => {
@@ -164,7 +164,7 @@ describe('applyDeathPenalty', () => {
     });
 });
 
-// ── applyFleePenalty (NEW spec, 2026-05) ─────────────────────────────────────
+// -- applyFleePenalty (NEW spec, 2026-05) -------------------------------------
 // Flee takes floor(level * 0.003) levels and 0.1% of every skill's banked XP.
 
 describe('applyFleePenalty', () => {
@@ -206,7 +206,7 @@ describe('applyFleePenalty', () => {
     });
 });
 
-// ── applyDeathXpPenalty (legacy) ─────────────────────────────────────────────
+// -- applyDeathXpPenalty (legacy) ---------------------------------------------
 
 describe('applyDeathXpPenalty', () => {
     // 2026-05-21: replaces deleted test "reduces XP by 10%" — now tests current logic
@@ -229,7 +229,7 @@ describe('applyDeathXpPenalty', () => {
     });
 });
 
-// ── xpProgress ────────────────────────────────────────────────────────────────
+// -- xpProgress ----------------------------------------------------------------
 
 describe('xpProgress', () => {
     it('returns 0 when no XP accumulated', () => {

@@ -9,20 +9,20 @@
  * "10s cooldown drains in 2.5s at X4" UX promise.
  *
  * Where the speed multiplier lives at runtime:
- *   • `combatEngine.ts.huntStatusTick`     — wall delta × SPEED_MULT[speed]
- *                                              → game delta passed to
+ *   - `combatEngine.ts.huntStatusTick`     — wall delta × SPEED_MULT[speed]
+ *                                              -> game delta passed to
  *                                                `effectsTickAll` (DOT / stun)
- *   • `useBackgroundCombat` (hooks/…)      — wall delta × SPEED_MULT[speed]
- *                                              → passed to
+ *   - `useBackgroundCombat` (hooks/…)      — wall delta × SPEED_MULT[speed]
+ *                                              -> passed to
  *                                                `useCooldownStore.tick`
- *   • Auto-cast loop (engine line ~1702)   — `(now - lastUsed) * speedMult`
- *                                              → compare against
+ *   - Auto-cast loop (engine line ~1702)   — `(now - lastUsed) * speedMult`
+ *                                              -> compare against
  *                                                `SKILL_COOLDOWN_MS`
  *
  * What we DON'T test here (covered elsewhere or out of scope):
- *   • Speed slider UI (E2E in `combat/speed/change-mid-combat.spec.ts`, TODO).
- *   • Per-skill cooldown installation — covered by `skillCooldown.test.ts`.
- *   • Cadence formula itself — covered by `combatCadence.test.ts`.
+ *   - Speed slider UI (E2E in `combat/speed/change-mid-combat.spec.ts`, TODO).
+ *   - Per-skill cooldown installation — covered by `skillCooldown.test.ts`.
+ *   - Cadence formula itself — covered by `combatCadence.test.ts`.
  *
  * Pure math + Zustand store integration; no React, no Playwright.
  */
@@ -31,7 +31,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { SPEED_MULT, SPEED_ORDER, getAttackMs } from './combatEngine';
 import { useCooldownStore } from '../stores/cooldownStore';
 
-// ── SPEED_MULT contract ─────────────────────────────────────────────────────
+// -- SPEED_MULT contract -----------------------------------------------------
 
 describe('SPEED_MULT — engine speed multipliers', () => {
     it('x1 = 1 (real-time baseline)', () => {
@@ -53,7 +53,7 @@ describe('SPEED_MULT — engine speed multipliers', () => {
 });
 
 describe('SPEED_ORDER — UI cycle order', () => {
-    it('cycles x1 → x2 → x4 → SKIP', () => {
+    it('cycles x1 -> x2 -> x4 -> SKIP', () => {
         expect(SPEED_ORDER).toEqual(['x1', 'x2', 'x4', 'SKIP']);
     });
 
@@ -64,7 +64,7 @@ describe('SPEED_ORDER — UI cycle order', () => {
     });
 });
 
-// ── Cooldown drain × speed (the load-bearing UX promise) ────────────────────
+// -- Cooldown drain × speed (the load-bearing UX promise) --------------------
 
 describe('Cooldown drain time × speed multiplier (the X4 = 4× faster contract)', () => {
     beforeEach(() => {
@@ -113,7 +113,7 @@ describe('Cooldown drain time × speed multiplier (the X4 = 4× faster contract)
     });
 });
 
-// ── Partial drain — proves linearity, not just boundary clearing ────────────
+// -- Partial drain — proves linearity, not just boundary clearing ------------
 
 describe('Cooldown linear drain @ speed (no jumps / lost ms)', () => {
     beforeEach(() => {
@@ -128,7 +128,7 @@ describe('Cooldown linear drain @ speed (no jumps / lost ms)', () => {
         expect(useCooldownStore.getState().skillCooldowns['test']).toBe(5000);
     });
 
-    it('@ X2, 5 sequential ticks of 1000ms wall drain 10000ms total → fully clears 10s skill', () => {
+    it('@ X2, 5 sequential ticks of 1000ms wall drain 10000ms total -> fully clears 10s skill', () => {
         useCooldownStore.getState().setSkillCooldown('test', 10_000);
         for (let i = 0; i < 5; i++) {
             useCooldownStore.getState().tick(1000 * SPEED_MULT.x2);
@@ -136,7 +136,7 @@ describe('Cooldown linear drain @ speed (no jumps / lost ms)', () => {
         expect(useCooldownStore.getState().skillCooldowns['test']).toBeUndefined();
     });
 
-    it('@ X4, 2 sequential ticks of 1000ms wall drain 8000ms total → leaves 2000ms', () => {
+    it('@ X4, 2 sequential ticks of 1000ms wall drain 8000ms total -> leaves 2000ms', () => {
         useCooldownStore.getState().setSkillCooldown('test', 10_000);
         for (let i = 0; i < 2; i++) {
             useCooldownStore.getState().tick(1000 * SPEED_MULT.x4);
@@ -145,7 +145,7 @@ describe('Cooldown linear drain @ speed (no jumps / lost ms)', () => {
     });
 });
 
-// ── HP/MP potion cooldowns also scale (used by the speed-up auto-potion UX) ─
+// -- HP/MP potion cooldowns also scale (used by the speed-up auto-potion UX) -
 
 describe('Potion cooldowns also drain @ speed multiplier', () => {
     beforeEach(() => {
@@ -178,7 +178,7 @@ describe('Potion cooldowns also drain @ speed multiplier', () => {
     });
 });
 
-// ── Attack cadence × speed (sanity: cadence itself doesn't get a 2nd speed bonus) ─
+// -- Attack cadence × speed (sanity: cadence itself doesn't get a 2nd speed bonus) -
 
 describe('Attack cadence × speed — interval is unchanged by SPEED_MULT', () => {
     // CLARIFICATION: `getAttackMs` returns the BASE cadence interval for the
@@ -196,7 +196,7 @@ describe('Attack cadence × speed — interval is unchanged by SPEED_MULT', () =
     it('how many attacks land in 1s wall time @ each speed (sanity table)', () => {
         const ms = getAttackMs(2.0); // 1500ms cadence
         // Wall time = 1000ms, game time at X4 = 4000ms = 2.66 attacks.
-        // Floor → 2 attacks per wall-second @ X4 (vs 0 @ X1 since 1500 > 1000).
+        // Floor -> 2 attacks per wall-second @ X4 (vs 0 @ X1 since 1500 > 1000).
         expect(Math.floor((1000 * SPEED_MULT.x1) / ms)).toBe(0);
         expect(Math.floor((1000 * SPEED_MULT.x2) / ms)).toBe(1);
         expect(Math.floor((1000 * SPEED_MULT.x4) / ms)).toBe(2);
@@ -210,7 +210,7 @@ describe('Attack cadence × speed — interval is unchanged by SPEED_MULT', () =
     });
 });
 
-// ── Combined matrix: skill cooldown × cadence × wall-time @ each speed ──────
+// -- Combined matrix: skill cooldown × cadence × wall-time @ each speed ------
 
 describe('Combined matrix — skill comes off cooldown in time for N basic attacks', () => {
     beforeEach(() => {
@@ -221,7 +221,7 @@ describe('Combined matrix — skill comes off cooldown in time for N basic attac
     const SKILL_CD_MS = 5_000;
     const ATTACK_MS = getAttackMs(2.0); // 1500
 
-    it('@ X1: in 5s wall time, skill comes off CD + 3 attacks land (5000/1500=3.33→3)', () => {
+    it('@ X1: in 5s wall time, skill comes off CD + 3 attacks land (5000/1500=3.33->3)', () => {
         useCooldownStore.getState().setSkillCooldown('s', SKILL_CD_MS);
         const wallMs = SKILL_CD_MS;
         useCooldownStore.getState().tick(wallMs * SPEED_MULT.x1);
@@ -231,7 +231,7 @@ describe('Combined matrix — skill comes off cooldown in time for N basic attac
         expect(attacks).toBe(3);
     });
 
-    it('@ X2: in 2.5s wall time, skill comes off CD + 3 attacks land (2500*2/1500=3.33→3)', () => {
+    it('@ X2: in 2.5s wall time, skill comes off CD + 3 attacks land (2500*2/1500=3.33->3)', () => {
         useCooldownStore.getState().setSkillCooldown('s', SKILL_CD_MS);
         const wallMs = SKILL_CD_MS / 2;
         useCooldownStore.getState().tick(wallMs * SPEED_MULT.x2);
@@ -240,7 +240,7 @@ describe('Combined matrix — skill comes off cooldown in time for N basic attac
         expect(attacks).toBe(3);
     });
 
-    it('@ X4: in 1.25s wall time, skill comes off CD + 3 attacks land (1250*4/1500=3.33→3)', () => {
+    it('@ X4: in 1.25s wall time, skill comes off CD + 3 attacks land (1250*4/1500=3.33->3)', () => {
         useCooldownStore.getState().setSkillCooldown('s', SKILL_CD_MS);
         const wallMs = SKILL_CD_MS / 4;
         useCooldownStore.getState().tick(wallMs * SPEED_MULT.x4);
@@ -261,19 +261,19 @@ describe('Combined matrix — skill comes off cooldown in time for N basic attac
     });
 });
 
-// ── Boundary / regression — switching speed mid-cooldown ────────────────────
+// -- Boundary / regression — switching speed mid-cooldown --------------------
 
 describe('Cooldown drain when speed switches mid-flight', () => {
     beforeEach(() => {
         useCooldownStore.getState().clearAll();
     });
 
-    it('starts @ X1 (1s drained = 9000ms left), switches to X4 (1s = 4000ms drained → 5000ms left)', () => {
+    it('starts @ X1 (1s drained = 9000ms left), switches to X4 (1s = 4000ms drained -> 5000ms left)', () => {
         useCooldownStore.getState().setSkillCooldown('test', 10_000);
         // Phase 1: 1000ms wall @ X1.
         useCooldownStore.getState().tick(1000 * SPEED_MULT.x1);
         expect(useCooldownStore.getState().skillCooldowns['test']).toBe(9000);
-        // Phase 2: 1000ms wall @ X4 → drains 4000ms of game time.
+        // Phase 2: 1000ms wall @ X4 -> drains 4000ms of game time.
         useCooldownStore.getState().tick(1000 * SPEED_MULT.x4);
         expect(useCooldownStore.getState().skillCooldowns['test']).toBe(5000);
     });

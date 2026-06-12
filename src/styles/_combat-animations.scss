@@ -1,4 +1,4 @@
-// ── Shared class-specific attack animations ─────────────────────────────────
+// -- Shared class-specific attack animations ---------------------------------
 // Used by Combat.scss, Dungeon.scss, Boss.scss
 
 // Knight: aggressive horizontal slash with red flash
@@ -103,7 +103,7 @@
   100% { opacity: 0; transform: translateX(-50%) scaleX(2); }
 }
 
-// ── Reusable class animation mixin ──────────────────────────────────────────
+// -- Reusable class animation mixin ------------------------------------------
 // Pass a BEM prefix (e.g. "dungeon__combat-card", "boss__combat-card", "combat__card")
 @mixin class-attack-animations($prefix) {
   .#{$prefix}--attack-Knight {

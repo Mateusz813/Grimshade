@@ -32,7 +32,7 @@ beforeEach(() => {
     }
 });
 
-// ── setMode ──────────────────────────────────────────────────────────────────
+// -- setMode ------------------------------------------------------------------
 
 describe('setMode', () => {
     it('flips mode to offline and records `explicit: true` when the player toggled it', () => {
@@ -65,7 +65,7 @@ describe('setMode', () => {
             snapshot: null,
         });
         useConnectivityStore.getState().setMode('offline');
-        // No `opts.explicit` passed → the previous true sticks.
+        // No `opts.explicit` passed -> the previous true sticks.
         expect(useConnectivityStore.getState().userExplicitlyOffline).toBe(true);
     });
 
@@ -81,7 +81,7 @@ describe('setMode', () => {
 
     it('clears the explicit flag even when going online from an explicit-offline state', () => {
         // Mirrors the reconnect button path: user clicked offline earlier,
-        // hits Reconnect → store should let go of the lock.
+        // hits Reconnect -> store should let go of the lock.
         useConnectivityStore.setState({
             mode: 'offline',
             userExplicitlyOffline: true,
@@ -93,7 +93,7 @@ describe('setMode', () => {
     });
 });
 
-// ── setIsNetworkUp ──────────────────────────────────────────────────────────
+// -- setIsNetworkUp ----------------------------------------------------------
 
 describe('setIsNetworkUp', () => {
     it('mirrors the network flag without touching mode/snapshot', () => {
@@ -120,7 +120,7 @@ describe('setIsNetworkUp', () => {
     });
 });
 
-// ── setSnapshot ──────────────────────────────────────────────────────────────
+// -- setSnapshot --------------------------------------------------------------
 
 describe('setSnapshot', () => {
     it('writes the snapshot into state', () => {
@@ -151,7 +151,7 @@ describe('setSnapshot', () => {
     });
 });
 
-// ── isOfflineMode helper ─────────────────────────────────────────────────────
+// -- isOfflineMode helper -----------------------------------------------------
 
 describe('isOfflineMode', () => {
     it('returns false when mode is "online"', () => {

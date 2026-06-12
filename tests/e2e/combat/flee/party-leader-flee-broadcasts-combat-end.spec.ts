@@ -5,7 +5,7 @@
  *
  * Spec coverage: when a multi-human party LEADER invokes `stopCombat()`
  * mid-fight, combatEngine.ts line 2817-2826 lazy-imports
- * `usePartyCombatSyncStore` and calls `publishCombatEnd()` →
+ * `usePartyCombatSyncStore` and calls `publishCombatEnd()` ->
  * partyCombatSyncStore.ts line 998-1010 broadcasts a `combat-end` event
  * on the `party-combat-<partyId>` Realtime channel. Each MEMBER's
  * `usePartyCombatSync` subscriber consumes the event (line 776) and
@@ -14,51 +14,51 @@
  *
  * Without this broadcast, members would stay stuck in `/combat` with
  * stale shared-arena state after the leader bails (2026-05-12 spec
- * "lider konczy polowanie → sojusznicy wracaja do miasta" cited in
+ * "lider konczy polowanie -> sojusznicy wracaja do miasta" cited in
  * combatEngine line 2811-2815).
  *
  * ## Pragmatic adaptation vs full UI flow
  *
  * Full UI = (1) primary creates party, (2) secondary joins, (3) primary
- * navigates to /combat, (4) start real fight → wait for `phase==='fighting'`
+ * navigates to /combat, (4) start real fight -> wait for `phase==='fighting'`
  * on both clients, (5) primary opens HuntExitDialog, (6) primary taps
- * "Zakończ polowanie" → invokes `stopCombat()`, (7) secondary auto-navs
+ * "Zakończ polowanie" -> invokes `stopCombat()`, (7) secondary auto-navs
  * to /battle. Steps 4-7 involve live attack-cadence timing, Realtime hop
  * latency (5-10s worst case on mobile-chrome), HuntExitDialog modal taps,
  * and React-effect-driven navigation transitions — each one a flake
  * surface.
  *
- * The CONTRACT we care about is "leader's `stopCombat()` → member's
+ * The CONTRACT we care about is "leader's `stopCombat()` -> member's
  * `lastCombatEnd` timestamp updates". We invoke `stopCombat()` directly
  * on primary's page (same call site as the HuntExitDialog handler at
  * Combat.tsx line 2889) and assert secondary's `lastCombatEnd` advanced
  * within a reasonable Realtime window.
  *
  * What this proves:
- *   • The leader-broadcast branch in combatEngine.ts line 2817-2826 fires
+ *   - The leader-broadcast branch in combatEngine.ts line 2817-2826 fires
  *     correctly when `iAmLeaderInPartyCombat===true`. Bug surface: if
  *     someone breaks the `usePartyCombatSyncStore` lazy import or the
  *     condition flip, the broadcast silently dies and members never
  *     receive the end signal.
- *   • The Realtime channel routing is wired — broadcast on
+ *   - The Realtime channel routing is wired — broadcast on
  *     `party-combat-<partyId>` reaches the secondary's subscriber on the
  *     same channel. Bug surface: channel name typo, subscriber filter
  *     drift.
- *   • Both clients agree on combat state post-leader-flee — primary
+ *   - Both clients agree on combat state post-leader-flee — primary
  *     `phase==='idle'`, secondary `lastCombatEnd > preTimestamp`.
  *
  * What this does NOT prove (separate test files):
- *   • Auto-navigation from /combat → /battle on the member side
+ *   - Auto-navigation from /combat -> /battle on the member side
  *     (UI-level concern; would need members to actually be on /combat).
- *   • Member's own `stopCombat()` calls on receiving the broadcast
+ *   - Member's own `stopCombat()` calls on receiving the broadcast
  *     (covered by usePartyCombatSync hook test if/when it exists).
- *   • Solo flee path (covered by `solo-stops-combat-preserves-character.spec.ts`).
+ *   - Solo flee path (covered by `solo-stops-combat-preserves-character.spec.ts`).
  *
  * ## Test flow
  *
  *  1. Seed both characters lvl 10 + open multi-context (both logged in).
- *  2. Both pick character → Town.
- *  3. Both nav to /party (Społeczność → Party tile).
+ *  2. Both pick character -> Town.
+ *  3. Both nav to /party (Społeczność -> Party tile).
  *  4. Primary creates a public party.
  *  5. Secondary refreshes + joins.
  *  6. Synchronization barrier — both rosters show 2/4 (proves Realtime
@@ -86,7 +86,7 @@ import { testUsers } from '../../fixtures/testUsers';
 import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures/createCharacter';
 import { openMultiContext } from '../../fixtures/multiContext';
 
-/** Pick the seeded character → land in Town. */
+/** Pick the seeded character -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -137,7 +137,7 @@ const readCombatPhase = async (page: Page): Promise<string> => {
 test.describe('Combat › Flee', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 180_000 });
 
-    test('party leader stopCombat() publishes combat-end → secondary receives broadcast', async ({ browser }) => {
+    test('party leader stopCombat() publishes combat-end -> secondary receives broadcast', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const partyName = `Flee ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -169,7 +169,7 @@ test.describe('Combat › Flee', { tag: '@combat' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town.
+            // 3. Both pick character -> Town.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),

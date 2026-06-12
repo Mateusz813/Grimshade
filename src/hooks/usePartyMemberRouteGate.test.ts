@@ -70,7 +70,7 @@ describe('useIsPartyMemberLocked', () => {
     });
 
     it('returns false when the party only has the local player', () => {
-        // Single-member party — no other humans → no lock.
+        // Single-member party — no other humans -> no lock.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({ party: makeParty('me-1', [makeMember('me-1')]) });
         const { result } = renderHook(() => useIsPartyMemberLocked());

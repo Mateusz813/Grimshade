@@ -1,9 +1,12 @@
 import { isImageUrl } from '../../../systems/spriteAssets';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 
 /**
  * TinyIcon — renders an "icon" that may be either:
- *   • an image URL (PNG art for spell chests / stones / potions / items)
- *   • a literal emoji glyph
+ *   - an image URL (PNG art for spell chests / stones / potions / items)
+ *   - a single icon name (slug, e.g. "crossed-swords") -> <GameIcon>
+ *   - a multi-icon shortcode string (e.g. ":crossed-swords::shield:") -> <EmojiText>
  *
  * Centralises the `isImageUrl()` branch so every consumer that used to
  * interpolate `${getSpellChestIcon(...)} text` can swap in
@@ -45,7 +48,11 @@ const TinyIcon = ({ icon, size = 'md', className, alt = '' }: ITinyIconProps) =>
             />
         );
     }
-    return <span className={className} style={{ fontSize: px, lineHeight: 1, verticalAlign: 'middle' }}>{icon}</span>;
+    return (
+        <span className={className} style={{ fontSize: px, lineHeight: 1, verticalAlign: 'middle' }}>
+            {icon.includes(':') ? <EmojiText>{icon}</EmojiText> : <GameIcon name={icon} />}
+        </span>
+    );
 };
 
 export default TinyIcon;

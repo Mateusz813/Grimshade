@@ -1,5 +1,5 @@
 /**
- * Atomic E2E — Death Protection elixir armed → TopHeader buff chip +
+ * Atomic E2E — Death Protection elixir armed -> TopHeader buff chip +
  * BuffPopover row render with `×N` count.
  *
  * Spec (BACKLOG.md punkt 13.21 sibling): companion test do
@@ -9,17 +9,17 @@
  * (XP penalty) zamiast EQ loss.
  *
  * Two consumables, two effects, dwa testy:
- *   • amulet_of_loss     → chroni przedmioty (bag + equipment loss)
- *     → BuffPopover row "Amulet of Loss" + suffix `×N`
- *   • death_protection   → chroni poziom + skill XP
- *     → BuffPopover row "Eliksir ochrony" + suffix `×N`
+ *   - amulet_of_loss     -> chroni przedmioty (bag + equipment loss)
+ *     -> BuffPopover row "Amulet of Loss" + suffix `×N`
+ *   - death_protection   -> chroni poziom + skill XP
+ *     -> BuffPopover row "Eliksir ochrony" + suffix `×N`
  *
  * Oba używają tej samej combat-engine hook (combatEngine.ts line
  * 1381-1382): `useConsumable('death_protection')` + `useConsumable
  * ('amulet_of_loss')`. Render-side też identyczny — BuffPopover.tsx
  * line 106-123 ma dwa branch-e:
- *   • `if (deathProtCount > 0)` → row "Eliksir ochrony"
- *   • `if (aolCount > 0)`       → row "Amulet of Loss"
+ *   - `if (deathProtCount > 0)` -> row "Eliksir ochrony"
+ *   - `if (aolCount > 0)`       -> row "Amulet of Loss"
  *
  * Test sprawdza że death_protection branch renderuje się analogicznie
  * do AOL — żeby nie dać regresji typu "skopiowałem AOL branch i
@@ -27,11 +27,11 @@
  *
  * Co testujemy DOKŁADNIE:
  *  1. Seed Knight + 2× `death_protection` w `consumables`.
- *  2. Login → wybierz postać → Town view.
+ *  2. Login -> wybierz postać -> Town view.
  *  3. `.top-header__buffs-btn` widoczny + count "1" (2× DP = jeden
  *     chip; `totalBuffCount` w TopHeader.tsx line 214 liczy
  *     `deathProtCount > 0 ? 1 : 0`, nie sumę).
- *  4. Tap chip → `.buff-popover` widoczny.
+ *  4. Tap chip -> `.buff-popover` widoczny.
  *  5. `.buff-popover__row--protection` z "Eliksir ochrony" + `×2`
  *     widoczny.
  *
@@ -53,7 +53,7 @@ import { seedConsumables } from '../../fixtures/seedInventory';
 test.describe('Combat › Death', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('Death Protection elixir in consumables → BuffPopover protection row', async ({ page }) => {
+    test('Death Protection elixir in consumables -> BuffPopover protection row', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -75,14 +75,14 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             createdId = created.id;
 
             // 2. Seed 2× Death Protection. Counts > 0 = DP armed.
-            //    Niezależnie od count → 1 chip w nagłówku, popover
+            //    Niezależnie od count -> 1 chip w nagłówku, popover
             //    pokazuje pełny `×2`.
             await seedConsumables({
                 characterId: created.id,
                 counts: { death_protection: 2 },
             });
 
-            // 3. Login → character-select → pick → Town view.
+            // 3. Login -> character-select -> pick -> Town view.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -101,7 +101,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             await expect(buffsBtn).toBeVisible({ timeout: 10_000 });
             await expect(buffsBtn.locator('.top-header__buffs-count')).toHaveText('1');
 
-            // 5. Tap chip → BuffPopover otwiera się.
+            // 5. Tap chip -> BuffPopover otwiera się.
             await buffsBtn.tap();
             const popover = page.locator('.buff-popover');
             await expect(popover).toBeVisible({ timeout: 5_000 });

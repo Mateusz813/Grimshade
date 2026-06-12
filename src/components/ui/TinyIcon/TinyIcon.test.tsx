@@ -55,18 +55,17 @@ describe('TinyIcon — image branch', () => {
 });
 
 describe('TinyIcon — emoji branch', () => {
-    it('renders a <span> with the literal glyph when icon is not a URL', () => {
-        const { container } = render(<TinyIcon icon="🔥" />);
-        const span = container.querySelector('span');
-        expect(span?.textContent).toBe('🔥');
-        // No image element fallback.
-        expect(container.querySelector('img')).toBeNull();
+    it('renders the emoji as an inline <svg> (via <GameIcon>) when icon is not a URL', () => {
+        const { container } = render(<TinyIcon icon="fire" />);
+        // The glyph is wrapped in <GameIcon>, which renders an inline SVG.
+        const svg = container.querySelector('span svg.game-icon');
+        expect(svg?.getAttribute('data-icon')).toBe('fire');
     });
 
     it('applies the resolved font-size to the emoji span', () => {
-        const { container } = render(<TinyIcon icon="✨" size="sm" />);
+        const { container } = render(<TinyIcon icon="sparkles" size="sm" />);
         const span = container.querySelector('span') as HTMLSpanElement;
-        // "sm" → 14px.
+        // "sm" -> 14px.
         expect(span.style.fontSize).toBe('14px');
     });
 });

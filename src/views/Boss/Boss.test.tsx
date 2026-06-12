@@ -9,11 +9,11 @@ import { MemoryRouter } from 'react-router-dom';
  * mechanics are covered by bossSystem.test.ts and Playwright E2E.
  *
  * What we cover:
- *   • Smoke render in list phase (boss picker).
- *   • Spinner fallback when character is missing.
- *   • Filter controls present + reactive to settings store.
- *   • Phase swap: list → fighting hides the trophy header score badge.
- *   • Critical class variants render (Mage / Necromancer / Archer).
+ *   - Smoke render in list phase (boss picker).
+ *   - Spinner fallback when character is missing.
+ *   - Filter controls present + reactive to settings store.
+ *   - Phase swap: list -> fighting hides the trophy header score badge.
+ *   - Critical class variants render (Mage / Necromancer / Archer).
  */
 
 vi.mock('framer-motion', async () => {

@@ -13,12 +13,12 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
  *
  * Realtime is implemented over a dedicated Supabase broadcast channel
  * `party-ready-<partyId>`:
- *   • leader sends `start { destination, requesterId }` to open the check
- *   • each member replies with `ready { memberId }` when they confirm
- *   • leader watches the ready-set; when it covers every member, sends
+ *   - leader sends `start { destination, requesterId }` to open the check
+ *   - each member replies with `ready { memberId }` when they confirm
+ *   - leader watches the ready-set; when it covers every member, sends
  *     `go { destination }` and clears its own state. Members react to
  *     `go` by navigating to the destination.
- *   • any member can send `cancel { memberId }` to abort (leader closes
+ *   - any member can send `cancel { memberId }` to abort (leader closes
  *     the modal for everyone).
  *
  * No DB writes — channel is ephemeral. If a member's tab closes, their
@@ -138,7 +138,7 @@ export const usePartyReadyCheckStore = create<IReadyCheckState>()((set, get) => 
             // na /boss, jak ktos anuluje cofnij go do miasta"): pre-
             // navigate non-requesters to the destination so the popup
             // overlays the fight screen instead of their previous view.
-            // On `go` they're already there → animation triggers in
+            // On `go` they're already there -> animation triggers in
             // place; on `cancel` they go back to /. The requester (the
             // leader who initiated) stays on whatever page they were on
             // (typically already /boss).
@@ -338,7 +338,7 @@ export const usePartyReadyCheckStore = create<IReadyCheckState>()((set, get) => 
     },
 }));
 
-// ── Auto-fire `go` when leader's local readyIds covers all required ──
+// -- Auto-fire `go` when leader's local readyIds covers all required --
 // (Only the requester runs fireGo.)
 usePartyReadyCheckStore.subscribe((s, prev) => {
     if (!s.open) return;

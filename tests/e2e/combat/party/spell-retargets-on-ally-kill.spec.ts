@@ -11,8 +11,8 @@
  *
  * ## Pragmatic adaptation vs. spec
  *
- * Real party hunt combat involves: ready-check popup → both confirm →
- * leader's engine drives the wave → secondary's basic-attack lands on
+ * Real party hunt combat involves: ready-check popup -> both confirm ->
+ * leader's engine drives the wave -> secondary's basic-attack lands on
  * leader's authoritative state. Reproducing that full chain in E2E is
  * 60s+ of fragile timing (mob speed × tick cadence × Realtime hops) and
  * we'd be testing more than the retarget contract.
@@ -33,20 +33,20 @@
  *   5. Assert: `combatStore.activeTargetIdx` flipped to 1, the engine
  *      mirrors `monster` / `monsterCurrentHp` to slot 1's monster, and
  *      the helper returned a non-null effApply (proving cast didn't bail).
- *   6. Negative: kill BOTH wave slots → call retarget again → assert
- *      helper returned `null` (no alive targets → cast refused, MP saved).
+ *   6. Negative: kill BOTH wave slots -> call retarget again -> assert
+ *      helper returned `null` (no alive targets -> cast refused, MP saved).
  *
  * What this proves about the multi-context experience:
- *   • The retarget engine fn is invoked from the SAME context as
- *     publishSpellCast (combatEngine.ts line 414 → publishSpellCast
+ *   - The retarget engine fn is invoked from the SAME context as
+ *     publishSpellCast (combatEngine.ts line 414 -> publishSpellCast
  *     happens at line 397-425 AFTER the retarget already shifted
  *     `activeIdx`), so a retargeted cast broadcasts the CORRECT slot to
  *     teammates. The bug we guard against: "primary queues spell on
  *     dead slot 0, retarget shifts to slot 1, but broadcast still says
- *     targetIdx=0 → teammates animate empty slot". Our test asserts
+ *     targetIdx=0 -> teammates animate empty slot". Our test asserts
  *     primary's local state shifts; the publishSpellCast call reading
  *     `activeIdx` after retarget is the production code path.
- *   • Multi-context party is set up first so partyStore.party isn't
+ *   - Multi-context party is set up first so partyStore.party isn't
  *     null when huntApplySkillEffectV2 reads it (line 398) — otherwise
  *     we're really running a solo test and the spell-cast broadcast
  *     branch never executes.
@@ -67,7 +67,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { openMultiContext } from '../../fixtures/multiContext';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -135,7 +135,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town.
+            // 3. Both pick character -> Town.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),
@@ -324,9 +324,9 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             expect(retargetResult.postMonsterHp).toBe(retargetResult.slot1Hp);
             expect(retargetResult.postSlot1Dead).toBe(false);
 
-            // 10. NEGATIVE BRANCH: kill slot 1 too → call huntApplySkillEffectV2
-            //     again → MUST return null (no alive monsters → cast refused
-            //     → MP saved). This is the "spec ('jezeli archer zabije 4
+            // 10. NEGATIVE BRANCH: kill slot 1 too -> call huntApplySkillEffectV2
+            //     again -> MUST return null (no alive monsters -> cast refused
+            //     -> MP saved). This is the "spec ('jezeli archer zabije 4
             //     potwory to spell anulowany')" branch on line 373.
             const negativeResult = await primaryPage.evaluate(async () => {
                 // @ts-expect-error — dev-time Vite URL not resolvable by tsc

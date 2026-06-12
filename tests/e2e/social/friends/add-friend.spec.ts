@@ -9,7 +9,7 @@
  * (`CREATE POLICY "anyone reads characters" ON characters FOR SELECT
  * USING (TRUE)`) is APPLIED to production Supabase. Verified end-to-end
  * via the anon REST endpoint:
- *   • Anon SELECT on `/rest/v1/characters?limit=5` returns rows from
+ *   - Anon SELECT on `/rest/v1/characters?limit=5` returns rows from
  *     MULTIPLE distinct `user_id`s — i.e. cross-user reads now succeed.
  * The earlier seeded-friends workaround is therefore removed in favour
  * of the canonical UI add-flow.
@@ -19,31 +19,31 @@
  *  1. Seed a character on SECONDARY ("Bar") via service_role so the
  *     lookup target physically exists in `characters`. We seed PRIMARY
  *     too because `/friends` is only reachable after a character is
- *     picked (Town → Społeczność → Znajomi).
+ *     picked (Town -> Społeczność -> Znajomi).
  *  2. Both contexts log in via UI in parallel.
- *  3. Both pick their character → land on Town.
- *  4. PRIMARY navigates Town → Społeczność → Znajomi.
+ *  3. Both pick their character -> land on Town.
+ *  4. PRIMARY navigates Town -> Społeczność -> Znajomi.
  *  5. PRIMARY types the SECONDARY's nick into `.friends__add-input` and
- *     taps "🔍 Szukaj" (`.friends__add-btn`).
+ *     taps ":magnifying-glass-tilted-left: Szukaj" (`.friends__add-btn`).
  *  6. `.friends__lookup-result` renders the secondary's character meta
  *     (nick + Lv 10 + class). Proves cross-user RLS works.
- *  7. PRIMARY taps "➕ Dodaj" (`.friends__lookup-add`) → addFriend store
- *     action runs → tab counter flips to `Znajomi (1)`.
+ *  7. PRIMARY taps ":plus: Dodaj" (`.friends__lookup-add`) -> addFriend store
+ *     action runs -> tab counter flips to `Znajomi (1)`.
  *  8. The friends list shows a row with secondary's nick + the three
- *     action buttons (💌 PM / 🚫 Block / ✖ Remove).
+ *     action buttons (:love-letter: PM / :prohibited: Block / :multiply: Remove).
  *
  * ## Why multi-context (not solo)
  *
- *  • Friends data (whoIAdded / blocked / favorites) is per-character
+ *  - Friends data (whoIAdded / blocked / favorites) is per-character
  *    state in `useFriendsStore`. The ADDED row's metadata (level / class
  *    / online) comes from `friendsApi.findByName` against the
  *    `characters` table. To prove the cross-user lookup we need the
  *    target to be a REAL character on a DIFFERENT account.
- *  • The secondary context isn't strictly needed for the lookup itself
+ *  - The secondary context isn't strictly needed for the lookup itself
  *    (the seeded char exists regardless of login state), but keeping
  *    the multi-context fixture aligns this test with sibling
  *    `direct-message.spec.ts` and `block-and-unblock.spec.ts` — same
- *    `openMultiContext` boilerplate → easy review parity.
+ *    `openMultiContext` boilerplate -> easy review parity.
  *
  * ## Why seedGameSave with `level: 10` on secondary
  *
@@ -52,8 +52,8 @@
  *
  * ## Cleanup
  *
- *   • `cleanupCharacterById` on both characters (via multiContext.cleanup).
- *   • The friends slice for primary lives in `game_saves` which is in
+ *   - `cleanupCharacterById` on both characters (via multiContext.cleanup).
+ *   - The friends slice for primary lives in `game_saves` which is in
  *     CHARACTER_CHILD_TABLES, so it's cascaded by primary's cleanup.
  */
 
@@ -66,10 +66,10 @@ import type { Page } from '@playwright/test';
 
 test.describe('Social › Friends', { tag: '@social' }, () => {
     // Multi-context = 2× login + 2× character pick + UI add-flow + DB
-    // round-trip → 120 s headroom per README convention.
+    // round-trip -> 120 s headroom per README convention.
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary types secondary nick → searches → adds friend via UI', async ({ browser }) => {
+    test('multi-context: primary types secondary nick -> searches -> adds friend via UI', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
 
@@ -112,7 +112,7 @@ test.describe('Social › Friends', { tag: '@social' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick their character → Town.
+            // 3. Both pick their character -> Town.
             const pickCharacter = async (page: Page, nick: string): Promise<void> => {
                 if (!page.url().endsWith('/character-select')) {
                     await page.goto('/character-select');
@@ -131,7 +131,7 @@ test.describe('Social › Friends', { tag: '@social' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // 4. PRIMARY: navigate Town → Społeczność → Znajomi.
+            // 4. PRIMARY: navigate Town -> Społeczność -> Znajomi.
             await primaryPage.getByRole('button', { name: /^Społeczność$/i }).tap();
             await expect(primaryPage).toHaveURL(/\/social$/, { timeout: 10_000 });
             await primaryPage.locator('.social__tile--znajomi').tap();
@@ -142,7 +142,7 @@ test.describe('Social › Friends', { tag: '@social' }, () => {
             await expect(friendsTab).toBeVisible({ timeout: 10_000 });
             await expect(friendsTab).toContainText(/Znajomi\s*\(0\)/, { timeout: 10_000 });
 
-            // 5. Type secondary's nick + tap "🔍 Szukaj".
+            // 5. Type secondary's nick + tap ":magnifying-glass-tilted-left: Szukaj".
             const searchInput = primaryPage.locator('.friends__add-input');
             await searchInput.tap();
             await searchInput.fill(secondaryNick);
@@ -152,7 +152,7 @@ test.describe('Social › Friends', { tag: '@social' }, () => {
 
             // 6. `.friends__lookup-result` renders with secondary's meta.
             //    Friends.tsx line 267-289 shows the lookup result card
-            //    with icon + nick + "Lv N <class>" + online dot + "➕ Dodaj"
+            //    with icon + nick + "Lv N <class>" + online dot + ":plus: Dodaj"
             //    CTA. The CTA only renders when `lookupResult !== null`,
             //    proving `friendsApi.findByName` returned a hit.
             const lookupResult = primaryPage.locator('.friends__lookup-result');
@@ -164,7 +164,7 @@ test.describe('Social › Friends', { tag: '@social' }, () => {
             await expect(lookupResult.locator('.friends__lookup-meta'))
                 .toContainText(/Mage/i);
 
-            // 7. Tap "➕ Dodaj" → confirmAdd() → addFriend + lookup clears.
+            // 7. Tap ":plus: Dodaj" -> confirmAdd() -> addFriend + lookup clears.
             const addBtn = lookupResult.locator('.friends__lookup-add');
             await expect(addBtn).toBeVisible();
             await addBtn.tap();

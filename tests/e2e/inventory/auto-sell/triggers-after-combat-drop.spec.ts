@@ -1,10 +1,10 @@
 /**
- * Atomic E2E — Auto-sell common toggle ON → forced common drop after
- * combat → drop goes straight to gold, NOT to bag, with sold flag set
+ * Atomic E2E — Auto-sell common toggle ON -> forced common drop after
+ * combat -> drop goes straight to gold, NOT to bag, with sold flag set
  * on the drop log entry.
  *
- * Spec (BACKLOG 6.3): "Auto-sell działa wg ustawień" → trigger-after-combat
- * flow. Original status ⚠️ partial (`settings-toggle-persists.spec.ts`
+ * Spec (BACKLOG 6.3): "Auto-sell działa wg ustawień" -> trigger-after-combat
+ * flow. Original status :warning: partial (`settings-toggle-persists.spec.ts`
  * covers the toggle UI but not the actual combat trigger). This test
  * fills the gap.
  *
@@ -14,7 +14,7 @@
  * `useSettingsStore.autoSellCommon` and for each generated drop whose
  * rarity matches an enabled flag:
  *   - `shouldAutoSell = true` (line 841-846)
- *   - skips `addItem` → adds `getGeneratedSellPrice` to `autoSellGold`
+ *   - skips `addItem` -> adds `getGeneratedSellPrice` to `autoSellGold`
  *     accumulator
  *   - drop entry pushed with `sold: true` + `soldPrice: <amount>`
  *
@@ -40,18 +40,18 @@
  * Math.random stub: rat at level 5 has `BASE_DROP_CHANCES.normal = 0.08`
  * with `ROLL_COUNTS.normal = 2` (lootSystem.ts line 280-289). For
  * `Math.random() < 0.08` to fire, we need values strictly less than 0.08.
- * Then `rollRarity('normal')` rolls again → `Math.random() < 0.55` for
+ * Then `rollRarity('normal')` rolls again -> `Math.random() < 0.55` for
  * common (thresholds[0] = 0.55).
  *
  * Constant `Math.random = () => 0.05` works for both:
- *   - drop chance: 0.05 < 0.08 → drop fires
- *   - rarity:     0.05 < 0.55 → common rolled
+ *   - drop chance: 0.05 < 0.08 -> drop fires
+ *   - rarity:     0.05 < 0.55 -> common rolled
  *   - bonuses generation: deterministic 0.05 each call
- *   - stone drop (0.30 normal threshold): 0.05 < 0.30 → also drops a
+ *   - stone drop (0.30 normal threshold): 0.05 < 0.30 -> also drops a
  *     common_stone (covered by separate stone branch — doesn't affect bag
  *     since stones go to invStore.stones not bag)
- *   - potion drop (0.4% chance / 0.004): 0.05 > 0.004 → no potion drop
- *   - spell chest drop (very rare): 0.05 likely > threshold → no chest
+ *   - potion drop (0.4% chance / 0.004): 0.05 > 0.004 -> no potion drop
+ *   - spell chest drop (very rare): 0.05 likely > threshold -> no chest
  *
  * **Why stubbing Math.random AFTER chat subscription is safe**:
  * `chatApi.subscribeAll` uses Math.random for unique channel name
@@ -66,7 +66,7 @@
  *
  * The mass-disassemble test uses `() => 0.10 + counter*1e-8` so each call
  * returns a unique value (avoiding chat channel collision on RESUBSCRIBE
- * events). But 0.10 > 0.08 → drop chance check would FAIL → no drops.
+ * events). But 0.10 > 0.08 -> drop chance check would FAIL -> no drops.
  * Since the chat subscription is already up at this point and won't fire
  * again during our test window (no character switch / no chat panel open),
  * constant 0.05 is safe here.
@@ -82,10 +82,10 @@
  * ## Setup
  *
  *  1. Seed Knight lvl 5 on SECONDARY (rat at lvl 1 ok at level 5).
- *  2. Login + Town hydration → ensures characterStore + inventoryStore
+ *  2. Login + Town hydration -> ensures characterStore + inventoryStore
  *     hydrated BEFORE we mutate settings + Math.random.
  *  3. Set `autoSellCommon: true` via direct settingsStore mutation.
- *  4. Stub Math.random → 0.05 (post-login = post-chat-subscribe).
+ *  4. Stub Math.random -> 0.05 (post-login = post-chat-subscribe).
  *
  * ## Cleanup
  *
@@ -103,7 +103,7 @@ import { killMonsterViaEngine } from '../../fixtures/combatSim';
 test.describe('Inventory › Auto-Sell', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('autoSellCommon=true → kill rat with forced common drop → bag unchanged, gold increased, drop marked sold', async ({ page }) => {
+    test('autoSellCommon=true -> kill rat with forced common drop -> bag unchanged, gold increased, drop marked sold', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -119,7 +119,7 @@ test.describe('Inventory › Auto-Sell', { tag: '@inventory' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → pick → Town hydration (characterStore + inventoryStore
+            // 2. Login -> pick -> Town hydration (characterStore + inventoryStore
             //    populated). MUST happen BEFORE Math.random stub so:
             //    (a) chat subscribe gets a unique channel name
             //    (b) characterStore.character is non-null when killMonsterViaEngine
@@ -157,12 +157,12 @@ test.describe('Inventory › Auto-Sell', { tag: '@inventory' }, () => {
                 }).useSettingsStore.getState().setAutoSellCommon(true);
             });
 
-            // 5. Stub Math.random → 0.05. AFTER login/Town (chat subscribe
+            // 5. Stub Math.random -> 0.05. AFTER login/Town (chat subscribe
             //    already opened its unique channel). Stub value 0.05:
-            //      - < 0.08 (BASE_DROP_CHANCES.normal)     → drop fires
-            //      - < 0.55 (rollRarity common threshold) → common rolled
+            //      - < 0.08 (BASE_DROP_CHANCES.normal)     -> drop fires
+            //      - < 0.55 (rollRarity common threshold) -> common rolled
             //      - deterministic bonuses generation
-            //      - > 0.004 potion threshold              → no potion drop
+            //      - > 0.004 potion threshold              -> no potion drop
             await page.evaluate(() => {
                 Math.random = () => 0.05;
             });
@@ -171,17 +171,17 @@ test.describe('Inventory › Auto-Sell', { tag: '@inventory' }, () => {
             //    path (not SKIP — SKIP returns gold=0 + sets lastDrops=[]).
             //    killMonsterViaEngine stages combat via initCombat(rat) then
             //    invokes handleMonsterDeath('normal') which runs:
-            //      → dropLootToInventory(rat, 'normal')
-            //      → rollLoot: 2 rolls, both fire (0.05 < 0.08)
-            //      → rollRarity: both return 'common' (0.05 < 0.55)
-            //      → shouldAutoSell: true for each (autoSellCommon=true)
-            //      → 2× addGold(getGeneratedSellPrice('common', 1)) = 2× 15 = 30 gp
+            //      -> dropLootToInventory(rat, 'normal')
+            //      -> rollLoot: 2 rolls, both fire (0.05 < 0.08)
+            //      -> rollRarity: both return 'common' (0.05 < 0.55)
+            //      -> shouldAutoSell: true for each (autoSellCommon=true)
+            //      -> 2× addGold(getGeneratedSellPrice('common', 1)) = 2× 15 = 30 gp
             //         (rat is monster level 1, NOT character level 5 — the
             //         drop level is the monster's level per rollLoot line 321)
-            //      → 0× addItem (bag stays empty)
-            //      → 2× drops.push({sold: true, soldPrice: 15})
+            //      -> 0× addItem (bag stays empty)
+            //      -> 2× drops.push({sold: true, soldPrice: 15})
             //    Plus the stone drop branch: rollStoneDrop @ 0.05 may also
-            //    fire → adds common_stone to stones (separate from bag).
+            //    fire -> adds common_stone to stones (separate from bag).
             const combatResult = await killMonsterViaEngine(page, 'rat', 'normal');
 
             // 7. After-snapshot.

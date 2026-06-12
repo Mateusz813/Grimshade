@@ -1,9 +1,9 @@
 /**
- * Atomic E2E — toggle języka (PL ↔ EN) w AvatarMenu zmienia stan
+ * Atomic E2E — toggle języka (PL <-> EN) w AvatarMenu zmienia stan
  * `useSettingsStore.language` + active class na odpowiednim
  * przycisku.
  *
- * Spec (BACKLOG 15.5): "Theme/language switch (PL ↔ EN) — AvatarMenu
+ * Spec (BACKLOG 15.5): "Theme/language switch (PL <-> EN) — AvatarMenu
  * has language toggle. Switch + verify UI text changes (...) if no EN
  * translations, just verify state changes".
  *
@@ -24,16 +24,16 @@
  * Setup:
  *   1. Seed character przez API — TopHeader renderuje się TYLKO gdy
  *      `character !== null` (TopHeader.tsx linia 188: `if (!character)
- *      return null`). Bez postaci nie ma avatar button-a → nie ma jak
+ *      return null`). Bez postaci nie ma avatar button-a -> nie ma jak
  *      otworzyć AvatarMenu.
- *   2. Login UI + wybór seedowanej postaci → Town (`/`).
+ *   2. Login UI + wybór seedowanej postaci -> Town (`/`).
  *   3. Open AvatarMenu (tap avatar button `aria-label="Menu postaci"`).
  *
- * Actions + outcomes (atomic — dwa kroki bo PL → EN → PL pokazuje że
+ * Actions + outcomes (atomic — dwa kroki bo PL -> EN -> PL pokazuje że
  * toggle jest bidirectional, nie sticky-to-EN):
  *   A. Domyślnie active = PL (settingsStore default). Asercja initial state.
- *   B. Tap EN → EN button dostaje class `--active`, PL ją traci.
- *   C. Tap PL → odwrotnie, wracamy do initial state.
+ *   B. Tap EN -> EN button dostaje class `--active`, PL ją traci.
+ *   C. Tap PL -> odwrotnie, wracamy do initial state.
  *
  * Cleanup: `cleanupCharacterById(createdId)` w finally per CLAUDE.md
  * TESTING hard rule.
@@ -48,7 +48,7 @@ import { cleanupCharacterById } from '../../fixtures/cleanup';
 test.describe('Chrome › Language', { tag: '@chrome' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('language toggle in AvatarMenu switches active state PL ↔ EN', async ({ page }) => {
+    test('language toggle in AvatarMenu switches active state PL <-> EN', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -62,7 +62,7 @@ test.describe('Chrome › Language', { tag: '@chrome' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + wybór NASZEJ postaci → Town.
+            // 2. Login + wybór NASZEJ postaci -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -90,7 +90,7 @@ test.describe('Chrome › Language', { tag: '@chrome' }, () => {
             await expect(plBtn).toBeVisible({ timeout: 5_000 });
             await expect(enBtn).toBeVisible();
 
-            // 5A. Initial state — settingsStore default `language: 'pl'` →
+            // 5A. Initial state — settingsStore default `language: 'pl'` ->
             //     PL button ma `--active`, EN nie.
             await expect(plBtn).toHaveClass(/avatar-menu__lang-btn--active/);
             await expect(enBtn).not.toHaveClass(/avatar-menu__lang-btn--active/);

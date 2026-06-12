@@ -4,7 +4,7 @@
  * without leaving the current view. (BACKLOG 4.14)
  *
  * Spec: "Wiadomość w party, gildii, DM przez floating ikonę chatu" —
- * the bottom-right `💬` floating icon opens a mini chat popup that
+ * the bottom-right `:speech-balloon:` floating icon opens a mini chat popup that
  * mirrors the full `/chat` layout. The player can switch tabs +
  * send messages from any in-game screen (Combat / Boss / Inventory /
  * etc.) without route-navigating to /chat.
@@ -15,14 +15,14 @@
  * "sending via popup on city" is trivially the same as `/chat`).
  *
  * Why party (not guild / PM):
- *   • Party is the easiest non-city channel to materialise — we just
+ *   - Party is the easiest non-city channel to materialise — we just
  *     create a party via UI and the `partyTabFor(partyId)` tab gets
  *     synced into chatTabsStore automatically when ProtectedRoute
  *     subscribes to active-party (chatTabsStore.syncPartyTab).
- *   • Guild requires guild membership pre-seeded (which would need a
+ *   - Guild requires guild membership pre-seeded (which would need a
  *     guild + 2 members), PM requires deep-link / Friends nav with
  *     the 4.10 RLS limitation.
- *   • Wire path on party-channel message send is **identical** to
+ *   - Wire path on party-channel message send is **identical** to
  *     guild / PM channel — `chatApi.sendMessage('party_<id>', text, ...)`.
  *     Cover party once, the contract holds for guild + PM.
  *
@@ -33,9 +33,9 @@
  *      `chatTabsStore.tabs` array (via the syncPartyTab effect that
  *      runs whenever a character's party-membership flips).
  *   4. PRIMARY: stays on /party view (NOT /chat). Taps the floating
- *      `💬` icon → ChatPopup opens. Active tab is `city` by default
- *      (per ChatPopup mount → ensureCityTab). Taps the party tab
- *      title → activeId becomes `party_<id>`. Types message → taps
+ *      `:speech-balloon:` icon -> ChatPopup opens. Active tab is `city` by default
+ *      (per ChatPopup mount -> ensureCityTab). Taps the party tab
+ *      title -> activeId becomes `party_<id>`. Types message -> taps
  *      send. (All this happens IN THE POPUP, not on /chat.)
  *   5. Local optimistic insert renders the row inside the popup's
  *      `.chat__msg` list.
@@ -50,10 +50,10 @@
  *      lands with the right content + sender.
  *
  * Adaptation vs full spec:
- *   • Full spec ("multi-channel send") would also cover guild + PM
+ *   - Full spec ("multi-channel send") would also cover guild + PM
  *     channels — out of scope for this single test. Party covers the
  *     identical wire path; guild / PM are mechanical re-runs.
- *   • Secondary's UI-side receipt (popup opens + new row visible)
+ *   - Secondary's UI-side receipt (popup opens + new row visible)
  *     is OPTIONAL — the contract we're proving is that **send-from-popup
  *     hits the DB on the right channel**. The Realtime receipt path
  *     is covered by `social/chat/city/realtime-broadcast.spec.ts`
@@ -106,7 +106,7 @@ const navToParty = async (page: Page): Promise<void> => {
 test.describe('Social › Chat › Floating Icon', { tag: '@social' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary sends party-channel msg via floating chat popup → DB row lands on party_<id>', async ({ browser }) => {
+    test('multi-context: primary sends party-channel msg via floating chat popup -> DB row lands on party_<id>', async ({ browser }) => {
         const primaryNick = r11dNick();
         const secondaryNick = r11dNick();
         const partyName = `r11d ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -218,7 +218,7 @@ test.describe('Social › Chat › Floating Icon', { tag: '@social' }, () => {
 
             // Wait for the party tab to be available in the popup. The
             // chatTabsStore.syncPartyTab fires when the player is in a
-            // party, adding a tab with title "🛡️ Drużyna". Use the
+            // party, adding a tab with title ":shield: Drużyna". Use the
             // button's title attribute (more reliable than the inner
             // span text for a chained `has:` filter on emojis).
             const partyTabBtn = chatPopup.locator('button.chat-popup__tab-btn[title*="Drużyna"]');

@@ -22,7 +22,7 @@ export interface IMonsterLike {
 
 export interface IUnlockStatus {
     unlocked: boolean;
-    /** Short badge text, e.g. "🔒 Lvl 3" or "🔒 Mastery: Szczur". */
+    /** Short badge text, e.g. ":locked: Lvl 3" or ":locked: Mastery: Szczur". */
     shortLabel?: string;
     /** Full human-readable reason (title/tooltip text). */
     reason?: string;
@@ -68,7 +68,7 @@ export const getMonsterUnlockStatus = (
     if (monster.level > characterLevel) {
         return {
             unlocked: false,
-            shortLabel: `🔒 Lvl ${monster.level}`,
+            shortLabel: `:locked: Lvl ${monster.level}`,
             reason: `Wymaga poziomu postaci ${monster.level}`,
             lockKind: 'level',
         };
@@ -83,7 +83,7 @@ export const getMonsterUnlockStatus = (
     if (prereqLevel < MASTERY_UNLOCK_THRESHOLD) {
         return {
             unlocked: false,
-            shortLabel: `🔒 Mastery: ${prereq.name_pl}`,
+            shortLabel: `:locked: Mastery: ${prereq.name_pl}`,
             reason: `Zdobądź Mastery 1/25 na ${prereq.name_pl} (Lvl ${prereq.level}) żeby odblokować`,
             requiredMonster: prereq,
             lockKind: 'mastery',

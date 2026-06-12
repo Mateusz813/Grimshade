@@ -2,7 +2,7 @@
  * Direct-API game_save seeder via service_role.
  *
  * Writes (or overwrites) a row in `game_saves` for a given character so
- * the next time the player selects them, `switchToCharacter` →
+ * the next time the player selects them, `switchToCharacter` ->
  * `loadGame` returns this blob and every per-character store
  * (inventoryStore, skillStore, taskStore, …) rehydrates with our seeded
  * values BEFORE the player interacts with the UI.
@@ -18,7 +18,7 @@
  *   from shop"), we MUST seed the game_save too.
  *
  * Blob shape mirrors `STORE_ENTRIES` in `src/stores/characterScope.ts`:
- *   - Each baseKey ('inventory', 'skills', 'tasks', ...) → object with
+ *   - Each baseKey ('inventory', 'skills', 'tasks', ...) -> object with
  *     only the keys listed in `stateKeys` (other keys are silently
  *     filtered by `applyBlobToStores`).
  *   - `_ownerCharacterId` + per-entry `_entryOwner` stamps prevent the
@@ -50,7 +50,7 @@
  */
 
 // Admin client + user lookup są w shared `adminClient.ts` — cached
-// per-worker. Stary duplikat tutaj robił własny listUsers per call →
+// per-worker. Stary duplikat tutaj robił własny listUsers per call ->
 // CPU NANO compute 82% w jednym test runie (2026-05-25 incident).
 import { getAdminClient, withSupabaseRetry, findUserIdByEmail as cachedFindUserIdByEmail } from './adminClient';
 
@@ -72,14 +72,14 @@ export interface ISeedGameSaveArgs {
     userId: string;
     /** Starting gold the player will see in inventoryStore.gold. Default 0. */
     gold?: number;
-    /** Consumable counts (id → quantity), e.g. `{ hp_potion_sm: 5 }`. */
+    /** Consumable counts (id -> quantity), e.g. `{ hp_potion_sm: 5 }`. */
     consumables?: Record<string, number>;
     /** Pre-populated bag items. For "bag full" tests pass 1000 entries. */
     bagItems?: ISeedBagItem[];
     /**
      * Pre-populated deposit items (max 10000). Used by `/deposit` tests
      * that need real items in the deposit panel — e.g. "take with full
-     * bag" → seed 1 item w deposit + 1000 items w bagu → tap take → item
+     * bag" -> seed 1 item w deposit + 1000 items w bagu -> tap take -> item
      * stays in deposit because bag.length >= MAX_BAG_SIZE in
      * `inventoryStore.withdrawItem` (linia 516 inventoryStore.ts).
      */
@@ -88,7 +88,7 @@ export interface ISeedGameSaveArgs {
      * Mastery levels per-monster — np. `{ rat: 25 }` ustawia Mastery
      * 25/25 dla Szczura. Wkleja się do `state.mastery.masteries` slice
      * (per `STORE_ENTRIES['mastery']` w `src/stores/characterScope.ts`).
-     * Test "Mastery 25/25 → purple border" seeduje tu MASTERY_MAX_LEVEL
+     * Test "Mastery 25/25 -> purple border" seeduje tu MASTERY_MAX_LEVEL
      * (=25) i sprawdza class `combat__mcard--mastery-max` na karcie
      * w `/monsters`.
      */
@@ -109,12 +109,12 @@ export interface ISeedGameSaveArgs {
      * Use case: BACKLOG.md 12.5 — per-class skill smoke E2E. Seed
      * tier-1 spell (unlockLevel 5) of each class into slot 0 + flag it
      * unlocked, raise character level above its unlockLevel, jump into
-     * combat → verify action bar renders the skill button.
+     * combat -> verify action bar renders the skill button.
      */
     skills?: {
         activeSkillSlots?: [string | null, string | null, string | null, string | null];
         unlockedSkills?: Record<string, boolean>;
-        /** Optional skill levels (id → level). Defaults skip — combat
+        /** Optional skill levels (id -> level). Defaults skip — combat
          *  doesn't need a non-zero weapon-skill level to render the
          *  action bar. Provide only when a test asserts something tied to
          *  weapon-skill XP / level. */
@@ -134,21 +134,21 @@ export interface ISeedGameSaveArgs {
      * surface reads the SAME effective value.
      *
      * Helper enforces:
-     *  • `characterId === args.characterId` (overwritten regardless of
+     *  - `characterId === args.characterId` (overwritten regardless of
      *    what caller passes — guard against owner-mismatch bugs).
-     *  • Pausable buffs that haven't been seeded with `remainingMs` get a
+     *  - Pausable buffs that haven't been seeded with `remainingMs` get a
      *    very large default (24h in ms) so they survive the entire test
      *    even if combat starts and ticks once.
-     *  • Realtime buffs that haven't been seeded with `expiresAt` get a
+     *  - Realtime buffs that haven't been seeded with `expiresAt` get a
      *    timestamp 24h in the future.
      *
      * The caller is still responsible for picking a valid `effect` that
      * matches `BUFF_CONFIG` in `src/views/Inventory/Inventory.tsx` (see
      * lines ~2580-2620). Common effects:
-     *  • `hp_pct_25` → +25% Max HP (pausable)
-     *  • `hp_boost_500` → +500 Max HP (pausable)
-     *  • `mp_pct_25` → +25% Max MP (pausable)
-     *  • `mp_boost_500` → +500 Max MP (pausable)
+     *  - `hp_pct_25` -> +25% Max HP (pausable)
+     *  - `hp_boost_500` -> +500 Max HP (pausable)
+     *  - `mp_pct_25` -> +25% Max MP (pausable)
+     *  - `mp_boost_500` -> +500 Max MP (pausable)
      *
      * NOTE: pausable buff timers only tick during combat
      * (`tickCombatElixirs`). Out-of-combat assertions (Town /
@@ -168,7 +168,7 @@ export interface ISeedGameSaveArgs {
      * flow returns "Nie znaleziono" cross-user under the current RLS
      * config — the only way to land a friend row on `useFriendsStore`
      * deterministically in E2E is to seed it. The rendering side
-     * (`Friends.tsx` row paint, "💌 PM" button, "🚫 Zablokuj" flow) is
+     * (`Friends.tsx` row paint, ":love-letter: PM" button, ":prohibited: Zablokuj" flow) is
      * unaffected by the RLS limitation because it reads from the local
      * store, not Supabase.
      *
@@ -196,7 +196,7 @@ export interface ISeedGameSaveArgs {
      *
      * **CRITICAL caveat — legacy migration**: characterScope.ts linia 436-446
      * checks `localStorage['tibia_transform_migration_v1_<charId>']` po
-     * hydration. Brak markera → wymusza `bakedBonusesApplied: true` i
+     * hydration. Brak markera -> wymusza `bakedBonusesApplied: true` i
      * odpala `migrateLegacyBakedBonuses` (MUTUJE character.max_hp etc.).
      * Test MUSI ustawić marker via `page.addInitScript` ZANIM character
      * jest pickany, inaczej (a) bonusy są zbaked w stats (active=false),
@@ -256,7 +256,7 @@ export interface ISeedBuff {
  *   userId,
  *   gold: 100000,
  * });
- * // Now login + select character → Shop sees 100,000 gold.
+ * // Now login + select character -> Shop sees 100,000 gold.
  */
 export const seedGameSave = async (args: ISeedGameSaveArgs): Promise<void> => {
     const admin = getAdminClient();
@@ -301,7 +301,7 @@ export const seedGameSave = async (args: ISeedGameSaveArgs): Promise<void> => {
     // of characterScope.ts) — unlisted keys would be silently dropped by
     // `applyBlobToStores`. We feed minimal fields needed by combat:
     // activeSkillSlots (so slots render in action bar), unlockedSkills
-    // (so the slot isn't treated as "not purchased" → disabled), plus
+    // (so the slot isn't treated as "not purchased" -> disabled), plus
     // optional skillLevels. Other persisted keys (skillXp,
     // skillUpgradeLevels, offlineTrainingSkillId, trainingSegmentStartedAt,
     // trainingAccumulatedEffectiveSeconds) default to {}/null which is

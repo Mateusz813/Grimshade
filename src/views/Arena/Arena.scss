@@ -21,8 +21,8 @@
     }
 
     // Entry transition — full-viewport black wash. Comes in two flavours:
-    //   • base (fade-out, on the Arena view)  : 0 → 1, ease-in
-    //   • `--in` (fade-in, on the Match view) : 1 → 0, ease-out
+    //   - base (fade-out, on the Arena view)  : 0  1, ease-in
+    //   - `--in` (fade-in, on the Match view) : 1  0, ease-out
     //
     // Both use `animation-fill-mode: both` so the `from` value applies
     // during the render-paint frame BEFORE the animation actually
@@ -81,7 +81,7 @@
         flex: 1;
     }
 
-    // ── League header strip ──────────────────────────────────────────
+    // -- League header strip ------------------------------------------
     &__league-strip {
         --h: 0;
         background: rgba(0, 0, 0, 0.30);
@@ -164,7 +164,7 @@
         }
     }
 
-    // ── Defense snapshot card ───────────────────────────────────────
+    // -- Defense snapshot card ---------------------------------------
     &__defense {
         background: rgba(20, 30, 50, 0.6);
         border: 1px solid rgba(120, 160, 220, 0.30);
@@ -211,7 +211,7 @@
         }
     }
 
-    // ⚔️ Walcz CTA — replaces the dropped defense title and is the player's
+    // crossed-swords Walcz CTA — replaces the dropped defense title and is the player's
     // single-click entry point into a fight. Red gradient mirrors the
     // attack chips on the leaderboard rows so it reads as the same action.
     &__defense-fight {
@@ -239,7 +239,7 @@
         }
     }
 
-    // ── My-position summary ────────────────────────────────────────
+    // -- My-position summary ----------------------------------------
     &__pos-strip {
         display: flex;
         align-items: center;
@@ -261,7 +261,7 @@
         color: $color-text-muted;
     }
 
-    // ── Leaderboard ────────────────────────────────────────────────
+    // -- Leaderboard ------------------------------------------------
     // Capped at 60vh with internal scroll so the league strip + defense
     // card stay visible while the player browses 100 rows. On mount the
     // view auto-scrolls to centre the player's row inside this box (see
@@ -370,7 +370,7 @@
         background: rgba(255, 255, 255, 0.08);
     }
 
-    // ── Promotion / relegation dividers ────────────────────────────
+    // -- Promotion / relegation dividers ----------------------------
     &__divider {
         display: flex;
         align-items: center;
@@ -392,7 +392,7 @@
         }
     }
 
-    // ── Modal popups (rewards / log) ───────────────────────────────
+    // -- Modal popups (rewards / log) -------------------------------
     &__modal-bg {
         position: fixed;
         inset: 0;

@@ -7,10 +7,10 @@
  * processes back-to-back across 4 slots (combatEngine.ts line 957-970).
  *
  * What this proves vs SMOKE 11.2:
- *  • SMOKE 11.2 (`triggers-on-hp-threshold-via-engine.spec.ts`) proves
+ *  - SMOKE 11.2 (`triggers-on-hp-threshold-via-engine.spec.ts`) proves
  *    flat HP slot fires alone. It does NOT prove pct slot also fires
  *    (default config has pct DISABLED).
- *  • This test enables BOTH slots + seeds BOTH potion types, then
+ *  - This test enables BOTH slots + seeds BOTH potion types, then
  *    asserts BOTH fire in one `tryAutoPotion` call. Critical regression
  *    guard: someone could refactor `useAutoPotionSlot` and accidentally
  *    early-return after the first slot fires, leaving the pct slot
@@ -30,11 +30,11 @@
  *     each other).
  *  6. Call `tryAutoPotion(30, 120, 30, 30)` once.
  *  7. Assert:
- *     • Both consumables decrement: hp_potion_sm 5→4, hp_potion_great 5→4.
- *     • playerCurrentHp = 30 + 50 (flat) + floor(120 * 20 / 100) = 30
+ *     - Both consumables decrement: hp_potion_sm 5->4, hp_potion_great 5->4.
+ *     - playerCurrentHp = 30 + 50 (flat) + floor(120 * 20 / 100) = 30
  *       (pct heal) = 30 + 50 + 24 = 104 (still under cap of 120).
- *     • BOTH cooldowns now set: hpPotionCooldown > 0, pctHpCooldown > 0.
- *     • TWO Auto-Potion log entries.
+ *     - BOTH cooldowns now set: hpPotionCooldown > 0, pctHpCooldown > 0.
+ *     - TWO Auto-Potion log entries.
  *
  * Why HP not MP:
  *  Symmetry — flat HP / pct HP is the dominant combat protection set.
@@ -44,15 +44,15 @@
  *  exercises a different store path.
  *
  * What we DON'T test (kept for sibling/future tests):
- *  • Threshold ordering — what if flat threshold > pct threshold AND HP
+ *  - Threshold ordering — what if flat threshold > pct threshold AND HP
  *    is between them? Each slot reads its own threshold independently
- *    (line 915 → `valPct > threshold` skip). Already covered by 11.2
+ *    (line 915 -> `valPct > threshold` skip). Already covered by 11.2
  *    proving flat fires; pct just fires under its own threshold here.
- *  • "Healed past max" — when curHp + heal > maxHp, healPlayerHp caps
+ *  - "Healed past max" — when curHp + heal > maxHp, healPlayerHp caps
  *    at maxHp (combatStore.ts line 274 `Math.min(maxHp, base + add)`).
  *    We pick numbers that fit comfortably so a heal-cap regression
  *    wouldn't pass silently — 30 + 50 + 24 = 104 < 120.
- *  • Auto-skill combo — that's a different subsystem (skillStore +
+ *  - Auto-skill combo — that's a different subsystem (skillStore +
  *    castSkill path) and a separate test in BACKLOG 13.6.
  *
  * Cleanup: try/finally + cleanupCharacterById.
@@ -188,7 +188,7 @@ test.describe('Combat › Auto-Potion', { tag: '@combat' }, () => {
             expect(result.pctCount).toBe(4);
 
             // HP healed by BOTH: flat 50 + pct floor(120 * 20/100) = 24
-            // → 30 + 50 + 24 = 104. Under cap (120) so no clipping.
+            // -> 30 + 50 + 24 = 104. Under cap (120) so no clipping.
             expect(result.playerCurrentHp).toBe(104);
 
             // Both cooldown buckets engaged — proves both slot's

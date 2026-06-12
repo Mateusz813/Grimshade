@@ -2,7 +2,7 @@
  * Atomic E2E — Arena shop buy flow (currency = arena points, NOT gold).
  *
  * Backlog item 3.11 ("Arena shop — kup z AP + dostaje item + odjęło AP"):
- * the player has arena points, opens Shop → Arena tab, taps "Kup" on the
+ * the player has arena points, opens Shop -> Arena tab, taps "Kup" on the
  * cheapest catalog item (`arena_stone_common`, 50 AP), and we verify:
  *  1. Toast confirms the purchase ("Kupiono: Kamień (Common)").
  *  2. The Arena-tab AP banner decreases by the sticker price (50 AP).
@@ -59,22 +59,22 @@
  * "AP lost after re-login" UX issue the field has today).
  *
  * Setup pattern:
- *   • `createCharacterViaApi` creates a fresh Knight at level 1.
- *   • `seedGameSave` writes a matching `game_saves` blob — keeps the
+ *   - `createCharacterViaApi` creates a fresh Knight at level 1.
+ *   - `seedGameSave` writes a matching `game_saves` blob — keeps the
  *     same hydration path as the other shop tests for parity, even
  *     though arenaPoints itself is injected separately.
- *   • After Town renders, set `arenaPoints = 10000` via `page.evaluate`
+ *   - After Town renders, set `arenaPoints = 10000` via `page.evaluate`
  *     dynamic import. 10k AP is plenty for the 50 AP common stone +
  *     covers the case where the first attempt fails and we retry.
- *   • Lvl 1 keeps mythic weapon prices at the floor (1000 AP each) so
+ *   - Lvl 1 keeps mythic weapon prices at the floor (1000 AP each) so
  *     the Common stone (50 AP) is unambiguously the cheapest catalog
  *     entry — its "Kup" button is the only one we want to tap.
  *
  * Why we use Common stone:
- *   • Cheapest item (50 AP) — minimises the AP we need to seed.
- *   • Pure "add to inventory.stones" payload (no character buff side
+ *   - Cheapest item (50 AP) — minimises the AP we need to seed.
+ *   - Pure "add to inventory.stones" payload (no character buff side
  *     effects, no equipment, no max-HP refresh). Clean assertion.
- *   • Renders as a stack tile in `inventory__bag-tile` with
+ *   - Renders as a stack tile in `inventory__bag-tile` with
  *     `inventory__bag-tile-name` = STONE_NAMES.common_stone =
  *     "Zwykly Kamien" — see `src/systems/itemSystem.ts` line 553.
  *
@@ -127,7 +127,7 @@ test.describe('Shop › Arena', { tag: '@shop' }, () => {
                 gold: 0,
             });
 
-            // 2. Login + go to /character-select → pick our character → Town.
+            // 2. Login + go to /character-select -> pick our character -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -207,7 +207,7 @@ test.describe('Shop › Arena', { tag: '@shop' }, () => {
 
             // 11. Navigate to /inventory via BottomNav "Postać" tab and
             //     verify the stone appears as a stack tile.
-            //     `inventory.stones.common_stone = 1` after buy → tile
+            //     `inventory.stones.common_stone = 1` after buy -> tile
             //     name = STONE_NAMES.common_stone = "Zwykly Kamien"
             //     (no Polish diacritics — itemSystem.ts line 553).
             await page.getByRole('button', { name: /^Postać$/i }).tap();

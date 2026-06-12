@@ -62,7 +62,7 @@ const renderEmoji = (
     style: React.CSSProperties | undefined,
 ) => (
     <span className={className} style={style} aria-hidden="true">
-        {sprite ?? '👾'}
+        {sprite ?? 'alien-monster'}
     </span>
 );
 
@@ -70,7 +70,7 @@ const renderEmoji = (
  *  Tries the exact-level PNG first, then the nearest available tier
  *  (closest level walking UP the registry, then DOWN if nothing is
  *  higher) so a level-79 monster reuses the level-80 art instead of
- *  collapsing to the generic 👾 emoji. Combat cards across hunting /
+ *  collapsing to the generic :alien-monster: emoji. Combat cards across hunting /
  *  dungeon / boss / raid / transform all flow through this helper, so
  *  every monster slot now shows real artwork. The emoji fallback only
  *  triggers when the entire monster registry is empty (dev-mode
@@ -84,7 +84,7 @@ export const MonsterSprite = ({ level, sprite, name, className, style, fill = tr
 
 /** Renders the boss art for the given level, or the emoji fallback.
  *  Same nearest-tier fallback as `MonsterSprite` so boss-card art is
- *  never replaced by a 👹 glyph mid-fight just because the player's
+ *  never replaced by a :ogre: glyph mid-fight just because the player's
  *  current boss level lacks its own PNG. */
 export const BossSprite = ({ level, sprite, name, className, style, fill = true }: ISpriteProps) => {
     const url = getBossImage(level) ?? getBossImageNearest(level);

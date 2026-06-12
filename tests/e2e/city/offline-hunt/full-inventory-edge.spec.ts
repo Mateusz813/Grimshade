@@ -1,5 +1,5 @@
 /**
- * Atomic E2E — claim offline hunt with bag full → bag stays bounded.
+ * Atomic E2E — claim offline hunt with bag full -> bag stays bounded.
  *
  * Spec (BACKLOG.md 5.13): "Offline trening z pełnym plecakiem". The
  * OfflineHunt info box (OfflineHunt.tsx line 559) advertises:
@@ -17,7 +17,7 @@
  *
  * ## Test strategy — direct call to `claimOfflineHunt` (not full clock wait)
  *
- * The natural UI flow is "tap Rozpocznij → wait 12h → tap Odbierz". For
+ * The natural UI flow is "tap Rozpocznij -> wait 12h -> tap Odbierz". For
  * E2E we collapse this by:
  *   1. Seeding bag with 1000 filler items via `generateFillerBagItems`.
  *   2. Calling `startHunt(monster, skill)` via page.evaluate.
@@ -41,7 +41,7 @@
  *  1. Seed Knight lvl 5 on SECONDARY (rat is unlocked at lvl 1+, so 5
  *     is comfortable). Bag pre-filled with 1000 filler items via
  *     `seedGameSave({ bagItems: generateFillerBagItems(1000) })`.
- *  2. Login + select character → Town hydrates bag to 1000.
+ *  2. Login + select character -> Town hydrates bag to 1000.
  *
  * ## Flow
  *
@@ -63,7 +63,7 @@
  *
  * ## Cleanup
  *
- * try/finally → cleanupCharacterById (game_saves wiped, hunt state +
+ * try/finally -> cleanupCharacterById (game_saves wiped, hunt state +
  * bag + all rewards reset).
  */
 
@@ -77,7 +77,7 @@ import { seedGameSave, generateFillerBagItems, findUserIdByEmail } from '../../f
 test.describe('City › Offline Hunt', { tag: '@city' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('claim with bag at 1000/1000 → no crash, bag.length stays exactly 1000, rewards still granted', async ({ page }) => {
+    test('claim with bag at 1000/1000 -> no crash, bag.length stays exactly 1000, rewards still granted', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -103,7 +103,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
                 bagItems: generateFillerBagItems(1000),
             });
 
-            // 3. Login → pick character → Town.
+            // 3. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -137,9 +137,9 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
                 // startHunt (not asserted explicitly but kept for
                 // realism). Hunt accepts any string for the skill id.
                 ohMod.useOfflineHuntStore.getState().startHunt(rat as Parameters<typeof ohMod.useOfflineHuntStore.getState.prototype.startHunt>[0] extends infer T ? T : never, 'sword_fighting');
-                // Backdate startedAt → 12h ago. OFFLINE_HUNT_MAX_SECONDS
+                // Backdate startedAt -> 12h ago. OFFLINE_HUNT_MAX_SECONDS
                 // is 43200 (12h). previewOfflineHunt caps elapsedSeconds
-                // at that → kills = 43200 / (BASE 10s / x1 multiplier)
+                // at that -> kills = 43200 / (BASE 10s / x1 multiplier)
                 // = 4320 kills.
                 const TWELVE_H_MS = 12 * 60 * 60 * 1000;
                 ohMod.useOfflineHuntStore.setState({

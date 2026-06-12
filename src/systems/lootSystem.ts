@@ -26,7 +26,7 @@ export interface ILootResult {
     stones: { type: string; count: number }[];
 }
 
-// ── Monster rarity encounter system ────────────────────────────────────────────
+// -- Monster rarity encounter system --------------------------------------------
 
 export const MONSTER_RARITY_CHANCES: Record<TMonsterRarity, number> = {
     normal:    0.90,
@@ -53,7 +53,7 @@ export const MONSTER_RARITY_TASK_KILLS: Record<TMonsterRarity, number> = {
     boss:      200,
 };
 
-// Monster rarity → max item rarity it can drop
+// Monster rarity -> max item rarity it can drop
 export const MONSTER_RARITY_DROP_MAP: Record<TMonsterRarity, Rarity> = {
     normal:    'common',
     strong:    'rare',
@@ -62,7 +62,7 @@ export const MONSTER_RARITY_DROP_MAP: Record<TMonsterRarity, Rarity> = {
     boss:      'mythic',
 };
 
-// Monster rarity → stone type it drops
+// Monster rarity -> stone type it drops
 export const MONSTER_RARITY_STONE_MAP: Record<TMonsterRarity, string> = {
     normal:    'common_stone',
     strong:    'rare_stone',
@@ -189,7 +189,7 @@ export const MONSTER_RARITY_LABELS: Record<TMonsterRarity, string> = {
     boss:      'Boss',
 };
 
-// ── Bonus stat generation ──────────────────────────────────────────────────────
+// -- Bonus stat generation ------------------------------------------------------
 
 const RARITY_BONUS_RANGES: Record<Rarity, { min: number; max: number }> = {
     common:    { min: 1, max: 5 },
@@ -209,7 +209,7 @@ const STAT_POOL = ['attack', 'defense', 'hp', 'mp', 'speed', 'critChance', 'crit
 const LOOT_STAT_MULT: Record<string, number> = {
     hp: 1.0, mp: 1.0, attack: 1.0, defense: 1.0, speed: 1.0,
     critChance: 0.3,   // mythic 30-70 * 0.3 = 9-21% crit chance max
-    critDmg:    1.5,    // mythic 30-70 * 1.5 = 45-105 (→ +0.45-1.05 multiplier)
+    critDmg:    1.5,    // mythic 30-70 * 1.5 = 45-105 (-> +0.45-1.05 multiplier)
 };
 
 export const generateBonuses = (rarity: Rarity): Record<string, number> => {
@@ -228,7 +228,7 @@ export const generateBonuses = (rarity: Rarity): Record<string, number> => {
     return bonuses;
 };
 
-// ── Rarity roll ──────────────────────────────────────────────────────────────
+// -- Rarity roll --------------------------------------------------------------
 
 /**
  * Scale the base heroic drop rate by monster level.
@@ -274,7 +274,7 @@ export const rollRarity = (monsterRarity: TMonsterRarity, heroicDropRate: number
     return RARITY_ORDER[maxIndex];
 };
 
-// ── New dynamic loot system ──────────────────────────────────────────────────
+// -- New dynamic loot system --------------------------------------------------
 
 // Number of drop rolls based on monster rarity
 const ROLL_COUNTS: Record<TMonsterRarity, number> = {
@@ -327,7 +327,7 @@ export const rollLoot = (
     return items.slice(0, 5);
 };
 
-// ── Legacy rollDropTable (kept for backward compat) ──────────────────────────
+// -- Legacy rollDropTable (kept for backward compat) --------------------------
 
 export const rollDropTable = (
     dropTable: IDropTableEntry[],
@@ -340,7 +340,7 @@ export const rollDropTable = (
     return rollLoot(monsterLevel, monsterRarity, heroicDropRate);
 };
 
-// ── Stone drops ──────────────────────────────────────────────────────────────
+// -- Stone drops --------------------------------------------------------------
 
 // Stone drop chance per monster rarity
 // Better stones are HARDER to get (mythic stone much rarer than common)
@@ -373,7 +373,7 @@ export const calculateGoldDrop = (goldRange: [number, number], partySize: number
     return Math.floor(base * multiplier);
 };
 
-// ── Sell price for generated items ───────────────────────────────────────────
+// -- Sell price for generated items -------------------------------------------
 
 const SELL_MULT: Record<string, number> = {
     common: 5, rare: 20, epic: 60, legendary: 150, mythic: 400, heroic: 800,
@@ -387,7 +387,7 @@ export const getGeneratedSellPrice = (rarity: string, level: number): number => 
     return Math.floor((SELL_MULT[rarity] ?? 5) * level + (BASE_PRICE[rarity] ?? 10));
 };
 
-// ── Helper: Get max rarity for monster level (legacy compat) ──────────────────
+// -- Helper: Get max rarity for monster level (legacy compat) ------------------
 
 export const getMaxRarityForLevel = (monsterLevel: number): Rarity => {
     if (monsterLevel <= 30) return 'common';
@@ -396,7 +396,7 @@ export const getMaxRarityForLevel = (monsterLevel: number): Rarity => {
     return 'epic';
 };
 
-// ── Potion drops from monsters ──────────────────────────────────────────────
+// -- Potion drops from monsters ----------------------------------------------
 
 /**
  * Drop chances per potion tier (intentionally low — potions are powerful).
@@ -442,7 +442,7 @@ export const rollPotionDrop = (monsterLevel: number): { potionId: string; count:
     return drops;
 };
 
-// ── Potion drop info for display (MonsterList / Combat / Boss / Dungeon) ────
+// -- Potion drop info for display (MonsterList / Combat / Boss / Dungeon) ----
 
 /**
  * @deprecated Drop chance now varies per tier — read `IPotionDropInfo.hpChance`
@@ -502,7 +502,7 @@ export const getPotionDropInfo = (monsterLevel: number): IPotionDropInfo => {
     return                          { hpPotionId: 'hp_potion_sm',       hpLabel: 'Small HP',    hpHeal: '+50',     hpChance: flat, mpPotionId: 'mp_potion_sm',       mpLabel: 'Small MP',    mpHeal: '+30',     mpChance: flat };
 };
 
-// ── Spell Chest Drops ──────────────────────────────────────────────────────
+// -- Spell Chest Drops ------------------------------------------------------
 
 export interface ISpellChestDrop {
     chestLevel: number;
@@ -628,11 +628,11 @@ export const getSpellChestDisplayName = (level: number): string => `Spell Chest 
 export const getSpellChestIcon = (level: number): string => {
     const url = getSpellChestImage(level);
     if (url) return url;
-    return level >= 100 ? '🎁' : '📦';
+    return level >= 100 ? 'wrapped-gift' : 'package';
 };
 
 /** Plain-text-safe fallback for combat-log lines / drop-name strings
  *  that get joined and rendered as text (no <img> support). Always
  *  returns the legacy emoji glyph. */
 export const getSpellChestEmoji = (level: number): string =>
-    level >= 100 ? '🎁' : '📦';
+    level >= 100 ? 'wrapped-gift' : 'package';

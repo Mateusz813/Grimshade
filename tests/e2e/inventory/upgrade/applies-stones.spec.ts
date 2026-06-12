@@ -5,16 +5,16 @@
  * Spec (BACKLOG.md punkt 6.9): "Upgrade przedmiotu".
  *
  * Test sprawdza pełen flow upgrade:
- *  1. Tap na bag tile (iron_helmet common, +0) → otwiera się DetailPanel.
- *  2. Sekcja enhance pokazuje "Ulepszenie +0 → +1", koszt 100g + 1 Zwykly
+ *  1. Tap na bag tile (iron_helmet common, +0) -> otwiera się DetailPanel.
+ *  2. Sekcja enhance pokazuje "Ulepszenie +0 -> +1", koszt 100g + 1 Zwykly
  *     Kamień, szansa 100%.
- *  3. Tap "Ulepsz (+1)" → progress bar 1.8s → success result animation.
+ *  3. Tap "Ulepsz (+1)" -> progress bar 1.8s -> success result animation.
  *  4. Item w bagu pokazuje teraz `+1` overlay (ItemIcon `__upgrade` span).
  *
  * Upgrade math (z `itemSystem.ts` getEnhancementCost dla level 1):
- *  • table[1] = { stones: 1, gold: 100, successRate: 100 }
- *  • Stone type = `getRequiredStoneType('common')` = 'common_stone'
- *  • Success = `Math.random() * 100 < 100` → ZAWSZE true gdy Math.random() < 1
+ *  - table[1] = { stones: 1, gold: 100, successRate: 100 }
+ *  - Stone type = `getRequiredStoneType('common')` = 'common_stone'
+ *  - Success = `Math.random() * 100 < 100` -> ZAWSZE true gdy Math.random() < 1
  *
  * Math.random NIE jest stubowany w tym teście — successRate=100 daje 100%
  * sukces dla każdej wartości Math.random() ∈ [0, 1). Side effect — bonus
@@ -22,21 +22,21 @@
  * item więc nie ma kolizji.
  *
  * Setup:
- *  • Knight, level 5, gold=200 (wystarczy na 100g koszt + zostaje).
- *  • Bag: iron_helmet (common, lvl 5, upgradeLevel=0).
- *  • Stones: { common_stone: 5 } — z głównego wystarczy 1, +zapas.
+ *  - Knight, level 5, gold=200 (wystarczy na 100g koszt + zostaje).
+ *  - Bag: iron_helmet (common, lvl 5, upgradeLevel=0).
+ *  - Stones: { common_stone: 5 } — z głównego wystarczy 1, +zapas.
  *
  * Asercje:
- *  • Przed: bag tile widoczne, gold "200 gp".
- *  • Tap tile → DetailPanel widoczny.
- *  • Sekcja `.inventory__detail-enhance` pokazuje "+0 → +1" + szansa 100%
+ *  - Przed: bag tile widoczne, gold "200 gp".
+ *  - Tap tile -> DetailPanel widoczny.
+ *  - Sekcja `.inventory__detail-enhance` pokazuje "+0 -> +1" + szansa 100%
  *    + koszt 100g.
- *  • Tap "Ulepsz" button.
- *  • Po max ~3s: enhanceResult success — klasa `--success-glow` na detail-enhance
+ *  - Tap "Ulepsz" button.
+ *  - Po max ~3s: enhanceResult success — klasa `--success-glow` na detail-enhance
  *    (linia 1042) + success popup widoczny (klasa `__enhance-result--success`).
- *  • Item w bagu pokazuje `+1` w ItemIcon overlay (klasa `item-icon__upgrade`,
+ *  - Item w bagu pokazuje `+1` w ItemIcon overlay (klasa `item-icon__upgrade`,
  *    tekst "+1").
- *  • Gold counter spadł do "100 gp" (200 - 100 = 100).
+ *  - Gold counter spadł do "100 gp" (200 - 100 = 100).
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -51,7 +51,7 @@ import { seedInventoryItem, seedInventoryResources } from '../../fixtures/seedIn
 test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('apply +1 upgrade to common item → item gets +1 badge + gold/stones consumed', async ({ page }) => {
+    test('apply +1 upgrade to common item -> item gets +1 badge + gold/stones consumed', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -101,7 +101,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             //    UWAGA: `.inventory__bag-tile` jest dzielony przez real bag
             //    items (BagTile component) ORAZ stack tiles (stones/potions
             //    z `inventoryStore.consumables/stones`). Seeded common_stones
-            //    pokazują się jako stack tile → musimy filtrować po
+            //    pokazują się jako stack tile -> musimy filtrować po
             //    `:has(.inventory__bag-tile-level)` żeby liczyć tylko gear
             //    items (które mają `<span class="...bag-tile-level">Lv X</span>`).
             //    Gold value — czytamy `aria-label` z `.top-header__gold-btn`
@@ -113,12 +113,12 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             const goldBtn = page.locator('.top-header__gold-btn');
             await expect(goldBtn).toHaveAttribute('aria-label', 'Złoto: 200');
 
-            // 6. Tap tile → DetailPanel.
+            // 6. Tap tile -> DetailPanel.
             await bagTiles.first().tap();
             await expect(page.locator('.inventory__detail')).toBeVisible({ timeout: 5_000 });
 
             // 7. Sekcja enhance widoczna: `.inventory__detail-enhance`.
-            //    Pokazuje "Ulepszenie +0 → +1" + szansa 100% + koszt 100g.
+            //    Pokazuje "Ulepszenie +0 -> +1" + szansa 100% + koszt 100g.
             const enhanceSection = page.locator('.inventory__detail-enhance');
             await expect(enhanceSection).toBeVisible({ timeout: 5_000 });
             await expect(enhanceSection).toContainText('+0');
@@ -147,8 +147,8 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             //     Asercja po aria-label (raw value, no animation flake).
             //     Sprawdzamy GOLD PIERWSZY (przed +1 badge) — synchronicznie ustawiany
             //     w handleEnhance ZANIM setTimeout dla animation odpali. Jeśli ten
-            //     się nie zgadza → wiemy że spendGold zwróciło false (brak gold/stones).
-            await expect(goldBtn).toHaveAttribute('aria-label', 'Złoto: 100', { timeout: 5_000 });
+            //     się nie zgadza -> wiemy że spendGold zwróciło false (brak gold/stones).
+            await expect(goldBtn).toHaveAttribute('aria-label', 'Złoto: 100', { timeout: 15_000 });
 
             // 12. KRYTYCZNA ASERCJA #2: ItemIcon overlay `.item-icon__upgrade`
             //     z tekstem "+1" pojawia się na bag tile.

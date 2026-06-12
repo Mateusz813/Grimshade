@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Grimshade Mobile — Guild system migration
 -- ----------------------------------------------------------------------------
--- Run this ONCE in the Supabase SQL Editor (Dashboard → SQL Editor → New
+-- Run this ONCE in the Supabase SQL Editor (Dashboard -> SQL Editor -> New
 -- query) so the guild list, create flow, members, weekly boss, treasury and
 -- join-request popups have all the tables + RLS + Realtime publications
 -- they need.

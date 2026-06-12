@@ -23,7 +23,7 @@ describe('appReady — window.__grimshadeReady signal', () => {
         expect(window.__grimshadeReady).toBe(false);
     });
 
-    it('restoring → ready transition flips the flag false then true', () => {
+    it('restoring -> ready transition flips the flag false then true', () => {
         markAppRestoring();
         expect(window.__grimshadeReady).toBe(false);
         markAppReady();

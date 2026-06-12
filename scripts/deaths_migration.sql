@@ -2,8 +2,8 @@
 -- Deaths feed — schema bump for raid + flee semantics
 -- ----------------------------------------------------------------------------
 -- Adds:
---   • 'raid' to the `source` check constraint
---   • `result` column ('killed' | 'fled') so the feed renders the right
+--   - 'raid' to the `source` check constraint
+--   - `result` column ('killed' | 'fled') so the feed renders the right
 --     verb ("zabił" vs "przegnał") regardless of whether the player actually
 --     died or just fled the encounter (with or without protection elixir).
 --
@@ -49,7 +49,7 @@ SELECT
 FROM character_deaths
 GROUP BY character_id, character_name, character_class;
 
--- ── Sanity ─────────────────────────────────────────────────────────────────
+-- -- Sanity -----------------------------------------------------------------
 SELECT 'character_deaths rows' AS status, COUNT(*) FROM character_deaths;
 SELECT 'killed rows' AS status, COUNT(*) FROM character_deaths WHERE result = 'killed';
 SELECT 'fled rows'   AS status, COUNT(*) FROM character_deaths WHERE result = 'fled';

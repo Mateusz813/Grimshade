@@ -1,0 +1,27 @@
+.ui-icon {
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex: none;
+  line-height: 1;
+  // color is inherited  currentColor strokes/fills the paths. Tint via parent.
+}
+
+// The close / cancel "x" glyph is white by default app-wide (it sits on dark
+// or coloured buttons — red Anuluj, combat-strip stop, modal close, etc.).
+// currentColor drives the stroke, so this tints the inline <svg> white.
+// Close / cancel "x" and add / create "plus" are white by default app-wide —
+// they sit on dark or coloured buttons (red Anuluj, menu items, create CTAs).
+.ui-icon--x,
+.ui-icon--plus {
+  color: #fff;
+}
+
+// Spin utility for the sync / refresh icon while a sync is in flight.
+.ui-icon--spin {
+  animation: ui-icon-spin 1s linear infinite;
+}
+
+@keyframes ui-icon-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

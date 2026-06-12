@@ -27,7 +27,7 @@
  *     execute_below:<percent_hp>                  oneshot if target HP% ≤ N
  *     mark_amp:<mult>:<count>:<durationMs>        next N ally hits on target ×mult
  *     mark_amp_all:<mult>:<durationMs>            all hits on target ×mult for N ms
- *     mark_no_heal:<durationMs>                   heals on target reversed → damage
+ *     mark_no_heal:<durationMs>                   heals on target reversed -> damage
  *
  *   Self / caster
  *     heal_self_pct_dmg:<percent>                 heal caster N% of dmg dealt this cast
@@ -163,7 +163,7 @@ export const hasEffect = (effects: IParsedEffect[], key: EffectKey): boolean =>
 export const findEffect = (effects: IParsedEffect[], key: EffectKey): IParsedEffect | null =>
     effects.find((e) => e.key === key) ?? null;
 
-// ── Status state ────────────────────────────────────────────────────────────
+// -- Status state ------------------------------------------------------------
 
 /**
  * Live status state for one combatant. Stored in a plain ref/object that the
@@ -171,14 +171,14 @@ export const findEffect = (effects: IParsedEffect[], key: EffectKey): IParsedEff
  * `deltaMs` and prunes expired entries — always call once per combat tick.
  */
 export interface IStatusState {
-    /** ms remaining on stun/paralyze. > 0 → cannot act. */
+    /** ms remaining on stun/paralyze. > 0 -> cannot act. */
     stunMs: number;
     /** ms remaining where the combatant takes 0 damage. */
     immortalMs: number;
     /** When > 0, HP cannot drop below 1 (party-immortal). */
     cannotDieMs: number;
     /** Timestamp at which the cannotDie window started; used to compute revive
-     *  trigger (HP=0 within window → revive at protectMs+graceMs). */
+     *  trigger (HP=0 within window -> revive at protectMs+graceMs). */
     cannotDieReviveAt: number | null;
     /** Active DOTs (each ticks once per second of `tickStatus`). */
     dots: Array<{ remainingMs: number; pctPerSec: number }>;
@@ -294,7 +294,7 @@ export const isStunned = (s: IStatusState): boolean => s.stunMs > 0;
  * from the same target this tick whenever a `dark_ritual` mark expired.
  * Each expired entry contributes `floor(targetMaxHp × pctOfMaxHp / 100)`
  * damage; multiple stacked rituals on one target are summed. The view
- * renders a 💀 RITUAL float when this is > 0.
+ * renders a :skull: RITUAL float when this is > 0.
  */
 export const tickStatus = (s: IStatusState, deltaMs: number, targetMaxHp: number): { dotDamage: number; darkRitualDamage: number; darkRitualTriggered: boolean } => {
     const drain = (n: number) => Math.max(0, n - deltaMs);
@@ -365,7 +365,7 @@ export const tickStatus = (s: IStatusState, deltaMs: number, targetMaxHp: number
     return { dotDamage, darkRitualDamage, darkRitualTriggered };
 };
 
-// ── Application helpers (mutate state) ──────────────────────────────────────
+// -- Application helpers (mutate state) --------------------------------------
 
 /**
  * Apply a parsed list of effects to (caster, target) state objects. Returns
@@ -379,7 +379,7 @@ export interface IApplyResult {
     castDmgMult: number;
     /** % of target defence to ignore on this cast. */
     defPenPct: number;
-    /** True → cast oneshot kills target regardless of HP. */
+    /** True -> cast oneshot kills target regardless of HP. */
     instantKill: boolean;
     /**
      * Original `instant_kill_chance:N` percent — preserved so AOE callers
@@ -442,13 +442,13 @@ export interface IApplyResult {
      * iff that list is non-empty.
      *
      * Important for `stun_chance:30:…` — without per-target tracking
-     * the view pushed "💫 STUN" on every AOE target as soon as one
+     * the view pushed ":dizzy: STUN" on every AOE target as soon as one
      * succeeded, instead of only on the dummies that actually got hit.
      */
     stunApplied: boolean;
     /** Per-enemy indices stunned this cast (AOE only). */
     aoeStunIdxs: number[];
-    /** Same idea for paralyze (rendered as 🔒 PARAL float, distinct kind). */
+    /** Same idea for paralyze (rendered as :locked: PARAL float, distinct kind). */
     paralyzeApplied: boolean;
     aoeParalyzeIdxs: number[];
     /**
@@ -459,10 +459,10 @@ export interface IApplyResult {
      * effect string for the full Necro 15 spec.
      *
      * Views read three flags:
-     *   • `deathApocalypse` — the atom fired at all
-     *   • `deathApocalypseSelfHpFloor` — fraction of caster max HP the
+     *   - `deathApocalypse` — the atom fired at all
+     *   - `deathApocalypseSelfHpFloor` — fraction of caster max HP the
      *     swing leaves the caster at (0.2 or 0.02)
-     *   • `deathApocalypseTargetMaxHpPct` — % of target max HP dealt
+     *   - `deathApocalypseTargetMaxHpPct` — % of target max HP dealt
      *     as raw post-cap damage (50)
      */
     deathApocalypse: boolean;
@@ -575,8 +575,8 @@ export const applyEffects = (
                 r.multistrike = Math.max(r.multistrike, Math.floor(e.a ?? 0));
                 break;
             case 'stun': {
-                // AOE+stun (Meteor) → stun every alive enemy. Single-target
-                // (Pułapka, Strzała Wiatru, Cewka Śmierci) → primary only.
+                // AOE+stun (Meteor) -> stun every alive enemy. Single-target
+                // (Pułapka, Strzała Wiatru, Cewka Śmierci) -> primary only.
                 const dur = e.a ?? 0;
                 if (dur > 0) {
                     if (isAoeCast) {
@@ -597,7 +597,7 @@ export const applyEffects = (
                 // is distributed (not just primary). Single-target rolls
                 // once on the primary. r.aoeStunIdxs lists ONLY the
                 // indices that passed their roll — the view uses that
-                // to push "💫 STUN" on the right dummies (the previous
+                // to push ":dizzy: STUN" on the right dummies (the previous
                 // r.stunApplied bool flashed STUN on every AOE target
                 // as soon as one succeeded).
                 const pct = e.a ?? 0;
@@ -851,7 +851,7 @@ export const applyEffects = (
                 // count into `e.b` (the SECOND positional arg; the
                 // FIRST arg `e.a` was never set because it was the
                 // type). Old code read `e.a` for count which always
-                // evaluated to undefined → 0 → no spawn. That's why
+                // evaluated to undefined -> 0 -> no spawn. That's why
                 // the trainer never spawned anything regardless of
                 // how many times the user clicked the spell.
                 const type = (e.s ?? '').toLowerCase();
@@ -882,11 +882,11 @@ export const applyEffects = (
             case 'death_apocalypse': {
                 // Necromancer Apokalipsa Śmierci — flag the cast so the
                 // view applies:
-                //   • self-cost: drop caster HP to 20% of max, or to 2%
+                //   - self-cost: drop caster HP to 20% of max, or to 2%
                 //     when already below 20% (high-risk burst)
-                //   • target damage: 50% of target's CURRENT max HP
+                //   - target damage: 50% of target's CURRENT max HP
                 //     (raw, defense-pen ignored — pure HP strip)
-                //   • the paired `summon:skeleton:1` atom fires through
+                //   - the paired `summon:skeleton:1` atom fires through
                 //     the normal summon path so the skeleton spawns
                 //     for free with the same cast.
                 r.deathApocalypse = true;
@@ -901,7 +901,7 @@ export const applyEffects = (
     return r;
 };
 
-// ── Hit-time helpers ────────────────────────────────────────────────────────
+// -- Hit-time helpers --------------------------------------------------------
 
 /**
  * Resolve a single basic-attack hit accounting for the attacker's amp queues
@@ -1059,9 +1059,9 @@ export const applyIncomingDamage = (
  * the caller should subtract from each pool.
  *
  * Examples:
- *   100% HP, 100% MP, hit 20 dmg → mp=20, hp=0
- *   100% HP,   1% MP, hit 20 dmg → mp=1,  hp=19
- *   100% HP,   0% MP, hit 20 dmg → mp=0,  hp=20 (shield uselesss without MP)
+ *   100% HP, 100% MP, hit 20 dmg -> mp=20, hp=0
+ *   100% HP,   1% MP, hit 20 dmg -> mp=1,  hp=19
+ *   100% HP,   0% MP, hit 20 dmg -> mp=0,  hp=20 (shield uselesss without MP)
  */
 export const applyManaShieldRedirect = (
     s: IStatusState | undefined,
@@ -1097,7 +1097,7 @@ export const applyIncomingHeal = (
  * - 'self': self-buff atoms only (crit_buff, attack_up, dodge_buff, immortal,
  *   party_*, dodge_next, crit_buff_next, dmg_amp_next, summon, aggro_steal,
  *   crit_next). Animation should land on the player avatar.
- * - 'none': no effect string / unrecognised → defaults to enemy (we'd rather
+ * - 'none': no effect string / unrecognised -> defaults to enemy (we'd rather
  *   animate on the obvious target than silently swallow the cast).
  *
  * Combined with `skill.damage`: a `damage > 0` skill ALWAYS animates on the
@@ -1126,14 +1126,14 @@ export const skillTargetsEnemy = (effect: string | null | undefined): boolean =>
  * return the modifiers the basic-attack damage path should apply.
  *
  * What it covers:
- *   • `crit_next:N:1` (Knight Ostateczny / Rogue Cios w Plecy etc.)  ──────
+ *   - `crit_next:N:1` (Knight Ostateczny / Rogue Cios w Plecy etc.)  ------
  *      Forces the next N basic attacks to crit. Decrements the counter.
- *   • `crit_buff_next:N` (Archer Precyzyjny Strzał, +30% crit chance for
+ *   - `crit_buff_next:N` (Archer Precyzyjny Strzał, +30% crit chance for
  *      one swing). Returns extra crit chance + zeroes the queue on use.
- *   • `crit_buff:N:durMs` (Orle Oko, timed +N% crit chance window).
+ *   - `crit_buff:N:durMs` (Orle Oko, timed +N% crit chance window).
  *      Adds the chance for as long as `critBuffMs > 0` — NOT consumed
  *      here, only ticked down by `tickStatus`.
- *   • `dmg_amp_next:M:N` (Klon Cienia / Bełt Arkański / Cięcie Boga,
+ *   - `dmg_amp_next:M:N` (Klon Cienia / Bełt Arkański / Cięcie Boga,
  *      next N basic attacks deal × M damage). Returns the multiplier
  *      and decrements the counter.
  *
@@ -1248,7 +1248,7 @@ export const consumeCasterBasicHitMods = (
     if (s.critNext.length > 0) {
         const top = s.critNext[0];
         if (top.count > 0) {
-            // mult >= 1 → 100% crit; otherwise interpret as fractional chance.
+            // mult >= 1 -> 100% crit; otherwise interpret as fractional chance.
             if (top.mult >= 1 || Math.random() < top.mult) {
                 forceCrit = true;
             }

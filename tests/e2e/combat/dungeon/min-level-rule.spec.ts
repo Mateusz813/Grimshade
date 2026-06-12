@@ -7,13 +7,13 @@
  * authoritative rule is implemented by `getPartyGateLevel` in
  * `src/systems/partySystem.ts` line 253-263:
  *
- *   • Solo character → `gateLevel = character.level` (no party = no
+ *   - Solo character -> `gateLevel = character.level` (no party = no
  *     downscaling).
- *   • Party with humans → `gateLevel = min(character.level, weakestHuman)`.
+ *   - Party with humans -> `gateLevel = min(character.level, weakestHuman)`.
  *
  * The dungeon-card UI in `Dungeon.tsx` (line 2425) reads
  * `tooLow = gateLevel < getDungeonMinLevel(d)` to render either the
- * "🔒 Wymaga Lvl {dungeonLvl}" lock chip (line 2524) OR the "⚔️ Wejdź"
+ * ":locked: Wymaga Lvl {dungeonLvl}" lock chip (line 2524) OR the ":crossed-swords: Wejdź"
  * enter button (line 2528). Multi-context party version would also
  * exercise the lowest-level-wins rule but requires 2 browser contexts
  * + multi-human party setup which is fragile (party-create UI flow has
@@ -26,13 +26,13 @@
  * gating is selective, not blanket).
  *
  * **Why the solo path is the right load-bearing assertion**:
- *  • `getPartyGateLevel(charLevel, null)` returns `charLevel` — solo is
+ *  - `getPartyGateLevel(charLevel, null)` returns `charLevel` — solo is
  *    the EXIT path of the same function the party path uses. Bug in
  *    the unwrap (e.g. accidentally returning 0 / Infinity / NaN) breaks
  *    BOTH paths.
- *  • Solo flow is what 95% of players use. If the gate rendering breaks
+ *  - Solo flow is what 95% of players use. If the gate rendering breaks
  *    solo, every fresh-account user sees broken dungeons.
- *  • Party variant is documented as a future multi-context test
+ *  - Party variant is documented as a future multi-context test
  *    `combat/dungeon/min-level-party-uses-lowest.spec.ts` (TODO) and
  *    will follow the multi-ctx fixture pattern from 4.2 / 4.7.
  *
@@ -41,7 +41,7 @@
  *  2. Nav to `/dungeon`. Verify both `dungeon_1` and `dungeon_10` cards
  *     render.
  *  3. `dungeon_1` (minLevel=1, gate 5≥1): card has NO `dungeon__locked`
- *     chip AND has visible "⚔️ Wejdź" button.
+ *     chip AND has visible ":crossed-swords: Wejdź" button.
  *  4. `dungeon_10` (minLevel=10, gate 5<10): card has the
  *     `dungeon__locked` chip with "Wymaga Lvl 10" text AND has NO
  *     "Wejdź" button (button is conditionally rendered, line 2527).
@@ -54,10 +54,10 @@
  * deterministic against any future re-ordering.
  *
  * What we DON'T test (and why):
- *  • Pressing "Wejdź" actually starts the dungeon — the smoke
+ *  - Pressing "Wejdź" actually starts the dungeon — the smoke
  *    `page-loads.spec.ts` already covers rendering; the start-flow is
  *    out of scope for the min-level GATE assertion.
- *  • Party-aware lowest-level pick — see "future multi-context test"
+ *  - Party-aware lowest-level pick — see "future multi-context test"
  *    note above.
  *
  * Cleanup: try/finally + cleanupCharacterById.
@@ -78,8 +78,8 @@ test.describe('Combat › Dungeon', { tag: '@combat' }, () => {
 
         try {
             // 1. Seed Knight lvl 5. Gate level for solo = char.level = 5.
-            //    dungeon_1 (minLvl=1) → 5≥1 → ENTER. dungeon_10 (minLvl=10)
-            //    → 5<10 → LOCK. hp_regen/mp_regen=0 (CLAUDE.md TESTING).
+            //    dungeon_1 (minLvl=1) -> 5≥1 -> ENTER. dungeon_10 (minLvl=10)
+            //    -> 5<10 -> LOCK. hp_regen/mp_regen=0 (CLAUDE.md TESTING).
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
                 name: nick,
@@ -88,7 +88,7 @@ test.describe('Combat › Dungeon', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 const drop = (overrides: Partial<IDropDisplay> = {}): IDropDisplay => ({
-    icon: '⚔️',
+    icon: 'crossed-swords',
     name: 'Sword',
     rarity: 'common',
     ...overrides,

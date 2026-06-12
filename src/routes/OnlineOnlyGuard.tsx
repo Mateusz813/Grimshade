@@ -11,11 +11,11 @@ interface IProps {
  * when they try to enter an online-only feature while in offline mode.
  *
  * Wraps the following routes via `AppRouter.tsx`:
- *   • /arena, /arena/match — PvP, multiplayer-only
- *   • /raid                — party-only by design
- *   • /party               — managing a party is meaningless when you
+ *   - /arena, /arena/match — PvP, multiplayer-only
+ *   - /raid                — party-only by design
+ *   - /party               — managing a party is meaningless when you
  *                            can't be in one
- *   • /social, /friends    — these are online concepts; the guard
+ *   - /social, /friends    — these are online concepts; the guard
  *                            keeps them inaccessible until the player
  *                            switches back. Chat globally is allowed
  *                            (read-only is fine), but the dedicated

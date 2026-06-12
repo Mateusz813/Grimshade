@@ -6,11 +6,11 @@
  *
  * Pokrycie (3 z 4 filtrów; "Tylko z taskiem / questem" pominięty bo
  * wymagałby seed tasków/questów):
- *  • **Lvl od X (number input)** — wpisz "30" → tylko monsters z `level >= 30`
+ *  - **Lvl od X (number input)** — wpisz "30" -> tylko monsters z `level >= 30`
  *    widoczne. Tap-able na każdym poziomie postaci (filter nie zważa na unlock).
- *  • **Od najwyższego poziomu (sort desc)** — checkbox → pierwsza karta zmienia
+ *  - **Od najwyższego poziomu (sort desc)** — checkbox -> pierwsza karta zmienia
  *    się z najniższego (Szczur lvl 1) na najwyższego (top z monsters.json).
- *  • **Wyczyść** — pojawia się przycisk gdy filtr aktywny; tap → wszystkie
+ *  - **Wyczyść** — pojawia się przycisk gdy filtr aktywny; tap -> wszystkie
  *    karty z powrotem.
  *
  * Setup:
@@ -104,7 +104,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             await expect(cards).toHaveCount(MONSTERS_LVL_30_PLUS, { timeout: 5_000 });
 
             // 5. **Wyczyść** — gdy filter aktywny, pojawia się przycisk
-            //    `.combat__filter-clear` (linia 238-252). Tap → wszystkie 4 filtry reset.
+            //    `.combat__filter-clear` (linia 238-252). Tap -> wszystkie 4 filtry reset.
             //    Count wraca do initial.
             const clearBtn = page.locator('.combat__filter-clear');
             await expect(clearBtn).toBeVisible();
@@ -112,7 +112,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             await expect(cards).toHaveCount(initialCount, { timeout: 5_000 });
 
             // 6. **Sort desc** — `Od najwyższego poziomu` checkbox (`.combat__filter-toggle`
-            //    z textem "Od najwyższego poziomu"). Tap → pierwsza karta = top-level monster.
+            //    z textem "Od najwyższego poziomu"). Tap -> pierwsza karta = top-level monster.
             //    Filter NIE zmienia count-u (sort tylko odwraca order), więc liczba kart =
             //    initialCount. Sprawdzamy że pierwsza karta zawiera `Lvl {TOP_LEVEL}`.
             const sortToggle = page.locator('.combat__filter-toggle', {

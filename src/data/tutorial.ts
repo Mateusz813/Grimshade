@@ -27,7 +27,7 @@ export interface ITutorialSection {
 export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   {
     id: 'postac-i-pasek',
-    icon: '🧝',
+    icon: 'elf',
     title: 'Twoja postać i górny pasek',
     summary: 'Pasek na górze ekranu pokazuje najważniejsze informacje o postaci — masz go zawsze pod ręką.',
     bullets: [
@@ -35,19 +35,19 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
       'Kropka przy awatarze: zielona = jesteś online, czerwona = tryb offline.',
       'Pasek XP na karcie postaci pokazuje postęp do następnego poziomu (w %).',
       'Złoto (k / cc / sc) widać po prawej — kliknij, by zobaczyć dokładną kwotę.',
-      'Ikona ✦ z liczbą = aktywne buffy/eliksiry. Kliknij, by zobaczyć co działa i ile czasu zostało.',
+      'Ikona :sparkles: z liczbą = aktywne buffy/eliksiry. Kliknij, by zobaczyć co działa i ile czasu zostało.',
       'Fioletowa kropka na ikonie zadań = masz nagrodę do odebrania w Questach.',
       'Kliknij awatar w lewym rogu, by otworzyć menu konta.',
     ],
   },
   {
     id: 'miasto',
-    icon: '🏰',
+    icon: 'castle',
     title: 'Miasto (główny ekran)',
     summary: 'Miasto to centrum gry — stąd wchodzisz do wszystkich trybów i tu odpoczywasz.',
     bullets: [
       'Na górze widzisz kartę postaci: awatar, poziom, paski HP/MP/XP.',
-      'Jeśli masz wolne punkty statystyk, pojawi się przycisk "+N statystyk do rozdania" → prowadzi do ekranu Postać.',
+      'Jeśli masz wolne punkty statystyk, pojawi się przycisk "+N statystyk do rozdania" -> prowadzi do ekranu Postać.',
       'Kafelki na dole to skróty: Offline Trening, Depozyt, Market, Potwory, Odpoczynek, Rankingi, Śmierci.',
       'Odpoczynek: kliknij, by w ~10 sekund uleczyć HP i MP do maksimum (za darmo, tylko w mieście).',
       'Odpoczynku nie da się użyć w trakcie walki — najpierw zakończ walkę.',
@@ -56,7 +56,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'polowanie',
-    icon: '⚔️',
+    icon: 'crossed-swords',
     title: 'Polowanie (walka z potworami)',
     summary: 'Podstawowy tryb zdobywania XP, złota i przedmiotów — walka toczy się automatycznie.',
     bullets: [
@@ -71,7 +71,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'bossowie',
-    icon: '👹',
+    icon: 'ogre',
     title: 'Bossowie',
     summary: 'Pojedyncze, mocne starcia z bossami — duże nagrody, ale limit prób dziennie.',
     bullets: [
@@ -85,7 +85,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'lochy',
-    icon: '🏚️',
+    icon: 'derelict-house',
     title: 'Lochy (Dungeon)',
     summary: 'Wielofalowy tryb (3-10 fal) zakończony bossem — masz 5 prób dziennie na loch.',
     bullets: [
@@ -99,7 +99,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'rajdy',
-    icon: '🐉',
+    icon: 'dragon',
     title: 'Rajdy (Raid)',
     summary: 'Endgame dla drużyny — fale po 4 potwory bossowej klasy, 5 prób dziennie.',
     bullets: [
@@ -113,7 +113,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'transformacje',
-    icon: '🔥',
+    icon: 'fire',
     title: 'Transformacje',
     summary: 'Quest fabularny: pokonaj wszystkie potwory z danego zakresu poziomów i zdobądź trwałe bonusy.',
     bullets: [
@@ -127,7 +127,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'arena',
-    icon: '🏟️',
+    icon: 'stadium',
     title: 'Arena (PvP)',
     summary: 'Tygodniowa liga 1v1 przeciw innym graczom i botom — walczysz o pozycję i nagrody sezonowe.',
     bullets: [
@@ -142,7 +142,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'trener',
-    icon: '🎯',
+    icon: 'bullseye',
     title: 'Trener (poligon)',
     summary: 'Bezpieczny pokój treningowy do testowania obrażeń, skilli i buffów na nieśmiertelnych manekinach.',
     bullets: [
@@ -156,7 +156,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'ekwipunek',
-    icon: '🎒',
+    icon: 'backpack',
     title: 'Ekwipunek (Postać + Plecak)',
     summary: 'Tu zakładasz przedmioty, ulepszasz je i zarządzasz plecakiem oraz statystykami.',
     bullets: [
@@ -171,7 +171,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'depozyt',
-    icon: '🗄️',
+    icon: 'file-cabinet',
     title: 'Depozyt (skrytka)',
     summary: 'Bezpieczna skrytka na przedmioty — to, co tu schowasz, NIE przepada po śmierci.',
     bullets: [
@@ -184,7 +184,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'sklep',
-    icon: '🛒',
+    icon: 'shopping-cart',
     title: 'Sklep',
     summary: 'Kupujesz tu miksturki, eliksiry i przedmioty za złoto.',
     bullets: [
@@ -198,7 +198,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'rynek',
-    icon: '💰',
+    icon: 'money-bag',
     title: 'Rynek (handel między graczami)',
     summary: 'Kupuj i sprzedawaj przedmioty innym graczom — gospodarka napędzana przez społeczność.',
     bullets: [
@@ -212,7 +212,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'zadania',
-    icon: '📜',
+    icon: 'scroll',
     title: 'Zadania, Taski i Daily',
     summary: 'Centrum questów: kontrakty na grind, jednorazowe questy fabularne i misje dzienne.',
     bullets: [
@@ -226,7 +226,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'mastery',
-    icon: '🌟',
+    icon: 'glowing-star',
     title: 'Mastery (mistrzostwo na potworze)',
     summary: 'Każdy potwór ma własny poziom mistrzostwa (0-25) za jego wielokrotne zabijanie.',
     bullets: [
@@ -240,7 +240,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'party',
-    icon: '🤝',
+    icon: 'handshake',
     title: 'Party (drużyna)',
     summary: 'Łącz siły z innymi graczami w drużynie do 4 osób, by walczyć razem.',
     bullets: [
@@ -255,7 +255,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'gildia',
-    icon: '🏛️',
+    icon: 'classical-building',
     title: 'Gildia',
     summary: 'Stały klan graczy ze wspólnym tagiem, czatem, skarbcem i tygodniowym bossem.',
     bullets: [
@@ -269,7 +269,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'czat-znajomi',
-    icon: '💬',
+    icon: 'speech-balloon',
     title: 'Czat i Znajomi',
     summary: 'Rozmawiaj z graczami na kanałach i zarządzaj listą znajomych oraz blokad.',
     bullets: [
@@ -283,20 +283,20 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'ranking',
-    icon: '🏆',
+    icon: 'trophy',
     title: 'Ranking (Leaderboard)',
     summary: 'Tabele najlepszych graczy w wielu kategoriach — sprawdź, jak wypadasz na tle innych.',
     bullets: [
       'Mnóstwo zakładek: poziom, umiejętności broni, bossy, mastery, arena, gildie i więcej.',
       'Każda tabela pokazuje top 100 graczy (lub gildii).',
-      'Top 3 mają medale 🥇🥈🥉; Twój wiersz jest podświetlony.',
+      'Top 3 mają medale :1st-place-medal::2nd-place-medal::3rd-place-medal:; Twój wiersz jest podświetlony.',
       'Zakładki areny pokazują zabójców, ofiary i ranking ligowy.',
       'Ranking jest niedostępny w trybie offline.',
     ],
   },
   {
     id: 'smierci',
-    icon: '💀',
+    icon: 'skull',
     title: 'Śmierci i kary',
     summary: 'Śmierć w walce boli — tracisz część postępu, dlatego warto się chronić.',
     bullets: [
@@ -311,7 +311,7 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'tryb-offline',
-    icon: '📴',
+    icon: 'mobile-phone-off',
     title: 'Tryb offline',
     summary: 'Możesz grać bez połączenia — część trybów działa lokalnie, część jest wyłączona.',
     bullets: [
@@ -325,15 +325,15 @@ export const TUTORIAL_SECTIONS: ITutorialSection[] = [
   },
   {
     id: 'konto',
-    icon: '👤',
+    icon: 'bust-in-silhouette',
     title: 'Konto (menu awatara)',
     summary: 'Menu pod awatarem w górnym pasku — tu zarządzasz kontem i ustawieniami.',
     bullets: [
       'Zmień postać — wróć do wyboru postaci (możesz mieć do 7 postaci na koncie).',
       'Język — przełącznik polski / angielski.',
-      'Tryb gry — przełącznik Online 🟢 / Offline 🔴.',
+      'Tryb gry — przełącznik Online :green-circle: / Offline :red-circle:.',
       'Synchronizuj — ręcznie zapisuje postęp do chmury (pokazuje czas ostatniej synchronizacji).',
-      'Zmień hasło 🔑 — podajesz obecne hasło, a potem nowe (dwa razy dla pewności).',
+      'Zmień hasło :key: — podajesz obecne hasło, a potem nowe (dwa razy dla pewności).',
       'Tutorial — otwiera ten przewodnik w każdej chwili.',
       'Wyloguj — zapisuje postęp i wylogowuje z konta.',
     ],

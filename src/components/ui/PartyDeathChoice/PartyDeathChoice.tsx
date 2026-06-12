@@ -1,3 +1,5 @@
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './PartyDeathChoice.scss';
 
 interface IPartyDeathChoiceProps {
@@ -28,8 +30,8 @@ interface IPartyDeathChoiceProps {
  * but the team is still swinging" case.
  *
  * Two outcomes:
- *   • Powrót do miasta — apply full death penalty NOW, leave the raid.
- *   • Czekaj na wskrzeszenie — stay slumped on the field. While dead the
+ *   - Powrót do miasta — apply full death penalty NOW, leave the raid.
+ *   - Czekaj na wskrzeszenie — stay slumped on the field. While dead the
  *     raid loop rolls a small revive chance per tick; if any ally rezzes
  *     you, you rejoin at half HP/MP. If the party then wipes anyway, the
  *     wipe penalty fires (and that's the ONLY penalty — the wait choice
@@ -46,7 +48,7 @@ const PartyDeathChoice = ({
     return (
         <div className="party-death-choice">
             <div className="party-death-choice__panel">
-                <div className="party-death-choice__icon">💀</div>
+                <div className="party-death-choice__icon"><GameIcon name="skull" /></div>
                 <h2 className="party-death-choice__title">Padłeś!</h2>
                 <p className="party-death-choice__subtitle">
                     Twoja drużyna wciąż walczy ({aliveAllies} sojusznik{aliveAllies === 1 ? '' : aliveAllies < 5 ? 'ów' : 'ów'} przy życiu).
@@ -63,7 +65,7 @@ const PartyDeathChoice = ({
                         className="party-death-choice__btn party-death-choice__btn--town"
                         onClick={onReturnToTown}
                     >
-                        🏰 Powrót do miasta
+                        <EmojiText>:castle: Powrót do miasta</EmojiText>
                     </button>
                     <button
                         type="button"
@@ -72,7 +74,7 @@ const PartyDeathChoice = ({
                         disabled={aliveAllies === 0}
                         title={aliveAllies === 0 ? 'Brak żywych sojuszników' : 'Czekaj na wskrzeszenie'}
                     >
-                        ⏳ Czekaj na wskrzeszenie
+                        <GameIcon name="hourglass-not-done" /> Czekaj na wskrzeszenie
                     </button>
                 </div>
             </div>

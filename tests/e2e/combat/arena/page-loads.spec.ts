@@ -19,7 +19,7 @@
  *    `_initialMode = 'online'` w connectivityStore.ts linia 159).
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczna walka PvP (tap "Walcz" → match → result).
+ *  - Faktyczna walka PvP (tap "Walcz" -> match -> result).
  *  - Sezon countdown / rewards claim flow.
  *  - Leaderboard scroll-to-me behavior (Arena.tsx useEffect linia 101).
  *
@@ -55,7 +55,7 @@ test.describe('Combat › Arena', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

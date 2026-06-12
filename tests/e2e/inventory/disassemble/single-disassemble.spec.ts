@@ -4,38 +4,38 @@
  * Spec (BACKLOG.md punkt 6.7): "Pojedyncze rozkładanie".
  *
  * Test sprawdza pełen flow single-disassemble:
- *  1. Tap na bag tile → otwiera się DetailPanel.
- *  2. Tap "🔨 Rozloz (20% na <stone>)" button → progress bar pojawia się
+ *  1. Tap na bag tile -> otwiera się DetailPanel.
+ *  2. Tap ":hammer: Rozloz (20% na <stone>)" button -> progress bar pojawia się
  *     na 1.5s, potem item ZNIKA z bagu (zawsze, niezależnie od success).
  *  3. Przy success (RNG 20%) — wyświetla się popup "Otrzymano: Zwykly
  *     Kamien x1" + addStones wywołane.
  *
  * Hard RNG dependency:
- *  • `handleDisassemble` w Inventory.tsx linia 665: `const gotStone = Math.random() < 0.20;`
- *  • Item jest ZAWSZE usuwany (linia 666: `removeItem(item.uuid)`).
- *  • Stone dodany TYLKO gdy gotStone === true.
+ *  - `handleDisassemble` w Inventory.tsx linia 665: `const gotStone = Math.random() < 0.20;`
+ *  - Item jest ZAWSZE usuwany (linia 666: `removeItem(item.uuid)`).
+ *  - Stone dodany TYLKO gdy gotStone === true.
  *
  * Żeby uczynić test deterministycznym, stub-ujemy `Math.random` przez
- * `page.addInitScript` żeby zawsze zwracało 0 (< 0.20 → gotStone=true).
+ * `page.addInitScript` żeby zawsze zwracało 0 (< 0.20 -> gotStone=true).
  * To bardziej restrykcyjne assertion + nie testujemy obie ścieżki, ale
  * gwarantuje przewidywalny wynik.
  *
- * Alternatywa "fail path" (Math.random → 0.99) — pominięta tutaj bo pora
+ * Alternatywa "fail path" (Math.random -> 0.99) — pominięta tutaj bo pora
  * zaminować jeden happy + jeden fail = osobny test. Na razie atomic
  * "success path".
  *
  * Setup: postać Knight, +1 seeded item iron_helmet (common, lvl 5).
- *  • Po success: stone type = `RARITY_STONE_MAP[common]` = `common_stone`.
- *  • addStones('common_stone', 1) → inventoryStore.stones.common_stone = 1.
+ *  - Po success: stone type = `RARITY_STONE_MAP[common]` = `common_stone`.
+ *  - addStones('common_stone', 1) -> inventoryStore.stones.common_stone = 1.
  *
  * Asercje:
- *  • Przed: 1 bag tile widoczne.
- *  • Tap tile → DetailPanel widoczny.
- *  • Tap "Rozloz" button → progress bar pojawia się (selektor
+ *  - Przed: 1 bag tile widoczne.
+ *  - Tap tile -> DetailPanel widoczny.
+ *  - Tap "Rozloz" button -> progress bar pojawia się (selektor
  *    `.inventory__disassemble-progress`).
- *  • Po 1.5s: item zniknął z bagu (bag tiles count = 0), success message
+ *  - Po 1.5s: item zniknął z bagu (bag tiles count = 0), success message
  *    pojawia się (selektor `.inventory__disassemble-result--success`).
- *  • Po 2.5s success message: DetailPanel zamyka się (handleDisassemble
+ *  - Po 2.5s success message: DetailPanel zamyka się (handleDisassemble
  *    wywołuje onClose w setTimeout 2500ms po setDisassembleResult).
  *
  * Cleanup: try/finally + cleanupCharacterById.
@@ -51,7 +51,7 @@ import { seedInventoryItem } from '../../fixtures/seedInventory';
 test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('tap "Rozloz" → progress bar → item removed + success popup (with stubbed Math.random)', async ({ page }) => {
+    test('tap "Rozloz" -> progress bar -> item removed + success popup (with stubbed Math.random)', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -76,7 +76,7 @@ test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
             // 3. Login + wybierz postać + idź do /inventory.
             //    UWAGA: Math.random NIE stubujemy via addInitScript bo
             //    `src/stores/characterScope.ts:49` używa go do generowania
-            //    TAB_SESSION_ID — deterministyczne ID → konflikty tabów
+            //    TAB_SESSION_ID — deterministyczne ID -> konflikty tabów
             //    przy równoległych testach (storage lock collisions). Stub
             //    odpalamy DOPIERO po wejściu w /inventory (krok 5).
             // 4. Login + wybierz postać + idź do /inventory
@@ -93,8 +93,8 @@ test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
             // Wait dla TopHeader żeby characterStore był w pełni zhydratowany
             // PRZED dalszymi akcjami. Bez tego async restore (App.tsx)
             // może zresetować inventoryStore (przez applyBlobToStores w
-            // switchToCharacter) AFTER nasz tap → set bag = [seeded items]
-            // → tap nie usuwa items widzianych po remount.
+            // switchToCharacter) AFTER nasz tap -> set bag = [seeded items]
+            // -> tap nie usuwa items widzianych po remount.
             await expect(page.locator('.top-header')).toBeVisible({ timeout: 15_000 });
             await expect(page.locator('.inventory')).toBeVisible({ timeout: 10_000 });
 
@@ -102,7 +102,7 @@ test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
             //    UWAGA: `.inventory__bag-tile` jest używany ZARÓWNO przez
             //    real bag items (BagTile component, ma `--level` child span)
             //    JAK i stack tiles (potions / chests / stones, BEZ `--level`).
-            //    Po success disassemble stone trafia do consumables → renderuje
+            //    Po success disassemble stone trafia do consumables -> renderuje
             //    się jako stack tile z tym samym selektorem. Filtrujemy więc
             //    po `:has(.inventory__bag-tile-level)` żeby liczyć TYLKO real
             //    bag items (gear / weapons), nie stones.
@@ -116,14 +116,14 @@ test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
             //     do generowania ID (chatApi.subscribeAll channel name,
             //     necroSummonStore summon id, arenaStore match id).
             //     Stała wartość (np. `() => 0.1`) BURZY te ID-y bo wszystkie
-            //     wywołania zwracają to samo → collision → Supabase rzuca
+            //     wywołania zwracają to samo -> collision -> Supabase rzuca
             //     "cannot add postgres_changes callbacks for
             //     realtime:chat:all:3lllllll:TIMESTAMP after subscribe()"
-            //     → React crash → App unmount → test failuje z app w stanie
+            //     -> React crash -> App unmount -> test failuje z app w stanie
             //     "spinner / dragon background".
             //     Rozwiązanie: incrementing counter który zwraca rozne
             //     wartości za każdym callem, ale wszystkie zaczynają się
-            //     od 0.1xxx → handleDisassemble zawsze < 0.20 → gotStone
+            //     od 0.1xxx -> handleDisassemble zawsze < 0.20 -> gotStone
             //     true.
             //     UWAGA: incrementing counter musi być deterministyczny
             //     ale unique per-call w obrębie tego samego ms-a (Date.now
@@ -136,7 +136,7 @@ test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
                 Math.random = () => 0.10 + (counter++ % 9000000) * 1e-8;
             });
 
-            // 6. Tap tile → DetailPanel.
+            // 6. Tap tile -> DetailPanel.
             //    UWAGA: na mobile-safari pierwszy tap czasem nie rejestruje się
             //    (touch event race z initialize bag grid). Wait for tile stable
             //    + retry-via-toBeVisible pattern (timeout 10s zamiast 5s).
@@ -181,7 +181,7 @@ test.describe('Inventory › Disassemble', { tag: '@inventory' }, () => {
             // 9. Po 1.5s setTimeout: item usuwany + success popup.
             //    Selektor `.inventory__disassemble-result--success` (linia 1225).
             //    Generous timeout (5s) na wypadek wolnego eventLoop, motion
-            //    spring transition (opacity 0→1 może trochę zająć), oraz
+            //    spring transition (opacity 0->1 może trochę zająć), oraz
             //    pierwszego cold-render dla AnimatePresence po HMR.
             await expect(page.locator('.inventory__disassemble-result--success')).toBeVisible({ timeout: 5_000 });
 

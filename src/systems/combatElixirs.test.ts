@@ -15,7 +15,7 @@ import { useBuffStore } from '../stores/buffStore';
 import { useCharacterStore } from '../stores/characterStore';
 import type { ICharacter } from '../api/v1/characterApi';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const CHAR_ID = 'char-elixir-test';
 
@@ -56,7 +56,7 @@ const seedPausable = (effect: string, remainingMs: number = 60_000): void => {
                 id: `seed_${effect}`,
                 characterId: CHAR_ID,
                 name: effect,
-                icon: '✨',
+                icon: 'sparkles',
                 effect,
                 expiresAt: Number.POSITIVE_INFINITY,
                 timerMode: 'pausable',
@@ -72,7 +72,7 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar(), isLoading: false });
 });
 
-// ── getAtkDamageMultiplier ───────────────────────────────────────────────────
+// -- getAtkDamageMultiplier ---------------------------------------------------
 
 describe('getAtkDamageMultiplier', () => {
     it('returns 1.0 when no ATK damage buff is active', () => {
@@ -95,7 +95,7 @@ describe('getAtkDamageMultiplier', () => {
     });
 
     it('picks the highest tier when multiple tiers are active', () => {
-        // All three tiers active → +100% must win per the if-else cascade.
+        // All three tiers active -> +100% must win per the if-else cascade.
         seedPausable('atk_dmg_25');
         seedPausable('atk_dmg_50');
         seedPausable('atk_dmg_100');
@@ -109,7 +109,7 @@ describe('getAtkDamageMultiplier', () => {
     });
 });
 
-// ── getSpellDamageMultiplier ─────────────────────────────────────────────────
+// -- getSpellDamageMultiplier -------------------------------------------------
 
 describe('getSpellDamageMultiplier', () => {
     it('returns 1.0 with no buff', () => {
@@ -139,7 +139,7 @@ describe('getSpellDamageMultiplier', () => {
     });
 });
 
-// ── Flat bonuses ─────────────────────────────────────────────────────────────
+// -- Flat bonuses -------------------------------------------------------------
 
 describe('getElixirHpBonus', () => {
     it('returns 0 when no hp_boost_500 buff', () => {
@@ -190,7 +190,7 @@ describe('getElixirDefBonus', () => {
     });
 });
 
-// ── Percent multipliers ──────────────────────────────────────────────────────
+// -- Percent multipliers ------------------------------------------------------
 
 describe('getElixirHpPctMultiplier', () => {
     it('returns 1.0 with no buff', () => {
@@ -214,7 +214,7 @@ describe('getElixirMpPctMultiplier', () => {
     });
 });
 
-// ── getElixirAttackSpeedMultiplier ───────────────────────────────────────────
+// -- getElixirAttackSpeedMultiplier -------------------------------------------
 
 describe('getElixirAttackSpeedMultiplier', () => {
     it('returns 1.0 with no buff', () => {
@@ -227,7 +227,7 @@ describe('getElixirAttackSpeedMultiplier', () => {
     });
 });
 
-// ── tickCombatElixirs ────────────────────────────────────────────────────────
+// -- tickCombatElixirs --------------------------------------------------------
 
 describe('tickCombatElixirs', () => {
     it('does nothing when no elixir buffs are active', () => {
@@ -306,13 +306,13 @@ describe('tickCombatElixirs', () => {
         seedPausable('hp_boost_500', 5000);
         tickCombatElixirs(0);
         const buffs = useBuffStore.getState().allBuffs;
-        // consumePausableTime is called with 0 → min(0, remainingMs) = 0
+        // consumePausableTime is called with 0 -> min(0, remainingMs) = 0
         // so the buff remains at the same remainingMs.
         expect(buffs.find((b) => b.effect === 'hp_boost_500')!.remainingMs).toBe(5000);
     });
 });
 
-// ── Mocked-store fallback paths ──────────────────────────────────────────────
+// -- Mocked-store fallback paths ----------------------------------------------
 // All getters read `useBuffStore.getState()` directly. We use the real store
 // (not a mock) but call hasBuff against a clean state to verify the default
 // branch returns the documented "no change" value.

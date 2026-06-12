@@ -27,7 +27,7 @@
         width: 100%;
     }
 
-    // ── Gates (no party / too small / not leader) ─────────────────────────────
+    // -- Gates (no party / too small / not leader) -----------------------------
     &__gate {
         background: #1a1a28;
         border: 1px solid #2a2a3a;
@@ -47,7 +47,7 @@
         }
     }
 
-    // ── Hub panel: filters + raid cards (mirrors Dungeon hub) ─────────────────
+    // -- Hub panel: filters + raid cards (mirrors Dungeon hub) -----------------
     &__panel {
         padding: $spacing-md;
         display: flex;
@@ -207,7 +207,7 @@
         border-radius: $radius-md;
     }
 
-    // ── Raid card (1:1 with dungeon card chrome) ─────────────────────────────
+    // -- Raid card (1:1 with dungeon card chrome) -----------------------------
     // Visual language is intentionally identical to `.dungeon__card`: same
     // image-driven background (`--card-image`), same hue gradient on the
     // border + box-shadow, same shimmer ::before, same top glow ::after.
@@ -322,7 +322,7 @@
         80% { left: 200%; opacity: 0; }
     }
 
-    // ── Corner badges ────────────────────────────────────────────────────────
+    // -- Corner badges --------------------------------------------------------
     &__corner {
         position: absolute;
         top: 8px;
@@ -365,7 +365,7 @@
         }
     }
 
-    // ── Centred head (name + flavour) ────────────────────────────────────────
+    // -- Centred head (name + flavour) ----------------------------------------
     &__card-head {
         display: flex;
         flex-direction: column;
@@ -408,7 +408,7 @@
         padding: $spacing-xs 0;
     }
 
-    // ── Drop popup trigger ──────────────────────────────────────────────────
+    // -- Drop popup trigger --------------------------------------------------
     // Capped to 200px and centred so it visually pairs with the matching
     // `__enter-btn--wide` below it instead of stretching across the whole
     // tile — same shape both buttons now use.
@@ -434,7 +434,7 @@
         }
     }
 
-    // ── Drop-table modal ─────────────────────────────────────────────────────
+    // -- Drop-table modal -----------------------------------------------------
     &__modal-backdrop {
         position: fixed;
         inset: 0;
@@ -558,7 +558,7 @@
         color: rgba(255, 255, 255, 0.5);
     }
 
-    // ── Attempts strip ──────────────────────────────────────────────────────
+    // -- Attempts strip ------------------------------------------------------
     &__attempts {
         font-size: 12px;
         color: rgba(255, 255, 255, 0.65);
@@ -594,7 +594,7 @@
         text-align: center;
     }
 
-    // ── Wide CTA button (1:1 with dungeon enter btn) ────────────────────────
+    // -- Wide CTA button (1:1 with dungeon enter btn) ------------------------
     // Hollow look (transparent fill + 2px hue-coloured border) capped at
     // 200px wide and centred so it visually pairs with the matching
     // `__drop-btn` above it instead of stretching across the whole tile.
@@ -636,7 +636,7 @@
         }
     }
 
-    // ── Fighting layout ─────────────────────────────────────────────────────
+    // -- Fighting layout -----------------------------------------------------
     &--fighting {
         background: linear-gradient(180deg, #0d0d1a 0%, #1a1a28 100%);
     }
@@ -657,7 +657,7 @@
         100% { transform: scale(1.1); opacity: 0; }
     }
 
-    // ── Result screen (per-member loot tiles) ───────────────────────────────
+    // -- Result screen (per-member loot tiles) -------------------------------
     &__result-header {
         text-align: center;
         margin: 24px auto 12px;
@@ -760,7 +760,7 @@
     }
 
     // Completion-roll bonus item — pulled out of the regular drop grid and
-    // rendered under its own "🎁 Dodatkowy item:" header so the player can
+    // rendered under its own "wrapped-gift Dodatkowy item:" header so the player can
     // immediately see what they earned for clearing the whole raid (vs.
     // getting lost in 20+ per-boss icons above).
     &__result-bonus {
@@ -834,7 +834,7 @@
         border: none;
         // Fixed line-height + box-sizing so the button height is identical
         // regardless of label contents — emoji glyphs render taller than
-        // plain text otherwise, leaving "⚔️ Ponów" 7 px shorter than
+        // plain text otherwise, leaving "crossed-swords Ponów" 7 px shorter than
         // "Powrót do lobby" with default `line-height: normal`.
         padding: 0 24px;
         height: 44px;
