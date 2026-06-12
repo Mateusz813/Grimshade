@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ICombatActiveQuest } from './types';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 
 interface IProps {
     /** All active tasks/quests for the currently fought enemy. Empty = badge hidden. */
@@ -37,7 +38,7 @@ const CombatTaskBadge = ({ items }: IProps) => {
                 aria-expanded={open}
                 aria-label={`Zadania na tym potworze (${items.length})`}
             >
-                📜
+                <GameIcon name="scroll" />
                 <span className="combat-ui__task-badge-count">{items.length}</span>
             </button>
             {open && (
@@ -45,7 +46,7 @@ const CombatTaskBadge = ({ items }: IProps) => {
                     {items.map((q) => (
                         <div key={q.id} className={`combat-ui__task-row${q.completed ? ' combat-ui__task-row--done' : ''}`}>
                             <span className="combat-ui__task-row-icon">
-                                {q.completed ? '✅' : q.kind === 'task' ? '📋' : '📜'}
+                                {q.completed ? <GameIcon name="check-mark-button" /> : q.kind === 'task' ? <GameIcon name="clipboard" /> : <GameIcon name="scroll" />}
                             </span>
                             <span className="combat-ui__task-row-label">{q.label}</span>
                             <span className="combat-ui__task-row-progress">

@@ -23,18 +23,18 @@
   // chrome — drop the reservation padding too so those views can use their
   // full-screen layouts unchanged. Views inside --bare keep their own
   // `min-height: 100vh` (Login/Register use it to centre the form vertically)
-  // because chrome is 0 → no need for the global cap.
+  // because chrome is 0  no need for the global cap.
   &--bare &__main {
     padding-top: 0;
     padding-bottom: 0;
   }
 
-  // ── Global view-root height cap ───────────────────────────────────────
+  // -- Global view-root height cap ---------------------------------------
   // Every regular view file ships `.foo { min-height: 100vh }` so its
   // background gradient fills the viewport when content is short. That
   // works fine in isolation but inside `.app-shell__main` (which adds
   // `padding-top: 50px` for the fixed TopHeader and `padding-bottom: 60-64px`
-  // for the BottomNav) the math becomes `100vh + 110-114px > 100vh` →
+  // for the BottomNav) the math becomes `100vh + 110-114px > 100vh` 
   // every page gets a phantom 100-114px scroll even when content fits in
   // the visible area.
   //

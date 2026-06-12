@@ -31,7 +31,7 @@ import {
     PCT_POTION_MIN_LEVEL,
 } from './potionSystem';
 
-// ── ID sets ─────────────────────────────────────────────────────────────────
+// -- ID sets -----------------------------------------------------------------
 
 describe('potion ID sets', () => {
     it('lists Great/Super/Ultimate/Divine for both HP and MP pct sets', () => {
@@ -62,7 +62,7 @@ describe('potion ID sets', () => {
     });
 });
 
-// ── isPctPotion ─────────────────────────────────────────────────────────────
+// -- isPctPotion -------------------------------------------------------------
 
 describe('isPctPotion (effect string)', () => {
     it('returns true for percentage effects', () => {
@@ -82,7 +82,7 @@ describe('isPctPotion (effect string)', () => {
     });
 });
 
-// ── isPctPotionId / isFlatPotionId ──────────────────────────────────────────
+// -- isPctPotionId / isFlatPotionId ------------------------------------------
 
 describe('isPctPotionId / isFlatPotionId', () => {
     it('classifies each canonical HP potion correctly', () => {
@@ -113,7 +113,7 @@ describe('isPctPotionId / isFlatPotionId', () => {
     });
 });
 
-// ── Cooldown constants ──────────────────────────────────────────────────────
+// -- Cooldown constants ------------------------------------------------------
 
 describe('potion cooldown constants', () => {
     it('uses 1s for flat potions, 0.5s for pct potions', () => {
@@ -126,7 +126,7 @@ describe('potion cooldown constants', () => {
     });
 });
 
-// ── getPotionCooldownMs ─────────────────────────────────────────────────────
+// -- getPotionCooldownMs -----------------------------------------------------
 
 describe('getPotionCooldownMs', () => {
     it('returns the pct cooldown for percentage potions', () => {
@@ -145,7 +145,7 @@ describe('getPotionCooldownMs', () => {
     });
 });
 
-// ── Pool integrity ──────────────────────────────────────────────────────────
+// -- Pool integrity ----------------------------------------------------------
 
 describe('potion pools derived from ELIXIRS', () => {
     it('ALL_HP_POTIONS only contains heal_hp_* elixirs', () => {
@@ -171,7 +171,7 @@ describe('potion pools derived from ELIXIRS', () => {
     });
 });
 
-// ── getPotionLabel ──────────────────────────────────────────────────────────
+// -- getPotionLabel ----------------------------------------------------------
 
 describe('getPotionLabel', () => {
     it('formats flat HP/MP heal effects', () => {
@@ -193,11 +193,11 @@ describe('getPotionLabel', () => {
     });
 });
 
-// ── getBestPotion ───────────────────────────────────────────────────────────
+// -- getBestPotion -----------------------------------------------------------
 
 describe('getBestPotion', () => {
     it('returns the strongest potion the player owns', () => {
-        // FLAT_HP_POTIONS ordered low→high (sm, md, lg)
+        // FLAT_HP_POTIONS ordered low->high (sm, md, lg)
         const consumables = { hp_potion_sm: 5, hp_potion_md: 2 };
         const best = getBestPotion(FLAT_HP_POTIONS, consumables);
         expect(best?.id).toBe('hp_potion_md');
@@ -220,7 +220,7 @@ describe('getBestPotion', () => {
     });
 });
 
-// ── resolveAutoPotionElixir ─────────────────────────────────────────────────
+// -- resolveAutoPotionElixir -------------------------------------------------
 
 describe('resolveAutoPotionElixir', () => {
     it('returns the preferred elixir when the player owns it', () => {
@@ -258,7 +258,7 @@ describe('resolveAutoPotionElixir', () => {
     });
 });
 
-// ── PCT_POTION_MIN_LEVEL ────────────────────────────────────────────────────
+// -- PCT_POTION_MIN_LEVEL ----------------------------------------------------
 
 describe('PCT_POTION_MIN_LEVEL', () => {
     it('is 100 (matches Great HP/MP unlock level)', () => {

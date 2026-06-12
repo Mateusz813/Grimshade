@@ -37,7 +37,7 @@ import { getAdminClient } from '../../../fixtures/adminClient';
 test.describe('Social › Party', { tag: '@party' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('Town "+ Stwórz party" shortcut → party persists + appears in /party roster', async ({ page }) => {
+    test('Town "+ Stwórz party" shortcut -> party persists + appears in /party roster', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -53,7 +53,7 @@ test.describe('Social › Party', { tag: '@party' }, () => {
             const userId = await findUserIdByEmail(testUsers.primary.email);
             await seedGameSave({ characterId: created.id, userId });
 
-            // 2. Login + pick character → Town.
+            // 2. Login + pick character -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -82,7 +82,7 @@ test.describe('Social › Party', { tag: '@party' }, () => {
 
             // 5. After the round-trip, the strip should NO LONGER carry
             //    the `--empty` modifier (party is non-null in the store
-            //    → Town re-renders the populated strip variant). We wait
+            //    -> Town re-renders the populated strip variant). We wait
             //    for the empty selector to detach.
             //    Network timing: createParty does INSERT parties + INSERT
             //    party_members + SELECT getPartyWithMembers — 3 sequential
@@ -91,7 +91,7 @@ test.describe('Social › Party', { tag: '@party' }, () => {
             // The populated strip is still `.town__party-strip` (without --empty).
             await expect(page.locator('.town__party-strip')).toBeVisible();
 
-            // 6. Navigate to /party via BottomNav → Społeczność → Party tile.
+            // 6. Navigate to /party via BottomNav -> Społeczność -> Party tile.
             //    Confirms the party persisted to DB (Party.tsx hydrates from
             //    server via hydrateActiveParty on mount).
             await page.getByRole('button', { name: /^Społeczność$/i }).tap();

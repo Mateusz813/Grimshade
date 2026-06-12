@@ -4,9 +4,9 @@ import { create } from 'zustand';
  * Friends store — local-only social graph per character.
  *
  * Maintains three sets keyed by character name:
- *   - `friends`    → players the user has added
- *   - `favorites`  → subset of friends pinned to the top of the list
- *   - `blocked`    → players whose chat messages should be hidden
+ *   - `friends`    -> players the user has added
+ *   - `favorites`  -> subset of friends pinned to the top of the list
+ *   - `blocked`    -> players whose chat messages should be hidden
  *
  * Persistence goes through `characterScope.ts` (baseKey: `friends`) so each
  * character has its own list. The store intentionally uses character *names*

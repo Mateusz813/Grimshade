@@ -11,12 +11,12 @@ import { MemoryRouter } from 'react-router-dom';
  * remain fast and deterministic.
  *
  * The only behaviour we care about here is:
- *   • Children render in every case (the shell never blocks routing).
- *   • Chrome is mounted when a character exists AND we're not on a
+ *   - Children render in every case (the shell never blocks routing).
+ *   - Chrome is mounted when a character exists AND we're not on a
  *     characterless route (`/login`, `/character-select`, etc.).
- *   • Chrome is suppressed when no character is loaded.
- *   • `setIsCharacterlessRoute` is called with the correct boolean.
- *   • BottomNav is suppressed when combat HUD is active.
+ *   - Chrome is suppressed when no character is loaded.
+ *   - `setIsCharacterlessRoute` is called with the correct boolean.
+ *   - BottomNav is suppressed when combat HUD is active.
  */
 
 vi.mock('../TopHeader/TopHeader', () => ({

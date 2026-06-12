@@ -64,5 +64,5 @@ const icons = [
 for (const { file, size } of icons) {
   const dest = path.join(publicDir, file);
   fs.writeFileSync(dest, createPNG(size, ...BG));
-  console.log(`✓ ${file} (${size}×${size})`);
+  console.log(`v ${file} (${size}×${size})`);
 }

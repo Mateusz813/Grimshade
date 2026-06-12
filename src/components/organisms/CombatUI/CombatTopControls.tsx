@@ -1,4 +1,6 @@
 import type { TSlotNode } from './types';
+import Icon from '../../atoms/Icon/Icon';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 
 interface IProps {
     /** Animation-speed chip — `label` is rendered verbatim (e.g. "x1", "SKIP"). `null` hides.
@@ -41,7 +43,7 @@ const CombatTopControls = ({ speed, autoSkill, autoFight, xpVisible, autoPotion,
                     style={speed.disabled ? disabledStyle : undefined}
                     title={speed.disabled ? 'Tylko lider party może zmieniać ten parametr' : 'Prędkość walki'}
                 >
-                    ⏩ <strong>{speed.label}</strong>
+                    <GameIcon name="fast-forward-button" /> <strong>{speed.label}</strong>
                 </button>
             )}
             {autoSkill && (
@@ -53,7 +55,7 @@ const CombatTopControls = ({ speed, autoSkill, autoFight, xpVisible, autoPotion,
                     style={autoSkill.disabled ? disabledStyle : undefined}
                     title="Auto skille"
                 >
-                    ✨ {autoSkill.on ? 'ON' : 'OFF'}
+                    <GameIcon name="sparkles" /> {autoSkill.on ? 'ON' : 'OFF'}
                 </button>
             )}
             {autoFight && (
@@ -65,7 +67,7 @@ const CombatTopControls = ({ speed, autoSkill, autoFight, xpVisible, autoPotion,
                     style={autoFight.disabled ? disabledStyle : undefined}
                     title="Auto walka"
                 >
-                    ⚔️ {autoFight.on ? 'ON' : 'OFF'}
+                    <GameIcon name="crossed-swords" /> {autoFight.on ? 'ON' : 'OFF'}
                 </button>
             )}
             {autoPotion && (
@@ -77,7 +79,7 @@ const CombatTopControls = ({ speed, autoSkill, autoFight, xpVisible, autoPotion,
                     style={autoPotion.disabled ? disabledStyle : undefined}
                     title="Auto potion"
                 >
-                    🧪 {autoPotion.on ? 'ON' : 'OFF'}
+                    <GameIcon name="test-tube" /> {autoPotion.on ? 'ON' : 'OFF'}
                 </button>
             )}
             {xpVisible && (
@@ -89,7 +91,7 @@ const CombatTopControls = ({ speed, autoSkill, autoFight, xpVisible, autoPotion,
                     style={xpVisible.disabled ? disabledStyle : undefined}
                     title="Pokaż pasek XP"
                 >
-                    {xpVisible.on ? '👁️' : '👁️‍🗨️'}
+                    <Icon name={xpVisible.on ? 'eye' : 'eyeOff'} />
                 </button>
             )}
             {extras}

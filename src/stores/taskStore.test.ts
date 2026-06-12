@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useTaskStore, type ITask } from './taskStore';
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
+// -- Mocks --------------------------------------------------------------------
 // taskStore.claimReward calls into inventoryStore.addGold + characterStore.addXp.
 // We mock both so the test exercises taskStore in isolation — the actual
 // inventory + character math has its own coverage in their dedicated suites.
@@ -25,7 +25,7 @@ vi.mock('./characterStore', () => ({
     },
 }));
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeTask = (overrides: Partial<ITask> = {}): ITask => ({
     id: 'task_rat_10',
@@ -38,7 +38,7 @@ const makeTask = (overrides: Partial<ITask> = {}): ITask => ({
     ...overrides,
 });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useTaskStore.setState({
@@ -50,7 +50,7 @@ const resetStore = (): void => {
     addXpMock.mockClear();
 };
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
 describe('taskStore — initial state', () => {
     beforeEach(resetStore);

@@ -31,14 +31,14 @@ describe('addBossKill', () => {
     });
 
     it('adds the per-kill score to totalScore', () => {
-        // level 25 → floor(25*10 + (25/100)*25) = floor(250 + 6.25) = 256
+        // level 25 -> floor(25*10 + (25/100)*25) = floor(250 + 6.25) = 256
         useBossScoreStore.getState().addBossKill('boss_25', 25);
         expect(useBossScoreStore.getState().totalScore).toBe(256);
     });
 
     it('accumulates totalScore across multiple bosses/levels', () => {
         const store = useBossScoreStore.getState();
-        // level 25 → 256, level 100 → floor(1000 + 100) = 1100
+        // level 25 -> 256, level 100 -> floor(1000 + 100) = 1100
         store.addBossKill('boss_25', 25);
         store.addBossKill('boss_100', 100);
         expect(useBossScoreStore.getState().totalScore).toBe(256 + 1100);
@@ -66,7 +66,7 @@ describe('addBossKill', () => {
     });
 });
 
-// ── getTotalScore ────────────────────────────────────────────────────────────
+// -- getTotalScore ------------------------------------------------------------
 
 describe('getTotalScore', () => {
     it('returns 0 on a fresh store', () => {
@@ -79,7 +79,7 @@ describe('getTotalScore', () => {
     });
 });
 
-// ── getBossKillCount ─────────────────────────────────────────────────────────
+// -- getBossKillCount ---------------------------------------------------------
 
 describe('getBossKillCount', () => {
     it('returns 0 for an unrecorded boss', () => {

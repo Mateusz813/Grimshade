@@ -3,19 +3,19 @@ import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
- * Deposit view — bag ↔ deposit bank. Two-panel layout with rarity +
+ * Deposit view — bag <-> deposit bank. Two-panel layout with rarity +
  * slot filters, search, and bulk move actions. Lightweight (~250
  * lines).
  *
  * Coverage:
- *   • Smoke render (root + header + both panels).
- *   • Empty-state copy on both panels when bag + deposit are empty.
- *   • Rarity-filter toggle changes the `--active` modifier.
- *   • Search input controlled state echo.
- *   • Deposit tile click → calls `depositItem` (item moves out of bag).
- *   • Withdraw tile click → calls `withdrawItem` (item moves out of deposit).
- *   • "Wpłać wszystkie" bulk button disabled when filtered bag is empty.
- *   • Back button calls navigate('/').
+ *   - Smoke render (root + header + both panels).
+ *   - Empty-state copy on both panels when bag + deposit are empty.
+ *   - Rarity-filter toggle changes the `--active` modifier.
+ *   - Search input controlled state echo.
+ *   - Deposit tile click -> calls `depositItem` (item moves out of bag).
+ *   - Withdraw tile click -> calls `withdrawItem` (item moves out of deposit).
+ *   - "Wpłać wszystkie" bulk button disabled when filtered bag is empty.
+ *   - Back button calls navigate('/').
  *
  * No need to mock framer-motion — Deposit doesn't use it.
  */

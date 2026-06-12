@@ -98,7 +98,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ── usePartyReadyCheck ───────────────────────────────────────────────────────
+// -- usePartyReadyCheck -------------------------------------------------------
 
 describe('usePartyReadyCheck (hook)', () => {
     it('does NOT subscribe when there is no party', () => {
@@ -116,7 +116,7 @@ describe('usePartyReadyCheck (hook)', () => {
 
     it('consumes destination silently when already on the target route', () => {
         // Set up the post-go state: open=false, destination set, location
-        // already matches → effect must call consumeDestination not navigate.
+        // already matches -> effect must call consumeDestination not navigate.
         usePartyStore.setState({ party: makeParty('me-1', [makeMember('me-1')]) });
         vi.spyOn(usePartyReadyCheckStore.getState(), 'subscribe').mockReturnValue(() => {});
         usePartyReadyCheckStore.setState({ open: false, destination: '/combat' });
@@ -137,7 +137,7 @@ describe('usePartyReadyCheck (hook)', () => {
     });
 });
 
-// ── requestPartyCombatStart ──────────────────────────────────────────────────
+// -- requestPartyCombatStart --------------------------------------------------
 
 describe('requestPartyCombatStart', () => {
     it('returns false when there is no character', () => {
@@ -156,7 +156,7 @@ describe('requestPartyCombatStart', () => {
     });
 
     it('runs onConfirmed immediately when the party has only bots besides me', () => {
-        // Leader alone with bots → no popup, just run.
+        // Leader alone with bots -> no popup, just run.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({
             party: makeParty('me-1', [makeMember('me-1'), makeMember('bot-1', true)]),
@@ -216,7 +216,7 @@ describe('requestPartyCombatStart', () => {
     });
 });
 
-// ── triggerPartyCombatGo ─────────────────────────────────────────────────────
+// -- triggerPartyCombatGo -----------------------------------------------------
 
 describe('triggerPartyCombatGo', () => {
     it('returns false with no character', () => {
@@ -258,13 +258,13 @@ describe('triggerPartyCombatGo', () => {
     });
 });
 
-// ── registerGoReplicator + useReadyCheckGoEffect ────────────────────────────
+// -- registerGoReplicator + useReadyCheckGoEffect ----------------------------
 
 describe('registerGoReplicator / useReadyCheckGoEffect', () => {
     it('registers a per-destination replicator that can be looked up later', () => {
         // Sanity: registerGoReplicator stores the function in the module-
         // level map so `useReadyCheckGoEffect` can find it on a `go` event.
-        // The end-to-end "effect fires → replicator runs" path is hard to
+        // The end-to-end "effect fires -> replicator runs" path is hard to
         // exercise from a unit test because the effect reads character/party
         // via `useStore.getState()` at render time (not via subscriptions),
         // so a setState-then-rerender flow may not realistically simulate

@@ -4,8 +4,8 @@
  * Spec (BACKLOG.md punkt 6.6): "Pojedyncza sprzedaż".
  *
  * Test sprawdza pełen flow single-sell:
- *  1. Tap na bag tile → otwiera się DetailPanel
- *  2. Tap "Sprzedaj (Xg)" button → item znika z bagu + gold w TopHeader rośnie.
+ *  1. Tap na bag tile -> otwiera się DetailPanel
+ *  2. Tap "Sprzedaj (Xg)" button -> item znika z bagu + gold w TopHeader rośnie.
  *
  * Setup: postać Knight, gold=0 (default z createCharacterViaApi), +1
  * seeded item w bag. Item: `iron_mace` (rarity common, basePrice=80) —
@@ -13,26 +13,26 @@
  * itemSystem.ts linia 373).
  *
  * Asercje:
- *  • Przed sprzedażą: 1 bag tile widoczne, TopHeader pokazuje "0".
- *  • Po sprzedaży: 0 bag tile (lub stack tiles dla consumables — patrz
+ *  - Przed sprzedażą: 1 bag tile widoczne, TopHeader pokazuje "0".
+ *  - Po sprzedaży: 0 bag tile (lub stack tiles dla consumables — patrz
  *    UWAGA niżej), TopHeader pokazuje "16" (gold short format dla 16g
  *    to po prostu "16" bo to mniej niż 100).
  *
  * Dlaczego iron_mace a nie wooden_mace:
- *  • wooden_mace ma `basePrice: 0` w items.json → sell padding via
+ *  - wooden_mace ma `basePrice: 0` w items.json -> sell padding via
  *    SELL_PRICES[common](lvl=1) = floor(1*5+10) = 15g. To też działa,
  *    ale iron_mace ma jawne basePrice które daje 16g — łatwiej
  *    audytować.
  *
  * UWAGA o gold format (TopHeader):
- *  • TopHeader używa `formatGoldShort()` (goldFormat.ts linia 31) — dla
+ *  - TopHeader używa `formatGoldShort()` (goldFormat.ts linia 31) — dla
  *    wartości < 1000 zwraca format `"{N} gp"` (np. "16 gp"), dla >= 1000
- *    redukuje do "{X,YZ} k" itd. My testujemy z 16g → display = "16 gp".
- *  • Gold value czytamy z `.top-header__gold-value` element (TopHeader.tsx
- *    linia 332). To liczba (+ suffix) widoczna w pillu obok ikony 💰.
+ *    redukuje do "{X,YZ} k" itd. My testujemy z 16g -> display = "16 gp".
+ *  - Gold value czytamy z `.top-header__gold-value` element (TopHeader.tsx
+ *    linia 332). To liczba (+ suffix) widoczna w pillu obok ikony :money-bag:.
  *
  * UWAGA o stack tiles vs bag tiles:
- *  • Inventory bag rendering miesza "real" items (broń, armor) z
+ *  - Inventory bag rendering miesza "real" items (broń, armor) z
  *    "stack tiles" (potions, chests, stones — które są w
  *    `inventoryStore.consumables` / `.stones`, nie w `.bag`). My
  *    seedujemy do `.bag` tylko, więc po sprzedaży count `.inventory__bag-tile`
@@ -57,7 +57,7 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
     // the sell mutation isn't reverted by a late blob apply).
     test.describe.configure({ retries: 5 });
 
-    test('tap bag tile → tap "Sprzedaj" → item removed + gold counter increases by sell price', async ({ page }) => {
+    test('tap bag tile -> tap "Sprzedaj" -> item removed + gold counter increases by sell price', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -73,7 +73,7 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
             });
             createdId = created.id;
 
-            // 2. Seed 1 iron_mace (common, level 1) → sell price = floor(80 * 0.20) = 16g
+            // 2. Seed 1 iron_mace (common, level 1) -> sell price = floor(80 * 0.20) = 16g
             //    UWAGA: itemLevel: 1 świadomie — sell price formuła dla items z
             //    basePrice > 0 NIE skaluje po level, tylko mnoży basePrice przez
             //    rarity multiplier. Więc itemLevel nie wpływa na expected 16g.
@@ -98,7 +98,7 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
             // Hydration barrier — block until App.tsx restore() fully settled
             // (cloud loadGame + applyBlobToStores). Without this the sell
             // mutation can race a late applyBlobToStores that re-adds the
-            // sold item (observed: bag-tile count 1→0→1 revert). See
+            // sold item (observed: bag-tile count 1->0->1 revert). See
             // fixtures/appReady.ts.
             await waitForAppReady(page);
             await expect(page.locator('.inventory')).toBeVisible({ timeout: 10_000 });
@@ -109,10 +109,10 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
             await expect(bagTiles).toHaveCount(1, { timeout: 10_000 });
             await expect(page.locator('.top-header__gold-value')).toHaveText('0 gp');
 
-            // 5. Tap na bag tile (klik na ItemIcon w środku tile) →
+            // 5. Tap na bag tile (klik na ItemIcon w środku tile) ->
             //    otwiera DetailPanel (overlay z `.inventory__detail` root).
             //    ItemIcon ma onClick handler który wywołuje `selectBagItem(item)`
-            //    (Inventory.tsx linia 420 + 4708). W trybie non-bulk → setSelected.
+            //    (Inventory.tsx linia 420 + 4708). W trybie non-bulk -> setSelected.
             await bagTiles.first().tap();
             await expect(page.locator('.inventory__detail')).toBeVisible({ timeout: 5_000 });
 

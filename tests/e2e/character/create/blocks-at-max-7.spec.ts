@@ -2,8 +2,8 @@
  * Atomic E2E — przy 7/7 postaci na koncie przycisk "Stwórz nową
  * postać" jest UKRYTY (a nie tylko disabled).
  *
- * Spec (BACKLOG 2.8): "Max 7 postaci — seed 7 chars via API →
- * /character-select → assert 'Stwórz nową postać' button hidden or
+ * Spec (BACKLOG 2.8): "Max 7 postaci — seed 7 chars via API ->
+ * /character-select -> assert 'Stwórz nową postać' button hidden or
  * disabled (text shows '7/7')".
  *
  * CharacterSelect.tsx linia 369:
@@ -18,7 +18,7 @@
  *   1. Seed 7 postaci przez `createCharacterViaApi` (różne klasy, unikalne
  *      nicki) — sekwencyjnie, żeby zachować deterministyczną kolejność
  *      INSERT-ów i ułatwić cleanup w razie partial failure.
- *   2. Login UI flow → /character-select.
+ *   2. Login UI flow -> /character-select.
  *   3. Wait aż lista załaduje się (`.char-select__card` count == 7).
  *
  * One action:    żadnej — to test asercji STANU na liście, nie action-outcome.
@@ -30,7 +30,7 @@
  *                równolegle przez inne testy z innego pliku.
  *
  * Parallelism note: workers=2 (1 per profile). Inne testy na primary
- * tworzą max 1 char w danym momencie → łącznie 7+1 = 8 chars w peaku.
+ * tworzą max 1 char w danym momencie -> łącznie 7+1 = 8 chars w peaku.
  * 7-cap jest enforce-owany tylko w UI conditional (`length < 7`), NIE
  * w DB/RPC — `createCharacterViaApi` bypassuje przez service_role.
  * Stąd nawet jeśli inny test tworzy char-a w międzyczasie, asercja
@@ -58,7 +58,7 @@ import { cleanupCharacterById } from '../../fixtures/cleanup';
 
 // Mix 7 różnych klas żeby każdy character miał inną klasę (sanity że
 // API seed nie cierpi na constraint typu "max 1 per class") + lepsze
-// debug w razie failu (na karcie widać klasę → łatwo skorelować z seed).
+// debug w razie failu (na karcie widać klasę -> łatwo skorelować z seed).
 const SEED_CLASSES: ReadonlyArray<CharacterClass> = [
     'Knight',
     'Mage',
@@ -78,8 +78,8 @@ test.describe('Character › Create', { tag: '@character' }, () => {
         try {
             // 1. Seed 7 postaci sekwencyjnie. Sequential a nie Promise.all
             //    bo:
-            //     • łatwiej zdebugować w razie failu (wiadomo na której pętli się sypnęło)
-            //     • Supabase REST insert na free-tier potrafi rate-limit-ować
+            //     - łatwiej zdebugować w razie failu (wiadomo na której pętli się sypnęło)
+            //     - Supabase REST insert na free-tier potrafi rate-limit-ować
             //       7 jednoczesnych INSERT-ów (lekkie ryzyko 429)
             for (const cls of SEED_CLASSES) {
                 const c = await createCharacterViaApi({
@@ -91,10 +91,10 @@ test.describe('Character › Create', { tag: '@character' }, () => {
             }
             expect(createdIds).toHaveLength(7);
 
-            // 2. Login UI flow → /character-select.
+            // 2. Login UI flow -> /character-select.
             //    loginViaUI akceptuje pos-login URL = /character-select LUB /
             //    (jeśli store ma aktywną postać). Po świeżym loginie store
-            //    jest pusty → /character-select.
+            //    jest pusty -> /character-select.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -112,7 +112,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
             // 4. Główna asercja — przycisk "Stwórz nową postać" musi
             //    być NIE-zrenderowany. Code path (CharacterSelect.tsx
             //    linia 369): `{characters.length < 7 && (<button>...</button>)}`
-            //    Przy length === 7 conditional jest false → button nie
+            //    Przy length === 7 conditional jest false -> button nie
             //    pojawia się w DOM w ogóle.
             const createBtn = page.getByRole('button', { name: /Stwórz nową postać/i });
             await expect(createBtn).toHaveCount(0);

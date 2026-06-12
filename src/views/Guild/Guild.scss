@@ -12,7 +12,7 @@
         padding: 0 28px 140px;
     }
 
-    // ── Top bar ────────────────────────────────────────────────────────
+    // -- Top bar --------------------------------------------------------
     // 2026-05-18 spec ("Napis gildie na 100% szerokosci ekranu"): stretch
     // the sticky bar edge-to-edge by negating the page padding (the .guild
     // root carries 20px / 28px side padding for the rest of the screen).
@@ -69,7 +69,7 @@
         color: $color-text-muted;
     }
 
-    // ── List view ──────────────────────────────────────────────────────
+    // -- List view ------------------------------------------------------
     &__list-box {
         background: linear-gradient(180deg, rgba(156, 39, 176, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%);
         border: 1px solid rgba(156, 39, 176, 0.25);
@@ -231,7 +231,7 @@
         text-align: center;
     }
 
-    // ── Create dialog ──────────────────────────────────────────────────
+    // -- Create dialog --------------------------------------------------
     &__create-cost {
         font-size: 14px;
         color: $color-text-muted;
@@ -321,7 +321,7 @@
         font-size: 13px;
     }
 
-    // ── Guild home ─────────────────────────────────────────────────────
+    // -- Guild home -----------------------------------------------------
     &__home-banner {
         display: flex;
         align-items: center;
@@ -406,7 +406,7 @@
         margin: 6px 0;
     }
 
-    // ── Members ────────────────────────────────────────────────────────
+    // -- Members --------------------------------------------------------
     &__members {
         list-style: none;
         margin: 12px 0 0;
@@ -559,7 +559,7 @@
         &:hover { background: rgba(255, 152, 0, 0.25); }
     }
 
-    // ── Sub-nav ────────────────────────────────────────────────────────
+    // -- Sub-nav --------------------------------------------------------
     // 2026-05-18 spec ("uzyj zdjec w pliku guild/ tak samo jak te
     // kafelki sa w miescie, napis na dole i zdjecie jako tlo"): each
     // tile is a square-ish card with a full-bleed background image
@@ -641,7 +641,7 @@
         border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    // ── Boss ───────────────────────────────────────────────────────────
+    // -- Boss -----------------------------------------------------------
     // 2026-05-18 spec ("Zamiast obecnego tla uzywamy tla dla danego
     // poziomu lochu"): full-width stage that paints the dungeon
     // background art under the card. Background is set inline via
@@ -739,10 +739,10 @@
         // 2026-05-18 v16 spec ("w animacji dodaj zanikanie ekranu
         // do 0 widocznosci zeby nie bylo widac przeskoku w
         // powiekszaniu okna do walki"): when the combat arena
-        // mounts (phase === 'fighting'), fade it in from 0 → 1
+        // mounts (phase === 'fighting'), fade it in from 0  1
         // opacity over 380ms. Combined with the entry overlay
         // fade-out at the tail end of the door sequence, the
-        // transition reads as "doors part → combat scene
+        // transition reads as "doors part  combat scene
         // materialises" instead of a hard snap.
         &.is-fighting {
             animation: guild-combat-fade-in 380ms ease-out;
@@ -920,7 +920,7 @@
 
         // 2026-05-18 v4 spec ("pokonany boss powinna byc ikonka
         // czaszki na nim"): dead-boss visual — image desaturates and
-        // the giant ☠️ overlay sits on top of the portrait.
+        // the giant skull-and-crossbones overlay sits on top of the portrait.
         &.is-dead img {
             filter: grayscale(0.85) brightness(0.55);
         }
@@ -1067,7 +1067,7 @@
         white-space: nowrap;
     }
 
-    // ── Arena: boss tile left, player tile right ───────────────
+    // -- Arena: boss tile left, player tile right ---------------
     // 2026-05-18 v4 spec ("1 kafelek bossa i 1 kafelek naszej
     // postaci"): compact portrait tiles, ~180-220px wide, anchored
     // side-by-side on every viewport (mobile + desktop). Boss
@@ -1437,7 +1437,7 @@
 
     @keyframes guild-entry-overlay {
         // 2026-05-18 v16: overlay starts FULLY opaque so the stage
-        // resize (700×200 → 1040×auto) that fires at the same time
+        // resize (700×200  1040×auto) that fires at the same time
         // is hidden from frame 1. Tail fade-out remains so the
         // doors clear into the new combat arena that's already in
         // place behind them.
@@ -1574,7 +1574,7 @@
     }
 
     // Boss portrait + name + tier reveal in the centre.
-    // 2026-05-18 v18: shrunk gap from 6 → 3px so sprite + name +
+    // 2026-05-18 v18: shrunk gap from 6  3px so sprite + name +
     // level pack inside the 200px-tall panel without overflowing.
     &__boss-entry-label {
         position: absolute;
@@ -1736,7 +1736,7 @@
         margin-top: 8px !important;
     }
 
-    // ── Claim popup ────────────────────────────────────────────────────
+    // -- Claim popup ----------------------------------------------------
     &__claim-popup {
         display: flex;
         flex-direction: column;
@@ -1759,7 +1759,7 @@
         font-size: 22px;
     }
 
-    // ── Treasury ───────────────────────────────────────────────────────
+    // -- Treasury -------------------------------------------------------
     &__treasury-grids {
         display: grid;
         grid-template-columns: 1fr;
@@ -1890,7 +1890,7 @@
         font-size: 11px;
     }
 
-    // ── Logs ───────────────────────────────────────────────────────────
+    // -- Logs -----------------------------------------------------------
     &__log-list {
         list-style: none;
         margin: 0;
@@ -1951,7 +1951,7 @@
         color: $color-text-muted;
     }
 
-    // ── Requests ───────────────────────────────────────────────────────
+    // -- Requests -------------------------------------------------------
     &__requests {
         list-style: none;
         margin: 12px 0 0;
@@ -2018,7 +2018,7 @@
         }
     }
 
-    // ── Modal ──────────────────────────────────────────────────────────
+    // -- Modal ----------------------------------------------------------
     &__modal-overlay {
         position: fixed;
         inset: 0;
@@ -2072,7 +2072,7 @@
         }
     }
 
-    // ── Buttons ────────────────────────────────────────────────────────
+    // -- Buttons --------------------------------------------------------
     &__btn-primary {
         padding: 8px 16px;
         background: linear-gradient(180deg, #ff9800, #f57c00) !important;

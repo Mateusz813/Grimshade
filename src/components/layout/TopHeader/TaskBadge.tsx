@@ -4,6 +4,7 @@ import { useQuestStore, getQuestById } from '../../../stores/questStore';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { useCombatStore } from '../../../stores/combatStore';
 import monstersData from '../../../data/monsters.json';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 
 interface IBadgeRow {
     id: string;
@@ -140,10 +141,10 @@ const TaskBadge = ({ claimableCount = 0 }: IProps) => {
     const hasClaim = claimableCount > 0;
     const hasLive = rows.some((r) => r.live && !r.completed);
     // Status-dot tone:
-    //   • purple pulse → at least one task / quest is ready to claim
-    //   • green pulse  → no claims yet, but the row for the currently-
+    //   - purple pulse -> at least one task / quest is ready to claim
+    //   - green pulse  -> no claims yet, but the row for the currently-
     //     fought monster is in progress (the "live" task is ticking)
-    //   • no dot       → nothing live and nothing to collect
+    //   - no dot       -> nothing live and nothing to collect
     const dotState: 'claim' | 'live' | 'none' =
         hasClaim ? 'claim' : hasLive ? 'live' : 'none';
     const ariaLabel = hasClaim
@@ -166,7 +167,7 @@ const TaskBadge = ({ claimableCount = 0 }: IProps) => {
                 aria-expanded={open}
                 aria-label={ariaLabel}
             >
-                <span className="top-header__tasks-icon">{hasClaim ? '🎁' : '📋'}</span>
+                <span className="top-header__tasks-icon">{hasClaim ? <GameIcon name="wrapped-gift" /> : <GameIcon name="clipboard" />}</span>
                 <span className="top-header__tasks-count">{rows.length}</span>
                 {/* Status dot: purple-pulse if anything's claimable, green-
                     pulse if a live task is mid-fight, hidden otherwise. */}
@@ -190,7 +191,7 @@ const TaskBadge = ({ claimableCount = 0 }: IProps) => {
                             ].filter(Boolean).join(' ')}
                         >
                             <span className="top-header__task-row-icon">
-                                {q.completed ? '✅' : q.kind === 'task' ? '📋' : '📜'}
+                                {q.completed ? <GameIcon name="check-mark-button" /> : q.kind === 'task' ? <GameIcon name="clipboard" /> : <GameIcon name="scroll" />}
                             </span>
                             <span className="top-header__task-row-label">
                                 {q.label}

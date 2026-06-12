@@ -1,6 +1,6 @@
 import { useBuffStore } from '../stores/buffStore';
 
-// ── Combat elixir bonus helpers ──────────────────────────────────────────────
+// -- Combat elixir bonus helpers ----------------------------------------------
 // Reads active buffs from buffStore and returns numeric bonuses / multipliers
 // to be applied on top of base + equipment + training stats.
 //

@@ -3,11 +3,11 @@
  *
  * Spec ("Zaakceptuj prośbę dołączenia do gildii"): two browser contexts
  * logged in as different accounts. Primary founds a guild; secondary
- * navigates to /guild, taps the 🤝 apply icon on primary's row, then
+ * navigates to /guild, taps the :handshake: apply icon on primary's row, then
  * confirms the modal. Primary opens the "Prośby" sub-screen, sees the
- * pending request from secondary, and taps "✓ Przyjmij". After accept:
- *   • Primary's roster grows from 1 → 2 members (secondary joins).
- *   • Secondary's /guild view auto-switches from "list browser" to
+ * pending request from secondary, and taps "v Przyjmij". After accept:
+ *   - Primary's roster grows from 1 -> 2 members (secondary joins).
+ *   - Secondary's /guild view auto-switches from "list browser" to
  *     "home view" (Realtime postgres_changes on guild_members flips the
  *     store).
  *
@@ -15,18 +15,18 @@
  *   1. Pre-seed primary character + 2M gp gold (covers the 1M guild cost).
  *   2. Pre-seed secondary character (no gold needed — they just apply).
  *   3. Open 2 contexts via `openMultiContext`; parallel login.
- *   4. Both pick their characters → Town.
- *   5. Primary navigates Town → Społeczność → Gildia, creates a guild.
- *   6. Secondary navigates Town → Społeczność → Gildia, sees the guild
- *      in the list, taps 🤝, confirms apply modal.
+ *   4. Both pick their characters -> Town.
+ *   5. Primary navigates Town -> Społeczność -> Gildia, creates a guild.
+ *   6. Secondary navigates Town -> Społeczność -> Gildia, sees the guild
+ *      in the list, taps :handshake:, confirms apply modal.
  *   7. Primary opens "Prośby" sub-screen, sees secondary's pending
- *      request, taps "✓ Przyjmij".
+ *      request, taps "v Przyjmij".
  *   8. Both rosters should show 2 members (Realtime sync).
  *
  * Realtime sync notes:
- *   • Primary's `guild_members` channel sub fires on the INSERT done
- *     during `acceptRequest` → roster auto-refreshes.
- *   • Secondary's `useGuildStore.hydrateForCharacter` re-runs on the
+ *   - Primary's `guild_members` channel sub fires on the INSERT done
+ *     during `acceptRequest` -> roster auto-refreshes.
+ *   - Secondary's `useGuildStore.hydrateForCharacter` re-runs on the
  *     next /guild mount; but we don't need to navigate them — we
  *     verify the request shows up in primary's view, accept it, then
  *     re-navigate secondary to /guild for a final sanity check.
@@ -49,7 +49,7 @@ import { cleanupGuildsByLeaderIds } from '../../../fixtures/guildCleanup';
 test.describe('Social › Guild', { tag: '@guild' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary founds guild → secondary applies → primary accepts → both rosters show 2 members', async ({ browser }) => {
+    test('multi-context: primary founds guild -> secondary applies -> primary accepts -> both rosters show 2 members', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
@@ -94,7 +94,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 4. Both pick characters → Town (parallel).
+            // 4. Both pick characters -> Town (parallel).
             const pickCharacter = async (page: Page, nick: string): Promise<void> => {
                 if (!page.url().endsWith('/character-select')) {
                     await page.goto('/character-select');
@@ -113,7 +113,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // 5. Both navigate Town → Społeczność → Gildia.
+            // 5. Both navigate Town -> Społeczność -> Gildia.
             const navToGuild = async (page: Page): Promise<void> => {
                 await page.getByRole('button', { name: /^Społeczność$/i }).tap();
                 await expect(page).toHaveURL(/\/social$/, { timeout: 10_000 });
@@ -159,7 +159,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             });
             await expect(guildRow).toBeVisible({ timeout: 15_000 });
 
-            // 9. SECONDARY: tap apply 🤝 → confirm modal → submit.
+            // 9. SECONDARY: tap apply :handshake: -> confirm modal -> submit.
             await guildRow.locator('.guild__list-apply').tap();
             await expect(secondaryPage.locator('.guild__modal-title', { hasText: /Aplikuj do gildii/i }))
                 .toBeVisible({ timeout: 5_000 });
@@ -181,7 +181,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await requestsTile.tap();
 
             // 11. PRIMARY: request row visible with secondary's name. Tap
-            //     "✓ Przyjmij". After accept, the requests list shrinks
+            //     "v Przyjmij". After accept, the requests list shrinks
             //     to 0 (purgeRequestsForCharacter removes it).
             const requestRow = primaryPage.locator('.guild__request-row', {
                 has: primaryPage.locator('.guild__member-name', { hasText: secondaryNick }),
@@ -211,7 +211,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await expect(secondaryPage.locator('.guild__home-level'))
                 .toContainText(/Członkowie 2\/\d+/i, { timeout: 15_000 });
         } finally {
-            // Order: guild rows first (CASCADE → child tables), then
+            // Order: guild rows first (CASCADE -> child tables), then
             // character cleanup. The multi-context fixture also handles
             // parties cleanup — we don't have a party here but it's a
             // no-op when leader_id matches nothing.

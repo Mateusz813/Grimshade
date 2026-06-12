@@ -2,10 +2,10 @@
  * Atomic E2E — Offline hunt full claim flow grants XP + gold + ends session.
  *
  * Spec (BACKLOG 5.12): "Offline trening — wykonaj, daje XP + drop +
- * monsters count". Original status ⚠️ smoke only (`page-loads.spec.ts`
+ * monsters count". Original status :warning: smoke only (`page-loads.spec.ts`
  * covered UI rendering but not the full claim flow). This test exercises
- * the END-TO-END reward chain: start hunt → fake 12h elapsed via
- * timestamp backdating → call `claimOfflineHunt` → verify all reward
+ * the END-TO-END reward chain: start hunt -> fake 12h elapsed via
+ * timestamp backdating -> call `claimOfflineHunt` -> verify all reward
  * mutations + session teardown.
  *
  * ## What "claim flow" actually mutates
@@ -71,7 +71,7 @@
  *
  * ## Cleanup
  *
- * try/finally → cleanupCharacterById (game_saves wiped, hunt state +
+ * try/finally -> cleanupCharacterById (game_saves wiped, hunt state +
  * mastery + tasks + XP all reset by character deletion CASCADE).
  */
 
@@ -86,7 +86,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
     // 2026-05-27: retries=7 dla claim offline hunt batch flake.
     test.describe.configure({ retries: 7 });
 
-    test('claim offline hunt against rat → grants XP + gold + mastery kills, then sets isActive=false + startedAt=null', async ({ page }) => {
+    test('claim offline hunt against rat -> grants XP + gold + mastery kills, then sets isActive=false + startedAt=null', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -101,7 +101,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → pick character → Town.
+            // 2. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -291,9 +291,9 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
             //     `stopHunt()` doesn't fire at end of claim, the player can
             //     double-claim and the in-flight UI counters keep ticking.
             //     All 3 state flags must reset:
-            //       - isActive  : true → false
-            //       - startedAt : "<iso>" → null
-            //       - targetMonster : { id: 'rat' } → null
+            //       - isActive  : true -> false
+            //       - startedAt : "<iso>" -> null
+            //       - targetMonster : { id: 'rat' } -> null
             expect(result.sessionActiveAfter, 'hunt session should be ended (isActive=false) after claim').toBe(false);
             expect(result.sessionStartedAtNull, 'startedAt should be null after claim').toBe(true);
             expect(result.sessionTargetMonsterNull, 'targetMonster should be null after claim').toBe(true);

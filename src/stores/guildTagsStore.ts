@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
 /**
- * Lightweight cache: characterId → "[XXX]" guild tag, used to render
+ * Lightweight cache: characterId -> "[XXX]" guild tag, used to render
  * the guild prefix in front of player names in chat / rankings / deaths
  * / town widgets without forcing every view to query `guild_members`
  * on its own.

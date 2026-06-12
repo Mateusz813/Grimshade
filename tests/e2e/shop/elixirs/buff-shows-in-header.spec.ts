@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — buff appears in TopHeader BuffPopover after elixir use.
  *
- * Backlog item 3.13 ("Po użyciu eliksiru → buff pokazuje się w header
+ * Backlog item 3.13 ("Po użyciu eliksiru -> buff pokazuje się w header
  * dropdown z czasem / liczbą"): the player uses a buff elixir from the
  * inventory, and we verify:
  *  1. The TopHeader buff button (`.top-header__buffs-btn`) appears with
@@ -15,15 +15,15 @@
  * ## Why xp_boost (and not e.g. atk_boost_elixir)
  *
  * The elixir we use MUST satisfy three constraints:
- *  • effect is in `BUFF_CONFIG` (passes `isBuffEffect()`) so
+ *  - effect is in `BUFF_CONFIG` (passes `isBuffEffect()`) so
  *    `applyElixirDose` routes through `addBuff` / `addPausableBuff`
  *    instead of a heal / stat-reset path. Patrz Inventory.tsx ~2770.
- *  • Realtime (not pausable / game-time) — pausable buffs only tick down
+ *  - Realtime (not pausable / game-time) — pausable buffs only tick down
  *    in combat (`addPausableBuff` sets `expiresAt = Infinity` and shows
  *    `remainingMs` count via BuffPopover line 130). Realtime buffs show
  *    a live "1h 00m" countdown which is more visually deterministic for
  *    the screenshot/assertion.
- *  • minLevel === 1 so a fresh Knight at lvl 1 can use it without
+ *  - minLevel === 1 so a fresh Knight at lvl 1 can use it without
  *    further setup.
  *
  * `xp_boost` matches: effect `xp_boost_1h`, BUFF_CONFIG says realtime
@@ -40,19 +40,19 @@
  * The exact `xp_boost` BUFF_CONFIG entry — name might be the elixir's
  * `name_pl` "Dopalacz XP" OR the BUFF_CONFIG's own name. Looking at
  * `applyElixirDose` line 2778: `buffData = { id: cfg.id, name: cfg.name, … }`
- * → uses the BUFF_CONFIG name, not elixir name. So we anchor on the
+ * -> uses the BUFF_CONFIG name, not elixir name. So we anchor on the
  * BUFF_CONFIG name which for xp_boost_1h is "+50% XP (polowanie)".
  * To be robust we assert on "XP" appearing in the popover list (only
  * one row, no other XP-related text in this view).
  *
  * ## Setup pattern
  *
- *   • `createCharacterViaApi` creates a Knight at level 1.
- *   • `seedConsumables` puts 5× xp_boost in the character's inventory
+ *   - `createCharacterViaApi` creates a Knight at level 1.
+ *   - `seedConsumables` puts 5× xp_boost in the character's inventory
  *     (we only need 1 to use, but having a small stack is harmless and
  *     avoids the "0 stack" disable case if the test ever races).
- *   • After Town hydrates, go to /inventory, find the xp_boost stack
- *     tile, tap it → potion use popup opens, tap "✨ Aktywuj buff"
+ *   - After Town hydrates, go to /inventory, find the xp_boost stack
+ *     tile, tap it -> potion use popup opens, tap ":sparkles: Aktywuj buff"
  *     button.
  *
  * ## Selector strategy for the elixir tile in /inventory
@@ -62,7 +62,7 @@
  * = elixir.name_pl. We anchor on the elixir's name "Dopalacz XP" — it's
  * unique among the consumable list. After tap, the popup opens
  * (selector `.inventory__popup--use-potion`); we tap the buff confirm
- * button by its visible text "✨ Aktywuj buff" (Inventory.tsx line 4105).
+ * button by its visible text ":sparkles: Aktywuj buff" (Inventory.tsx line 4105).
  *
  * After buff is added, we go back to Town (since /inventory's
  * AppShell ALSO has TopHeader — we don't strictly need to navigate
@@ -92,7 +92,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
     // headroom for cold WebKit.
     test.describe.configure({ timeout: 90_000 });
 
-    test('using xp_boost elixir → buff appears in TopHeader dropdown with name + countdown', async ({ page }) => {
+    test('using xp_boost elixir -> buff appears in TopHeader dropdown with name + countdown', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -114,7 +114,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
                 counts: { xp_boost: 5 },
             });
 
-            // 2. Login → character-select → pick → Town.
+            // 2. Login -> character-select -> pick -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -129,7 +129,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
 
             // 3. BEFORE we use the elixir: confirm the TopHeader buff
             //    button is HIDDEN (no buffs active yet). totalBuffCount
-            //    === 0 → button doesn't render (TopHeader line 296).
+            //    === 0 -> button doesn't render (TopHeader line 296).
             await expect(page.locator('.top-header__buffs-btn')).toHaveCount(0);
 
             // 4. Navigate to /inventory via BottomNav "Postać" tab.
@@ -159,9 +159,9 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
             //    `inventory__popup--use-potion` is the popup root.
             await expect(page.locator('.inventory__popup--use-potion')).toBeVisible({ timeout: 5_000 });
 
-            // 8. Tap "✨ Aktywuj buff" (Inventory.tsx line 4105). This
-            //    calls `applyElixirDose(xp_boost)` → `addBuff(xp_boost_1h,
-            //    3_600_000ms)` → `useInventoryStore.addConsumable(xp_boost, -1)`.
+            // 8. Tap ":sparkles: Aktywuj buff" (Inventory.tsx line 4105). This
+            //    calls `applyElixirDose(xp_boost)` -> `addBuff(xp_boost_1h,
+            //    3_600_000ms)` -> `useInventoryStore.addConsumable(xp_boost, -1)`.
             const activateBtn = page.locator('.inventory__use-potion-btn--use', {
                 hasText: /Aktywuj buff/i,
             });
@@ -173,7 +173,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
             await expect(page.locator('.inventory__popup--use-potion')).toHaveCount(0, { timeout: 5_000 });
 
             // 10. TopHeader buff button NOW appears (totalBuffCount went
-            //     from 0 → 1). The count chip shows "1".
+            //     from 0 -> 1). The count chip shows "1".
             const buffsBtn = page.locator('.top-header__buffs-btn');
             await expect(buffsBtn).toBeVisible({ timeout: 5_000 });
             await expect(buffsBtn.locator('.top-header__buffs-count')).toHaveText('1');
@@ -197,15 +197,17 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
             // 13. The time chip shows a "Xh YYm" / "Xm Ys" / "Xs" formatted
             //     countdown (formatTimeLeft in BuffPopover line 21-30).
             //     For a 1-hour buff the freshly-activated chip is in the
-            //     "Xh YYm" form. We allow an optional "⏸ " prefix because
+            //     "Xh YYm" form. We allow an optional "pause-button" prefix because
             //     xp_boost is in BuffPopover's `COMBAT_ONLY_EFFECTS` set
             //     (line 18) — when activated outside of combat the popover
-            //     prepends the ⏸ marker to show that the buff timer is
+            //     prepends the :pause-button: marker to show that the buff timer is
             //     paused until the player enters combat (BuffPopover line 144).
             //     The Town view is "out of combat" so this branch is hit.
             //     Match "1h 00m" or "59m XXs" (edge case if timer rolled).
+            // :pause-button: marker now renders as a Twemoji <img> (no text), so the time
+            // text is just the duration — allow optional leading whitespace.
             await expect(buffRow.locator('.buff-popover__row-time'))
-                .toHaveText(/^(⏸\s*)?(1h\s*00m|59m\s*\d{2}s)$/, { timeout: 5_000 });
+                .toHaveText(/^\s*(1h\s*00m|59m\s*\d{2}s)\s*$/, { timeout: 5_000 });
         } finally {
             if (createdId) {
                 await cleanupCharacterById(createdId);

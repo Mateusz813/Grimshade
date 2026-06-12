@@ -1,7 +1,7 @@
 import itemTemplates from '../data/itemTemplates.json';
 import { getItemImage, getStoneImage } from './spriteAssets';
 
-// ── Generated-item info (parsed from itemId, avoids circular import with itemGenerator) ──
+// -- Generated-item info (parsed from itemId, avoids circular import with itemGenerator) --
 
 interface IGenItemInfo {
     type: string;
@@ -77,7 +77,7 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     return null;
 };
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'heroic';
 
@@ -127,76 +127,76 @@ export const SLOT_LABELS: Record<EquipmentSlot, string> = {
 };
 
 export const SLOT_ICONS: Record<EquipmentSlot, string> = {
-    helmet:    '⛑️',
-    armor:     '🦺',
-    pants:     '👖',
-    gloves:    '🧤',
-    shoulders: '🎖️',
-    boots:     '👢',
-    mainHand:  '⚔️',
-    offHand:   '🛡️',
-    ring1:     '💍',
-    ring2:     '💍',
-    earrings:  '✨',
-    necklace:  '📿',
+    helmet:    'rescue-worker-s-helmet',
+    armor:     'safety-vest',
+    pants:     'jeans',
+    gloves:    'gloves',
+    shoulders: 'military-medal',
+    boots:     'woman-s-boot',
+    mainHand:  'crossed-swords',
+    offHand:   'shield',
+    ring1:     'ring',
+    ring2:     'ring',
+    earrings:  'sparkles',
+    necklace:  'prayer-beads',
 };
 
 /** Maps item `type` field to a specific emoji icon.
  *  Use this for more precise icons (e.g. staff vs sword vs bow). */
 export const ITEM_TYPE_ICONS: Record<string, string> = {
     // Weapons (mainHand)
-    sword:      '⚔️',
-    staff:      '🪄',
-    mace:       '🔨',
-    bow:        '🏹',
-    dagger:     '🗡️',
-    harp:       '🎵',
-    axe:        '🪓',
-    club:       '🏏',
-    dead_staff: '💀',
-    holy_wand:  '✨',
+    sword:      'crossed-swords',
+    staff:      'magic-wand',
+    mace:       'hammer',
+    bow:        'bow-and-arrow',
+    dagger:     'dagger',
+    harp:       'musical-note',
+    axe:        'axe',
+    club:       'cricket-game',
+    dead_staff: 'skull',
+    holy_wand:  'sparkles',
     // Offhands
-    shield:     '🛡️',
-    magic_book: '📕',
-    spellbook:  '📕',
-    holy:       '✝️',
-    holy_cross: '✝️',
-    quiver:     '🏹',
-    tome:       '📗',
-    voodoo_doll:'💀',
-    talisman:   '🔮',
+    shield:     'shield',
+    magic_book: 'closed-book',
+    spellbook:  'closed-book',
+    holy:       'latin-cross',
+    holy_cross: 'latin-cross',
+    quiver:     'bow-and-arrow',
+    tome:       'green-book',
+    voodoo_doll:'skull',
+    talisman:   'crystal-ball',
     // Heavy armor (Knight)
-    heavy_helmet:    '⛑️',
-    heavy_armor:     '🦺',
-    heavy_pants:     '👖',
-    heavy_boots:     '👢',
-    heavy_shoulders: '🎖️',
-    heavy_gloves:    '🧤',
+    heavy_helmet:    'rescue-worker-s-helmet',
+    heavy_armor:     'safety-vest',
+    heavy_pants:     'jeans',
+    heavy_boots:     'woman-s-boot',
+    heavy_shoulders: 'military-medal',
+    heavy_gloves:    'gloves',
     // Magic armor (Mage, Cleric, Necromancer)
-    magic_helmet:    '🎩',
-    magic_armor:     '🧙',
-    magic_pants:     '👖',
-    magic_boots:     '🥾',
-    magic_shoulders: '🎗️',
-    magic_gloves:    '🧤',
+    magic_helmet:    'top-hat',
+    magic_armor:     'mage',
+    magic_pants:     'jeans',
+    magic_boots:     'hiking-boot',
+    magic_shoulders: 'reminder-ribbon',
+    magic_gloves:    'gloves',
     // Light armor (Archer, Rogue, Bard)
-    light_helmet:    '🪖',
-    light_armor:     '👘',
-    light_pants:     '👖',
-    light_boots:     '👟',
-    light_shoulders: '🎖️',
-    light_gloves:    '🧤',
+    light_helmet:    'military-helmet',
+    light_armor:     'kimono',
+    light_pants:     'jeans',
+    light_boots:     'running-shoe',
+    light_shoulders: 'military-medal',
+    light_gloves:    'gloves',
     // Accessories
-    ring:       '💍',
-    necklace:   '📿',
-    earrings:   '✨',
+    ring:       'ring',
+    necklace:   'prayer-beads',
+    earrings:   'sparkles',
     // Stones
-    stone:      '💎',
+    stone:      'gem-stone',
     // Consumables
-    heal_hp:    '❤️',
-    heal_mp:    '💧',
-    xp_boost:   '⚗️',
-    skill_boost:'⚗️',
+    heal_hp:    'red-heart',
+    heal_mp:    'droplet',
+    xp_boost:   'alembic',
+    skill_boost:'alembic',
 };
 
 
@@ -240,7 +240,7 @@ export const EMPTY_EQUIPMENT: IEquipment = {
     earrings: null, necklace: null,
 };
 
-// ── Rarity helpers ─────────────────────────────────────────────────────────────
+// -- Rarity helpers -------------------------------------------------------------
 
 export const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 
@@ -281,49 +281,49 @@ export const RARITY_BONUS_SLOTS: Record<Rarity, number> = {
     heroic:    5,
 };
 
-// ── Weapon type icons ──────────────────────────────────────────────────────────
+// -- Weapon type icons ----------------------------------------------------------
 
 export const WEAPON_TYPE_ICONS: Record<string, string> = {
-    sword:       '⚔️',
-    staff:       '🪄',
-    holy_wand:   '✨',
-    bow:         '🏹',
-    dagger:      '🗡️',
-    dead_staff:  '💀',
-    harp:        '🎵',
-    shield:      '🛡️',
-    spellbook:   '📕',
-    holy_cross:  '✝️',
-    quiver:      '🏹',
-    voodoo_doll: '🪆',
-    talisman:    '🔮',
+    sword:       'crossed-swords',
+    staff:       'magic-wand',
+    holy_wand:   'sparkles',
+    bow:         'bow-and-arrow',
+    dagger:      'dagger',
+    dead_staff:  'skull',
+    harp:        'musical-note',
+    shield:      'shield',
+    spellbook:   'closed-book',
+    holy_cross:  'latin-cross',
+    quiver:      'bow-and-arrow',
+    voodoo_doll: 'nesting-dolls',
+    talisman:    'crystal-ball',
 };
 
 export const ARMOR_TYPE_ICONS: Record<string, string> = {
-    heavy_helmet:    '⛑️',
-    heavy_armor:     '🦺',
-    heavy_legs:      '👖',
-    heavy_boots:     '👢',
-    heavy_shoulders: '🎖️',
-    heavy_gloves:    '🧤',
-    magic_helmet:    '🎩',
-    magic_armor:     '🧙',
-    magic_legs:      '👖',
-    magic_boots:     '🥾',
-    magic_shoulders: '🎗️',
-    magic_gloves:    '🧤',
-    light_helmet:    '🪖',
-    light_armor:     '👘',
-    light_legs:      '👖',
-    light_boots:     '👟',
-    light_shoulders: '🎖️',
-    light_gloves:    '🧤',
-    ring:            '💍',
-    necklace:        '📿',
-    earrings:        '✨',
+    heavy_helmet:    'rescue-worker-s-helmet',
+    heavy_armor:     'safety-vest',
+    heavy_legs:      'jeans',
+    heavy_boots:     'woman-s-boot',
+    heavy_shoulders: 'military-medal',
+    heavy_gloves:    'gloves',
+    magic_helmet:    'top-hat',
+    magic_armor:     'mage',
+    magic_legs:      'jeans',
+    magic_boots:     'hiking-boot',
+    magic_shoulders: 'reminder-ribbon',
+    magic_gloves:    'gloves',
+    light_helmet:    'military-helmet',
+    light_armor:     'kimono',
+    light_legs:      'jeans',
+    light_boots:     'running-shoe',
+    light_shoulders: 'military-medal',
+    light_gloves:    'gloves',
+    ring:            'ring',
+    necklace:        'prayer-beads',
+    earrings:        'sparkles',
 };
 
-// ── Class weapon restrictions ─────────────────────────────────────────────────
+// -- Class weapon restrictions -------------------------------------------------
 
 export const CLASS_WEAPON_TYPES: Record<string, string[]> = {
     Knight:      ['sword'],
@@ -345,7 +345,7 @@ export const CLASS_OFFHAND_TYPES: Record<string, string[]> = {
     Bard:        ['talisman'],
 };
 
-// Maps character class → allowed armor prefix
+// Maps character class -> allowed armor prefix
 export const CLASS_ARMOR_TYPES: Record<string, string> = {
     Knight:      'heavy',
     Mage:        'magic',
@@ -356,7 +356,7 @@ export const CLASS_ARMOR_TYPES: Record<string, string> = {
     Bard:        'light',
 };
 
-// ── Class colors ──────────────────────────────────────────────────────────────
+// -- Class colors --------------------------------------------------------------
 
 export const CLASS_COLORS: Record<string, string> = {
     Knight:      '#e53935',
@@ -368,7 +368,7 @@ export const CLASS_COLORS: Record<string, string> = {
     Bard:        '#ff9800',
 };
 
-// ── Sell prices ───────────────────────────────────────────────────────────────
+// -- Sell prices ---------------------------------------------------------------
 
 const RARITY_SELL_MULTIPLIER: Record<Rarity, number> = {
     common:    0.20,
@@ -388,7 +388,7 @@ const SELL_PRICES: Record<string, (lvl: number) => number> = {
     heroic:    (lvl) => Math.floor(lvl * 800 + 5000),
 };
 
-// ── Enhancement system ────────────────────────────────────────────────────────
+// -- Enhancement system --------------------------------------------------------
 
 export interface IEnhancementCost {
     stones: number;
@@ -450,9 +450,9 @@ export const getEnhancementCost = (targetLevel: number, itemRarity: Rarity = 'co
 /**
  * Enhancement multiplier curve.
  * Designed so upgrades feel meaningful:
- *   +1  → 1.15x    +2  → 1.32x    +3  → 1.52x    +4  → 1.75x    +5  → 2.01x
- *   +6  → 2.31x    +7  → 2.66x    +8  → 3.06x    +9  → 3.52x    +10 → 4.05x
- *   +15 → ~5.94x   +20 → ~8.74x
+ *   +1  -> 1.15x    +2  -> 1.32x    +3  -> 1.52x    +4  -> 1.75x    +5  -> 2.01x
+ *   +6  -> 2.31x    +7  -> 2.66x    +8  -> 3.06x    +9  -> 3.52x    +10 -> 4.05x
+ *   +15 -> ~5.94x   +20 -> ~8.74x
  *
  * Levels 1-10 use 1.15^level; levels 11+ continue from that base at 1.08^(level-10).
  */
@@ -481,11 +481,11 @@ export const getEnhancedBaseStats = (baseValue: number, upgradeLevel: number): n
  * crit on pants, etc.) are NOT scaled.
  *
  * Per spec:
- *   - mainHand / offHand  → weapons scale dmg_min / dmg_max
- *   - helmet/armor/pants/shoulders/boots → hp
- *   - gloves → attack
- *   - ring1 / ring2 → attack
- *   - necklace / earrings → defense
+ *   - mainHand / offHand  -> weapons scale dmg_min / dmg_max
+ *   - helmet/armor/pants/shoulders/boots -> hp
+ *   - gloves -> attack
+ *   - ring1 / ring2 -> attack
+ *   - necklace / earrings -> defense
  */
 export const getBaseStatKeysForSlot = (slot: EquipmentSlot): readonly string[] => {
     switch (slot) {
@@ -520,7 +520,7 @@ export const isBaseStatKey = (slot: EquipmentSlot | null, key: string): boolean 
     return getBaseStatKeysForSlot(slot).includes(key);
 };
 
-// ── Enhancement stone types ───────────────────────────────────────────────────
+// -- Enhancement stone types ---------------------------------------------------
 
 export const STONE_FOR_RARITY: Record<Rarity, string> = {
     common:    'common_stone',
@@ -531,23 +531,23 @@ export const STONE_FOR_RARITY: Record<Rarity, string> = {
     heroic:    'heroic_stone',
 };
 
-// 2026-05: stone icons swapped from the legacy 💎 emoji to the player's
+// 2026-05: stone icons swapped from the legacy :gem-stone: emoji to the player's
 // PNG art (`/assets/images/upgrade-stone/stone-{1..6}.png`). The values
 // below are URLs when art is available, falling back to the emoji for
 // safety. Consumers that render via <ItemIcon> auto-detect the URL via
 // `isImageUrl()`; raw `<span>` consumers should also branch on URL.
 export const STONE_ICONS: Record<string, string> = {
-    common_stone:    getStoneImage('common_stone')    ?? '💎',
-    rare_stone:      getStoneImage('rare_stone')      ?? '💎',
-    epic_stone:      getStoneImage('epic_stone')      ?? '💎',
-    legendary_stone: getStoneImage('legendary_stone') ?? '💎',
-    mythic_stone:    getStoneImage('mythic_stone')    ?? '💎',
-    heroic_stone:    getStoneImage('heroic_stone')    ?? '💎',
+    common_stone:    getStoneImage('common_stone')    ?? 'gem-stone',
+    rare_stone:      getStoneImage('rare_stone')      ?? 'gem-stone',
+    epic_stone:      getStoneImage('epic_stone')      ?? 'gem-stone',
+    legendary_stone: getStoneImage('legendary_stone') ?? 'gem-stone',
+    mythic_stone:    getStoneImage('mythic_stone')    ?? 'gem-stone',
+    heroic_stone:    getStoneImage('heroic_stone')    ?? 'gem-stone',
 };
 
 /** Generic "any stone" art (stone-7) — used by drop summaries / chest
  *  rewards / enhancement-cost rows that don't carry a specific stone tier. */
-export const STONE_GENERIC_ICON: string = getStoneImage(null) ?? '💎';
+export const STONE_GENERIC_ICON: string = getStoneImage(null) ?? 'gem-stone';
 
 export const STONE_NAMES: Record<string, string> = {
     common_stone:    'Zwykly Kamien',
@@ -558,7 +558,7 @@ export const STONE_NAMES: Record<string, string> = {
     heroic_stone:    'Heroiczny Kamien',
 };
 
-// ── Stone conversion chain (100 lower → 1 higher, cost 1000g) ────────────────
+// -- Stone conversion chain (100 lower -> 1 higher, cost 1000g) ----------------
 
 export const STONE_CONVERSION_CHAIN: Record<string, string> = {
     common_stone:    'rare_stone',
@@ -571,7 +571,7 @@ export const STONE_CONVERSION_CHAIN: Record<string, string> = {
 export const STONE_CONVERSION_COST = 100; // stones needed
 export const STONE_CONVERSION_GOLD = 1000; // gold needed
 
-// ── Core functions ─────────────────────────────────────────────────────────────
+// -- Core functions -------------------------------------------------------------
 
 export const buildItem = (generated: {
     itemId: string;
@@ -803,44 +803,44 @@ export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[])
     const id = itemId.toLowerCase();
 
     // Consumables / potions / stones
-    if (id.includes('hp_potion') || id.includes('health_potion') || id.includes('heal_hp')) return '❤️';
-    if (id.includes('mp_potion') || id.includes('mana_potion') || id.includes('heal_mp')) return '💧';
-    if (id.includes('elixir') || id.includes('boost') || id.includes('eliksir')) return '⚗️';
-    if (id.includes('enhancement_stone') || (id.includes('_stone') && !id.includes('stone_sword') && !id.includes('stone_armor'))) return '💎';
+    if (id.includes('hp_potion') || id.includes('health_potion') || id.includes('heal_hp')) return 'red-heart';
+    if (id.includes('mp_potion') || id.includes('mana_potion') || id.includes('heal_mp')) return 'droplet';
+    if (id.includes('elixir') || id.includes('boost') || id.includes('eliksir')) return 'alembic';
+    if (id.includes('enhancement_stone') || (id.includes('_stone') && !id.includes('stone_sword') && !id.includes('stone_armor'))) return 'gem-stone';
 
     // Weapon name detection (for legacy items without type)
-    if (id.includes('sword') || id.includes('blade') || id.includes('saber') || id.includes('claymore')) return '⚔️';
-    if (id.includes('staff') || id.includes('wand') || id.includes('rod')) return '🪄';
-    if (id.includes('mace') || id.includes('hammer') || id.includes('flail')) return '🔨';
-    if (id.includes('bow') || id.includes('crossbow')) return '🏹';
-    if (id.includes('dagger') || id.includes('knife') || id.includes('stiletto')) return '🗡️';
-    if (id.includes('harp') || id.includes('lute') || id.includes('flute') || id.includes('fiddle')) return '🎵';
-    if (id.includes('axe') || id.includes('hatchet')) return '🪓';
-    if (id.includes('club') || id.includes('cudgel')) return '🏏';
+    if (id.includes('sword') || id.includes('blade') || id.includes('saber') || id.includes('claymore')) return 'crossed-swords';
+    if (id.includes('staff') || id.includes('wand') || id.includes('rod')) return 'magic-wand';
+    if (id.includes('mace') || id.includes('hammer') || id.includes('flail')) return 'hammer';
+    if (id.includes('bow') || id.includes('crossbow')) return 'bow-and-arrow';
+    if (id.includes('dagger') || id.includes('knife') || id.includes('stiletto')) return 'dagger';
+    if (id.includes('harp') || id.includes('lute') || id.includes('flute') || id.includes('fiddle')) return 'musical-note';
+    if (id.includes('axe') || id.includes('hatchet')) return 'axe';
+    if (id.includes('club') || id.includes('cudgel')) return 'cricket-game';
 
     // Offhand name detection
-    if (id.includes('shield') || id.includes('buckler')) return '🛡️';
-    if (id.includes('spellbook') || id.includes('magic_book') || id.includes('grimoire')) return '📕';
-    if (id.includes('holy_cross') || id.includes('crucifix')) return '✝️';
-    if (id.includes('quiver')) return '🏹';
-    if (id.includes('tome')) return '📗';
-    if (id.includes('voodoo')) return '💀';
-    if (id.includes('talisman')) return '🔮';
+    if (id.includes('shield') || id.includes('buckler')) return 'shield';
+    if (id.includes('spellbook') || id.includes('magic_book') || id.includes('grimoire')) return 'closed-book';
+    if (id.includes('holy_cross') || id.includes('crucifix')) return 'latin-cross';
+    if (id.includes('quiver')) return 'bow-and-arrow';
+    if (id.includes('tome')) return 'green-book';
+    if (id.includes('voodoo')) return 'skull';
+    if (id.includes('talisman')) return 'crystal-ball';
 
     // Armor name detection (for items.json armor entries like leather_cap, iron_helmet)
-    if (slot === 'helmet' || id.includes('helmet') || id.includes('cap') || id.includes('hat') || id.includes('hood') || id.includes('crown')) return '⛑️';
-    if (slot === 'armor' || id.includes('armor') || id.includes('plate') || id.includes('robe') || id.includes('cloak') || (id.includes('leather') && !id.includes('pants') && !id.includes('glove') && !id.includes('boot') && !id.includes('pauldron'))) return '🦺';
-    if (slot === 'pants' || id.includes('pants') || id.includes('legs') || id.includes('legguard') || id.includes('greaves')) return '👖';
-    if (slot === 'gloves' || id.includes('glove') || id.includes('gauntlet') || id.includes('mitt')) return '🧤';
-    if (slot === 'boots' || id.includes('boot') || id.includes('sandal') || id.includes('shoe')) return '👢';
-    if (slot === 'shoulders' || id.includes('shoulder') || id.includes('pauldron') || id.includes('epaulet')) return '🎖️';
+    if (slot === 'helmet' || id.includes('helmet') || id.includes('cap') || id.includes('hat') || id.includes('hood') || id.includes('crown')) return 'rescue-worker-s-helmet';
+    if (slot === 'armor' || id.includes('armor') || id.includes('plate') || id.includes('robe') || id.includes('cloak') || (id.includes('leather') && !id.includes('pants') && !id.includes('glove') && !id.includes('boot') && !id.includes('pauldron'))) return 'safety-vest';
+    if (slot === 'pants' || id.includes('pants') || id.includes('legs') || id.includes('legguard') || id.includes('greaves')) return 'jeans';
+    if (slot === 'gloves' || id.includes('glove') || id.includes('gauntlet') || id.includes('mitt')) return 'gloves';
+    if (slot === 'boots' || id.includes('boot') || id.includes('sandal') || id.includes('shoe')) return 'woman-s-boot';
+    if (slot === 'shoulders' || id.includes('shoulder') || id.includes('pauldron') || id.includes('epaulet')) return 'military-medal';
 
     // Accessory detection
-    if (slot === 'ring1' || slot === 'ring2' || id.includes('ring') || id.includes('band')) return '💍';
-    if (slot === 'necklace' || id.includes('necklace') || id.includes('amulet') || id.includes('pendant') || id.includes('chain')) return '📿';
-    if (slot === 'earrings' || id.includes('earring')) return '✨';
+    if (slot === 'ring1' || slot === 'ring2' || id.includes('ring') || id.includes('band')) return 'ring';
+    if (slot === 'necklace' || id.includes('necklace') || id.includes('amulet') || id.includes('pendant') || id.includes('chain')) return 'prayer-beads';
+    if (slot === 'earrings' || id.includes('earring')) return 'sparkles';
 
-    return SLOT_ICONS[slot as EquipmentSlot] ?? '📦';
+    return SLOT_ICONS[slot as EquipmentSlot] ?? 'package';
 };
 
 /** Check if a character class can use a specific item */
@@ -891,7 +891,7 @@ export const canClassEquip = (
             return itemType.startsWith(allowedPrefix + '_');
         }
         // Legacy armor items (leather_armor, etc.) without heavy/magic/light prefix
-        // → reject unless the item has no known armor prefix (truly generic)
+        // -> reject unless the item has no known armor prefix (truly generic)
         return false;
     }
 
@@ -899,7 +899,7 @@ export const canClassEquip = (
     return true;
 };
 
-// ── Smart slot resolution (rings → ring1/ring2, Rogue daggers → mainHand/offHand) ──
+// -- Smart slot resolution (rings -> ring1/ring2, Rogue daggers -> mainHand/offHand) --
 
 /**
  * Determines the best equipment slot for an item, considering what is already equipped.
@@ -915,7 +915,7 @@ export const getEquipTargetSlot = (
     equipment: IEquipment,
     allItems: IBaseItem[],
 ): EquipmentSlot => {
-    // Ring logic: ring1 ↔ ring2
+    // Ring logic: ring1 <-> ring2
     if (baseSlot === 'ring1' || baseSlot === 'ring2') {
         if (!equipment[baseSlot]) return baseSlot;
         const otherRing: EquipmentSlot = baseSlot === 'ring1' ? 'ring2' : 'ring1';
@@ -923,7 +923,7 @@ export const getEquipTargetSlot = (
         return baseSlot; // both occupied – swap the native slot
     }
 
-    // Rogue dagger dual-wield: mainHand ↔ offHand
+    // Rogue dagger dual-wield: mainHand <-> offHand
     if (characterClass === 'Rogue') {
         const itemType = getItemType(itemId, allItems);
         if (itemType === 'dagger') {
@@ -943,11 +943,11 @@ export const getEquipTargetSlot = (
     return baseSlot;
 };
 
-// ── Slot compatibility check ──────────────────────────────────────────────────
+// -- Slot compatibility check --------------------------------------------------
 
 /**
  * Checks if an item with the given base slot can validly be placed in a target slot.
- * Allows ring1 ↔ ring2, and dagger mainHand ↔ offHand for Rogue.
+ * Allows ring1 <-> ring2, and dagger mainHand <-> offHand for Rogue.
  */
 export const isSlotCompatible = (
     baseSlot: EquipmentSlot,
@@ -974,7 +974,7 @@ export const isSlotCompatible = (
     return false;
 };
 
-// ── Class-based damage scaling ─────────────────────────────────────────────────
+// -- Class-based damage scaling -------------------------------------------------
 
 export const getClassSkillBonus = (
     characterClass: string,
@@ -1022,12 +1022,12 @@ export const getClassSkillBonus = (
     return { skillBonus, extraCritChance };
 };
 
-// ── Format item ID from snake_case to Title Case ──────────────────────────────
+// -- Format item ID from snake_case to Title Case ------------------------------
 
 export const formatItemName = (key: string): string =>
     key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-// ── Flatten items.json into a single lookup array ─────────────────────────────
+// -- Flatten items.json into a single lookup array -----------------------------
 
 export const flattenItemsData = (itemsJson: {
     weapons?: unknown[];

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import { useCombatStore } from '../../../stores/combatStore';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { usePartyStore } from '../../../stores/partyStore';
@@ -10,22 +12,22 @@ interface IProps {
 
 /**
  * 2026-05-11 spec ("logi powinny miec 4 filtry"):
- *   • Moje ataki — own basic / spell / crit hits + dodge / block
- *   • Sojusznicy  — ally (bot or human party member) hits
- *   • Potwór      — incoming damage from monsters (any target)
- *   • Drop + XP   — kill loot lines, level-ups, mastery procs
+ *   - Moje ataki — own basic / spell / crit hits + dodge / block
+ *   - Sojusznicy  — ally (bot or human party member) hits
+ *   - Potwór      — incoming damage from monsters (any target)
+ *   - Drop + XP   — kill loot lines, level-ups, mastery procs
  *
  * Filters are independent toggles — any combination is allowed. A
  * 5th "Inne" filter catches system / quest / non-combat lines.
  *
  * Colors mirror the spec:
- *   • Green for own swing
- *   • Yellow + "KRYTYK" for own crit
- *   • Blue + caster name for ally swing
- *   • Red for monster hit on us / ally
- *   • Orange for monster crit
- *   • Gold for loot
- *   • Grey for system / other
+ *   - Green for own swing
+ *   - Yellow + "KRYTYK" for own crit
+ *   - Blue + caster name for ally swing
+ *   - Red for monster hit on us / ally
+ *   - Orange for monster crit
+ *   - Gold for loot
+ *   - Grey for system / other
  *
  * Skill ids are translated through `getSkillDef(id).name_pl` so the
  * log shows "Zatruta Strzała" instead of "poisoned_arrow".
@@ -40,11 +42,11 @@ interface IFilterDef {
 }
 
 const FILTERS: readonly IFilterDef[] = [
-    { key: 'me',      label: 'Moje ataki',    icon: '⚔️' },
-    { key: 'ally',    label: 'Sojusznicy',    icon: '🛡️' },
-    { key: 'monster', label: 'Potwór',        icon: '👹' },
-    { key: 'loot',    label: 'Drop / XP',     icon: '💰' },
-    { key: 'other',   label: 'Inne',          icon: '📋' },
+    { key: 'me',      label: 'Moje ataki',    icon: 'crossed-swords' },
+    { key: 'ally',    label: 'Sojusznicy',    icon: 'shield' },
+    { key: 'monster', label: 'Potwór',        icon: 'ogre' },
+    { key: 'loot',    label: 'Drop / XP',     icon: 'money-bag' },
+    { key: 'other',   label: 'Inne',          icon: 'clipboard' },
 ];
 
 /** Map a combatStore log type into the user-facing filter bucket. */
@@ -63,18 +65,18 @@ const bucketOf = (
     }
     if (type === 'block' || type === 'dodge') return 'me';
     if (type === 'player' || type === 'dualwield') {
-        // "Sojusznik" prefix → ally line. Otherwise it's our own swing.
+        // "Sojusznik" prefix -> ally line. Otherwise it's our own swing.
         if (text.startsWith('[') && text.includes(']')) return 'ally';
-        if (text.startsWith('💀') || text.startsWith('🏹') || text.startsWith('☠️')) {
+        if (text.startsWith('skull') || text.startsWith('bow-and-arrow') || text.startsWith('skull-and-crossbones')) {
             // Necro summon / multistrike — count as me.
             return 'me';
         }
         return 'me';
     }
-    // 'system' → quest progress, training XP, mastery procs etc.
-    // Mastery proc lines start with "🔥 Mastery" — count as loot.
-    if (text.startsWith('🔥 Mastery') || text.includes('Mastery Lvl')) return 'loot';
-    if (text.startsWith('Awans!') || text.startsWith('⭐')) return 'loot';
+    // 'system' -> quest progress, training XP, mastery procs etc.
+    // Mastery proc lines start with ":fire: Mastery" — count as loot.
+    if (text.startsWith(':fire: Mastery') || text.includes('Mastery Lvl')) return 'loot';
+    if (text.startsWith('Awans!') || text.startsWith('star')) return 'loot';
     return 'other';
 };
 
@@ -105,7 +107,7 @@ const colorClassOf = (
 /**
  * Replace any `skill_id_with_underscores` in the text with its
  * `name_pl` from skillBuffs. Catches phrases like
- * "[AUTO] precyzyjny_strzal: 1234 dmg" and "☠️ Klątwa Śmierci: poisoned_arrow ×2 dmg".
+ * "[AUTO] precyzyjny_strzal: 1234 dmg" and ":skull-and-crossbones: Klątwa Śmierci: poisoned_arrow ×2 dmg".
  */
 const translateSkillIds = (text: string): string => {
     return text.replace(/\b([a-z][a-z0-9]+(?:_[a-z0-9]+)+)\b/g, (match) => {
@@ -156,7 +158,7 @@ const CombatLogsModal = ({ onClose }: IProps) => {
         <div className="combat-ui__modal-bg" onClick={onClose}>
             <div className="combat-ui__modal combat-ui__modal--logs" onClick={(e) => e.stopPropagation()}>
                 <header className="combat-ui__modal-head">
-                    <span className="combat-ui__modal-title">📋 Logi walki ({filtered.length})</span>
+                    <span className="combat-ui__modal-title"><GameIcon name="clipboard" /> Logi walki ({filtered.length})</span>
                     <button type="button" className="combat-ui__modal-close" onClick={onClose} aria-label="Zamknij">×</button>
                 </header>
 
@@ -191,7 +193,7 @@ const CombatLogsModal = ({ onClose }: IProps) => {
                                 aria-pressed={active}
                                 title={`${active ? 'Wyłącz' : 'Włącz'} filtr: ${f.label}`}
                             >
-                                {f.icon} {f.label}
+                                <GameIcon name={f.icon} /> {f.label}
                             </button>
                         );
                     })}
@@ -209,7 +211,7 @@ const CombatLogsModal = ({ onClose }: IProps) => {
                                 // explicit label the spec asks for.
                                 if (entry.type === 'crit') {
                                     if (!text.includes('KRYTYK')) {
-                                        text = text.replace('⚡', '⚡KRYTYK');
+                                        text = text.replace(':high-voltage:', ':high-voltage:KRYTYK');
                                     }
                                 }
                                 // Prefix ally-attack lines that don't already
@@ -251,7 +253,7 @@ const CombatLogsModal = ({ onClose }: IProps) => {
                                             }
                                         })()}
                                     >
-                                        {text}
+                                        <EmojiText>{text}</EmojiText>
                                     </li>
                                 );
                             })}

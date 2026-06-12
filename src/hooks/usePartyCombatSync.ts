@@ -11,14 +11,14 @@ import { handleMonsterDeath, applyMonsterKillRewardsForMember, stopCombat } from
 /**
  * Leader-authoritative combat-sync wiring.
  *
- *  • Both clients subscribe to `party-combat-<partyId>` so spell-cast
+ *  - Both clients subscribe to `party-combat-<partyId>` so spell-cast
  *    cues + state snapshots flow between them.
- *  • The LEADER also watches their local combatStore and broadcasts a
+ *  - The LEADER also watches their local combatStore and broadcasts a
  *    state snapshot on every meaningful change (monster HP, wave,
  *    phase) so members can mirror the SAME fight on their screen.
- *  • The LEADER additionally broadcasts combatSpeed changes so the
+ *  - The LEADER additionally broadcasts combatSpeed changes so the
  *    members' UI runs at the same x1/x2/x4 cadence.
- *  • Members' local engine is suppressed elsewhere (`useBackgroundCombat`)
+ *  - Members' local engine is suppressed elsewhere (`useBackgroundCombat`)
  *    — they NEVER simulate combat themselves; they paint what the
  *    leader sends.
  *
@@ -63,7 +63,7 @@ export const usePartyCombatSync = (): void => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [party?.id, character?.id, party?.members.length]);
 
-    // ── Leader-side broadcast of combat state ──────────────────────────────
+    // -- Leader-side broadcast of combat state ------------------------------
     useEffect(() => {
         if (!party?.id || !character) return;
         if (party.leaderId !== character.id) return;
@@ -132,14 +132,14 @@ export const usePartyCombatSync = (): void => {
         };
     }, [party?.id, party?.leaderId, character?.id, party?.members]);
 
-    // ── Member-side: react to leader's "combat ended" signal ─────────────
+    // -- Member-side: react to leader's "combat ended" signal -------------
     // 2026-05-12 spec ("lider konczy polowanie -> sojusznicy wracaja do
     // miasta"): leader's `stopCombat` broadcasts a combat-end event.
     // Member's client receives, sets `lastCombatEndAt` in the sync
     // store. This subscriber notices the change and:
-    //   • Calls local `stopCombat` to wipe the member's stale combat
+    //   - Calls local `stopCombat` to wipe the member's stale combat
     //     state (was a mirror of the leader's — now obsolete).
-    //   • Navigates to `/` (town) so the member visibly returns to
+    //   - Navigates to `/` (town) so the member visibly returns to
     //     the city instead of being stranded on /combat with a frozen
     //     monster card.
     // Leaders skip — they're the ones doing the exit, they navigate
@@ -162,7 +162,7 @@ export const usePartyCombatSync = (): void => {
         return () => { unsub(); };
     }, [party?.id, party?.leaderId, character?.id, navigate, party?.members]);
 
-    // ── Leader-side broadcast of combat-speed changes ──────────────────────
+    // -- Leader-side broadcast of combat-speed changes ----------------------
     // The settings change triggers an effect that broadcasts the new
     // setting to all members so their auto-fight / attack intervals
     // match. Members ignore their own combatSpeed input (locked UI) so
@@ -176,7 +176,7 @@ export const usePartyCombatSync = (): void => {
         usePartyCombatSyncStore.getState().publishCombatSpeed(combatSpeed);
     }, [party?.id, party?.leaderId, character?.id, party?.members, combatSpeed]);
 
-    // ── Member-side: consume `monster-killed` from leader ─────────────────
+    // -- Member-side: consume `monster-killed` from leader -----------------
     // The leader's engine resolved a kill on its authoritative state and
     // broadcast a kill announcement. Each non-leader member rolls THEIR
     // OWN rewards locally — independent drops, independent XP scaled by
@@ -213,14 +213,14 @@ export const usePartyCombatSync = (): void => {
         return () => { unsub(); };
     }, [party?.id, party?.leaderId, character?.id]);
 
-    // ── All clients: consume `member-hit` from leader ──────────────────────
+    // -- All clients: consume `member-hit` from leader ----------------------
     // The leader's engine decides which party human gets hit, broadcasts
     // member-hit to the channel. Two things happen on receipt:
-    //   • The TARGETED member applies the damage to their own
+    //   - The TARGETED member applies the damage to their own
     //     character.hp + combatStore.playerCurrentHp, and emits a
     //     local `playerHit` event so their TopHeader + ally card
     //     flash.
-    //   • EVERY client (incl. the leader who doesn't get their own
+    //   - EVERY client (incl. the leader who doesn't get their own
     //     broadcast — they emit a parallel local event when they
     //     resolve the hit, see combatEngine.ts) renders a floating
     //     damage number on the targeted member's ally slot so the
@@ -236,7 +236,7 @@ export const usePartyCombatSync = (): void => {
             if (!hit) return;
             if (hit === prev.lastMemberHit) return;
 
-            // Branch 1: I am the target → apply damage + local hit anim.
+            // Branch 1: I am the target -> apply damage + local hit anim.
             if (hit.memberId === character.id) {
                 const cs = useCombatStore.getState();
                 const newHp = Math.max(0, cs.playerCurrentHp - hit.damage);
@@ -269,7 +269,7 @@ export const usePartyCombatSync = (): void => {
         return () => { unsub(); };
     }, [party?.id, character?.id]);
 
-    // ── Leader-side: consume `attack-action` requests from members ─────────
+    // -- Leader-side: consume `attack-action` requests from members ---------
     // When a member's local engine wants to swing, it broadcasts an
     // attack-action with the rolled damage instead of touching its own
     // combatStore. The leader applies it to their authoritative monster

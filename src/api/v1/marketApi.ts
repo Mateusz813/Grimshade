@@ -15,7 +15,7 @@ import type {
  * `getListing()` + `decrementListing()` — the latter ran an UPDATE/DELETE
  * as the BUYER's auth session, which RLS on `market_listings` silently
  * NO-OPed for cross-user rows. UI showed success but the listing
- * persisted → same listing could be bought infinitely (production bug).
+ * persisted -> same listing could be bought infinitely (production bug).
  *
  * The fix: the new `buyListing(p_listing_id, p_buyer_character_id)` RPC
  * (see `scripts/market_buy_rpc_migration.sql`) takes a row-level lock,
@@ -34,10 +34,10 @@ import type {
  * NOTE on schema migration — the new fields (`kind`, `quantity`,
  * `quantity_initial`) and the `market_sale_notifications` table need
  * Supabase migrations to land in production. Until they do:
- *   • SELECT calls fall back to safe defaults (`kind='item'`, qty=1)
- *   • INSERT calls only send the new fields when present, so existing
+ *   - SELECT calls fall back to safe defaults (`kind='item'`, qty=1)
+ *   - INSERT calls only send the new fields when present, so existing
  *     rows continue to validate
- *   • Sale notification calls return [] / no-op when the table is
+ *   - Sale notification calls return [] / no-op when the table is
  *     missing so the UI degrades gracefully.
  */
 
@@ -166,7 +166,7 @@ export const marketApi = {
             p_quantity: qty,
         });
         if (error) {
-            // PGRST202 = "Could not find the function" → RPC not deployed.
+            // PGRST202 = "Could not find the function" -> RPC not deployed.
             // Surface a distinct reason so the UI can prompt for migration.
             const code = (error as { code?: string }).code;
             if (code === 'PGRST202') {
@@ -269,7 +269,7 @@ export const marketApi = {
         return data ? mapDbToListing(data) : null;
     },
 
-    // ── Sale notifications ────────────────────────────────────────────
+    // -- Sale notifications --------------------------------------------
     /** Fetch unseen sale notifications for a seller. Best-effort — if
      *  the table doesn't exist yet (pre-migration env), returns []. */
     getSaleNotifications: async (sellerId: string): Promise<IMarketSaleNotification[]> => {

@@ -53,8 +53,8 @@ beforeEach(() => {
     // Reset to the two default tabs (city + system) and the city tab active.
     useChatTabsStore.setState({
         tabs: [
-            { id: 'city', type: 'city', channel: 'city', title: '🌆 Miasto', unread: 0, closable: false },
-            { id: 'system', type: 'system', channel: 'system', title: '⚠️ System', unread: 0, closable: false },
+            { id: 'city', type: 'city', channel: 'city', title: ':cityscape-at-dusk: Miasto', unread: 0, closable: false },
+            { id: 'system', type: 'system', channel: 'system', title: ':warning: System', unread: 0, closable: false },
         ],
         activeId: 'city',
         hasNotification: false,
@@ -130,8 +130,8 @@ describe('ChatPopup — interactions', () => {
     it('renders unread counter when a tab has unread > 0', () => {
         useChatTabsStore.setState({
             tabs: [
-                { id: 'city', type: 'city', channel: 'city', title: '🌆 Miasto', unread: 7, closable: false },
-                { id: 'system', type: 'system', channel: 'system', title: '⚠️ System', unread: 0, closable: false },
+                { id: 'city', type: 'city', channel: 'city', title: ':cityscape-at-dusk: Miasto', unread: 7, closable: false },
+                { id: 'system', type: 'system', channel: 'system', title: ':warning: System', unread: 0, closable: false },
             ],
             activeId: 'system',
         });
@@ -142,8 +142,8 @@ describe('ChatPopup — interactions', () => {
     it('clamps unread badge text at 99+', () => {
         useChatTabsStore.setState({
             tabs: [
-                { id: 'city', type: 'city', channel: 'city', title: '🌆 Miasto', unread: 250, closable: false },
-                { id: 'system', type: 'system', channel: 'system', title: '⚠️ System', unread: 0, closable: false },
+                { id: 'city', type: 'city', channel: 'city', title: ':cityscape-at-dusk: Miasto', unread: 250, closable: false },
+                { id: 'system', type: 'system', channel: 'system', title: ':warning: System', unread: 0, closable: false },
             ],
             activeId: 'system',
         });
@@ -154,7 +154,7 @@ describe('ChatPopup — interactions', () => {
     it('shows close button on closable tabs only', () => {
         useChatTabsStore.setState({
             tabs: [
-                { id: 'city', type: 'city', channel: 'city', title: '🌆 Miasto', unread: 0, closable: false },
+                { id: 'city', type: 'city', channel: 'city', title: ':cityscape-at-dusk: Miasto', unread: 0, closable: false },
                 { id: 'pm_x', type: 'pm', channel: 'pm_x', title: 'PM Foo', unread: 0, closable: true, targetName: 'Foo' },
             ],
             activeId: 'city',

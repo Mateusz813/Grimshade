@@ -19,7 +19,7 @@ import {
     GOLD_PER_SC,
 } from './goldFormat';
 
-// ── Tier constants ──────────────────────────────────────────────────────────
+// -- Tier constants ----------------------------------------------------------
 
 describe('gold tier constants', () => {
     it('uses the canonical conversion factors (100× per tier)', () => {
@@ -31,7 +31,7 @@ describe('gold tier constants', () => {
     });
 });
 
-// ── formatGoldShort ─────────────────────────────────────────────────────────
+// -- formatGoldShort ---------------------------------------------------------
 
 describe('formatGoldShort', () => {
     it('renders raw gp for amounts below 1k', () => {
@@ -67,9 +67,9 @@ describe('formatGoldShort', () => {
     });
 
     it('truncates rather than rounds (player never sees more than they own)', () => {
-        // 51 387 gp = 51.387 k → truncate to 51.38 k, NOT 51.39 k
+        // 51 387 gp = 51.387 k -> truncate to 51.38 k, NOT 51.39 k
         expect(formatGoldShort(51_387)).toBe('51,38 k');
-        // 5 138 999 gp = 51.38999 cc → truncate to 51.38 cc
+        // 5 138 999 gp = 51.38999 cc -> truncate to 51.38 cc
         expect(formatGoldShort(5_138_999)).toBe('51,38 cc');
     });
 
@@ -91,7 +91,7 @@ describe('formatGoldShort', () => {
     });
 });
 
-// ── getGoldBreakdown ────────────────────────────────────────────────────────
+// -- getGoldBreakdown --------------------------------------------------------
 
 describe('getGoldBreakdown', () => {
     it('returns all-zeros for 0', () => {

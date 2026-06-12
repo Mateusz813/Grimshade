@@ -76,7 +76,7 @@ test.describe('Character › Select', { tag: '@character' }, () => {
             expect(selectMpText?.trim()).toMatch(/^\d+\/\d+$/);
             expect(selectMeta).toMatch(/Poziom 5/i);
 
-            // 4. Tap "Wybierz" na NASZEJ karcie → wejście do Town
+            // 4. Tap "Wybierz" na NASZEJ karcie -> wejście do Town
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
 

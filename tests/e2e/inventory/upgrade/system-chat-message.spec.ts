@@ -11,13 +11,13 @@
  * "ulepszył(a) <name> do +<lvl>!".
  *
  * Source path (production):
- *   Inventory.tsx line ~1000 →
- *   isUpgradeMilestone(nextLevel) → true →
+ *   Inventory.tsx line ~1000 ->
+ *   isUpgradeMilestone(nextLevel) -> true ->
  *   formatSystemMessage({ type: 'upgrade', itemId, rarity, upgradeLevel, itemName })
- *     → '[SYS]{"type":"upgrade",...}' (line ~1007)
- *   chatApi.postSystemEvent(name, class, level, content) →
+ *     -> '[SYS]{"type":"upgrade",...}' (line ~1007)
+ *   chatApi.postSystemEvent(name, class, level, content) ->
  *     INSERT INTO messages(channel='system', content=...)
- *   GlobalChat /chat → System tab → Chat.tsx line 382 parseSystemMessage →
+ *   GlobalChat /chat -> System tab -> Chat.tsx line 382 parseSystemMessage ->
  *     line 397-416 renders `.chat__msg-text--rarity-<rarity>` row with
  *     ItemIcon + body text.
  *
@@ -46,7 +46,7 @@
  *     "upgradeLevel":10,"itemName":"Żelazny Miecz E2E_IUP_..."}`
  *     The unique anchor goes inside `itemName` so the row is findable
  *     via `hasText` filter and never collides with other system messages.
- *  3. Login → pick char → /chat.
+ *  3. Login -> pick char -> /chat.
  *  4. Click System tab (always present per chatTabsStore line 117 default).
  *  5. Find seeded row by anchor.
  *  6. Assertions:
@@ -109,7 +109,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
         let seededMsgId: string | null = null;
 
         try {
-            // ── Step 1: seed Knight on SECONDARY ──────────────────────────
+            // -- Step 1: seed Knight on SECONDARY --------------------------
             const created = await createCharacterViaApi({
                 userEmail: testUsers.secondary.email,
                 name: nick,
@@ -118,7 +118,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             });
             createdId = created.id;
 
-            // ── Step 2: insert the system message via admin ───────────────
+            // -- Step 2: insert the system message via admin ---------------
             const admin = getAdminClient();
             const userId = await findUserIdByEmail(testUsers.secondary.email);
             if (!userId) throw new Error('[test 6.11] secondary userId not found');
@@ -138,7 +138,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             if (insertErr) throw new Error(`[test 6.11] message insert failed: ${insertErr.message}`);
             seededMsgId = msgRow.id as string;
 
-            // ── Step 3: login + character pick ────────────────────────────
+            // -- Step 3: login + character pick ----------------------------
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -148,12 +148,12 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // ── Step 4: navigate to /chat + activate System tab ───────────
+            // -- Step 4: navigate to /chat + activate System tab -----------
             await page.goto('/chat');
             await expect(page.locator('.global-chat')).toBeVisible({ timeout: 10_000 });
 
             // System tab is always present (chatTabsStore line 117 default
-            // SYSTEM_TAB.title = "⚠️ System").
+            // SYSTEM_TAB.title = ":warning: System").
             const systemTab = page.locator('.global-chat__tab-btn', { hasText: /System/i });
             await expect(systemTab).toBeVisible({ timeout: 5_000 });
             await systemTab.tap();
@@ -162,11 +162,11 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             const activeTab = page.locator('.global-chat__tab--active');
             await expect(activeTab).toContainText(/System/i, { timeout: 5_000 });
 
-            // ── Step 5: find seeded row by unique anchor ──────────────────
+            // -- Step 5: find seeded row by unique anchor ------------------
             const myMsg = page.locator('.chat__msg', { hasText: anchor }).first();
             await expect(myMsg).toBeVisible({ timeout: 15_000 });
 
-            // ── Step 6: assertions on rich-render output ──────────────────
+            // -- Step 6: assertions on rich-render output ------------------
 
             // 6a. The rarity-tinted text class is present — proves
             //     parseSystemMessage hit the `upgrade` branch (Chat.tsx

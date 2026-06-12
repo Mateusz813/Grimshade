@@ -62,7 +62,7 @@ export const useTransformAccent = (): ITransformAccent => {
 
   const accentRgb = hexToRgb(accent);
 
-  // ── Mirror onto :root so global rules (browser scrollbar, body chrome,
+  // -- Mirror onto :root so global rules (browser scrollbar, body chrome,
   //    anything else outside the TopHeader / BottomNav subtree) can read the
   //    transform accent via `var(--nav-accent)` too. The inline style on
   //    `<header>` cascades DOWN only — without this effect the scrollbar

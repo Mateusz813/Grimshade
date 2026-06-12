@@ -33,7 +33,7 @@ UPDATE guilds SET
 -- 6. Optional: wipe the treasury logs (uncomment to use).
 -- DELETE FROM guild_treasury_logs;
 
--- ── Sanity check counts after wipe ────────────────────────────────────────
+-- -- Sanity check counts after wipe ----------------------------------------
 SELECT
     (SELECT COUNT(*) FROM guild_boss_state)         AS boss_state_rows,
     (SELECT COUNT(*) FROM guild_boss_attempts)      AS attempt_rows,

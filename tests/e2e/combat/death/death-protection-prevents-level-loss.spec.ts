@@ -13,32 +13,32 @@
  *  2. Login + Town.
  *  3. Pre-snapshot: char lvl 50, `consumables.death_protection === 2`.
  *  4. `triggerPlayerDeath(page)` — engine fires:
- *       • `useInventoryStore.useConsumable('death_protection')`
+ *       - `useInventoryStore.useConsumable('death_protection')`
  *         returns TRUE and decrements count by 1 (combatEngine.ts
  *         line 1381).
- *       • Branch at line 1391 hits → log "🛡️ Eliksir Ochrony …" and
+ *       - Branch at line 1391 hits -> log ":shield: Eliksir Ochrony …" and
  *         SKIPS the entire `applyDeathPenalty` block (lines 1394-1413).
- *       • Character level/xp UNCHANGED.
- *       • `fullHealEffective` called at line 1384 → HP=max.
+ *       - Character level/xp UNCHANGED.
+ *       - `fullHealEffective` called at line 1384 -> HP=max.
  *  5. Post-assert:
- *       • level === 50 (NO drop — death protection swallowed the penalty).
- *       • xp unchanged from pre-death.
- *       • `consumables.death_protection === 1` (1 was used).
- *       • hp === max_hp (full revival).
+ *       - level === 50 (NO drop — death protection swallowed the penalty).
+ *       - xp unchanged from pre-death.
+ *       - `consumables.death_protection === 1` (1 was used).
+ *       - hp === max_hp (full revival).
  *
  * Contrast with sibling test `real-death-applies-xp-penalty.spec.ts`:
- *   • That test seeds NO protection → asserts level/xp DROPPED.
- *   • THIS test seeds protection → asserts level/xp UNCHANGED + count
+ *   - That test seeds NO protection -> asserts level/xp DROPPED.
+ *   - THIS test seeds protection -> asserts level/xp UNCHANGED + count
  *     decremented.
  *   Together they prove the protection branch / no-protection branch
  *   are wired correctly and don't accidentally fall through.
  *
  * Why we DON'T verify (kept for separate tests):
- *  • amulet_of_loss item-protection — same engine, separate branch
+ *  - amulet_of_loss item-protection — same engine, separate branch
  *    (line 1416-1421). A separate test would seed AOL + bag items,
  *    trigger death, assert items SURVIVED.
- *  • Death feed row written (`deathsApi.logDeath` line 1369-1378).
- *  • Death overlay UI render (`useDeathStore.triggerDeath` line 1434).
+ *  - Death feed row written (`deathsApi.logDeath` line 1369-1378).
+ *  - Death overlay UI render (`useDeathStore.triggerDeath` line 1434).
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -54,7 +54,7 @@ import { triggerPlayerDeath, getCharacterSnapshot } from '../../fixtures/combatS
 test.describe('Combat › Death', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('Knight lvl 50 with 2× death_protection dies → level stays 50, 1 protection consumed', async ({ page }) => {
+    test('Knight lvl 50 with 2× death_protection dies -> level stays 50, 1 protection consumed', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -81,7 +81,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
                 counts: { death_protection: 2 },
             });
 
-            // 2. Login → Town.
+            // 2. Login -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

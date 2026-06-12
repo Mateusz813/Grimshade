@@ -2,13 +2,13 @@
   "common": {
     "loading": "Ładowanie...",
     "error": "Błąd",
-    "back_to_town": "← Miasto",
+    "back_to_town": "Miasto",
     "save": "Zapisz",
     "cancel": "Anuluj",
     "confirm": "Potwierdź",
-    "refresh": "↻",
+    "refresh": "",
     "copy": "Kopiuj",
-    "copied": "✓ Skopiowano",
+    "copied": ":check-mark-button: Skopiowano",
     "online": "Online",
     "offline": "Offline",
     "syncing": "Synchronizuję...",
@@ -16,7 +16,7 @@
     "last_synced": "Sync: {{time}}",
     "never_synced": "Nie zsync.",
     "level": "Lvl",
-    "gold": "💰 {{amount}}"
+    "gold": ":money-bag: {{amount}}"
   },
   "town": {
     "title": "Miasto",
@@ -111,7 +111,7 @@
     "equip": "Załóż",
     "unequip": "Zdejmij",
     "no_items": "Plecak jest pusty.",
-    "gold": "💰 {{amount}} sztuk złota"
+    "gold": ":money-bag: {{amount}} sztuk złota"
   },
   "skills": {
     "title": "Skille",
@@ -160,7 +160,7 @@
     "defeat": "Porażka!",
     "rewards": "Nagrody",
     "xp_gained": "+{{xp}} XP",
-    "gold_gained": "+{{gold}} 💰",
+    "gold_gained": "+{{gold}} :money-bag:",
     "item_drop": "Znaleziono: {{item}}",
     "return": "Wróć"
   },
@@ -185,7 +185,7 @@
     "join_error": "Wpisz prawidłowe ID party.",
     "id_label": "ID Party:",
     "copy_id": "Kopiuj",
-    "copied_id": "✓ Skopiowano",
+    "copied_id": ":check-mark-button: Skopiowano",
     "drop_x": "Drop ×",
     "difficulty_x": "Trudność ×",
     "avg_level": "Śr. poziom",

@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — single-context: create a guild, then disband by leaving (BACKLOG 4.4).
  *
- * Spec ("Stwórz gildię → rozwiąż"): one founder creates a fresh guild
+ * Spec ("Stwórz gildię -> rozwiąż"): one founder creates a fresh guild
  * (paying the 1M gp cost via seeded gold), enters the guild home view,
  * then opens the "Opuść gildię" flow. Since the founder is the SOLE
  * member, leaving auto-disbands the guild (guildApi.leaveGuild deletes
@@ -12,22 +12,22 @@
  *   1. Pre-create the guild list view is visible (no guild yet).
  *   2. After the create dialog submits, the home banner appears with the
  *      guild's name + tag.
- *   3. Tapping the 🚪 leave icon + confirming in the modal disbands
- *      the guild → store clears → home view collapses back to list.
+ *   3. Tapping the :door: leave icon + confirming in the modal disbands
+ *      the guild -> store clears -> home view collapses back to list.
  *   4. After disband, /guild list does NOT contain our guild name.
  *
  * Critical setup notes:
- *   • Seed 2_000_000 gp into `inventory.gold` slot via `seedGameSave`.
+ *   - Seed 2_000_000 gp into `inventory.gold` slot via `seedGameSave`.
  *     1_000_000 gp is the spec-defined create cost (GUILD_CREATE_COST_GOLD);
  *     we double it so the "canAfford" gate passes with comfortable margin.
- *   • Character at level 10 — there's no min-level requirement for guild
+ *   - Character at level 10 — there's no min-level requirement for guild
  *     creation but a higher-level character avoids any UI lockouts that
  *     might bite in the future.
  *
  * Cleanup:
- *   • cleanupGuildsByLeaderIds nukes the `guilds` row in case disband
+ *   - cleanupGuildsByLeaderIds nukes the `guilds` row in case disband
  *     failed (idempotent — no-op if the test successfully disbanded).
- *   • cleanupCharacterById wipes the character + child rows.
+ *   - cleanupCharacterById wipes the character + child rows.
  *
  * Why no `parties` cleanup: this test never creates a party. The
  * `parties` row delete in `multiContext.cleanup` is for party-flow tests
@@ -49,7 +49,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
     // to list refresh. 60s is plenty of headroom.
     test.describe.configure({ timeout: 60_000 });
 
-    test('happy path: create guild with 1M gp → home view renders → disband by leaving → guild gone from list', async ({ page }) => {
+    test('happy path: create guild with 1M gp -> home view renders -> disband by leaving -> guild gone from list', async ({ page }) => {
         const nick = generateTestCharacterName();
         // Tag must be 2-3 letters/digits — pick a random 3-char alphanumeric
         // so parallel test runs don't collide on the same tag string (no
@@ -78,7 +78,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 gold: 2_000_000, // 2× create cost — comfortable margin
             });
 
-            // 2. Login + character pick → Town.
+            // 2. Login + character pick -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -92,7 +92,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
             await expect(page.locator('.town__char-name')).toHaveText(nick);
 
-            // 3. Navigate Town → Społeczność → Gildia tile (SPA preserves store).
+            // 3. Navigate Town -> Społeczność -> Gildia tile (SPA preserves store).
             await page.getByRole('button', { name: /^Społeczność$/i }).tap();
             await expect(page).toHaveURL(/\/social$/, { timeout: 10_000 });
             await page.locator('.social__tile--gildia').tap();
@@ -102,7 +102,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             //    players. Wait for the create button to be reachable.
             await expect(page.locator('.guild__list-create')).toBeVisible({ timeout: 15_000 });
 
-            // 5. Tap "Stwórz gildię" → create dialog modal opens.
+            // 5. Tap "Stwórz gildię" -> create dialog modal opens.
             await page.locator('.guild__list-create').tap();
             await expect(page.locator('.guild__modal-title', { hasText: /Stwórz gildię/i }))
                 .toBeVisible({ timeout: 5_000 });
@@ -132,10 +132,10 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             const myMember = page.locator('.guild__member-row.is-me');
             await expect(myMember).toBeVisible();
             await expect(myMember.locator('.guild__member-name')).toContainText(nick);
-            // Crown (👑) confirms we're the leader.
+            // Crown (:crown:) confirms we're the leader.
             await expect(myMember.locator('.guild__member-crown')).toBeVisible();
 
-            // 10. DISBAND flow: tap the 🚪 leave button → confirmation modal.
+            // 10. DISBAND flow: tap the :door: leave button -> confirmation modal.
             //     Since we're the sole member, the modal carries the
             //     "Jesteś ostatnim członkiem — gildia zostanie rozwiązana"
             //     warning copy (Guild.tsx ~819).

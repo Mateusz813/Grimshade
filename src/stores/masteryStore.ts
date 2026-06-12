@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface IMasteryData {
   level: number;
@@ -62,7 +62,7 @@ const killsRequiredForLevel = (currentLevel: number): number => {
   return MASTERY_KILL_THRESHOLD * (currentLevel + 1);
 };
 
-// ── Store interface ──────────────────────────────────────────────────────────
+// -- Store interface ----------------------------------------------------------
 
 interface IMasteryStore {
   masteries: Record<string, IMasteryData>;
@@ -78,7 +78,7 @@ interface IMasteryStore {
   isMaxMastery: (monsterId: string) => boolean;
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// -- Store ---------------------------------------------------------------------
 
 export const useMasteryStore = create<IMasteryStore>()(
     (set, get) => ({

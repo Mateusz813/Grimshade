@@ -3,8 +3,8 @@
  *
  * Why this exists: multi-context guild tests for kick/chat/treasury all
  * need 2+ members of the SAME guild as starting state. Setting that up
- * through the UI would take ~30s of taps per test (create guild → log
- * out / switch context → apply → switch back → accept). Direct INSERTs
+ * through the UI would take ~30s of taps per test (create guild -> log
+ * out / switch context -> apply -> switch back -> accept). Direct INSERTs
  * land in <500ms and the on-mount Realtime hydrate picks them up.
  *
  * Layout: one INSERT into `guilds` (autogen UUID id, leader = first

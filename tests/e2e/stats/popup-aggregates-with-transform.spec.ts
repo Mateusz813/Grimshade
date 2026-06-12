@@ -41,19 +41,19 @@
  * combatEngine. StatsPopupBody czyta `getEffectiveChar` STAT POOL bez
  * combat-time multipliers. Test party-buff: combat-sim path, nie stats popup.
  *
- * **Konkluzja**: 8.1 oryginalna teza "6/6 sources" → w rzeczywistości
+ * **Konkluzja**: 8.1 oryginalna teza "6/6 sources" -> w rzeczywistości
  * StatsPopupBody pokrywa 5/5 distinct sources (upgrade fold into Eq,
  * party-buff combat-only). Wszystkie 5 testowane:
- *   • partial 8.1a `popup-aggregates-equipped-item.spec.ts` — Eq source dla Atak
- *   • 8.1b `popup-aggregates-all-sources.spec.ts` — Max HP 4 sources jednocześnie
- *   • 8.1c (ten plik) — TEN SAM 4 sources + dodatkowo TRANSFORM (TF flat + TF %)
+ *   - partial 8.1a `popup-aggregates-equipped-item.spec.ts` — Eq source dla Atak
+ *   - 8.1b `popup-aggregates-all-sources.spec.ts` — Max HP 4 sources jednocześnie
+ *   - 8.1c (ten plik) — TEN SAM 4 sources + dodatkowo TRANSFORM (TF flat + TF %)
  *
  * ## Setup
  *
  * Knight, level 5, base max_hp=120.
- * Skill train max_hp=4 → `tb.max_hp = 20`.
- * Equipped helmet z `bonuses: { hp: 20 }`, upgradeLevel=0 → `eqStats.hp = 20`.
- * Active buff `hp_boost_500` → `getElixirHpBonus() = 500`.
+ * Skill train max_hp=4 -> `tb.max_hp = 20`.
+ * Equipped helmet z `bonuses: { hp: 20 }`, upgradeLevel=0 -> `eqStats.hp = 20`.
+ * Active buff `hp_boost_500` -> `getElixirHpBonus() = 500`.
  * Completed transform id=1 (Knight tier 1): `flatHp=420`, `hpPercent=4`.
  *
  * ## Expected math
@@ -72,19 +72,19 @@
  *    tfHpPct > 0 ? { label: 'TF %', value: '+4% (43)' } : null  // +4% delta
  * )`
  *
- * → 6 lines pojawia się w UI: Baza/Eq/Trening/Eliksir/TF flat/TF %.
+ * -> 6 lines pojawia się w UI: Baza/Eq/Trening/Eliksir/TF flat/TF %.
  *
  * ## CRITICAL — legacy migration bypass
  *
  * `characterScope.ts` linia 436-446 sprawdza
  * `localStorage['tibia_transform_migration_v1_<charId>']`. Brak markera
- * → wymusza `bakedBonusesApplied: true` + odpala migrację (MUTUJE
+ * -> wymusza `bakedBonusesApplied: true` + odpala migrację (MUTUJE
  * character stats!). Test używa `page.addInitScript` żeby ustawić marker
  * BEFORE pierwszej hydration, więc blok migracyjny jest pomijany i
- * `bakedBonusesApplied: false` z seeded blob-a zostaje aktywne →
+ * `bakedBonusesApplied: false` z seeded blob-a zostaje aktywne ->
  * `getLiveTransformBreakdown` zwraca `active: true`.
  *
- * Cleanup: try/finally → cleanupCharacterById.
+ * Cleanup: try/finally -> cleanupCharacterById.
  */
 
 import { test, expect } from '@playwright/test';
@@ -128,7 +128,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                     {
                         id: 'hp_boost_500',
                         name: '+500 Max HP',
-                        icon: '🩸',
+                        icon: 'drop-of-blood',
                         effect: 'hp_boost_500',
                     },
                 ],
@@ -138,7 +138,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                 },
             });
 
-            // 3. Equip helmet z bonus { hp: 20 } (upgradeLevel=0 → flat 20).
+            // 3. Equip helmet z bonus { hp: 20 } (upgradeLevel=0 -> flat 20).
             await seedEquippedItem({
                 characterId: created.id,
                 slot: 'helmet',
@@ -160,7 +160,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                 } catch { /* private mode / quota */ }
             }, created.id);
 
-            // 5. Login → wybierz → Town.
+            // 5. Login -> wybierz -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -170,7 +170,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 6. /inventory → tap Statystyki.
+            // 6. /inventory -> tap Statystyki.
             await page.goto('/inventory');
             await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
             await page.getByRole('button', { name: /^statystyki$/i }).tap();
@@ -189,7 +189,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await expect(hpBox.locator('.inventory__stats-box-value')).toHaveText('1123');
 
             // 8. Breakdown asercje — wszystkie 6 lines (5 sources + TF%).
-            //    `buildLines` filtruje val===0 → wszystkie nasze entries
+            //    `buildLines` filtruje val===0 -> wszystkie nasze entries
             //    są non-zero więc widoczne.
             await expect(hpBox).toContainText('Baza');
             await expect(hpBox).toContainText('120');

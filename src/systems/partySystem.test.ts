@@ -22,7 +22,7 @@ import {
   type IPartyInfo,
 } from './partySystem';
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// -- Fixtures ------------------------------------------------------------------
 
 const makeHuman = (id: string, cls: IPartyMember['class'] = 'Knight', level = 10): IPartyMember => ({
   id, name: `Player${id}`, class: cls, level, hp: 200, maxHp: 200, isBot: false, isOnline: true,
@@ -32,7 +32,7 @@ const makeBot = (): IPartyMember => ({
   id: 'bot1', name: 'Bot Pancerny', class: 'Knight', level: 10, hp: 200, maxHp: 200, isBot: true, isOnline: true,
 });
 
-// ── calculateDropMultiplier ───────────────────────────────────────────────────
+// -- calculateDropMultiplier ---------------------------------------------------
 
 describe('calculateDropMultiplier', () => {
   it('returns 1.0 for solo (party size 1)', () => {
@@ -57,7 +57,7 @@ describe('calculateDropMultiplier', () => {
   });
 });
 
-// ── calculateDifficultyMultiplier ─────────────────────────────────────────────
+// -- calculateDifficultyMultiplier ---------------------------------------------
 
 describe('calculateDifficultyMultiplier', () => {
   it('returns 1.0 for solo', () => {
@@ -79,7 +79,7 @@ describe('calculateDifficultyMultiplier', () => {
   });
 });
 
-// ── canJoinParty / isFull ─────────────────────────────────────────────────────
+// -- canJoinParty / isFull -----------------------------------------------------
 
 describe('canJoinParty', () => {
   it('allows joining below max size', () => {
@@ -108,7 +108,7 @@ describe('isFull', () => {
   });
 });
 
-// ── getHumanCount / getBotCount ───────────────────────────────────────────────
+// -- getHumanCount / getBotCount -----------------------------------------------
 
 describe('getHumanCount / getBotCount', () => {
   it('counts humans and bots correctly', () => {
@@ -123,7 +123,7 @@ describe('getHumanCount / getBotCount', () => {
   });
 });
 
-// ── shouldSuggestBot ──────────────────────────────────────────────────────────
+// -- shouldSuggestBot ----------------------------------------------------------
 
 describe('shouldSuggestBot', () => {
   it('suggests bot when solo', () => {
@@ -139,7 +139,7 @@ describe('shouldSuggestBot', () => {
   });
 });
 
-// ── createBotHelper ───────────────────────────────────────────────────────────
+// -- createBotHelper -----------------------------------------------------------
 
 describe('createBotHelper', () => {
   it('returns a valid party member', () => {
@@ -172,7 +172,7 @@ describe('createBotHelper', () => {
   });
 });
 
-// ── getXpShare / getGoldShare ─────────────────────────────────────────────────
+// -- getXpShare / getGoldShare -------------------------------------------------
 
 describe('getXpShare', () => {
   it('returns full XP for solo', () => {
@@ -198,7 +198,7 @@ describe('getGoldShare', () => {
   });
 });
 
-// ── getPartySummary ───────────────────────────────────────────────────────────
+// -- getPartySummary -----------------------------------------------------------
 
 describe('getPartySummary', () => {
   it('returns correct summary for mixed party', () => {
@@ -220,7 +220,7 @@ describe('getPartySummary', () => {
   });
 });
 
-// ── generatePartyId ───────────────────────────────────────────────────────────
+// -- generatePartyId -----------------------------------------------------------
 
 describe('generatePartyId', () => {
   it('generates a non-empty uppercase string', () => {
@@ -235,7 +235,7 @@ describe('generatePartyId', () => {
   });
 });
 
-// ── getPartyBuffs ────────────────────────────────────────────────────────────
+// -- getPartyBuffs ------------------------------------------------------------
 
 describe('getPartyBuffs', () => {
   it('returns buff for Cleric', () => {
@@ -255,7 +255,7 @@ describe('getPartyBuffs', () => {
   });
 });
 
-// ── applyPartyBuffs ──────────────────────────────────────────────────────────
+// -- applyPartyBuffs ----------------------------------------------------------
 
 describe('applyPartyBuffs', () => {
   it('increases attack with atk_boost buff', () => {
@@ -284,7 +284,7 @@ describe('applyPartyBuffs', () => {
   });
 });
 
-// ── hasOptimalComposition ────────────────────────────────────────────────────
+// -- hasOptimalComposition ----------------------------------------------------
 
 describe('hasOptimalComposition', () => {
   it('returns true for 3+ unique classes', () => {
@@ -300,7 +300,7 @@ describe('hasOptimalComposition', () => {
   });
 });
 
-// ── getCompositionBonus ──────────────────────────────────────────────────────
+// -- getCompositionBonus ------------------------------------------------------
 
 describe('getCompositionBonus', () => {
   it('returns 1.0 for same class party', () => {
@@ -316,7 +316,7 @@ describe('getCompositionBonus', () => {
   });
 });
 
-// ── calculateHelpDamage ──────────────────────────────────────────────────────
+// -- calculateHelpDamage ------------------------------------------------------
 
 describe('calculateHelpDamage', () => {
   it('returns 50% of finished member attack', () => {

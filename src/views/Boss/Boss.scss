@@ -24,7 +24,7 @@
     color: $color-text-muted;
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // -- Header -----------------------------------------------------------------
   // Default header (unused now, kept as a base in case any sub-view re-enables
   // the bordered top bar). The active variant on the Bossowie page is
   // `__header--minimal` below: just the trophy badge centred under the
@@ -77,7 +77,7 @@
     border-radius: $radius-sm;
   }
 
-  // ── Panel ──────────────────────────────────────────────────────────────────
+  // -- Panel ------------------------------------------------------------------
   &__panel {
     padding: $spacing-md;
     display: flex;
@@ -86,9 +86,9 @@
 
     // Inside fighting mode, panel must fill remaining space AND drop ALL
     // its padding so:
-    //  • the combat top-controls strip butts directly against the global
+    //  - the combat top-controls strip butts directly against the global
     //    page header (no top gap),
-    //  • the same strip and the arena underneath span the full viewport
+    //  - the same strip and the arena underneath span the full viewport
     //    width (no left/right gap — per UX direction: "Pasek z guzikami
     //    do przyspieszania walki itp powinien byc na 100% szerokosci
     //    ekranu a jest jakies 98%"). The chip pills inside the strip
@@ -129,9 +129,9 @@
     }
   }
 
-  // ── Hub filter bar ─────────────────────────────────────────────────────────
+  // -- Hub filter bar ---------------------------------------------------------
   // Mirrors the Dungeon filter strip exactly so the two listing screens read
-  // as siblings: pill toggles → numeric "Lvl od" input → optional Wyczyść.
+  // as siblings: pill toggles  numeric "Lvl od" input  optional Wyczyść.
   // Per-character persistence comes from settingsStore via characterScope.
   &__hub-filters {
     display: flex;
@@ -266,7 +266,7 @@
     border-radius: $radius-md;
   }
 
-  // ── Boss card ──────────────────────────────────────────────────────────────
+  // -- Boss card --------------------------------------------------------------
   &__card {
     --h: var(--card-hue, 0);
     --card-image: none;
@@ -397,7 +397,7 @@
     // "All daily attempts used" — keep the per-boss hue border intact so
     // the card still reads as part of its tier (per user direction: "kolor
     // borderu jak pokonalem bossa nie powinien sie zmienic"). The state
-    // is signalled exclusively by reduced opacity + the centred ✓ Pokonany
+    // is signalled exclusively by reduced opacity + the centred v Pokonany
     // stamp at the top of the card. The shimmer animation pauses too so
     // the card feels dormant rather than active.
     &--all-done {
@@ -407,7 +407,7 @@
     }
   }
 
-  // ── "Pokonany" stamp ───────────────────────────────────────────────────────
+  // -- "Pokonany" stamp -------------------------------------------------------
   // Pinned absolute so the centred head can claim the full card width.
   // Identical visual to Dungeon's `__corner--cleared` for cross-view
   // consistency. Sits horizontally between the LVL badge (top-right)
@@ -547,7 +547,7 @@
       > span { white-space: nowrap; }
     }
 
-    // Rewards row (Gold / XP / 📦) — gold colour cue links it visually to
+    // Rewards row (Gold / XP / package) — gold colour cue links it visually to
     // the reward palette used on the result screen reward rows. The drop
     // icon now flows naturally inline (no `margin-left: auto`) so it sits
     // immediately after XP rather than getting pushed flush right — feels
@@ -562,12 +562,12 @@
     }
   }
 
-  // `__card-party-note` was the old "👥 Zbalansowany dla 4-osobowej drużyny"
+  // `__card-party-note` was the old "busts-in-silhouette Zbalansowany dla 4-osobowej drużyny"
   // caption — removed from the JSX in the unified-combat pass. Kept the
   // selector slot intentionally empty as a marker so anyone grepping the
   // legacy class name finds the explanation without resurrecting it.
 
-  // ── Unique drops list ──────────────────────────────────────────────────────
+  // -- Unique drops list ------------------------------------------------------
   &__unique-drops {
     background: $color-bg-secondary;
     border-radius: $radius-sm;
@@ -599,7 +599,7 @@
     color: $color-text-muted;
   }
 
-  // ── Drop table toggle & content ─────────────────────────────────────────────
+  // -- Drop table toggle & content ---------------------------------------------
   &__drop-toggle {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid $color-border;
@@ -616,7 +616,7 @@
     &--open { border-color: $color-accent; color: $color-text; }
   }
 
-  // ── Drop-table icon button (lives next to the gold cell) ──────────────────
+  // -- Drop-table icon button (lives next to the gold cell) ------------------
   // Replaces the old wide "Drop table" toggle. Tucked alongside the gold
   // amount because the player's eye already lands there when scanning the
   // stat row — opening the popup is a single tap away without bloating the
@@ -645,7 +645,7 @@
     }
   }
 
-  // ── Drop-table modal (popup) ──────────────────────────────────────────────
+  // -- Drop-table modal (popup) ----------------------------------------------
   &__modal-backdrop {
     position: fixed;
     inset: 0;
@@ -880,7 +880,7 @@
     &:active { transform: translateY(0); }
   }
 
-  // ── Speed button ────────────────────────────────────────────────────────────
+  // -- Speed button ------------------------------------------------------------
   &__speed-btn {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -898,7 +898,7 @@
     &--SKIP { color: #f44336; background: rgba(#f44336, 0.1); }
   }
 
-  // ── Abilities tags ────────────────────────────────────────────────────────
+  // -- Abilities tags --------------------------------------------------------
   &__abilities {
     display: flex;
     flex-wrap: wrap;
@@ -920,7 +920,7 @@
     border: 1px solid rgba(#f44336, 0.2);
   }
 
-  // ── Arena (real combat view) ──────────────────────────────────────────────
+  // -- Arena (real combat view) ----------------------------------------------
   // Mirrors the normal Combat view 1:1 on wide screens:
   //   - boss card on the LEFT column
   //   - party column (player card + stacked companion rows) on the RIGHT
@@ -1113,7 +1113,7 @@
     font-weight: 600;
   }
 
-  // ── HP bars (combat-style) ─────────────────────────────────────────────────
+  // -- HP bars (combat-style) -------------------------------------------------
   &__combat-bar {
     flex: 1;
     height: 14px;
@@ -1134,7 +1134,7 @@
   &__combat-bar--enemy .boss__combat-bar-fill { background: linear-gradient(90deg, #b71c1c, #ff5252); }
   &__combat-bar--boss-enraged .boss__combat-bar-fill { background: linear-gradient(90deg, #f44336, #ff7043); }
 
-  // ── Floating damage numbers ────────────────────────────────────────────────
+  // -- Floating damage numbers ------------------------------------------------
   &__floating-dmg {
     position: absolute;
     top: 50%;
@@ -1152,7 +1152,7 @@
     &--crit { color: #ff9100; font-size: 28px; }
   }
 
-  // ── Combat toggles ────────────────────────────────────────────────────────
+  // -- Combat toggles --------------------------------------------------------
   &__combat-toggles {
     display: flex;
     gap: 6px;
@@ -1212,7 +1212,7 @@
     }
   }
 
-  // ── Skill slots ──────────────────────────────────────────────────────────
+  // -- Skill slots ----------------------------------------------------------
   &__skill-slots {
     display: flex;
     gap: 4px;
@@ -1272,7 +1272,7 @@
     z-index: 1;
   }
 
-  // ── Potions ──────────────────────────────────────────────────────────────
+  // -- Potions --------------------------------------------------------------
   &__potions {
     display: flex;
     gap: 6px;
@@ -1310,7 +1310,7 @@
   &__potion-label { z-index: 1; font-weight: 600; }
   &__potion-count { z-index: 1; font-size: 10px; opacity: 0.7; }
 
-  // ── Flee button ────────────────────────────────────────────────────────────
+  // -- Flee button ------------------------------------------------------------
   &__flee-btn {
     background: rgba(#f44336, 0.1);
     border: 1px solid rgba(#f44336, 0.3);
@@ -1325,7 +1325,7 @@
     &:hover { background: rgba(#f44336, 0.2); }
   }
 
-  // ── Combat log ─────────────────────────────────────────────────────────────
+  // -- Combat log -------------------------------------------------------------
   &__combat-log {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -1363,7 +1363,7 @@
     80% { transform: translateX(2px); }
   }
 
-  // ── Result ─────────────────────────────────────────────────────────────────
+  // -- Result -----------------------------------------------------------------
   // 1:1 with Dungeon's result panel. Per-boss painting drives the card
   // background (via `--card-image`); the shimmering victory banner / reward
   // rows / drops grid sit on top with their own backgrounds for legibility.
@@ -1415,7 +1415,7 @@
   &__result--loss .boss__result-title { color: $color-accent; }
   &__result-boss   { font-size: $font-md; color: $color-text-muted; }
 
-  // ── Victory banner ────────────────────────────────────────────────────────
+  // -- Victory banner --------------------------------------------------------
   // Per spec: transparent fill so the boss painting behind shows through,
   // borders dropped, only the diagonal shimmer (::before) and inner-label
   // text shadows stay. Reads as a "ribbon of light" sweeping over the
@@ -1694,10 +1694,10 @@
   50%       { opacity: 0.5; }
 }
 
-// ── Class-specific attack animations for boss combat ─────────────────────────
+// -- Class-specific attack animations for boss combat -------------------------
 @include class-attack-animations('boss__combat-card');
 
-// ── Bot companion styles ────────────────────────────────────────────────────
+// -- Bot companion styles ----------------------------------------------------
 .boss {
   &__bot-party {
     background: rgba(#1a1a2e, 0.6);
@@ -1814,7 +1814,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  // ── Pre-fight bot picker modal ──────────────────────────────────────────
+  // -- Pre-fight bot picker modal ------------------------------------------
   &__prefight-overlay {
     position: fixed;
     inset: 0;
@@ -1994,7 +1994,7 @@
     }
   }
 
-  // ── Epic boss entry (doors slide open) ────────────────────────────────────
+  // -- Epic boss entry (doors slide open) ------------------------------------
   // Note: the overlay itself has a dark background so when the doors slide
   // off the screen the player sees a proper boss-arena backdrop behind them
   // — NOT a momentary flash of the boss list view that was on screen before.

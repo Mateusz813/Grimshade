@@ -14,7 +14,7 @@
  *    Already partially covered by unit-test `combatCadence.test.ts` (13.9)
  *    + speedCooldownMatrix.test.ts (12.8) — the timing math is pinned at
  *    the unit layer.
- *  - The chip-tap path (Combat.tsx line 1685 → cycleSpeed line 1652) is
+ *  - The chip-tap path (Combat.tsx line 1685 -> cycleSpeed line 1652) is
  *    pure `setCombatSpeed(next)` call — same code path as the page.evaluate
  *    setter. UI cycling is covered by the idle-hub clickability test
  *    `combat/ui/clickability-at-each-speed.spec.ts` (13.25).
@@ -34,7 +34,7 @@
  *     effect into phase mutation — Combat.tsx line 1561-1562 syncs
  *     buffStore.combatSpeedMult on `useEffect([combatSpeed])` but
  *     never touches `combatStore.phase`).
- *  6. Cycle through all 3 user-facing speeds (x2 → x1 → x4 again) to
+ *  6. Cycle through all 3 user-facing speeds (x2 -> x1 -> x4 again) to
  *     exercise the bidirectional setter without UI involvement.
  *
  * What we DON'T test:
@@ -76,7 +76,7 @@ test.describe('Combat › Speed', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login on SECONDARY → wybierz postać → Town.
+            // 2. Login on SECONDARY -> wybierz postać -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -155,14 +155,14 @@ test.describe('Combat › Speed', { tag: '@combat' }, () => {
                 const phaseAfterX4 = useCombatStore.getState().phase;
                 const speedAfterX4 = useSettingsStore.getState().combatSpeed;
 
-                // Cycle x4 → x2 (skip wraps to test bidirectional setter
+                // Cycle x4 -> x2 (skip wraps to test bidirectional setter
                 // without going through chip ordering — proves any value
                 // in the type union is freely writable mid-fight).
                 useSettingsStore.getState().setCombatSpeed('x2');
                 const phaseAfterX2 = useCombatStore.getState().phase;
                 const speedAfterX2 = useSettingsStore.getState().combatSpeed;
 
-                // Final cycle x2 → x1 — full restoration. Also proves
+                // Final cycle x2 -> x1 — full restoration. Also proves
                 // there's no monotonic-only guard hiding in the setter.
                 useSettingsStore.getState().setCombatSpeed('x1');
                 const phaseAfterX1 = useCombatStore.getState().phase;
@@ -192,21 +192,21 @@ test.describe('Combat › Speed', { tag: '@combat' }, () => {
             expect(result.speedBefore).toBe('x1');
 
             // PRIMARY ASSERTION 1 — setting x4 mid-fight:
-            //   • value lands in the store ('x4', not silently dropped),
-            //   • phase remains 'fighting' (setter has no side-effect
+            //   - value lands in the store ('x4', not silently dropped),
+            //   - phase remains 'fighting' (setter has no side-effect
             //     into combatStore).
             expect(result.speedAfterX4).toBe('x4');
             expect(result.phaseAfterX4).toBe('fighting');
 
-            // PRIMARY ASSERTION 2 — bidirectional setter (x4 → x2):
-            //   • cycles in any direction without phase mutation.
+            // PRIMARY ASSERTION 2 — bidirectional setter (x4 -> x2):
+            //   - cycles in any direction without phase mutation.
             expect(result.speedAfterX2).toBe('x2');
             expect(result.phaseAfterX2).toBe('fighting');
 
             // PRIMARY ASSERTION 3 — full cycle back to x1:
-            //   • proves the entire user-facing speed range (x1/x2/x4)
+            //   - proves the entire user-facing speed range (x1/x2/x4)
             //     can be navigated mid-fight without crashing the engine.
-            //   • SKIP intentionally not exercised here — it's solo-only
+            //   - SKIP intentionally not exercised here — it's solo-only
             //     (filtered out in party mode at Combat.tsx line 1643-1644)
             //     and has its own restore-contract test.
             expect(result.speedAfterX1).toBe('x1');

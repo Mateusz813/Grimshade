@@ -7,14 +7,14 @@ import { MemoryRouter } from 'react-router-dom';
  * Elixirs / Arena), backpack-style item cards with stat comparisons.
  *
  * Coverage:
- *   • Smoke render + spinner fallback when character is null.
- *   • 4 tab buttons render with aria-label aria-labels.
- *   • Default tab is "items".
- *   • Tab switching moves the --active modifier.
- *   • Items tab renders generated cards (per-class catalog).
- *   • Potions / Elixirs tabs render cards from the ELIXIRS registry.
- *   • Arena tab renders the arena shop catalog.
- *   • Class variants (Mage, Archer, Rogue) all render generated items.
+ *   - Smoke render + spinner fallback when character is null.
+ *   - 4 tab buttons render with aria-label aria-labels.
+ *   - Default tab is "items".
+ *   - Tab switching moves the --active modifier.
+ *   - Items tab renders generated cards (per-class catalog).
+ *   - Potions / Elixirs tabs render cards from the ELIXIRS registry.
+ *   - Arena tab renders the arena shop catalog.
+ *   - Class variants (Mage, Archer, Rogue) all render generated items.
  *
  * Mocks: framer-motion (animations); no need to mock Supabase as
  * shopStore is purely local.
@@ -234,6 +234,6 @@ describe('Shop — gold delta floating overlay', () => {
 //       feasible but the heavier buy contract (generated item lands in
 //       bag, gold drops, daily-cap counter increments) is covered by
 //       shopStore tests + Playwright.
-// TODO: Stat-comparison arrows (compareStat green/red ▲▼) require the
+// TODO: Stat-comparison arrows (compareStat green/red ^v) require the
 //       player to equip something + the catalog to contain the same slot
 //       — out of scope for the smoke pass.

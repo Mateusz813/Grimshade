@@ -5,13 +5,15 @@ import { useFriendsStore } from '../../stores/friendsStore';
 import { useChatTabsStore } from '../../stores/chatTabsStore';
 import { friendsApi, type IFriendCharacterInfo } from '../../api/v1/friendsApi';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
 import './Friends.scss';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 const CLASS_ICONS: Record<string, string> = {
-    Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-    Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+    Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+    Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 type TTab = 'friends' | 'blocked';
@@ -73,7 +75,7 @@ const Friends = () => {
     const [infoByName, setInfoByName] = useState<Record<string, IFriendCharacterInfo>>({});
     const [loadingInfo, setLoadingInfo] = useState(false);
 
-    // ── Load character info for all friends on mount / friends change ─────────
+    // -- Load character info for all friends on mount / friends change ---------
 
     const refreshFriendsInfo = useCallback(async () => {
         if (!friends.length) {
@@ -100,7 +102,7 @@ const Friends = () => {
         return () => clearInterval(id);
     }, [refreshFriendsInfo]);
 
-    // ── Actions ───────────────────────────────────────────────────────────────
+    // -- Actions ---------------------------------------------------------------
 
     const doLookup = async () => {
         const name = query.trim();
@@ -181,7 +183,7 @@ const Friends = () => {
         );
     }
 
-    // ── Confirm-modal copy ───────────────────────────────────────────────────
+    // -- Confirm-modal copy ---------------------------------------------------
     // Resolves the modal's title / body / button label from the union shape.
     // Keeps the JSX render-block free of switch-case sprawl.
     const confirmCopy = (() => {
@@ -219,7 +221,7 @@ const Friends = () => {
         };
     })();
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // -- Render ----------------------------------------------------------------
 
     return (
         <div className="friends">
@@ -260,14 +262,14 @@ const Friends = () => {
                                 onClick={doLookup}
                                 disabled={looking || !query.trim()}
                             >
-                                {looking ? '…' : '🔍 Szukaj'}
+                                {looking ? '…' : <><GameIcon name="magnifying-glass-tilted-left" /> Szukaj</>}
                             </button>
                         </div>
                         {lookupError && <p className="friends__error">{lookupError}</p>}
                         {lookupResult && (
                             <div className="friends__lookup-result">
                                 <span className="friends__lookup-icon">
-                                    {CLASS_ICONS[lookupResult.class] ?? '👤'}
+                                    <GameIcon name={CLASS_ICONS[lookupResult.class] ?? 'bust-in-silhouette'} />
                                 </span>
                                 <div className="friends__lookup-info">
                                     <div className="friends__lookup-name">{lookupResult.name}</div>
@@ -283,7 +285,7 @@ const Friends = () => {
                                     className="friends__lookup-add"
                                     onClick={confirmAdd}
                                 >
-                                    ➕ Dodaj
+                                    <Icon name="plus" /> Dodaj
                                 </button>
                             </div>
                         )}
@@ -308,7 +310,7 @@ const Friends = () => {
                             // i zablokuje to jest na obu listach naraz"):
                             // friend rows highlight when the same name also
                             // sits on the block list, and the block button
-                            // flips to 🔓 Odblokuj for one-tap recovery.
+                            // flips to :unlocked: Odblokuj for one-tap recovery.
                             const blockedToo = isBlocked(name);
                             return (
                                 <div
@@ -321,10 +323,10 @@ const Friends = () => {
                                         onClick={() => toggleFavorite(name)}
                                         title={fav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
                                     >
-                                        {fav ? '★' : '☆'}
+                                        <GameIcon name="star" />
                                     </button>
                                     <span className="friends__row-icon">
-                                        {info ? (CLASS_ICONS[info.class] ?? '👤') : '👤'}
+                                        {info ? <GameIcon name={CLASS_ICONS[info.class] ?? 'bust-in-silhouette'} /> : <GameIcon name="bust-in-silhouette" />}
                                     </span>
                                     <div className="friends__row-info">
                                         <div className="friends__row-name">
@@ -334,7 +336,7 @@ const Friends = () => {
                                                     className="friends__row-badge"
                                                     title="Zablokowany — nie otrzymujesz od niego wiadomości"
                                                 >
-                                                    🚫
+                                                    <GameIcon name="prohibited" />
                                                 </span>
                                             )}
                                         </div>
@@ -357,7 +359,7 @@ const Friends = () => {
                                             onClick={() => openPm(name)}
                                             title="Wyślij prywatną wiadomość"
                                         >
-                                            💌
+                                            <GameIcon name="love-letter" />
                                         </button>
                                         {blockedToo ? (
                                             <button
@@ -366,7 +368,7 @@ const Friends = () => {
                                                 onClick={() => setConfirm({ kind: 'unblock', name })}
                                                 title="Odblokuj gracza"
                                             >
-                                                🔓
+                                                <GameIcon name="unlocked" />
                                             </button>
                                         ) : (
                                             <button
@@ -375,7 +377,7 @@ const Friends = () => {
                                                 onClick={() => setConfirm({ kind: 'block', name })}
                                                 title="Zablokuj gracza"
                                             >
-                                                🚫
+                                                <GameIcon name="prohibited" />
                                             </button>
                                         )}
                                         <button
@@ -384,7 +386,7 @@ const Friends = () => {
                                             onClick={() => setConfirm({ kind: 'remove', name })}
                                             title="Usuń znajomego"
                                         >
-                                            ✖
+                                            <Icon name="x" />
                                         </button>
                                     </div>
                                 </div>
@@ -409,7 +411,7 @@ const Friends = () => {
                         const alsoFriend = isFriend(name);
                         return (
                             <div key={name} className="friends__row friends__row--blocked">
-                                <span className="friends__row-icon">🚫</span>
+                                <span className="friends__row-icon"><GameIcon name="prohibited" /></span>
                                 <div className="friends__row-info">
                                     <div className="friends__row-name">
                                         {name}
@@ -418,7 +420,7 @@ const Friends = () => {
                                                 className="friends__row-badge friends__row-badge--friend"
                                                 title="Dalej na Twojej liście znajomych"
                                             >
-                                                ⭐
+                                                <GameIcon name="star" />
                                             </span>
                                         )}
                                     </div>
@@ -433,7 +435,7 @@ const Friends = () => {
                                     className="friends__action friends__action--unblock"
                                     onClick={() => setConfirm({ kind: 'unblock', name })}
                                 >
-                                    🔓 Odblokuj
+                                    <GameIcon name="unlocked" /> Odblokuj
                                 </button>
                             </div>
                         );

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Hoisted Supabase mock ────────────────────────────────────────────────────
+// -- Hoisted Supabase mock ----------------------------------------------------
 // The store reads `guild_members` via the Supabase JS client. The default
 // global mock in `tests/vitest.setup.ts` returns `{ data: null }`, so we
 // override it locally with a tiny query-builder that resolves with whatever
@@ -38,7 +38,7 @@ beforeEach(() => {
     setMockResponse([]);
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('guildTagsStore — initial state', () => {
     it('starts with empty tag caches', () => {
@@ -48,7 +48,7 @@ describe('guildTagsStore — initial state', () => {
     });
 });
 
-// ── resolveTags (by character id) ────────────────────────────────────────────
+// -- resolveTags (by character id) --------------------------------------------
 
 describe('resolveTags', () => {
     it('returns an empty record when called with no ids', async () => {
@@ -130,7 +130,7 @@ describe('resolveTags', () => {
     });
 });
 
-// ── resolveTagsByName ────────────────────────────────────────────────────────
+// -- resolveTagsByName --------------------------------------------------------
 
 describe('resolveTagsByName', () => {
     it('returns empty when called with no names', async () => {
@@ -165,7 +165,7 @@ describe('resolveTagsByName', () => {
     });
 });
 
-// ── getTagSync / getTagByNameSync ────────────────────────────────────────────
+// -- getTagSync / getTagByNameSync --------------------------------------------
 
 describe('getTagSync', () => {
     it('returns empty string for unknown characterId', () => {
@@ -203,7 +203,7 @@ describe('getTagByNameSync', () => {
     });
 });
 
-// ── invalidate ───────────────────────────────────────────────────────────────
+// -- invalidate ---------------------------------------------------------------
 
 describe('invalidate', () => {
     it('clears EVERY cache entry when called with no arguments', () => {
@@ -244,7 +244,7 @@ describe('invalidate', () => {
     });
 });
 
-// ── formatNameWithTag helper ─────────────────────────────────────────────────
+// -- formatNameWithTag helper -------------------------------------------------
 
 describe('formatNameWithTag', () => {
     it('returns the raw name when characterId is missing', () => {

@@ -9,14 +9,14 @@ import { MemoryRouter } from 'react-router-dom';
  * starter weapon + navigates to /.
  *
  * Coverage:
- *   • Smoke: root + name input + class grid mount.
- *   • Class detail panel hidden until a class is picked.
- *   • Clicking a class makes the detail panel mount with the right text.
- *   • Submit blocked while no class is selected.
- *   • zod name validation: too short / illegal chars.
- *   • Successful submit calls characterApi.createCharacter + navigates.
- *   • Hitting the 7-character cap surfaces an error.
- *   • Back button navigates to /character-select.
+ *   - Smoke: root + name input + class grid mount.
+ *   - Class detail panel hidden until a class is picked.
+ *   - Clicking a class makes the detail panel mount with the right text.
+ *   - Submit blocked while no class is selected.
+ *   - zod name validation: too short / illegal chars.
+ *   - Successful submit calls characterApi.createCharacter + navigates.
+ *   - Hitting the 7-character cap surfaces an error.
+ *   - Back button navigates to /character-select.
  */
 
 vi.mock('framer-motion', async () => {

@@ -4,9 +4,9 @@
  * Spec (BACKLOG.md punkt 6.2): "Filtry w plecaku (rarity, type, level)".
  *
  * Pokrycie:
- *  • Rarity filter — tap "Rzadkie" → tylko rare items widoczne.
- *  • Slot filter — tap "Bronie" → tylko items ze slot `mainHand`/`offHand`.
- *  • Combined (po rarity tap) → reset na "Wszystkie" → wszystkie z powrotem.
+ *  - Rarity filter — tap "Rzadkie" -> tylko rare items widoczne.
+ *  - Slot filter — tap "Bronie" -> tylko items ze slot `mainHand`/`offHand`.
+ *  - Combined (po rarity tap) -> reset na "Wszystkie" -> wszystkie z powrotem.
  *
  * Setup: postać Knight + 3 seeded items w bag:
  *   1. wooden_mace (mainHand, common)        — broń, common
@@ -19,15 +19,15 @@
  * rarity-flag ręcznie (bonuses zostają puste; chodzi tylko o filtrowanie).
  *
  * Asercje czytają `.inventory__bag-tile` count po każdym tap-u filtra:
- *  • Default ("Wszystkie") → 3 tile-y
- *  • Tap "Rzadkie" → 1 tile (iron_helmet)
- *  • Tap "Wszystkie" → 3 tile-y (reset)
- *  • Tap "Bronie" slot filter → 1 tile (wooden_mace)
+ *  - Default ("Wszystkie") -> 3 tile-y
+ *  - Tap "Rzadkie" -> 1 tile (iron_helmet)
+ *  - Tap "Wszystkie" -> 3 tile-y (reset)
+ *  - Tap "Bronie" slot filter -> 1 tile (wooden_mace)
  *
  * UWAGA o stacked items: Inventory dorzuca też "stack tiles" (potions,
  * chests, stones) do bag grid (Inventory.tsx linia 2983). Nasze seed-y
  * NIE zawierają consumables ani spell chestów, więc liczba tile-i =
- * liczba seeded items. Jeśli kiedyś dorzucimy potion seed → liczby
+ * liczba seeded items. Jeśli kiedyś dorzucimy potion seed -> liczby
  * trzeba poprawić ALBO dodać selektor który filtruje tylko bagowane
  * "real" itemy.
  *
@@ -119,7 +119,7 @@ test.describe('Inventory › Filter', { tag: '@inventory' }, () => {
             // 6. Po tap-ie — tylko 1 tile (iron_helmet z rarity='rare') zostaje.
             await expect(bagTiles).toHaveCount(1, { timeout: 5_000 });
 
-            // 7. Tap "Wszystkie" — reset filtra → wszystkie 3 z powrotem.
+            // 7. Tap "Wszystkie" — reset filtra -> wszystkie 3 z powrotem.
             //    UWAGA: "Wszystkie" pojawia się w obu filter rows (rarity +
             //    slot). Bierzemy ten w pierwszym row-ie (rarity). `.first()`
             //    bo `RARITY_FILTERS[0] = 'all'` jest pierwszy w grupie.
@@ -129,7 +129,7 @@ test.describe('Inventory › Filter', { tag: '@inventory' }, () => {
             await expect(bagTiles).toHaveCount(3, { timeout: 5_000 });
 
             // 8. Tap filtr slot "Bronie" — slot filtry mają `--slot` modifier.
-            //    SLOT_FILTERS.weapons → matchuje slot==='mainHand' || slot==='offHand'.
+            //    SLOT_FILTERS.weapons -> matchuje slot==='mainHand' || slot==='offHand'.
             //    Z naszych 3 seeded: tylko wooden_mace (mainHand) pasuje.
             const weaponsFilter = page.locator('.inventory__filter-btn--slot', { hasText: /^Bronie$/ });
             await weaponsFilter.tap();

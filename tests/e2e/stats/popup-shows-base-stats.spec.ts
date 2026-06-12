@@ -1,22 +1,22 @@
 /**
- * Atomic E2E — Stats popup (Postać › 📊 Statystyki) renders base stats.
+ * Atomic E2E — Stats popup (Postać › :bar-chart: Statystyki) renders base stats.
  *
  * Setup state:
  *   1. Seed Knight character via API z deterministycznymi base stats
  *      (`CLASS_BASE_STATS.Knight`: attack=10, defense=5, max_hp=120,
  *      max_mp=30, attack_speed=1.5, crit_chance=0.03, crit_damage=2.0).
- *   2. Login + select character → wejście do Town (`/`).
+ *   2. Login + select character -> wejście do Town (`/`).
  *
- * One action:   navigate to `/inventory` → tap "Statystyki" w action row
+ * One action:   navigate to `/inventory` -> tap "Statystyki" w action row
  *               pod paperdoll (`aria-label="Statystyki"`, `setPopupKey('stats')`).
  * One outcome:  Stats popup się otwiera (`.inventory__popup--stats`)
- *               i zawiera section "⚔️ Statystyki Walki" z StatBox-ami:
+ *               i zawiera section ":crossed-swords: Statystyki Walki" z StatBox-ami:
  *               - Atak — pokazuje 10 (base Knight)
  *               - Obrona — pokazuje 5 (base Knight)
  *               - Max HP — pokazuje 120 (base Knight)
  *               - Max MP — pokazuje 30 (base Knight)
  *
- * Cleanup:      try/finally → `cleanupCharacterById(createdId)`.
+ * Cleanup:      try/finally -> `cleanupCharacterById(createdId)`.
  *
  * Co testujemy:
  *  - Stats popup w ogóle się otwiera po tap-nięciu ikonki Statystyki
@@ -24,7 +24,7 @@
  *    zamontował i przeszedł early `if (!character) return null`)
  *  - Wartości bazowe (Atak, Obrona, Max HP, Max MP) są widoczne dla
  *    świeżej postaci bez EQ / treningu / transformów (eqStats=0,
- *    tBonuses=0, tBreakdown.active=false) → effective = base.
+ *    tBonuses=0, tBreakdown.active=false) -> effective = base.
  *
  * Nie sprawdzamy szczegółowo breakdown lines bo dla świeżej postaci
  * (no eq, no training, no transform) breakdown jest tylko `{ label: 'Baza' }`
@@ -66,7 +66,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 3. Postać tab → /inventory. Inventory.tsx hostuje paperdoll +
+            // 3. Postać tab -> /inventory. Inventory.tsx hostuje paperdoll +
             //    4-icon action row (Skille / Potion / Trening / Statystyki).
             await page.goto('/inventory');
             await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
@@ -78,7 +78,7 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             const statsPopup = page.locator('.inventory__popup--stats');
             await expect(statsPopup).toBeVisible({ timeout: 5_000 });
 
-            // 6. Section title "⚔️ Statystyki Walki" musi być w popup-ie
+            // 6. Section title ":crossed-swords: Statystyki Walki" musi być w popup-ie
             //    (potwierdza że StatsPopupBody się zmontował i przeszedł
             //    `if (!character) return null` guard).
             await expect(statsPopup.getByText('Statystyki Walki')).toBeVisible();

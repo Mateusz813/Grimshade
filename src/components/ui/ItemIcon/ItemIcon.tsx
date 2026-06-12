@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { isImageUrl } from '../../../systems/spriteAssets';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './ItemIcon.scss';
 
 interface IItemIconProps {
@@ -27,10 +29,10 @@ const RARITY_BG: Record<string, string> = {
 
 /**
  * Enhancement glow tiers:
- *  +5  → red
- *  +7  → yellow
- *  +9  → blue
- *  +12 → purple
+ *  +5  -> red
+ *  +7  -> yellow
+ *  +9  -> blue
+ *  +12 -> purple
  *  +15 black
  *  +20 gold-black
  */
@@ -77,7 +79,9 @@ const ItemIcon = ({ icon, rarity, upgradeLevel, itemLevel, size = 'md', onClick,
             {isImageUrl(icon) ? (
                 <img className="item-icon__image" src={icon} alt="" draggable={false} />
             ) : (
-                <span className="item-icon__emoji">{icon}</span>
+                <span className="item-icon__emoji">
+                    {icon.includes(':') ? <EmojiText>{icon}</EmojiText> : <GameIcon name={icon} />}
+                </span>
             )}
 
             {(upgradeLevel ?? 0) > 0 && (

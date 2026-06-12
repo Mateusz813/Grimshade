@@ -23,7 +23,7 @@ import {
  * polling.
  */
 
-// ── Row shapes ──────────────────────────────────────────────────────────────
+// -- Row shapes --------------------------------------------------------------
 
 export interface IGuildRow {
     id: string;
@@ -117,7 +117,7 @@ export interface IGuildJoinRequestRow {
     requested_at: string;
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// -- Helpers -----------------------------------------------------------------
 
 /** Supabase realtime channel name for a single guild. Per-guild so
  *  members of guild A don't get blasted with guild B's boss / chat
@@ -125,7 +125,7 @@ export interface IGuildJoinRequestRow {
 export const buildGuildChannel = (guildId: string): string => `guild-${guildId}`;
 
 class GuildApi extends BaseApi {
-    // ── Guild list / lookup ────────────────────────────────────────────
+    // -- Guild list / lookup --------------------------------------------
 
     /** Fetch a single page of guilds for the browser. Server-side
      *  search by name uses ilike (case-insensitive). */
@@ -148,7 +148,7 @@ class GuildApi extends BaseApi {
         return this.get<IGuildRow[]>({ url: `/rest/v1/guilds?${q.toString()}` });
     };
 
-    /** Bulk lookup: guildId → live member count + leader display name.
+    /** Bulk lookup: guildId -> live member count + leader display name.
      *  Used by the list view so each row shows "1/20 · Lider Krasek".
      *  Single round-trip pulling every membership row for the given
      *  guild ids; the client buckets by guild_id locally. */
@@ -163,7 +163,7 @@ class GuildApi extends BaseApi {
         // "0/20" even for empty guilds (shouldn't happen post-create
         // since the founder joins immediately, but defensive).
         for (const id of guildIds) out[id] = { memberCount: 0, leaderName: null };
-        // Pair leader_id → name via a second pull of the guild rows so
+        // Pair leader_id -> name via a second pull of the guild rows so
         // we don't depend on a fragile PostgREST relationship hint. The
         // leader lookup is per-guild so the row keeps its own data even
         // if PostgREST doesn't know the FK exists.
@@ -213,7 +213,7 @@ class GuildApi extends BaseApi {
         return { guild, membership: members[0] };
     };
 
-    // ── Create / leave / disband ───────────────────────────────────────
+    // -- Create / leave / disband ---------------------------------------
 
     /** Insert a new guild + auto-add the creator as a member. */
     createGuild = async (params: {
@@ -286,7 +286,7 @@ class GuildApi extends BaseApi {
                     .eq('id', params.guildId);
                 return { disbanded: false };
             }
-            // No one left → drop the guild row. Cascades clean up
+            // No one left -> drop the guild row. Cascades clean up
             // join requests, treasury, boss state, etc.
             await supabase.from('guilds').delete().eq('id', params.guildId);
             return { disbanded: true };
@@ -347,7 +347,7 @@ class GuildApi extends BaseApi {
         await supabase.from('guilds').update(patch).eq('id', params.guildId);
     };
 
-    // ── Join requests ──────────────────────────────────────────────────
+    // -- Join requests --------------------------------------------------
 
     requestJoin = async (params: {
         guildId: string;
@@ -391,7 +391,7 @@ class GuildApi extends BaseApi {
             .eq('character_id', characterId);
     };
 
-    /** Leader accepts a join request → insert into members + drop every
+    /** Leader accepts a join request -> insert into members + drop every
      *  pending request that character had. */
     acceptRequest = async (params: {
         requestId: string;
@@ -416,7 +416,7 @@ class GuildApi extends BaseApi {
         await this.purgeRequestsForCharacter(params.characterId);
     };
 
-    // ── Boss ───────────────────────────────────────────────────────────
+    // -- Boss -----------------------------------------------------------
 
     /** Fetch (or lazily create) the current week's boss state. */
     fetchOrCreateWeeklyBoss = async (params: {
@@ -653,7 +653,7 @@ class GuildApi extends BaseApi {
             .eq('id', params.contributionId);
     };
 
-    // ── Treasury ───────────────────────────────────────────────────────
+    // -- Treasury -------------------------------------------------------
 
     listTreasury = async (guildId: string): Promise<IGuildTreasuryItemRow[]> => {
         return this.get<IGuildTreasuryItemRow[]>({

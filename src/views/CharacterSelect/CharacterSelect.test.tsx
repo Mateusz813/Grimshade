@@ -8,14 +8,14 @@ import { MemoryRouter } from 'react-router-dom';
  * delete + select. Fetches via characterApi + supabase session.
  *
  * Coverage:
- *   • Spinner mounts while characters load.
- *   • Logged-out users get bounced to /login.
- *   • Loaded list renders one card per character.
- *   • Empty list renders the "Nie masz jeszcze żadnych postaci" copy.
- *   • Select button calls switchToCharacter + navigates to /.
- *   • Delete button surfaces a confirm flow + commit deletes the row.
- *   • Create-new button visible while count < 7; hidden at 7.
- *   • Logout button calls supabase signOut + navigates to /login.
+ *   - Spinner mounts while characters load.
+ *   - Logged-out users get bounced to /login.
+ *   - Loaded list renders one card per character.
+ *   - Empty list renders the "Nie masz jeszcze żadnych postaci" copy.
+ *   - Select button calls switchToCharacter + navigates to /.
+ *   - Delete button surfaces a confirm flow + commit deletes the row.
+ *   - Create-new button visible while count < 7; hidden at 7.
+ *   - Logout button calls supabase signOut + navigates to /login.
  */
 
 const navigateMock = vi.fn();
@@ -260,6 +260,6 @@ describe('CharacterSelect — create + logout buttons', () => {
 //       check that setCharacter received the *fresh* copy. Would need a
 //       chained mockResolvedValueOnce dance + characterStore inspection.
 // TODO: Render side-effect of getEffectiveMaxStats() — multiple peek*
-//       helpers walk localStorage; we mock peekCharacterStore → null which
+//       helpers walk localStorage; we mock peekCharacterStore -> null which
 //       short-circuits all of them. Wider coverage of the elixir + transform
 //       bonus paths lives in the source-level system tests already.

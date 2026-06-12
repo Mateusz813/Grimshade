@@ -5,7 +5,7 @@
  *
  * Test sprawdza że Quests view marks every quest whose `minLevel`
  * exceeds the character's level with the `quests__card--locked` class
- * + `quests__locked-label` text ("🔒 Wymagany poziom N"), AND that the
+ * + `quests__locked-label` text (":locked: Wymagany poziom N"), AND that the
  * "Dostępne" filter (`available`) hides them entirely.
  *
  * Setup: Knight, level 5 (under the minLevel=10 floor of every quest
@@ -14,15 +14,15 @@
  *
  * Flow:
  *   1. Seed character (no quest state — fresh) at level 5.
- *   2. Login → select character → navigate to /quests.
- *   3. Tap "Questy" hub tile → enter quests sub-view.
+ *   2. Login -> select character -> navigate to /quests.
+ *   3. Tap "Questy" hub tile -> enter quests sub-view.
  *   4. Type "10" into the "Lvl od…" level filter input — the filter is
  *      EXACT-match (Quests.tsx line 1349: `q.minLevel === lvlNum`), so
  *      this narrows the list to ONLY minLevel=10 quests. At charLevel=5
  *      every quest in this subset is `tooHigh = true` (locked).
  *   5. Assert the "Pierwsze Kroki" card (minLevel=10) shows
  *      `quests__card--locked` + `quests__locked-label` containing "10".
- *   6. Tap "Dostępne" filter → the level-10 list collapses to 0 because
+ *   6. Tap "Dostępne" filter -> the level-10 list collapses to 0 because
  *      `isQuestAvailable` returns false for tooHigh quests, and the
  *      empty placeholder `Brak questów w tej kategorii` appears.
  *
@@ -67,7 +67,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → /character-select → tap Wybierz on our card.
+            // 2. Login -> /character-select -> tap Wybierz on our card.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -77,7 +77,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
 
-            // 3. Navigate to /quests → land on the 3-tile hub picker.
+            // 3. Navigate to /quests -> land on the 3-tile hub picker.
             await page.goto('/quests');
             await expect(page.locator('.quests__hub-tile--quests')).toBeVisible({ timeout: 10_000 });
 
@@ -105,7 +105,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
             // CRITICAL ASSERTION 1: locked class on the card.
             await expect(firstStepsCard).toHaveClass(/quests__card--locked/);
 
-            // CRITICAL ASSERTION 2: "🔒 Wymagany poziom 10" label appears
+            // CRITICAL ASSERTION 2: ":locked: Wymagany poziom 10" label appears
             //   inside the card. The label exists only when `tooHigh &&
             //   !completed` (Quests.tsx ~line 1537-1541).
             await expect(firstStepsCard.locator('.quests__locked-label')).toContainText('10');

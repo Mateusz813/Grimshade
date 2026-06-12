@@ -1,13 +1,13 @@
 @use '../../styles/variables' as *;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Market — 2026-05-08 v2 rewrite per spec.
 //
 // Three tabs (Przegląd / Sprzedawaj / Moje), shared filter bar, list-row layout
 // for browse + my listings, sell-tile grid for the sell tab, buy/sell/edit
-// modals, sale-notification button + popover. The legacy "← Miasto" header
+// modals, sale-notification button + popover. The legacy " Miasto" header
 // + duplicate gold chip are gone.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 .market {
   min-height: 100vh;
@@ -48,7 +48,7 @@
     }
   }
 
-  // ── Top row: tabs + notification button ───────────────────────────────────
+  // -- Top row: tabs + notification button -----------------------------------
   &__top-row {
     position: sticky;
     top: 0;
@@ -107,7 +107,7 @@
     opacity: 0.75;
   }
 
-  // ── Notification bell ─────────────────────────────────────────────────────
+  // -- Notification bell -----------------------------------------------------
   &__notify-btn {
     position: relative;
     background: rgba(255, 255, 255, 0.04);
@@ -151,7 +151,7 @@
     50%      { box-shadow: 0 0 12px rgba(255, 213, 79, 0.7); }
   }
 
-  // ── Filter bar ────────────────────────────────────────────────────────────
+  // -- Filter bar ------------------------------------------------------------
   // 2026-05-08 v3: tighter mobile layout — search spans the full row,
   // the four selects fit two-up, and the level inputs share a row.
   &__filters {
@@ -191,7 +191,7 @@
 
   &__lvl-input { width: 100%; }
 
-  // ── Panels ────────────────────────────────────────────────────────────────
+  // -- Panels ----------------------------------------------------------------
   &__panel {
     padding: 8px 12px;
   }
@@ -212,7 +212,7 @@
     gap: 6px;
   }
 
-  // ── Listing row (Browse + My) ─────────────────────────────────────────────
+  // -- Listing row (Browse + My) ---------------------------------------------
   // 2026-05-08 v3 — at narrow viewports the 4-column grid (icon /
   // info / price / cta) overflows. We collapse the cta into the
   // price column under 600px so the row still fits a 320px screen.
@@ -245,7 +245,7 @@
       .market__row-cta { display: none; }
     }
 
-    // Elixir / potion rows — same gold→purple gradient border as the
+    // Elixir / potion rows — same goldpurple gradient border as the
     // sell tile so the family reads as one cohort across all tabs.
     &--elixir {
       border-color: transparent;
@@ -394,7 +394,7 @@
     pointer-events: none; // parent button handles click
   }
 
-  // ── Sell tile (grid) ──────────────────────────────────────────────────────
+  // -- Sell tile (grid) ------------------------------------------------------
   // 2026-05-08 v3: tiles are bag-sized (~96px). Lv badge top-left,
   // upgrade badge top-right (corner with `+N`), qty badge bottom-right.
   // Name renders as a thin caption underneath. No rarity caption — the
@@ -476,7 +476,7 @@
     -webkit-box-orient: vertical;
   }
 
-  // ── Pagination ───────────────────────────────────────────────────────────
+  // -- Pagination -----------------------------------------------------------
   &__pagination {
     display: flex;
     align-items: center;
@@ -504,7 +504,7 @@
     color: $color-text-muted;
   }
 
-  // ── Modals (buy / sell / edit / notifications) ───────────────────────────
+  // -- Modals (buy / sell / edit / notifications) ---------------------------
   &__modal-backdrop {
     position: fixed;
     inset: 0;
@@ -559,7 +559,7 @@
     border: 1px solid;
     border-radius: $radius-md;
 
-    // Elixir / potion hero: gold→purple gradient border + tinted
+    // Elixir / potion hero: goldpurple gradient border + tinted
     // backdrop, matching the listing row + sell tile treatment.
     &--elixir {
       border-color: transparent;
@@ -780,7 +780,7 @@
     }
   }
 
-  // ── Notifications list inside the modal ─────────────────────────────────
+  // -- Notifications list inside the modal ---------------------------------
   &__notify-list {
     list-style: none;
     margin: 0;
@@ -847,7 +847,7 @@
     &:hover { background: rgba(76, 175, 80, 0.32); }
   }
 
-  // ── Toast ───────────────────────────────────────────────────────────────
+  // -- Toast ---------------------------------------------------------------
   &__toast {
     position: fixed;
     bottom: $spacing-lg;

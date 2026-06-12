@@ -9,7 +9,7 @@ import { getTodayKey } from '../systems/dailyQuestSystem';
 import { useInventoryStore } from './inventoryStore';
 import type { ICharacter } from './characterStore';
 
-// ── Elixir definitions (always available in shop) ─────────────────────────────
+// -- Elixir definitions (always available in shop) -----------------------------
 
 export interface IElixir {
   id: string;
@@ -22,7 +22,7 @@ export interface IElixir {
   minLevel?: number;
 }
 
-// 2026-05: HP/MP potion icons swapped from emoji (❤️/💧) to the player's
+// 2026-05: HP/MP potion icons swapped from emoji (:red-heart:/:droplet:) to the player's
 // PNG art (`/assets/images/potions/<id>.png`). Buff/utility elixirs that
 // have no dedicated art keep their emoji glyph. The fallback inside
 // `getPotionImage` returns the +50 HP art for any unknown ID, so even an
@@ -36,95 +36,95 @@ const ELIXIR_ICON = (id: string, fallback: string): string =>
   getElixirImage(id) ?? fallback;
 
 export const ELIXIRS: IElixir[] = [
-  // ─── HP POTIONS — Shop "Potiony" tab ──────────────────────────────
+  // --- HP POTIONS — Shop "Potiony" tab ------------------------------
   // 2026-05-08 v2: flat-heal tiers (sm/md/lg/mega) restored alongside
   // the % tiers. The player asked "co się stało ze wszystkimi
   // potionami +400 HP" — the answer is the full ladder (50/150/400/
   // 1000 flat HP heals) was missing. Both flat and % are sold in the
-  // same Potiony tab, ordered cheapest → strongest.
-  { id: 'hp_potion_sm',       name_pl: 'Mały Eliksir HP',         name_en: 'Small Health Potion',     description_pl: 'Przywraca 50 HP.',          price: 30,      effect: 'heal_hp_50',        icon: POTION_ICON('hp_potion_sm',       '❤️'), minLevel: 1 },
-  { id: 'hp_potion_md',       name_pl: 'Eliksir HP',              name_en: 'Health Potion',           description_pl: 'Przywraca 150 HP.',         price: 150,     effect: 'heal_hp_150',       icon: POTION_ICON('hp_potion_md',       '❤️'), minLevel: 20 },
-  { id: 'hp_potion_lg',       name_pl: 'Silny Eliksir HP',        name_en: 'Strong Health Potion',    description_pl: 'Przywraca 400 HP.',         price: 600,     effect: 'heal_hp_400',       icon: POTION_ICON('hp_potion_lg',       '❤️'), minLevel: 50 },
-  { id: 'hp_potion_mega',     name_pl: 'Mega Eliksir HP',         name_en: 'Mega Health Elixir',      description_pl: 'Przywraca 1000 HP.',        price: 15000,   effect: 'heal_hp_1000',      icon: POTION_ICON('hp_potion_mega',     '❤️‍🔥'), minLevel: 100 },
-  { id: 'hp_potion_great',    name_pl: 'Wielki Eliksir HP',       name_en: 'Great Health Potion',     description_pl: 'Przywraca 20% maks. HP.',   price: 200000,  effect: 'heal_hp_pct_20',    icon: POTION_ICON('hp_potion_great',    '❤️'), minLevel: 1 },
-  { id: 'hp_potion_super',    name_pl: 'Super Eliksir HP',        name_en: 'Super Health Potion',     description_pl: 'Przywraca 35% maks. HP.',   price: 350000,  effect: 'heal_hp_pct_35',    icon: POTION_ICON('hp_potion_super',    '❤️'), minLevel: 1 },
-  { id: 'hp_potion_ultimate', name_pl: 'Ultimatywny Eliksir HP',  name_en: 'Ultimate Health Potion',  description_pl: 'Przywraca 50% maks. HP.',   price: 500000,  effect: 'heal_hp_pct_50',    icon: POTION_ICON('hp_potion_ultimate', '❤️'), minLevel: 1 },
-  { id: 'hp_potion_divine',   name_pl: 'Boski Eliksir HP',        name_en: 'Divine Health Potion',    description_pl: 'Przywraca 100% maks. HP.',  price: 1000000, effect: 'heal_hp_pct_100',   icon: POTION_ICON('hp_potion_divine',   '❤️'), minLevel: 1 },
-  // ─── MP POTIONS ────────────────────────────────────────────────────
-  { id: 'mp_potion_sm',       name_pl: 'Mały Eliksir MP',         name_en: 'Small Mana Potion',       description_pl: 'Przywraca 30 MP.',          price: 30,      effect: 'heal_mp_30',        icon: POTION_ICON('mp_potion_sm',       '💧'), minLevel: 1 },
-  { id: 'mp_potion_md',       name_pl: 'Eliksir MP',              name_en: 'Mana Potion',             description_pl: 'Przywraca 100 MP.',         price: 150,     effect: 'heal_mp_100',       icon: POTION_ICON('mp_potion_md',       '💧'), minLevel: 20 },
-  { id: 'mp_potion_lg',       name_pl: 'Silny Eliksir MP',        name_en: 'Strong Mana Potion',      description_pl: 'Przywraca 300 MP.',         price: 600,     effect: 'heal_mp_300',       icon: POTION_ICON('mp_potion_lg',       '💧'), minLevel: 50 },
-  { id: 'mp_potion_mega',     name_pl: 'Mega Eliksir MP',         name_en: 'Mega Mana Elixir',        description_pl: 'Przywraca 1000 MP.',        price: 15000,   effect: 'heal_mp_1000',      icon: POTION_ICON('mp_potion_mega',     '💎'), minLevel: 100 },
-  { id: 'mp_potion_great',    name_pl: 'Wielki Eliksir MP',       name_en: 'Great Mana Potion',       description_pl: 'Przywraca 20% maks. MP.',   price: 200000,  effect: 'heal_mp_pct_20',    icon: POTION_ICON('mp_potion_great',    '💧'), minLevel: 1 },
-  { id: 'mp_potion_super',    name_pl: 'Super Eliksir MP',        name_en: 'Super Mana Potion',       description_pl: 'Przywraca 35% maks. MP.',   price: 350000,  effect: 'heal_mp_pct_35',    icon: POTION_ICON('mp_potion_super',    '💧'), minLevel: 1 },
-  { id: 'mp_potion_ultimate', name_pl: 'Ultimatywny Eliksir MP',  name_en: 'Ultimate Mana Potion',    description_pl: 'Przywraca 50% maks. MP.',   price: 500000,  effect: 'heal_mp_pct_50',    icon: POTION_ICON('mp_potion_ultimate', '💧'), minLevel: 1 },
-  { id: 'mp_potion_divine',   name_pl: 'Boski Eliksir MP',        name_en: 'Divine Mana Potion',      description_pl: 'Przywraca 100% maks. MP.',  price: 1000000, effect: 'heal_mp_pct_100',   icon: POTION_ICON('mp_potion_divine',   '💧'), minLevel: 1 },
+  // same Potiony tab, ordered cheapest -> strongest.
+  { id: 'hp_potion_sm',       name_pl: 'Mały Eliksir HP',         name_en: 'Small Health Potion',     description_pl: 'Przywraca 50 HP.',          price: 30,      effect: 'heal_hp_50',        icon: POTION_ICON('hp_potion_sm',       'red-heart'), minLevel: 1 },
+  { id: 'hp_potion_md',       name_pl: 'Eliksir HP',              name_en: 'Health Potion',           description_pl: 'Przywraca 150 HP.',         price: 150,     effect: 'heal_hp_150',       icon: POTION_ICON('hp_potion_md',       'red-heart'), minLevel: 20 },
+  { id: 'hp_potion_lg',       name_pl: 'Silny Eliksir HP',        name_en: 'Strong Health Potion',    description_pl: 'Przywraca 400 HP.',         price: 600,     effect: 'heal_hp_400',       icon: POTION_ICON('hp_potion_lg',       'red-heart'), minLevel: 50 },
+  { id: 'hp_potion_mega',     name_pl: 'Mega Eliksir HP',         name_en: 'Mega Health Elixir',      description_pl: 'Przywraca 1000 HP.',        price: 15000,   effect: 'heal_hp_1000',      icon: POTION_ICON('hp_potion_mega',     'heart-on-fire'), minLevel: 100 },
+  { id: 'hp_potion_great',    name_pl: 'Wielki Eliksir HP',       name_en: 'Great Health Potion',     description_pl: 'Przywraca 20% maks. HP.',   price: 200000,  effect: 'heal_hp_pct_20',    icon: POTION_ICON('hp_potion_great',    'red-heart'), minLevel: 1 },
+  { id: 'hp_potion_super',    name_pl: 'Super Eliksir HP',        name_en: 'Super Health Potion',     description_pl: 'Przywraca 35% maks. HP.',   price: 350000,  effect: 'heal_hp_pct_35',    icon: POTION_ICON('hp_potion_super',    'red-heart'), minLevel: 1 },
+  { id: 'hp_potion_ultimate', name_pl: 'Ultimatywny Eliksir HP',  name_en: 'Ultimate Health Potion',  description_pl: 'Przywraca 50% maks. HP.',   price: 500000,  effect: 'heal_hp_pct_50',    icon: POTION_ICON('hp_potion_ultimate', 'red-heart'), minLevel: 1 },
+  { id: 'hp_potion_divine',   name_pl: 'Boski Eliksir HP',        name_en: 'Divine Health Potion',    description_pl: 'Przywraca 100% maks. HP.',  price: 1000000, effect: 'heal_hp_pct_100',   icon: POTION_ICON('hp_potion_divine',   'red-heart'), minLevel: 1 },
+  // --- MP POTIONS ----------------------------------------------------
+  { id: 'mp_potion_sm',       name_pl: 'Mały Eliksir MP',         name_en: 'Small Mana Potion',       description_pl: 'Przywraca 30 MP.',          price: 30,      effect: 'heal_mp_30',        icon: POTION_ICON('mp_potion_sm',       'droplet'), minLevel: 1 },
+  { id: 'mp_potion_md',       name_pl: 'Eliksir MP',              name_en: 'Mana Potion',             description_pl: 'Przywraca 100 MP.',         price: 150,     effect: 'heal_mp_100',       icon: POTION_ICON('mp_potion_md',       'droplet'), minLevel: 20 },
+  { id: 'mp_potion_lg',       name_pl: 'Silny Eliksir MP',        name_en: 'Strong Mana Potion',      description_pl: 'Przywraca 300 MP.',         price: 600,     effect: 'heal_mp_300',       icon: POTION_ICON('mp_potion_lg',       'droplet'), minLevel: 50 },
+  { id: 'mp_potion_mega',     name_pl: 'Mega Eliksir MP',         name_en: 'Mega Mana Elixir',        description_pl: 'Przywraca 1000 MP.',        price: 15000,   effect: 'heal_mp_1000',      icon: POTION_ICON('mp_potion_mega',     'gem-stone'), minLevel: 100 },
+  { id: 'mp_potion_great',    name_pl: 'Wielki Eliksir MP',       name_en: 'Great Mana Potion',       description_pl: 'Przywraca 20% maks. MP.',   price: 200000,  effect: 'heal_mp_pct_20',    icon: POTION_ICON('mp_potion_great',    'droplet'), minLevel: 1 },
+  { id: 'mp_potion_super',    name_pl: 'Super Eliksir MP',        name_en: 'Super Mana Potion',       description_pl: 'Przywraca 35% maks. MP.',   price: 350000,  effect: 'heal_mp_pct_35',    icon: POTION_ICON('mp_potion_super',    'droplet'), minLevel: 1 },
+  { id: 'mp_potion_ultimate', name_pl: 'Ultimatywny Eliksir MP',  name_en: 'Ultimate Mana Potion',    description_pl: 'Przywraca 50% maks. MP.',   price: 500000,  effect: 'heal_mp_pct_50',    icon: POTION_ICON('mp_potion_ultimate', 'droplet'), minLevel: 1 },
+  { id: 'mp_potion_divine',   name_pl: 'Boski Eliksir MP',        name_en: 'Divine Mana Potion',      description_pl: 'Przywraca 100% maks. MP.',  price: 1000000, effect: 'heal_mp_pct_100',   icon: POTION_ICON('mp_potion_divine',   'droplet'), minLevel: 1 },
 
-  // ─── XP BOOSTS — Hunt-only ─────────────────────────────────────────
+  // --- XP BOOSTS — Hunt-only -----------------------------------------
   // Per spec: only fire on monster-kill XP in hunt. Tasks/quests/dungeons/
   // bosses/training don't accept the boost. 50% and 100% don't stack —
   // when both active, 100% drains its remaining time first, then 50%
   // takes over (enforced in buffStore consume path).
-  { id: 'xp_boost', name_pl: 'Dopalacz XP', name_en: 'XP Boost +50%', description_pl: '+50% XP z polowania na potwory przez 1h (TYLKO polowanie — nie taski/questy/dungeony/bossy/trening).', price: 100000, effect: 'xp_boost_1h', icon: ELIXIR_ICON('xp_boost', '⭐'), minLevel: 1 },
-  { id: 'xp_boost_100', name_pl: 'Wielki Dopalacz XP', name_en: 'XP Boost +100%', description_pl: '+100% XP z polowania na potwory przez 1h (TYLKO polowanie). Zużywa się PRZED zwykłym +50% gdy oba aktywne.', price: 200000, effect: 'xp_boost_100_1h', icon: ELIXIR_ICON('xp_boost_100', '🌟'), minLevel: 1 },
+  { id: 'xp_boost', name_pl: 'Dopalacz XP', name_en: 'XP Boost +50%', description_pl: '+50% XP z polowania na potwory przez 1h (TYLKO polowanie — nie taski/questy/dungeony/bossy/trening).', price: 100000, effect: 'xp_boost_1h', icon: ELIXIR_ICON('xp_boost', 'star'), minLevel: 1 },
+  { id: 'xp_boost_100', name_pl: 'Wielki Dopalacz XP', name_en: 'XP Boost +100%', description_pl: '+100% XP z polowania na potwory przez 1h (TYLKO polowanie). Zużywa się PRZED zwykłym +50% gdy oba aktywne.', price: 200000, effect: 'xp_boost_100_1h', icon: ELIXIR_ICON('xp_boost_100', 'glowing-star'), minLevel: 1 },
 
-  // ─── SKILL XP BOOSTS ──────────────────────────────────────────────
+  // --- SKILL XP BOOSTS ----------------------------------------------
   // Affects basic-attack weapon-XP gain in combat AND active training
   // XP/sec (training tab). When offline-training is also running, only
   // combat-side gain receives the multiplier.
-  { id: 'skill_xp_boost', name_pl: 'Dopalacz Skilli', name_en: 'Skill XP Boost +50%', description_pl: '+50% XP skilli (walka + trening aktywny) przez 1h.', price: 20000, effect: 'skill_xp_boost_1h', icon: ELIXIR_ICON('skill_xp_boost', '✨'), minLevel: 1 },
-  { id: 'skill_xp_boost_100', name_pl: 'Wielki Dopalacz Skilli', name_en: 'Skill XP Boost +100%', description_pl: '+100% XP skilli (walka + trening aktywny) przez 1h. Zużywa się PRZED +50% gdy oba aktywne.', price: 50000, effect: 'skill_xp_boost_100_1h', icon: ELIXIR_ICON('skill_xp_boost_100', '🔆'), minLevel: 1 },
+  { id: 'skill_xp_boost', name_pl: 'Dopalacz Skilli', name_en: 'Skill XP Boost +50%', description_pl: '+50% XP skilli (walka + trening aktywny) przez 1h.', price: 20000, effect: 'skill_xp_boost_1h', icon: ELIXIR_ICON('skill_xp_boost', 'sparkles'), minLevel: 1 },
+  { id: 'skill_xp_boost_100', name_pl: 'Wielki Dopalacz Skilli', name_en: 'Skill XP Boost +100%', description_pl: '+100% XP skilli (walka + trening aktywny) przez 1h. Zużywa się PRZED +50% gdy oba aktywne.', price: 50000, effect: 'skill_xp_boost_100_1h', icon: ELIXIR_ICON('skill_xp_boost_100', 'bright-button'), minLevel: 1 },
 
-  // ─── COMBAT BUFFS (pausable — tick only during combat) ────────────
-  { id: 'attack_speed_elixir', name_pl: 'Eliksir Szybkości', name_en: 'Attack Speed Elixir', description_pl: '+20% prędkości ataku przez 15 min (TYLKO w walce).', price: 120000, effect: 'attack_speed_0.20_15m_pausable', icon: ELIXIR_ICON('attack_speed_elixir', '⚡'), minLevel: 1 },
-  { id: 'cd_reduction_elixir', name_pl: 'Eliksir Skupienia', name_en: 'Focus Elixir', description_pl: '-20% cooldowny spelli przez 30 min (TYLKO w walce).', price: 150000, effect: 'cooldown_reduction_0.20_30m', icon: ELIXIR_ICON('cd_reduction_elixir', '🌀'), minLevel: 1 },
+  // --- COMBAT BUFFS (pausable — tick only during combat) ------------
+  { id: 'attack_speed_elixir', name_pl: 'Eliksir Szybkości', name_en: 'Attack Speed Elixir', description_pl: '+20% prędkości ataku przez 15 min (TYLKO w walce).', price: 120000, effect: 'attack_speed_0.20_15m_pausable', icon: ELIXIR_ICON('attack_speed_elixir', 'high-voltage'), minLevel: 1 },
+  { id: 'cd_reduction_elixir', name_pl: 'Eliksir Skupienia', name_en: 'Focus Elixir', description_pl: '-20% cooldowny spelli przez 30 min (TYLKO w walce).', price: 150000, effect: 'cooldown_reduction_0.20_30m', icon: ELIXIR_ICON('cd_reduction_elixir', 'cyclone'), minLevel: 1 },
 
-  // ─── ATK / SPELL DAMAGE (15 min, pausable, no stacking — highest first) ─
-  { id: 'atk_dmg_elixir_25', name_pl: 'Eliksir Ataku I', name_en: 'Attack Damage Elixir I', description_pl: '+25% obrażeń z ataku przez 15 min (TYLKO w walce). Nie stackuje z II/III — wyższy poziom zużywa się pierwszy.', price: 50000, effect: 'atk_dmg_25_15m', icon: ELIXIR_ICON('atk_dmg_elixir_25', '⚔️'), minLevel: 1 },
-  { id: 'atk_dmg_elixir_50', name_pl: 'Eliksir Ataku II', name_en: 'Attack Damage Elixir II', description_pl: '+50% obrażeń z ataku przez 15 min (TYLKO w walce). Zużywa się PRZED I gdy oba aktywne.', price: 150000, effect: 'atk_dmg_50_15m', icon: ELIXIR_ICON('atk_dmg_elixir_50', '⚔️'), minLevel: 30 },
-  { id: 'atk_dmg_elixir_100', name_pl: 'Eliksir Ataku III', name_en: 'Attack Damage Elixir III', description_pl: '+100% obrażeń z ataku przez 15 min (TYLKO w walce). Zużywa się PRZED II i I.', price: 500000, effect: 'atk_dmg_100_15m', icon: ELIXIR_ICON('atk_dmg_elixir_100', '⚔️'), minLevel: 80 },
-  { id: 'spell_dmg_elixir_25', name_pl: 'Eliksir Magii I', name_en: 'Spell Damage Elixir I', description_pl: '+25% obrażeń ze spelli przez 15 min (TYLKO w walce). Nie stackuje z II/III.', price: 50000, effect: 'spell_dmg_25_15m', icon: ELIXIR_ICON('spell_dmg_elixir_25', '🔮'), minLevel: 1 },
-  { id: 'spell_dmg_elixir_50', name_pl: 'Eliksir Magii II', name_en: 'Spell Damage Elixir II', description_pl: '+50% obrażeń ze spelli przez 15 min (TYLKO w walce). Zużywa się PRZED I.', price: 150000, effect: 'spell_dmg_50_15m', icon: ELIXIR_ICON('spell_dmg_elixir_50', '🔮'), minLevel: 30 },
-  { id: 'spell_dmg_elixir_100', name_pl: 'Eliksir Magii III', name_en: 'Spell Damage Elixir III', description_pl: '+100% obrażeń ze spelli przez 15 min (TYLKO w walce). Zużywa się PRZED II i I.', price: 500000, effect: 'spell_dmg_100_15m', icon: ELIXIR_ICON('spell_dmg_elixir_100', '🔮'), minLevel: 200 },
+  // --- ATK / SPELL DAMAGE (15 min, pausable, no stacking — highest first) -
+  { id: 'atk_dmg_elixir_25', name_pl: 'Eliksir Ataku I', name_en: 'Attack Damage Elixir I', description_pl: '+25% obrażeń z ataku przez 15 min (TYLKO w walce). Nie stackuje z II/III — wyższy poziom zużywa się pierwszy.', price: 50000, effect: 'atk_dmg_25_15m', icon: ELIXIR_ICON('atk_dmg_elixir_25', 'crossed-swords'), minLevel: 1 },
+  { id: 'atk_dmg_elixir_50', name_pl: 'Eliksir Ataku II', name_en: 'Attack Damage Elixir II', description_pl: '+50% obrażeń z ataku przez 15 min (TYLKO w walce). Zużywa się PRZED I gdy oba aktywne.', price: 150000, effect: 'atk_dmg_50_15m', icon: ELIXIR_ICON('atk_dmg_elixir_50', 'crossed-swords'), minLevel: 30 },
+  { id: 'atk_dmg_elixir_100', name_pl: 'Eliksir Ataku III', name_en: 'Attack Damage Elixir III', description_pl: '+100% obrażeń z ataku przez 15 min (TYLKO w walce). Zużywa się PRZED II i I.', price: 500000, effect: 'atk_dmg_100_15m', icon: ELIXIR_ICON('atk_dmg_elixir_100', 'crossed-swords'), minLevel: 80 },
+  { id: 'spell_dmg_elixir_25', name_pl: 'Eliksir Magii I', name_en: 'Spell Damage Elixir I', description_pl: '+25% obrażeń ze spelli przez 15 min (TYLKO w walce). Nie stackuje z II/III.', price: 50000, effect: 'spell_dmg_25_15m', icon: ELIXIR_ICON('spell_dmg_elixir_25', 'crystal-ball'), minLevel: 1 },
+  { id: 'spell_dmg_elixir_50', name_pl: 'Eliksir Magii II', name_en: 'Spell Damage Elixir II', description_pl: '+50% obrażeń ze spelli przez 15 min (TYLKO w walce). Zużywa się PRZED I.', price: 150000, effect: 'spell_dmg_50_15m', icon: ELIXIR_ICON('spell_dmg_elixir_50', 'crystal-ball'), minLevel: 30 },
+  { id: 'spell_dmg_elixir_100', name_pl: 'Eliksir Magii III', name_en: 'Spell Damage Elixir III', description_pl: '+100% obrażeń ze spelli przez 15 min (TYLKO w walce). Zużywa się PRZED II i I.', price: 500000, effect: 'spell_dmg_100_15m', icon: ELIXIR_ICON('spell_dmg_elixir_100', 'crystal-ball'), minLevel: 200 },
 
-  // ─── STAT BUFFS (combat-only, 15 min) ─────────────────────────────
+  // --- STAT BUFFS (combat-only, 15 min) -----------------------------
   // Vitality / Mana — flat +500 to MAX pool. Designed to be additive in
   // every view: TopHeader bar shows the new max, autopotion threshold
   // includes it, current HP rises with the cap so the player IS healed
   // for 500 on cast (handled in BuffStore.applyBuffSideEffects).
-  { id: 'hp_boost_elixir', name_pl: 'Eliksir Witalności', name_en: 'Vitality Elixir', description_pl: '+500 Max HP przez 15 min (TYLKO w walce). Aktualne HP rośnie razem z capem — uwzględniane w autopotionach i HUD.', price: 5000, effect: 'hp_boost_500_15m', icon: ELIXIR_ICON('hp_boost_elixir', '🩸'), minLevel: 1 },
-  { id: 'mp_boost_elixir', name_pl: 'Eliksir Many', name_en: 'Mana Elixir', description_pl: '+500 Max MP przez 15 min (TYLKO w walce). Aktualne MP rośnie razem z capem.', price: 5000, effect: 'mp_boost_500_15m', icon: ELIXIR_ICON('mp_boost_elixir', '🔷'), minLevel: 1 },
+  { id: 'hp_boost_elixir', name_pl: 'Eliksir Witalności', name_en: 'Vitality Elixir', description_pl: '+500 Max HP przez 15 min (TYLKO w walce). Aktualne HP rośnie razem z capem — uwzględniane w autopotionach i HUD.', price: 5000, effect: 'hp_boost_500_15m', icon: ELIXIR_ICON('hp_boost_elixir', 'drop-of-blood'), minLevel: 1 },
+  { id: 'mp_boost_elixir', name_pl: 'Eliksir Many', name_en: 'Mana Elixir', description_pl: '+500 Max MP przez 15 min (TYLKO w walce). Aktualne MP rośnie razem z capem.', price: 5000, effect: 'mp_boost_500_15m', icon: ELIXIR_ICON('mp_boost_elixir', 'large-blue-diamond'), minLevel: 1 },
   // Power Elixir — single combined +50 ATK and +50 DEF buff (replaces
   // the old separate Sily/Zelaza pair to match user spec "+50 atk DEF").
-  { id: 'atk_boost_elixir', name_pl: 'Eliksir Siły', name_en: 'Strength Elixir', description_pl: '+50 ATK i +50 DEF przez 15 min (TYLKO w walce).', price: 80000, effect: 'atk_def_boost_50_15m', icon: ELIXIR_ICON('atk_boost_elixir', '💪'), minLevel: 1 },
+  { id: 'atk_boost_elixir', name_pl: 'Eliksir Siły', name_en: 'Strength Elixir', description_pl: '+50 ATK i +50 DEF przez 15 min (TYLKO w walce).', price: 80000, effect: 'atk_def_boost_50_15m', icon: ELIXIR_ICON('atk_boost_elixir', 'flexed-biceps'), minLevel: 1 },
 
-  // ─── PREMIUM HP/MP % (15 min, gated 100+ per spec) ────────────────
-  { id: 'hp_pct_elixir_25', name_pl: 'Eliksir Kolosa', name_en: 'Colossus Elixir', description_pl: '+25% Max HP przez 15 min (TYLKO w walce). Stackuje się z Witalności +500.', price: 350000, effect: 'hp_pct_25_15m', icon: ELIXIR_ICON('hp_pct_elixir_25', '❤️‍🔥'), minLevel: 100 },
-  { id: 'mp_pct_elixir_25', name_pl: 'Eliksir Arcymaga', name_en: 'Archmage Elixir', description_pl: '+25% Max MP przez 15 min (TYLKO w walce). Stackuje się z Many +500.', price: 350000, effect: 'mp_pct_25_15m', icon: ELIXIR_ICON('mp_pct_elixir_25', '💠'), minLevel: 100 },
+  // --- PREMIUM HP/MP % (15 min, gated 100+ per spec) ----------------
+  { id: 'hp_pct_elixir_25', name_pl: 'Eliksir Kolosa', name_en: 'Colossus Elixir', description_pl: '+25% Max HP przez 15 min (TYLKO w walce). Stackuje się z Witalności +500.', price: 350000, effect: 'hp_pct_25_15m', icon: ELIXIR_ICON('hp_pct_elixir_25', 'heart-on-fire'), minLevel: 100 },
+  { id: 'mp_pct_elixir_25', name_pl: 'Eliksir Arcymaga', name_en: 'Archmage Elixir', description_pl: '+25% Max MP przez 15 min (TYLKO w walce). Stackuje się z Many +500.', price: 350000, effect: 'mp_pct_25_15m', icon: ELIXIR_ICON('mp_pct_elixir_25', 'diamond-with-a-dot'), minLevel: 100 },
 
-  // ─── RESET ELIXIRS (max 5 purchases per day) ──────────────────────
-  { id: 'dungeon_reset', name_pl: 'Reset Dungeonu', name_en: 'Dungeon Reset', description_pl: 'Resetuje próby wybranego dungeonu. Max 5 zakupów dziennie.', price: 50000, effect: 'dungeon_reset', icon: ELIXIR_ICON('dungeon_reset', '🏰'), minLevel: 1 },
-  { id: 'boss_reset', name_pl: 'Reset Bossa', name_en: 'Boss Reset', description_pl: 'Resetuje próby wybranego bossa. Max 5 zakupów dziennie.', price: 80000, effect: 'boss_reset', icon: ELIXIR_ICON('boss_reset', '👹'), minLevel: 1 },
+  // --- RESET ELIXIRS (max 5 purchases per day) ----------------------
+  { id: 'dungeon_reset', name_pl: 'Reset Dungeonu', name_en: 'Dungeon Reset', description_pl: 'Resetuje próby wybranego dungeonu. Max 5 zakupów dziennie.', price: 50000, effect: 'dungeon_reset', icon: ELIXIR_ICON('dungeon_reset', 'castle'), minLevel: 1 },
+  { id: 'boss_reset', name_pl: 'Reset Bossa', name_en: 'Boss Reset', description_pl: 'Resetuje próby wybranego bossa. Max 5 zakupów dziennie.', price: 80000, effect: 'boss_reset', icon: ELIXIR_ICON('boss_reset', 'ogre'), minLevel: 1 },
 
-  // ─── DEATH PROTECTION (flat prices per spec) ──────────────────────
-  { id: 'death_protection', name_pl: 'Eliksir Ochrony przed Śmiercią', name_en: 'Death Protection', description_pl: 'Zapobiega utracie poziomu i statystyk przy śmierci (1 użycie).', price: 5000000, effect: 'death_protection', icon: ELIXIR_ICON('death_protection', '🛡️'), minLevel: 1 },
-  { id: 'amulet_of_loss', name_pl: 'Amulet of Loss', name_en: 'Amulet of Loss', description_pl: 'Chroni przedmioty (plecak + ekwipunek) przed utratą przy śmierci. Pęka po jednym użyciu.', price: 500000, effect: 'amulet_of_loss', icon: ELIXIR_ICON('amulet_of_loss', '🔱'), minLevel: 1 },
+  // --- DEATH PROTECTION (flat prices per spec) ----------------------
+  { id: 'death_protection', name_pl: 'Eliksir Ochrony przed Śmiercią', name_en: 'Death Protection', description_pl: 'Zapobiega utracie poziomu i statystyk przy śmierci (1 użycie).', price: 5000000, effect: 'death_protection', icon: ELIXIR_ICON('death_protection', 'shield'), minLevel: 1 },
+  { id: 'amulet_of_loss', name_pl: 'Amulet of Loss', name_en: 'Amulet of Loss', description_pl: 'Chroni przedmioty (plecak + ekwipunek) przed utratą przy śmierci. Pęka po jednym użyciu.', price: 500000, effect: 'amulet_of_loss', icon: ELIXIR_ICON('amulet_of_loss', 'trident-emblem'), minLevel: 1 },
 
-  // ─── RARE PURCHASES ────────────────────────────────────────────────
-  { id: 'stat_reset', name_pl: 'Eliksir Resetu Statystyk', name_en: 'Stat Reset Elixir', description_pl: 'Resetuje wszystkie rozdane punkty statystyk i pozwala je rozdać ponownie.', price: 10000000, effect: 'stat_reset', icon: ELIXIR_ICON('stat_reset', '🔄'), minLevel: 1 },
+  // --- RARE PURCHASES ------------------------------------------------
+  { id: 'stat_reset', name_pl: 'Eliksir Resetu Statystyk', name_en: 'Stat Reset Elixir', description_pl: 'Resetuje wszystkie rozdane punkty statystyk i pozwala je rozdać ponownie.', price: 10000000, effect: 'stat_reset', icon: ELIXIR_ICON('stat_reset', 'counterclockwise-arrows-button'), minLevel: 1 },
 
-  // ─── TRAINING / COMBAT UTILITIES ──────────────────────────────────
+  // --- TRAINING / COMBAT UTILITIES ----------------------------------
   // Replaces "Eliksir Treningu x2" — multiplies offline-training reward
   // claims (2× XP + 2× wall-clock effective hours per consumed elixir).
-  { id: 'offline_training_boost', name_pl: 'Eliksir Treningu Offline', name_en: 'Offline Training Elixir', description_pl: 'Zwiększa nagrody z odbierania treningu offline (mnożnik godzin tylko dla skilli, nie potworów).', price: 50000, effect: 'offline_training_boost', icon: ELIXIR_ICON('offline_training_boost', '🏋️'), minLevel: 1 },
+  { id: 'offline_training_boost', name_pl: 'Eliksir Treningu Offline', name_en: 'Offline Training Elixir', description_pl: 'Zwiększa nagrody z odbierania treningu offline (mnożnik godzin tylko dla skilli, nie potworów).', price: 50000, effect: 'offline_training_boost', icon: ELIXIR_ICON('offline_training_boost', 'person-lifting-weights'), minLevel: 1 },
   // Utamo Vita — combat-only, 200k per spec.
-  { id: 'utamo_vita', name_pl: 'Utamo Vita', name_en: 'Utamo Vita (Magic Shield)', description_pl: 'Tarcza magiczna — 50% otrzymywanego dmg idzie w MP zamiast HP. Pęka gdy MP=0. Czas biegnie TYLKO w walce.', price: 200000, effect: 'utamo_vita', icon: ELIXIR_ICON('utamo_vita', '🔵'), minLevel: 1 },
+  { id: 'utamo_vita', name_pl: 'Utamo Vita', name_en: 'Utamo Vita (Magic Shield)', description_pl: 'Tarcza magiczna — 50% otrzymywanego dmg idzie w MP zamiast HP. Pęka gdy MP=0. Czas biegnie TYLKO w walce.', price: 200000, effect: 'utamo_vita', icon: ELIXIR_ICON('utamo_vita', 'blue-circle'), minLevel: 1 },
 
-  // ─── PREMIUM XP — Hunt-only, stacks with regular boosts ───────────
-  { id: 'premium_xp_boost', name_pl: 'Premium Eliksir XP', name_en: 'Premium XP Elixir', description_pl: '×2 XP z polowania na potwory przez 12h (TYLKO polowanie). Stackuje się z Dopalaczem XP.', price: 10000000, effect: 'premium_xp_boost', icon: ELIXIR_ICON('premium_xp_boost', '💎'), minLevel: 1 },
+  // --- PREMIUM XP — Hunt-only, stacks with regular boosts -----------
+  { id: 'premium_xp_boost', name_pl: 'Premium Eliksir XP', name_en: 'Premium XP Elixir', description_pl: '×2 XP z polowania na potwory przez 12h (TYLKO polowanie). Stackuje się z Dopalaczem XP.', price: 10000000, effect: 'premium_xp_boost', icon: ELIXIR_ICON('premium_xp_boost', 'gem-stone'), minLevel: 1 },
 ];
 
-// ── Dynamic pricing for death-protection items ──────────────────────────────
+// -- Dynamic pricing for death-protection items ------------------------------
 // AOL cost    = gold from task of killing 2500 monsters at player's level
 // Elixir cost = gold from task of killing 10000 monsters at player's level
 //
@@ -159,7 +159,7 @@ export const getElixirPrice = (elixir: IElixir, characterLevel: number): number 
     return elixir.price;
 };
 
-// ── Dynamic shop item interface ───────────────────────────────────────────────
+// -- Dynamic shop item interface -----------------------------------------------
 
 export interface IShopItem {
   id: string;
@@ -186,7 +186,7 @@ export interface IShopItem {
   previewBonuses: Record<string, number>;
 }
 
-// ── Pricing formula ──────────────────────────────────────────────────────────
+// -- Pricing formula ----------------------------------------------------------
 
 const CATEGORY_BASE_MULT: Record<string, number> = {
   weapon: 30,
@@ -205,7 +205,7 @@ const calculateShopPrice = (level: number, rarity: Rarity, category: string): nu
   return Math.floor(base * (RARITY_PRICE_MULT[rarity] ?? 1));
 };
 
-// ── Stat estimation (deterministic preview for the shop display) ─────────────
+// -- Stat estimation (deterministic preview for the shop display) -------------
 
 interface IScaling {
   baseMin: number;
@@ -230,12 +230,12 @@ const estimateBaseStat = (scaling: IScaling, level: number, rarityMult: number):
  * pool, no "Losowe (N/M)" section. The base stat depends on the
  * slot, mirroring itemGenerator's ARMOR_SLOT_BASE_STAT and
  * ACCESSORY_SLOT_BASE_STAT tables:
- *   • helmet/armor/pants/shoulders/boots → +HP (raw × ARMOR_HP_MULTIPLIER=6)
- *   • gloves → +ATK
- *   • ring1/ring2 → +ATK
- *   • necklace/earrings → +DEF
- *   • mainHand weapons → DMG MIN / DMG MAX
- *   • offhands → +ATK or +DEF depending on baseStatType
+ *   - helmet/armor/pants/shoulders/boots -> +HP (raw × ARMOR_HP_MULTIPLIER=6)
+ *   - gloves -> +ATK
+ *   - ring1/ring2 -> +ATK
+ *   - necklace/earrings -> +DEF
+ *   - mainHand weapons -> DMG MIN / DMG MAX
+ *   - offhands -> +ATK or +DEF depending on baseStatType
  */
 const ARMOR_HP_MULTIPLIER = 6;
 const ARMOR_HP_SLOTS = new Set(['helmet', 'armor', 'pants', 'shoulders', 'boots']);
@@ -292,7 +292,7 @@ const buildPreviewBonuses = (ctx: IPreviewContext): Record<string, number> => {
   return bonuses;
 };
 
-// ── Slot sort order ──────────────────────────────────────────────────────────
+// -- Slot sort order ----------------------------------------------------------
 
 const SLOT_SORT_ORDER: Record<string, number> = {
   mainHand: 0,
@@ -308,7 +308,7 @@ const SLOT_SORT_ORDER: Record<string, number> = {
   earrings: 10,
 };
 
-// ── Generate dynamic shop items ──────────────────────────────────────────────
+// -- Generate dynamic shop items ----------------------------------------------
 
 interface IWeaponTemplate {
   type: string;
@@ -418,8 +418,8 @@ export const generateShopItems = (characterClass: string, level: number): IShopI
     }
 
     // Armor pieces — base stat per slot:
-    // helmet/armor/pants/shoulders/boots → +HP (raw × ARMOR_HP_MULTIPLIER)
-    // gloves → +ATK
+    // helmet/armor/pants/shoulders/boots -> +HP (raw × ARMOR_HP_MULTIPLIER)
+    // gloves -> +ATK
     if (armorCategory && armorPrefix) {
       for (const piece of armorCategory.pieces) {
         const rawBase = estimateBaseStat(piece.scaling, level, mult);
@@ -448,7 +448,7 @@ export const generateShopItems = (characterClass: string, level: number): IShopI
       }
     }
 
-    // Accessories — base stat per slot: ring → +ATK, necklace/earrings → +DEF
+    // Accessories — base stat per slot: ring -> +ATK, necklace/earrings -> +DEF
     for (const acc of accessories) {
       const baseStat = estimateBaseStat(acc.scaling, level, mult);
       // The `ring` template uses slot 'ring1' canonically; future ring2
@@ -488,14 +488,14 @@ export const generateShopItems = (characterClass: string, level: number): IShopI
   return items;
 };
 
-// ─── Arena Shop catalogue ────────────────────────────────────────────────────
+// --- Arena Shop catalogue ----------------------------------------------------
 // 2026-05-08: Arena tab inventory. All items are bought with arena points
 // (not gold). Three buckets:
-//   • stones — common→heroic upgrade stones (high-tier are very expensive)
-//   • potions — premium % HP/MP heals at flat AP cost
-//   • elixirs — every standard elixir also available for AP, ~10× the
+//   - stones — common->heroic upgrade stones (high-tier are very expensive)
+//   - potions — premium % HP/MP heals at flat AP cost
+//   - elixirs — every standard elixir also available for AP, ~10× the
 //     gold price as a baseline
-//   • mythic weapons — main + off-hand at the player's current level (cap
+//   - mythic weapons — main + off-hand at the player's current level (cap
 //     1000) at level × 1000 AP per piece, dynamic.
 // All items show in the Arena tab; the buyer just spends AP via
 // inventoryStore.spendArenaPoints. Mythic generation uses the same item
@@ -517,21 +517,21 @@ export interface IArenaShopItem {
 
 // Stones — uses inventoryStore.addStones(stoneId, amount).
 const ARENA_STONES: IArenaShopItem[] = [
-  { id: 'arena_stone_common',    name_pl: 'Kamień (Common)',    description_pl: 'Kamień ulepszenia common.',    icon: '⚪', apPrice: 50,    kind: 'stone', payloadId: 'common_stone' },
-  { id: 'arena_stone_rare',      name_pl: 'Kamień (Rare)',      description_pl: 'Kamień ulepszenia rare.',      icon: '🔵', apPrice: 200,   kind: 'stone', payloadId: 'rare_stone' },
-  { id: 'arena_stone_epic',      name_pl: 'Kamień (Epic)',      description_pl: 'Kamień ulepszenia epic.',      icon: '🟣', apPrice: 800,   kind: 'stone', payloadId: 'epic_stone' },
-  { id: 'arena_stone_legendary', name_pl: 'Kamień (Legendary)', description_pl: 'Kamień ulepszenia legendary.', icon: '🟡', apPrice: 3000,  kind: 'stone', payloadId: 'legendary_stone' },
-  { id: 'arena_stone_heroic',    name_pl: 'Kamień (Heroic)',    description_pl: 'Bardzo rzadki kamień heroic.', icon: '🔴', apPrice: 12000, kind: 'stone', payloadId: 'heroic_stone' },
+  { id: 'arena_stone_common',    name_pl: 'Kamień (Common)',    description_pl: 'Kamień ulepszenia common.',    icon: 'white-circle', apPrice: 50,    kind: 'stone', payloadId: 'common_stone' },
+  { id: 'arena_stone_rare',      name_pl: 'Kamień (Rare)',      description_pl: 'Kamień ulepszenia rare.',      icon: 'blue-circle', apPrice: 200,   kind: 'stone', payloadId: 'rare_stone' },
+  { id: 'arena_stone_epic',      name_pl: 'Kamień (Epic)',      description_pl: 'Kamień ulepszenia epic.',      icon: 'purple-circle', apPrice: 800,   kind: 'stone', payloadId: 'epic_stone' },
+  { id: 'arena_stone_legendary', name_pl: 'Kamień (Legendary)', description_pl: 'Kamień ulepszenia legendary.', icon: 'yellow-circle', apPrice: 3000,  kind: 'stone', payloadId: 'legendary_stone' },
+  { id: 'arena_stone_heroic',    name_pl: 'Kamień (Heroic)',    description_pl: 'Bardzo rzadki kamień heroic.', icon: 'red-circle', apPrice: 12000, kind: 'stone', payloadId: 'heroic_stone' },
 ];
 
 // Potions — % HP/MP, flat-priced in AP.
 const ARENA_POTIONS: IArenaShopItem[] = [
-  { id: 'arena_hp_25',  name_pl: 'Potion HP 25%',  description_pl: 'Przywraca 25% maks. HP.',  icon: '❤️', apPrice: 300,  kind: 'potion', payloadId: 'hp_potion_great' },
-  { id: 'arena_hp_50',  name_pl: 'Potion HP 50%',  description_pl: 'Przywraca 50% maks. HP.',  icon: '❤️', apPrice: 800,  kind: 'potion', payloadId: 'hp_potion_ultimate' },
-  { id: 'arena_hp_100', name_pl: 'Potion HP 100%', description_pl: 'Przywraca 100% maks. HP.', icon: '❤️', apPrice: 2000, kind: 'potion', payloadId: 'hp_potion_divine' },
-  { id: 'arena_mp_25',  name_pl: 'Potion MP 25%',  description_pl: 'Przywraca 25% maks. MP.',  icon: '💧', apPrice: 300,  kind: 'potion', payloadId: 'mp_potion_great' },
-  { id: 'arena_mp_50',  name_pl: 'Potion MP 50%',  description_pl: 'Przywraca 50% maks. MP.',  icon: '💧', apPrice: 800,  kind: 'potion', payloadId: 'mp_potion_ultimate' },
-  { id: 'arena_mp_100', name_pl: 'Potion MP 100%', description_pl: 'Przywraca 100% maks. MP.', icon: '💧', apPrice: 2000, kind: 'potion', payloadId: 'mp_potion_divine' },
+  { id: 'arena_hp_25',  name_pl: 'Potion HP 25%',  description_pl: 'Przywraca 25% maks. HP.',  icon: 'red-heart', apPrice: 300,  kind: 'potion', payloadId: 'hp_potion_great' },
+  { id: 'arena_hp_50',  name_pl: 'Potion HP 50%',  description_pl: 'Przywraca 50% maks. HP.',  icon: 'red-heart', apPrice: 800,  kind: 'potion', payloadId: 'hp_potion_ultimate' },
+  { id: 'arena_hp_100', name_pl: 'Potion HP 100%', description_pl: 'Przywraca 100% maks. HP.', icon: 'red-heart', apPrice: 2000, kind: 'potion', payloadId: 'hp_potion_divine' },
+  { id: 'arena_mp_25',  name_pl: 'Potion MP 25%',  description_pl: 'Przywraca 25% maks. MP.',  icon: 'droplet', apPrice: 300,  kind: 'potion', payloadId: 'mp_potion_great' },
+  { id: 'arena_mp_50',  name_pl: 'Potion MP 50%',  description_pl: 'Przywraca 50% maks. MP.',  icon: 'droplet', apPrice: 800,  kind: 'potion', payloadId: 'mp_potion_ultimate' },
+  { id: 'arena_mp_100', name_pl: 'Potion MP 100%', description_pl: 'Przywraca 100% maks. MP.', icon: 'droplet', apPrice: 2000, kind: 'potion', payloadId: 'mp_potion_divine' },
 ];
 
 // Mythic weapons — both hands. Price is dynamic (per character level).
@@ -540,8 +540,8 @@ const ARENA_POTIONS: IArenaShopItem[] = [
 // CLASS_WEAPON_TYPES / CLASS_OFFHAND_TYPES so each class gets the
 // right mythic (sword for Knight, bow for Archer, staff for Mage, …).
 const ARENA_MYTHIC: IArenaShopItem[] = [
-  { id: 'arena_mythic_main',    name_pl: 'Mityczna Broń (Główna)',  description_pl: 'Bron mityczna na Twoim poziomie. Cena = poziom × 1000 AP.', icon: '⚔️', apPrice: 1000, kind: 'mythic_weapon',  perLevel: true },
-  { id: 'arena_mythic_offhand', name_pl: 'Mityczna Broń (Offhand)', description_pl: 'Bron mityczna offhand na Twoim poziomie. Cena = poziom × 1000 AP.', icon: '🗡️', apPrice: 1000, kind: 'mythic_offhand', perLevel: true },
+  { id: 'arena_mythic_main',    name_pl: 'Mityczna Broń (Główna)',  description_pl: 'Bron mityczna na Twoim poziomie. Cena = poziom × 1000 AP.', icon: 'crossed-swords', apPrice: 1000, kind: 'mythic_weapon',  perLevel: true },
+  { id: 'arena_mythic_offhand', name_pl: 'Mityczna Broń (Offhand)', description_pl: 'Bron mityczna offhand na Twoim poziomie. Cena = poziom × 1000 AP.', icon: 'dagger', apPrice: 1000, kind: 'mythic_offhand', perLevel: true },
 ];
 
 /** Returns full Arena shop catalogue plus dynamic AP-priced elixirs.
@@ -554,7 +554,7 @@ export const getArenaShopCatalog = (): IArenaShopItem[] => {
       id: `arena_elixir_${e.id}`,
       name_pl: e.name_pl,
       description_pl: e.description_pl,
-      icon: typeof e.icon === 'string' ? e.icon : '🧪',
+      icon: typeof e.icon === 'string' ? e.icon : 'test-tube',
       apPrice: Math.max(50, Math.floor(e.price / 10)),
       kind: 'elixir',
       payloadId: e.id,
@@ -623,11 +623,11 @@ export const buyArenaItem = (
   return 'no_gold';
 };
 
-// ── Buy result ────────────────────────────────────────────────────────────────
+// -- Buy result ----------------------------------------------------------------
 
 export type BuyResult = 'ok' | 'no_gold' | 'bag_full' | 'level_too_low' | 'daily_limit';
 
-// ── Daily-purchase caps ──────────────────────────────────────────────────────
+// -- Daily-purchase caps ------------------------------------------------------
 // 2026-05-08: per spec, dungeon-reset and boss-reset elixirs are capped
 // at 5 purchases per real day. The counter resets at midnight local
 // time using the same `getTodayKey()` helper the daily-quest store uses.
@@ -639,7 +639,7 @@ export const DAILY_PURCHASE_CAPS: Record<string, number> = {
 /** Returns true if `id` has a daily purchase cap (i.e. should be checked). */
 export const hasDailyCap = (id: string): boolean => id in DAILY_PURCHASE_CAPS;
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// -- Store ---------------------------------------------------------------------
 
 interface IShopStore {
   lastNotification: string | null;

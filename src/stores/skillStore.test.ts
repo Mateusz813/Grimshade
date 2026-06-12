@@ -9,7 +9,7 @@ import {
 } from '../systems/skillSystem';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const SKILL_INITIAL_STATE = {
     skillLevels: {},
@@ -59,7 +59,7 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar(), isLoading: false });
 });
 
-// ── initSkills ───────────────────────────────────────────────────────────────
+// -- initSkills ---------------------------------------------------------------
 
 describe('initSkills', () => {
     it('inits class weapon skills + magic_level at level 0 / xp 0', () => {
@@ -80,7 +80,7 @@ describe('initSkills', () => {
     });
 });
 
-// ── addSkillXp ───────────────────────────────────────────────────────────────
+// -- addSkillXp ---------------------------------------------------------------
 
 describe('addSkillXp', () => {
     it('accumulates XP without levelling up', () => {
@@ -106,7 +106,7 @@ describe('addSkillXp', () => {
     });
 });
 
-// ── applyDeathPenalty ────────────────────────────────────────────────────────
+// -- applyDeathPenalty --------------------------------------------------------
 
 describe('applyDeathPenalty', () => {
     it('halves total banked XP across all trainable skills (50% default)', () => {
@@ -172,7 +172,7 @@ describe('applyDeathPenalty', () => {
     });
 });
 
-// ── setActiveSkillSlot / purgeLockedSkillSlots ───────────────────────────────
+// -- setActiveSkillSlot / purgeLockedSkillSlots -------------------------------
 
 describe('setActiveSkillSlot', () => {
     it('sets a skill into a slot', () => {
@@ -222,7 +222,7 @@ describe('purgeLockedSkillSlots', () => {
     });
 });
 
-// ── isSkillUnlocked / unlockSkill ────────────────────────────────────────────
+// -- isSkillUnlocked / unlockSkill --------------------------------------------
 
 describe('isSkillUnlocked', () => {
     it('returns false by default', () => {
@@ -283,7 +283,7 @@ describe('unlockAllActiveSkills', () => {
     });
 });
 
-// ── upgradeActiveSkill ───────────────────────────────────────────────────────
+// -- upgradeActiveSkill -------------------------------------------------------
 
 describe('upgradeActiveSkill', () => {
     it('returns failure shape when player has not enough gold', () => {
@@ -321,7 +321,7 @@ describe('upgradeActiveSkill', () => {
     });
 
     it('bumps skillUpgradeLevels on success (Math.random forced low)', () => {
-        // Force success at +1 → target=1, success rate = 100% anyway.
+        // Force success at +1 -> target=1, success rate = 100% anyway.
         // We still mock Math.random to be safe across levels.
         const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
         const spendGold = vi.fn().mockReturnValue(true);
@@ -342,7 +342,7 @@ describe('upgradeActiveSkill', () => {
     });
 
     it('keeps level on fail but reports chests + gold spent (Math.random forced high)', () => {
-        // Target = +2 (90% success). Force random=0.99 → fail.
+        // Target = +2 (90% success). Force random=0.99 -> fail.
         useSkillStore.setState({ skillUpgradeLevels: { shield_bash: 1 } });
         const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99);
         const spendGold = vi.fn().mockReturnValue(true);
@@ -365,7 +365,7 @@ describe('upgradeActiveSkill', () => {
     });
 });
 
-// ── Weapon / MLVL XP from attacks / blocks ───────────────────────────────────
+// -- Weapon / MLVL XP from attacks / blocks -----------------------------------
 
 describe('addShieldingXpOnBlock', () => {
     it('grants shielding XP scaled by current level', () => {
@@ -406,7 +406,7 @@ describe('addMlvlXpFromAttack', () => {
 });
 
 describe('addWeaponSkillXpFromAttack', () => {
-    it('adds 1 XP to the class weapon skill (Knight → sword_fighting)', () => {
+    it('adds 1 XP to the class weapon skill (Knight -> sword_fighting)', () => {
         useSkillStore.setState({
             skillLevels: { sword_fighting: 0 },
             skillXp: { sword_fighting: 0 },
@@ -439,7 +439,7 @@ describe('addMlvlXpFromSkill', () => {
     });
 });
 
-// ── Offline training ─────────────────────────────────────────────────────────
+// -- Offline training ---------------------------------------------------------
 
 describe('selectTrainingStat', () => {
     it('selects the new skill and starts a fresh segment', () => {
@@ -498,7 +498,7 @@ describe('collectOfflineTraining', () => {
     });
 });
 
-// ── resetSkills ──────────────────────────────────────────────────────────────
+// -- resetSkills --------------------------------------------------------------
 
 describe('resetSkills', () => {
     it('clears every gameplay piece back to the initial state', () => {

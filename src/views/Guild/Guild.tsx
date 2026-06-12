@@ -46,6 +46,10 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import { getTransformColor } from '../../systems/transformSystem';
 import { getEffectiveChar } from '../../systems/combatEngine';
 import Chat from '../../components/ui/Chat/Chat';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
+import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import { useSkillStore } from '../../stores/skillStore';
 import { getSkillIcon } from '../../data/skillIcons';
 import skillsData from '../../data/skills.json';
@@ -126,20 +130,20 @@ type TSlotFilter =
 
 interface ISlotFilterDef { id: TSlotFilter; label: string; icon: string; }
 
-const ICON_HELMET   = getItemFile('helmet-lekki') ?? '⛑️';
-const ICON_ARMOR    = getItemFile('armor-lekki') ?? '🦺';
-const ICON_PANTS    = getItemFile('legs-lekki') ?? '👖';
-const ICON_BOOTS    = getItemFile('boots-lekki') ?? '👢';
-const ICON_GLOVES   = getItemFile('glove-lekki') ?? '🧤';
-const ICON_SHOULDER = getItemFile('shoulder-lekki') ?? '🎖️';
-const ICON_SWORD    = getItemFile('miecz') ?? '⚔️';
-const ICON_SHIELD   = getItemFile('tarcza') ?? '🛡️';
-const ICON_RING     = getItemFile('ring') ?? '💍';
-const ICON_NECK     = getItemFile('nackle') ?? '📿';
-const ICON_EARRINGS = getItemFile('earrings') ?? '✨';
+const ICON_HELMET   = getItemFile('helmet-lekki') ?? 'rescue-worker-s-helmet';
+const ICON_ARMOR    = getItemFile('armor-lekki') ?? 'safety-vest';
+const ICON_PANTS    = getItemFile('legs-lekki') ?? 'jeans';
+const ICON_BOOTS    = getItemFile('boots-lekki') ?? 'woman-s-boot';
+const ICON_GLOVES   = getItemFile('glove-lekki') ?? 'gloves';
+const ICON_SHOULDER = getItemFile('shoulder-lekki') ?? 'military-medal';
+const ICON_SWORD    = getItemFile('miecz') ?? 'crossed-swords';
+const ICON_SHIELD   = getItemFile('tarcza') ?? 'shield';
+const ICON_RING     = getItemFile('ring') ?? 'ring';
+const ICON_NECK     = getItemFile('nackle') ?? 'prayer-beads';
+const ICON_EARRINGS = getItemFile('earrings') ?? 'sparkles';
 
 const SLOT_FILTERS: ISlotFilterDef[] = [
-    { id: 'all',        label: 'Wszystkie',    icon: '🎒' },
+    { id: 'all',        label: 'Wszystkie',    icon: 'backpack' },
     { id: 'weapons',    label: 'Bronie',       icon: ICON_SWORD },
     { id: 'jewelry',    label: 'Biżuteria',    icon: ICON_NECK },
     { id: 'mainHand',   label: 'Główna',       icon: ICON_SWORD },
@@ -177,15 +181,15 @@ const itemMatchesSlotFilter = (itemId: string, filter: TSlotFilter): boolean => 
 // that and let the player toggle to ascending.
 type TSortOrder = 'level-desc' | 'level-asc';
 const SORT_LABELS: Record<TSortOrder, string> = {
-    'level-desc': 'Lvl ↓',
-    'level-asc':  'Lvl ↑',
+    'level-desc': 'Lvl',
+    'level-asc':  'Lvl',
 };
 
 const PAGE_SIZE = 10;
 
 const CLASS_ICONS: Record<string, string> = {
-    Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-    Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+    Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+    Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 const CLASS_COLORS: Record<string, string> = {
@@ -229,7 +233,7 @@ const Guild = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [character?.id]);
 
-    // Whenever we have a guild → default screen is home; if we
+    // Whenever we have a guild -> default screen is home; if we
     // dropped the guild while inside a sub-screen, snap back to list.
     useEffect(() => {
         if (guildState.guild) {
@@ -244,7 +248,7 @@ const Guild = () => {
         return (
             <div className="guild">
                 <header className="guild__top-bar">
-                    <h1 className="guild__top-title">🏛️ Gildie</h1>
+                    <h1 className="guild__top-title"><GameIcon name="classical-building" /> Gildie</h1>
                 </header>
                 <div className="guild__empty">Zaloguj się, by przeglądać gildie.</div>
             </div>
@@ -280,11 +284,11 @@ const Guild = () => {
     );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // GUILD LIST — paginated browser + create button.
-// Spec items 1–5: header, search, paginated rows (logo · name · 🤝),
+// Spec items 1–5: header, search, paginated rows (logo · name · :handshake:),
 // "Stwórz gildię" button at the bottom.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IGuildListProps {
     onPickGuildToApply: (g: IGuildRow) => void;
@@ -362,7 +366,7 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
     return (
         <>
             <header className="guild__top-bar">
-                <h1 className="guild__top-title">🏛️ Gildie</h1>
+                <h1 className="guild__top-title"><GameIcon name="classical-building" /> Gildie</h1>
             </header>
 
             <div className="guild__list-box">
@@ -391,7 +395,7 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
                                         style={{ background: g.color }}
                                         title={g.name}
                                     >
-                                        {getGuildIcon(g.logo)}
+                                        <TinyIcon icon={getGuildIcon(g.logo)} />
                                     </span>
                                     <div className="guild__list-info">
                                         <div className="guild__list-name">
@@ -410,7 +414,7 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
                                         onClick={() => setApplyTarget(g)}
                                         title="Aplikuj do gildii"
                                     >
-                                        🤝
+                                        <GameIcon name="handshake" />
                                     </button>
                                 </li>
                             );
@@ -419,9 +423,9 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
                 )}
                 {pageCount > 1 && (
                     <div className="guild__list-pager">
-                        <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>← Poprzednia</button>
+                        <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}><Icon name="arrowLeft" /> Poprzednia</button>
                         <span>Strona {page + 1} / {pageCount}</span>
-                        <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1}>Następna →</button>
+                        <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1}>Następna <Icon name="arrowRight" /></button>
                     </div>
                 )}
                 <div className="guild__list-actions">
@@ -429,7 +433,7 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
                         className="guild__list-create"
                         onClick={() => setCreateOpen(true)}
                     >
-                        ➕ Stwórz gildię
+                        <Icon name="plus" /> Stwórz gildię
                     </button>
                 </div>
                 {applyMsg && (
@@ -462,10 +466,10 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
     );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // CREATE DIALOG — pick logo + color + name + tag, pay 10cc gold.
 // Spec items 4–5.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IGuildCreateDialogProps {
     onClose: () => void;
@@ -542,7 +546,7 @@ const GuildCreateDialog = ({ onClose, onCreated }: IGuildCreateDialogProps) => {
                         onClick={() => setLogo(g.id)}
                         title={g.label}
                     >
-                        {g.icon}
+                        <GameIcon name={g.icon} />
                     </button>
                 ))}
             </div>
@@ -564,7 +568,7 @@ const GuildCreateDialog = ({ onClose, onCreated }: IGuildCreateDialogProps) => {
                     className="guild__list-logo guild__list-logo--big"
                     style={{ background: color }}
                 >
-                    {getGuildIcon(logo)}
+                    <TinyIcon icon={getGuildIcon(logo)} />
                 </span>
                 <div>
                     <div className="guild__list-name">
@@ -605,10 +609,10 @@ const GuildCreateDialog = ({ onClose, onCreated }: IGuildCreateDialogProps) => {
     );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // GUILD HOME — logo, name, level + xp, members list, nav to sub-screens.
 // Spec items 7–11, 13–17.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IGuildHomeProps {
     onBack: () => void;
@@ -697,7 +701,7 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
 
     // 2026-05-18 spec ("Kasujemy caly ten header wroc"): no top bar
     // on guild home — the bottom nav (Społeczność) already gates the
-    // section, so the duplicate "← Miasto" button just stole vertical
+    // section, so the duplicate "<- Miasto" button just stole vertical
     // space. Banner sits flush with the top of the screen instead.
     void onBack;
 
@@ -708,7 +712,7 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                     className="guild__list-logo guild__list-logo--big"
                     style={{ background: guild.color }}
                 >
-                    {getGuildIcon(guild.logo)}
+                    <TinyIcon icon={getGuildIcon(guild.logo)} />
                 </span>
                 <div className="guild__home-titles">
                     <div className="guild__home-name">
@@ -791,7 +795,7 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                         characterName={character.name}
                         characterClass={character.class}
                         characterLevel={character.level}
-                        title="💬 Chat gildii"
+                        title=":speech-balloon: Chat gildii"
                         maxHeight={320}
                         messageCap={500}
                     />
@@ -882,16 +886,16 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
                     <img src={avatarUrl} alt={member.character_name} />
                 ) : (
                     <span className="guild__member-avatar-fallback">
-                        {CLASS_ICONS[member.character_class] ?? '?'}
+                        <GameIcon name={CLASS_ICONS[member.character_class] ?? '?'} />
                     </span>
                 )}
             </span>
             <span className="guild__member-class-icon">
-                {CLASS_ICONS[member.character_class] ?? '?'}
+                <GameIcon name={CLASS_ICONS[member.character_class] ?? '?'} />
             </span>
             <div className="guild__member-info">
                 <div className="guild__member-name">
-                    {isLeader && <span className="guild__member-crown" title="Lider gildii">👑</span>}
+                    {isLeader && <span className="guild__member-crown" title="Lider gildii"><GameIcon name="crown" /></span>}
                     {member.character_name}
                     {isMe && <span className="guild__member-self">Ty</span>}
                 </div>
@@ -909,16 +913,16 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
                     className="guild__member-contrib"
                     title="XP wniesione do gildii z bossa w tym tygodniu"
                 >
-                    ⚡ {bossContribution.toLocaleString('pl-PL')} XP
+                    <GameIcon name="high-voltage" /> {bossContribution.toLocaleString('pl-PL')} XP
                 </span>
                 {showKick && (
                     <button className="guild__member-kick" onClick={onKick} title="Wyrzuć z gildii">
-                        ✕
+                        <Icon name="x" />
                     </button>
                 )}
                 {isMe && (
                     <button className="guild__member-leave" onClick={onLeave} title="Opuść gildię">
-                        🚪
+                        <GameIcon name="door" />
                     </button>
                 )}
             </div>
@@ -926,10 +930,10 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
     );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // GUILD BOSS — weekly raid: 1 attack/day/member, 10% block gate,
 // no potions, Sunday claim popup. Spec item 12.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IGuildBossProps { onBack: () => void; }
 
@@ -963,9 +967,9 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     // 2026-05-18 spec ("kazdy boss uzywa swoich specyficznych spelli i
     // widzimy ich animacje ataku"): the boss casts spells from a tier-
     // specific pool. Each cast pushes onto these queues:
-    //   • `bossCastFx` — the cast-overlay (themed glow) layered over
+    //   - `bossCastFx` — the cast-overlay (themed glow) layered over
     //     the boss sprite for ~700ms
-    //   • `playerHits` — damage floats on the player's avatar
+    //   - `playerHits` — damage floats on the player's avatar
     // Player HP tracks the engagement-local pool so a near-death
     // doesn't actually kill the character (no death penalty from the
     // guild boss — engagement just ends when HP hits 0).
@@ -1086,7 +1090,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
 
     // 2026-05-18 spec ("Walka z bossem gildyjnym ma byc jak walka z
     // bossem, normalnie widok walki animacje ataku itp"): clicking
-    // Atakuj enters the fight phase (entry overlay → fighting). The
+    // Atakuj enters the fight phase (entry overlay -> fighting). The
     // combat loop in the next useEffect drives basic-attack auto-fire
     // on every speed-scaled tick. Engagement ends when the player
     // deals their daily 10 % HP block OR the boss dies.
@@ -1138,7 +1142,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             // don't replay on the new fight's first tick.
             fx.resetFx();
             setPhase('entry');
-            // 2026-05-18 v9: bumped from 1200 → 1700ms to give the new
+            // 2026-05-18 v9: bumped from 1200 -> 1700ms to give the new
             // door-opening intro time to: doors slide off (200–1000ms),
             // seam glow (200–1100ms), boss reveal punch-in
             // (400–1500ms), and overlay fade (1500–1700ms) before
@@ -1397,7 +1401,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             } else {
                 // Basic — physical chip + swing flash.
                 // 2026-05-18 v10 spec ("Bossy sa troche za slabe"):
-                // basic-attack damage bumped from 2.5% → 4.5% of
+                // basic-attack damage bumped from 2.5% -> 4.5% of
                 // player max HP. Combined with the tier kit's
                 // damageMult buff in guildBossSpells.ts, even a tier-1
                 // boss now eats ~5–6 % of a player's HP per swing,
@@ -1408,7 +1412,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     kind: 'physical' as const,
                     dmgPctOfPlayerMaxHp: 0.045,
                     color: '#ffffff',
-                    icon: '⚔️',
+                    icon: 'crossed-swords',
                 };
                 const dmg = computeBossSpellDamage(basicSpell, tier, maxHp);
                 playerHpRef.current = Math.max(0, playerHpRef.current - dmg);
@@ -1499,7 +1503,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         return (
             <>
                 <header className="guild__top-bar">
-                    <button className="guild__nav-back" onClick={onBack}>← Gildia</button>
+                    <button className="guild__nav-back" onClick={onBack}><Icon name="arrowLeft" /> Gildia</button>
                 </header>
                 <div className="guild__empty">{errorMsg ?? 'Ładowanie bossa…'}</div>
             </>
@@ -1531,7 +1535,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     return (
         <>
             <header className="guild__top-bar">
-                <button className="guild__nav-back" onClick={onBack}>← Gildia</button>
+                <button className="guild__nav-back" onClick={onBack}><Icon name="arrowLeft" /> Gildia</button>
                 <h2 className="guild__top-title">
                     Boss gildii · Poziom {renderTier}{renderTier >= GUILD_BOSS_MAX_TIER ? ' (MAX)' : ''}
                 </h2>
@@ -1611,7 +1615,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                             id: 'guild-boss',
                             name: getGuildBossLabel(renderTier),
                             level: renderTier,
-                            sprite: '🐉',
+                            sprite: 'dragon',
                             kind: 'boss',
                             imageUrl: bossImg,
                             imageObjectFit: 'cover',
@@ -1670,7 +1674,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     into view in the centre. Plain CSS keyframes so we
                     don't need to pull in framer-motion here. The
                     timings line up with the 1600ms hold in
-                    `attemptAttackNow` (entry → fighting). */}
+                    `attemptAttackNow` (entry -> fighting). */}
                 {phase === 'entry' && (
                     <div className="guild__boss-entry-overlay">
                         <div className="guild__boss-entry-bg" aria-hidden="true" />
@@ -1714,14 +1718,14 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     {getGuildBossLabel(renderTier)}
                 </div>
                 {someoneElseHolds && phase === 'arena' && (
-                    <div className="guild__boss-banner">⏳ Inny członek walczy. Poczekaj…</div>
+                    <div className="guild__boss-banner"><GameIcon name="hourglass-not-done" /> Inny członek walczy. Poczekaj…</div>
                 )}
                 {isSunday && !boss.boss_killed && (
-                    <div className="guild__boss-banner">🌅 Niedziela — atakowanie zablokowane.</div>
+                    <div className="guild__boss-banner"><GameIcon name="sunrise" /> Niedziela — atakowanie zablokowane.</div>
                 )}
                 {boss.boss_killed && (
                     <div className="guild__boss-banner guild__boss-banner--win">
-                        🏆 Boss pokonany! Czekaj na niedzielę by odebrać nagrodę.
+                        <GameIcon name="trophy" /> Boss pokonany! Czekaj na niedzielę by odebrać nagrodę.
                         {renderTier < GUILD_BOSS_MAX_TIER
                             ? ` W kolejnym tygodniu wyzwanie poziomu ${renderTier + 1}.`
                             : ' Walczysz na maksymalnym poziomie lochu.'}
@@ -1754,7 +1758,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                                 onClick={startEngagement}
                                 style={attackBtnStyle}
                             >
-                                {attemptedToday ? 'Atak wykonany dzisiaj' : busy ? 'Wchodzę...' : '⚔️ Atakuj bossa'}
+                                {attemptedToday ? 'Atak wykonany dzisiaj' : busy ? 'Wchodzę...' : <><GameIcon name="crossed-swords" /> Atakuj bossa</>}
                             </button>
                         </>
                     )}
@@ -1780,7 +1784,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                             disabled={!contribution || contribution.rewards_claimed || busy}
                             onClick={handleClaim}
                         >
-                            {contribution?.rewards_claimed ? 'Odebrano' : busy ? 'Liczenie nagrody…' : '🎁 Odbierz nagrody'}
+                            {contribution?.rewards_claimed ? 'Odebrano' : busy ? 'Liczenie nagrody…' : <><GameIcon name="wrapped-gift" /> Odbierz nagrody</>}
                         </button>
                     )}
                 </div>
@@ -1808,7 +1812,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 nickiem postaci kto atakowal ile zabral HP bossowi"):
                 weekly attack log — newest first, scrollable. */}
             <div className="guild__boss-log">
-                <h3 className="guild__boss-log-title">📜 Log ataków (tydzień)</h3>
+                <h3 className="guild__boss-log-title"><GameIcon name="scroll" /> Log ataków (tydzień)</h3>
                 {attempts.length === 0 ? (
                     <p className="guild__boss-log-empty">Nikt jeszcze nie zaatakował w tym tygodniu.</p>
                 ) : (
@@ -1831,12 +1835,12 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             </div>
 
             {claimResult && (
-                <Modal onClose={() => setClaimResult(null)} title="🎁 Nagrody z bossa" wide>
+                <Modal onClose={() => setClaimResult(null)} title=":wrapped-gift: Nagrody z bossa" wide>
                     <div className="guild__claim-popup">
                         {claimResult.length === 0 && <p>Pech tej tury — brak nagród.</p>}
                         {claimResult.map((r, i) => (
                             <div key={i} className="guild__claim-line">
-                                <span className="guild__claim-icon">{r.icon}</span>
+                                <span className="guild__claim-icon"><TinyIcon icon={r.icon} /></span>
                                 <span className="guild__claim-label">{r.label}</span>
                             </div>
                         ))}
@@ -1852,11 +1856,11 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // REWARD ROLLER — random + percentage rewards (gold/xp/stones/potions/items)
 // scaling by tier × contribution share. Heroic capped at 1 %. Spec items
 // 21–25.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IRolledReward { kind: string; label: string; icon: string; }
 
@@ -1873,34 +1877,34 @@ const rollGuildBossRewards = ({ tier, level, contribution }: IRollGuildRewardsPa
     const goldAmount = Math.floor(goldBase * (0.8 + Math.random() * 0.4));
     if (goldAmount > 0) {
         useInventoryStore.getState().addGold(goldAmount);
-        out.push({ kind: 'gold', icon: '💰', label: `${formatGoldShort(goldAmount)} golda` });
+        out.push({ kind: 'gold', icon: 'money-bag', label: `${formatGoldShort(goldAmount)} golda` });
     }
     // XP — granted to character.
     const xpAmount = Math.floor(50_000 * tier * contribution * (1 + level / 30));
     if (xpAmount > 0) {
         useCharacterStore.getState().addXp(xpAmount);
-        out.push({ kind: 'xp', icon: '⭐', label: `+${xpAmount.toLocaleString('pl-PL')} XP` });
+        out.push({ kind: 'xp', icon: 'star', label: `+${xpAmount.toLocaleString('pl-PL')} XP` });
     }
     // Stones — common always, rare/epic with rising probability.
     const stones = useInventoryStore.getState();
     const commonStones = Math.max(1, Math.floor(5 * tier * contribution));
     stones.addStones('common_stone', commonStones);
-    out.push({ kind: 'stones', icon: '🪨', label: `+${commonStones}× Kamień zwykły` });
+    out.push({ kind: 'stones', icon: 'rock', label: `+${commonStones}× Kamień zwykły` });
     if (Math.random() < Math.min(0.8, 0.3 + tier * 0.05)) {
         const rareStones = Math.max(1, Math.floor(2 * tier * contribution));
         stones.addStones('rare_stone', rareStones);
-        out.push({ kind: 'stones', icon: '💎', label: `+${rareStones}× Kamień rzadki` });
+        out.push({ kind: 'stones', icon: 'gem-stone', label: `+${rareStones}× Kamień rzadki` });
     }
     if (Math.random() < Math.min(0.4, 0.1 + tier * 0.03)) {
         const epicStones = Math.max(1, Math.floor(1 * tier * contribution));
         stones.addStones('epic_stone', epicStones);
-        out.push({ kind: 'stones', icon: '🔷', label: `+${epicStones}× Kamień epicki` });
+        out.push({ kind: 'stones', icon: 'large-blue-diamond', label: `+${epicStones}× Kamień epicki` });
     }
     // Potions — small flat HP/MP every claim.
     const potionCount = Math.max(1, Math.floor(3 * contribution));
     stones.addConsumable('hp_potion_small', potionCount);
     stones.addConsumable('mp_potion_small', potionCount);
-    out.push({ kind: 'potion', icon: '🧪', label: `+${potionCount}× Mała mikstura HP + MP` });
+    out.push({ kind: 'potion', icon: 'test-tube', label: `+${potionCount}× Mała mikstura HP + MP` });
     // Item drop chance scales by tier × contribution. Heroic capped at 1%.
     const itemChance = Math.min(0.95, 0.4 + tier * 0.04);
     if (Math.random() < itemChance) {
@@ -1918,7 +1922,7 @@ const rollGuildBossRewards = ({ tier, level, contribution }: IRollGuildRewardsPa
         // stash" line that the player sees in the popup; loot grants
         // happen via gold/stones above. Items can be expanded later
         // when a guild-loot table is curated.
-        out.push({ kind: 'item', icon: '🎁', label: `Przedmiot ${rarity.toUpperCase()} (lvl ${level})` });
+        out.push({ kind: 'item', icon: 'wrapped-gift', label: `Przedmiot ${rarity.toUpperCase()} (lvl ${level})` });
     }
     return out;
 };
@@ -1931,9 +1935,9 @@ const applyRolledRewards = (rolled: IRolledReward[]): void => {
     void rolled;
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // GUILD TREASURY — shared bag, deposit/withdraw, logs. Spec item 26.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IGuildTreasuryProps { onBack: () => void; }
 
@@ -2070,10 +2074,10 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
     return (
         <>
             <header className="guild__top-bar">
-                <button className="guild__nav-back" onClick={onBack}>← Gildia</button>
-                <h2 className="guild__top-title">💎 Skarbiec gildii</h2>
+                <button className="guild__nav-back" onClick={onBack}><Icon name="arrowLeft" /> Gildia</button>
+                <h2 className="guild__top-title"><GameIcon name="gem-stone" /> Skarbiec gildii</h2>
                 <button className="guild__btn-secondary" onClick={() => setShowLogs(true)}>
-                    📜 Logi
+                    <GameIcon name="scroll" /> Logi
                 </button>
             </header>
 
@@ -2103,7 +2107,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
                                         Vite-served PNG paths render as
                                         <img>, emoji fallback as text. */}
                                     <ItemIcon
-                                        icon={info?.icon ?? '📦'}
+                                        icon={info?.icon ?? 'package'}
                                         rarity={item.rarity}
                                         itemLevel={item.itemLevel}
                                         upgradeLevel={upgrade}
@@ -2127,7 +2131,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
                                         disabled={busy}
                                         onClick={() => handleDeposit(item)}
                                     >
-                                        Włóż →
+                                        Włóż <Icon name="arrowRight" />
                                     </button>
                                 </li>
                             );
@@ -2160,7 +2164,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
                             return (
                                 <li key={row.id} className="guild__treasury-row">
                                     <ItemIcon
-                                        icon={info?.icon ?? '📦'}
+                                        icon={info?.icon ?? 'package'}
                                         rarity={parsed?.rarity ?? 'common'}
                                         itemLevel={parsed?.itemLevel ?? 1}
                                         upgradeLevel={upgrade}
@@ -2187,7 +2191,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
                                         disabled={busy}
                                         onClick={() => handleWithdraw(row)}
                                     >
-                                        ← Wyciągnij
+                                        <Icon name="arrowLeft" /> Wyciągnij
                                     </button>
                                 </li>
                             );
@@ -2202,7 +2206,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
             </div>
 
             {showLogs && (
-                <Modal onClose={() => setShowLogs(false)} title="📜 Historia skarbca" wide>
+                <Modal onClose={() => setShowLogs(false)} title=":scroll: Historia skarbca" wide>
                     <ul className="guild__log-list">
                         {logs.length === 0 && <li>Brak operacji.</li>}
                         {/* 2026-05-18 spec ("Kolor przedmiotu powinien
@@ -2254,7 +2258,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
     );
 };
 
-// ── Treasury filter pills (rarity + slot + sort) ──────────────────────────
+// -- Treasury filter pills (rarity + slot + sort) --------------------------
 interface ITreasuryFiltersProps {
     rarity: TRarityFilter;
     slot: TSlotFilter;
@@ -2303,7 +2307,7 @@ const TreasuryFilters = ({ rarity, slot, sort, onRarity, onSlot, onSort }: ITrea
                     {isImageSrc(s.icon) ? (
                         <img className="guild__treasury-filter-icon" src={s.icon} alt="" />
                     ) : (
-                        <span className="guild__treasury-filter-icon-emoji">{s.icon}</span>
+                        <span className="guild__treasury-filter-icon-emoji"><GameIcon name={s.icon} /></span>
                     )}
                     <span className="guild__treasury-filter-label">{s.label}</span>
                 </button>
@@ -2315,22 +2319,22 @@ const TreasuryFilters = ({ rarity, slot, sort, onRarity, onSlot, onSort }: ITrea
                 className={`guild__treasury-filter-pill${sort === 'level-desc' ? ' is-active' : ''}`}
                 onClick={() => onSort('level-desc')}
             >
-                {SORT_LABELS['level-desc']}
+                {SORT_LABELS['level-desc']} <Icon name="arrowDown" />
             </button>
             <button
                 className={`guild__treasury-filter-pill${sort === 'level-asc' ? ' is-active' : ''}`}
                 onClick={() => onSort('level-asc')}
             >
-                {SORT_LABELS['level-asc']}
+                {SORT_LABELS['level-asc']} <Icon name="arrowUp" />
             </button>
         </div>
     </div>
 );
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // JOIN REQUESTS — visible to all members, accept-only by leader.
 // Spec items 27–28.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IGuildRequestsProps { onBack: () => void; }
 
@@ -2387,8 +2391,8 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
     return (
         <>
             <header className="guild__top-bar">
-                <button className="guild__nav-back" onClick={onBack}>← Gildia</button>
-                <h2 className="guild__top-title">📜 Prośby o dołączenie</h2>
+                <button className="guild__nav-back" onClick={onBack}><Icon name="arrowLeft" /> Gildia</button>
+                <h2 className="guild__top-title"><GameIcon name="scroll" /> Prośby o dołączenie</h2>
             </header>
             {errorMsg && <div className="guild__create-error">{errorMsg}</div>}
             <ul className="guild__requests">
@@ -2407,7 +2411,7 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
                                 className="guild__member-class-icon"
                                 style={{ color: CLASS_COLORS[req.character_class] }}
                             >
-                                {CLASS_ICONS[req.character_class] ?? '?'}
+                                <GameIcon name={CLASS_ICONS[req.character_class] ?? '?'} />
                             </span>
                             <div className="guild__member-info">
                                 <div className="guild__member-name">{req.character_name}</div>
@@ -2423,14 +2427,14 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
                                     disabled={busyId === req.id}
                                     onClick={() => handleReject(req)}
                                 >
-                                    ✕ Odrzuć
+                                    <Icon name="x" /> Odrzuć
                                 </button>
                                 <button
                                     className="guild__btn-ok"
                                     disabled={busyId === req.id}
                                     onClick={() => handleAccept(req)}
                                 >
-                                    ✓ Przyjmij
+                                    <GameIcon name="check-mark-button" /> Przyjmij
                                 </button>
                             </div>
                         ) : (
@@ -2443,10 +2447,10 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
     );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // MODAL — local reusable popup. Not extracted to a shared component since
 // the project doesn't have one yet — keeping the styling local for now.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 interface IModalProps {
     onClose: () => void;
@@ -2461,7 +2465,7 @@ const Modal = ({ onClose, title, wide, children }: IModalProps) => (
             className={`guild__modal${wide ? ' guild__modal--wide' : ''}`}
             onClick={(e) => e.stopPropagation()}
         >
-            {title && <h3 className="guild__modal-title">{title}</h3>}
+            {title && <h3 className="guild__modal-title"><EmojiText>{title}</EmojiText></h3>}
             {children}
         </div>
     </div>

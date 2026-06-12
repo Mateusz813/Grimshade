@@ -20,7 +20,7 @@ import {
     contributionMultiplier,
 } from './guildSystem';
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// -- Constants ----------------------------------------------------------------
 
 describe('guild constants', () => {
     it('initial member cap = 20', () => {
@@ -52,7 +52,7 @@ describe('guild constants', () => {
     });
 });
 
-// ── clampGuildBossTier ───────────────────────────────────────────────────────
+// -- clampGuildBossTier -------------------------------------------------------
 
 describe('clampGuildBossTier', () => {
     it('returns 1 for tier 0 or below', () => {
@@ -80,14 +80,14 @@ describe('clampGuildBossTier', () => {
 
     it('returns 1 for NaN or Infinity', () => {
         expect(clampGuildBossTier(Number.NaN)).toBe(1);
-        // Number.POSITIVE_INFINITY > 50 → clamped to 50, but is also not
+        // Number.POSITIVE_INFINITY > 50 -> clamped to 50, but is also not
         // finite. Number.isFinite returns false so spec says return 1.
         expect(clampGuildBossTier(Number.POSITIVE_INFINITY)).toBe(1);
         expect(clampGuildBossTier(Number.NEGATIVE_INFINITY)).toBe(1);
     });
 });
 
-// ── getGuildBossMaxHp ────────────────────────────────────────────────────────
+// -- getGuildBossMaxHp --------------------------------------------------------
 
 describe('getGuildBossMaxHp', () => {
     it('tier 1 = 15M HP', () => {
@@ -116,7 +116,7 @@ describe('getGuildBossMaxHp', () => {
     });
 });
 
-// ── guildXpToNextLevel ───────────────────────────────────────────────────────
+// -- guildXpToNextLevel -------------------------------------------------------
 
 describe('guildXpToNextLevel', () => {
     it('returns 0 for level 0 (no progression below level 1)', () => {
@@ -124,16 +124,16 @@ describe('guildXpToNextLevel', () => {
         expect(guildXpToNextLevel(-5)).toBe(0);
     });
 
-    it('level 1 → 2 needs 1 × tier-1 boss HP = 15M XP', () => {
+    it('level 1 -> 2 needs 1 × tier-1 boss HP = 15M XP', () => {
         expect(guildXpToNextLevel(1)).toBe(15_000_000);
     });
 
-    it('level 2 → 3 needs 2 × tier-2 boss HP', () => {
+    it('level 2 -> 3 needs 2 × tier-2 boss HP', () => {
         const expected = Math.floor(2 * getGuildBossMaxHp(2));
         expect(guildXpToNextLevel(2)).toBe(expected);
     });
 
-    it('level 3 → 4 needs 3 × tier-3 boss HP', () => {
+    it('level 3 -> 4 needs 3 × tier-3 boss HP', () => {
         const expected = Math.floor(3 * getGuildBossMaxHp(3));
         expect(guildXpToNextLevel(3)).toBe(expected);
     });
@@ -151,7 +151,7 @@ describe('guildXpToNextLevel', () => {
     });
 });
 
-// ── guildXpForLevel ──────────────────────────────────────────────────────────
+// -- guildXpForLevel ----------------------------------------------------------
 
 describe('guildXpForLevel', () => {
     it('returns 0 for level 1 (base)', () => {
@@ -174,7 +174,7 @@ describe('guildXpForLevel', () => {
     });
 });
 
-// ── guildMemberCap ───────────────────────────────────────────────────────────
+// -- guildMemberCap -----------------------------------------------------------
 
 describe('guildMemberCap', () => {
     it('returns 20 at level 1', () => {
@@ -195,7 +195,7 @@ describe('guildMemberCap', () => {
     });
 });
 
-// ── applyGuildXp ─────────────────────────────────────────────────────────────
+// -- applyGuildXp -------------------------------------------------------------
 
 describe('applyGuildXp', () => {
     it('accumulates XP without levelling up', () => {
@@ -249,7 +249,7 @@ describe('applyGuildXp', () => {
     });
 });
 
-// ── computeGuildBossDamage ───────────────────────────────────────────────────
+// -- computeGuildBossDamage ---------------------------------------------------
 
 describe('computeGuildBossDamage', () => {
     it('returns at least 1 damage even at low character stats', () => {
@@ -291,7 +291,7 @@ describe('computeGuildBossDamage', () => {
     });
 });
 
-// ── getCurrentWeekStartIso ───────────────────────────────────────────────────
+// -- getCurrentWeekStartIso ---------------------------------------------------
 
 describe('getCurrentWeekStartIso', () => {
     it('returns ISO date format (YYYY-MM-DD)', () => {
@@ -311,7 +311,7 @@ describe('getCurrentWeekStartIso', () => {
     });
 
     it('returns the previous Monday for a Sunday', () => {
-        // Sunday counts as the END of the prior Mon→Sun week.
+        // Sunday counts as the END of the prior Mon->Sun week.
         const iso = getCurrentWeekStartIso(new Date('2026-05-24T23:00:00.000Z'));
         expect(iso).toBe('2026-05-18');
     });
@@ -322,7 +322,7 @@ describe('getCurrentWeekStartIso', () => {
     });
 });
 
-// ── isGuildBossClaimDay ──────────────────────────────────────────────────────
+// -- isGuildBossClaimDay ------------------------------------------------------
 
 describe('isGuildBossClaimDay', () => {
     it('returns true on Sunday', () => {
@@ -340,7 +340,7 @@ describe('isGuildBossClaimDay', () => {
     });
 });
 
-// ── getTodayIso ──────────────────────────────────────────────────────────────
+// -- getTodayIso --------------------------------------------------------------
 
 describe('getTodayIso', () => {
     it('returns YYYY-MM-DD slice of given date', () => {
@@ -358,7 +358,7 @@ describe('getTodayIso', () => {
     });
 });
 
-// ── contributionMultiplier ───────────────────────────────────────────────────
+// -- contributionMultiplier ---------------------------------------------------
 
 describe('contributionMultiplier', () => {
     it('returns 0 when bossMaxHp <= 0', () => {
@@ -367,7 +367,7 @@ describe('contributionMultiplier', () => {
     });
 
     it('returns 0.1 at the floor (0% damage)', () => {
-        // 0.1 + share*1.9 → at share=0: 0.1. The Math.max(0.05, ...) floor
+        // 0.1 + share*1.9 -> at share=0: 0.1. The Math.max(0.05, ...) floor
         // only kicks in if share*1.9 + 0.1 dropped below 0.05, which it
         // doesn't at share=0 (0.1 > 0.05).
         expect(contributionMultiplier(0, 1000)).toBe(0.1);
@@ -384,7 +384,7 @@ describe('contributionMultiplier', () => {
     });
 
     it('scales linearly between 0.1 and 2.0 across share', () => {
-        // 50% share → 0.1 + 0.5*1.9 = 1.05.
+        // 50% share -> 0.1 + 0.5*1.9 = 1.05.
         const half = contributionMultiplier(500, 1000);
         expect(half).toBeCloseTo(1.05, 4);
     });
@@ -397,9 +397,9 @@ describe('contributionMultiplier', () => {
     });
 
     it('returns higher multiplier for higher share', () => {
-        const low  = contributionMultiplier(100, 1000);  // 10% → 0.29
-        const mid  = contributionMultiplier(500, 1000);  // 50% → 1.05
-        const high = contributionMultiplier(900, 1000);  // 90% → 1.81
+        const low  = contributionMultiplier(100, 1000);  // 10% -> 0.29
+        const mid  = contributionMultiplier(500, 1000);  // 50% -> 1.05
+        const high = contributionMultiplier(900, 1000);  // 90% -> 1.81
         expect(mid).toBeGreaterThan(low);
         expect(high).toBeGreaterThan(mid);
     });

@@ -6,19 +6,19 @@
  * resulting party is "private"), and submits. We verify:
  *   1. After submit, the in-party roster view renders (`.party__roster`
  *      with our character as the lone member, "(Ty)" suffix).
- *   2. The roster header includes the 🔒 lock icon — confirming the
+ *   2. The roster header includes the :locked: lock icon — confirming the
  *      party was persisted with a password (the icon comes from
  *      `party.hasPassword` in the store, which is derived from the
  *      `parties.password IS NOT NULL` column server-side).
  *
  * Setup:
- *   • Knight on primary account, level 10 (above any defaults).
- *   • seedGameSave with empty inventory (no gold needed for party).
+ *   - Knight on primary account, level 10 (above any defaults).
+ *   - seedGameSave with empty inventory (no gold needed for party).
  *
- * Navigation strategy: BottomNav tap → Społeczność hub → Party tile.
+ * Navigation strategy: BottomNav tap -> Społeczność hub -> Party tile.
  *   Same SPA-preserving pattern as the shop tests — avoids a
  *   page.goto('/party') which wipes the in-memory Zustand stores
- *   (characterStore null → Party renders <Spinner> only, our
+ *   (characterStore null -> Party renders <Spinner> only, our
  *   .party__primary-btn selector never appears).
  *
  * Cleanup: cleanupCharacterById wipes the character + party_members.
@@ -43,7 +43,7 @@ test.describe('Social › Party', { tag: '@party' }, () => {
     // bump this to 120 s in their own describe.configure.
     test.describe.configure({ timeout: 60_000 });
 
-    test('happy path: create party with password → roster shows our character + 🔒 lock', async ({ page }) => {
+    test('happy path: create party with password -> roster shows our character + :locked: lock', async ({ page }) => {
         const nick = generateTestCharacterName();
         const partyName = `E2E Party ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
         let createdId: string | null = null;
@@ -60,7 +60,7 @@ test.describe('Social › Party', { tag: '@party' }, () => {
             const userId = await findUserIdByEmail(testUsers.primary.email);
             await seedGameSave({ characterId: created.id, userId });
 
-            // 2. Login + character pick → Town.
+            // 2. Login + character pick -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
@@ -74,8 +74,8 @@ test.describe('Social › Party', { tag: '@party' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
             await expect(page.locator('.town__char-name')).toHaveText(nick);
 
-            // 3. Navigate Town → Społeczność → Party tile (SPA navigation).
-            //    BottomNav "Społeczność" button → /social hub → Party tile → /party.
+            // 3. Navigate Town -> Społeczność -> Party tile (SPA navigation).
+            //    BottomNav "Społeczność" button -> /social hub -> Party tile -> /party.
             await page.getByRole('button', { name: /^Społeczność$/i }).tap();
             await expect(page).toHaveURL(/\/social$/, { timeout: 10_000 });
             await page.locator('.social__tile--party').tap();
@@ -123,9 +123,9 @@ test.describe('Social › Party', { tag: '@party' }, () => {
             // Crown icon confirms we're the leader.
             await expect(page.locator('.party__roster-crown')).toBeVisible();
 
-            // 8. Critical assertion: the roster header contains the 🔒
+            // 8. Critical assertion: the roster header contains the :locked:
             //    lock icon because we set a password. The lock is rendered
-            //    inside `.party__roster-title` as `<span className="party__card-lock">🔒</span>`
+            //    inside `.party__roster-title` as `<span className="party__card-lock">:locked:</span>`
             //    only when `party.hasPassword === true`.
             const rosterHeader = page.locator('.party__roster-header');
             await expect(rosterHeader.locator('.party__card-lock')).toBeVisible();
@@ -135,7 +135,7 @@ test.describe('Social › Party', { tag: '@party' }, () => {
             await expect(page.locator('.party__roster-meta'))
                 .toContainText(/1\/4\s+graczy/i);
         } finally {
-            // 1. Delete the party row (no FK on leader_id → won't cascade).
+            // 1. Delete the party row (no FK on leader_id -> won't cascade).
             if (createdId) {
                 try {
                     const admin = getAdminClient();

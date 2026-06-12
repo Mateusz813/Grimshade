@@ -53,7 +53,7 @@ beforeEach(() => {
     useSettingsStore.setState(DEFAULTS);
 });
 
-// ── language ─────────────────────────────────────────────────────────────────
+// -- language -----------------------------------------------------------------
 
 describe('setLanguage', () => {
     it('flips language between pl and en', () => {
@@ -64,7 +64,7 @@ describe('setLanguage', () => {
     });
 });
 
-// ── combat speed / skill mode ────────────────────────────────────────────────
+// -- combat speed / skill mode ------------------------------------------------
 
 describe('setCombatSpeed', () => {
     it('cycles through allowed speeds', () => {
@@ -85,7 +85,7 @@ describe('setSkillMode', () => {
     });
 });
 
-// ── flat auto-potion (slot 1) ────────────────────────────────────────────────
+// -- flat auto-potion (slot 1) ------------------------------------------------
 
 describe('flat auto-potion setters', () => {
     it('toggles HP/MP enabled flags', () => {
@@ -112,7 +112,7 @@ describe('flat auto-potion setters', () => {
     });
 });
 
-// ── pct auto-potion (slot 2) ─────────────────────────────────────────────────
+// -- pct auto-potion (slot 2) -------------------------------------------------
 
 describe('pct auto-potion setters', () => {
     it('toggles pct HP/MP enabled flags', () => {
@@ -137,7 +137,7 @@ describe('pct auto-potion setters', () => {
     });
 });
 
-// ── auto-sell flags ──────────────────────────────────────────────────────────
+// -- auto-sell flags ----------------------------------------------------------
 
 describe('auto-sell setters', () => {
     it('flips each rarity flag independently', () => {
@@ -162,7 +162,7 @@ describe('auto-sell setters', () => {
     });
 });
 
-// ── combat XP bar (uses localStorage side effect) ─────────────────────────────
+// -- combat XP bar (uses localStorage side effect) -----------------------------
 
 describe('setShowCombatXpBar', () => {
     it('persists the value to localStorage and updates state', () => {
@@ -175,7 +175,7 @@ describe('setShowCombatXpBar', () => {
     });
 });
 
-// ── hunt / dungeon / raid / boss filters ─────────────────────────────────────
+// -- hunt / dungeon / raid / boss filters -------------------------------------
 //
 // All four filter blocks expose the same shape: availableOnly + minLevel +
 // sortDesc, with the minLevel setter clamping negatives to 0 and flooring

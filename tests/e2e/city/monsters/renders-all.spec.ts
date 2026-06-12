@@ -52,7 +52,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → /character-select → tap "Wybierz" na naszej karcie → Town
+            // 2. Login -> /character-select -> tap "Wybierz" na naszej karcie -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

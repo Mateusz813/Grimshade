@@ -19,7 +19,7 @@ import { MemoryRouter } from 'react-router-dom';
  *     removeFriend.
  *   - Star toggle calls toggleFavorite.
  *   - Edge: blocked-and-friend coexistence — row gets the
- *     --also-blocked modifier and 🔓 button (not 🚫).
+ *     --also-blocked modifier and :unlocked: button (not :prohibited:).
  *
  * Mocks: framer-motion not needed (no AnimatePresence in this view),
  * friendsApi (findManyByName / findByName) to avoid hitting the
@@ -162,7 +162,7 @@ describe('Friends — friend rows', () => {
     it('shows the filled star on a favorited friend', () => {
         const { container } = renderFriends();
         const stars = container.querySelectorAll('.friends__row-star');
-        // Bob is favorited → first row's star is --on.
+        // Bob is favorited -> first row's star is --on.
         const onStars = container.querySelectorAll('.friends__row-star--on');
         expect(onStars.length).toBe(1);
         expect(stars.length).toBe(2);
@@ -177,7 +177,7 @@ describe('Friends — friend rows', () => {
         expect(toggleFavorite).toHaveBeenCalledWith('Bob');
     });
 
-    it('opens the remove-confirm dialog when ✖ is clicked', () => {
+    it('opens the remove-confirm dialog when :multiply: is clicked', () => {
         const { container } = renderFriends();
         const removeBtn = container.querySelector('.friends__action--remove') as HTMLButtonElement;
         fireEvent.click(removeBtn);
@@ -237,7 +237,7 @@ describe('Friends — blocked + friend coexistence', () => {
         expect(row).not.toBeNull();
     });
 
-    it('renders the unblock 🔓 button instead of the block 🚫 button when also-blocked', () => {
+    it('renders the unblock :unlocked: button instead of the block :prohibited: button when also-blocked', () => {
         useFriendsStore.setState({ friends: ['Bob'], favorites: [], blocked: ['Bob'] });
         const { container } = renderFriends();
         expect(container.querySelector('.friends__action--unblock')).not.toBeNull();

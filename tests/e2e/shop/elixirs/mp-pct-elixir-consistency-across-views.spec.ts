@@ -8,19 +8,19 @@
  *
  * Pragmatic scoping (per session brief 2026-05-25):
  * Sprawdzamy 3 reprezentatywne widoki które renderują efektywne max MP:
- *   1. Town `/` → MP `.town__bar-value` (Town.tsx linia 334)
- *      (helper `engineGetEffectiveChar` → `useBuffStore.hasBuff('mp_pct_25')`
+ *   1. Town `/` -> MP `.town__bar-value` (Town.tsx linia 334)
+ *      (helper `engineGetEffectiveChar` -> `useBuffStore.hasBuff('mp_pct_25')`
  *      via `getElixirMpMul` w combatElixirs.ts linia 46)
- *   2. TopHeader pulse popover → `.top-header__pulse-popover-row--mp`
+ *   2. TopHeader pulse popover -> `.top-header__pulse-popover-row--mp`
  *      (helper `getEffectiveChar` — same engine as Town)
- *   3. `/character-select` card → MP `.char-select__bar-value`
- *      (helper `getEffectiveMaxStats` → `getElixirMaxBonuses` czyta buffs
+ *   3. `/character-select` card -> MP `.char-select__bar-value`
+ *      (helper `getEffectiveMaxStats` -> `getElixirMaxBonuses` czyta buffs
  *      z `peekCharacterStore(charId, 'buffs')` z localStorage)
  *
  * Każdy z tych helperów ma OSOBNĄ ścieżkę czytania buffów:
- *   • Town/TopHeader: runtime `useBuffStore.hasBuff('mp_pct_25')` → ×1.25
- *   • CharacterSelect: localStorage `peekCharacterStore` → iteruje
- *     `allBuffs`, gdy `effect === 'mp_pct_25'` → `mpPctMul *= 1.25`
+ *   - Town/TopHeader: runtime `useBuffStore.hasBuff('mp_pct_25')` -> ×1.25
+ *   - CharacterSelect: localStorage `peekCharacterStore` -> iteruje
+ *     `allBuffs`, gdy `effect === 'mp_pct_25'` -> `mpPctMul *= 1.25`
  *
  * Test guard przeciw regresji typu "Town dostał nowy multiplier ale
  * CharacterSelect go nie ma" (analogicznie do 3.5).
@@ -32,10 +32,10 @@
  *   Mage base max_mp = 200 (CLASS_BASE_STATS w createCharacter.ts), więc
  *   z 25% buff effective = floor(200 × 1.25) = 250.
  * - **hp_regen=0, mp_regen=0** — KRYTYCZNE per CLAUDE.md TESTING; bez tego
- *   regen tickuje co sekundę → wartość `80` zmieni się na `81/82/...` zanim
- *   wszystkie 3 widoki zostaną sprawdzone → race condition na asercji.
+ *   regen tickuje co sekundę -> wartość `80` zmieni się na `81/82/...` zanim
+ *   wszystkie 3 widoki zostaną sprawdzone -> race condition na asercji.
  * - Buff `mp_pct_25` (pausable, BUFF_CONFIG w Inventory.tsx linia 2596):
- *   `effect: 'mp_pct_25'` → mnoży effective max MP × 1.25.
+ *   `effect: 'mp_pct_25'` -> mnoży effective max MP × 1.25.
  * - Pausable buff nie tickuje out-of-combat — test cały siedzi w
  *   Town/CharacterSelect, więc buff jest stale active przez cały run.
  *
@@ -47,10 +47,10 @@
  * dopiero przez `forceSaveCharacterData` (uruchamiany przez
  * `switchToCharacter` przy Wybierz). Bez warm-flow CharacterSelect
  * pokazuje raw `200` zamiast effective `250`. Dlatego flow:
- *   /character-select → Wybierz (warm localStorage przez switchToCharacter)
- *                     → / (Town - sprawdź Town + TopHeader popover)
- *                     → goto /character-select (re-renderuje karty z
- *                       warm localStorage → effective max MP)
+ *   /character-select -> Wybierz (warm localStorage przez switchToCharacter)
+ *                     -> / (Town - sprawdź Town + TopHeader popover)
+ *                     -> goto /character-select (re-renderuje karty z
+ *                       warm localStorage -> effective max MP)
  *
  * ## Expected math
  *
@@ -80,14 +80,14 @@ import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('mp_pct_25 buff → CharacterSelect, Town, TopHeader popover show same effective max MP', async ({ page }) => {
+    test('mp_pct_25 buff -> CharacterSelect, Town, TopHeader popover show same effective max MP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
         try {
             // 1. Seed Mage z under-max MP + zero regen + buff mp_pct_25.
             //    Mage base max_mp=200 — wystarczająco duża baseline żeby
-            //    25% multiplier dał jasną deltę (200 → 250).
+            //    25% multiplier dał jasną deltę (200 -> 250).
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
                 name: nick,
@@ -108,21 +108,21 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
                         // the buff popover, only the HP/MP pulse popover.
                         id: 'mp_pct_25',
                         name: 'Max MP +25%',
-                        icon: '💠',
+                        icon: 'diamond-with-a-dot',
                         effect: 'mp_pct_25',
                         // Defaults fill timerMode='pausable' + remainingMs=24h.
                     },
                 ],
             });
 
-            // 2. Login → /character-select.
+            // 2. Login -> /character-select.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
 
-            // 3. Tap "Wybierz" → Town. This call triggers `switchToCharacter`
-            //    → `applyBlobToStores` (loads buff slice into runtime
-            //    `useBuffStore`) → `forceSaveCharacterData` (writes blob
+            // 3. Tap "Wybierz" -> Town. This call triggers `switchToCharacter`
+            //    -> `applyBlobToStores` (loads buff slice into runtime
+            //    `useBuffStore`) -> `forceSaveCharacterData` (writes blob
             //    do localStorage `dungeon_rpg_save_char_<id>`). Ten warm
             //    krok jest WYMAGANY żeby kolejny `goto('/character-select')`
             //    poniżej widział buffs w `peekCharacterStore` (czyta
@@ -136,7 +136,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
 
             // 4. Read MP value from Town bar (`.town__bar--mp`).
             //    Mage base max_mp=200, ×1.25 (mp_pct_25 multiplier) = 250.
-            //    MP starts at 80 → expect `80/250`.
+            //    MP starts at 80 -> expect `80/250`.
             const townMp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--mp') })
                 .locator('.town__bar-value')
@@ -148,7 +148,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
             //    popover (`.top-header__pulse-popover`). MP value lives in
             //    `.top-header__pulse-popover-row--mp .top-header__pulse-popover-val`.
             //    Format: `liveMp.toLocaleString('pl-PL') + '/' + maxMp.toLocaleString('pl-PL')`.
-            //    Under 1000, pl-PL toLocaleString does NOT insert separator → '80/250'.
+            //    Under 1000, pl-PL toLocaleString does NOT insert separator -> '80/250'.
             const pulseBtn = page.locator('.top-header__pulse').first();
             await expect(pulseBtn).toBeVisible({ timeout: 5_000 });
             await pulseBtn.tap();
@@ -161,7 +161,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
             // 6. Wróć do /character-select. Po warm-kroku (krok 3) localStorage
             //    ma świeży save z buffami. `getEffectiveMaxStats` w
             //    CharacterSelect.tsx czyta `peekCharacterStore(charId, 'buffs')`
-            //    → znajduje `mp_pct_25` → `mpPctMul = 1.25` → effective max MP
+            //    -> znajduje `mp_pct_25` -> `mpPctMul = 1.25` -> effective max MP
             //    = floor(200 × 1.25) = 250.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });

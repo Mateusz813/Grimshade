@@ -35,7 +35,7 @@ import {
 } from './itemSystem';
 import type { IBaseItem, IInventoryItem } from './itemSystem';
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// -- Fixtures ------------------------------------------------------------------
 
 /**
  * Iron Mace baseline — `items.json` line 10. `basePrice = 80` is the
@@ -64,7 +64,7 @@ const makeItem = (overrides?: Partial<IInventoryItem>): IInventoryItem => ({
     ...overrides,
 });
 
-// ── sellRefundForUpgradedItem (composed via getSellPrice + getEnhancementRefund) ──
+// -- sellRefundForUpgradedItem (composed via getSellPrice + getEnhancementRefund) --
 
 describe('sellRefundForUpgradedItem (composed contract)', () => {
     /**
@@ -73,10 +73,10 @@ describe('sellRefundForUpgradedItem (composed contract)', () => {
      * where `getEnhancementRefund(0)` would accidentally credit
      * stones (would let players farm free stones by selling +0 gear).
      */
-    it('common item +0 → base sell price only, NO refund, NO stones', () => {
+    it('common item +0 -> base sell price only, NO refund, NO stones', () => {
         const item = makeItem({ rarity: 'common', upgradeLevel: 0 });
         const refund = getEnhancementRefund(0, 'common');
-        // `RARITY_SELL_MULTIPLIER.common = 0.20` → 80 * 0.20 = 16.
+        // `RARITY_SELL_MULTIPLIER.common = 0.20` -> 80 * 0.20 = 16.
         expect(getSellPrice(item, baseMace)).toBe(16);
         expect(refund.gold).toBe(0);
         expect(refund.stones).toBe(0);
@@ -94,7 +94,7 @@ describe('sellRefundForUpgradedItem (composed contract)', () => {
      * If this asserts diverge from `refund-on-sell.spec.ts` step 7+10,
      * one of the two tests is wrong — investigate before commit.
      */
-    it('common item +2 → base sell + 100% gold refund (16 + 600 = 616g), 2 common_stones', () => {
+    it('common item +2 -> base sell + 100% gold refund (16 + 600 = 616g), 2 common_stones', () => {
         const item = makeItem({ rarity: 'common', upgradeLevel: 2 });
         const refund = getEnhancementRefund(2, 'common');
         expect(getSellPrice(item, baseMace)).toBe(616);
@@ -105,7 +105,7 @@ describe('sellRefundForUpgradedItem (composed contract)', () => {
 
     /**
      * Rare item +2 — exercises the rarity-scaled SELL side (mult flips
-     * from 0.20 → 0.35) while the refund side stays identical because
+     * from 0.20 -> 0.35) while the refund side stays identical because
      * `getEnhancementCost` is RARITY-AGNOSTIC for gold/stones (only the
      * `stoneType` changes). This guard catches a regression where someone
      * "fixes" the cost table to scale by rarity — the refund would jump
@@ -117,7 +117,7 @@ describe('sellRefundForUpgradedItem (composed contract)', () => {
      *                       but stoneType = 'rare_stone'
      *   total gold = 28 + 600 = 628
      */
-    it('rare item +2 → rarity-scaled base sell + 100% refund (gold same, stoneType rare)', () => {
+    it('rare item +2 -> rarity-scaled base sell + 100% refund (gold same, stoneType rare)', () => {
         const item = makeItem({ rarity: 'rare', upgradeLevel: 2 });
         const refund = getEnhancementRefund(2, 'rare');
         expect(getSellPrice(item, baseMace)).toBe(628); // 28 + 600

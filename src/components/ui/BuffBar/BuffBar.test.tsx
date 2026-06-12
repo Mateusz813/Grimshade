@@ -53,7 +53,7 @@ const makeBuff = (overrides: Partial<IActiveBuff> = {}): IActiveBuff => ({
     id: `buff-${Math.random().toString(36).slice(2, 6)}`,
     characterId: 'char-1',
     name: 'Tarcza',
-    icon: '🛡️',
+    icon: 'shield',
     effect: 'shield',
     expiresAt: Date.now() + 60_000,
     timerMode: 'realtime',
@@ -126,11 +126,13 @@ describe('BuffBar — collapse toggle', () => {
         // Pills visible by default.
         expect(screen.getByText('A')).toBeTruthy();
         const toggle = document.querySelector('.buff-bar__toggle') as HTMLButtonElement;
-        expect(toggle.textContent).toBe('✕');
+        // Expanded toggle shows the Lucide "x" collapse glyph (<Icon name="x">).
+        expect(toggle.querySelector('svg.ui-icon')?.getAttribute('data-icon')).toBe('x');
         fireEvent.click(toggle);
-        // After collapsing the pills disappear; toggle now shows ✦ + count.
+        // After collapsing the pills disappear; toggle now shows :sparkles: + count.
         expect(screen.queryByText('A')).toBeNull();
-        expect(toggle.textContent).toBe('✦ 2');
+        expect(toggle.querySelector('svg.game-icon')?.getAttribute('data-icon')).toBe('sparkles');
+        expect(toggle.textContent).toContain('2');
     });
 });
 
@@ -167,6 +169,6 @@ describe('BuffBar — charge / paused variants', () => {
         renderAt('/inventory');
         const pill = screen.getByText('XP Boost').closest('.buff-bar__pill');
         expect(pill?.className.includes('buff-bar__pill--paused')).toBe(true);
-        expect(pill?.textContent).toContain('⏸');
+        expect((pill as Element)?.querySelector('svg.game-icon[data-icon="pause-button"]')).toBeTruthy();
     });
 });

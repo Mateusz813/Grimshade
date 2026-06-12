@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLevelUpStore } from '../../../stores/levelUpStore';
 import { formatGoldShort } from '../../../systems/goldFormat';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './LevelUpNotification.scss';
 
 const SUBTLE_DURATION_MS = 3000;
@@ -22,20 +23,20 @@ const LevelUpNotification = () => {
   const goldGained = event.goldGained ?? 0;
   const goldMilestones = event.goldMilestoneLevels ?? [];
 
-  // ── Subtle (in-combat) ──────────────────────────────────────────────────
+  // -- Subtle (in-combat) --------------------------------------------------
   if (event.inCombat) {
     return (
       <div className="lvlup lvlup--subtle" onClick={clearLevelUp}>
         <div className="lvlup__subtle-flash" />
         <div className="lvlup__subtle-content">
-          <span className="lvlup__subtle-icon">⚡</span>
+          <span className="lvlup__subtle-icon"><GameIcon name="high-voltage" /></span>
           <div className="lvlup__subtle-text">
             <span className="lvlup__subtle-title">Poziom {event.newLevel}!</span>
             <span className="lvlup__subtle-sub">
-              HP/MP odnowione ✦ +{event.statPointsGained} pkt statystyk
+              HP/MP odnowione <GameIcon name="sparkles" /> +{event.statPointsGained} pkt statystyk
               {goldGained > 0 && (
                 <>
-                  {' '}✦ <span className="lvlup__subtle-gold">+{formatGoldShort(goldGained)} 💰</span>
+                  {' '}<GameIcon name="sparkles" /> <span className="lvlup__subtle-gold">+{formatGoldShort(goldGained)} <GameIcon name="money-bag" /></span>
                 </>
               )}
             </span>
@@ -45,7 +46,7 @@ const LevelUpNotification = () => {
     );
   }
 
-  // ── Epic (out of combat) ────────────────────────────────────────────────
+  // -- Epic (out of combat) ------------------------------------------------
   return (
     <div className="lvlup lvlup--epic" onClick={clearLevelUp}>
       {/* Background rays */}
@@ -84,20 +85,20 @@ const LevelUpNotification = () => {
 
       {/* Center content */}
       <div className="lvlup__center">
-        <span className="lvlup__star">⭐</span>
+        <span className="lvlup__star"><GameIcon name="star" /></span>
         <span className="lvlup__level-label">LEVEL UP!</span>
         <span className="lvlup__level-number">{event.newLevel}</span>
         <div className="lvlup__rewards">
-          <span className="lvlup__reward lvlup__reward--hp">❤️ HP odnowione do 100%</span>
-          <span className="lvlup__reward lvlup__reward--mp">💙 MP odnowione do 100%</span>
+          <span className="lvlup__reward lvlup__reward--hp"><GameIcon name="red-heart" /> HP odnowione do 100%</span>
+          <span className="lvlup__reward lvlup__reward--mp"><GameIcon name="blue-heart" /> MP odnowione do 100%</span>
           {event.statPointsGained > 0 && (
             <span className="lvlup__reward lvlup__reward--stats">
-              ✦ +{event.statPointsGained} punktów statystyk
+              <GameIcon name="sparkles" /> +{event.statPointsGained} punktów statystyk
             </span>
           )}
           {goldGained > 0 && (
             <span className="lvlup__reward lvlup__reward--gold">
-              💰 +{formatGoldShort(goldGained)}
+              <GameIcon name="money-bag" /> +{formatGoldShort(goldGained)}
               {goldMilestones.length > 0 && (
                 <span className="lvlup__reward-detail">
                   {' '}(milestone lvl {goldMilestones.join(', ')})

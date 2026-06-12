@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Hoisted mock for buildPmChannel ──────────────────────────────────────────
+// -- Hoisted mock for buildPmChannel ------------------------------------------
 // The store calls `buildPmChannel(myName, targetName)` from `friendsApi` to
 // derive a deterministic id. We mock it with a tiny lower-cased+sorted impl
 // so the assertions stay readable AND deterministic regardless of arg order.
@@ -20,7 +20,7 @@ vi.mock('../api/v1/friendsApi', () => ({
 
 import { useChatTabsStore } from './chatTabsStore';
 
-// ── Reset helper ─────────────────────────────────────────────────────────────
+// -- Reset helper -------------------------------------------------------------
 // chatTabsStore uses zustand `persist`, so we need to forcibly reset to the
 // canonical initial shape — the persisted state from a previous test (or
 // the auto-merge logic) could otherwise leak.
@@ -30,7 +30,7 @@ const INITIAL_TABS = [
         id: 'city',
         type: 'city' as const,
         channel: 'city',
-        title: '🌆 Miasto',
+        title: ':cityscape-at-dusk: Miasto',
         unread: 0,
         closable: false,
     },
@@ -38,7 +38,7 @@ const INITIAL_TABS = [
         id: 'system',
         type: 'system' as const,
         channel: 'system',
-        title: '⚠️ System',
+        title: ':warning: System',
         unread: 0,
         closable: false,
     },
@@ -53,7 +53,7 @@ beforeEach(() => {
     buildPmChannelMock.mockClear();
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('chatTabsStore — initial state', () => {
     it('starts with city + system tabs only', () => {
@@ -70,7 +70,7 @@ describe('chatTabsStore — initial state', () => {
     });
 });
 
-// ── ensureCityTab ────────────────────────────────────────────────────────────
+// -- ensureCityTab ------------------------------------------------------------
 
 describe('ensureCityTab', () => {
     it('is a no-op when the city tab is already present', () => {
@@ -87,7 +87,7 @@ describe('ensureCityTab', () => {
     });
 });
 
-// ── ensureSystemTab ──────────────────────────────────────────────────────────
+// -- ensureSystemTab ----------------------------------------------------------
 
 describe('ensureSystemTab', () => {
     it('is a no-op when system tab is already present', () => {
@@ -104,7 +104,7 @@ describe('ensureSystemTab', () => {
     });
 });
 
-// ── openPm ───────────────────────────────────────────────────────────────────
+// -- openPm -------------------------------------------------------------------
 
 describe('openPm', () => {
     it('creates a new PM tab and focuses it', () => {
@@ -146,7 +146,7 @@ describe('openPm', () => {
     });
 });
 
-// ── ensurePmTab ──────────────────────────────────────────────────────────────
+// -- ensurePmTab --------------------------------------------------------------
 
 describe('ensurePmTab', () => {
     it('adds a background PM tab without stealing focus', () => {
@@ -167,7 +167,7 @@ describe('ensurePmTab', () => {
     });
 });
 
-// ── syncPartyTab ─────────────────────────────────────────────────────────────
+// -- syncPartyTab -------------------------------------------------------------
 
 describe('syncPartyTab', () => {
     it('adds a party tab when joining a party', () => {
@@ -213,7 +213,7 @@ describe('syncPartyTab', () => {
     });
 });
 
-// ── syncGuildTab ─────────────────────────────────────────────────────────────
+// -- syncGuildTab -------------------------------------------------------------
 
 describe('syncGuildTab', () => {
     it('adds a guild tab when joining a guild', () => {
@@ -242,7 +242,7 @@ describe('syncGuildTab', () => {
     });
 });
 
-// ── closeTab ─────────────────────────────────────────────────────────────────
+// -- closeTab -----------------------------------------------------------------
 
 describe('closeTab', () => {
     it('closes a closable (PM) tab', () => {
@@ -273,7 +273,7 @@ describe('closeTab', () => {
     });
 });
 
-// ── setActive ────────────────────────────────────────────────────────────────
+// -- setActive ----------------------------------------------------------------
 
 describe('setActive', () => {
     it('switches the active tab', () => {
@@ -299,7 +299,7 @@ describe('setActive', () => {
     });
 });
 
-// ── incrementUnread ──────────────────────────────────────────────────────────
+// -- incrementUnread ----------------------------------------------------------
 
 describe('incrementUnread', () => {
     it('increments unread for an inactive tab', () => {
@@ -329,7 +329,7 @@ describe('incrementUnread', () => {
     });
 });
 
-// ── markRead ─────────────────────────────────────────────────────────────────
+// -- markRead -----------------------------------------------------------------
 
 describe('markRead', () => {
     it('zeros the unread counter on the given tab', () => {
@@ -348,7 +348,7 @@ describe('markRead', () => {
     });
 });
 
-// ── raiseNotification / clearNotification ────────────────────────────────────
+// -- raiseNotification / clearNotification ------------------------------------
 
 describe('raiseNotification', () => {
     it('flips hasNotification to true', () => {
@@ -376,10 +376,10 @@ describe('clearNotification', () => {
     });
 });
 
-// ── Tab ordering (sortTabs) ──────────────────────────────────────────────────
+// -- Tab ordering (sortTabs) --------------------------------------------------
 
 describe('tab ordering', () => {
-    it('keeps canonical order: city → guild → party → system → pm', () => {
+    it('keeps canonical order: city -> guild -> party -> system -> pm', () => {
         useChatTabsStore.getState().syncGuildTab('g1');
         useChatTabsStore.getState().syncPartyTab('p1');
         useChatTabsStore.getState().openPm('Me', 'Alice');

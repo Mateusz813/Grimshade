@@ -1,4 +1,4 @@
-// ── Sync system – pure functions ──────────────────────────────────────────────
+// -- Sync system – pure functions ----------------------------------------------
 
 export const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -44,7 +44,7 @@ export const formatLastSynced = (lastSynced: string | null): string => {
 };
 
 /**
- * Determines whether the online→sync should actually fire
+ * Determines whether the online->sync should actually fire
  * (avoids hammering the server when coming back online repeatedly).
  */
 export const shouldSyncOnReconnect = (

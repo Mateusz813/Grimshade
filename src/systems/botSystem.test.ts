@@ -21,7 +21,7 @@ const mockBoss: IBoss = {
     speed: 1.5,
     xp: 1000,
     gold: [100, 500],
-    sprite: '👹',
+    sprite: 'ogre',
     description_pl: 'Test boss description',
 };
 

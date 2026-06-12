@@ -1,7 +1,7 @@
 /**
  * Transform Bonuses – LIVE helpers for permanent transform rewards.
  *
- * ── Point 7 rewrite (2026-04) ────────────────────────────────────────────────
+ * -- Point 7 rewrite (2026-04) ------------------------------------------------
  * Previously most bonuses (hpPercent, mpPercent, defPercent, flatHp, flatMp,
  * attack, defense, regen) were baked into character.max_hp / max_mp / attack /
  * defense at the moment the transform quest was completed, using the THEN-
@@ -185,7 +185,7 @@ export interface ILiveTransformBreakdown {
     flatDefense: number;
     hpRegenFlat: number;
     mpRegenFlat: number;
-    active: boolean;         // false for legacy (baked) saves → hide in UI
+    active: boolean;         // false for legacy (baked) saves -> hide in UI
 }
 
 export const getLiveTransformBreakdown = (): ILiveTransformBreakdown => {

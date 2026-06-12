@@ -8,6 +8,7 @@ import { getAllRaids } from '../../../systems/raidSystem';
 import { getDungeonImage } from '../../../systems/spriteAssets';
 import { BossSprite, MonsterSprite } from '../Sprite/MonsterSprite';
 import type { IMonster } from '../../../types/monster';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './ReadyCheckModal.scss';
 
 /**
@@ -17,11 +18,11 @@ import './ReadyCheckModal.scss';
  * fires the check.
  *
  * Behaviour:
- *   • The local player sees a Gotowy / Anuluj button until they click
+ *   - The local player sees a Gotowy / Anuluj button until they click
  *     Gotowy (then their card becomes a green check).
- *   • The leader's modal also auto-fires the `go` broadcast once
+ *   - The leader's modal also auto-fires the `go` broadcast once
  *     everyone is ready, sending all members to the destination route.
- *   • Anyone clicking Anuluj closes the modal for everyone.
+ *   - Anyone clicking Anuluj closes the modal for everyone.
  *
  * 2026-05-13 spec ("Na tym popupie pokazuj obrazek potwora na jakiego
  * idziemy jego nazwe oraz poziom, tak samo przed napisz czy to
@@ -80,7 +81,7 @@ const ReadyCheckModal = () => {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.96, opacity: 0 }}
                 >
-                    <div className="ready-check__title">⚔ Gotowość do walki</div>
+                    <div className="ready-check__title"><GameIcon name="crossed-swords" /> Gotowość do walki</div>
                     <div className="ready-check__kind">{target.kindLabel}</div>
                     {/* 2026-05-14 spec ("Tam powinno byc to zdjecie co
                         jest na danym tle backgroundzie dla tego raidu
@@ -151,7 +152,7 @@ const ReadyCheckModal = () => {
                                     key={m.id}
                                     className={`ready-check__row${isReady ? ' ready-check__row--ready' : ''}`}
                                 >
-                                    <span className="ready-check__dot" aria-hidden>{isReady ? '✓' : '…'}</span>
+                                    <span className="ready-check__dot" aria-hidden>{isReady ? <GameIcon name="check-mark-button" /> : '…'}</span>
                                     <span className="ready-check__name">
                                         {m.name}
                                         {isMe && <span className="ready-check__you"> (Ty)</span>}
@@ -174,7 +175,7 @@ const ReadyCheckModal = () => {
                             onClick={() => ready(character.id)}
                             disabled={meReady}
                         >
-                            {meReady ? 'Gotowy ✓' : 'Gotowy'}
+                            {meReady ? <>Gotowy <GameIcon name="check-mark-button" /></> : 'Gotowy'}
                         </button>
                     </div>
                 </motion.div>
@@ -216,7 +217,7 @@ const resolveTarget = (destination: string | null, payload: unknown): IReadyChec
             kindLabel: 'Polowanie',
             name: m?.name_pl,
             level: m?.level,
-            sprite: m?.sprite ?? '👹',
+            sprite: m?.sprite ?? 'ogre',
         };
     }
     if (destination === '/boss') {
@@ -230,7 +231,7 @@ const resolveTarget = (destination: string | null, payload: unknown): IReadyChec
             kindLabel: 'Boss',
             name: boss?.name_pl,
             level: boss?.level,
-            sprite: boss?.sprite ?? '👹',
+            sprite: boss?.sprite ?? 'ogre',
         };
     }
     if (destination === '/raid') {

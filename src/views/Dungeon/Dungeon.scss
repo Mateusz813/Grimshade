@@ -25,7 +25,7 @@
     color: $color-text-muted;
   }
 
-  // ── Panel ──────────────────────────────────────────────────────────────────
+  // -- Panel ------------------------------------------------------------------
   &__panel {
     padding: $spacing-md;
     display: flex;
@@ -73,7 +73,7 @@
     }
   }
 
-  // ── Hub filter bar ─────────────────────────────────────────────────────────
+  // -- Hub filter bar ---------------------------------------------------------
   // Mirrors the Hunt-Hub filter strip exactly: three pill toggles + a numeric
   // "Lvl od" input + an optional Wyczyść button (only shows when ≥1 filter is
   // active). Wraps freely on small phones. Per-character persistence happens
@@ -211,7 +211,7 @@
     border-radius: $radius-md;
   }
 
-  // ── Dungeon card ───────────────────────────────────────────────────────────
+  // -- Dungeon card -----------------------------------------------------------
   // Per spec: background is JUST the per-dungeon art — no hue tint, no
   // darkening overlay underneath. The colored left border (border-left in
   // hue) and the ::before shimmer animation stay; both render *over* the
@@ -315,7 +315,7 @@
     80% { left: 200%; opacity: 0; }
   }
 
-  // ── Corner badges ──────────────────────────────────────────────────────────
+  // -- Corner badges ----------------------------------------------------------
   // Pinned absolute so the centred head can claim the full card width.
   &__corner {
     position: absolute;
@@ -357,7 +357,7 @@
     }
   }
 
-  // ── Centered head (icon, name, description) ────────────────────────────────
+  // -- Centered head (icon, name, description) --------------------------------
   &__card-head {
     display: flex;
     flex-direction: column;
@@ -391,7 +391,7 @@
     line-height: 1.4;
   }
 
-  // ── Reward summary (gold / XP only — level + waves live in corners) ───────
+  // -- Reward summary (gold / XP only — level + waves live in corners) -------
   // Per spec: no separator borders — the row sits cleanly on the dungeon
   // art with just typographic weight and the colored gold/XP glyphs.
   &__card-rewards {
@@ -413,7 +413,7 @@
     color: $color-text-muted;
   }
 
-  // ── Drop table toggle & content ─────────────────────────────────────────────
+  // -- Drop table toggle & content ---------------------------------------------
   &__drop-toggle {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid $color-border;
@@ -430,7 +430,7 @@
     &--open { border-color: $color-accent; color: $color-text; }
   }
 
-  // ── Drop popup trigger (replaces inline expansion) ────────────────────────
+  // -- Drop popup trigger (replaces inline expansion) ------------------------
   // Unobtrusive ghost button — the focal point of the card is the wide
   // "Wejdź" CTA below it, so the drop trigger keeps a low-key look. Capped
   // at 200px wide and centred via `align-self: center` so it matches the
@@ -457,7 +457,7 @@
     }
   }
 
-  // ── Drop-table modal (popup) ───────────────────────────────────────────────
+  // -- Drop-table modal (popup) -----------------------------------------------
   &__modal-backdrop {
     position: fixed;
     inset: 0;
@@ -683,7 +683,7 @@
     }
   }
 
-  // ── Combat toggle buttons (skill mode, auto-potion) ────────────────────────
+  // -- Combat toggle buttons (skill mode, auto-potion) ------------------------
   &__combat-toggles {
     display: flex;
     gap: 6px;
@@ -747,7 +747,7 @@
     }
   }
 
-  // ── Speed button ────────────────────────────────────────────────────────────
+  // -- Speed button ------------------------------------------------------------
   &__speed-btn {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -765,7 +765,7 @@
     &--SKIP { color: #f44336; background: rgba(#f44336, 0.1); }
   }
 
-  // ── Arena (real combat view) ──────────────────────────────────────────────
+  // -- Arena (real combat view) ----------------------------------------------
   &__arena {
     display: flex;
     flex-direction: column;
@@ -907,7 +907,7 @@
     font-weight: 600;
   }
 
-  // ── HP bars (combat-style) ─────────────────────────────────────────────────
+  // -- HP bars (combat-style) -------------------------------------------------
   &__combat-bar {
     flex: 1;
     height: 12px;
@@ -927,7 +927,7 @@
   &__combat-bar--mp .dungeon__combat-bar-fill { background: linear-gradient(90deg, #1565c0, #42a5f5); }
   &__combat-bar--enemy .dungeon__combat-bar-fill { background: linear-gradient(90deg, #b71c1c, #ff5252); }
 
-  // ── Floating damage numbers ────────────────────────────────────────────────
+  // -- Floating damage numbers ------------------------------------------------
   &__floating-dmg {
     position: absolute;
     top: 50%;
@@ -944,7 +944,7 @@
     &--crit { color: #ff9100; font-size: 26px; }
   }
 
-  // ── Skill slots ──────────────────────────────────────────────────────────
+  // -- Skill slots ----------------------------------------------------------
   &__skill-slots {
     display: flex;
     gap: 4px;
@@ -1019,7 +1019,7 @@
     z-index: 1;
   }
 
-  // ── Potions ──────────────────────────────────────────────────────────────
+  // -- Potions --------------------------------------------------------------
   &__potions {
     display: flex;
     gap: 6px;
@@ -1081,7 +1081,7 @@
     opacity: 0.7;
   }
 
-  // ── Flee button ────────────────────────────────────────────────────────────
+  // -- Flee button ------------------------------------------------------------
   &__flee-btn {
     background: rgba(#f44336, 0.1);
     border: 1px solid rgba(#f44336, 0.3);
@@ -1096,7 +1096,7 @@
     &:hover { background: rgba(#f44336, 0.2); }
   }
 
-  // ── Combat log ─────────────────────────────────────────────────────────────
+  // -- Combat log -------------------------------------------------------------
   &__combat-log {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -1137,7 +1137,7 @@
     80% { transform: translateX(2px); }
   }
 
-  // ── Result ─────────────────────────────────────────────────────────────────
+  // -- Result -----------------------------------------------------------------
   // Mirrors the dungeon-card chrome — uses the per-dungeon background art
   // (driven by `--card-image` set on the wrapper). Reward rows / banner
   // sit on top with their own backgrounds so the picture doesn't fight
@@ -1181,7 +1181,7 @@
   &__result--loss .dungeon__result-title { color: $color-accent; }
   &__result-dungeon { font-size: $font-md; color: $color-text-muted; }
 
-  // ── Victory banner ────────────────────────────────────────────────────────
+  // -- Victory banner --------------------------------------------------------
   // Per spec: transparent fill so the dungeon art behind shows through,
   // borders dropped, only the diagonal shimmer (::before) and the text
   // shadows on the inner labels stay. Reads as a "ribbon of light"
@@ -1426,7 +1426,7 @@
     }
   }
 
-  // ── Cinematic entry overlay (2.0s) ─────────────────────────────────────────
+  // -- Cinematic entry overlay (2.0s) -----------------------------------------
   // Three-layer cinematic that plays when the player taps "Wejdź" on a
   // dungeon card. Layer A is the dungeon image morphing from the card to
   // fullscreen. Layer B is a black panel that fades in over the image, holds,
@@ -1547,5 +1547,5 @@
   }
 }
 
-// ── Class-specific attack animations for dungeon combat ──────────────────────
+// -- Class-specific attack animations for dungeon combat ----------------------
 @include class-attack-animations('dungeon__combat-card');

@@ -34,19 +34,19 @@
  *     `marketApi.buyListing` via `page.evaluate` against an
  *     authenticated secondary session.
  *  3. Buyer calls `marketApi.buyListing(listingId, secondaryCharId, 1)`
- *     → expect `{ ok: true, … }`. Service_role probe: listing row is
+ *     -> expect `{ ok: true, … }`. Service_role probe: listing row is
  *     GONE (`market_listings WHERE id = ?` returns 0 rows).
- *  4. Buyer calls `marketApi.buyListing` AGAIN on the same id →
+ *  4. Buyer calls `marketApi.buyListing` AGAIN on the same id ->
  *     expect `{ ok: false, reason: 'not_found' }`. Proves the row
  *     can't be double-spent.
  *
  * ## Why server-side simulation (not UI taps)
  *
- *  • The vulnerable surface is `decrementListing` → `buyListing` RPC;
+ *  - The vulnerable surface is `decrementListing` -> `buyListing` RPC;
  *    every UI tap funnels through the same JS call. We test the JS
  *    contract directly so the test runs in seconds and isn't subject
  *    to mobile-WebKit modal animation jitter.
- *  • The sibling `buy-from-secondary-account.spec.ts` covers the
+ *  - The sibling `buy-from-secondary-account.spec.ts` covers the
  *    full UI walk-through (toast, inventory bump, gold spend) for
  *    one buy. This test adds the SECOND-buy assertion that proves
  *    the bug is fixed.
@@ -60,8 +60,8 @@
  *
  * ## Cleanup
  *
- *  • Both characters wiped via `cleanupCharacterById`.
- *  • Any leftover market_listings row by primary's seller_id is
+ *  - Both characters wiped via `cleanupCharacterById`.
+ *  - Any leftover market_listings row by primary's seller_id is
  *    cascaded via CHARACTER_CHILD_TABLES.
  */
 
@@ -113,7 +113,7 @@ test.describe('City › Market', { tag: '@city' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
     test('regression: same listing cannot be bought twice (RPC row-lock + delete)', async ({ page }) => {
-        // ── Step 0: probe RPC presence ────────────────────────────────────
+        // -- Step 0: probe RPC presence ------------------------------------
         // 2026-05-27: removed test.skip fallback (RPC IS deployed). If
         // probe fails, throw loudly so the regression isn't silently
         // bypassed in future.

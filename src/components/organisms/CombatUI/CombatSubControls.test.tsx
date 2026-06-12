@@ -95,7 +95,7 @@ describe('CombatSubControls — XP bar', () => {
                 xpPerHour={1500}
             />,
         );
-        // 1500 → "1.5k" via formatRate.
+        // 1500 -> "1.5k" via formatRate.
         expect(screen.getByText(/1\.5k XP\/h/)).toBeTruthy();
     });
 

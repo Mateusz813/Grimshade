@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Sprite asset registry.
 //
 // The user dropped real PNG art for every monster, every boss and the major
@@ -17,16 +17,16 @@
 // filename so callers can do simple lookups like `monsterByLevel.get(5)`.
 //
 // Public surface is three pure functions:
-//   • getMonsterImage(level)
-//   • getBossImage(level)
-//   • getItemImage(itemId, slot)
+//   - getMonsterImage(level)
+//   - getBossImage(level)
+//   - getItemImage(itemId, slot)
 //
 // Each returns either a string URL (Vite-hashed) or `null` when no image is
 // available — at which point the caller should fall back to the original
 // emoji glyph it was rendering before. That keeps all of this strictly
 // additive: any new monster/boss/item without a matching PNG continues to
 // render its emoji and nothing breaks.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 import type { EquipmentSlot } from './itemSystem';
 
@@ -34,7 +34,7 @@ import type { EquipmentSlot } from './itemSystem';
 
 type GlobModule = { default: string } | string;
 
-/** Build a `level → URL` map from a Vite glob result keyed on `prefix-{level}`. */
+/** Build a `level -> URL` map from a Vite glob result keyed on `prefix-{level}`. */
 const buildLevelMap = (
     files: Record<string, GlobModule>,
     prefix: string,
@@ -52,7 +52,7 @@ const buildLevelMap = (
     return out;
 };
 
-/** Build a `filename (without extension) → URL` map. */
+/** Build a `filename (without extension) -> URL` map. */
 const buildNameMap = (files: Record<string, GlobModule>): Map<string, string> => {
     const out = new Map<string, string>();
     for (const [path, mod] of Object.entries(files)) {
@@ -64,7 +64,7 @@ const buildNameMap = (files: Record<string, GlobModule>): Map<string, string> =>
     return out;
 };
 
-// ── Monster sprites ─────────────────────────────────────────────────────────
+// -- Monster sprites ---------------------------------------------------------
 const MONSTER_FILES = import.meta.glob('../assets/images/monsters/monster-*.png', {
     eager: true,
 }) as Record<string, GlobModule>;
@@ -95,7 +95,7 @@ export const getMonsterImageNearest = (level: number): string | null => {
     return MONSTER_BY_LEVEL.get(available[available.length - 1]) ?? null;
 };
 
-// ── Boss sprites ────────────────────────────────────────────────────────────
+// -- Boss sprites ------------------------------------------------------------
 const BOSS_FILES = import.meta.glob('../assets/images/boss/boss-*.png', {
     eager: true,
 }) as Record<string, GlobModule>;
@@ -122,7 +122,7 @@ export const getBossImageNearest = (level: number): string | null => {
     return BOSS_BY_LEVEL.get(available[available.length - 1]) ?? null;
 };
 
-// ── Dungeon backgrounds ─────────────────────────────────────────────────────
+// -- Dungeon backgrounds -----------------------------------------------------
 // 77 dungeons in dungeons.json (already sorted by level) map 1:1 to the files
 // dung-1.png … dung-77.png. The mapping is positional and keyed by id, so
 // filtering / sorting / re-ordering inside any lobby view never reshuffles
@@ -160,7 +160,7 @@ const DUNGEON_IMG_BY_ID: Record<string, string> = (() => {
 export const getDungeonImage = (dungeonId: string): string | null =>
     DUNGEON_IMG_BY_ID[dungeonId] ?? null;
 
-// ── Spell icons ─────────────────────────────────────────────────────────────
+// -- Spell icons -------------------------------------------------------------
 // Per-class spell artwork lives in `assets/images/spells/{class}-{idx}.png`
 // (1-indexed: archer-1, archer-2, ..., archer-15 etc.). The combat action
 // bar + Skills view both read these via `getSpellImage`.
@@ -182,7 +182,7 @@ const SPELL_IMG_BY_KEY: Record<string, string> = (() => {
 
 /**
  * Returns the URL for `{class}-{index}.png`, or null if missing. Class is
- * case-insensitive ("Knight" → "knight"), index 1-based.
+ * case-insensitive ("Knight" -> "knight"), index 1-based.
  *
  * Filename aliases — historic art files use shortened class names that
  * don't match the canonical class id from skills.json. Without these
@@ -199,11 +199,11 @@ export const getSpellImage = (classId: string, index: number): string | null => 
     return SPELL_IMG_BY_KEY[`${alias}-${index}`] ?? SPELL_IMG_BY_KEY[`${lc}-${index}`] ?? null;
 };
 
-// ── Necromancer summon portraits ────────────────────────────────────────────
+// -- Necromancer summon portraits --------------------------------------------
 // Per-type summon art lives in `assets/images/summons/summon-{type}.png`.
 // File names use Polish: szkielet / duch / demon / lisz. The necro's ally
 // card swaps the avatar to whichever summon currently sits at the FRONT
-// of the damage-soak queue (skeleton → ghost → demon → lich) so the
+// of the damage-soak queue (skeleton -> ghost -> demon -> lich) so the
 // player sees who's currently shielding them.
 const SUMMON_FILES = import.meta.glob('../assets/images/summons/*.png', {
     eager: true,
@@ -221,7 +221,7 @@ const SUMMON_IMG_BY_KEY: Record<string, string> = (() => {
     return out;
 })();
 
-// English-id → on-disk Polish-id alias.
+// English-id -> on-disk Polish-id alias.
 const SUMMON_TYPE_ALIAS: Record<string, string> = {
     skeleton: 'szkielet',
     ghost: 'duch',
@@ -234,12 +234,12 @@ export const getSummonImage = (type: string): string | null => {
     return SUMMON_IMG_BY_KEY[key] ?? SUMMON_IMG_BY_KEY['default'] ?? null;
 };
 
-// ── Boss card backgrounds ───────────────────────────────────────────────────
+// -- Boss card backgrounds ---------------------------------------------------
 // Distinct from the small `boss-{level}.png` portrait sprites above. These
 // are full-card background paintings that sit behind every boss tile in the
 // list view, mirroring the per-dungeon art treatment. The user adds files
 // progressively under `images/boss/` named `boss1.png`, `boss2.png`, … and
-// they map by INDEX to the bosses[] array (1-based: boss1.png → bosses[0]).
+// they map by INDEX to the bosses[] array (1-based: boss1.png -> bosses[0]).
 // Iteration is sequential so missing files just leave their tile without a
 // background — the gradient chrome still renders fine underneath.
 const BOSS_CARD_FILES = import.meta.glob('../assets/images/boss/boss*.png', {
@@ -270,7 +270,7 @@ const BOSS_CARD_IMG_BY_INDEX: Map<number, string> = (() => {
 export const getBossCardImage = (index: number): string | null =>
     BOSS_CARD_IMG_BY_INDEX.get(index + 1) ?? null;
 
-// ── Item sprites ────────────────────────────────────────────────────────────
+// -- Item sprites ------------------------------------------------------------
 const ITEM_FILES = import.meta.glob('../assets/images/items/*.png', {
     eager: true,
 }) as Record<string, GlobModule>;
@@ -290,13 +290,13 @@ const itemFile = (name: string): string | null => ITEM_BY_NAME.get(name) ?? null
  */
 export const getItemFile = itemFile;
 
-// ── Spell chest sprites (2026-05) ───────────────────────────────────────────
+// -- Spell chest sprites (2026-05) -------------------------------------------
 // Player-supplied art lives in `/assets/images/spell-chest/spell-chest-{N}.png`
 // for N = 1..15. We expose a single `getSpellChestImage(level)` helper that
 // returns the URL for a specific level, or the level-15 art as the universal
 // "spell chest" fallback (used by drop-table summaries that don't carry a
 // specific chest level). Returns null when the registry is empty so callers
-// can fall back to the legacy 📦 emoji.
+// can fall back to the legacy :package: emoji.
 const SPELL_CHEST_FILES = import.meta.glob('../assets/images/spell-chest/spell-chest-*.png', {
     eager: true,
 }) as Record<string, GlobModule>;
@@ -313,7 +313,7 @@ const SPELL_CHEST_BY_LEVEL = (() => {
     return map;
 })();
 
-/** Game-side chest LEVEL → art TIER (1-15). The game spawns chests at
+/** Game-side chest LEVEL -> art TIER (1-15). The game spawns chests at
  *  these 15 levels (matches `SPELL_CHEST_LEVELS` in skillSystem) — we
  *  map them ordinally to the 15 PNG tiers shipped under
  *  `/spell-chest/spell-chest-{1..15}.png` so every distinct chest
@@ -336,7 +336,7 @@ export const getSpellChestImage = (level: number): string | null => {
     return SPELL_CHEST_BY_LEVEL.get(15) ?? null;
 };
 
-// ── Upgrade-stone sprites (2026-05) ────────────────────────────────────────
+// -- Upgrade-stone sprites (2026-05) ----------------------------------------
 // Stones live in `/assets/images/upgrade-stone/stone-{N}.png` where N maps
 // to rarity tier: 1 = common, 2 = rare, 3 = epic, 4 = legendary, 5 = mythic,
 // 6 = heroic. `stone-7.png` is the universal "any stone" fallback used by
@@ -384,7 +384,7 @@ export const getStoneImage = (key?: string | null): string | null => {
     return STONE_BY_TIER.get(7) ?? null;
 };
 
-// ── Potion / elixir sprites (2026-05) ──────────────────────────────────────
+// -- Potion / elixir sprites (2026-05) --------------------------------------
 // Files in `/assets/images/potions/` follow descriptive names like `hp-50`,
 // `hp-150`, `hp-20-proc`, `mp-30`, `mp-100-proc`. We map the canonical
 // elixir IDs from the shop to the matching PNG. Anything not on the list
@@ -405,7 +405,7 @@ const POTION_BY_NAME = (() => {
     return map;
 })();
 
-// Maps shop elixir ID → potion filename (without extension). Buff /
+// Maps shop elixir ID -> potion filename (without extension). Buff /
 // utility elixirs that have no dedicated art fall through to the default.
 const POTION_ID_TO_FILE: Record<string, string> = {
     // HP potions (flat)
@@ -462,7 +462,7 @@ const ELIXIR_BY_NAME = (() => {
     return map;
 })();
 
-// Internal elixir-id → filename mapping. Filenames are taken verbatim
+// Internal elixir-id -> filename mapping. Filenames are taken verbatim
 // from the user-provided pack and lower-cased for the lookup table.
 const ELIXIR_ID_TO_FILE: Record<string, string> = {
     xp_boost:                   'dopalacz-xp',
@@ -494,7 +494,7 @@ const ELIXIR_ID_TO_FILE: Record<string, string> = {
 
 // BuffBar uses the active-buff EFFECT id (e.g. `xp_boost_100`,
 // `attack_speed`) which differs from the inventory consumable id. Map
-// effect→filename so the same lookup serves both surfaces.
+// effect->filename so the same lookup serves both surfaces.
 const BUFF_EFFECT_TO_FILE: Record<string, string> = {
     xp_boost:                'dopalacz-xp',
     xp_boost_100:            'wielki-dopalacz-xp',
@@ -524,7 +524,7 @@ const BUFF_EFFECT_TO_FILE: Record<string, string> = {
  *   1. user-supplied art for `elixirId` (consumable inventory id) OR
  *      `effect` (BuffBar active-buff effect string)
  *   2. raw lower-cased filename match (e.g. id === 'utamo-vita')
- *   3. null → caller falls back to its existing emoji
+ *   3. null -> caller falls back to its existing emoji
  *
  * HP/MP potions return their dedicated potion art via `getPotionImage`
  * — this helper is for the buff/utility set only.
@@ -618,7 +618,7 @@ const SLOT_TO_FILE: Partial<Record<EquipmentSlot, string>> = {
 
 /**
  * Best-guess art lookup for an item. Tries (in order):
- *   1. canonical `type` mapping (heavy_helmet → helmet-ciezki, etc.)
+ *   1. canonical `type` mapping (heavy_helmet -> helmet-ciezki, etc.)
  *   2. ID prefix detection for generated armor/weapon IDs (`heavy_helmet_lvl5_rare`)
  *   3. ID substring detection for legacy items.json IDs (`leather_cap`, `iron_sword`)
  *   4. equipment slot fallback (rings/necklaces/earrings)

@@ -1,7 +1,7 @@
 @use '../../styles/variables' as *;
 @use '../../styles/breakpoints' as *;
 
-// ── Layout ───────────────────────────────────────────────────────────────────
+// -- Layout -------------------------------------------------------------------
 .combat {
   background: transparent;
   color: $color-text;
@@ -13,7 +13,7 @@
   // AppShell scroll — the inner hub no longer steals scroll either.
   min-height: 100%;
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // -- Header -----------------------------------------------------------------
   &__header {
     align-items: center;
     border-bottom: 1px solid $color-border;
@@ -141,7 +141,7 @@
     &--manual { background: $color-bg-card; border-color: $color-accent; color: $color-accent; }
   }
 
-  // Icon glyph (✨ for skills, ⚔️ for fight) inside the mode buttons. Sized a
+  // Icon glyph (sparkles for skills, crossed-swords for fight) inside the mode buttons. Sized a
   // hair larger than the AUTO/MANUAL label so the icon reads first.
   &__mode-btn-icon {
     font-size: $font-sm;
@@ -173,7 +173,7 @@
     }
   }
 
-  // ── XP bar toggle button in header ─────────────────────────────────────────
+  // -- XP bar toggle button in header -----------------------------------------
   &__xp-toggle {
     background: transparent;
     border: 1px solid $color-border;
@@ -195,7 +195,7 @@
     }
   }
 
-  // ── Stat points badge in header ────────────────────────────────────────────
+  // -- Stat points badge in header --------------------------------------------
   &__stat-points-badge {
     background: rgba(#ffc107, 0.15);
     border: 1px solid rgba(#ffc107, 0.5);
@@ -221,7 +221,7 @@
     50% { box-shadow: 0 0 8px 2px rgba(#ffc107, 0.3); }
   }
 
-  // ── XP progress bar (collapsible) ──────────────────────────────────────────
+  // -- XP progress bar (collapsible) ------------------------------------------
   // Wrapper always reserves space so toggling XP bar does not cause layout shift
   &__xp-bar-placeholder {
     height: 24px;
@@ -277,7 +277,7 @@
     margin-left: 2px;
   }
 
-  // ── Monster select ──────────────────────────────────────────────────────────
+  // -- Monster select ----------------------------------------------------------
   &__select {
     display: flex;
     flex-direction: column;
@@ -877,7 +877,7 @@
 
   // (merged into the main &__select block above)
 
-  // ── Arena ───────────────────────────────────────────────────────────────────
+  // -- Arena -------------------------------------------------------------------
   &__arena {
     display: flex;
     flex-direction: column;
@@ -918,7 +918,7 @@
         grid-column: 1 / -1;
       }
 
-      // ── Point 1: On wide screens the wave (monsters, left) and the
+      // -- Point 1: On wide screens the wave (monsters, left) and the
       // battlefield (party, right) sit side-by-side in a 2-column grid.
       // The XP bar + skill slots + log still span the full row below.
       .combat__wave {
@@ -937,7 +937,7 @@
     }
   }
 
-  // ── Wave strip (multi-monster) ──────────────────────────────────────────────
+  // -- Wave strip (multi-monster) ----------------------------------------------
   &__wave {
     background: $color-bg-secondary;
     border: 1px solid $color-border;
@@ -1061,7 +1061,7 @@
       }
     }
 
-    // Point 6: no visual decoration on the active target — the 🎯 crosshair
+    // Point 6: no visual decoration on the active target — the bullseye crosshair
     // icon in the corner is enough. Borders/backgrounds are reserved for the
     // persistent rarity colors (strong/epic/legendary/boss) so they stay
     // readable even after a monster dies.
@@ -1174,7 +1174,7 @@
     }
   }
 
-  // ── Rarity tinting on wave slots (so the 4 stacked monsters are distinct) ─
+  // -- Rarity tinting on wave slots (so the 4 stacked monsters are distinct) -
   &__wave-slot--strong {
     border-color: #2196f3;
     background: rgba(33, 150, 243, 0.06);
@@ -1254,7 +1254,7 @@
     max-width: 100%;
   }
 
-  // ── Party bot panel ─────────────────────────────────────────────────────
+  // -- Party bot panel -----------------------------------------------------
   &__bots {
     background: rgba(255, 193, 7, 0.04);
     border: 1px solid rgba(255, 193, 7, 0.25);
@@ -1359,7 +1359,7 @@
     white-space: nowrap;
   }
 
-  // ── Cards (monster & player) ────────────────────────────────────────────────
+  // -- Cards (monster & player) ------------------------------------------------
   &__card {
     background: $color-bg-secondary;
     border: 1px solid $color-border;
@@ -1439,7 +1439,7 @@
     white-space: nowrap;
   }
 
-  // ── Bars ────────────────────────────────────────────────────────────────────
+  // -- Bars --------------------------------------------------------------------
   &__bar {
     background: $color-bg;
     border-radius: 99px;
@@ -1472,7 +1472,7 @@
     text-align: right;
   }
 
-  // ── 4 active skill slots ────────────────────────────────────────────────────
+  // -- 4 active skill slots ----------------------------------------------------
   &__skill-slots {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1555,7 +1555,7 @@
     z-index: 1;
   }
 
-  // ── Potion quick-use ────────────────────────────────────────────────────────
+  // -- Potion quick-use --------------------------------------------------------
   &__potions {
     display: flex;
     flex-wrap: wrap;
@@ -1650,7 +1650,7 @@
     &:hover { background: transparent; }
   }
 
-  // ── Persistent loot bar — always visible, no modal ──────────────────────────
+  // -- Persistent loot bar — always visible, no modal --------------------------
   &__loot-bar {
     display: flex;
     flex-direction: column;
@@ -1740,7 +1740,7 @@
     font-style: italic;
   }
 
-  // ── Action buttons (always visible, disabled when not applicable) ───────────
+  // -- Action buttons (always visible, disabled when not applicable) -----------
   &__action-btns {
     display: flex;
     gap: $spacing-xs;
@@ -1791,7 +1791,7 @@
     }
   }
 
-  // ── Epic death overlay ──────────────────────────────────────────────────────
+  // -- Epic death overlay ------------------------------------------------------
   &__death-overlay {
     position: fixed;
     inset: 0;
@@ -1864,7 +1864,7 @@
 
   // (Old result overlay styles removed — replaced by loot-bar + death-overlay)
 
-  // ── Out-of-combat state: visible but non-interactive (no layout shifts) ────
+  // -- Out-of-combat state: visible but non-interactive (no layout shifts) ----
   &__skill-slots--hidden,
   &__potions--hidden {
     pointer-events: none;
@@ -1872,7 +1872,7 @@
     filter: grayscale(0.4);
   }
 
-  // ── Session kills counter ───────────────────────────────────────────────────
+  // -- Session kills counter ---------------------------------------------------
   &__session-kills {
     display: flex;
     flex-wrap: wrap;
@@ -1922,7 +1922,7 @@
     flex-shrink: 0;
   }
 
-  // ── Combat log ──────────────────────────────────────────────────────────────
+  // -- Combat log --------------------------------------------------------------
   &__log {
     background: $color-bg-secondary;
     border: 1px solid $color-border;
@@ -1952,7 +1952,7 @@
     &--dualwield { color: #a5d6a7; }
   }
 
-  // ── Combat animations ──────────────────────────────────────────────────────
+  // -- Combat animations ------------------------------------------------------
   &__card--hit {
     animation: card-shake 0.3s ease-out;
   }
@@ -2008,7 +2008,7 @@
     }
   }
 
-  // ── Monster rarity badge ────────────────────────────────────────────────────
+  // -- Monster rarity badge ----------------------------------------------------
   &__rarity-badge {
     text-align: center;
     font-weight: 700;
@@ -2051,7 +2051,7 @@
   }
 }
 
-// ── Keyframes ────────────────────────────────────────────────────────────────
+// -- Keyframes ----------------------------------------------------------------
 @keyframes card-shake {
   0%   { transform: translateX(0); }
   15%  { transform: translateX(-6px); }
@@ -2074,7 +2074,7 @@
   100% { box-shadow: 0 0 4px rgba(255, 193, 7, 0.3); }
 }
 
-// ── Class-specific attack animations ─────────────────────────────────────────
+// -- Class-specific attack animations -----------------------------------------
 
 // Knight: aggressive horizontal slash with red flash
 @keyframes attack-slash {
@@ -2170,7 +2170,7 @@
   100% { opacity: 0; transform: translateX(-50%) scaleX(2); }
 }
 
-// ── Class animation application with overlay pseudo-elements ─────────────────
+// -- Class animation application with overlay pseudo-elements -----------------
 
 .combat__card--attack-Knight {
   animation: attack-slash 0.35s ease-out;
@@ -2307,7 +2307,7 @@
   }
 }
 
-// ── Wave slot attack animations (mirror card attack animations) ─────────────
+// -- Wave slot attack animations (mirror card attack animations) -------------
 // Applied to the active wave slot when the player is attacking, so that a
 // class-specific overlay (slash, cast ring, arrow trail…) fires on the monster
 // the player is currently focused on.
@@ -2439,7 +2439,7 @@
   }
 }
 
-// ── Class-colored left border on player card ─────────────────────────────────
+// -- Class-colored left border on player card ---------------------------------
 // When a transform is active `--player-accent` is set and takes priority; the
 // class color below is only used as the fallback (no transform unlocked yet).
 .combat__card--player {
@@ -2452,11 +2452,11 @@
   &[data-class="Bard"]        { border-left: 3px solid var(--player-accent, #ff9800); }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ── Battlefield layout: monsters TOP, player list BELOW, XP bar BELOW THAT ──
+// =============================================================================
+// -- Battlefield layout: monsters TOP, player list BELOW, XP bar BELOW THAT --
 // Single vertical column at every breakpoint so everything stacks and the XP
 // bar always sits directly under the player list (not beside it).
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 .combat {
   &__battlefield {
     display: flex;
@@ -2482,11 +2482,11 @@
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ── Aggro indicators ─────────────────────────────────────────────────────────
+// =============================================================================
+// -- Aggro indicators ---------------------------------------------------------
 // Red glowing border + badge on whoever a monster is targeting, so the player
 // always sees who's being attacked at a glance.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 @keyframes pulse-aggro {
   0%, 100% {
     transform: scale(1);
@@ -2547,11 +2547,11 @@
   white-space: nowrap;
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ── Skill Animation Overlays ─────────────────────────────────────────────────
+// =============================================================================
+// -- Skill Animation Overlays -------------------------------------------------
 // Each overlay is absolutely positioned over the monster card and shows a
 // category-specific CSS animation + emoji when a skill fires.
-// ═════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 .combat__skill-anim-overlay {
   position: absolute;
@@ -2572,7 +2572,7 @@
   position: relative;
 }
 
-// ── Fire ──────────────────────────────────────────────────────────────────────
+// -- Fire ----------------------------------------------------------------------
 @keyframes skill-fire-burst {
   0%   { opacity: 0; transform: scale(0.3); }
   20%  { opacity: 1; transform: scale(1.1); }
@@ -2601,7 +2601,7 @@
   }
 }
 
-// ── Ice ───────────────────────────────────────────────────────────────────────
+// -- Ice -----------------------------------------------------------------------
 @keyframes skill-ice-shatter {
   0%   { opacity: 0; transform: scale(0.5); filter: hue-rotate(0deg); }
   25%  { opacity: 1; transform: scale(1.0); }
@@ -2630,7 +2630,7 @@
   }
 }
 
-// ── Lightning ─────────────────────────────────────────────────────────────────
+// -- Lightning -----------------------------------------------------------------
 @keyframes skill-lightning-flash {
   0%   { opacity: 0; }
   8%   { opacity: 1; background: rgba(255, 235, 59, 0.35); }
@@ -2661,7 +2661,7 @@
   }
 }
 
-// ── Holy ──────────────────────────────────────────────────────────────────────
+// -- Holy ----------------------------------------------------------------------
 @keyframes skill-holy-glow {
   0%   { opacity: 0; transform: scale(0.5); }
   30%  { opacity: 0.9; transform: scale(1.0); }
@@ -2690,7 +2690,7 @@
   }
 }
 
-// ── Dark ──────────────────────────────────────────────────────────────────────
+// -- Dark ----------------------------------------------------------------------
 @keyframes skill-dark-swirl {
   0%   { opacity: 0; transform: scale(0.4) rotate(0deg); }
   30%  { opacity: 0.9; transform: scale(1.0) rotate(60deg); }
@@ -2719,7 +2719,7 @@
   }
 }
 
-// ── Physical ──────────────────────────────────────────────────────────────────
+// -- Physical ------------------------------------------------------------------
 @keyframes skill-physical-impact {
   0%   { opacity: 0; transform: scale(0.6); }
   15%  { opacity: 1; transform: scale(1.1); }
@@ -2749,7 +2749,7 @@
   }
 }
 
-// ── Arrow ─────────────────────────────────────────────────────────────────────
+// -- Arrow ---------------------------------------------------------------------
 @keyframes skill-arrow-fly {
   0%   { opacity: 0; transform: translateX(-60px); }
   25%  { opacity: 1; transform: translateX(-10px); }
@@ -2780,7 +2780,7 @@
   }
 }
 
-// ── Music ─────────────────────────────────────────────────────────────────────
+// -- Music ---------------------------------------------------------------------
 @keyframes skill-music-wave {
   0%   { opacity: 0; transform: scaleX(0.3) scaleY(0.8); }
   30%  { opacity: 0.8; transform: scaleX(1.0) scaleY(1.0); }
@@ -2810,7 +2810,7 @@
   }
 }
 
-// ── Arcane ─────────────────────────────────────────────────────────────────────
+// -- Arcane ---------------------------------------------------------------------
 @keyframes skill-arcane-pulse {
   0%   { opacity: 0; transform: scale(0.3) rotate(0deg); }
   25%  { opacity: 0.9; transform: scale(1.0) rotate(30deg); }
@@ -2840,7 +2840,7 @@
   }
 }
 
-// ── Poison ────────────────────────────────────────────────────────────────────
+// -- Poison --------------------------------------------------------------------
 @keyframes skill-poison-spread {
   0%   { opacity: 0; transform: scale(0.4); }
   20%  { opacity: 0.8; transform: scale(0.9); }
@@ -2870,7 +2870,7 @@
   }
 }
 
-// ── Buff ──────────────────────────────────────────────────────────────────────
+// -- Buff ----------------------------------------------------------------------
 @keyframes skill-buff-shine {
   0%   { opacity: 0; transform: scale(0.5); }
   30%  { opacity: 0.7; transform: scale(1.0); }
@@ -2899,7 +2899,7 @@
   }
 }
 
-// ── Summon ────────────────────────────────────────────────────────────────────
+// -- Summon --------------------------------------------------------------------
 @keyframes skill-summon-rise {
   0%   { opacity: 0; transform: translateY(20px) scale(0.3); }
   30%  { opacity: 0.8; transform: translateY(-5px) scale(1.0); }
@@ -2936,9 +2936,9 @@
 ============================================================================ */
 .combat {
 
-  // ── Top bar ────────────────────────────────────────────────────────────────
+  // -- Top bar ----------------------------------------------------------------
   // Controls only (speed / skill mode / fight mode / XP toggle) — the previous
-  // Wstecz button + "⚔️ Polowanie" title were removed by user request to free
+  // Wstecz button + "crossed-swords Polowanie" title were removed by user request to free
   // up vertical space. Controls flex-wrap so they always fit on narrow phones.
   &__top {
     align-items: center;
@@ -2963,7 +2963,7 @@
     row-gap: $spacing-xs;
   }
 
-  // (Wstecz button + "⚔️ Polowanie" title removed — the top bar is now controls
+  // (Wstecz button + "crossed-swords Polowanie" title removed — the top bar is now controls
   // only. Their old &__top-back / &__top-title rules were dropped along with the
   // JSX so the BEM stylesheet stays in lock-step with the markup.)
 
@@ -3003,7 +3003,7 @@
     }
   }
 
-  // ── Hub (idle phase shell) ─────────────────────────────────────────────────
+  // -- Hub (idle phase shell) -------------------------------------------------
   // Used to scroll INTERNALLY via `overflow-y: auto`, but the unified-HUD
   // refactor lets the AppShell own the scroll container — keeping the inner
   // overflow caused TWO vertical scrollbars side-by-side on the picker view
@@ -3036,7 +3036,7 @@
     }
   }
 
-  // ── Wave-count box ─────────────────────────────────────────────────────────
+  // -- Wave-count box ---------------------------------------------------------
   // "Ilość przeciwników" — centered with max-width on mobile, left-aligned on
   // desktop. Reuses the existing &__wave-btn / &__wave-add-btn styling.
   &__hub-wave {
@@ -3092,7 +3092,7 @@
     }
   }
 
-  // ── Monster cards grid ─────────────────────────────────────────────────────
+  // -- Monster cards grid -----------------------------------------------------
   // Mobile: 1 per row. Tablet: 2 per row. Desktop: 3 per row.
   &__hub-monsters {
     display: flex;
@@ -3137,7 +3137,7 @@
       box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.35), 0 0 12px rgba(76, 175, 80, 0.2);
     }
 
-    // 25/25 mastery → full purple border (user request: "caly border zawsze ma
+    // 25/25 mastery  full purple border (user request: "caly border zawsze ma
     // byc pokolorowany na fioletowo"). Wins over the green `--task` highlight
     // because the rule comes after `--task`.
     &--mastery-max {
@@ -3342,7 +3342,7 @@
     }
   }
 
-  // ── Hub filter bar (above the wave-count box) ──────────────────────────────
+  // -- Hub filter bar (above the wave-count box) ------------------------------
   // Two persistent toggles + a numeric "Lvl od" input + an optional Wyczyść
   // button (only visible when at least one filter is active). Wraps freely so
   // it stays usable on small phones. Per-character persistence happens in
@@ -3475,7 +3475,7 @@
     text-align: center;
   }
 
-  // ── Per-monster card chips & goals ─────────────────────────────────────────
+  // -- Per-monster card chips & goals -----------------------------------------
   // The header now stacks the LVL chip and the mastery chip vertically so the
   // mastery chip can match the LVL chip's width (per user request). Both share
   // the right column of the &__mcard-head grid.
@@ -3486,7 +3486,7 @@
     gap: 4px;
   }
 
-  // Subtle purple chip under the LVL chip showing 🎖 X/25 monster mastery.
+  // Subtle purple chip under the LVL chip showing  X/25 monster mastery.
   // Same width as the LVL chip (stretched by &__mcard-chips). The medal icon
   // sits to the left of the count; the chip gets a brighter + glowing variant
   // once the player hits 25/25.
@@ -3567,7 +3567,7 @@
     white-space: nowrap;
   }
 
-  // ── Drop info modal ────────────────────────────────────────────────────────
+  // -- Drop info modal --------------------------------------------------------
   // Replaces the old inline expand. Centered popup with backdrop, scrollable
   // body. On wide screens variants use a 2-col grid; on narrow ones they
   // stack vertically.

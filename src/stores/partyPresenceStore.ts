@@ -6,9 +6,9 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
  * Cross-client presence layer for a party — pure realtime broadcast,
  * no DB schema changes. Each party member opens a Supabase channel
  * `party-live-<partyId>` and:
- *   • Sends their own snapshot (`{ id, hp, maxHp, mp, maxMp, transformTier }`)
+ *   - Sends their own snapshot (`{ id, hp, maxHp, mp, maxMp, transformTier }`)
  *     every 2 s while in a party, and immediately on connect.
- *   • Listens for other members' snapshots and stores the latest in
+ *   - Listens for other members' snapshots and stores the latest in
  *     `byMember[memberId]`.
  *
  * The PartyWidget renders ally HP/MP/avatar using `byMember[ally.id]`
@@ -63,7 +63,7 @@ export interface IPartyMemberSnapshot {
 }
 
 interface IPartyPresenceState {
-    /** memberId → latest snapshot. */
+    /** memberId -> latest snapshot. */
     byMember: Record<string, IPartyMemberSnapshot>;
     /** Currently subscribed channel handle. */
     channel: RealtimeChannel | null;

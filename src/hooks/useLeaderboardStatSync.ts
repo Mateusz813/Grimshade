@@ -16,13 +16,13 @@ import { characterApi } from '../api/v1/characterApi';
  *
  * This hook runs once per character-load and back-fills the
  * snapshot for every stat we can compute from local state:
- *   • mastery_points        — sum of every monster's mastery level
- *   • quests_oneshot_done   — length of `completedQuestIds`
- *   • quests_daily_done     — count of daily quests with `claimed: true`
+ *   - mastery_points        — sum of every monster's mastery level
+ *   - quests_oneshot_done   — length of `completedQuestIds`
+ *   - quests_daily_done     — count of daily quests with `claimed: true`
  *                             (today's snapshot; counters keep growing
  *                             as the player claims new dailies through
  *                             the existing per-claim hook)
- *   • skill_upgrades_done   — sum of all `skillUpgradeLevels` values
+ *   - skill_upgrades_done   — sum of all `skillUpgradeLevels` values
  *
  * Counters that have no local pre-existing state (market sold,
  * arena kills, item upgrades) keep starting at 0 — they only count

@@ -13,11 +13,11 @@
  * The end-to-end flow has three legs:
  *
  *   1. Realtime wire — Cleric's local `spell-cast` broadcast lands in
- *      Knight's `usePartyCombatSyncStore.lastSpellByCaster`. ← THIS TEST
+ *      Knight's `usePartyCombatSyncStore.lastSpellByCaster`. <- THIS TEST
  *   2. Effect parsing — `resurrection_aura.effect = 'revive_party:0:0'`
  *      parses to `reviveDeadAllies: true` in skillEffectsV2. Knight's
  *      receiver useEffect dispatches `fx.triggerAllySkillAnim` on the
- *      Cleric ally card. ← THIS TEST (parser side)
+ *      Cleric ally card. <- THIS TEST (parser side)
  *   3. State mutation — combatEngine line 1886-1899 reads `effApply.
  *      reviveDeadAllies` and revives any dead BOT. Player can't die in
  *      hunt anyway (engine auto-heals to 1 HP) — for HUMAN revival the
@@ -29,32 +29,32 @@
  *      of HP in party combat" that doesn't exist yet.
  *
  * What we deliver:
- *   • Test 1 (Realtime wire): secondary (Cleric) publishes `spell-cast`
- *     event for `resurrection_aura` → primary's `lastSpellByCaster[secondary]`
+ *   - Test 1 (Realtime wire): secondary (Cleric) publishes `spell-cast`
+ *     event for `resurrection_aura` -> primary's `lastSpellByCaster[secondary]`
  *     populates with that skillId. This proves: (a) `usePartyCombatSync`
- *     subscriber wired correctly for the revive skill, (b) Cleric → Knight
+ *     subscriber wired correctly for the revive skill, (b) Cleric -> Knight
  *     direction works (the spec's primary use case — Cleric is the only
  *     class with the spell, Knight is the typical revival target).
- *   • Test 2 (effect parser): runtime-invoke `parseEffects` +
+ *   - Test 2 (effect parser): runtime-invoke `parseEffects` +
  *     `applyEffects` on `revive_party:0:0` (resurrection_aura's effect
- *     string) → assert the result has `reviveDeadAllies === true`. This
+ *     string) -> assert the result has `reviveDeadAllies === true`. This
  *     proves combatEngine.ts line 1886 will see the flag set when this
  *     skill resolves locally.
  *
  * Together these two assertions cover the multi-context CONTRACT:
- *   • Cleric's broadcast is received by Knight (wire path)
- *   • The same skill, parsed locally on either side, triggers the
+ *   - Cleric's broadcast is received by Knight (wire path)
+ *   - The same skill, parsed locally on either side, triggers the
  *     revive flag (effect parser)
  *
  * What's NOT covered (explicit gaps):
- *   • Player HP actually rising from 0 → N after the revive flag fires.
+ *   - Player HP actually rising from 0 -> N after the revive flag fires.
  *     handlePlayerDeath's "wait for revive" gate involves the
  *     deathChoicePopup state machine — testable via combatStore
  *     mutations but requires the leader-in-multi-human-party HP=0
  *     gate to fire (combatEngine.ts line 1346) and a heal source on
  *     the engine tick. Deferred to a follow-up that builds a "leader
  *     pseudo-dies" helper.
- *   • Bot ally revival from `reviveDeadAllies` flag. Pure unit coverage
+ *   - Bot ally revival from `reviveDeadAllies` flag. Pure unit coverage
  *     in skillCatalog.test.ts line 531-534 + 615 already proves the
  *     `applyEffects` output flag is set. The combatEngine consumer
  *     (line 1886-1899) is a 14-line direct loop that flips bot.hp on
@@ -70,7 +70,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { openMultiContext } from '../../fixtures/multiContext';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -201,7 +201,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town.
+            // 3. Both pick character -> Town.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),
@@ -257,7 +257,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             expect(secondaryActiveId).toBe(secondaryCharId);
 
             // 8. LEG 1 — Realtime wire: SECONDARY (Cleric) publishes
-            //    `spell-cast` for `resurrection_aura` → PRIMARY (Knight)
+            //    `spell-cast` for `resurrection_aura` -> PRIMARY (Knight)
             //    receives it in `lastSpellByCaster[secondaryActiveId]`.
             //
             //    Note: `isDamageHit=false` for resurrection_aura (damage=0

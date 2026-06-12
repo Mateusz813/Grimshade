@@ -2,14 +2,14 @@
  * Integration: offline-mode snapshot + delta anti-duplication.
  *
  * Spec recap (2026-05-20):
- *   • Going offline (user click OR DC) captures a snapshot of the
+ *   - Going offline (user click OR DC) captures a snapshot of the
  *     player's CURRENT character + inventory state into
  *     sessionStorage.
- *   • Live play mutates the stores normally while offline.
- *   • Going back online computes a delta vs the snapshot, logs an
+ *   - Live play mutates the stores normally while offline.
+ *   - Going back online computes a delta vs the snapshot, logs an
  *     audit trail (suspicious deltas trigger a console.warn), pushes
  *     the live state to Supabase, then clears the snapshot.
- *   • This prevents both real-life data loss (snapshot is the
+ *   - This prevents both real-life data loss (snapshot is the
  *     trusted baseline if Supabase rejects the push) and item
  *     duplication exploits (delta logging lets the team catch
  *     impossible jumps later).
@@ -34,7 +34,7 @@ import { useCharacterStore, type ICharacter } from '../../src/stores/characterSt
 import { useInventoryStore } from '../../src/stores/inventoryStore';
 import { EMPTY_EQUIPMENT } from '../../src/systems/itemSystem';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-offline-1',
@@ -95,7 +95,7 @@ afterEach(() => {
     warnSpy.mockRestore();
 });
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
 describe('offline mode: snapshot captures pre-offline state', () => {
     it('captures gold + level + xp + item count at the moment we go offline', () => {
@@ -151,7 +151,7 @@ describe('offline mode: live state diverges from snapshot during the session', (
         transitionToOffline({ explicit: true });
 
         // Player grinds offline.
-        useInventoryStore.getState().addGold(1000); // gold 1000 → 2000
+        useInventoryStore.getState().addGold(1000); // gold 1000 -> 2000
         useCharacterStore.getState().updateCharacter({ xp: 14000 });
 
         const snap = useConnectivityStore.getState().snapshot!;
@@ -210,7 +210,7 @@ describe('offline mode: transitionToOnline clears snapshot + computes delta', ()
         });
         transitionToOffline({ explicit: true });
 
-        // 100 → 100000 = 1000× growth, well past the 50× threshold.
+        // 100 -> 100000 = 1000× growth, well past the 50× threshold.
         useInventoryStore.setState({
             bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [],
             gold: 100_000, arenaPoints: 0, consumables: {}, stones: {},

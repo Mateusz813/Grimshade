@@ -24,7 +24,7 @@ import {
 import { getTransformColor } from '../systems/transformSystem';
 import { useCharacterStore } from './characterStore';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface ITransformQuestState {
   transformId: number;
@@ -53,7 +53,7 @@ export interface ITransformPermanentBonuses {
   classSkillBonus: number;
 }
 
-// ── Store interface ──────────────────────────────────────────────────────────
+// -- Store interface ----------------------------------------------------------
 
 interface ITransformStore {
   /** Array of completed transform IDs (1-11). */
@@ -84,7 +84,7 @@ interface ITransformStore {
    */
   pendingClaimTransformId: number | null;
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+  // -- Actions --------------------------------------------------------------
 
   /**
    * Start a transform quest. Validates order and level requirement.
@@ -130,7 +130,7 @@ interface ITransformStore {
    */
   claimPendingReward: () => number | null;
 
-  // ── Getters ──────────────────────────────────────────────────────────────
+  // -- Getters --------------------------------------------------------------
 
   /** Get the next available transform for the character, or null. */
   getNextAvailableTransform: (characterLevel: number) => ITransformData | null;
@@ -170,7 +170,7 @@ interface ITransformStore {
   migrateLegacyBakedBonuses: () => boolean;
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// -- Store ---------------------------------------------------------------------
 
 export const useTransformStore = create<ITransformStore>()(
   (set, get) => ({
@@ -182,7 +182,7 @@ export const useTransformStore = create<ITransformStore>()(
     bakedBonusesApplied: false,
     pendingClaimTransformId: null,
 
-    // ── Actions ────────────────────────────────────────────────────────────
+    // -- Actions ------------------------------------------------------------
 
     startTransformQuest: (transformId: number, characterLevel: number): boolean => {
       const { completedTransforms, currentTransformQuest } = get();
@@ -311,7 +311,7 @@ export const useTransformStore = create<ITransformStore>()(
       return pendingClaimTransformId;
     },
 
-    // ── Getters ────────────────────────────────────────────────────────────
+    // -- Getters ------------------------------------------------------------
 
     getNextAvailableTransform: (characterLevel: number): ITransformData | null => {
       return getNextAvailableTransform(get().completedTransforms, characterLevel);
@@ -403,7 +403,7 @@ export const useTransformStore = create<ITransformStore>()(
       // pre-transform value iteratively via geometric inverse.
       //
       // Each step: postMaxHp = preMaxHp + floor(preMaxHp * pct/100) + flatHp
-      //         ⇒ preMaxHp ≈ (postMaxHp - flatHp) / (1 + pct/100)
+      //         => preMaxHp ≈ (postMaxHp - flatHp) / (1 + pct/100)
       // That's close enough (floor introduces <1 rounding per step) that
       // after 11 transforms total error is <12 HP — negligible.
       const sortedIds = [...completedTransforms].sort((a, b) => b - a);
@@ -455,8 +455,8 @@ export const useTransformStore = create<ITransformStore>()(
       // eslint-disable-next-line no-console
       console.info(
         `[transformStore] Migrated legacy baked bonuses for ${cls}: ` +
-        `HP ${character.max_hp}→${newMaxHp}, MP ${character.max_mp}→${newMaxMp}, ` +
-        `ATK ${character.attack}→${newAttack}, DEF ${character.defense}→${newDefense}. ` +
+        `HP ${character.max_hp}->${newMaxHp}, MP ${character.max_mp}->${newMaxMp}, ` +
+        `ATK ${character.attack}->${newAttack}, DEF ${character.defense}->${newDefense}. ` +
         `Transform bonuses now apply live.`,
       );
       return true;

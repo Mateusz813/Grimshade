@@ -14,7 +14,7 @@ import {
 } from '../types/arena';
 import type { TCharacterClass } from '../types/character';
 
-// ── League promotion / relegation thresholds ────────────────────────────────
+// -- League promotion / relegation thresholds --------------------------------
 //
 // `[promotedTop, relegatedBottom]` — both 1-based, inclusive, both clamped
 // to the 100-player arena. Bronze has no relegation (already lowest), Legend
@@ -55,7 +55,7 @@ export const getPreviousLeague = (league: ArenaLeague): ArenaLeague => {
     return ARENA_LEAGUES[Math.max(0, idx - 1)];
 };
 
-// ── Match reward math ──────────────────────────────────────────────────────
+// -- Match reward math ------------------------------------------------------
 
 export interface IArenaMatchReward {
     arenaPoints: number;
@@ -105,7 +105,7 @@ export const getMatchReward = (won: boolean, attackerIsHigher: boolean): {
     };
 };
 
-// ── Damage scaling ──────────────────────────────────────────────────────────
+// -- Damage scaling ----------------------------------------------------------
 
 /** Arena attacks deal 80% LESS damage than the regular world combat
  *  formulas would produce. The earlier 0.4 (= -60%) still let crit-heavy
@@ -113,7 +113,7 @@ export const getMatchReward = (won: boolean, attackerIsHigher: boolean): {
  *  ~10+ exchanges so the player gets to see the per-round visuals. */
 export const ARENA_DAMAGE_MULTIPLIER = 0.2;
 
-// ── Position computation ───────────────────────────────────────────────────
+// -- Position computation ---------------------------------------------------
 
 /**
  * Strict total ordering — every competitor gets a UNIQUE 1-based rank.
@@ -163,7 +163,7 @@ export const getAttackableIndices = (
     return out;
 };
 
-// ── Promotion / relegation ──────────────────────────────────────────────────
+// -- Promotion / relegation --------------------------------------------------
 
 export type ArenaSeasonOutcome =
     | { type: 'promote'; toLeague: ArenaLeague }
@@ -192,7 +192,7 @@ export const getSeasonOutcome = (
     return { type: 'stay' };
 };
 
-// ── Reward table ───────────────────────────────────────────────────────────
+// -- Reward table -----------------------------------------------------------
 
 const REWARD_BUCKETS: IArenaRewardBucket[] = [
     {
@@ -273,7 +273,7 @@ export const applyLeagueMultiplier = (
     };
 };
 
-// ── Bot generation ─────────────────────────────────────────────────────────
+// -- Bot generation ---------------------------------------------------------
 
 const BOT_NAMES: string[] = [
     'Krwawy Cień', 'Ostry Pazur', 'Mroźna Strzała', 'Pieklny Kowal', 'Stalowy Łowca',
@@ -341,7 +341,7 @@ export const generateBotsForArena = (
         const mp = 80 + lvl * 12 + leagueIdx * 10;
         const atk = 8 + lvl * 2 + leagueIdx * 3;
         const def = 4 + lvl * 1 + leagueIdx * 2;
-        // Higher LP → older achievement timestamp.
+        // Higher LP -> older achievement timestamp.
         const lpFraction = topLp > 0 ? lp / topLp : 0;
         const ageMs = Math.floor(SEVEN_DAYS_MS * lpFraction * (0.6 + rng() * 0.8));
         const achievedAt = new Date(now - ageMs).toISOString();
@@ -368,11 +368,11 @@ export const generateBotsForArena = (
     return out;
 };
 
-// ── Season clock ───────────────────────────────────────────────────────────
+// -- Season clock -----------------------------------------------------------
 
 /**
  * Computes the start-of-week (Monday 00:00 UTC) for the week that
- * contains `now`. Seasons run Mon → Sun; rewards are claimable Monday.
+ * contains `now`. Seasons run Mon -> Sun; rewards are claimable Monday.
  */
 export const getSeasonStart = (now: Date = new Date()): Date => {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));

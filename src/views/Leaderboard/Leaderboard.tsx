@@ -6,9 +6,10 @@ import { useGuildTagsStore } from '../../stores/guildTagsStore';
 import { ARENA_LEAGUES, ARENA_LEAGUE_LABELS, ARENA_LEAGUE_ICONS } from '../../types/arena';
 import { formatGoldShort } from '../../systems/goldFormat';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import './Leaderboard.scss';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface ILeaderboardEntry {
   id: string;
@@ -31,8 +32,8 @@ interface ILeaderboardEntry {
 
 /**
  * 2026-05-19 v20 spec ("DPS tez konwertuj na K lub M do 2 miejsc po
- * przecinku"): compact DPS formatter — `1234567` → `1.23M`,
- * `42150` → `42.15K`, `987` → `987`. Two decimal places, suffix
+ * przecinku"): compact DPS formatter — `1234567` -> `1.23M`,
+ * `42150` -> `42.15K`, `987` -> `987`. Two decimal places, suffix
  * inline.
  */
 const formatDpsCompact = (n: number): string => {
@@ -111,10 +112,10 @@ interface ITabDef {
   icon: string;
   /**
    * Where the data comes from. Drives the fetch branch:
-   *   • `characters`     — read characters table directly
-   *   • `weapon_skill`   — read character_weapon_skills + characters
-   *   • `guilds`         — read guilds table
-   *   • `deaths_total`   — read character_death_totals view
+   *   - `characters`     — read characters table directly
+   *   - `weapon_skill`   — read character_weapon_skills + characters
+   *   - `guilds`         — read guilds table
+   *   - `deaths_total`   — read character_death_totals view
    */
   source: 'characters' | 'weapon_skill' | 'guilds' | 'deaths_total';
   /** Skill name for `weapon_skill` source. */
@@ -131,59 +132,59 @@ interface ITabDef {
 const ROW_LIMIT = 100;
 
 const TABS: ITabDef[] = [
-  { key: 'level',             label: 'LVL',        icon: '⭐', source: 'characters',     characterColumn: 'level',              order: 'desc', valueLabel: 'Lvl' },
-  { key: 'magic_level',       label: 'MLVL',       icon: '🔮', source: 'weapon_skill',   skillName: 'magic_level',              valueLabel: 'MLvl' },
-  { key: 'sword_fighting',    label: 'Sword',      icon: '⚔️', source: 'weapon_skill',   skillName: 'sword_fighting',           valueLabel: 'Sword' },
-  { key: 'dagger_fighting',   label: 'Dagger',     icon: '🗡️', source: 'weapon_skill',   skillName: 'dagger_fighting',          valueLabel: 'Dagger' },
-  { key: 'distance_fighting', label: 'Dist',       icon: '🏹', source: 'weapon_skill',   skillName: 'distance_fighting',        valueLabel: 'Dist' },
-  { key: 'bard_level',        label: 'Bard',       icon: '🎵', source: 'weapon_skill',   skillName: 'bard_level',               valueLabel: 'Bard' },
-  { key: 'shielding',         label: 'Shield',     icon: '🛡️', source: 'weapon_skill',   skillName: 'shielding',                valueLabel: 'Shield' },
-  { key: 'attack_speed',      label: 'AS',         icon: '⚡', source: 'weapon_skill',   skillName: 'attack_speed',             valueLabel: 'AS' },
-  { key: 'max_hp',            label: 'HP',         icon: '❤️', source: 'weapon_skill',   skillName: 'max_hp',                   valueLabel: 'HP' },
-  { key: 'max_mp',            label: 'MP',         icon: '💧', source: 'weapon_skill',   skillName: 'max_mp',                   valueLabel: 'MP' },
-  { key: 'hp_regen',          label: 'HP Reg',     icon: '💗', source: 'weapon_skill',   skillName: 'hp_regen',                 valueLabel: 'HP Reg' },
-  { key: 'mp_regen',          label: 'MP Reg',     icon: '💎', source: 'weapon_skill',   skillName: 'mp_regen',                 valueLabel: 'MP Reg' },
-  { key: 'defense',           label: 'DEF',        icon: '🛡️', source: 'weapon_skill',   skillName: 'defense',                  valueLabel: 'DEF' },
-  { key: 'crit_chance',       label: 'Crit %',     icon: '🎯', source: 'weapon_skill',   skillName: 'crit_chance',              valueLabel: 'Crit' },
+  { key: 'level',             label: 'LVL',        icon: 'star', source: 'characters',     characterColumn: 'level',              order: 'desc', valueLabel: 'Lvl' },
+  { key: 'magic_level',       label: 'MLVL',       icon: 'crystal-ball', source: 'weapon_skill',   skillName: 'magic_level',              valueLabel: 'MLvl' },
+  { key: 'sword_fighting',    label: 'Sword',      icon: 'crossed-swords', source: 'weapon_skill',   skillName: 'sword_fighting',           valueLabel: 'Sword' },
+  { key: 'dagger_fighting',   label: 'Dagger',     icon: 'dagger', source: 'weapon_skill',   skillName: 'dagger_fighting',          valueLabel: 'Dagger' },
+  { key: 'distance_fighting', label: 'Dist',       icon: 'bow-and-arrow', source: 'weapon_skill',   skillName: 'distance_fighting',        valueLabel: 'Dist' },
+  { key: 'bard_level',        label: 'Bard',       icon: 'musical-note', source: 'weapon_skill',   skillName: 'bard_level',               valueLabel: 'Bard' },
+  { key: 'shielding',         label: 'Shield',     icon: 'shield', source: 'weapon_skill',   skillName: 'shielding',                valueLabel: 'Shield' },
+  { key: 'attack_speed',      label: 'AS',         icon: 'high-voltage', source: 'weapon_skill',   skillName: 'attack_speed',             valueLabel: 'AS' },
+  { key: 'max_hp',            label: 'HP',         icon: 'red-heart', source: 'weapon_skill',   skillName: 'max_hp',                   valueLabel: 'HP' },
+  { key: 'max_mp',            label: 'MP',         icon: 'droplet', source: 'weapon_skill',   skillName: 'max_mp',                   valueLabel: 'MP' },
+  { key: 'hp_regen',          label: 'HP Reg',     icon: 'growing-heart', source: 'weapon_skill',   skillName: 'hp_regen',                 valueLabel: 'HP Reg' },
+  { key: 'mp_regen',          label: 'MP Reg',     icon: 'gem-stone', source: 'weapon_skill',   skillName: 'mp_regen',                 valueLabel: 'MP Reg' },
+  { key: 'defense',           label: 'DEF',        icon: 'shield', source: 'weapon_skill',   skillName: 'defense',                  valueLabel: 'DEF' },
+  { key: 'crit_chance',       label: 'Crit %',     icon: 'bullseye', source: 'weapon_skill',   skillName: 'crit_chance',              valueLabel: 'Crit' },
   // 2026-05-19 v15: crit_damage lives on the characters row (no weapon-skill track), order desc.
-  { key: 'crit_damage',       label: 'Crit DMG',   icon: '💥', source: 'characters',     characterColumn: 'crit_damage',        order: 'desc', valueLabel: 'CritDmg' },
-  { key: 'boss_score',        label: 'Boss',       icon: '👹', source: 'weapon_skill',   skillName: 'boss_score',               valueLabel: 'Boss' },
+  { key: 'crit_damage',       label: 'Crit DMG',   icon: 'collision', source: 'characters',     characterColumn: 'crit_damage',        order: 'desc', valueLabel: 'CritDmg' },
+  { key: 'boss_score',        label: 'Boss',       icon: 'ogre', source: 'weapon_skill',   skillName: 'boss_score',               valueLabel: 'Boss' },
   // 2026-05-19 v15 spec ("Dodać do rankingu arenę"): arena tabs sourced from the new
   // characters.arena_* columns added by the leaderboard_migration.sql.
-  { key: 'arena_killers',     label: 'Zabójcy',    icon: '🗡️', source: 'characters',    characterColumn: 'arena_kills',         order: 'desc', valueLabel: 'Zabicia' },
-  { key: 'arena_victims',     label: 'Ofiary',     icon: '💀', source: 'characters',    characterColumn: 'arena_deaths',        order: 'desc', valueLabel: 'Śmierci' },
-  { key: 'arena_league',      label: 'Arena',      icon: '🏟️', source: 'characters',    characterColumn: 'arena_league_points', order: 'desc', valueLabel: 'LP' },
+  { key: 'arena_killers',     label: 'Zabójcy',    icon: 'dagger', source: 'characters',    characterColumn: 'arena_kills',         order: 'desc', valueLabel: 'Zabicia' },
+  { key: 'arena_victims',     label: 'Ofiary',     icon: 'skull', source: 'characters',    characterColumn: 'arena_deaths',        order: 'desc', valueLabel: 'Śmierci' },
+  { key: 'arena_league',      label: 'Arena',      icon: 'stadium', source: 'characters',    characterColumn: 'arena_league_points', order: 'desc', valueLabel: 'LP' },
   // 2026-05-19 v15: guild ranking (level desc, then xp desc).
-  { key: 'guilds',            label: 'Gildie',     icon: '🏰', source: 'guilds',                                                                valueLabel: 'Lvl' },
+  { key: 'guilds',            label: 'Gildie',     icon: 'castle', source: 'guilds',                                                                valueLabel: 'Lvl' },
   // 2026-05-19 v15: total death count aggregated by character_id.
-  { key: 'deaths_total',      label: 'Śmierci',    icon: '⚰️', source: 'deaths_total',                                                          valueLabel: 'Śmierci' },
+  { key: 'deaths_total',      label: 'Śmierci',    icon: 'coffin', source: 'deaths_total',                                                          valueLabel: 'Śmierci' },
   // 2026-05-19 v16: activity counters — each maps to a column on
   // characters table populated by the relevant subsystem via
   // `characterApi.bumpStat`.
-  { key: 'mastery_points',     label: 'Mastery', icon: '🌟', source: 'characters', characterColumn: 'mastery_points',     order: 'desc', valueLabel: 'Mastery' },
-  { key: 'quests_oneshot_done',label: 'Questy',  icon: '📜', source: 'characters', characterColumn: 'quests_oneshot_done',order: 'desc', valueLabel: 'Questy' },
-  { key: 'quests_daily_done',  label: 'Daily',   icon: '🗓️', source: 'characters', characterColumn: 'quests_daily_done',  order: 'desc', valueLabel: 'Daily' },
-  { key: 'market_items_sold',  label: 'Sprzedaż',icon: '💰', source: 'characters', characterColumn: 'market_items_sold',  order: 'desc', valueLabel: 'Sprzedane' },
-  { key: 'market_items_bought',label: 'Zakupy',  icon: '🛒', source: 'characters', characterColumn: 'market_items_bought',order: 'desc', valueLabel: 'Kupione' },
-  { key: 'item_upgrades_done', label: 'Ulepszenia', icon: '🔨', source: 'characters', characterColumn: 'item_upgrades_done', order: 'desc', valueLabel: 'Ulepsz' },
-  { key: 'skill_upgrades_done',label: 'Skill UP', icon: '📈', source: 'characters', characterColumn: 'skill_upgrades_done',order: 'desc', valueLabel: 'Skill' },
-  { key: 'best_dps5_solo',     label: 'DPS Solo',icon: '⚡', source: 'characters', characterColumn: 'best_dps5_solo',    order: 'desc', valueLabel: 'DPS' },
-  { key: 'best_dps5_party',    label: 'DPS Party',icon: '⚡', source: 'characters', characterColumn: 'best_dps5_party',   order: 'desc', valueLabel: 'DPS' },
+  { key: 'mastery_points',     label: 'Mastery', icon: 'glowing-star', source: 'characters', characterColumn: 'mastery_points',     order: 'desc', valueLabel: 'Mastery' },
+  { key: 'quests_oneshot_done',label: 'Questy',  icon: 'scroll', source: 'characters', characterColumn: 'quests_oneshot_done',order: 'desc', valueLabel: 'Questy' },
+  { key: 'quests_daily_done',  label: 'Daily',   icon: 'spiral-calendar', source: 'characters', characterColumn: 'quests_daily_done',  order: 'desc', valueLabel: 'Daily' },
+  { key: 'market_items_sold',  label: 'Sprzedaż',icon: 'money-bag', source: 'characters', characterColumn: 'market_items_sold',  order: 'desc', valueLabel: 'Sprzedane' },
+  { key: 'market_items_bought',label: 'Zakupy',  icon: 'shopping-cart', source: 'characters', characterColumn: 'market_items_bought',order: 'desc', valueLabel: 'Kupione' },
+  { key: 'item_upgrades_done', label: 'Ulepszenia', icon: 'hammer', source: 'characters', characterColumn: 'item_upgrades_done', order: 'desc', valueLabel: 'Ulepsz' },
+  { key: 'skill_upgrades_done',label: 'Skill UP', icon: 'chart-increasing', source: 'characters', characterColumn: 'skill_upgrades_done',order: 'desc', valueLabel: 'Skill' },
+  { key: 'best_dps5_solo',     label: 'DPS Solo',icon: 'high-voltage', source: 'characters', characterColumn: 'best_dps5_solo',    order: 'desc', valueLabel: 'DPS' },
+  { key: 'best_dps5_party',    label: 'DPS Party',icon: 'high-voltage', source: 'characters', characterColumn: 'best_dps5_party',   order: 'desc', valueLabel: 'DPS' },
 ];
 
 const CLASS_ICONS: Record<string, string> = {
-  Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-  Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+  Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+  Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
-const RANK_MEDALS = ['🥇', '🥈', '🥉'];
+const RANK_MEDALS = ['1st-place-medal', '2nd-place-medal', '3rd-place-medal'];
 
 // Build the order-position of each arena league (higher index = higher league).
 const LEAGUE_ORDER: Record<string, number> = Object.fromEntries(
   ARENA_LEAGUES.map((l, i) => [l, i]),
 );
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 const Leaderboard = () => {
   const character  = useCharacterStore((s) => s.character);
@@ -205,7 +206,7 @@ const Leaderboard = () => {
         const col = tabDef.characterColumn ?? 'level';
         const order = tabDef.order ?? 'desc';
         // 2026-05-19 v15 spec ("każdy ranking pokazuje top 100 najlepszych graczy"):
-        // bumped from 50 → 100 across all tabs. Special-case arena_league
+        // bumped from 50 -> 100 across all tabs. Special-case arena_league
         // so we sort first by league rank (descending — legend on top),
         // then by LP within the league.
         if (currentTab === 'market_items_sold' || currentTab === 'market_items_bought') {
@@ -222,7 +223,7 @@ const Leaderboard = () => {
           // kupione"): pruned the human-readable verbs — every row
           // now reads as `N · formatGold` so it fits in a 360-px
           // phone column without truncating. The tab icon
-          // (💰 / 🛒) already implies which side of the trade is
+          // (:money-bag: / :shopping-cart:) already implies which side of the trade is
           // being measured.
           const goldCol = currentTab === 'market_items_sold' ? 'market_gold_earned' : 'market_gold_spent';
           const res = await api.get<Array<Record<string, unknown> & { id: string; name: string; class: string; level: number; created_at: string }>>(
@@ -426,7 +427,7 @@ const Leaderboard = () => {
             className={`leaderboard__tab page-tab${tab === t.key ? ' leaderboard__tab--active page-tab--active' : ''}`}
             onClick={() => setTab(t.key)}
           >
-            <span className="leaderboard__tab-icon">{t.icon}</span>
+            <span className="leaderboard__tab-icon"><GameIcon name={t.icon} /></span>
             <span className="leaderboard__tab-label">{t.label}</span>
           </button>
         ))}
@@ -453,7 +454,7 @@ const Leaderboard = () => {
               const isMe    = character?.id === entry.id;
               const rank    = i + 1;
               const medal   = RANK_MEDALS[i] ?? `#${rank}`;
-              const icon    = CLASS_ICONS[entry.class] ?? (entry.class === 'Guild' ? '🏰' : '?');
+              const icon    = CLASS_ICONS[entry.class] ?? (entry.class === 'Guild' ? 'castle' : '?');
 
               // 2026-05-19 v20 spec ("jezeli walcze z botami to
               // napisz np w miejscu pierwszym 4 nicki jeden pod
@@ -468,19 +469,19 @@ const Leaderboard = () => {
                   key={entry.id}
                   className={`leaderboard__row${isMe ? ' leaderboard__row--me' : ''}${rank <= 3 ? ` leaderboard__row--top${rank}` : ''}${isPartyDpsRow ? ' leaderboard__row--party' : ''}`}
                 >
-                  <span className="leaderboard__rank">{medal}</span>
+                  <span className="leaderboard__rank">{RANK_MEDALS[i] ? <GameIcon name={medal} /> : medal}</span>
                   {isPartyDpsRow ? (
                     <div className="leaderboard__party-stack">
                       {entry.partyComposition!.map((m, idx) => (
                         <div key={`${entry.id}-${idx}`} className="leaderboard__party-member">
-                          <span className="leaderboard__party-icon">{CLASS_ICONS[m.class] ?? '?'}</span>
+                          <span className="leaderboard__party-icon"><GameIcon name={CLASS_ICONS[m.class] ?? '?'} /></span>
                           <span className="leaderboard__party-name">{m.name}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <>
-                      <span className="leaderboard__icon">{icon}</span>
+                      <span className="leaderboard__icon">{icon === '?' ? '?' : <GameIcon name={icon} />}</span>
                       <div className="leaderboard__info-col">
                         <span className="leaderboard__name">
                             {(() => {

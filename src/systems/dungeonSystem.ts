@@ -2,7 +2,7 @@ import type { Rarity, IGeneratedItem } from './lootSystem';
 import type { IBaseItem } from './itemSystem';
 import { generateRandomItem } from './itemGenerator';
 
-// ── Data interfaces (matching dungeons.json) ──────────────────────────────────
+// -- Data interfaces (matching dungeons.json) ----------------------------------
 
 export interface IDungeonDropEntry {
   itemId: string;
@@ -39,7 +39,7 @@ export interface IDungeon {
   dropTable?: IDungeonDropEntry[];
 }
 
-// ── Minimal monster shape needed for dungeon simulation ───────────────────────
+// -- Minimal monster shape needed for dungeon simulation -----------------------
 
 export interface IDungeonMonster {
   id: string;
@@ -58,7 +58,7 @@ export interface IDungeonMonster {
   speed?: number;
 }
 
-// ── Character stats needed for dungeon simulation ─────────────────────────────
+// -- Character stats needed for dungeon simulation -----------------------------
 
 export interface IDungeonCharacter {
   attack: number;
@@ -67,7 +67,7 @@ export interface IDungeonCharacter {
   level: number;
 }
 
-// ── Result types ──────────────────────────────────────────────────────────────
+// -- Result types --------------------------------------------------------------
 
 export interface IWaveResult {
   wave: number;
@@ -87,7 +87,7 @@ export interface IDungeonResult {
   items: IGeneratedItem[];
 }
 
-// ── Rarity helpers ────────────────────────────────────────────────────────────
+// -- Rarity helpers ------------------------------------------------------------
 
 export const DUNGEON_RARITY_ORDER: Rarity[] = [
   'common', 'rare', 'epic', 'legendary', 'mythic', 'heroic',
@@ -108,7 +108,7 @@ export const rollDungeonRarity = (maxRarity: Rarity): Rarity => {
   return DUNGEON_RARITY_ORDER[maxIdx];
 };
 
-// ── Cooldown helpers ──────────────────────────────────────────────────────────
+// -- Cooldown helpers ----------------------------------------------------------
 
 /** Get the minimum required level for a dungeon */
 export const getDungeonMinLevel = (dungeon: IDungeon): number =>
@@ -157,7 +157,7 @@ export const formatCooldown = (ms: number): string => {
   return `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`;
 };
 
-// ── Monster helpers ───────────────────────────────────────────────────────────
+// -- Monster helpers -----------------------------------------------------------
 
 export const pickWaveMonster = (
   dungeon: IDungeon,
@@ -188,7 +188,7 @@ export const pickWaveMonster = (
   return sorted[offset] ?? allMonsters[0];
 };
 
-// ── Final wave monster type per dungeon tier ─────────────────────────────────
+// -- Final wave monster type per dungeon tier ---------------------------------
 
 export type DungeonMonsterType = 'Normal' | 'Strong' | 'Epic' | 'Legendary' | 'Boss';
 
@@ -247,7 +247,7 @@ export const getWaveMonsterType = (
   return getMidWaveMonsterType(dungeonLevel, wave, totalWaves);
 };
 
-// ── Multi-monster wave composition ──────────────────────────────────────────
+// -- Multi-monster wave composition ------------------------------------------
 //
 // Dungeon waves used to spawn a single monster. We now spawn 1–4 enemies
 // per wave so the fights feel like real raid encounters. The lead monster
@@ -256,12 +256,12 @@ export const getWaveMonsterType = (
 // composition reads as "elite + escorts" rather than a random soup.
 //
 // Example outputs (verified against the player's spec):
-//   Lvl 1  wave 0           → [Normal]                     (1 mob, gentle intro)
-//   Lvl 1  wave 1           → [Strong, Normal]             (2 mobs)
-//   Lvl 1  wave 2 (boss)    → [Epic, Strong, Normal]       (3 mobs, escorts mix)
-//   Lvl 30 wave 2 (mid)     → [Legendary, Epic, Epic]      (3 mobs)
-//   Lvl 30 wave 5 (boss)    → [Boss, Legendary, Legendary, Legendary] (4 mobs)
-//   Lvl 1000 final wave     → [Boss, Boss, Boss, Boss]     (4 bosses)
+//   Lvl 1  wave 0           -> [Normal]                     (1 mob, gentle intro)
+//   Lvl 1  wave 1           -> [Strong, Normal]             (2 mobs)
+//   Lvl 1  wave 2 (boss)    -> [Epic, Strong, Normal]       (3 mobs, escorts mix)
+//   Lvl 30 wave 2 (mid)     -> [Legendary, Epic, Epic]      (3 mobs)
+//   Lvl 30 wave 5 (boss)    -> [Boss, Legendary, Legendary, Legendary] (4 mobs)
+//   Lvl 1000 final wave     -> [Boss, Boss, Boss, Boss]     (4 bosses)
 
 const TYPE_ORDER: readonly DungeonMonsterType[] = ['Normal', 'Strong', 'Epic', 'Legendary', 'Boss'];
 
@@ -274,7 +274,7 @@ const stepDownType = (t: DungeonMonsterType): DungeonMonsterType => {
  * How many monsters spawn together in a given wave.
  *
  * - Boss waves: always crowded (3 mobs at low level, 4 from lvl 30+).
- * - Regular waves: 1 → 2 → 3 progression based on wave index.
+ * - Regular waves: 1 -> 2 -> 3 progression based on wave index.
  * - Higher dungeons (lvl 30+) bump each wave by +1 so the late waves
  *   reach the 4-mob cap earlier and the run feels heavier.
  *
@@ -289,7 +289,7 @@ export const getWaveMonsterCount = (
   if (isBossWave) return dungeonLevel >= 30 ? 4 : 3;
 
   const waveProgress = wave / Math.max(1, totalWaves - 1);
-  let count = 1 + Math.floor(waveProgress * 2);          // 0 → 1, 0.5 → 2, 1 → 3
+  let count = 1 + Math.floor(waveProgress * 2);          // 0 -> 1, 0.5 -> 2, 1 -> 3
   if (dungeonLevel >= 30 && wave > 0) count += 1;        // hard dungeons bump non-first waves
   return Math.max(1, Math.min(4, count));
 };
@@ -332,7 +332,7 @@ export const getWaveComposition = (
 
   // Mid + high tier (lvl 15-799): 1 lead + (count-1) of one tier below so
   // the comp matches the player's spec ("2 epic + 1 legendary" at lvl 30
-  // wave 2 → lead = Legendary, fillers = Epic).
+  // wave 2 -> lead = Legendary, fillers = Epic).
   const filler = stepDownType(lead);
   while (out.length < count) out.push(filler);
   return out;
@@ -425,27 +425,27 @@ export const scaleDungeonMonster = (
   let defScale: number;
 
   if (dLvl <= 8) {
-    // ── First 4 dungeons (lvl 1-8) ───────────────────────────────────────
+    // -- First 4 dungeons (lvl 1-8) ---------------------------------------
     // Moderate difficulty – not trivially easy but clearable with decent gear.
-    // HP: 0.8x at wave 0 → 1.0x at final wave
-    // ATK: 0.7x at wave 0 → 0.9x at final wave
+    // HP: 0.8x at wave 0 -> 1.0x at final wave
+    // ATK: 0.7x at wave 0 -> 0.9x at final wave
     hpScale  = 0.8 + waveProgress * 0.2;
     atkScale = 0.7 + waveProgress * 0.2;
     defScale = 0.7 + waveProgress * 0.2;
   } else if (dLvl <= 18) {
-    // ── Mid dungeons (lvl 9-18) ──────────────────────────────────────────
+    // -- Mid dungeons (lvl 9-18) ------------------------------------------
     // Challenging – requires potions and decent equipment.
-    // HP: 1.0x at wave 0 → 1.2x at final wave
-    // ATK: 0.9x at wave 0 → 1.1x at final wave
+    // HP: 1.0x at wave 0 -> 1.2x at final wave
+    // ATK: 0.9x at wave 0 -> 1.1x at final wave
     hpScale  = 1.0 + waveProgress * 0.2;
     atkScale = 0.9 + waveProgress * 0.2;
     defScale = 0.9 + waveProgress * 0.2;
   } else {
-    // ── Hard dungeons (lvl 20+) ──────────────────────────────────────────
+    // -- Hard dungeons (lvl 20+) ------------------------------------------
     // Significant difficulty. Progressive scaling from 1.2x to 2.0x.
     // Higher level dungeons get extra scaling on top.
-    const levelBonus = Math.min(1.0, (dLvl - 20) / 200); // 0→1.0 over lvl 20-220
-    const baseScale = 1.2 + levelBonus * 0.5; // 1.2x at lvl 20 → 1.7x at lvl 220+
+    const levelBonus = Math.min(1.0, (dLvl - 20) / 200); // 0->1.0 over lvl 20-220
+    const baseScale = 1.2 + levelBonus * 0.5; // 1.2x at lvl 20 -> 1.7x at lvl 220+
     hpScale  = baseScale + waveProgress * (0.3 + levelBonus * 0.5);
     atkScale = (1.1 + levelBonus * 0.4) + waveProgress * (0.3 + levelBonus * 0.4);
     defScale = baseScale + waveProgress * (0.2 + levelBonus * 0.3);
@@ -466,7 +466,7 @@ export const scaleDungeonMonster = (
   };
 };
 
-// ── Wave resolution (pure, deterministic simulation) ─────────────────────────
+// -- Wave resolution (pure, deterministic simulation) -------------------------
 
 export interface IResolveWaveResult {
   playerHpLeft: number;
@@ -497,12 +497,12 @@ export const resolveWave = (
   return { playerHpLeft: Math.max(0, pHp), won: pHp > 0 };
 };
 
-// ── Gold reward roll ──────────────────────────────────────────────────────────
+// -- Gold reward roll ----------------------------------------------------------
 
 export const rollDungeonGold = (range: [number, number]): number =>
   range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
 
-// ── Item drop for a dungeon wave ──────────────────────────────────────────────
+// -- Item drop for a dungeon wave ----------------------------------------------
 
 /**
  * Roll for an item drop from a dungeon wave.
@@ -532,11 +532,11 @@ export const rollDungeonItemDrop = (
     itemId:    item.itemId,
     rarity:    item.rarity,
     bonuses:   item.bonuses,
-    itemLevel: dungeonLevel,  // ← dungeon level, NOT player level
+    itemLevel: dungeonLevel,  // <- dungeon level, NOT player level
   };
 };
 
-// ── Full dungeon simulation (returns per-wave results) ────────────────────────
+// -- Full dungeon simulation (returns per-wave results) ------------------------
 
 export const resolveDungeon = (
   dungeon: IDungeon,
@@ -605,7 +605,7 @@ export const resolveDungeon = (
   };
 };
 
-// ── Estimate dungeon rewards based on monster spawns × 4 ────────────────────
+// -- Estimate dungeon rewards based on monster spawns × 4 --------------------
 
 export interface IDungeonRewardEstimate {
   goldMin: number;

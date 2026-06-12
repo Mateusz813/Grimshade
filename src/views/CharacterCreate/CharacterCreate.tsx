@@ -10,6 +10,8 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { characterApi, type CharacterClass } from '../../api/v1/characterApi';
 import { buildItem } from '../../systems/itemSystem';
 import { switchToCharacter } from '../../stores/characterScope';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import api from '../../api/v1/axiosInstance';
 import classesData from '../../data/classes.json';
 import mageImg from '../../assets/images/classes/mage.png';
@@ -65,8 +67,8 @@ const STARTER_WEAPONS: Record<CharacterClass, { id: string; name: string; dmg_mi
 };
 
 const CLASS_ICONS: Record<CharacterClass, string> = {
-  Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-  Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+  Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+  Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 const CLASS_COLORS: Record<string, string> = {
@@ -207,7 +209,7 @@ const CharacterCreate = () => {
             className="character-create__back-btn"
             onClick={() => navigate('/character-select')}
           >
-            ← Wróć
+            <Icon name="arrowLeft" /> Wróć
           </button>
           <h1 className="character-create__title">Stwórz postać</h1>
 
@@ -241,7 +243,7 @@ const CharacterCreate = () => {
                   style={selectedId === cls.id ? { borderColor: CLASS_COLORS[cls.id], color: CLASS_COLORS[cls.id] } : undefined}
                   onClick={() => setSelectedId(cls.id)}
                 >
-                  {CLASS_ICONS[cls.id]} {cls.name_pl}
+                  <GameIcon name={CLASS_ICONS[cls.id]} /> {cls.name_pl}
                 </button>
               ))}
             </div>
@@ -292,12 +294,12 @@ const CharacterCreate = () => {
                   />
                 </div>
                 <h2 className="character-create__detail-name" style={{ color: CLASS_COLORS[selectedClass.id] ?? '#e94560' }}>
-                  {CLASS_ICONS[selectedClass.id]} {selectedClass.name_pl}
+                  <GameIcon name={CLASS_ICONS[selectedClass.id]} /> {selectedClass.name_pl}
                 </h2>
                 <p className="character-create__detail-desc">{selectedClass.description_pl}</p>
 
                 <div className="character-create__starter-weapon">
-                  Startowa broń: {CLASS_ICONS[selectedClass.id]} {STARTER_WEAPONS[selectedClass.id].name} ({STARTER_WEAPONS[selectedClass.id].dmg_min}-{STARTER_WEAPONS[selectedClass.id].dmg_max} DMG)
+                  Startowa broń: <GameIcon name={CLASS_ICONS[selectedClass.id]} /> {STARTER_WEAPONS[selectedClass.id].name} ({STARTER_WEAPONS[selectedClass.id].dmg_min}-{STARTER_WEAPONS[selectedClass.id].dmg_max} DMG)
                 </div>
 
                 <div className="character-create__stats-box">

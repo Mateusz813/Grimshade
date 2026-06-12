@@ -32,7 +32,7 @@ import { useCombatStore } from '../../src/stores/combatStore';
 import { deathsApi } from '../../src/api/v1/deathsApi';
 import { EMPTY_EQUIPMENT, buildItem } from '../../src/systems/itemSystem';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-death-1',
@@ -94,7 +94,7 @@ afterEach(() => {
     logDeathSpy.mockRestore();
 });
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
 describe('death penalty cascade: character level + XP', () => {
     it('strips Math.floor(level * 0.02) = 2 levels at lvl 100', () => {
@@ -115,13 +115,13 @@ describe('death penalty cascade: character level + XP', () => {
         expect(ch.highest_level).toBe(150);
     });
 
-    it('full-heals the character (hp/mp ⇒ effective max)', () => {
+    it('full-heals the character (hp/mp => effective max)', () => {
         useCharacterStore.getState().setCharacter(makeChar({
             hp: 1, mp: 1, max_hp: 500, max_mp: 100, level: 100, xp: 5000,
         }));
         applyCombatLeaveDeath({ source: 'monster', sourceName: 'X', sourceLevel: 100 });
         const ch = useCharacterStore.getState().character!;
-        // No equipment, no buffs → effective max == base max.
+        // No equipment, no buffs -> effective max == base max.
         expect(ch.hp).toBe(500);
         expect(ch.mp).toBe(100);
     });
@@ -193,7 +193,7 @@ describe('death penalty cascade: combat session + death overlay', () => {
             sessionXpEarned: 999,
             sessionGoldEarned: 888,
             sessionKills: { normal: 5, strong: 2, epic: 0, legendary: 0, boss: 0 },
-            sessionDrops: [{ icon: '⚔️', name: 'X', rarity: 'common' }],
+            sessionDrops: [{ icon: 'crossed-swords', name: 'X', rarity: 'common' }],
         });
         applyCombatLeaveDeath({ source: 'dungeon', sourceName: 'Crypt', sourceLevel: 100 });
         const cs = useCombatStore.getState();

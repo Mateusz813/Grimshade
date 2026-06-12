@@ -7,10 +7,10 @@
  * `ADMIN_EMAIL = 'krasek39@gmail.com'` is the real account email of the
  * project owner (AdminPanel.tsx line 47). Running the full 9-tab smoke
  * with the owner's password in `.env.test` is unacceptable:
- *   • `.env.test` is local + would need to be on CI runner Secrets.
- *   • Test workers parallel-login as the owner → would be visible in
+ *   - `.env.test` is local + would need to be on CI runner Secrets.
+ *   - Test workers parallel-login as the owner -> would be visible in
  *     analytics / activity logs / Realtime presence.
- *   • Cleanup helpers refuse to touch the owner's account
+ *   - Cleanup helpers refuse to touch the owner's account
  *     (`STABLE_TEST_ACCOUNTS` whitelist in cleanup.ts) — by design.
  *
  * The proper fix is a separate `E2E_ADMIN_EMAIL` test account in Supabase
@@ -25,7 +25,7 @@
  * experience and is the load-bearing security boundary:
  *
  *   1. Login as `testUsers.primary` (NOT the admin email).
- *   2. Pick a character → land in Town.
+ *   2. Pick a character -> land in Town.
  *   3. Open the avatar menu via the top-header avatar button.
  *   4. Assert "Panel admina" item is NOT visible (proves the
  *      `isAdmin && (...)` conditional at AvatarMenu.tsx line 242 + 271
@@ -44,7 +44,7 @@
  *
  * The full 9-tab tap-each-tab smoke is wired below as a skipped block
  * with the gating spec captured in JSDoc so a future agent who unblocks
- * the admin-account decision can flip `test.skip` → `test` and ship it
+ * the admin-account decision can flip `test.skip` -> `test` and ship it
  * without re-deriving the spec.
  *
  * ## Why we don't bypass via page.evaluate setAdminOpen(true)
@@ -66,7 +66,7 @@ import { loginViaUI } from '../fixtures/login';
 import { createCharacterViaApi, generateTestCharacterName } from '../fixtures/createCharacter';
 import { cleanupCharacterById } from '../fixtures/cleanup';
 
-/** Pick character → land in Town. */
+/** Pick character -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     await page.goto('/character-select');
     const card = page.locator('.char-select__card', {
@@ -98,7 +98,7 @@ test.describe('Admin › Panel', { tag: '@admin' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + pick → Town.
+            // 2. Login + pick -> Town.
             await loginViaUI(page, testUsers.primary);
             await pickCharacterAndEnterTown(page, nick);
 
@@ -122,7 +122,7 @@ test.describe('Admin › Panel', { tag: '@admin' }, () => {
 
             // 5. ASSERT — "Panel admina" item is NOT visible. This is the
             //    contract: AvatarMenu.tsx line 242 `{isAdmin && (...)}` is
-            //    false for the primary test account → the button never
+            //    false for the primary test account -> the button never
             //    enters the DOM. We assert count=0 (NOT visible-but-hidden,
             //    NOT display:none — entirely absent).
             const adminItem = page.locator('.avatar-menu__item--admin');

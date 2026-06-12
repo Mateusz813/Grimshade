@@ -32,7 +32,7 @@
  *
  * - `combat__filter-toggle` z textem "Tylko z taskiem / questem"
  *   (MonsterList.tsx linia 214).
- * - Po tap → class `combat__filter-toggle--active` (linia 206) + filter
+ * - Po tap -> class `combat__filter-toggle--active` (linia 206) + filter
  *   się aplikuje natychmiast (controlled checkbox onChange).
  * - Asercja: `combat__mcard` count = 1 (rat) + sprawdzamy że karta to
  *   właśnie "Szczur".
@@ -40,9 +40,9 @@
  * ## Comparison vs default state
  *
  * - PRE-toggle: wszystkie potwory z monsters.json renderują się (>= MONSTER_COUNT).
- * - POST-toggle: tylko `rat` → count = 1.
+ * - POST-toggle: tylko `rat` -> count = 1.
  *
- * Powrót do default po toggle off → count wraca do initial.
+ * Powrót do default po toggle off -> count wraca do initial.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -125,7 +125,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             //    `.combat__mcard-name` jest direct child każdej karty.
             await expect(cards.first().locator('.combat__mcard-name')).toContainText('Szczur');
 
-            // 8. Toggle OFF → count wraca do initial (filter się wyłącza).
+            // 8. Toggle OFF -> count wraca do initial (filter się wyłącza).
             await taskedToggle.tap();
             await expect(taskedToggle).not.toHaveClass(/combat__filter-toggle--active/);
             await expect(cards).toHaveCount(initialCount, { timeout: 5_000 });

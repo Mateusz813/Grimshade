@@ -17,9 +17,9 @@ export interface IWaveMonster {
     isDead: boolean;
     /**
      * Current aggro target for THIS monster.
-     * 'player' → attacking the player
-     * `bot_<id>` → attacking a party bot by ID
-     * null → not yet resolved (will pick on next attack tick)
+     * 'player' -> attacking the player
+     * `bot_<id>` -> attacking a party bot by ID
+     * null -> not yet resolved (will pick on next attack tick)
      */
     aggroTarget: string | null;
 }
@@ -45,7 +45,7 @@ interface ICombatStore {
     /** Rarity of the current monster encounter */
     monsterRarity: TMonsterRarity;
 
-    // ── Background combat fields ─────────────────────────────────────────────
+    // -- Background combat fields ---------------------------------------------
     /** Whether combat is running in background (player navigated away) */
     backgroundActive: boolean;
     /** Base (unscaled) monster being fought — used for auto-fight re-rolls */
@@ -70,7 +70,7 @@ interface ICombatStore {
     lastDrops: IDropDisplay[];
     /** Cumulative drops since the player entered the combat view. Never
      *  resets between fights — only `clearCombatSession` (explicit exit /
-     *  death / boss-kill) wipes it. Powers the 🎒 backpack modal. */
+     *  death / boss-kill) wipes it. Powers the :backpack: backpack modal. */
     sessionDrops: IDropDisplay[];
     /** XP per hour computed by useBackgroundCombat */
     sessionXpPerHour: number;
@@ -85,7 +85,7 @@ interface ICombatStore {
      */
     sessionLog: ICombatLogEntry[];
 
-    // ── Wave (multi-monster) state ──────────────────────────────────────────
+    // -- Wave (multi-monster) state ------------------------------------------
     /** All monsters in the current wave (1-4 of the same base monster type). */
     waveMonsters: IWaveMonster[];
     /** Index of the currently-targeted monster in waveMonsters. */
@@ -98,7 +98,7 @@ interface ICombatStore {
      */
     wavePlannedCount: number;
 
-    // ── Actions ──────────────────────────────────────────────────────────────
+    // -- Actions --------------------------------------------------------------
     initCombat:        (monster: IMonster, playerHp: number, playerMp: number, rarity?: TMonsterRarity) => void;
     setSelectedMonster:(monster: IMonster | null) => void;
     dealToMonster:(dmg: number) => void;
@@ -116,7 +116,7 @@ interface ICombatStore {
     spendPlayerMp:(cost: number) => void;
     resetCombat:  () => void;
 
-    // ── Background combat actions ────────────────────────────────────────────
+    // -- Background combat actions --------------------------------------------
     setBackgroundActive: (active: boolean) => void;
     setBaseMonster: (m: IMonster | null) => void;
     setAutoFight: (on: boolean) => void;
@@ -136,7 +136,7 @@ interface ICombatStore {
      *  result screen. */
     clearCombatSession: () => void;
 
-    // ── Wave actions ────────────────────────────────────────────────────────
+    // -- Wave actions --------------------------------------------------------
     /** Append a monster to the wave (max MAX_WAVE_MONSTERS). Returns true if added. */
     addWaveMonster: (m: IMonster, rarity: TMonsterRarity) => boolean;
     /** Set the aggro target for a specific wave monster (by index). */
@@ -157,7 +157,7 @@ interface ICombatStore {
     decrementWavePlannedCount: () => number;
     /**
      * Remove the last alive non-active monster from the current wave (during fight).
-     * Used by the "➖ Usuń potwora" button so the player can bail out of extra
+     * Used by the ":minus: Usuń potwora" button so the player can bail out of extra
      * monsters they've already spawned. Returns true if one was removed.
      */
     removeLastWaveMonster: () => boolean;
@@ -334,7 +334,7 @@ export const useCombatStore = create<ICombatStore>((set) => ({
     emitCombatEvent: (event) => set({ lastCombatEvent: event }),
     // `setLastDrops` overwrites the per-fight `lastDrops` window (used by the
     // result screens in Boss/Dungeon/Raid). It also appends to the cumulative
-    // `sessionDrops` so the 🎒 backpack modal sees every fight's loot since
+    // `sessionDrops` so the :backpack: backpack modal sees every fight's loot since
     // the player entered the combat view.
     setLastDrops: (drops) =>
         set((s) => ({
@@ -365,7 +365,7 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             sessionStartedAt: Date.now(),
         }),
 
-    // ── Wave actions ────────────────────────────────────────────────────────
+    // -- Wave actions --------------------------------------------------------
     addWaveMonster: (m, rarity) => {
         const s = useCombatStore.getState();
         if (s.waveMonsters.length >= MAX_WAVE_MONSTERS) return false;

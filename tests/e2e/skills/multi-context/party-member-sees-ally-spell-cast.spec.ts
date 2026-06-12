@@ -14,12 +14,12 @@
  * `partyCombatSyncStore.test.ts`).
  *
  * Why store-level smoke vs. full in-combat render:
- *   • Full in-combat render requires both players to enter `phase=fighting`
- *     in a shared hunt (ready-check popup → secondary confirms → both
+ *   - Full in-combat render requires both players to enter `phase=fighting`
+ *     in a shared hunt (ready-check popup -> secondary confirms -> both
  *     clients `engineStartNewFight`). That's a 60s+ flow with multiple
  *     Realtime hops + non-deterministic timing (Rat dies in 1-2 hits
- *     on Knight lvl 5 → action bar disappears before our `.tap()` lands).
- *   • The store-level smoke takes ~30s and exercises the SAME Realtime
+ *     on Knight lvl 5 -> action bar disappears before our `.tap()` lands).
+ *   - The store-level smoke takes ~30s and exercises the SAME Realtime
  *     channel (`party-combat-<partyId>`) + the SAME broadcast event
  *     (`spell-cast`) + the SAME receiver subscriber that the UI uses.
  *     If this passes, the bug surface for "sojusznik widzi animację"
@@ -27,17 +27,17 @@
  *     `partyLastSpells` correctly dispatches `fx.trigger*SkillAnim`",
  *     which has unit coverage in `partyCombatSyncStore.test.ts` +
  *     `Combat.test.tsx`.
- *   • The solo per-class animation test
+ *   - The solo per-class animation test
  *     (`skills/animations/solo-trainer-per-class.spec.ts`) already
- *     proves the `fx.trigger*SkillAnim` → DOM render path works for
+ *     proves the `fx.trigger*SkillAnim` -> DOM render path works for
  *     all 7 classes. So the multi-context smoke completes the chain:
- *     [primary publish] → [Realtime channel] → [secondary store] →
- *     (covered by solo) → [DOM render].
+ *     [primary publish] -> [Realtime channel] -> [secondary store] ->
+ *     (covered by solo) -> [DOM render].
  *
  * Setup (mirrors `social/party/join/from-secondary-account.spec.ts`):
  *   1. Seed Knight (primary) + Mage (secondary) at lvl 10 via direct API.
  *   2. Open 2 browser contexts in parallel, parallel-login.
- *   3. Both pick character → Town. AppShell mounts `usePartyCombatSync`
+ *   3. Both pick character -> Town. AppShell mounts `usePartyCombatSync`
  *      (line 72) which subscribes to `party-combat-<partyId>` once
  *      `partyStore.party` is hydrated AND has >= 2 humans.
  *   4. PRIMARY creates a public party via UI; SECONDARY joins via UI.
@@ -60,10 +60,10 @@
  *      + `casterId`. Up to 20 s budget — Realtime postgres_changes /
  *      broadcasts on mobile-chrome can take 5-15 s when the channel is
  *      cold.
- *   7. REVERSE direction: SECONDARY publishes another spell-cast →
+ *   7. REVERSE direction: SECONDARY publishes another spell-cast ->
  *      PRIMARY's `lastSpellByCaster` populates with secondary's caster
  *      id. Proves the channel is BIDIRECTIONAL (not just one-way leader
- *      → member). Real combat broadcasts originate from BOTH sides
+ *      -> member). Real combat broadcasts originate from BOTH sides
  *      (every member's own cast) so we want guaranteed coverage of
  *      both directions.
  *
@@ -78,7 +78,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { openMultiContext } from '../../fixtures/multiContext';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -169,7 +169,7 @@ const waitForReceivedSpellCast = async (
 
 test.describe('Skills › Animations', { tag: '@skills' }, () => {
     // Multi-context = 2× login + 2× character pick + party flow + 2× Realtime
-    // hop → bumped to 120 s per multi-ctx README convention.
+    // hop -> bumped to 120 s per multi-ctx README convention.
     test.describe.configure({ timeout: 120_000 });
 
     test('multi-context: party member receives ally `spell-cast` Realtime cue (both directions)', async ({ browser }) => {
@@ -211,7 +211,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town. AppShell mounts usePartyCombatSync
+            // 3. Both pick character -> Town. AppShell mounts usePartyCombatSync
             //    but it only subscribes once party exists with >= 2 humans;
             //    we still need to navigate so the hook re-runs after we
             //    create the party.
@@ -256,7 +256,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             // Wait until BOTH sides see 2/4 — once that's true, the
             // `usePartyCombatSync` re-subscription effect has fired on
             // both sides because party.members.length transitioned from
-            // 1 → 2 (or undefined → 2 on the joiner). Without this
+            // 1 -> 2 (or undefined -> 2 on the joiner). Without this
             // synchronisation barrier, publishSpellCast on primary could
             // fire before secondary's `subscribe(partyId)` has registered
             // the channel, dropping the broadcast.
@@ -283,7 +283,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             expect(primaryActiveId).toBe(primaryCharId);
             expect(secondaryActiveId).toBe(secondaryCharId);
 
-            // 8. DIRECTION A: PRIMARY publishes `fireball` cast → SECONDARY
+            // 8. DIRECTION A: PRIMARY publishes `fireball` cast -> SECONDARY
             //    receives it in `lastSpellByCaster[primaryActiveId]`.
             //    Matches the engine's manual-cast publish shape
             //    (combatEngine.ts line 414).
@@ -304,7 +304,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             expect(receivedA.skillId).toBe('fireball');
             expect(receivedA.casterId).toBe(primaryActiveId);
 
-            // 9. DIRECTION B: SECONDARY publishes `shield_bash` cast →
+            // 9. DIRECTION B: SECONDARY publishes `shield_bash` cast ->
             //    PRIMARY receives. Bidirectional confirms the channel
             //    isn't leader-only — every member's local casts must
             //    broadcast so leader sees their teammate's animations.

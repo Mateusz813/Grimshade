@@ -11,6 +11,8 @@ import dungeonsRaw from '../../data/dungeons.json';
 import transformsRaw from '../../data/transforms.json';
 import bossesRaw from '../../data/bosses.json';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 
 // Battle backdrop fallbacks — used when we can't resolve a per-instance
 // background (e.g. legacy boss row, unknown raid). Each maps directly to the
@@ -33,8 +35,8 @@ interface ISourceMeta {
 }
 
 const CLASS_ICONS: Record<string, string> = {
-    Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-    Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+    Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+    Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 const CLASS_COLORS: Record<string, string> = {
@@ -43,11 +45,11 @@ const CLASS_COLORS: Record<string, string> = {
 };
 
 const SOURCE_META: Record<TDeathSource, ISourceMeta> = {
-    monster:   { label: 'Potwór',    icon: '🗡️', color: '#ff6b6b' },
-    dungeon:   { label: 'Dungeon',   icon: '🏰', color: '#ffa94d' },
-    boss:      { label: 'Boss',      icon: '👹', color: '#e0348e' },
-    transform: { label: 'Transform', icon: '🌀', color: '#4dabf7' },
-    raid:      { label: 'Rajd',      icon: '⚔️', color: '#9c27b0' },
+    monster:   { label: 'Potwór',    icon: 'dagger', color: '#ff6b6b' },
+    dungeon:   { label: 'Dungeon',   icon: 'castle', color: '#ffa94d' },
+    boss:      { label: 'Boss',      icon: 'ogre', color: '#e0348e' },
+    transform: { label: 'Transform', icon: 'cyclone', color: '#4dabf7' },
+    raid:      { label: 'Rajd',      icon: 'crossed-swords', color: '#9c27b0' },
 };
 
 // 2026-05-19 v25 spec: add 'raid' filter; order kept roughly by difficulty.
@@ -61,7 +63,7 @@ const PAGE_SIZE = 100;
 // to show many pages without re-fetching on every page-flip.
 const FETCH_LIMIT = 1000;
 
-// ── Legacy suffix scrub ──────────────────────────────────────────────────────
+// -- Legacy suffix scrub ------------------------------------------------------
 // 2026-05-19 v25 spec: source_name used to be stored as "Boss Name (uciekłeś
 // z gry)" for tab-close / URL-leave penalties. The new code strips that
 // suffix at log time (see `combatLeavePenalty.ts`) and writes
@@ -76,7 +78,7 @@ const inferResult = (d: IDeathRecord): 'killed' | 'fled' => {
     return 'killed';
 };
 
-// ── Transform sprite glob ───────────────────────────────────────────────────
+// -- Transform sprite glob ---------------------------------------------------
 // Mirrors the local glob in Transform.tsx. We keep it in this file rather
 // than promoting it to spriteAssets.ts because no other view needs it and
 // the death feed is the only consumer.
@@ -98,7 +100,7 @@ const TRANSFORM_IMG_BY_TIER: Map<number, string> = (() => {
     return out;
 })();
 
-// ── Name → ID indexes built once at module load ──────────────────────────────
+// -- Name -> ID indexes built once at module load ------------------------------
 const DUNGEON_ID_BY_NAME: Map<string, string> = (() => {
     const out = new Map<string, string>();
     for (const d of dungeonsRaw as { id: string; name_pl: string }[]) {
@@ -117,7 +119,7 @@ const TRANSFORM_TIER_BY_NAME: Map<string, number> = (() => {
 
 // 2026-05-20 spec ("Cesarz chaosu na liscie bossow ma swoj unikalny
 // background i uzyj go tutaj tez"): the boss list paints each card with
-// `boss{N}.png` keyed by 0-based array index. Build the same name → index
+// `boss{N}.png` keyed by 0-based array index. Build the same name -> index
 // map here so we can call `getBossCardImage(idx)` from the deaths feed and
 // get the boss's unique canvas instead of the generic `battle-boss.png`.
 const BOSS_INDEX_BY_NAME: Map<string, number> = (() => {
@@ -219,8 +221,8 @@ const formatDateTime = (iso: string): string => {
 };
 
 // 2026-05-20 spec: render a humanised "X temu" string in Polish. Picks the
-// largest unit that's at least 1 — seconds → minutes → hours → days →
-// weeks → months → years. Uses the simple "1 X / N X" pluralisation that
+// largest unit that's at least 1 — seconds -> minutes -> hours -> days ->
+// weeks -> months -> years. Uses the simple "1 X / N X" pluralisation that
 // matches how Polish abbreviations read in chat-style timestamps elsewhere
 // in the game (see DeathNotification + chat feed).
 const formatRelative = (iso: string): string => {
@@ -313,7 +315,7 @@ const Deaths = () => {
                 {FILTER_ORDER.map((f) => {
                     const meta = f === 'all' ? null : SOURCE_META[f];
                     const label = f === 'all' ? 'Wszystkie' : meta?.label ?? f;
-                    const icon = f === 'all' ? '📖' : meta?.icon ?? '?';
+                    const icon = f === 'all' ? 'open-book' : meta?.icon ?? '?';
                     return (
                         <button
                             key={f}
@@ -325,7 +327,7 @@ const Deaths = () => {
                                     : undefined
                             }
                         >
-                            <span className="deaths__filter-icon">{icon}</span>
+                            <span className="deaths__filter-icon"><GameIcon name={icon} /></span>
                             <span>{label}</span>
                             <span className="deaths__filter-count">{counts[f]}</span>
                         </button>
@@ -384,13 +386,13 @@ const Deaths = () => {
                                         style={{ background: meta.color }}
                                         title={meta.label}
                                     >
-                                        {meta.icon} {meta.label}
+                                        <GameIcon name={meta.icon} /> {meta.label}
                                     </span>
                                 </div>
 
                                 {/* Sprite + monster name + verb + victim form
                                     one logical group. Desktop lays them out
-                                    left → right; mobile stacks them vertically. */}
+                                    left -> right; mobile stacks them vertically. */}
                                 <div className="deaths__item-main">
                                     {portrait && (
                                         <div className="deaths__sprite">
@@ -405,7 +407,7 @@ const Deaths = () => {
                                     <div className="deaths__monster">
                                         {!portrait && (
                                             <span className="deaths__monster-icon" aria-hidden>
-                                                {meta.icon}
+                                                <GameIcon name={meta.icon} />
                                             </span>
                                         )}
                                         <span className="deaths__monster-name">{displaySourceName}</span>
@@ -415,7 +417,7 @@ const Deaths = () => {
                                     <div className="deaths__verb-wrap">
                                         <span className={`deaths__verb deaths__verb--${result}`}>
                                             <span className="deaths__verb-icon" aria-hidden>
-                                                {isFled ? '👻' : '💀'}
+                                                {isFled ? <GameIcon name="ghost" /> : <GameIcon name="skull" />}
                                             </span>
                                             <span className="deaths__verb-text">
                                                 {isFled ? 'przegnał' : 'zabił'}
@@ -425,7 +427,7 @@ const Deaths = () => {
 
                                     <div className="deaths__victim">
                                         <span className="deaths__victim-class" style={{ color: classColor }}>
-                                            {classIcon}
+                                            <GameIcon name={classIcon} />
                                         </span>
                                         {tag && (
                                             <span className="deaths__victim-tag">{tag}</span>
@@ -465,7 +467,7 @@ const Deaths = () => {
                         disabled={safePage <= 0}
                         onClick={() => setPage((p) => Math.max(0, p - 1))}
                     >
-                        ← Poprzednia
+                        <Icon name="arrowLeft" /> Poprzednia
                     </button>
                     <span className="deaths__pager-info">
                         Strona {safePage + 1} / {totalPages}
@@ -477,7 +479,7 @@ const Deaths = () => {
                         disabled={safePage >= totalPages - 1}
                         onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                     >
-                        Następna →
+                        Następna <Icon name="arrowRight" />
                     </button>
                 </div>
             )}

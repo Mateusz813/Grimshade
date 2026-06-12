@@ -6,7 +6,7 @@ import {
 } from './progression';
 import type { IMasteryData } from '../stores/masteryStore';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeMonster = (overrides: Partial<IMonsterLike> & { id: string; level: number }): IMonsterLike => ({
     name_pl: overrides.id,
@@ -23,7 +23,7 @@ const SAMPLE_MONSTERS: IMonsterLike[] = [
 
 const emptyMasteries: Record<string, IMasteryData> = {};
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// -- Constants ----------------------------------------------------------------
 
 describe('MASTERY_UNLOCK_THRESHOLD', () => {
     it('is 1 (need at least one mastery level on the prereq)', () => {
@@ -31,7 +31,7 @@ describe('MASTERY_UNLOCK_THRESHOLD', () => {
     });
 });
 
-// ── Rule 1: level gate ──────────────────────────────────────────────────────
+// -- Rule 1: level gate ------------------------------------------------------
 
 describe('getMonsterUnlockStatus – level gate', () => {
     it('locks a monster whose level exceeds the character level', () => {
@@ -76,7 +76,7 @@ describe('getMonsterUnlockStatus – level gate', () => {
     });
 });
 
-// ── Rule 2: mastery gate ─────────────────────────────────────────────────────
+// -- Rule 2: mastery gate -----------------------------------------------------
 
 describe('getMonsterUnlockStatus – mastery gate', () => {
     it('locks a monster when the previous monster has mastery 0', () => {
@@ -143,7 +143,7 @@ describe('getMonsterUnlockStatus – mastery gate', () => {
     it('uses 0 mastery when the prereq entry is missing entirely', () => {
         const target = SAMPLE_MONSTERS[3]; // skeleton, prereq: goblin
         const masteries: Record<string, IMasteryData> = {
-            // No goblin entry → defaults to 0 → locked.
+            // No goblin entry -> defaults to 0 -> locked.
         };
         const status = getMonsterUnlockStatus(target, SAMPLE_MONSTERS, 100, masteries);
         expect(status.unlocked).toBe(false);
@@ -172,7 +172,7 @@ describe('getMonsterUnlockStatus – mastery gate', () => {
     });
 });
 
-// ── Boundary: empty / single monster lists ───────────────────────────────────
+// -- Boundary: empty / single monster lists -----------------------------------
 
 describe('getMonsterUnlockStatus – list boundaries', () => {
     it('handles a single-monster list (always unlockable up to level)', () => {
@@ -182,14 +182,14 @@ describe('getMonsterUnlockStatus – list boundaries', () => {
     });
 
     it('handles an empty allMonsters list gracefully (target falls through to unlocked)', () => {
-        // findIndex returns -1 → no prereq → unlocked (after passing level gate).
+        // findIndex returns -1 -> no prereq -> unlocked (after passing level gate).
         const target = SAMPLE_MONSTERS[0];
         const status = getMonsterUnlockStatus(target, [], 5, emptyMasteries);
         expect(status.unlocked).toBe(true);
     });
 
     it('chain progression: unlocking N enables N+1 only', () => {
-        // Mastery only on rat → spider unlocked, goblin still locked.
+        // Mastery only on rat -> spider unlocked, goblin still locked.
         const masteries: Record<string, IMasteryData> = {
             rat: { level: 1 },
         };
@@ -198,7 +198,7 @@ describe('getMonsterUnlockStatus – list boundaries', () => {
         expect(getMonsterUnlockStatus(SAMPLE_MONSTERS[3], SAMPLE_MONSTERS, 50, masteries).unlocked).toBe(false);
     });
 
-    it('full chain unlock: every prereq mastered → every monster unlocked', () => {
+    it('full chain unlock: every prereq mastered -> every monster unlocked', () => {
         const masteries: Record<string, IMasteryData> = {
             rat: { level: 1 },
             spider: { level: 1 },

@@ -39,7 +39,7 @@ const makeEnemy = (id: string): ICombatEnemy => ({
     id,
     name: `Enemy ${id}`,
     level: 1,
-    sprite: '👹',
+    sprite: 'ogre',
     currentHp: 100,
     maxHp: 100,
     rarity: 'normal',

@@ -18,7 +18,7 @@ import { MemoryRouter } from 'react-router-dom';
  *   - Empty-list message renders when listGuilds returns [].
  *   - "Stwórz gildię" button visible at the bottom of the list.
  *   - Pagination buttons only render when total > PAGE_SIZE.
- *   - Apply modal opens when 🤝 is clicked + closes on Anuluj.
+ *   - Apply modal opens when :handshake: is clicked + closes on Anuluj.
  *
  * Heavy dependencies (Modal, GuildHome, GuildBoss arena, etc.) are
  * exercised by Playwright e2e tests with a real Supabase backend.
@@ -222,7 +222,7 @@ describe('Guild — list rows', () => {
         await findByText(/Krasek/);
     });
 
-    it('opens the apply modal when 🤝 is clicked on a row', async () => {
+    it('opens the apply modal when :handshake: is clicked on a row', async () => {
         vi.mocked(guildApi.listGuilds).mockResolvedValue([
             makeGuild({ id: 'g1', name: 'Iron Wolves', tag: 'IW' }),
         ]);

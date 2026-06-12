@@ -129,7 +129,7 @@ describe('PartyWidget — popover', () => {
         });
         renderAt('/');
         fireEvent.click(document.querySelector('.party-widget__btn')!);
-        // 3800 → "3.8k" via formatDmg.
+        // 3800 -> "3.8k" via formatDmg.
         expect(screen.getByText(/3\.8k dmg/)).toBeTruthy();
     });
 

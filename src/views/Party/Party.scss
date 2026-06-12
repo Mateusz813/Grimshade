@@ -1,15 +1,15 @@
 @use '../../styles/variables' as *;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Party — 2026-05-08 v3 rewrite per spec.
 //
 // Two distinct screens share this stylesheet:
-//   • Browser  — public party cards (leader badge | name + avatars + desc | join)
-//   • Roster   — vertical list of avatars + leader actions + chat
+//   - Browser  — public party cards (leader badge | name + avatars + desc | join)
+//   - Roster   — vertical list of avatars + leader actions + chat
 //
 // Modals: join-with-password + transfer-leader confirm. Animations defer to
 // Framer-Motion (handled in Party.tsx); CSS only owns the stable look-and-feel.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 .party {
   position: relative;
@@ -39,7 +39,7 @@
     color: $color-text-muted;
   }
 
-  // ── Intro block ─────────────────────────────────────────────────────────
+  // -- Intro block ---------------------------------------------------------
   &__intro {
     text-align: center;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.0));
@@ -67,7 +67,7 @@
     max-width: 540px;
   }
 
-  // ── Buttons ─────────────────────────────────────────────────────────────
+  // -- Buttons -------------------------------------------------------------
   &__primary-btn {
     background: linear-gradient(135deg, var(--nav-accent, #{$color-accent}), color-mix(in srgb, var(--nav-accent, #{$color-accent}) 70%, #000));
     color: #fff;
@@ -122,7 +122,7 @@
     &:hover { background: rgba(244, 67, 54, 0.25); transform: translateY(-1px); }
   }
 
-  // ── Create form ────────────────────────────────────────────────────────
+  // -- Create form --------------------------------------------------------
   &__create-form {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -172,7 +172,7 @@
     margin-top: 4px;
   }
 
-  // ── Browser feed ──────────────────────────────────────────────────────
+  // -- Browser feed ------------------------------------------------------
   &__section-header {
     display: flex;
     justify-content: space-between;
@@ -210,7 +210,7 @@
     gap: 10px;
   }
 
-  // ── Party browser card ────────────────────────────────────────────────
+  // -- Party browser card ------------------------------------------------
   &__card {
     display: grid;
     grid-template-columns: 76px 1fr auto;
@@ -363,7 +363,7 @@
     color: rgba(255, 255, 255, 0.65);
   }
 
-  // ── In-party roster ───────────────────────────────────────────────────
+  // -- In-party roster ---------------------------------------------------
   &__roster-header {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -508,14 +508,14 @@
     &:hover { background: rgba(255, 213, 79, 0.22); }
   }
 
-  // ── Bottom action bar ─────────────────────────────────────────────────
+  // -- Bottom action bar -------------------------------------------------
   &__actions {
     display: flex;
     justify-content: center;
     margin-top: 8px;
   }
 
-  // ── Modals ────────────────────────────────────────────────────────────
+  // -- Modals ------------------------------------------------------------
   &__modal-backdrop {
     position: fixed;
     inset: 0;
@@ -574,7 +574,7 @@
     justify-content: flex-end;
   }
 
-  // ── Toast ─────────────────────────────────────────────────────────────
+  // -- Toast -------------------------------------------------------------
   &__toast {
     position: fixed;
     bottom: 80px;

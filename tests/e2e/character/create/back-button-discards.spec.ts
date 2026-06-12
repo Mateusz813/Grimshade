@@ -1,30 +1,30 @@
 /**
- * Atomic E2E — przycisk "← Wróć" na ekranie tworzenia postaci wraca
+ * Atomic E2E — przycisk "<- Wróć" na ekranie tworzenia postaci wraca
  * do `/character-select` bez tworzenia żadnej postaci.
  *
  * Spec (BACKLOG 2.9): "Anuluj tworzenie (back button) — navigate to
- * /create-character → tap back button → wraca do /character-select
+ * /create-character -> tap back button -> wraca do /character-select
  * bez side effects (no char created)".
  *
  * CharacterCreate.tsx linia 205-211:
  *     <button className="character-create__back-btn"
- *             onClick={() => navigate('/character-select')}>← Wróć</button>
+ *             onClick={() => navigate('/character-select')}><- Wróć</button>
  *
  * Setup:
- *   1. Login UI → /character-select (świeże konto / lub po wcześniejszych
+ *   1. Login UI -> /character-select (świeże konto / lub po wcześniejszych
  *      testach z postaciami — neutralne dla tego testu).
- *   2. Tap "+ Stwórz nową postać" → /create-character (nasza punkt
+ *   2. Tap "+ Stwórz nową postać" -> /create-character (nasza punkt
  *      startu — sam ekran tworzenia).
  *
- * One action:    tap "← Wróć" (.character-create__back-btn).
+ * One action:    tap "<- Wróć" (.character-create__back-btn).
  * One outcome:
- *     • URL === /character-select
- *     • Liczba postaci nie zmieniła się (przed = po). Sprawdzamy przez
+ *     - URL === /character-select
+ *     - Liczba postaci nie zmieniła się (przed = po). Sprawdzamy przez
  *       count `.char-select__card` na liście.
  *
  * Cleanup: jeśli mimo wszystko jakaś postać została (nie powinna —
  * back button nie tworzy nic), wyłapie ją bulk-cleanup na CI. Tutaj
- * nie tworzymy żadnej postaci → nie ma id do cleanup-u. `finally`
+ * nie tworzymy żadnej postaci -> nie ma id do cleanup-u. `finally`
  * pusty, ale block try/finally zachowany dla konwencji.
  *
  * Parallelism note: snapshot SET of nicków przed back-button-em zamiast
@@ -45,7 +45,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
     test.describe.configure({ timeout: 30_000 });
 
     test('back button on /create-character returns to /character-select without creating a character', async ({ page }) => {
-        // 1. Login → /character-select.
+        // 1. Login -> /character-select.
         await loginViaUI(page, testUsers.primary);
         if (!page.url().endsWith('/character-select')) {
             await page.goto('/character-select');
@@ -63,7 +63,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
 
         // 3. Nawigacja do /create-character. Najpierw próbujemy tap
         //    "+ Stwórz nową postać" jeśli widoczny (happy path); jeśli
-        //    nie (np. ktoś równolegle wpakował primary do 7/7) → direct
+        //    nie (np. ktoś równolegle wpakował primary do 7/7) -> direct
         //    `page.goto('/create-character')` — i tak testujemy tylko
         //    sam back-button na tym ekranie, sposób dotarcia bez znaczenia.
         const createBtn = page.getByRole('button', { name: /Stwórz nową postać/i });
@@ -79,7 +79,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
         //    (back button jest pod tytułem "Stwórz postać").
         await expect(page.locator('.character-create__back-btn')).toBeVisible();
 
-        // 5. THE ACTION — tap "← Wróć".
+        // 5. THE ACTION — tap "<- Wróć".
         await page.locator('.character-create__back-btn').tap();
 
         // 6. THE OUTCOME — URL z powrotem na /character-select.

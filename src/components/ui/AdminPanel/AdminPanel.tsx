@@ -42,6 +42,9 @@ import bossesRaw from '../../../data/bosses.json';
 import dungeonsRaw from '../../../data/dungeons.json';
 import monstersRaw from '../../../data/monsters.json';
 import questsRaw from '../../../data/quests.json';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import Icon from '../../atoms/Icon/Icon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './AdminPanel.scss';
 
 /**
@@ -86,7 +89,7 @@ interface IDungeonRow { id: string; name_pl: string; level?: number; }
 interface IMonsterRow { id: string; name_pl: string; level?: number; }
 interface IQuestRow { id: string; name_pl?: string; }
 
-// ── Game data lookups ────────────────────────────────────────────────────────
+// -- Game data lookups --------------------------------------------------------
 const ALL_SKILLS: ISkillRow[] = (() => {
     const raw = skillsRaw as unknown as {
         weaponSkills?: Array<{ id: string; name_pl: string; class?: string }>;
@@ -136,9 +139,9 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
 
     const character = useCharacterStore((s) => s.character);
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // POSTAĆ
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const updateCharacter = useCharacterStore((s) => s.updateCharacter);
     const fullHealEffective = useCharacterStore((s) => s.fullHealEffective);
 
@@ -172,7 +175,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             const xpDelta = Math.floor((pct / 100) * xpToNextLevel(c.level));
             const result = processXpGain(c.level, c.xp, xpDelta);
             updateCharacter({ level: result.newLevel, xp: result.remainingXp });
-            flash(`+${pct}% XP (lvl ${c.level} → ${result.newLevel})`);
+            flash(`+${pct}% XP (lvl ${c.level} -> ${result.newLevel})`);
         });
     };
     const setGold = () => {
@@ -228,9 +231,9 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash(`HP/MP = ${hp}/${mp}`);
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // INVENTORY
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [itemRarity, setItemRarity] = useState<typeof RARITIES[number]>('legendary');
     const [itemLevel, setItemLevel] = useState('500');
     const [itemCount, setItemCount] = useState('1');
@@ -286,9 +289,9 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Plecak wyczyszczony');
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // SKILLE
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [skillId, setSkillId] = useState<string>(ALL_SKILLS[0]?.id ?? '');
     const [skillLevel, setSkillLevel] = useState('100');
     const [skillUpgradeLvl, setSkillUpgradeLvl] = useState('30');
@@ -301,7 +304,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             skillLevels: { ...s.skillLevels, [skillId]: lvl },
             skillXp: { ...s.skillXp, [skillId]: 0 },
         }));
-        flash(`${skillId} → Lvl ${lvl}`);
+        flash(`${skillId} -> Lvl ${lvl}`);
     };
     const setSkillUpgradeLevel = () => {
         if (!skillId) return;
@@ -309,7 +312,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         useSkillStore.setState((s) => ({
             skillUpgradeLevels: { ...s.skillUpgradeLevels, [skillId]: lvl },
         }));
-        flash(`${skillId} → +${lvl}`);
+        flash(`${skillId} -> +${lvl}`);
     };
     const unlockSkill = () => {
         if (!skillId) return;
@@ -338,7 +341,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             skillXp: { ...st.skillXp, ...xpUpdates },
             unlockedSkills: { ...st.unlockedSkills, ...unlocked },
         }));
-        flash('Wszystkie skille → Lvl 100 + odblokowane');
+        flash('Wszystkie skille -> Lvl 100 + odblokowane');
     };
     const maxAllUpgrades = () => {
         const upgrades: Record<string, number> = {};
@@ -346,12 +349,12 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         useSkillStore.setState((st) => ({
             skillUpgradeLevels: { ...st.skillUpgradeLevels, ...upgrades },
         }));
-        flash('Wszystkie skille → +30');
+        flash('Wszystkie skille -> +30');
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // TASKS
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [killMonsterId, setKillMonsterId] = useState('');
     const [killMonsterLevel, setKillMonsterLevel] = useState('1');
     const [killCount, setKillCount] = useState('5000');
@@ -382,16 +385,16 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         useTaskStore.setState((s) => ({
             activeTasks: s.activeTasks.map((t) => ({ ...t, progress: t.killCount })),
         }));
-        flash('Wszystkie taski → ukończone');
+        flash('Wszystkie taski -> ukończone');
     };
     const resetTasks = () => {
         useTaskStore.setState({ activeTasks: [], completedTasks: [] });
         flash('Taski wyczyszczone');
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // QUESTS
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [questIdInput, setQuestIdInput] = useState<string>(ALL_QUESTS[0]?.id ?? '');
 
     const completeQuest = () => {
@@ -403,7 +406,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                     : q,
             ),
         }));
-        flash(`Quest ${questIdInput} → ukończony (gotowy do odbioru)`);
+        flash(`Quest ${questIdInput} -> ukończony (gotowy do odbioru)`);
     };
     const markQuestClaimed = () => {
         if (!questIdInput) return;
@@ -413,7 +416,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                 ? s.completedQuestIds
                 : [...s.completedQuestIds, questIdInput],
         }));
-        flash(`Quest ${questIdInput} → odebrany`);
+        flash(`Quest ${questIdInput} -> odebrany`);
     };
     const completeAllActiveQuests = () => {
         useQuestStore.setState((s) => ({
@@ -422,7 +425,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                 goals: q.goals.map((g) => ({ ...g, progress: g.count })),
             })),
         }));
-        flash('Wszystkie aktywne questy → ukończone');
+        flash('Wszystkie aktywne questy -> ukończone');
     };
     const resetQuests = () => {
         useQuestStore.setState({ activeQuests: [], completedQuestIds: [] });
@@ -435,22 +438,22 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         useDailyQuestStore.setState((s) => ({
             activeQuests: s.activeQuests.map((q) => ({ ...q, progress: 99999, completed: true })),
         }));
-        flash('Wszystkie daily → ukończone');
+        flash('Wszystkie daily -> ukończone');
     };
     const claimAllDaily = () => {
         useDailyQuestStore.setState((s) => ({
             activeQuests: s.activeQuests.map((q) => ({ ...q, claimed: true })),
         }));
-        flash('Wszystkie daily → odebrane');
+        flash('Wszystkie daily -> odebrane');
     };
     const resetDailyQuests = () => {
         useDailyQuestStore.getState().resetDailyQuests();
         flash('Daily zresetowane');
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // WALKI — bossy / lochy / transformy / mastery / raidy
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [bossId, setBossId] = useState<string>(ALL_BOSSES[0]?.id ?? '');
     const [dungeonId, setDungeonId] = useState<string>(ALL_DUNGEONS[0]?.id ?? '');
     const [transformTier, setTransformTier] = useState('1');
@@ -459,7 +462,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     const markBossDefeated = () => {
         if (!bossId) return;
         useBossStore.getState().setBossDefeated(bossId);
-        flash(`${bossId} → pokonany`);
+        flash(`${bossId} -> pokonany`);
     };
     const refundBossAttempts = () => {
         useBossStore.setState((s) => {
@@ -467,7 +470,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             if (bossId) delete next[bossId];
             return { dailyAttempts: next };
         });
-        flash(bossId ? `${bossId} → attempts refunded` : 'wszystkie bossy refund');
+        flash(bossId ? `${bossId} -> attempts refunded` : 'wszystkie bossy refund');
     };
     const setBossKills = () => {
         const n = Math.max(0, parseInt(bossKillsInput, 10) || 0);
@@ -488,7 +491,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     const markDungeonCleared = () => {
         if (!dungeonId) return;
         useDungeonStore.getState().setDungeonCompleted(dungeonId);
-        flash(`${dungeonId} → ukończony`);
+        flash(`${dungeonId} -> ukończony`);
     };
     const refundDungeonAttempts = () => {
         useDungeonStore.setState((s) => {
@@ -496,7 +499,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             if (dungeonId) delete next[dungeonId];
             return { dailyAttempts: next };
         });
-        flash(dungeonId ? `${dungeonId} → attempts refunded` : 'wszystkie lochy refund');
+        flash(dungeonId ? `${dungeonId} -> attempts refunded` : 'wszystkie lochy refund');
     };
     const resetDungeons = () => {
         useDungeonStore.setState({ dailyAttempts: {}, clearedDungeonIds: {}, lastResult: null });
@@ -515,7 +518,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                 ? s.completedTransforms
                 : [...s.completedTransforms, tier],
         }));
-        flash(`Transform Tier ${tier} → ukończony`);
+        flash(`Transform Tier ${tier} -> ukończony`);
     };
     const unlockAllTransforms = () => {
         useTransformStore.setState({
@@ -537,9 +540,9 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Transformy zresetowane');
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // SOCIAL — party / arena / guild / market
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [arenaKills, setArenaKills] = useState('100');
     const [arenaDeaths, setArenaDeaths] = useState('0');
     const [arenaLeague, setArenaLeague] = useState<typeof ARENA_LEAGUES[number]>('Diamond');
@@ -577,9 +580,9 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         }).catch(() => { flash('Market store niedostępny'); });
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // SYSTEM — connectivity / combat / buffs / death / offline hunt
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const playMode = useConnectivityStore((s) => s.mode);
     const [buffId, setBuffId] = useState('hp_boost_pct');
     const [buffDuration, setBuffDuration] = useState('3600');
@@ -588,10 +591,10 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         const { transitionToOffline, transitionToOnline } = await import('../../../systems/connectivityTransitions');
         if (playMode === 'online') {
             transitionToOffline({ explicit: true });
-            flash('Tryb → offline');
+            flash('Tryb -> offline');
         } else {
             await transitionToOnline();
-            flash('Tryb → online + sync');
+            flash('Tryb -> online + sync');
         }
     };
     const forceSync = async () => {
@@ -619,7 +622,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
             {
                 id: `admin_${buffId}_${Date.now()}`,
                 name: `Admin: ${buffId}`,
-                icon: '⚡',
+                icon: 'high-voltage',
                 effect: buffId,
             },
             dur * 1000,
@@ -659,9 +662,9 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Arena state wyczyszczony');
     };
 
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     // NUKE
-    // ════════════════════════════════════════════════════════════════════
+    // ====================================================================
     const [confirmNuke, setConfirmNuke] = useState(false);
     const nuke = () => {
         if (!confirmNuke) {
@@ -694,27 +697,27 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <header className="admin-panel__header">
-                    <span className="admin-panel__title">🛠️ Panel Admina</span>
+                    <span className="admin-panel__title"><GameIcon name="hammer-and-wrench" /> Panel Admina</span>
                     <button
                         type="button"
                         className="admin-panel__close"
                         onClick={onClose}
                         aria-label="Zamknij"
                     >
-                        ✕
+                        <Icon name="x" />
                     </button>
                 </header>
 
                 <nav className="admin-panel__tabs">
-                    <TabBtn current={tab} value="char"   label="🧙 Postać"   onClick={setTab} />
-                    <TabBtn current={tab} value="inv"    label="🎒 Inv"      onClick={setTab} />
-                    <TabBtn current={tab} value="skill"  label="✨ Skille"   onClick={setTab} />
-                    <TabBtn current={tab} value="tasks"  label="📜 Tasks"    onClick={setTab} />
-                    <TabBtn current={tab} value="quests" label="📖 Questy"   onClick={setTab} />
-                    <TabBtn current={tab} value="walki"  label="🏰 Walki"    onClick={setTab} />
-                    <TabBtn current={tab} value="social" label="👥 Społ."    onClick={setTab} />
-                    <TabBtn current={tab} value="system" label="⚙️ System"  onClick={setTab} />
-                    <TabBtn current={tab} value="nuke"   label="💀 Reset"    onClick={setTab} />
+                    <TabBtn current={tab} value="char"   label=":mage: Postać"   onClick={setTab} />
+                    <TabBtn current={tab} value="inv"    label=":backpack: Inv"      onClick={setTab} />
+                    <TabBtn current={tab} value="skill"  label=":sparkles: Skille"   onClick={setTab} />
+                    <TabBtn current={tab} value="tasks"  label=":scroll: Tasks"    onClick={setTab} />
+                    <TabBtn current={tab} value="quests" label=":open-book: Questy"   onClick={setTab} />
+                    <TabBtn current={tab} value="walki"  label=":castle: Walki"    onClick={setTab} />
+                    <TabBtn current={tab} value="social" label=":busts-in-silhouette: Społ."    onClick={setTab} />
+                    <TabBtn current={tab} value="system" label=":gear: System"  onClick={setTab} />
+                    <TabBtn current={tab} value="nuke"   label=":skull: Reset"    onClick={setTab} />
                 </nav>
 
                 <div className="admin-panel__body">
@@ -858,7 +861,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                                 <button onClick={setArenaPoints}>Ustaw</button>
                             </FieldRow>
                             <FieldRow label="Akcje">
-                                <button onClick={clearBag} className="admin-panel__danger-btn">🗑 Wyczyść plecak</button>
+                                <button onClick={clearBag} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Wyczyść plecak</button>
                             </FieldRow>
                         </section>
                     )}
@@ -894,8 +897,8 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
 
                             <h3>Akcje masowe</h3>
                             <div className="admin-panel__grid">
-                                <button onClick={maxAllSkills}>Wszystkie → Lvl 100 + odblok.</button>
-                                <button onClick={maxAllUpgrades}>Wszystkie upgrades → +30</button>
+                                <button onClick={maxAllSkills}>Wszystkie <Icon name="arrowRight" /> Lvl 100 + odblok.</button>
+                                <button onClick={maxAllUpgrades}>Wszystkie upgrades <Icon name="arrowRight" /> +30</button>
                             </div>
                         </section>
                     )}
@@ -932,7 +935,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                             <h3>Bulk akcje</h3>
                             <div className="admin-panel__grid">
                                 <button onClick={completeAllActiveTasks}>Ukończ wszystkie aktywne</button>
-                                <button onClick={resetTasks} className="admin-panel__danger-btn">🗑 Reset tasków</button>
+                                <button onClick={resetTasks} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Reset tasków</button>
                             </div>
                         </section>
                     )}
@@ -958,14 +961,14 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                             <h3>Bulk</h3>
                             <div className="admin-panel__grid">
                                 <button onClick={completeAllActiveQuests}>Ukończ wszystkie aktywne</button>
-                                <button onClick={resetQuests} className="admin-panel__danger-btn">🗑 Reset questów</button>
+                                <button onClick={resetQuests} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Reset questów</button>
                             </div>
 
                             <h3>Daily questy</h3>
                             <div className="admin-panel__grid">
                                 <button onClick={completeAllDaily}>Ukończ wszystkie daily</button>
                                 <button onClick={claimAllDaily}>Odbierz wszystkie daily</button>
-                                <button onClick={resetDailyQuests} className="admin-panel__danger-btn">🗑 Reset daily</button>
+                                <button onClick={resetDailyQuests} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Reset daily</button>
                             </div>
                         </section>
                     )}
@@ -989,7 +992,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                             <div className="admin-panel__grid">
                                 <button onClick={markBossDefeated}>Pokonany</button>
                                 <button onClick={refundBossAttempts}>Refund attempts</button>
-                                <button onClick={resetBosses} className="admin-panel__danger-btn">🗑 Reset wszystkich</button>
+                                <button onClick={resetBosses} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Reset wszystkich</button>
                             </div>
 
                             <h3>Lochy</h3>
@@ -1005,7 +1008,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                             <div className="admin-panel__grid">
                                 <button onClick={markDungeonCleared}>Oznacz pokonany</button>
                                 <button onClick={refundDungeonAttempts}>Refund attempts</button>
-                                <button onClick={resetDungeons} className="admin-panel__danger-btn">🗑 Reset wszystkich</button>
+                                <button onClick={resetDungeons} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Reset wszystkich</button>
                             </div>
 
                             <h3>Wszystkie daily attempts</h3>
@@ -1021,7 +1024,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                             <div className="admin-panel__grid">
                                 <button onClick={unlockAllTransforms}>Wszystkie tiery ON</button>
                                 <button onClick={abandonTransformQuest}>Porzuć aktywny quest</button>
-                                <button onClick={resetTransforms} className="admin-panel__danger-btn">🗑 Reset transformów</button>
+                                <button onClick={resetTransforms} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Reset transformów</button>
                             </div>
                         </section>
                     )}
@@ -1068,7 +1071,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
 
                             <h3>Sync</h3>
                             <FieldRow label="Cloud sync">
-                                <button onClick={() => void forceSync()}>Force save → Supabase</button>
+                                <button onClick={() => void forceSync()}>Force save <Icon name="arrowRight" /> Supabase</button>
                             </FieldRow>
 
                             <h3>Walka / Combat</h3>
@@ -1090,7 +1093,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                                 <button onClick={addBuff}>Dodaj buff</button>
                             </FieldRow>
                             <FieldRow label="Akcje">
-                                <button onClick={clearAllBuffs} className="admin-panel__danger-btn">🗑 Wyczyść wszystkie buffy</button>
+                                <button onClick={clearAllBuffs} className="admin-panel__danger-btn"><GameIcon name="wastebasket" /> Wyczyść wszystkie buffy</button>
                             </FieldRow>
 
                             <h3>Death overlay</h3>
@@ -1113,7 +1116,7 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                                 onClick={nuke}
                                 className={`admin-panel__nuke${confirmNuke ? ' admin-panel__nuke--confirm' : ''}`}
                             >
-                                {confirmNuke ? '⚠️ Kliknij ponownie aby potwierdzić' : '💀 Reset wszystkiego'}
+                                {confirmNuke ? <><GameIcon name="warning" /> Kliknij ponownie aby potwierdzić</> : <><GameIcon name="skull" /> Reset wszystkiego</>}
                             </button>
                         </section>
                     )}
@@ -1142,7 +1145,7 @@ const TabBtn = ({ current, value, label, onClick }: ITabBtnProps) => (
         className={`admin-panel__tab${current === value ? ' admin-panel__tab--active' : ''}`}
         onClick={() => onClick(value)}
     >
-        {label}
+        <EmojiText>{label}</EmojiText>
     </button>
 );
 

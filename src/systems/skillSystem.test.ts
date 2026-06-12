@@ -21,7 +21,7 @@ import {
     rollSkillUpgrade,
 } from './skillSystem';
 
-// ── skillXpToNextLevel ────────────────────────────────────────────────────────
+// -- skillXpToNextLevel --------------------------------------------------------
 
 describe('skillXpToNextLevel', () => {
     it('returns 100 for level 0', () => {
@@ -35,7 +35,7 @@ describe('skillXpToNextLevel', () => {
     });
 });
 
-// ── skillXpPerHit & skillXpPerCast ────────────────────────────────────────────
+// -- skillXpPerHit & skillXpPerCast --------------------------------------------
 
 describe('skillXpPerHit', () => {
     it('returns at least 1', () => {
@@ -59,7 +59,7 @@ describe('skillXpPerCast', () => {
     });
 });
 
-// ── calculateOfflineSkillXp ───────────────────────────────────────────────────
+// -- calculateOfflineSkillXp ---------------------------------------------------
 
 describe('calculateOfflineSkillXp', () => {
     it('returns 0 for 0 seconds', () => {
@@ -83,7 +83,7 @@ describe('calculateOfflineSkillXp', () => {
     });
 });
 
-// ── processSkillXp ────────────────────────────────────────────────────────────
+// -- processSkillXp ------------------------------------------------------------
 
 describe('processSkillXp', () => {
     it('accumulates XP without levelling up', () => {
@@ -119,7 +119,7 @@ describe('processSkillXp', () => {
     });
 });
 
-// ── applySkillDeathPenalty ────────────────────────────────────────────────────
+// -- applySkillDeathPenalty ----------------------------------------------------
 
 describe('applySkillDeathPenalty', () => {
     it('reduces XP by 5% of current level requirement', () => {
@@ -133,7 +133,7 @@ describe('applySkillDeathPenalty', () => {
     });
 });
 
-// ── getSkillDamageBonus ───────────────────────────────────────────────────────
+// -- getSkillDamageBonus -------------------------------------------------------
 
 describe('getSkillDamageBonus', () => {
     it('returns 0 at skill level 0', () => {
@@ -146,7 +146,7 @@ describe('getSkillDamageBonus', () => {
     });
 });
 
-// ── getClassWeaponSkills ──────────────────────────────────────────────────────
+// -- getClassWeaponSkills ------------------------------------------------------
 
 describe('getClassWeaponSkills', () => {
     it('returns sword_fighting AND shielding for Knight', () => {
@@ -169,7 +169,7 @@ describe('getClassWeaponSkills', () => {
     });
 });
 
-// ── Shielding system ─────────────────────────────────────────────────────────
+// -- Shielding system ---------------------------------------------------------
 
 describe('shieldingXpPerBlock', () => {
     it('returns at least 1 at any level', () => {
@@ -205,7 +205,7 @@ describe('getShieldingBlockBonus', () => {
     });
 });
 
-// ── MLVL system ──────────────────────────────────────────────────────────────
+// -- MLVL system --------------------------------------------------------------
 
 describe('doesClassGainMlvlFromAttacks', () => {
     it('returns true for Mage, Cleric, Necromancer', () => {
@@ -252,7 +252,7 @@ describe('mlvlXpPerSkillUse', () => {
     });
 });
 
-// ── skillXpProgress ───────────────────────────────────────────────────────────
+// -- skillXpProgress -----------------------------------------------------------
 
 describe('skillXpProgress', () => {
     it('returns 0 with no XP', () => {
@@ -268,13 +268,13 @@ describe('skillXpProgress', () => {
     });
 });
 
-// ── Active Skill Upgrade System ──────────────────────────────────────────────
+// -- Active Skill Upgrade System ----------------------------------------------
 
 describe('getSkillUpgradeCost', () => {
     // 2026-05-21: replaces deleted test "returns 100% success rate for +1" — now tests current logic
     // The chest-based variant lives in `getSpellChestUpgradeCost(targetLevel, skillUnlockLevel)`;
     // `getSkillUpgradeCost(targetLevel)` is still single-arg and still returns 100% success at +1.
-    // Gold cost formula: floor(200 * targetLevel^2.2) → +1 = 200.
+    // Gold cost formula: floor(200 * targetLevel^2.2) -> +1 = 200.
     it('returns 100% success rate and 200 gold for +1', () => {
         const cost = getSkillUpgradeCost(1);
         expect(cost.successRate).toBe(100);

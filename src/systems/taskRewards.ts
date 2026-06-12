@@ -30,7 +30,7 @@ export interface ITaskRewardResult {
     rewardGold: number;
 }
 
-// ── Late-game XP remap (≥ lvl 300, geometric ×1.05 per next monster) ────────
+// -- Late-game XP remap (≥ lvl 300, geometric ×1.05 per next monster) --------
 
 /** Inclusive lower bound for the geometric override. */
 export const TASK_XP_CURVE_THRESHOLD = 300;
@@ -40,7 +40,7 @@ export const TASK_XP_GEOMETRIC_RATIO = 1.05;
 interface IMonsterRowMini { level: number; xp: number }
 
 /**
- * Build a `level → effective xp per kill` map for monsters at or above the
+ * Build a `level -> effective xp per kill` map for monsters at or above the
  * threshold. Sorting is stable on level (we don't tie-break further — if two
  * monsters share a level they share the override, which is what the spec
  * asks for: "each next task pays prev × 1.05" walks monster-to-monster).
@@ -74,7 +74,7 @@ export const getEffectiveTaskXpPerKill = (monster: IMonsterRewardSource): number
     return Number.isFinite(monster.xp) ? monster.xp : 0;
 };
 
-// ── Public API ──────────────────────────────────────────────────────────────
+// -- Public API --------------------------------------------------------------
 
 export const computeTaskRewards = (
     monster: IMonsterRewardSource,

@@ -7,13 +7,13 @@
  *               jakieś valid password + tap submit.
  * One outcome:  Zod schema (`Login.tsx` linie 9-13:
  *               `email: z.string().email('Nieprawidłowy email')`) zablokuje
- *               submit → `errors.email` jest set → renderuje się
+ *               submit -> `errors.email` jest set -> renderuje się
  *               `<span className="login__error">Nieprawidłowy email</span>`.
  *               URL pozostaje na `/login` (form NIE wysłał nic do Supabase).
  *
  * Różnica vs rejects-invalid-credentials: TAM forma idzie do Supabase
- * z prawidłowo sformatowanym email-em → backend odrzuca → `errors.root`.
- * TUTAJ klient-side zod odrzuca przed network → `errors.email` (specific
+ * z prawidłowo sformatowanym email-em -> backend odrzuca -> `errors.root`.
+ * TUTAJ klient-side zod odrzuca przed network -> `errors.email` (specific
  * field error, NIE root). Selector `.login__error` łapie oba bo to ten
  * sam CSS class.
  *
@@ -30,14 +30,14 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Auth › Login', { tag: '@auth' }, () => {
-    test('rejects malformed email → zod validation surfaces inline', async ({ page }) => {
+    test('rejects malformed email -> zod validation surfaces inline', async ({ page }) => {
         await page.goto('/login');
 
         await expect(page.locator('input[type="email"]')).toBeVisible();
 
         // Malformed email — `foo@bar` przechodzi HTML5 native validation
         // (ma `@`, ma jakiś domain), ale zod 4.x `.email()` wymaga TLD
-        // (kropka + min jeden segment) → zod refuse → renderuje error.
+        // (kropka + min jeden segment) -> zod refuse -> renderuje error.
         // Wartość bez `@` (np. `'not-an-email'`) zatrzymałaby browser ZANIM
         // formularz w ogóle by się odpalił — wtedy nie zobaczymy zod-a.
         await page.locator('input[type="email"]').fill('foo@bar');

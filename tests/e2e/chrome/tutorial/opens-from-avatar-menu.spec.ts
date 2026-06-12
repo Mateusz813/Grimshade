@@ -3,8 +3,8 @@
  *
  * Flow (mirror logout/change-password menu pattern):
  *   1. Seed character (avatar button needs character !== null).
- *   2. Login → pick character → Town.
- *   3. Open AvatarMenu → tap "Tutorial".
+ *   2. Login -> pick character -> Town.
+ *   3. Open AvatarMenu -> tap "Tutorial".
  *   4. Assert the tutorial dialog appears with numbered sections, and the
  *      menu has closed.
  *   5. Close via the footer button.
@@ -46,7 +46,7 @@ test.describe('Chrome › Tutorial', { tag: '@chrome' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
             await waitForAppReady(page);
 
-            // Open menu → Tutorial.
+            // Open menu -> Tutorial.
             await page.getByRole('button', { name: /menu postaci/i }).tap();
             const tutorialItem = page.getByRole('menuitem', { name: /tutorial/i });
             await expect(tutorialItem).toBeVisible({ timeout: 5_000 });

@@ -5,6 +5,7 @@ import { useCharacterStore } from '../../../stores/characterStore';
 import { useTransformStore } from '../../../stores/transformStore';
 import { useConnectivityStore } from '../../../stores/connectivityStore';
 import ChatPopup from './ChatPopup';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './ChatUnreadBadge.scss';
 
 // 2026-05-19 v8 spec ("Ikonka chatu jest przed wejsciem na postac to
@@ -104,7 +105,7 @@ const ChatUnreadBadge = () => {
                 aria-label="Otwórz czat"
                 aria-expanded={open}
             >
-                <span className="chat-unread-badge__icon">💬</span>
+                <span className="chat-unread-badge__icon"><GameIcon name="speech-balloon" /></span>
                 {hasNotification && !open && (
                     <span
                         className="chat-unread-badge__dot"

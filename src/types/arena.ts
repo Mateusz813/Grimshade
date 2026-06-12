@@ -54,15 +54,15 @@ export const ARENA_LEAGUE_COLORS: Record<ArenaLeague, string> = {
 
 /** Emoji icon shown next to the league name. */
 export const ARENA_LEAGUE_ICONS: Record<ArenaLeague, string> = {
-    bronze:       '🥉',
-    silver:       '🥈',
-    gold:         '🥇',
-    platinum:     '💠',
-    emerald:      '🟢',
-    diamond:      '💎',
-    master:       '🏆',
-    grand_master: '👑',
-    legend:       '⚡',
+    bronze:       '3rd-place-medal',
+    silver:       '2nd-place-medal',
+    gold:         '1st-place-medal',
+    platinum:     'diamond-with-a-dot',
+    emerald:      'green-circle',
+    diamond:      'gem-stone',
+    master:       'trophy',
+    grand_master: 'crown',
+    legend:       'high-voltage',
 };
 
 /**

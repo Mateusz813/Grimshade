@@ -5,7 +5,7 @@
             "name_pl": "Miecz",
             "name_en": "Sword",
             "slot": "mainHand",
-            "icon": "⚔️",
+            "icon": "crossed-swords",
             "allowedClasses": ["Knight"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 8, "baseMax": 14, "perLevel": 1.8 }
@@ -15,7 +15,7 @@
             "name_pl": "Kostur",
             "name_en": "Staff",
             "slot": "mainHand",
-            "icon": "🪄",
+            "icon": "magic-wand",
             "allowedClasses": ["Mage"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 5, "baseMax": 10, "perLevel": 1.6 }
@@ -25,7 +25,7 @@
             "name_pl": "Swieta Rozdzka",
             "name_en": "Holy Wand",
             "slot": "mainHand",
-            "icon": "✨",
+            "icon": "sparkles",
             "allowedClasses": ["Cleric"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 4, "baseMax": 9, "perLevel": 1.4 }
@@ -35,7 +35,7 @@
             "name_pl": "Luk",
             "name_en": "Bow",
             "slot": "mainHand",
-            "icon": "🏹",
+            "icon": "bow-and-arrow",
             "allowedClasses": ["Archer"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 7, "baseMax": 13, "perLevel": 1.7 }
@@ -45,7 +45,7 @@
             "name_pl": "Sztylet",
             "name_en": "Dagger",
             "slot": "mainHand",
-            "icon": "🗡️",
+            "icon": "dagger",
             "allowedClasses": ["Rogue"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 4, "baseMax": 8, "perLevel": 1.1 }
@@ -55,7 +55,7 @@
             "name_pl": "Martwy Kostur",
             "name_en": "Dead Staff",
             "slot": "mainHand",
-            "icon": "💀",
+            "icon": "skull",
             "allowedClasses": ["Necromancer"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 5, "baseMax": 10, "perLevel": 1.6 }
@@ -65,7 +65,7 @@
             "name_pl": "Harfa",
             "name_en": "Harp",
             "slot": "mainHand",
-            "icon": "🎵",
+            "icon": "musical-note",
             "allowedClasses": ["Bard"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 4, "baseMax": 9, "perLevel": 1.3 }
@@ -77,7 +77,7 @@
             "name_pl": "Tarcza",
             "name_en": "Shield",
             "slot": "offHand",
-            "icon": "🛡️",
+            "icon": "shield",
             "allowedClasses": ["Knight"],
             "baseStatType": "defense",
             "scaling": { "baseMin": 5, "baseMax": 10, "perLevel": 1.5 }
@@ -87,7 +87,7 @@
             "name_pl": "Ksiega Czarow",
             "name_en": "Spellbook",
             "slot": "offHand",
-            "icon": "📕",
+            "icon": "closed-book",
             "allowedClasses": ["Mage"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 3, "baseMax": 7, "perLevel": 1.2 }
@@ -97,7 +97,7 @@
             "name_pl": "Swiety Krzyz",
             "name_en": "Holy Cross",
             "slot": "offHand",
-            "icon": "✝️",
+            "icon": "latin-cross",
             "allowedClasses": ["Cleric"],
             "baseStatType": "defense",
             "scaling": { "baseMin": 3, "baseMax": 6, "perLevel": 1.1 }
@@ -107,7 +107,7 @@
             "name_pl": "Kolczan",
             "name_en": "Quiver",
             "slot": "offHand",
-            "icon": "🏹",
+            "icon": "bow-and-arrow",
             "allowedClasses": ["Archer"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 }
@@ -117,7 +117,7 @@
             "name_pl": "Lalka Voodoo",
             "name_en": "Voodoo Doll",
             "slot": "offHand",
-            "icon": "🪆",
+            "icon": "nesting-dolls",
             "allowedClasses": ["Necromancer"],
             "baseStatType": "attack",
             "scaling": { "baseMin": 3, "baseMax": 7, "perLevel": 1.2 }
@@ -127,7 +127,7 @@
             "name_pl": "Talizman",
             "name_en": "Talisman",
             "slot": "offHand",
-            "icon": "🔮",
+            "icon": "crystal-ball",
             "allowedClasses": ["Bard"],
             "baseStatType": "defense",
             "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.9 }
@@ -139,12 +139,12 @@
             "prefix_pl": "Ciezki",
             "prefix_en": "Heavy",
             "pieces": [
-                { "slot": "helmet",    "name_pl": "Helm",         "name_en": "Helmet",    "icon": "⛑️", "scaling": { "baseMin": 3, "baseMax": 6, "perLevel": 1.0 } },
-                { "slot": "armor",     "name_pl": "Zbroja",       "name_en": "Armor",     "icon": "🦺", "scaling": { "baseMin": 5, "baseMax": 10, "perLevel": 1.4 } },
-                { "slot": "pants",     "name_pl": "Spodnie",      "name_en": "Legs",      "icon": "👖", "scaling": { "baseMin": 3, "baseMax": 7, "perLevel": 1.1 } },
-                { "slot": "boots",     "name_pl": "Buty",         "name_en": "Boots",     "icon": "👢", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
-                { "slot": "shoulders", "name_pl": "Naramienniki", "name_en": "Shoulders", "icon": "🎖️", "scaling": { "baseMin": 3, "baseMax": 6, "perLevel": 1.0 } },
-                { "slot": "gloves",    "name_pl": "Rekawice",     "name_en": "Gloves",    "icon": "🧤", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } }
+                { "slot": "helmet",    "name_pl": "Helm",         "name_en": "Helmet",    "icon": "rescue-worker-s-helmet", "scaling": { "baseMin": 3, "baseMax": 6, "perLevel": 1.0 } },
+                { "slot": "armor",     "name_pl": "Zbroja",       "name_en": "Armor",     "icon": "safety-vest", "scaling": { "baseMin": 5, "baseMax": 10, "perLevel": 1.4 } },
+                { "slot": "pants",     "name_pl": "Spodnie",      "name_en": "Legs",      "icon": "jeans", "scaling": { "baseMin": 3, "baseMax": 7, "perLevel": 1.1 } },
+                { "slot": "boots",     "name_pl": "Buty",         "name_en": "Boots",     "icon": "woman-s-boot", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
+                { "slot": "shoulders", "name_pl": "Naramienniki", "name_en": "Shoulders", "icon": "military-medal", "scaling": { "baseMin": 3, "baseMax": 6, "perLevel": 1.0 } },
+                { "slot": "gloves",    "name_pl": "Rekawice",     "name_en": "Gloves",    "icon": "gloves", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } }
             ]
         },
         "magic": {
@@ -152,12 +152,12 @@
             "prefix_pl": "Magiczny",
             "prefix_en": "Magic",
             "pieces": [
-                { "slot": "helmet",    "name_pl": "Helm",         "name_en": "Helmet",    "icon": "🎩", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.7 } },
-                { "slot": "armor",     "name_pl": "Szata",        "name_en": "Robe",      "icon": "🧙", "scaling": { "baseMin": 2, "baseMax": 6, "perLevel": 0.9 } },
-                { "slot": "pants",     "name_pl": "Spodnie",      "name_en": "Legs",      "icon": "👖", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.7 } },
-                { "slot": "boots",     "name_pl": "Buty",         "name_en": "Boots",     "icon": "🥾", "scaling": { "baseMin": 1, "baseMax": 3, "perLevel": 0.5 } },
-                { "slot": "shoulders", "name_pl": "Naramienniki", "name_en": "Shoulders", "icon": "🎗️", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.7 } },
-                { "slot": "gloves",    "name_pl": "Rekawice",     "name_en": "Gloves",    "icon": "🧤", "scaling": { "baseMin": 1, "baseMax": 3, "perLevel": 0.5 } }
+                { "slot": "helmet",    "name_pl": "Helm",         "name_en": "Helmet",    "icon": "top-hat", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.7 } },
+                { "slot": "armor",     "name_pl": "Szata",        "name_en": "Robe",      "icon": "mage", "scaling": { "baseMin": 2, "baseMax": 6, "perLevel": 0.9 } },
+                { "slot": "pants",     "name_pl": "Spodnie",      "name_en": "Legs",      "icon": "jeans", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.7 } },
+                { "slot": "boots",     "name_pl": "Buty",         "name_en": "Boots",     "icon": "hiking-boot", "scaling": { "baseMin": 1, "baseMax": 3, "perLevel": 0.5 } },
+                { "slot": "shoulders", "name_pl": "Naramienniki", "name_en": "Shoulders", "icon": "reminder-ribbon", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.7 } },
+                { "slot": "gloves",    "name_pl": "Rekawice",     "name_en": "Gloves",    "icon": "gloves", "scaling": { "baseMin": 1, "baseMax": 3, "perLevel": 0.5 } }
             ]
         },
         "light": {
@@ -165,12 +165,12 @@
             "prefix_pl": "Lekki",
             "prefix_en": "Light",
             "pieces": [
-                { "slot": "helmet",    "name_pl": "Helm",         "name_en": "Helmet",    "icon": "🪖", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
-                { "slot": "armor",     "name_pl": "Zbroja",       "name_en": "Armor",     "icon": "👘", "scaling": { "baseMin": 3, "baseMax": 8, "perLevel": 1.1 } },
-                { "slot": "pants",     "name_pl": "Spodnie",      "name_en": "Legs",      "icon": "👖", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
-                { "slot": "boots",     "name_pl": "Buty",         "name_en": "Boots",     "icon": "👟", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.6 } },
-                { "slot": "shoulders", "name_pl": "Naramienniki", "name_en": "Shoulders", "icon": "🎖️", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
-                { "slot": "gloves",    "name_pl": "Rekawice",     "name_en": "Gloves",    "icon": "🧤", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.6 } }
+                { "slot": "helmet",    "name_pl": "Helm",         "name_en": "Helmet",    "icon": "military-helmet", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
+                { "slot": "armor",     "name_pl": "Zbroja",       "name_en": "Armor",     "icon": "kimono", "scaling": { "baseMin": 3, "baseMax": 8, "perLevel": 1.1 } },
+                { "slot": "pants",     "name_pl": "Spodnie",      "name_en": "Legs",      "icon": "jeans", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
+                { "slot": "boots",     "name_pl": "Buty",         "name_en": "Boots",     "icon": "running-shoe", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.6 } },
+                { "slot": "shoulders", "name_pl": "Naramienniki", "name_en": "Shoulders", "icon": "military-medal", "scaling": { "baseMin": 2, "baseMax": 5, "perLevel": 0.8 } },
+                { "slot": "gloves",    "name_pl": "Rekawice",     "name_en": "Gloves",    "icon": "gloves", "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.6 } }
             ]
         }
     },
@@ -180,7 +180,7 @@
             "name_pl": "Pierscien",
             "name_en": "Ring",
             "slot": "ring1",
-            "icon": "💍",
+            "icon": "ring",
             "allowedClasses": ["Knight", "Mage", "Cleric", "Archer", "Rogue", "Necromancer", "Bard"],
             "baseStatType": "mixed",
             "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.5 }
@@ -190,7 +190,7 @@
             "name_pl": "Naszyjnik",
             "name_en": "Necklace",
             "slot": "necklace",
-            "icon": "📿",
+            "icon": "prayer-beads",
             "allowedClasses": ["Knight", "Mage", "Cleric", "Archer", "Rogue", "Necromancer", "Bard"],
             "baseStatType": "mixed",
             "scaling": { "baseMin": 1, "baseMax": 4, "perLevel": 0.5 }
@@ -200,7 +200,7 @@
             "name_pl": "Kolczyki",
             "name_en": "Earrings",
             "slot": "earrings",
-            "icon": "✨",
+            "icon": "sparkles",
             "allowedClasses": ["Knight", "Mage", "Cleric", "Archer", "Rogue", "Necromancer", "Bard"],
             "baseStatType": "mixed",
             "scaling": { "baseMin": 1, "baseMax": 3, "perLevel": 0.4 }

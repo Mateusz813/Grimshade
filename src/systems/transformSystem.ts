@@ -13,7 +13,7 @@ import { getMonsterImage } from './spriteAssets';
 import monstersData from '../data/monsters.json';
 import transformsData from '../data/transforms.json';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface ITransformData {
   id: number;
@@ -105,7 +105,7 @@ export interface ICumulativeTransformBonuses {
   classSkillBonus: number;
 }
 
-// ── Class-specific per-transform permanent bonuses ───────────────────────────
+// -- Class-specific per-transform permanent bonuses ---------------------------
 // These OVERRIDE the permanentBonuses block in transforms.json so that every
 // transform grants the same class-specific reward. With 11 transforms the
 // totals are designed to be strong but not broken:
@@ -239,7 +239,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
 /**
  * Tier multiplier for a given transform id. Later transforms grant larger
  * flat rewards (HP/MP/ATK/DEF/regen) while percent bonuses remain unchanged.
- *   T1 → 1.0x · T6 → 2.5x · T11 → 4.0x
+ *   T1 -> 1.0x · T6 -> 2.5x · T11 -> 4.0x
  */
 export const getTransformTierMultiplier = (transformId: number): number => {
   if (!transformId || transformId < 1) return 1.0;
@@ -288,7 +288,7 @@ const EMPTY_BONUSES: ITransformPermanentBonuses = {
   classSkillBonus: 0,
 };
 
-// ── Weapon type per class ─────────────────────────────────────────────────────
+// -- Weapon type per class -----------------------------------------------------
 
 const CLASS_WEAPON_TYPE: Record<TCharacterClass, string> = {
   Knight: 'sword',
@@ -300,7 +300,7 @@ const CLASS_WEAPON_TYPE: Record<TCharacterClass, string> = {
   Bard: 'harp',
 };
 
-// ── Boss multiplier for transform quest monsters ──────────────────────────────
+// -- Boss multiplier for transform quest monsters ------------------------------
 
 export const TRANSFORM_BOSS_MULTIPLIER = {
   hp: 8.0,
@@ -308,7 +308,7 @@ export const TRANSFORM_BOSS_MULTIPLIER = {
   def: 8.0,
 };
 
-// ── Per-tier multipliers for the 4-slot transform wave lineup ────────────────
+// -- Per-tier multipliers for the 4-slot transform wave lineup ----------------
 // Each transform fight now spawns FOUR enemies in the arena instead of one:
 //   slot 0 (top-left)     — Normal (light escort)
 //   slot 1 (top-right)    — Strong (medium escort)
@@ -327,10 +327,10 @@ export const TRANSFORM_TIER_MULTIPLIERS: Record<TTransformTier, { hp: number; at
   Boss:   { hp: TRANSFORM_BOSS_MULTIPLIER.hp, atk: TRANSFORM_BOSS_MULTIPLIER.atk, def: TRANSFORM_BOSS_MULTIPLIER.def },
 };
 
-/** Slot index → tier. Stable across waves — UI can rely on these positions. */
+/** Slot index -> tier. Stable across waves — UI can rely on these positions. */
 export const TRANSFORM_SLOT_TIERS: readonly TTransformTier[] = ['Normal', 'Strong', 'Epic', 'Boss'];
 
-// ── Data access helpers ───────────────────────────────────────────────────────
+// -- Data access helpers -------------------------------------------------------
 
 const allTransforms: ITransformData[] = transformsData as ITransformData[];
 const allMonsters: IMonster[] = monstersData as unknown as IMonster[];
@@ -348,7 +348,7 @@ export const getTransformById = (transformId: number): ITransformData | undefine
   return allTransforms.find((t) => t.id === transformId);
 };
 
-// ── Monster generation helpers ───────────────────────────────────────────────
+// -- Monster generation helpers -----------------------------------------------
 
 /** Sort monsters by level ascending for binary-search-like lookup. */
 const sortedMonsters = [...allMonsters].sort((a, b) => a.level - b.level);
@@ -418,7 +418,7 @@ const generateTransformBossMonster = (level: number): IMonster => {
 /** Cache generated monsters per transform to avoid regenerating every call. */
 const transformMonsterCache = new Map<number, IMonster[]>();
 
-// ── Core logic ────────────────────────────────────────────────────────────────
+// -- Core logic ----------------------------------------------------------------
 
 /**
  * Get the list of monsters that must be defeated for a given transform.

@@ -6,20 +6,20 @@
  * — Crit DMG tab (`crit_damage` column ranking).
  *
  * Tab definition (Leaderboard.tsx linia 149):
- *   { key: 'crit_damage', label: 'Crit DMG', icon: '💥',
+ *   { key: 'crit_damage', label: 'Crit DMG', icon: 'collision',
  *     source: 'characters', characterColumn: 'crit_damage',
  *     order: 'desc', valueLabel: 'CritDmg' }
  *
  * Sort: `crit_damage DESC, limit 100`. Display: fallback formatValue
- * (linia 404) → `CritDmg <value.toLocaleString('pl-PL')>`.
+ * (linia 404) -> `CritDmg <value.toLocaleString('pl-PL')>`.
  *
  * Knight base crit_damage = 2.0 (CLASS_BASE_STATS). Seed override
  * `crit_damage: 9.99` żeby GWARANTOWANIE wpaść w top-100. Knight max
- * crit_damage przez stat training jest poniżej 5.0 → 9.99 niemal pewny
+ * crit_damage przez stat training jest poniżej 5.0 -> 9.99 niemal pewny
  * #1.
  *
- * **WAŻNA UWAGA o asercji**: `crit_damage` jest `numeric` w DB → po
- * `Number(r[col])` = 9.99 dla seeda. `value.toLocaleString('pl-PL')` →
+ * **WAŻNA UWAGA o asercji**: `crit_damage` jest `numeric` w DB -> po
+ * `Number(r[col])` = 9.99 dla seeda. `value.toLocaleString('pl-PL')` ->
  * "9,99" (przecinek jako separator dziesiętny). Sprawdzamy oba warianty
  * "9.99" i "9,99" przez regex / asserting substring "9" z otoczeniem.
  * Najprościej: assert że pojawia się "CritDmg" + "9".
@@ -69,7 +69,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await page.goto('/leaderboard');
             await waitForAppReady(page);
 
-            // valueLabel='CritDmg' + value=9.99 → "CritDmg 9,99" (pl-PL) or
+            // valueLabel='CritDmg' + value=9.99 -> "CritDmg 9,99" (pl-PL) or
             // "CritDmg 9.99" (en-US). Combined regex matches the CritDmg label
             // AND the 9[.,]99 value (locale-agnostic decimal separator).
             await assertSeededRankingRow(page, {

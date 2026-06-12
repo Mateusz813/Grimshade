@@ -137,7 +137,7 @@ const AppShell = ({ children }: IAppShellProps) => {
     const prevLeaderId = prevPartyLeaderRef.current;
     const currentLeaderId = partyForFleeWatcher?.leaderId ?? null;
     prevPartyLeaderRef.current = currentLeaderId;
-    // Only fire on non-null → null transition.
+    // Only fire on non-null -> null transition.
     if (prevLeaderId === null || currentLeaderId !== null) return;
     if (!me) return;
     // If WE were the dissolving leader, that's a voluntary action —
@@ -170,8 +170,8 @@ const AppShell = ({ children }: IAppShellProps) => {
       // independent channels — party_members (party row deletion)
       // and partyCombatSync (phase='wipe' raid/boss state). They
       // race. If party_members lands first, this AppShell effect
-      // fires BEFORE the in-view wipe latch (wipeForcedRef →
-      // handleWipe → triggerDeath('death')) — and a flee penalty
+      // fires BEFORE the in-view wipe latch (wipeForcedRef ->
+      // handleWipe -> triggerDeath('death')) — and a flee penalty
       // would land on top of an incoming death penalty.
       //
       // Defer by ~250 ms then re-check the death event. The in-view
@@ -240,22 +240,22 @@ const AppShell = ({ children }: IAppShellProps) => {
   //
   // Decision matrix on network drop:
   //
-  //   ┌────────────────┬──────────────┬──────────────────────────────────┐
-  //   │ Route          │ In party?    │ Action                           │
-  //   ├────────────────┼──────────────┼──────────────────────────────────┤
-  //   │ /boss /dungeon │ yes          │ leave-death penalty + leave party│
-  //   │ /raid /trans   │              │ (party combat = always death)    │
-  //   │ /combat        │              │                                  │
-  //   ├────────────────┼──────────────┼──────────────────────────────────┤
-  //   │ /arena         │ n/a (PvP)    │ leave-death penalty (always —    │
-  //   │ /arena/match   │              │  arena is multiplayer-only)      │
-  //   ├────────────────┼──────────────┼──────────────────────────────────┤
-  //   │ /boss /dungeon │ no           │ auto-flip to offline mode, KEEP  │
-  //   │ /combat /trans │              │ combat running locally. Fully    │
-  //   │ /trainer       │              │ solo content = client-authorit.  │
-  //   ├────────────────┼──────────────┼──────────────────────────────────┤
-  //   │ anything else  │ any          │ auto-flip to offline mode silent │
-  //   └────────────────┴──────────────┴──────────────────────────────────┘
+  //   +----------------+--------------+----------------------------------+
+  //   | Route          | In party?    | Action                           |
+  //   +----------------+--------------+----------------------------------+
+  //   | /boss /dungeon | yes          | leave-death penalty + leave party|
+  //   | /raid /trans   |              | (party combat = always death)    |
+  //   | /combat        |              |                                  |
+  //   +----------------+--------------+----------------------------------+
+  //   | /arena         | n/a (PvP)    | leave-death penalty (always —    |
+  //   | /arena/match   |              |  arena is multiplayer-only)      |
+  //   +----------------+--------------+----------------------------------+
+  //   | /boss /dungeon | no           | auto-flip to offline mode, KEEP  |
+  //   | /combat /trans |              | combat running locally. Fully    |
+  //   | /trainer       |              | solo content = client-authorit.  |
+  //   +----------------+--------------+----------------------------------+
+  //   | anything else  | any          | auto-flip to offline mode silent |
+  //   +----------------+--------------+----------------------------------+
   //
   // Auto-flipping to offline mode is the friendly recovery path the user
   // explicitly asked for ("chyba ze da sie automatycznie wejsc do trybu
@@ -270,7 +270,7 @@ const AppShell = ({ children }: IAppShellProps) => {
     setNetworkUp(networkUp);
     const wasOnline = wasOnlineRef.current;
     wasOnlineRef.current = networkUp;
-    // ── Network DROP (online → offline) ───────────────────────────────
+    // -- Network DROP (online -> offline) -------------------------------
     if (wasOnline && !networkUp) {
       const ch = useCharacterStore.getState().character;
       if (!ch) return;
@@ -317,7 +317,7 @@ const AppShell = ({ children }: IAppShellProps) => {
       return;
     }
 
-    // ── Network RESTORE (offline → online) ────────────────────────────
+    // -- Network RESTORE (offline -> online) ----------------------------
     // 2026-05-20 spec ("jak mnie polaczy automatycznie, to powinnismy
     // grac w trybie online ... Natomiast jezeli sam klikne myszka ze
     // chce grac offline to nawet jak wywali mi internet i polaczy
@@ -349,7 +349,7 @@ const AppShell = ({ children }: IAppShellProps) => {
 
   // 2026-05-13 spec ("Wyszedlem do widoku wyboru postaci i dalej po
   // wejsciu na postac moja postac byla w party"): when the player lands
-  // on a characterless route (e.g. cleared the URL → /character-select)
+  // on a characterless route (e.g. cleared the URL -> /character-select)
   // while still holding a party row, dissolve the party. clearCharacter
   // already does this via fire-and-forget but only fires on the auth /
   // menu paths — URL clear simply navigates without touching the store.

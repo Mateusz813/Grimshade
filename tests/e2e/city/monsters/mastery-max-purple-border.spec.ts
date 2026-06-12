@@ -2,14 +2,14 @@
  * Atomic E2E — Monster card otrzymuje class `combat__mcard--mastery-max`
  * (purple border + glow) gdy mastery dla tego potwora jest 25/25.
  *
- * Spec (BACKLOG.md punkt 5.3): "Mastery 25/25 → purple border".
+ * Spec (BACKLOG.md punkt 5.3): "Mastery 25/25 -> purple border".
  *
  * Co testujemy:
  *  - Seed Knight + game_save z `mastery.masteries = { rat: { level: 25 } }`
- *    → po hydration `useMasteryStore.masteries['rat'].level === 25`.
- *  - Nawigacja na `/monsters` → karta Szczur (id='rat') ma DUAL klasy:
- *      • `combat__mcard` (base)
- *      • `combat__mcard--mastery-max` (purple border + glow + gradient bg)
+ *    -> po hydration `useMasteryStore.masteries['rat'].level === 25`.
+ *  - Nawigacja na `/monsters` -> karta Szczur (id='rat') ma DUAL klasy:
+ *      - `combat__mcard` (base)
+ *      - `combat__mcard--mastery-max` (purple border + glow + gradient bg)
  *    CSS: `Combat.scss` linia 408-416 — `border-color: rgba(#9c27b0, 0.6)`.
  *  - Mastery chip pokazuje "25/25" + ma class `combat__mcard-mastery--max`.
  *
@@ -45,7 +45,7 @@ import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 test.describe('City › Monsters', { tag: '@city' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('mastery 25/25 on monster → card has mastery-max class (purple border)', async ({ page }) => {
+    test('mastery 25/25 on monster -> card has mastery-max class (purple border)', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -62,7 +62,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
             // 2. Seed game_save z mastery.masteries.rat.level=25 (MAX).
             //    Po hydration `useMasteryStore.getState().masteries['rat'].level === 25`,
             //    więc `MonsterList.tsx` linia 270 `isMaxMasteryHere = masteryLvl >= MASTERY_MAX_LEVEL`
-            //    da true → `combat__mcard--mastery-max` class wpada do `cardClass` array.
+            //    da true -> `combat__mcard--mastery-max` class wpada do `cardClass` array.
             const userId = await findUserIdByEmail(testUsers.primary.email);
             await seedGameSave({
                 characterId: created.id,
@@ -85,7 +85,7 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
 
             // 4. Znajdź kartę Szczur. Sortowanie kart w MonsterList: po level
             //    asc (linia 39 `.slice().sort((a, b) => a.level - b.level)`),
-            //    a Szczur jest level 1 → ZAWSZE pierwsza karta. Match po
+            //    a Szczur jest level 1 -> ZAWSZE pierwsza karta. Match po
             //    exact-text regex `^Szczur$` żeby NIE matchować "Człowiek-Jaszczur"
             //    (lvl 12) który zawiera "Szczur" jako substring.
             const ratCard = page.locator('.combat__mcard', {
@@ -102,14 +102,14 @@ test.describe('City › Monsters', { tag: '@city' }, () => {
 
             // 6. Mastery chip "25/25" + class `combat__mcard-mastery--max`.
             //    Mastery chip jest w `.combat__mcard-mastery` (linia 311-316);
-            //    text format = "{masteryLvl}/{MASTERY_MAX_LEVEL}" → "25/25".
+            //    text format = "{masteryLvl}/{MASTERY_MAX_LEVEL}" -> "25/25".
             const masteryChip = ratCard.locator('.combat__mcard-mastery');
             await expect(masteryChip).toContainText('25/25');
             await expect(masteryChip).toHaveClass(/combat__mcard-mastery--max/);
 
             // 7. Sanity: INNA karta (np. Pająk Jaskiniowy — drugi w liście)
             //    NIE ma `combat__mcard--mastery-max` (no seeded mastery).
-            //    Pająk JEST locked (no mastery na poprzednim → lock), więc
+            //    Pająk JEST locked (no mastery na poprzednim -> lock), więc
             //    bardziej generyczny check: karta ze stringiem "0/25" w
             //    mastery chip-ie NIE ma mastery-max class.
             //    Bierzemy 2-ą kartę z grid-a (która = Pająk Jaskiniowy bo sort by level).

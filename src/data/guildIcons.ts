@@ -19,26 +19,26 @@ export interface IGuildIcon {
 }
 
 export const GUILD_ICONS: IGuildIcon[] = [
-    { id: 'castle',     icon: '🏰', label: 'Zamek' },
-    { id: 'dragon',     icon: '🐉', label: 'Smok' },
-    { id: 'shield',     icon: '🛡️', label: 'Tarcza' },
-    { id: 'sword',      icon: '⚔️', label: 'Miecze' },
-    { id: 'crown',      icon: '👑', label: 'Korona' },
-    { id: 'phoenix',    icon: '🦅', label: 'Feniks' },
-    { id: 'wolf',       icon: '🐺', label: 'Wilk' },
-    { id: 'lion',       icon: '🦁', label: 'Lew' },
-    { id: 'skull',      icon: '💀', label: 'Czaszka' },
-    { id: 'demon',      icon: '👹', label: 'Demon' },
-    { id: 'angel',      icon: '😇', label: 'Anioł' },
-    { id: 'star',       icon: '⭐', label: 'Gwiazda' },
-    { id: 'flame',      icon: '🔥', label: 'Płomień' },
-    { id: 'snowflake',  icon: '❄️', label: 'Śnieżynka' },
-    { id: 'thunder',    icon: '⚡', label: 'Piorun' },
-    { id: 'leaf',       icon: '🌿', label: 'Liść' },
-    { id: 'gem',        icon: '💎', label: 'Klejnot' },
-    { id: 'moon',       icon: '🌙', label: 'Księżyc' },
-    { id: 'sun',        icon: '☀️', label: 'Słońce' },
-    { id: 'eye',        icon: '👁️', label: 'Oko' },
+    { id: 'castle',     icon: 'castle', label: 'Zamek' },
+    { id: 'dragon',     icon: 'dragon', label: 'Smok' },
+    { id: 'shield',     icon: 'shield', label: 'Tarcza' },
+    { id: 'sword',      icon: 'crossed-swords', label: 'Miecze' },
+    { id: 'crown',      icon: 'crown', label: 'Korona' },
+    { id: 'phoenix',    icon: 'eagle', label: 'Feniks' },
+    { id: 'wolf',       icon: 'wolf', label: 'Wilk' },
+    { id: 'lion',       icon: 'lion', label: 'Lew' },
+    { id: 'skull',      icon: 'skull', label: 'Czaszka' },
+    { id: 'demon',      icon: 'ogre', label: 'Demon' },
+    { id: 'angel',      icon: 'smiling-face-with-halo', label: 'Anioł' },
+    { id: 'star',       icon: 'star', label: 'Gwiazda' },
+    { id: 'flame',      icon: 'fire', label: 'Płomień' },
+    { id: 'snowflake',  icon: 'snowflake', label: 'Śnieżynka' },
+    { id: 'thunder',    icon: 'high-voltage', label: 'Piorun' },
+    { id: 'leaf',       icon: 'herb', label: 'Liść' },
+    { id: 'gem',        icon: 'gem-stone', label: 'Klejnot' },
+    { id: 'moon',       icon: 'crescent-moon', label: 'Księżyc' },
+    { id: 'sun',        icon: 'sun', label: 'Słońce' },
+    { id: 'eye',        icon: 'eye', label: 'Oko' },
 ];
 
 /** Hex colour swatches for the guild banner background tile. */
@@ -69,5 +69,5 @@ export const GUILD_COLORS: string[] = [
  *  the castle when the id isn't recognised (e.g. legacy row from before
  *  an icon was renamed). */
 export const getGuildIcon = (id: string): string => {
-    return GUILD_ICONS.find((g) => g.id === id)?.icon ?? '🏰';
+    return GUILD_ICONS.find((g) => g.id === id)?.icon ?? 'castle';
 };

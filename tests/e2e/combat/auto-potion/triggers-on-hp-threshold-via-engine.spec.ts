@@ -2,12 +2,12 @@
  * Atomic E2E — auto-potion fires at HP threshold (BACKLOG 11.2 derived).
  *
  * Spec coverage:
- *  • 11.2 → "Auto-potion MP threshold trigger" rephrased to HP (same engine
+ *  - 11.2 -> "Auto-potion MP threshold trigger" rephrased to HP (same engine
  *    branch). The sibling popup tests (11.1 / 11.4 / 11.4b) only prove
  *    the SETTINGS UI persists and renders; THIS test verifies the
  *    COMBAT-TRIGGER contract: when an auto-potion is configured, enabled,
  *    and the player's HP drops below the threshold, the engine calls
- *    `tryAutoPotion` → `useAutoPotionSlot` → `inv.useConsumable` AND
+ *    `tryAutoPotion` -> `useAutoPotionSlot` -> `inv.useConsumable` AND
  *    `cs.healPlayerHp(amount, maxHp)` AND sets the potion cooldown.
  *
  * Test strategy:
@@ -23,20 +23,20 @@
  *  assert the potion fired.
  *
  *  Why not full real-time combat?
- *    • Real-time combat ticks at attack_speed intervals (rat speed=5 →
+ *    - Real-time combat ticks at attack_speed intervals (rat speed=5 ->
  *      ~600 ms per tick). With auto-potion firing inside a tick, the
  *      next assertion has to either poll for state changes or rely on a
  *      specific number of attack ticks. Race-prone on slow CI runners.
- *    • The auto-fight loop will start a NEW fight as soon as the current
+ *    - The auto-fight loop will start a NEW fight as soon as the current
  *      one ends (AUTO_FIGHT_DELAY_MS), so even pausing for one tick
  *      pulls in side effects we don't want to assert against.
- *    • The contract here is "auto-potion fires when HP < threshold +
+ *    - The contract here is "auto-potion fires when HP < threshold +
  *      potion in bag + not on cooldown" — that's a pure-store / pure-
  *      function contract, perfectly testable without combat animation.
  *
  * Setup:
  *  1. Seed Knight lvl 5 + 5× `hp_potion_sm` consumable.
- *  2. Login + Town → forces `useCharacterStore.character` hydration AND
+ *  2. Login + Town -> forces `useCharacterStore.character` hydration AND
  *     `useInventoryStore.consumables` hydration via applyBlobToStores.
  *  3. Stage combat state via `initCombat` (so `useCombatStore.playerCurrentHp`
  *     is the value the engine reads). Set player HP to 40/120 = 33% of
@@ -61,7 +61,7 @@
  *  the contract proof.
  *
  * Cleanup: try/finally + `cleanupCharacterById`. The character row is
- * destroyed → game_saves cascade → cooldown / combat state evaporates
+ * destroyed -> game_saves cascade -> cooldown / combat state evaporates
  * with the page session.
  */
 
@@ -199,8 +199,8 @@ test.describe('Combat › Auto-Potion', { tag: '@combat' }, () => {
             // 6a. Consumable decremented by exactly 1 (useConsumable line 410).
             expect(result.consumableCount).toBe(4);
 
-            // 6b. HP healed by 50 → 40 + 50 = 90 (under cap of 120).
-            //     healPlayerHp(amount=50, max=120) → min(120, 40+50) = 90.
+            // 6b. HP healed by 50 -> 40 + 50 = 90 (under cap of 120).
+            //     healPlayerHp(amount=50, max=120) -> min(120, 40+50) = 90.
             expect(result.playerCurrentHp).toBe(90);
 
             // 6c. Cooldown engaged (FLAT_POTION_COOLDOWN_MS = 1000).

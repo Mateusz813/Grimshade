@@ -2,25 +2,25 @@
  * Atomic E2E — HP konsystencja across 3 widoków po założeniu helmet-a
  * z +20 HP bonusem.
  *
- * Spec (BACKLOG.md punkt 6.12): "Założenie EQ → HP zwiększone na
+ * Spec (BACKLOG.md punkt 6.12): "Założenie EQ -> HP zwiększone na
  * wszystkich widokach (Town, TopHeader, every combat)"
  *
  * Pragmatic scoping (per session brief 2026-05-25):
  * Sprawdzamy 3 reprezentatywne widoki które renderują efektywne max HP
  * z uwzględnieniem equipment-u:
- *   1. Town `/` → `.town__bar-value`
- *      (helper `engineGetEffectiveChar` →
+ *   1. Town `/` -> `.town__bar-value`
+ *      (helper `engineGetEffectiveChar` ->
  *      `getTotalEquipmentStats(equipment).hp`)
- *   2. TopHeader pulse popover → `.top-header__pulse-popover-row--hp`
+ *   2. TopHeader pulse popover -> `.top-header__pulse-popover-row--hp`
  *      (helper `getEffectiveChar` — same engine as Town)
- *   3. `/character-select` card → `.char-select__bar-value`
+ *   3. `/character-select` card -> `.char-select__bar-value`
  *      (helper `getEffectiveMaxStats` — czyta equipment przez
  *      `peekCharacterStore(charId, 'inventory')` z localStorage)
  *
  * Ścieżki dla equipment:
- *  • Town/TopHeader: `useInventoryStore.getState().equipment` (in-memory
+ *  - Town/TopHeader: `useInventoryStore.getState().equipment` (in-memory
  *    Zustand store, populated po `switchToCharacter`).
- *  • CharacterSelect: `peekCharacterStore` (czyta localStorage
+ *  - CharacterSelect: `peekCharacterStore` (czyta localStorage
  *    `dungeon_rpg_save_char_<id>`).
  *
  * Każdy z nich woła `getTotalEquipmentStats(equipment, ALL_ITEMS)` i ma
@@ -35,11 +35,11 @@
  *
  * Why `heavy_helmet_lvl5_common` (generated item, NOT legacy
  * `iron_helmet`):
- *  • Legacy items z `items.json` (iron_helmet/leather_cap) używają
+ *  - Legacy items z `items.json` (iron_helmet/leather_cap) używają
  *    `findBaseItem` path w `getTotalEquipmentStats` (linia 651) — czyta
  *    `baseAtk/baseDef` z items.json. NIE bierze pod uwagę `bonuses.hp`
  *    bo legacy gear ma stats wbity w baseDef, nie w bonuses object.
- *  • Generated items (regex `<type>_lvl<N>_<rarity>`) padają w `genInfo`
+ *  - Generated items (regex `<type>_lvl<N>_<rarity>`) padają w `genInfo`
  *    fallback (linia 662) ktory czyta KAŻDY klucz z `bonuses` (linia 665)
  *    — w tym `hp`. Test seeduje `bonuses: { hp: 20 }` i `getTotalEquipmentStats`
  *    to sumuje.
@@ -62,7 +62,7 @@
  * ## Warm flow
  *
  * Jak w testach 3.5/3.6: CharacterSelect czyta equipment z localStorage,
- * świeży character bez `switchToCharacter` ma pusty save → wymagamy
+ * świeży character bez `switchToCharacter` ma pusty save -> wymagamy
  * tap "Wybierz" PRZED finalną asercją w CharacterSelect.
  *
  * Cleanup: try/finally + `cleanupCharacterById(createdId)`.
@@ -78,7 +78,7 @@ import { seedEquippedItem } from '../../fixtures/seedInventory';
 test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('helmet with +20 HP bonus → Town, TopHeader popover, CharacterSelect all show effective max HP', async ({ page }) => {
+    test('helmet with +20 HP bonus -> Town, TopHeader popover, CharacterSelect all show effective max HP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -108,12 +108,12 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
                 upgradeLevel: 0,
             });
 
-            // 3. Login → /character-select.
+            // 3. Login -> /character-select.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
 
-            // 4. Tap "Wybierz" → Town (warm localStorage przy okazji).
+            // 4. Tap "Wybierz" -> Town (warm localStorage przy okazji).
             const card = page.locator('.char-select__card', {
                 has: page.locator('.char-select__card-name', { hasText: nick }),
             });
@@ -123,7 +123,7 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
 
             // 5. Read HP value from Town bar.
             //    Knight base max_hp=120 + 20 (helmet bonus) = 140.
-            //    HP starts at 40 → expect `40/140`.
+            //    HP starts at 40 -> expect `40/140`.
             const townHp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--hp') })
                 .locator('.town__bar-value')
@@ -142,8 +142,8 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
 
             // 7. Wróć do /character-select. localStorage ma teraz świeży save
             //    z equipped helmet. `getEffectiveMaxStats` w CharacterSelect:
-            //      `peekCharacterStore(charId, 'inventory')` → `.equipment.helmet`
-            //      → `getTotalEquipmentStats` → `hp: 20` → effective 140.
+            //      `peekCharacterStore(charId, 'inventory')` -> `.equipment.helmet`
+            //      -> `getTotalEquipmentStats` -> `hp: 20` -> effective 140.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
             const reloadedCard = page.locator('.char-select__card', {

@@ -3,7 +3,7 @@ import { useTransformStore } from './transformStore';
 import { useCharacterStore } from './characterStore';
 import { getTransformMonsters } from '../systems/transformSystem';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useTransformStore.setState({
@@ -19,7 +19,7 @@ beforeEach(() => {
     useCharacterStore.setState({ character: null, isLoading: false });
 });
 
-// ── startTransformQuest ──────────────────────────────────────────────────────
+// -- startTransformQuest ------------------------------------------------------
 
 describe('startTransformQuest', () => {
     it('starts a quest for transform 1 when the player meets the level requirement', () => {
@@ -71,7 +71,7 @@ describe('startTransformQuest', () => {
     });
 });
 
-// ── defeatMonster ────────────────────────────────────────────────────────────
+// -- defeatMonster ------------------------------------------------------------
 
 describe('defeatMonster', () => {
     beforeEach(() => {
@@ -116,7 +116,7 @@ describe('defeatMonster', () => {
     });
 });
 
-// ── completeTransform ────────────────────────────────────────────────────────
+// -- completeTransform --------------------------------------------------------
 
 describe('completeTransform', () => {
     it('returns 0 when no quest is active and no pending claim exists', () => {
@@ -151,7 +151,7 @@ describe('completeTransform', () => {
     });
 });
 
-// ── abandonTransformQuest ────────────────────────────────────────────────────
+// -- abandonTransformQuest ----------------------------------------------------
 
 describe('abandonTransformQuest', () => {
     it('clears the active quest', () => {
@@ -161,7 +161,7 @@ describe('abandonTransformQuest', () => {
     });
 
     it('PRESERVES pendingClaimTransformId so a finished player can still claim rewards', () => {
-        // Simulate: all monsters dead → pending claim locked → player flees.
+        // Simulate: all monsters dead -> pending claim locked -> player flees.
         useTransformStore.getState().startTransformQuest(1, 1000);
         for (const m of getTransformMonsters(1)) {
             useTransformStore.getState().defeatMonster(m.id);
@@ -171,7 +171,7 @@ describe('abandonTransformQuest', () => {
     });
 });
 
-// ── claimPendingReward ───────────────────────────────────────────────────────
+// -- claimPendingReward -------------------------------------------------------
 
 describe('claimPendingReward', () => {
     it('returns null when nothing is pending', () => {
@@ -191,7 +191,7 @@ describe('claimPendingReward', () => {
     });
 });
 
-// ── Getters ──────────────────────────────────────────────────────────────────
+// -- Getters ------------------------------------------------------------------
 
 describe('getHighestCompletedTransform', () => {
     it('returns 0 when nothing is completed', () => {
@@ -285,11 +285,11 @@ describe('isQuestInProgress / getQuestProgress / getRemainingMonsters', () => {
     });
 });
 
-// ── migrateLegacyBakedBonuses ────────────────────────────────────────────────
+// -- migrateLegacyBakedBonuses ------------------------------------------------
 
 describe('migrateLegacyBakedBonuses', () => {
     it('no-op + returns false when already migrated (bakedBonusesApplied=false)', () => {
-        // Default initial state already has the flag false → migrate must
+        // Default initial state already has the flag false -> migrate must
         // detect "nothing to do" and bail.
         expect(useTransformStore.getState().migrateLegacyBakedBonuses()).toBe(false);
     });
@@ -314,7 +314,7 @@ describe('migrateLegacyBakedBonuses', () => {
             pendingClaimTransformId: null,
         });
         useCharacterStore.setState({ character: null, isLoading: false });
-        // No character to migrate against → returns false (does not flip the flag).
+        // No character to migrate against -> returns false (does not flip the flag).
         expect(useTransformStore.getState().migrateLegacyBakedBonuses()).toBe(false);
         expect(useTransformStore.getState().bakedBonusesApplied).toBe(true);
     });

@@ -7,31 +7,31 @@
  * Test sprawdza Spec 12 z Inventory.tsx (linia 777+): gdy gracz klika na
  * non-equipped item w bagu, a w tym samym slocie ma już coś założone,
  * popup DetailPanel splituje się na 2 kolumny:
- *  • Lewa (NEW) — klikniety item z bagu, tag "Nowy"
- *  • Prawa (EQUIPPED) — założony item, tag "Założony", stat-delta arrows
- *    (↑ green = upgrade, ↓ red = downgrade).
+ *  - Lewa (NEW) — klikniety item z bagu, tag "Nowy"
+ *  - Prawa (EQUIPPED) — założony item, tag "Założony", stat-delta arrows
+ *    (^ green = upgrade, v red = downgrade).
  *
  * Implementacja: `equippedToCompare = compareSlot ? equipment[compareSlot] : null`
- * (linia 753). Gdy non-null → klasa `inventory__detail--comparing` na
+ * (linia 753). Gdy non-null -> klasa `inventory__detail--comparing` na
  * popupie + render `<EquippedComparisonColumn>` (linia 1432).
  *
  * Setup:
- *  • Founda Knight, level 5.
- *  • Slot equipment.helmet: iron_helmet (common, lvl 5, baseDef=8).
- *  • Bag: iron_helmet (rare, lvl 5, baseDef=8 + bonus hp=20).
+ *  - Founda Knight, level 5.
+ *  - Slot equipment.helmet: iron_helmet (common, lvl 5, baseDef=8).
+ *  - Bag: iron_helmet (rare, lvl 5, baseDef=8 + bonus hp=20).
  *
  * Dlaczego rare vs common:
- *  • Same itemId + slot — gwarantuje że compareSlot dobrze trafi.
- *  • Różne rarity → różne stat-delta values (rare iron_helmet z hp=20
+ *  - Same itemId + slot — gwarantuje że compareSlot dobrze trafi.
+ *  - Różne rarity -> różne stat-delta values (rare iron_helmet z hp=20
  *    bonusem pokaże delta HP +20 vs common bez bonusu).
  *
  * Asercje:
- *  • Bag tile widoczne.
- *  • Tap bag tile → DetailPanel z klasą `inventory__detail--comparing`.
- *  • Lewa kolumna (`inventory__detail-col--new`) zawiera tag "Nowy".
- *  • Prawa kolumna (`inventory__detail-col--equipped`) zawiera tag "Założony".
- *  • W prawej kolumnie pojawia się sekcja stat-diff (`inventory__compare-stats`).
- *  • Pokazuje wartość equipped + delta dla statu HP.
+ *  - Bag tile widoczne.
+ *  - Tap bag tile -> DetailPanel z klasą `inventory__detail--comparing`.
+ *  - Lewa kolumna (`inventory__detail-col--new`) zawiera tag "Nowy".
+ *  - Prawa kolumna (`inventory__detail-col--equipped`) zawiera tag "Założony".
+ *  - W prawej kolumnie pojawia się sekcja stat-diff (`inventory__compare-stats`).
+ *  - Pokazuje wartość equipped + delta dla statu HP.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -46,7 +46,7 @@ import { seedInventoryItem, seedEquippedItem } from '../../fixtures/seedInventor
 test.describe('Inventory › Compare', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('tap bag item with same-slot equipped item → popup shows comparison column with deltas', async ({ page }) => {
+    test('tap bag item with same-slot equipped item -> popup shows comparison column with deltas', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -70,8 +70,8 @@ test.describe('Inventory › Compare', { tag: '@inventory' }, () => {
             });
 
             // 3. Bag: iron_helmet rare (z hp bonus żeby były delta values).
-            //    `rare` rarity + `bonuses: { hp: 20 }` → buildItemStats zwraca
-            //    hp=20 dla new vs hp=0 dla equipped → delta HP +20.
+            //    `rare` rarity + `bonuses: { hp: 20 }` -> buildItemStats zwraca
+            //    hp=20 dla new vs hp=0 dla equipped -> delta HP +20.
             await seedInventoryItem({
                 characterId: created.id,
                 itemId: 'iron_helmet',
@@ -100,7 +100,7 @@ test.describe('Inventory › Compare', { tag: '@inventory' }, () => {
             const bagTiles = page.locator('.inventory__bag-tile');
             await expect(bagTiles).toHaveCount(1);
 
-            // 7. Tap bag tile → DetailPanel pojawia się.
+            // 7. Tap bag tile -> DetailPanel pojawia się.
             await bagTiles.first().tap();
             await expect(page.locator('.inventory__detail')).toBeVisible({ timeout: 5_000 });
 

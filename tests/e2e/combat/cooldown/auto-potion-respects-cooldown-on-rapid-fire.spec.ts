@@ -11,25 +11,25 @@
  *
  * This test proves that contract end-to-end for the HP potion slot:
  *
- *   1. Fire #1 — cooldown=0 (clear state), fires, count 5→4,
+ *   1. Fire #1 — cooldown=0 (clear state), fires, count 5->4,
  *      cooldown set to 1000ms (FLAT_POTION_COOLDOWN_MS).
  *   2. Fire #2 — IMMEDIATELY after, with cooldown still ~1000ms,
  *      MUST no-op. Count stays 4.
  *   3. `cooldownStore.tick(1000)` — ticks cooldown to 0.
- *   4. Fire #3 — with cooldown=0, MUST fire again. Count 4→3.
+ *   4. Fire #3 — with cooldown=0, MUST fire again. Count 4->3.
  *
  * Why this is the canonical regression guard:
- *  • combatEngine.ts line 910: `if (!enabled || threshold <= 0 || onCooldown) return;`
+ *  - combatEngine.ts line 910: `if (!enabled || threshold <= 0 || onCooldown) return;`
  *    — the `onCooldown` argument is computed by the caller as
  *    `cd.hpPotionCooldown > 0`. If a future refactor moves the
  *    cooldown check to before `useConsumable` correctly but skips
  *    setting the cooldown at line 933 (`startCdFn(cd)`), this test
  *    would catch it — fires #1 and #2 would BOTH succeed because no
  *    cooldown is set.
- *  • If someone changes `cd > 0` to `cd >= 0`, this test catches it
+ *  - If someone changes `cd > 0` to `cd >= 0`, this test catches it
  *    (fire #3 would no-op because tick(1000) leaves cd at exactly 0
  *    which is still "active" by the new buggy gate).
- *  • If `tick` semantics change (e.g. clamp wrong), this test catches
+ *  - If `tick` semantics change (e.g. clamp wrong), this test catches
  *    that — fire #3 needs cd === 0 to succeed.
  *
  * Setup:
@@ -131,7 +131,7 @@ test.describe('Combat › Cooldown', { tag: '@combat' }, () => {
                 // Stage. HP=30 / 120 = 25% — below default threshold (50).
                 useCombatStore.getState().initCombat(rat, 30, 30, 'normal');
 
-                // ── FIRE #1 ─────────────────────────────────────────────
+                // -- FIRE #1 ---------------------------------------------
                 engine.tryAutoPotion(30, 120, 30, 30);
                 const afterFire1 = {
                     count: useInventoryStore.getState().consumables['hp_potion_sm'] ?? 0,
@@ -139,7 +139,7 @@ test.describe('Combat › Cooldown', { tag: '@combat' }, () => {
                     cd: useCooldownStore.getState().hpPotionCooldown,
                 };
 
-                // ── FIRE #2 ─ immediately after, cooldown active. Reset
+                // -- FIRE #2 - immediately after, cooldown active. Reset
                 // HP back to 30 so threshold check would still allow fire
                 // (otherwise after heal HP would be 80 and threshold
                 // check at line 915 would gate, hiding the cooldown gate
@@ -152,15 +152,15 @@ test.describe('Combat › Cooldown', { tag: '@combat' }, () => {
                     cd: useCooldownStore.getState().hpPotionCooldown,
                 };
 
-                // ── TICK ─ advance cooldown to 0.
+                // -- TICK - advance cooldown to 0.
                 // FLAT_POTION_COOLDOWN_MS = 1000, so tick(1000) drops
-                // hpPotionCooldown from 1000 → 0.
+                // hpPotionCooldown from 1000 -> 0.
                 useCooldownStore.getState().tick(1000);
                 const afterTick = {
                     cd: useCooldownStore.getState().hpPotionCooldown,
                 };
 
-                // ── FIRE #3 ─ cooldown=0, must fire again.
+                // -- FIRE #3 - cooldown=0, must fire again.
                 useCombatStore.getState().setHps(rat.hp, 30);
                 engine.tryAutoPotion(30, 120, 30, 30);
                 const afterFire3 = {
@@ -172,7 +172,7 @@ test.describe('Combat › Cooldown', { tag: '@combat' }, () => {
                 return { afterFire1, afterFire2, afterTick, afterFire3 };
             });
 
-            // Fire #1: fired — count 5→4, HP 30→80 (30+50), cooldown set.
+            // Fire #1: fired — count 5->4, HP 30->80 (30+50), cooldown set.
             expect(result.afterFire1.count).toBe(4);
             expect(result.afterFire1.hp).toBe(80);
             expect(result.afterFire1.cd).toBeGreaterThan(0);
@@ -190,7 +190,7 @@ test.describe('Combat › Cooldown', { tag: '@combat' }, () => {
             // cooldownStore.ts line 51 `Math.max(0, ...)`).
             expect(result.afterTick.cd).toBe(0);
 
-            // Fire #3: fired again — count 4→3, HP 30→80, cooldown reset.
+            // Fire #3: fired again — count 4->3, HP 30->80, cooldown reset.
             expect(result.afterFire3.count).toBe(3);
             expect(result.afterFire3.hp).toBe(80);
             expect(result.afterFire3.cd).toBeGreaterThan(0);

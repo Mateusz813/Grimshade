@@ -13,6 +13,9 @@ import {
 } from '../../systems/lootSystem';
 import { getTotalEquipmentStats, flattenItemsData, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import { getTrainingBonuses } from '../../systems/skillSystem';
 import {
     getAtkDamageMultiplier,
@@ -139,10 +142,10 @@ const HP_POTION_COOLDOWN_MS = 1000;
 const MP_POTION_COOLDOWN_MS = 1000;
 const SKILL_COOLDOWN_MS = 8000;
 // 2026-05-12: scale skill MP cost with player's effective max MP.
-// See combatEngine.ts → `getSkillMpCost()` for the formula. Imported
+// See combatEngine.ts -> `getSkillMpCost()` for the formula. Imported
 // at top of file; alias kept for readability at call sites.
 
-// ── Types / constants ─────────────────────────────────────────────────────────
+// -- Types / constants ---------------------------------------------------------
 
 const monsters = monstersRaw as unknown as IMonster[];
 const monsterById = new Map(monsters.map((m) => [m.id, m]));
@@ -167,7 +170,7 @@ const CLASS_MODIFIER: Record<string, number> = {
     Archer: 1.2, Rogue: 1.0, Necromancer: 1.2, Bard: 1.0,
 };
 
-// ── Drop breakdown helpers (same logic as MonsterList) ───────────────────────
+// -- Drop breakdown helpers (same logic as MonsterList) -----------------------
 
 const RARITY_THRESHOLDS = [0.55, 0.25, 0.12, 0.05, 0.025, 0.005];
 const RARITY_TIER_NAMES: { key: string; label: string; color: string }[] = [
@@ -241,7 +244,7 @@ const rollWeaponDamage = (): number => {
     return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 const formatSkillName = (id: string | null): string => {
     if (!id) return '—';
@@ -249,14 +252,14 @@ const formatSkillName = (id: string | null): string => {
     return `${getSkillIcon(id)} ${name}`;
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Main component ------------------------------------------------------------
 
 const ALL_ITEMS: IBaseItem[] = flattenItemsData(itemsData as Parameters<typeof flattenItemsData>[0]);
 
 /**
  * Module-level set of party.id values we've already reset
  * session counters for. Survives Combat.tsx unmount/remount so a
- * background-mode round-trip (town → /combat) doesn't wipe the
+ * background-mode round-trip (town -> /combat) doesn't wipe the
  * shared session tally.
  */
 const sharedSessionResetSeen = new Set<string>();
@@ -328,7 +331,7 @@ const Combat = () => {
         // recompute the effective stats while the Combat view is mounted.
     }, [character, eqStats, skillLevelsForStats, completedTransforms]);
 
-    // ── Combat store state ────────────────────────────────────────────────────
+    // -- Combat store state ----------------------------------------------------
     const {
         phase, monster,
         playerCurrentHp, playerCurrentMp,
@@ -514,8 +517,8 @@ const Combat = () => {
     // sequence as the Wróć-do-miasta button: penalty + death overlay
     // + leave party + nav home. Without this the leader's autoFight
     // (or "Walcz ponownie" click) would yank the dead player into
-    // the next wave at 0 HP — they'd loop through Czekaj → death
-    // → Czekaj forever. One-shot per session via deathChoiceShownRef
+    // the next wave at 0 HP — they'd loop through Czekaj -> death
+    // -> Czekaj forever. One-shot per session via deathChoiceShownRef
     // semantics — the existing handler already gates re-entry.
     const autoDeathOnVictoryRef = useRef(false);
     useEffect(() => {
@@ -533,7 +536,7 @@ const Combat = () => {
         }
     }, [phase]);
 
-    // ── Level-up HP/MP refill ─────────────────────────────────────────────────
+    // -- Level-up HP/MP refill -------------------------------------------------
     // characterStore.addXp() refills character.hp/mp to the new max on every
     // level-up. Hunting keeps live HP/MP in combatStore.playerCurrentHp/Mp,
     // which is NOT touched by addXp — without this hook the player would level
@@ -606,7 +609,7 @@ const Combat = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ── Live HP/MP mirror → characterStore ────────────────────────────────────
+    // -- Live HP/MP mirror -> characterStore ------------------------------------
     // Hunting keeps its live HP/MP in combatStore (playerCurrentHp/Mp).
     // combatEngine already syncs these to characterStore on every kill, but
     // the global TopHeader bars need the WITHIN-fight values too — without
@@ -656,7 +659,7 @@ const Combat = () => {
         setAutoPotionMpEnabled(next);
     };
 
-    // ── Combat animation state ─────────────────────────────────────────────────
+    // -- Combat animation state -------------------------------------------------
     // Per-monster hit pulse map: monster idx -> monotonically-increasing
     // counter. EnemyCard renders a keyed flash overlay against this counter,
     // so two near-simultaneous hits on the same slot (auto + skill, party
@@ -699,7 +702,7 @@ const Combat = () => {
     // when SKIP speed is active (delay collapses to 10ms — would just blink).
     const [autoFightProgress, setAutoFightProgress] = useState(0);
 
-    // ── Potion + skill cooldown state ──────────────────────────────────────────
+    // -- Potion + skill cooldown state ------------------------------------------
     const hpPotionCooldown = useCooldownStore((s) => s.hpPotionCooldown);
     const mpPotionCooldown = useCooldownStore((s) => s.mpPotionCooldown);
     const pctHpCooldown = useCooldownStore((s) => s.pctHpCooldown);
@@ -752,7 +755,7 @@ const Combat = () => {
         setPlayerHitPulse((p) => p + 1);
     };
 
-    // ── Reset FX on return-to-idle ────────────────────────────────────────────
+    // -- Reset FX on return-to-idle --------------------------------------------
     // The combat-fx hook holds floats / skill overlays in local state. Hit
     // pulses naturally fade with their CSS, but a fight that ends mid-cast
     // (e.g. monster died right after a skill fired) could leave a stale skill
@@ -763,22 +766,22 @@ const Combat = () => {
     // `useCallback([])` inside `useCombatFx`), NOT on the `fx` object — `fx`
     // is a fresh object literal every render, so depending on it would re-run
     // this effect every render. When phase === 'idle', that loops:
-    // resetFx() → 4 setStates to new {} → re-render → new fx → effect again.
+    // resetFx() -> 4 setStates to new {} -> re-render -> new fx -> effect again.
     const resetFx = fx.resetFx;
     useEffect(() => {
         if (phase === 'idle') resetFx();
     }, [phase, resetFx]);
 
-    // ── Remote ally spell-cast → fire animation on the right card ────────
+    // -- Remote ally spell-cast -> fire animation on the right card --------
     // The partyCombatSyncStore receives `spell-cast` events from teammates
     // and stores the latest one per casterId. We watch that map and, when
     // a NEW timestamp lands for any caster other than the local player,
     // dispatch the animation:
-    //   • DAMAGE spells → triggerEnemySkillAnim on the target monster slot
+    //   - DAMAGE spells -> triggerEnemySkillAnim on the target monster slot
     //     (the spell visually lands on the enemy, exactly like for our own
     //     casts). Each player kills their OWN copy of the monster, so the
     //     floating damage value isn't shipped — only the cast cue is.
-    //   • SELF / HEAL / BUFF spells → triggerAllySkillAnim on the caster's
+    //   - SELF / HEAL / BUFF spells -> triggerAllySkillAnim on the caster's
     //     ally card so the aura shows where it's actually applied.
     const lastRemoteCastTsRef = useRef<Record<string, number>>({});
     useEffect(() => {
@@ -802,7 +805,7 @@ const Combat = () => {
         }
     }, [partyLastSpells, party?.members, character, fx]);
 
-    // ── Remote damage events → animations + damage counter ────────────────
+    // -- Remote damage events -> animations + damage counter ----------------
     // The leader broadcasts every basic-attack hit (own + member-applied)
     // so all clients render the same floating number / hit flash. Each
     // attacker's contribution also bumps `partyDamageStore` so the
@@ -860,7 +863,7 @@ const Combat = () => {
                 const isSelfAndLogged = isLocalAttacker && iAmLeaderOrSolo;
                 if (!isSelfAndLogged) {
                     const attackerName = ev.attackerName ?? (isLocalAttacker ? (character.name ?? 'Ja') : 'Sojusznik');
-                    const critTag = ev.isCrit ? ' ⚡KRYTYK' : '';
+                    const critTag = ev.isCrit ? ' :high-voltage:KRYTYK' : '';
                     if (isLocalAttacker) {
                         // Mirror the leader/solo log style: "Atakujesz X za N dmg".
                         const monsterName = useCombatStore.getState().waveMonsters[ev.targetIdx]?.monster.name_pl
@@ -881,7 +884,7 @@ const Combat = () => {
         }
     }, [partyLastDamage, character, fx]);
 
-    // ── Remote member-hit (monster → ally) → animate on ally card ─────────
+    // -- Remote member-hit (monster -> ally) -> animate on ally card ---------
     // Every client renders the floating damage number on the targeted
     // member's slot — same `'monster'` float kind + flash overlay the
     // local engine uses for `playerHit`. The TARGETED member additionally
@@ -919,7 +922,7 @@ const Combat = () => {
         }));
     }, [partyLastMemberHit, character, party?.members, fx]);
 
-    // ── Subscribe to combat events from engine (for animations) ───────────────
+    // -- Subscribe to combat events from engine (for animations) ---------------
     const lastEventRef = useRef<number>(0);
     useEffect(() => {
         if (!lastCombatEvent) return;
@@ -936,9 +939,9 @@ const Combat = () => {
                 ? (data as { targetIdx: number }).targetIdx
                 : useCombatStore.getState().activeTargetIdx;
             triggerMonsterHit(idx);
-            // Floating damage on the monster slot. Player's basic attack →
+            // Floating damage on the monster slot. Player's basic attack ->
             // 'basic' kind (white). Crits get the brighter render. Hand
-            // (left/right for dual-wield) gets a 🗡️ glyph for visual cue.
+            // (left/right for dual-wield) gets a :dagger: glyph for visual cue.
             const dmg = (data as { damage?: number })?.damage ?? 0;
             // 2026-05-08 v3: track party damage for the floating widget.
             // Only the local player's damage feeds the store — each
@@ -952,21 +955,21 @@ const Combat = () => {
             const isCrit = !!(data as { isCrit?: boolean })?.isCrit;
             const hand = (data as { hand?: 'left' | 'right' | null })?.hand ?? null;
             // 2026-05 v6: Necromancer summon swing — engine emits a
-            // separate event per summon (skel ☠️ / ghost 👻 / demon
-            // 😈 / lich 👑) staggered ~100 ms apart. Render with
+            // separate event per summon (skel :skull-and-crossbones: / ghost :ghost: / demon
+            // :smiling-face-with-horns: / lich :crown:) staggered ~100 ms apart. Render with
             // 'ally-basic' kind (cyan) + type-specific icon so the
             // player can tell summon hits apart from their own.
             const isSummon = !!(data as { isSummon?: boolean })?.isSummon;
             const summonType = (data as { summonType?: 'skeleton' | 'ghost' | 'demon' | 'lich' })?.summonType;
             if (isSummon && dmg > 0) {
                 const SUMMON_ICON: Record<'skeleton' | 'ghost' | 'demon' | 'lich', string> = {
-                    skeleton: '☠️', ghost: '👻', demon: '😈', lich: '👑',
+                    skeleton: 'skull-and-crossbones', ghost: 'ghost', demon: 'smiling-face-with-horns', lich: 'crown',
                 };
                 fx.pushEnemyFloat(idx, dmg, 'ally-basic', {
-                    icon: summonType ? SUMMON_ICON[summonType] : '💀',
+                    icon: summonType ? SUMMON_ICON[summonType] : 'skull',
                 });
             } else if (dmg > 0) {
-                fx.pushEnemyFloat(idx, dmg, 'basic', { isCrit, icon: hand ? '🗡️' : undefined });
+                fx.pushEnemyFloat(idx, dmg, 'basic', { isCrit, icon: hand ? 'dagger' : undefined });
             }
         } else if (type === 'botMonsterHit') {
             // Bot landed a swing on the wave's active monster. Re-uses the
@@ -989,7 +992,7 @@ const Combat = () => {
             // as a quick stutter and matches the actual HP drain.
             const idx = (data as { targetIdx?: number })?.targetIdx ?? 0;
             const dmg = (data as { damage?: number })?.damage ?? 0;
-            if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: '☠️' });
+            if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: 'skull-and-crossbones' });
         } else if (type === 'summonSpawn') {
             // 2026-05 v7: Necromancer summon raised. Play the per-type
             // 2s overlay animation on the player's AllyCard avatar.
@@ -997,12 +1000,12 @@ const Combat = () => {
             if (summonType) fx.triggerAllySummonSpawn(0, summonType);
         } else if (type === 'darkRitualTick') {
             // 2026-05 v7: Necromancer Mroczny Rytuał detonation. Engine
-            // fires this when the countdown hits 0 — push a 💀 RITUAL
+            // fires this when the countdown hits 0 — push a :skull: RITUAL
             // crit-styled float so the player sees the lump-sum % HP
             // chunk separately from regular DOT ticks.
             const idx = (data as { targetIdx?: number })?.targetIdx ?? 0;
             const dmg = (data as { damage?: number })?.damage ?? 0;
-            if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+            if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
         } else if (type === 'skillAnim') {
             // Engine emits this for AUTO-mode skill casts (manual casts are
             // handled inline in `doUseSkill` above and never go through this
@@ -1041,12 +1044,12 @@ const Combat = () => {
                     if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: getSkillIcon(skillId), isCrit });
                     if (stunLabelEvt) {
                         fx.pushEnemyFloat(idx, 0, 'spell', {
-                            icon: stunLabelEvt === 'PARAL' ? '🔒' : '💫',
+                            icon: stunLabelEvt === 'PARAL' ? 'locked' : 'dizzy',
                             label: stunLabelEvt,
                         });
                     }
                     if (instantKillEvt) {
-                        fx.pushEnemyFloat(idx, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
+                        fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                     }
                     for (const aIdx of aoeTargets) {
                         fx.triggerEnemySkillAnim(aIdx, skillId);
@@ -1058,7 +1061,7 @@ const Combat = () => {
             triggerPlayerHit();
             if (type === 'playerHit') {
                 // Floating monster-hit on the player ally slot (always 0).
-                // 'monster' kind → red. The engine ships hpDamage so we can
+                // 'monster' kind -> red. The engine ships hpDamage so we can
                 // show only the actual HP loss (Utamo Vita's MP-shielded
                 // portion is logged but doesn't appear as a hit number).
                 const dmg = (data as { damage?: number; hpDamage?: number })?.hpDamage
@@ -1076,16 +1079,16 @@ const Combat = () => {
                 const isSpellHeal = !!(data as { isSpellHeal?: boolean })?.isSpellHeal;
                 const spellHealAmount = (data as { spellHealAmount?: number })?.spellHealAmount ?? 0;
                 if (isImmortal) {
-                    fx.pushAllyFloat(0, 0, 'heal', { icon: '✨', label: 'BLOCK' });
+                    fx.pushAllyFloat(0, 0, 'heal', { icon: 'sparkles', label: 'BLOCK' });
                 } else if (isSpellHeal) {
                     const requested = (data as { spellHealRequested?: number })?.spellHealRequested ?? spellHealAmount;
                     const cappedTag = spellHealAmount < requested ? ' (MAX)' : '';
                     fx.pushAllyFloat(0, requested, 'heal', {
-                        icon: '✨',
+                        icon: 'sparkles',
                         label: cappedTag ? `+${requested}${cappedTag}` : undefined,
                     });
                 } else if (isManaShield && msMpDmg > 0) {
-                    fx.pushAllyFloat(0, msMpDmg, 'spell', { icon: '🛡️' });
+                    fx.pushAllyFloat(0, msMpDmg, 'spell', { icon: 'shield' });
                 } else if (dmg > 0) {
                     fx.pushAllyFloat(0, dmg, 'monster', { isCrit });
                 }
@@ -1097,7 +1100,7 @@ const Combat = () => {
             const botId = (data as { botId?: string })?.botId;
             if (botId) {
                 setBotHitPulses((prev) => ({ ...prev, [botId]: (prev[botId] ?? 0) + 1 }));
-                // Map bot id → display slot. Bots render in `bots` order
+                // Map bot id -> display slot. Bots render in `bots` order
                 // starting at ally slot 1 (player is slot 0). Use a fresh
                 // store read so we don't depend on a stale closure.
                 const allBots = useBotStore.getState().bots;
@@ -1143,12 +1146,12 @@ const Combat = () => {
         };
     }, [phase, autoFight, combatSpeed]);
 
-    // ── Helper: get class config ──────────────────────────────────────────────
+    // -- Helper: get class config ----------------------------------------------
     const getClassConfig = useCallback((className: string): IClassData => {
         return classesData[className] ?? {};
     }, []);
 
-    // ── Skill use (manual mode) ───────────────────────────────────────────────
+    // -- Skill use (manual mode) -----------------------------------------------
     const doUseSkill = (slotIdx: 0 | 1 | 2 | 3) => {
         const skillId = activeSkillSlots[slotIdx];
         const s       = useCombatStore.getState();
@@ -1169,10 +1172,10 @@ const Combat = () => {
         // 2026-05 v6: classify cast affinity so the animation lands on the
         // right side. `damage > 0` always animates on enemy. `damage === 0`
         // splits two ways:
-        //   • enemy-debuff atom (Pułapka stun:3000, Strzała Wiatru,
-        //     enemy_atk_down, mark_no_heal …) → animate on enemy slot
-        //   • pure self-buff (Orle Oko, Bomba Dymna, Tarcza Many,
-        //     Okrzyk Bojowy …) → animate on player avatar
+        //   - enemy-debuff atom (Pułapka stun:3000, Strzała Wiatru,
+        //     enemy_atk_down, mark_no_heal …) -> animate on enemy slot
+        //   - pure self-buff (Orle Oko, Bomba Dymna, Tarcza Many,
+        //     Okrzyk Bojowy …) -> animate on player avatar
         // This fixes the "Pułapka anim ląduje na graczu" complaint.
         const skillDef = getSkillDef(skillId);
         const skillDmgMult = skillDef?.damage ?? 0;
@@ -1190,7 +1193,7 @@ const Combat = () => {
         // started, no damage applied. The skill becomes a no-op.
         const effApply = engineHuntApplySkillEffectV2(skillId, s.activeTargetIdx);
         if (effApply === null) {
-            s.addLog('🎯 Brak żywych potworów — spell anulowany', 'system');
+            s.addLog(':bullseye: Brak żywych potworów — spell anulowany', 'system');
             return;
         }
         // Strzał Snajpera & friends: `def_pen:100` should ignore the
@@ -1217,7 +1220,7 @@ const Combat = () => {
             const ampHunt = consumeHuntMonsterMarkAmp(s.activeTargetIdx, s.monster.id);
             if (ampHunt.mult !== 1) {
                 r.finalDamage = Math.max(1, Math.floor(r.finalDamage * ampHunt.mult));
-                s.addLog(`☠️ Klątwa Śmierci: ${formatSkillName(skillId)} ×${ampHunt.mult} dmg`, 'system');
+                s.addLog(`:skull-and-crossbones: Klątwa Śmierci: ${formatSkillName(skillId)} ×${ampHunt.mult} dmg`, 'system');
             }
             // 2026-05 v7: track total damage dealt this cast (primary +
             // every splash that landed). Żniwa Dusz `aoe;heal_self_pct_dmg:50`
@@ -1233,8 +1236,8 @@ const Combat = () => {
                 // 2026-05 v6: DEATH ATTACK marker — instant_kill /
                 // execute_below procc'd. Crit-styled float so the player
                 // sees "I rolled the 5%!" on Strzała Śmierci / Skrytobójstwo.
-                fx.pushEnemyFloat(s.activeTargetIdx, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
-                s.addLog(`💀 ${formatSkillName(skillId)}: DEATH ATTACK! Natychmiastowe zabicie!`, 'crit');
+                fx.pushEnemyFloat(s.activeTargetIdx, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                s.addLog(`:skull: ${formatSkillName(skillId)}: DEATH ATTACK! Natychmiastowe zabicie!`, 'crit');
             } else {
                 s.dealToMonster(r.finalDamage);
                 totalDmgDealtThisCast += r.finalDamage;
@@ -1255,7 +1258,7 @@ const Combat = () => {
                             useCombatStore.getState().damageWaveMonster(ii, ikDmg);
                             totalDmgDealtThisCast += ikDmg;
                             fx.triggerEnemySkillAnim(ii, skillId);
-                            fx.pushEnemyFloat(ii, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
+                            fx.pushEnemyFloat(ii, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
                             // 2026-05 v7: each splash target consumes
                             // its own markAmp / markAmpAll so AOE Kraina
@@ -1296,10 +1299,10 @@ const Combat = () => {
                     // mechanic stays visible.
                     const cappedTag = actual < heal ? ' (MAX)' : '';
                     fx.pushAllyFloat(0, heal, 'heal', {
-                        icon: '✨',
+                        icon: 'sparkles',
                         label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                     });
-                    s.addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                    s.addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
                 }
             }
         }
@@ -1314,7 +1317,7 @@ const Combat = () => {
             const playerActual = playerHpAfter - playerHpBefore;
             const playerTag = playerActual < playerHeal ? ' (MAX)' : '';
             fx.pushAllyFloat(0, playerHeal, 'heal', {
-                icon: '✨',
+                icon: 'sparkles',
                 label: playerTag ? `+${playerHeal}${playerTag}` : undefined,
             });
             fx.triggerAllySkillAnim(0, skillId);
@@ -1326,12 +1329,12 @@ const Combat = () => {
                 if (newHp !== bot.hp) useBotStore.getState().updateBotHp(bot.id, newHp);
                 const tag = (newHp - bot.hp) < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(i + 1, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: tag ? `+${heal}${tag}` : undefined,
                 });
                 fx.triggerAllySkillAnim(i + 1, skillId);
             }
-            s.addLog(`✨ ${formatSkillName(skillId)}: heal_party_pct ${effApply.healPartyPctInstant}%`, 'system');
+            s.addLog(`:sparkles: ${formatSkillName(skillId)}: heal_party_pct ${effApply.healPartyPctInstant}%`, 'system');
         }
         // 2026-05 v6: Cleric `heal` / `holy_nova` — heal_lowest_ally_pct
         // picks the ally with the lowest HP% (player + bots) and heals
@@ -1354,7 +1357,7 @@ const Combat = () => {
                     name: b.name,
                 })),
             ];
-            // Pick the ally with the LOWEST HP ratio. Ties → player wins.
+            // Pick the ally with the LOWEST HP ratio. Ties -> player wins.
             let lowest = allies[0];
             let lowestRatio = lowest.curHp / Math.max(1, lowest.maxHp);
             for (let i = 1; i < allies.length; i++) {
@@ -1372,11 +1375,11 @@ const Combat = () => {
                 const actual = after - before;
                 const cappedTag = actual < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(lowest.slot, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
                 fx.triggerAllySkillAnim(lowest.slot, skillId);
-                s.addLog(`✨ ${formatSkillName(skillId)} → ${lowest.name}: +${heal} HP${cappedTag}`, 'system');
+                s.addLog(`:sparkles: ${formatSkillName(skillId)} -> ${lowest.name}: +${heal} HP${cappedTag}`, 'system');
             }
         }
         spendPlayerMp(manualMpCost);
@@ -1405,16 +1408,16 @@ const Combat = () => {
         if (effApply?.aoe) {
             const stunIdxs = effApply.aoeStunIdxs ?? [];
             for (const idx of stunIdxs) {
-                fx.pushEnemyFloat(idx, 0, 'spell', { icon: '💫', label: 'STUN' });
+                fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
             }
             const paralIdxs = effApply.aoeParalyzeIdxs ?? [];
             for (const idx of paralIdxs) {
-                fx.pushEnemyFloat(idx, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
             }
         } else if (effApply?.stunApplied) {
-            fx.pushEnemyFloat(tgtIdx, 0, 'spell', { icon: '💫', label: 'STUN' });
+            fx.pushEnemyFloat(tgtIdx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
         } else if (effApply?.paralyzeApplied) {
-            fx.pushEnemyFloat(tgtIdx, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+            fx.pushEnemyFloat(tgtIdx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
         }
         // 2026-05 v6: Cleric Aura Wskrzeszenia. Revive dead party bots
         // to 50% HP and bring them back to alive. Bot slots are 1+
@@ -1429,12 +1432,12 @@ const Combat = () => {
                     const reviveHp = Math.max(1, Math.floor(bot.maxHp * 0.5));
                     useBotStore.getState().updateBotHp(bot.id, reviveHp);
                     revivedNames.push(bot.name);
-                    fx.pushAllyFloat(i + 1, reviveHp, 'heal', { icon: '✨', label: '+REZ' });
+                    fx.pushAllyFloat(i + 1, reviveHp, 'heal', { icon: 'sparkles', label: '+REZ' });
                     fx.triggerAllySkillAnim(i + 1, skillId);
                 }
             }
             if (revivedNames.length > 0) {
-                s.addLog(`✨ ${formatSkillName(skillId)}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
+                s.addLog(`:sparkles: ${formatSkillName(skillId)}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
             }
         }
         // Multistrike (Wielostrzał) — schedule N follow-up basic attacks
@@ -1461,7 +1464,7 @@ const Combat = () => {
                     });
                     useCombatStore.getState().damageWaveMonster(fresh.activeTargetIdx, followup.finalDamage);
                     fx.pushEnemyFloat(fresh.activeTargetIdx, followup.finalDamage, 'basic', { isCrit: followup.isCrit });
-                    fresh.addLog(`🏹×${n + 2} ${followup.finalDamage} dmg${followup.isCrit ? ' ⚡' : ''}`, followup.isCrit ? 'crit' : 'player');
+                    fresh.addLog(`:bow-and-arrow:×${n + 2} ${followup.finalDamage} dmg${followup.isCrit ? 'high-voltage' : ''}`, followup.isCrit ? 'crit' : 'player');
                 }, 120 * (n + 1));
             }
         }
@@ -1475,7 +1478,7 @@ const Combat = () => {
         }
         useSkillStore.getState().addMlvlXpFromSkill(char.class as any);
         s.addLog(
-            `Używasz ${formatSkillName(skillId)}: ${r.finalDamage} dmg${r.isCrit ? ' ⚡KRYTYK!' : ''} (-${manualMpCost} MP)`,
+            `Używasz ${formatSkillName(skillId)}: ${r.finalDamage} dmg${r.isCrit ? ' :high-voltage:KRYTYK!' : ''} (-${manualMpCost} MP)`,
             r.isCrit ? 'crit' : 'player',
         );
 
@@ -1486,7 +1489,7 @@ const Combat = () => {
         }
     };
 
-    // ── Potion use ────────────────────────────────────────────────────────────
+    // -- Potion use ------------------------------------------------------------
     const doUsePotion = (elixirId: string) => {
         if (!character || !effectiveChar) return;
 
@@ -1545,7 +1548,7 @@ const Combat = () => {
         }
     };
 
-    // ── Auto-start fight from MonsterList selection (on mount) ────────────────
+    // -- Auto-start fight from MonsterList selection (on mount) ----------------
     useEffect(() => {
         const sel = useCombatStore.getState().selectedMonster;
         if (sel) {
@@ -1555,7 +1558,7 @@ const Combat = () => {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // 2026-05 v6: keep BuffStore's combatSpeedMult in sync with this
-    // view's selected speed. On unmount → reset to 1 so game-time buffs
+    // view's selected speed. On unmount -> reset to 1 so game-time buffs
     // drain at real time outside combat.
     useEffect(() => {
         useBuffStore.getState().setCombatSpeedMult(SPEED_MULT[combatSpeed] ?? 1);
@@ -1600,7 +1603,7 @@ const Combat = () => {
                 const playerActual = playerHpAfter - playerHpBefore;
                 const playerCapped = playerActual < playerHeal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, playerHeal, 'heal', {
-                    icon: '💚',
+                    icon: 'green-heart',
                     label: playerCapped ? `+${playerHeal}${playerCapped}` : undefined,
                 });
                 if (pulseSkillId) fx.triggerAllySkillAnim(0, pulseSkillId);
@@ -1617,7 +1620,7 @@ const Combat = () => {
                     const actual = newHp - bot.hp;
                     const cappedTag = actual < heal ? ' (MAX)' : '';
                     fx.pushAllyFloat(i + 1, heal, 'heal', {
-                        icon: '💚',
+                        icon: 'green-heart',
                         label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                     });
                     if (pulseSkillId) fx.triggerAllySkillAnim(i + 1, pulseSkillId);
@@ -1639,7 +1642,7 @@ const Combat = () => {
         if (partyState && otherHumans.length > 0 && partyState.leaderId !== me) {
             return;
         }
-        // In party (bots present), SKIP is disabled — cycle x1→x2→x4 only.
+        // In party (bots present), SKIP is disabled — cycle x1->x2->x4 only.
         const order = partyBots.length > 0
             ? SPEED_ORDER.filter((s) => s !== 'SKIP')
             : SPEED_ORDER;
@@ -1652,7 +1655,7 @@ const Combat = () => {
         setCombatSpeed(next);
     };
 
-    // ── Derived ───────────────────────────────────────────────────────────────
+    // -- Derived ---------------------------------------------------------------
     const sortedMonsters = [...monsters].sort((a, b) => a.level - b.level);
 
     const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables);
@@ -1662,17 +1665,17 @@ const Combat = () => {
 
     if (!character) return null;
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // -- Render ----------------------------------------------------------------
     return (
         <div className="combat">
 
-            {/* ── Top bar ─────────────────────────────────────────────────────
+            {/* -- Top bar -----------------------------------------------------
                 Slimmed-down header: no Wstecz button, no "Polowanie" title —
                 just the four control buttons (speed / skill mode / fight mode
                 / XP toggle). Mode buttons use icons instead of word-prefixes:
-                  • ✨ + AUTO/MANUAL  → skill auto-cast toggle
-                  • ⚔️ + AUTO/MANUAL  → auto-fight toggle
-            ──────────────────────────────────────────────────────────────── */}
+                  - :sparkles: + AUTO/MANUAL  -> skill auto-cast toggle
+                  - :crossed-swords: + AUTO/MANUAL  -> auto-fight toggle
+            ---------------------------------------------------------------- */}
             {/* Idle (hub) top header — kept verbatim. The in-fight phase
                 gets its own top-bar via <CombatTopControls /> + <CombatTaskBadge />
                 rendered inside the arena wrapper below, so we hide this whole
@@ -1694,7 +1697,7 @@ const Combat = () => {
                                 title={skillMode === 'auto' ? 'Skille: AUTO' : 'Skille: MANUAL'}
                                 aria-label={skillMode === 'auto' ? 'Skille: AUTO' : 'Skille: MANUAL'}
                             >
-                                <span className="combat__mode-btn-icon" aria-hidden="true">✨</span>
+                                <span className="combat__mode-btn-icon" aria-hidden="true"><GameIcon name="sparkles" /></span>
                                 {skillMode === 'auto' ? 'AUTO' : 'MANUAL'}
                             </button>
                             <button
@@ -1709,7 +1712,7 @@ const Combat = () => {
                                     : (autoFight ? 'Auto-walka włączona' : 'Auto-walka wyłączona')}
                                 aria-label={autoFight ? 'Walka: AUTO' : 'Walka: MANUAL'}
                             >
-                                <span className="combat__mode-btn-icon" aria-hidden="true">⚔️</span>
+                                <span className="combat__mode-btn-icon" aria-hidden="true"><GameIcon name="crossed-swords" /></span>
                                 {autoFight ? 'AUTO' : 'MANUAL'}
                             </button>
                             <button
@@ -1717,7 +1720,7 @@ const Combat = () => {
                                 onClick={() => setShowCombatXpBar(!showCombatXpBar)}
                                 title={showCombatXpBar ? 'Ukryj pasek XP' : 'Pokaż pasek XP'}
                             >
-                                {showCombatXpBar ? '👁️' : '👁️‍🗨️'}
+                                <Icon name={showCombatXpBar ? 'eye' : 'eyeOff'} />
                             </button>
                         </div>
                     </div>
@@ -1730,21 +1733,21 @@ const Combat = () => {
                 </header>
             )}
 
-            {/* ── Hub: monster picker (idle) ─────────────────────────────────
+            {/* -- Hub: monster picker (idle) ---------------------------------
                 New layout per redesign:
-                  • "Ilość przeciwników" wave-count box (no FALA label,
+                  - "Ilość przeciwników" wave-count box (no FALA label,
                     centered with max-width on mobile, left-aligned on
                     desktop via SCSS).
-                  • Monster grid — 1 col on mobile, 2-3 on tablet/desktop.
+                  - Monster grid — 1 col on mobile, 2-3 on tablet/desktop.
                     Big sprite, name + LVL chip top-right, stacked stat
                     rows (ATK/HP/DEF/AS/MAG), XP+Gold rewards with mastery
                     bonus annotations, package + sword action icons.
                     Borders highlight when there's an active task or the
                     monster is fully mastered (25/25).
-                  • Drop info now opens a modal (📦) instead of expanding
+                  - Drop info now opens a modal (:package:) instead of expanding
                     inline — content is identical to the old expand panel.
-                  • Active tasks + quests are listed below the monster grid.
-            ────────────────────────────────────────────────────────────── */}
+                  - Active tasks + quests are listed below the monster grid.
+            -------------------------------------------------------------- */}
             {phase === 'idle' && !useCombatStore.getState().selectedMonster && (() => {
                 const masteriesState = useMasteryStore.getState().masteries;
                 const masteryKillsState = useMasteryStore.getState().masteryKills;
@@ -1775,12 +1778,12 @@ const Combat = () => {
                 const otherHumansCount = party?.members.filter((m) => m.id !== character.id && !m.isBot).length ?? 0;
                 const applyPartyCap = otherHumansCount > 0;
 
-                // ── Filter pipeline ─────────────────────────────────────────
+                // -- Filter pipeline -----------------------------------------
                 // Three independent filters from the persistent settingsStore:
-                //   1. huntFilterAvailableOnly  → unlocked monsters only
-                //   2. huntFilterTaskedOnly     → only monsters bound to an
+                //   1. huntFilterAvailableOnly  -> unlocked monsters only
+                //   2. huntFilterTaskedOnly     -> only monsters bound to an
                 //      active task or an active 'kill' quest goal
-                //   3. huntFilterMinLevel > 0   → hide monsters below this level
+                //   3. huntFilterMinLevel > 0   -> hide monsters below this level
                 // Plus the party intersection cap when applicable.
                 const filteredMonsters = sortedMonsters.filter((m) => {
                     if (applyPartyCap && m.level > partyMonsterCap) return false;
@@ -1807,7 +1810,7 @@ const Combat = () => {
                 return (
                     <div className="combat__hub">
 
-                        {/* Filter bar ─────────────────────────────────────── */}
+                        {/* Filter bar --------------------------------------- */}
                         <section className="combat__hub-filters">
                             <h2 className="combat__hub-section-title">Filtry</h2>
                             <div className="combat__filter-bar">
@@ -1870,13 +1873,13 @@ const Combat = () => {
                                         }}
                                         title="Wyczyść filtry"
                                     >
-                                        ✕ Wyczyść
+                                        <Icon name="x" /> Wyczyść
                                     </button>
                                 )}
                             </div>
                         </section>
 
-                        {/* Wave-count box ─────────────────────────────────── */}
+                        {/* Wave-count box ----------------------------------- */}
                         <section className="combat__hub-wave">
                             <h2 className="combat__hub-section-title">Ilość przeciwników</h2>
                             <div className="combat__wave-box" title="Ilość potworów w następnej fali">
@@ -1913,7 +1916,7 @@ const Combat = () => {
                             </div>
                         </section>
 
-                        {/* Monster grid ───────────────────────────────────── */}
+                        {/* Monster grid ------------------------------------- */}
                         <section className="combat__hub-monsters">
                             <h2 className="combat__hub-section-title">Przeciwnicy</h2>
                             {visibleMonsters.length === 0 ? (
@@ -1950,7 +1953,7 @@ const Combat = () => {
                                             <div className="combat__mcard-head">
                                                 <span className="combat__mcard-sprite" aria-hidden="true">
                                                     {locked
-                                                        ? '🔒'
+                                                        ? <GameIcon name="locked" />
                                                         : <MonsterSprite level={m.level} sprite={m.sprite} name={m.name_pl} style={{ objectFit: 'contain' }} />}
                                                 </span>
                                                 <span className="combat__mcard-name">{m.name_pl}</span>
@@ -1962,7 +1965,7 @@ const Combat = () => {
                                                         className={`combat__mcard-mastery${isMaxMasteryHere ? ' combat__mcard-mastery--max' : ''}`}
                                                         title={`Mastery ${masteryLvl}/${MASTERY_MAX_LEVEL}`}
                                                     >
-                                                        <span className="combat__mcard-mastery-icon" aria-hidden="true">🎖️</span>
+                                                        <span className="combat__mcard-mastery-icon" aria-hidden="true"><GameIcon name="military-medal" /></span>
                                                         {masteryLvl}/{MASTERY_MAX_LEVEL}
                                                     </span>
                                                 </div>
@@ -1970,28 +1973,28 @@ const Combat = () => {
 
                                             <div className="combat__mcard-stats">
                                                 <span className="combat__mcard-stat" title="Atak (min - max)">
-                                                    <span className="combat__mcard-stat-icon" aria-hidden="true">⚔️</span>
+                                                    <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="crossed-swords" /></span>
                                                     <span className="combat__mcard-stat-label">ATK</span>
                                                     <span className="combat__mcard-stat-value">{range.min}-{range.max}</span>
                                                 </span>
                                                 <span className="combat__mcard-stat" title="Punkty życia">
-                                                    <span className="combat__mcard-stat-icon" aria-hidden="true">❤️</span>
+                                                    <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="red-heart" /></span>
                                                     <span className="combat__mcard-stat-label">HP</span>
                                                     <span className="combat__mcard-stat-value">{m.hp.toLocaleString('pl-PL')}</span>
                                                 </span>
                                                 <span className="combat__mcard-stat" title="Obrona">
-                                                    <span className="combat__mcard-stat-icon" aria-hidden="true">🛡️</span>
+                                                    <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="shield" /></span>
                                                     <span className="combat__mcard-stat-label">DEF</span>
                                                     <span className="combat__mcard-stat-value">{m.defense}</span>
                                                 </span>
                                                 <span className="combat__mcard-stat" title="Szybkość ataku (Attack Speed)">
-                                                    <span className="combat__mcard-stat-icon" aria-hidden="true">🏃</span>
+                                                    <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="person-running" /></span>
                                                     <span className="combat__mcard-stat-label">AS</span>
                                                     <span className="combat__mcard-stat-value">{m.speed}</span>
                                                 </span>
                                                 {m.magical && (
                                                     <span className="combat__mcard-stat combat__mcard-stat--magical" title="Atak magiczny — omija blok i unik">
-                                                        <span className="combat__mcard-stat-icon" aria-hidden="true">✨</span>
+                                                        <span className="combat__mcard-stat-icon" aria-hidden="true"><GameIcon name="sparkles" /></span>
                                                         <span className="combat__mcard-stat-label">MAG</span>
                                                         <span className="combat__mcard-stat-value">tak</span>
                                                     </span>
@@ -2000,7 +2003,7 @@ const Combat = () => {
 
                                             <div className="combat__mcard-rewards">
                                                 <span className="combat__mcard-reward" title="XP za zabicie">
-                                                    <span className="combat__mcard-reward-icon" aria-hidden="true">✨</span>
+                                                    <span className="combat__mcard-reward-icon" aria-hidden="true"><GameIcon name="sparkles" /></span>
                                                     <span className="combat__mcard-reward-label">XP</span>
                                                     <span className="combat__mcard-reward-value">
                                                         {m.xp.toLocaleString('pl-PL')}
@@ -2012,7 +2015,7 @@ const Combat = () => {
                                                     </span>
                                                 </span>
                                                 <span className="combat__mcard-reward" title="Gold za zabicie">
-                                                    <span className="combat__mcard-reward-icon" aria-hidden="true">💰</span>
+                                                    <span className="combat__mcard-reward-icon" aria-hidden="true"><GameIcon name="money-bag" /></span>
                                                     <span className="combat__mcard-reward-label">Gold</span>
                                                     <span className="combat__mcard-reward-value">
                                                         {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
@@ -2037,7 +2040,7 @@ const Combat = () => {
                                                             className="combat__mcard-goal combat__mcard-goal--task"
                                                             title={`Task: zabij ${monsterTask.killCount}× ${m.name_pl}`}
                                                         >
-                                                            <span className="combat__mcard-goal-icon" aria-hidden="true">📋</span>
+                                                            <span className="combat__mcard-goal-icon" aria-hidden="true"><GameIcon name="clipboard" /></span>
                                                             <span className="combat__mcard-goal-text">
                                                                 Task {monsterTask.progress}/{monsterTask.killCount}
                                                             </span>
@@ -2050,7 +2053,7 @@ const Combat = () => {
                                                             title={`Quest: ${qb.questName}`}
                                                         >
                                                             <span className="combat__mcard-goal-icon" aria-hidden="true">
-                                                                {qb.done ? '✅' : '📜'}
+                                                                {qb.done ? <GameIcon name="check-mark-button" /> : <GameIcon name="scroll" />}
                                                             </span>
                                                             <span className="combat__mcard-goal-text">
                                                                 {qb.questName} {qb.progress}/{qb.count}
@@ -2065,12 +2068,12 @@ const Combat = () => {
                                                 const killsNow = masteryKillsState[req.id] ?? 0;
                                                 return (
                                                     <div className="combat__mcard-locked-note" title={`Zdobądź Mastery 1/25 na ${req.name_pl}`}>
-                                                        🔒 {req.name_pl}: {killsNow.toLocaleString('pl-PL')}/{MASTERY_KILL_THRESHOLD.toLocaleString('pl-PL')}
+                                                        <GameIcon name="locked" /> {req.name_pl}: {killsNow.toLocaleString('pl-PL')}/{MASTERY_KILL_THRESHOLD.toLocaleString('pl-PL')}
                                                     </div>
                                                 );
                                             })()}
                                             {locked && unlock.lockKind !== 'mastery' && (
-                                                <div className="combat__mcard-locked-note">{unlock.shortLabel}</div>
+                                                <div className="combat__mcard-locked-note"><EmojiText>{unlock.shortLabel}</EmojiText></div>
                                             )}
 
                                             <div className="combat__mcard-actions">
@@ -2080,7 +2083,7 @@ const Combat = () => {
                                                     disabled={locked}
                                                     title="Pokaż szczegóły dropu"
                                                     aria-label={`Drop dla ${m.name_pl}`}
-                                                >📦</button>
+                                                ><GameIcon name="package" /></button>
                                                 <button
                                                     className="combat__mcard-action combat__mcard-action--fight"
                                                     onClick={() => {
@@ -2109,7 +2112,7 @@ const Combat = () => {
                                                     disabled={locked}
                                                     title={locked ? unlock.reason : 'Walcz!'}
                                                     aria-label={`Walcz z ${m.name_pl}`}
-                                                >⚔️</button>
+                                                ><GameIcon name="crossed-swords" /></button>
                                             </div>
                                         </article>
                                     );
@@ -2121,12 +2124,12 @@ const Combat = () => {
                 );
             })()}
 
-            {/* ── Drop info modal ─────────────────────────────────────────────
+            {/* -- Drop info modal ---------------------------------------------
                 Replaces the inline expand on monster cards. Same content (per-
                 rarity stats + drop tier breakdown + potions + spell chests),
                 rendered as a centered popup. Heroic chest tier appears only
                 for monsters the player has fully mastered (25/25).
-            ──────────────────────────────────────────────────────────────── */}
+            ---------------------------------------------------------------- */}
             {phase === 'idle' && dropModalMonsterId && (() => {
                 const m = monsterById.get(dropModalMonsterId);
                 if (!m) return null;
@@ -2176,14 +2179,14 @@ const Combat = () => {
                                     onClick={() => setDropModalMonsterId(null)}
                                     aria-label="Zamknij"
                                     title="Zamknij"
-                                >✕</button>
+                                ><Icon name="x" /></button>
                             </header>
 
                             <div className="combat__drop-modal-body">
                                 {/* Base reward summary (XP + Gold with mastery bonus) */}
                                 <div className="combat__drop-modal-summary">
                                     <span>
-                                        💰 Gold: {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
+                                        <GameIcon name="money-bag" /> Gold: {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
                                         {mLvl > 0 && (
                                             <span className="combat__monster-xp-bonus" title={masteryTooltip}>
                                                 {' '}+{formatGoldShort(Math.floor(m.gold[0] * (masteryPct / 100)))}–{formatGoldShort(Math.floor(m.gold[1] * (masteryPct / 100)))}
@@ -2191,7 +2194,7 @@ const Combat = () => {
                                         )}
                                     </span>
                                     <span>
-                                        ✨ XP: {m.xp.toLocaleString('pl-PL')}
+                                        <GameIcon name="sparkles" /> XP: {m.xp.toLocaleString('pl-PL')}
                                         {mLvl > 0 && (
                                             <span className="combat__monster-xp-bonus" title={masteryTooltip}>
                                                 {' '}+{Math.floor(m.xp * (masteryPct / 100)).toLocaleString('pl-PL')}
@@ -2200,7 +2203,7 @@ const Combat = () => {
                                     </span>
                                 </div>
                                 <div className="combat__drop-modal-info">
-                                    🎒 Losowy ekwipunek Lvl {m.level} (bronie, zbroje, akcesoria)
+                                    <GameIcon name="backpack" /> Losowy ekwipunek Lvl {m.level} (bronie, zbroje, akcesoria)
                                 </div>
 
                                 {/* Per-rarity drop breakdown — laid out left-to-right
@@ -2234,13 +2237,13 @@ const Combat = () => {
                                                 {/* Spec 3 (2026-05): each reward row sits on its own
                                                     line so wrapping never crops a value mid-text. */}
                                                 <span className="combat__variant-xp">
-                                                    <span className="combat__variant-xp-row">⭐ {effXp.toLocaleString('pl-PL')} XP{mLvl > 0 && (
+                                                    <span className="combat__variant-xp-row"><GameIcon name="star" /> {effXp.toLocaleString('pl-PL')} XP{mLvl > 0 && (
                                                         <span className="combat__monster-xp-bonus" title={masteryTooltip}>
                                                             {' '}+{masteryPct}%
                                                         </span>
                                                     )}</span>
-                                                    <span className="combat__variant-xp-row">💰 {formatGoldShort(effGoldMin)}–{formatGoldShort(effGoldMax)}</span>
-                                                    <span className="combat__variant-xp-row">📋 Task: ×{v.taskKills}</span>
+                                                    <span className="combat__variant-xp-row"><GameIcon name="money-bag" /> {formatGoldShort(effGoldMin)}–{formatGoldShort(effGoldMax)}</span>
+                                                    <span className="combat__variant-xp-row"><GameIcon name="clipboard" /> Task: ×{v.taskKills}</span>
                                                 </span>
                                                 <div className="combat__variant-drops">
                                                     {bd.tiers.map((tier) => (
@@ -2258,7 +2261,7 @@ const Combat = () => {
                                                         </div>
                                                     ))}
                                                     <div className="combat__variant-stone">
-                                                        <TinyIcon icon={STONE_ICONS[VARIANT_TO_STONE_ID[v.key] ?? ''] ?? '💎'} size="sm" /> {stoneName} ({(stoneChance * 100).toFixed(0)}%)
+                                                        <TinyIcon icon={STONE_ICONS[VARIANT_TO_STONE_ID[v.key] ?? ''] ?? 'gem-stone'} size="sm" /> {stoneName} ({(stoneChance * 100).toFixed(0)}%)
                                                     </div>
                                                 </div>
                                             </div>
@@ -2268,18 +2271,18 @@ const Combat = () => {
 
                                 {/* Potion drops — main tier + optional mega elixir bonus (lvl 100+) */}
                                 <div className="combat__drops-potions">
-                                    <div className="combat__drops-potions-title"><TinyIcon icon={getPotionImage(null) ?? '🧪'} size="sm" /> Potiony</div>
+                                    <div className="combat__drops-potions-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                                     <div className="combat__variant-tier">
                                         <span className="combat__tier-dot" style={{ background: '#e57373' }} />
                                         <span className="combat__tier-name" style={{ color: '#e57373' }}>
-                                            <TinyIcon icon={getPotionImage('hp_potion_sm') ?? '❤️'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
+                                            <TinyIcon icon={getPotionImage('hp_potion_sm') ?? 'red-heart'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
                                         </span>
                                         <span className="combat__tier-chance">{(potionInfo.hpChance * 100).toFixed(2)}%</span>
                                     </div>
                                     <div className="combat__variant-tier">
                                         <span className="combat__tier-dot" style={{ background: '#64b5f6' }} />
                                         <span className="combat__tier-name" style={{ color: '#64b5f6' }}>
-                                            <TinyIcon icon={getPotionImage('mp_potion_sm') ?? '💧'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
+                                            <TinyIcon icon={getPotionImage('mp_potion_sm') ?? 'droplet'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
                                         </span>
                                         <span className="combat__tier-chance">{(potionInfo.mpChance * 100).toFixed(2)}%</span>
                                     </div>
@@ -2288,14 +2291,14 @@ const Combat = () => {
                                             <div className="combat__variant-tier">
                                                 <span className="combat__tier-dot" style={{ background: '#ff7043' }} />
                                                 <span className="combat__tier-name" style={{ color: '#ff7043' }}>
-                                                    <TinyIcon icon={getPotionImage('hp_potion_mega') ?? '❤️‍🔥'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
+                                                    <TinyIcon icon={getPotionImage('hp_potion_mega') ?? 'heart-on-fire'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
                                                 </span>
                                                 <span className="combat__tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                             </div>
                                             <div className="combat__variant-tier">
                                                 <span className="combat__tier-dot" style={{ background: '#26c6da' }} />
                                                 <span className="combat__tier-name" style={{ color: '#26c6da' }}>
-                                                    <TinyIcon icon={getPotionImage('mp_potion_mega') ?? '💎'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
+                                                    <TinyIcon icon={getPotionImage('mp_potion_mega') ?? 'gem-stone'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
                                                 </span>
                                                 <span className="combat__tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                             </div>
@@ -2311,7 +2314,7 @@ const Combat = () => {
                                     return (
                                         <div className="combat__drops-potions">
                                             <div className="combat__drops-potions-title" style={{ color: '#ab47bc' }}>
-                                                <TinyIcon icon={getSpellChestImage(1000) ?? '📦'} size="sm" /> Spell Chest ({chestLevelsLabel})
+                                                <TinyIcon icon={getSpellChestImage(1000) ?? 'package'} size="sm" /> Spell Chest ({chestLevelsLabel})
                                             </div>
                                             {chestInfo.rates.map((r) => (
                                                 <div key={r.tier} className="combat__variant-tier">
@@ -2330,7 +2333,7 @@ const Combat = () => {
                                             ))}
                                             {!isMaxMasteryHere && (
                                                 <div className="combat__drop-modal-hint">
-                                                    👑 Mastery 25/25 odblokuje tier <strong>Heroic</strong> (5%).
+                                                    <GameIcon name="crown" /> Mastery 25/25 odblokuje tier <strong>Heroic</strong> (5%).
                                                 </div>
                                             )}
                                         </div>
@@ -2342,21 +2345,21 @@ const Combat = () => {
                 );
             })()}
 
-            {/* ── In-fight UI — fully unified across hunting/boss/dungeon/etc ──
+            {/* -- In-fight UI — fully unified across hunting/boss/dungeon/etc --
                 Per-view engines (combat, boss, dungeon…) all feed the same
                 shared <CombatUI/> family. Hunting is the reference: it shows
                 the most features (HuntedTally, +/- monster controls, hunt-popup
                 exit). Other views just hide what doesn't apply.
 
                 Notable mappings:
-                  • waveMonsters[]  → enemies  (left column, 4 fixed slots)
-                  • [player, ...partyBots] → allies  (right column, 4 fixed slots)
-                  • activeSkillSlots[] → action-bar skill buttons
-                  • bestHp/MpPotion + bestPctHp/MpPotion → potion buttons
-                  • activeTasks + activeQuests for this monster → CombatTaskBadge
-            ───────────────────────────────────────────────────────────────── */}
+                  - waveMonsters[]  -> enemies  (left column, 4 fixed slots)
+                  - [player, ...partyBots] -> allies  (right column, 4 fixed slots)
+                  - activeSkillSlots[] -> action-bar skill buttons
+                  - bestHp/MpPotion + bestPctHp/MpPotion -> potion buttons
+                  - activeTasks + activeQuests for this monster -> CombatTaskBadge
+            ----------------------------------------------------------------- */}
             {phase !== 'idle' && monster && (() => {
-                // ── Enemy slots (left column) ─────────────────────────────────
+                // -- Enemy slots (left column) ---------------------------------
                 const uiEnemies: Array<ICombatEnemy | null> = waveMonsters.map((w, i) => ({
                     id: `wave-${i}`,
                     name: w.monster.name_pl,
@@ -2388,7 +2391,7 @@ const Combat = () => {
                     statusOverlay: getHuntMonsterStatusView(i, w.monster.id),
                 }));
 
-                // ── Ally slots (right column) — player first, then bots ──────
+                // -- Ally slots (right column) — player first, then bots ------
                 // 2026-05-11 spec ("agroo widoczne tak samo na obu ekranach"):
                 // the leader's engine encodes aggroTarget as `'player'` for
                 // their own slot and `human_<id>` for remote party humans.
@@ -2416,7 +2419,7 @@ const Combat = () => {
                     playerSummonsByType[sm.type] = (playerSummonsByType[sm.type] ?? 0) + 1;
                 }
                 // Necromancer summon avatar/HP swap — front-of-queue
-                // summon (skeleton → ghost → demon → lich) takes over
+                // summon (skeleton -> ghost -> demon -> lich) takes over
                 // the necro's card. Slot 0 then represents THAT
                 // summon: name + portrait + own HP/MP pool. Damage to
                 // slot 0 hits the summon's HP first; once dead the
@@ -2593,14 +2596,14 @@ const Combat = () => {
                             // when a wave monster actually targets them.
                             hitPulse: botHitPulses[bot.id] ?? 0,
                             // Display slot is `bIdx + 1` (player is slot 0). The
-                            // event handler above maps engine `botHit` → this slot.
+                            // event handler above maps engine `botHit` -> this slot.
                             skillAnim: fx.allySkill[slotIdx] ?? null,
                             floats: fx.allyFloats[slotIdx] ?? [],
                         };
                     }),
                 ];
 
-                // ── Skill slots (action-bar) ──────────────────────────────────
+                // -- Skill slots (action-bar) ----------------------------------
                 const uiSkills: Array<ICombatSkillSlot | null> =
                     (activeSkillSlots as (string | null)[]).map((skillId, i) => {
                         if (!skillId) return null;
@@ -2623,7 +2626,7 @@ const Combat = () => {
                         };
                     });
 
-                // ── Potion slots (action-bar = pct, sub-controls = flat) ──────
+                // -- Potion slots (action-bar = pct, sub-controls = flat) ------
                 const buildPotion = (
                     potion: typeof bestPctHpPotion,
                     kind: ICombatPotionSlot['kind'],
@@ -2637,7 +2640,7 @@ const Combat = () => {
                         kind,
                         // 2026-05: feed the actual selected potion's PNG art into
                         // the dock so it matches the Inventory bag tile (no more
-                        // generic ❤️/💧 emoji at the bottom of combat).
+                        // generic :red-heart:/:droplet: emoji at the bottom of combat).
                         icon: getPotionImage(potion.id) ?? undefined,
                         count,
                         cooldownProgress: cdActive ? 1 - cd / cdMax : 1,
@@ -2802,7 +2805,7 @@ const Combat = () => {
                                         className="combat-ui__victory-btn combat-ui__victory-btn--primary"
                                         onClick={handleDeathReturnToTown}
                                     >
-                                        🏠 Wróć do miasta
+                                        <GameIcon name="house" /> Wróć do miasta
                                     </button>
                                 </div>
                             )}
@@ -2817,20 +2820,20 @@ const Combat = () => {
                                             engineStartNewFight(baseMonster);
                                         }}
                                     >
-                                        ⚔️ Walcz ponownie
+                                        <GameIcon name="crossed-swords" /> Walcz ponownie
                                     </button>
                                     <button
                                         type="button"
                                         className="combat-ui__victory-btn"
                                         onClick={() => stopCombat()}
                                     >
-                                        🔄 Zmień potwora
+                                        <GameIcon name="counterclockwise-arrows-button" /> Zmień potwora
                                     </button>
                                 </div>
                             )}
 
                             {/* Auto-fight countdown — slim transform-tinted bar
-                                pinned right under the TopHeader, fills L→R over
+                                pinned right under the TopHeader, fills L->R over
                                 AUTO_FIGHT_DELAY_MS while we wait for the next
                                 wave to spawn. Replaces the in-popup countdown
                                 so the player sees a thin, unobtrusive cue
@@ -2870,7 +2873,7 @@ const Combat = () => {
 
                             {/* Floating potion dock — fixed bottom-left, always
                                 visible during fighting/victory so the player can
-                                sip without scrolling. Stacked: HP → %HP → MP → %MP. */}
+                                sip without scrolling. Stacked: HP -> %HP -> MP -> %MP. */}
                             {(phase === 'fighting' || phase === 'victory') && (
                                 <CombatPotionDock
                                     hpPotion={flatHpSlot}

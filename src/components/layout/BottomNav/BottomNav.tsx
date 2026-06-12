@@ -19,7 +19,7 @@ interface IBottomNavItem {
   label: string;
   /** Inline-SVG icon (we hand-roll these so they all share the same stroke / sizing). */
   icon: ReactNode;
-  /** Optional extra paths whose presence should also light up this item (e.g. /dungeon → Walka). */
+  /** Optional extra paths whose presence should also light up this item (e.g. /dungeon -> Walka). */
   matches?: string[];
   /** When true, render a pulsing purple "rewards waiting" dot in the
    *  top-right of the icon. Same semantic as the header status dot. */

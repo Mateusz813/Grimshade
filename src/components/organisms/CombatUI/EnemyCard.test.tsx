@@ -7,7 +7,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
  * mark / dark ritual / etc.), per-attack hit pulse, skill animations, and
  * floating damage numbers.
  *
- * MonsterSprite/BossSprite stubbed → simple <span data-testid> so we don't
+ * MonsterSprite/BossSprite stubbed -> simple <span data-testid> so we don't
  * pull in the sprite registry. isImageUrl stubbed for deterministic URL
  * branching.
  */
@@ -39,7 +39,7 @@ const makeEnemy = (overrides: Partial<ICombatEnemy> = {}): ICombatEnemy => ({
     id: 'enemy-1',
     name: 'Goblin',
     level: 5,
-    sprite: '👹',
+    sprite: 'ogre',
     currentHp: 50,
     maxHp: 100,
     rarity: 'normal',
@@ -100,7 +100,10 @@ describe('EnemyCard — smoke', () => {
         expect(container.querySelector('.combat-ui__enemy--dead')).toBeTruthy();
         const btn = container.querySelector('button.combat-ui__enemy') as HTMLButtonElement;
         expect(btn.disabled).toBe(true);
-        expect(screen.getByText('💀')).toBeTruthy();
+        // Skull renders via <Emoji> as a Twemoji <img> inside the overlay span.
+        expect(
+            container.querySelector('.combat-ui__enemy-skull svg.game-icon[data-icon="skull"]'),
+        ).toBeTruthy();
     });
 
     it('renders target indicator and targeted modifier when isTargetedByPlayer', () => {
@@ -133,7 +136,10 @@ describe('EnemyCard — status overlays', () => {
             <EnemyCard enemy={makeEnemy({ statusOverlay: { stunMs: 1500 } })} />,
         );
         expect(container.querySelector('.combat-ui__status-badge--stun')).toBeTruthy();
-        expect(screen.getByText('💫')).toBeTruthy();
+        // Status icon renders via <Emoji> as a Twemoji <img>.
+        expect(
+            container.querySelector('.combat-ui__status-badge--stun svg.game-icon[data-icon="dizzy"]'),
+        ).toBeTruthy();
     });
 
     it('renders paralyze badge', () => {
@@ -141,7 +147,10 @@ describe('EnemyCard — status overlays', () => {
             <EnemyCard enemy={makeEnemy({ statusOverlay: { paralyzeMs: 2000 } })} />,
         );
         expect(container.querySelector('.combat-ui__status-badge--paral')).toBeTruthy();
-        expect(screen.getByText('🔒')).toBeTruthy();
+        // Status icon renders via <Emoji> as a Twemoji <img>.
+        expect(
+            container.querySelector('.combat-ui__status-badge--paral svg.game-icon[data-icon="locked"]'),
+        ).toBeTruthy();
     });
 
     it('renders markAmp badge with ×N multiplier label', () => {
@@ -208,7 +217,7 @@ describe('EnemyCard — floats & hit pulse', () => {
         const { container } = render(
             <EnemyCard
                 enemy={makeEnemy({
-                    skillAnim: { id: 7, emoji: '🔥', cssClass: 'skill-anim--fire' },
+                    skillAnim: { id: 7, emoji: 'fire', cssClass: 'skill-anim--fire' },
                 })}
             />,
         );

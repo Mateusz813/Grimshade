@@ -36,9 +36,11 @@ import {
 } from '../../systems/spriteAssets';
 import type { Rarity, EquipmentSlot } from '../../systems/itemSystem';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import './Shop.scss';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 type Tab = 'items' | 'potions' | 'elixirs' | 'arena';
 
@@ -75,7 +77,7 @@ const STAT_ORDER = ['dmg_min', 'dmg_max', 'hp', 'attack', 'defense', 'mp', 'spee
 /**
  * Compare a shop item's preview stat to the player's currently-equipped
  * piece in the same slot. Returns the delta (preview − current effective)
- * so the caller can render a green ▲ or red ▼ arrow + magnitude.
+ * so the caller can render a green ^ or red v arrow + magnitude.
  *
  * 2026-05-08 v3 — base stats on the equipped item store the RAW bonus
  * value; the displayed/effective number the player sees in the gear
@@ -97,7 +99,7 @@ const compareStat = (
   stat: string,
   slot?: string,
 ): number => {
-  if (!equipped) return preview; // no equipped → everything is an upgrade
+  if (!equipped) return preview; // no equipped -> everything is an upgrade
   const raw = equipped.bonuses?.[stat] ?? 0;
   const upgradeLevel = equipped.upgradeLevel ?? 0;
   // Only apply the upgrade multiplier when this stat is the SLOT's
@@ -109,7 +111,7 @@ const compareStat = (
   return preview - cur;
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 const Shop = () => {
   const [activeTab, setActiveTab] = useState<Tab>('items');
@@ -256,10 +258,10 @@ const Shop = () => {
             : tab === 'elixirs' ? getElixirImage('stat_reset')
             : null;
             const fallbackEmoji =
-              tab === 'items'   ? '⚔️'
-            : tab === 'potions' ? '🧴'
-            : tab === 'elixirs' ? '🧪'
-            :                     '🏟️';
+              tab === 'items'   ? 'crossed-swords'
+            : tab === 'potions' ? 'lotion-bottle'
+            : tab === 'elixirs' ? 'test-tube'
+            :                     'stadium';
             const labelAria =
               tab === 'items'   ? 'Itemy'
             : tab === 'potions' ? 'Potiony'
@@ -276,7 +278,7 @@ const Shop = () => {
                 <span className="shop__tab-glyph">
                   {glyphImg
                     ? <img src={glyphImg} alt="" draggable={false} />
-                    : fallbackEmoji}
+                    : <GameIcon name={fallbackEmoji} />}
                 </span>
               </button>
             );
@@ -293,7 +295,7 @@ const Shop = () => {
 
       <AnimatePresence mode="wait">
 
-        {/* ── Items tab — backpack-style grid ──────────────────────────── */}
+        {/* -- Items tab — backpack-style grid ---------------------------- */}
         {activeTab === 'items' && (
           <motion.div
             key="items"
@@ -312,7 +314,7 @@ const Shop = () => {
               const equipped = equipment[item.slot as EquipmentSlot];
               // Order the bonus rows by STAT_ORDER so they're visually
               // stable card-to-card. Render every preview stat plus a
-              // ↑ / ↓ vs the equipped piece in the same slot.
+              // ^ / v vs the equipped piece in the same slot.
               // 2026-05-08 v3: only base stats. previewBonuses is
               // already pruned by buildPreviewBonuses, so anything in
               // the map is by definition a base stat for the slot.
@@ -345,7 +347,7 @@ const Shop = () => {
                       const img = getItemImage(item.id, item.slot, item.type);
                       return img
                         ? <img src={img} alt={item.name_pl} className="shop__card-icon-img" draggable={false} />
-                        : <span className="shop__card-icon-glyph">{item.icon}</span>;
+                        : <span className="shop__card-icon-glyph"><GameIcon name={item.icon} /></span>;
                     })()}
                     <span className="shop__card-lvl-badge">Lv {item.level}</span>
                   </div>
@@ -366,7 +368,7 @@ const Shop = () => {
                             <span
                               className={`shop__card-stat-delta shop__card-stat-delta--${b.delta > 0 ? 'up' : 'down'}`}
                             >
-                              {b.delta > 0 ? '▲' : '▼'} {Math.abs(b.delta)}
+                              {b.delta > 0 ? <Icon name="triangleUp" /> : <Icon name="triangleDown" />} {Math.abs(b.delta)}
                             </span>
                           )}
                         </li>
@@ -374,7 +376,7 @@ const Shop = () => {
                     </ul>
                   )}
                   <div className="shop__card-footer">
-                    <span className="shop__card-price">💰 {formatGoldShort(item.price)}</span>
+                    <span className="shop__card-price"><GameIcon name="money-bag" /> {formatGoldShort(item.price)}</span>
                     <button
                       className="shop__buy-btn"
                       disabled={!canBuy}
@@ -389,7 +391,7 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* ── Potions tab — backpack-style grid w/ qty input ───────────── */}
+        {/* -- Potions tab — backpack-style grid w/ qty input ------------- */}
         {activeTab === 'potions' && (
           <motion.div
             key="potions"
@@ -416,7 +418,7 @@ const Shop = () => {
                   <div className="shop__card-icon">
                     {img
                       ? <img src={img} alt={elixir.name_pl} className="shop__card-icon-img" draggable={false} />
-                      : <span className="shop__card-icon-glyph">{elixir.icon}</span>}
+                      : <span className="shop__card-icon-glyph"><GameIcon name={elixir.icon} /></span>}
                     {owned > 0 && <span className="shop__card-lvl-badge">×{owned}</span>}
                   </div>
                   <div className="shop__card-name">{elixir.name_pl}</div>
@@ -445,7 +447,7 @@ const Shop = () => {
                   </div>
                   <div className="shop__card-footer">
                     <span className="shop__card-price">
-                      💰 {qty > 1
+                      <GameIcon name="money-bag" /> {qty > 1
                         ? `${formatGoldShort(unitPrice)} × ${qty} = ${formatGoldShort(totalPrice)}`
                         : formatGoldShort(unitPrice)}
                     </span>
@@ -463,7 +465,7 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* ── Elixirs tab — backpack-style grid, single buy ───────────── */}
+        {/* -- Elixirs tab — backpack-style grid, single buy ------------- */}
         {activeTab === 'elixirs' && (
           <motion.div
             key="elixirs"
@@ -493,7 +495,7 @@ const Shop = () => {
                 <div
                   key={elixir.id}
                   // 2026-05-08 v3 spec ("eliksiry maja taki sam border
-                  // wszedzie") — utility elixirs get the gold→purple
+                  // wszedzie") — utility elixirs get the gold->purple
                   // gradient border via `shop__card--elixir`. Same
                   // visual treatment as the market sell tile + listing
                   // row + bag tile so the family reads as one cohort.
@@ -503,21 +505,21 @@ const Shop = () => {
                   <div className="shop__card-icon">
                     {img
                       ? <img src={img} alt={elixir.name_pl} className="shop__card-icon-img" draggable={false} />
-                      : <span className="shop__card-icon-glyph">{elixir.icon}</span>}
+                      : <span className="shop__card-icon-glyph"><GameIcon name={elixir.icon} /></span>}
                     {owned > 0 && <span className="shop__card-lvl-badge">×{owned}</span>}
                   </div>
                   <div className="shop__card-name">{elixir.name_pl}</div>
                   <div className="shop__card-meta">{elixir.description_pl}</div>
                   {levelLocked && (
-                    <div className="shop__card-lock">🔒 Lv {elixir.minLevel}</div>
+                    <div className="shop__card-lock"><GameIcon name="locked" /> Lv {elixir.minLevel}</div>
                   )}
                   {isCapped && !levelLocked && (
                     <div className={`shop__card-lock${dailyExhausted ? ' shop__card-lock--bad' : ''}`}>
-                      📅 {DAILY_PURCHASE_CAPS[elixir.id] - dailyRemaining}/{DAILY_PURCHASE_CAPS[elixir.id]}
+                      <GameIcon name="calendar" /> {DAILY_PURCHASE_CAPS[elixir.id] - dailyRemaining}/{DAILY_PURCHASE_CAPS[elixir.id]}
                     </div>
                   )}
                   <div className="shop__card-footer">
-                    <span className="shop__card-price">💰 {formatGoldShort(unitPrice)}</span>
+                    <span className="shop__card-price"><GameIcon name="money-bag" /> {formatGoldShort(unitPrice)}</span>
                     <button
                       className="shop__buy-btn"
                       disabled={!canBuy}
@@ -532,7 +534,7 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* ── Arena tab — backpack-style grid, AP currency ────────────── */}
+        {/* -- Arena tab — backpack-style grid, AP currency -------------- */}
         {activeTab === 'arena' && (
           <motion.div
             key="arena"
@@ -559,8 +561,8 @@ const Shop = () => {
                 const lvl = Math.min(1000, Math.max(1, character.level));
                 // 2026-05-08: pick the player's class-correct mythic
                 // weapon + offhand types so the preview art and the
-                // generated drop are aligned. Knight → sword/shield,
-                // Mage → staff/spellbook, Archer → bow/quiver, etc.
+                // generated drop are aligned. Knight -> sword/shield,
+                // Mage -> staff/spellbook, Archer -> bow/quiver, etc.
                 const classMainType = CLASS_WEAPON_TYPES[character.class]?.[0] ?? 'sword';
                 const classOffType = CLASS_OFFHAND_TYPES[character.class]?.[0] ?? 'shield';
                 return catalog.map((item) => {
@@ -584,7 +586,7 @@ const Shop = () => {
                   return (
                     <div
                       key={item.id}
-                      // Arena elixirs get the gold→purple gradient border
+                      // Arena elixirs get the gold->purple gradient border
                       // for consistency with the rest of the app. Stones,
                       // potions and mythic weapons keep their default chrome.
                       className={`shop__card${item.kind === 'elixir' ? ' shop__card--elixir' : ''}${pulseKey ? ' shop__card--bought' : ''}`}
@@ -593,7 +595,7 @@ const Shop = () => {
                       <div className="shop__card-icon">
                         {img
                           ? <img src={img} alt={item.name_pl} className="shop__card-icon-img" draggable={false} />
-                          : <span className="shop__card-icon-glyph">{item.icon}</span>}
+                          : <span className="shop__card-icon-glyph"><GameIcon name={item.icon} /></span>}
                       </div>
                       <div className="shop__card-name" style={{ color: item.kind.startsWith('mythic') ? '#ff5722' : undefined }}>
                         {item.name_pl}

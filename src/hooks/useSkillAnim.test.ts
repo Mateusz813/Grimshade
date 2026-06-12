@@ -80,8 +80,8 @@ describe('useSkillAnim', () => {
     });
 
     it('does not wipe a fresh overlay when the previous timeout fires', () => {
-        // Critical race: trigger A → trigger B (before A's timeout) → A's
-        // timeout fires → must NOT clear B because the id no longer matches.
+        // Critical race: trigger A -> trigger B (before A's timeout) -> A's
+        // timeout fires -> must NOT clear B because the id no longer matches.
         const { result } = renderHook(() => useSkillAnim());
         act(() => result.current.trigger('fireball'));
         const firstDuration = result.current.overlay!.anim.duration;
@@ -104,7 +104,7 @@ describe('useSkillAnim', () => {
     it('uses the looked-up animation duration verbatim', () => {
         const { result } = renderHook(() => useSkillAnim());
         act(() => result.current.trigger('fireball'));
-        // duration comes from skillAnimations.ts → fire preset (900 ms).
+        // duration comes from skillAnimations.ts -> fire preset (900 ms).
         expect(typeof result.current.overlay!.anim.duration).toBe('number');
         expect(result.current.overlay!.anim.duration).toBeGreaterThan(0);
     });
@@ -119,7 +119,7 @@ describe('useSkillAnim', () => {
     });
 });
 
-// TODO: the emoji-vs-image-url swap path (getSkillIcon → isImageUrl)
+// TODO: the emoji-vs-image-url swap path (getSkillIcon -> isImageUrl)
 // depends on whether per-class spell artwork is registered in
 // spriteAssets. That's tested in spriteAssets.test.ts; pinning it here
 // would make the suite churn whenever artwork is added/removed.

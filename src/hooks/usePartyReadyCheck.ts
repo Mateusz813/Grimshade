@@ -59,15 +59,15 @@ export const usePartyReadyCheck = (): void => {
 /**
  * Imperative helper for views ("Walcz" buttons on hunt/boss/raid/dungeon/
  * trainer screens). Call this BEFORE actually starting combat:
- *   • Solo player or party with only bots → runs `onConfirmed` immediately.
- *   • Multi-human party + you ARE the leader → fires the ready-check
+ *   - Solo player or party with only bots -> runs `onConfirmed` immediately.
+ *   - Multi-human party + you ARE the leader -> fires the ready-check
  *     broadcast (with the fight `payload` so members can replicate the
  *     same monster/boss). Modal opens for everyone. NOTHING happens
  *     locally yet — the leader's combat doesn't start until the `go`
  *     event fires after all confirm. At that point a global go-handler
  *     (registered via `useReadyCheckGoHandler` below) runs on every
  *     client with the payload.
- *   • Multi-human party + you're NOT the leader → returns `false`; only
+ *   - Multi-human party + you're NOT the leader -> returns `false`; only
  *     the leader picks the fight per spec.
  *
  * Returns `true` when the action was triggered (either ran immediately
@@ -108,7 +108,7 @@ export const requestPartyCombatStart = (params: {
         })();
     }
 
-    // Solo / no other humans → run immediately, no popup.
+    // Solo / no other humans -> run immediately, no popup.
     const otherHumans = party?.members.filter((m) => m.id !== character.id && !m.isBot) ?? [];
     if (!party || otherHumans.length === 0) {
         params.onConfirmed();
@@ -204,8 +204,8 @@ export const triggerPartyCombatGo = (params: {
 /**
  * Mounted in the app shell. Listens for `go` events from the
  * ready-check store and:
- *   • Runs the leader's pending action (queued by `requestPartyCombatStart`).
- *   • For non-leader members, runs whatever fight-replication handler
+ *   - Runs the leader's pending action (queued by `requestPartyCombatStart`).
+ *   - For non-leader members, runs whatever fight-replication handler
  *     is registered for the destination via `registerGoReplicator`.
  */
 export const useReadyCheckGoEffect = (): void => {
@@ -216,7 +216,7 @@ export const useReadyCheckGoEffect = (): void => {
     const party = usePartyStore.getState().party;
 
     useEffect(() => {
-        // `go` was fired → store sets open=false, keeps destination set.
+        // `go` was fired -> store sets open=false, keeps destination set.
         if (open) return;
         if (!destination) return;
         // Leader: run the queued action. Drop the slot so a stale

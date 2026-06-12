@@ -2,11 +2,11 @@
 -- Leaderboard rankings — schema for arena / deaths aggregations
 -- ----------------------------------------------------------------------------
 -- Adds the columns + views the new ranking tabs need:
---   • characters.arena_kills           — lifetime arena wins (attacker)
---   • characters.arena_deaths          — lifetime arena losses (attacker)
---   • characters.arena_league          — current league name
---   • characters.arena_league_points   — current LP within the league
---   • character_death_totals VIEW      — death count grouped by character
+--   - characters.arena_kills           — lifetime arena wins (attacker)
+--   - characters.arena_deaths          — lifetime arena losses (attacker)
+--   - characters.arena_league          — current league name
+--   - characters.arena_league_points   — current LP within the league
+--   - character_death_totals VIEW      — death count grouped by character
 --
 -- Safe to re-run. Apply in Supabase SQL editor.
 -- ============================================================================
@@ -129,6 +129,6 @@ GRANT EXECUTE ON FUNCTION bump_arena_death(UUID)    TO authenticated;
 GRANT EXECUTE ON FUNCTION bump_arena_kill(UUID)     TO authenticated;
 GRANT EXECUTE ON FUNCTION bump_market_sale(UUID, INTEGER, BIGINT) TO authenticated;
 
--- ── Sanity checks ───────────────────────────────────────────────────────────
+-- -- Sanity checks -----------------------------------------------------------
 SELECT 'characters columns OK' AS status, COUNT(*) AS char_rows FROM characters;
 SELECT 'death totals OK'       AS status, COUNT(*) AS rows FROM character_death_totals;

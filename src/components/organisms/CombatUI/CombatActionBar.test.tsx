@@ -25,7 +25,7 @@ afterEach(() => {
 
 const makeSkill = (overrides: Partial<ICombatSkillSlot> = {}): ICombatSkillSlot => ({
     id: 'skill-1',
-    icon: '⚡',
+    icon: 'high-voltage',
     name: 'Lightning',
     mpCost: 10,
     cooldownProgress: 1,
@@ -68,14 +68,18 @@ describe('CombatActionBar — smoke', () => {
 });
 
 describe('CombatActionBar — skill rendering', () => {
-    it('renders emoji icon as text when not a URL', () => {
-        render(
+    it('renders emoji icon via Twemoji <img> when not a URL', () => {
+        const { container } = render(
             <CombatActionBar
-                skills={[makeSkill({ icon: '⚡' })]}
+                skills={[makeSkill({ icon: 'high-voltage' })]}
                 exit={{ kind: 'flee', onFlee: vi.fn() }}
             />,
         );
-        expect(screen.getByText('⚡')).toBeTruthy();
+        // Non-URL emoji routes through TinyIcon -> <Emoji>, rendering a Twemoji
+        // <img> (not text) inside the .combat-ui__action-icon span.
+        expect(
+            container.querySelector('.combat-ui__action-icon svg.game-icon[data-icon="high-voltage"]'),
+        ).toBeTruthy();
     });
 
     it('renders <img> when icon is a URL', () => {

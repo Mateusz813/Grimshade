@@ -9,12 +9,12 @@ import { MemoryRouter } from 'react-router-dom';
  * what combatEngine.test.ts and Playwright E2E exist for.
  *
  * What we DO cover here:
- *   • Smoke render in idle phase (the monster picker hub).
- *   • Null-character short-circuit (returns null, no crash).
- *   • Idle-phase top control bar mounts.
- *   • Transitioning the store to phase==='fighting' swaps the chrome
+ *   - Smoke render in idle phase (the monster picker hub).
+ *   - Null-character short-circuit (returns null, no crash).
+ *   - Idle-phase top control bar mounts.
+ *   - Transitioning the store to phase==='fighting' swaps the chrome
  *     (the idle header disappears, combat arena mounts).
- *   • Engine helpers (`startNewFight`, `stopCombat`, `handlePlayerDeath`)
+ *   - Engine helpers (`startNewFight`, `stopCombat`, `handlePlayerDeath`)
  *     are wired through the engine module — we don't drive them but we
  *     verify the import didn't crash.
  *

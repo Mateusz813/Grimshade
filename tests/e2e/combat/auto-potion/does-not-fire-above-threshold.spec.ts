@@ -10,15 +10,15 @@
  *   if (valPct > threshold) return;
  *
  * Critical regression scenarios this test catches:
- *  • Someone "tightens" the comparison to `valPct >= threshold` — would
+ *  - Someone "tightens" the comparison to `valPct >= threshold` — would
  *    fire at exactly threshold (e.g. HP=50% with threshold=50). Sibling
  *    test 11.2 (positive) wouldn't catch it because firing at 33% is
  *    valid under BOTH operator variants.
- *  • A future refactor that swaps numerator/denominator and the
+ *  - A future refactor that swaps numerator/denominator and the
  *    threshold check accidentally reverses (e.g. `threshold > valPct`
  *    instead of `valPct > threshold`). Both positive and negative tests
  *    together would catch the sign flip.
- *  • Threshold ID renamed but not propagated everywhere — if `threshold`
+ *  - Threshold ID renamed but not propagated everywhere — if `threshold`
  *    param becomes 0 due to a missing config read, ALL fires fire,
  *    breaking this negative test.
  *

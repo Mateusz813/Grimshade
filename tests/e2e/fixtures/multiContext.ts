@@ -55,7 +55,7 @@
  *     // ... seed characters on each account
  *     primaryCharId = (await createCharacterViaApi({...})).id;
  *     secondaryCharId = (await createCharacterViaApi({...})).id;
- *     // ... navigate each page through Town → /party → assertions
+ *     // ... navigate each page through Town -> /party -> assertions
  *   } finally {
  *     await cleanup({ primaryCharId, secondaryCharId });
  *   }

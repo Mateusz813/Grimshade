@@ -120,7 +120,7 @@ describe('useLevelUpRefill', () => {
         expect(cb).toHaveBeenCalledTimes(2);
     });
 
-    it('fires once when active flips from false → true with a pending event', () => {
+    it('fires once when active flips from false -> true with a pending event', () => {
         // Active=false skips the effect; flipping to true with the SAME
         // event reference still fires once (the previous render didn't
         // mark it handled).

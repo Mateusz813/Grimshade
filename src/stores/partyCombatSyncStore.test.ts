@@ -75,7 +75,7 @@ afterEach(() => {
     try { usePartyCombatSyncStore.getState().clear(); } catch { /* ignore */ }
 });
 
-// ── subscribe ────────────────────────────────────────────────────────────────
+// -- subscribe ----------------------------------------------------------------
 
 describe('subscribe', () => {
     it('opens a channel + records the partyId on first call', () => {
@@ -126,7 +126,7 @@ describe('subscribe', () => {
     });
 });
 
-// ── publishSpellCast ────────────────────────────────────────────────────────
+// -- publishSpellCast --------------------------------------------------------
 
 describe('publishSpellCast', () => {
     it('is a no-op when no channel is open (local mirror not touched)', () => {
@@ -172,7 +172,7 @@ describe('publishSpellCast', () => {
     });
 });
 
-// ── publishDamageEvent ──────────────────────────────────────────────────────
+// -- publishDamageEvent ------------------------------------------------------
 
 describe('publishDamageEvent', () => {
     it('is a no-op when no channel is open', () => {
@@ -216,7 +216,7 @@ describe('publishDamageEvent', () => {
     });
 });
 
-// ── publishBossDamage ───────────────────────────────────────────────────────
+// -- publishBossDamage -------------------------------------------------------
 
 describe('publishBossDamage', () => {
     it('is a no-op when no channel is open', () => {
@@ -258,7 +258,7 @@ describe('publishBossDamage', () => {
     });
 });
 
-// ── publishRaidDamage ───────────────────────────────────────────────────────
+// -- publishRaidDamage -------------------------------------------------------
 
 describe('publishRaidDamage', () => {
     it('is a no-op when no channel is open', () => {
@@ -292,13 +292,13 @@ describe('publishRaidDamage', () => {
             targetId: 'boss-a',
             damage: 50,
         });
-        // ally-on-boss hit → no sourceBossId → key uses an empty trailing segment.
+        // ally-on-boss hit -> no sourceBossId -> key uses an empty trailing segment.
         expect(usePartyCombatSyncStore.getState().lastRaidDamageByAttacker['char-1::boss-a::']).toBeDefined();
         unsub();
     });
 });
 
-// ── publishBossState ────────────────────────────────────────────────────────
+// -- publishBossState --------------------------------------------------------
 
 describe('publishBossState', () => {
     it('is a no-op when no channel is open', () => {
@@ -334,7 +334,7 @@ describe('publishBossState', () => {
             bossId: 'b1', bossHp: 200, scaledBossMaxHp: 250, phase: 'fighting',
         });
         const seqAfterFirst = usePartyCombatSyncStore.getState().lastBossState!.seq;
-        // Second call inside the throttle window with the SAME phase → no-op.
+        // Second call inside the throttle window with the SAME phase -> no-op.
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b1', bossHp: 180, scaledBossMaxHp: 250, phase: 'fighting',
         });
@@ -350,7 +350,7 @@ describe('publishBossState', () => {
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b1', bossHp: 200, scaledBossMaxHp: 250, phase: 'fighting',
         });
-        // Phase change → not throttled even if MIN_STATE_PUBLISH_MS hasn't elapsed.
+        // Phase change -> not throttled even if MIN_STATE_PUBLISH_MS hasn't elapsed.
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b1', bossHp: 0, scaledBossMaxHp: 250, phase: 'result', won: true,
         });
@@ -363,7 +363,7 @@ describe('publishBossState', () => {
     });
 });
 
-// ── publishRaidState ────────────────────────────────────────────────────────
+// -- publishRaidState --------------------------------------------------------
 
 describe('publishRaidState', () => {
     it('is a no-op when no channel is open', () => {
@@ -421,7 +421,7 @@ describe('publishRaidState', () => {
     });
 });
 
-// ── publishBossKilled ───────────────────────────────────────────────────────
+// -- publishBossKilled -------------------------------------------------------
 
 describe('publishBossKilled', () => {
     it('is a no-op when no channel is open', () => {
@@ -454,7 +454,7 @@ describe('publishBossKilled', () => {
     });
 });
 
-// ── publishTrainerState ─────────────────────────────────────────────────────
+// -- publishTrainerState -----------------------------------------------------
 
 describe('publishTrainerState', () => {
     it('mirrors the trainer state locally even when no channel is open', () => {
@@ -506,7 +506,7 @@ describe('publishTrainerState', () => {
     });
 });
 
-// ── publishTrainerAttack ────────────────────────────────────────────────────
+// -- publishTrainerAttack ----------------------------------------------------
 
 describe('publishTrainerAttack', () => {
     it('mirrors the attack locally with a monotonic seq starting at 1 (regardless of channel)', () => {
@@ -524,7 +524,7 @@ describe('publishTrainerAttack', () => {
         const map = usePartyCombatSyncStore.getState().lastTrainerAttackByAttacker;
         const keys = Object.keys(map);
         expect(keys.length).toBeGreaterThan(0);
-        // Key is `${attackerId}::${seq}`. First publish ever → seq=1.
+        // Key is `${attackerId}::${seq}`. First publish ever -> seq=1.
         const first = map[keys[0]];
         expect(first.attackerId).toBe('char-1');
         expect(first.damage).toBe(50);
@@ -545,7 +545,7 @@ describe('publishTrainerAttack', () => {
     });
 });
 
-// ── publishMemberSkillRequest + consumeMemberSkillRequest ──────────────────
+// -- publishMemberSkillRequest + consumeMemberSkillRequest ------------------
 
 describe('publishMemberSkillRequest', () => {
     it('is a no-op when no channel is open', () => {
@@ -590,7 +590,7 @@ describe('consumeMemberSkillRequest', () => {
     });
 });
 
-// ── requestMemberBossEntry ──────────────────────────────────────────────────
+// -- requestMemberBossEntry --------------------------------------------------
 
 describe('requestMemberBossEntry', () => {
     it('writes pendingBossEntryAt (current ms) + pendingBossEntryBossId (no channel needed)', () => {
@@ -607,7 +607,7 @@ describe('requestMemberBossEntry', () => {
     });
 });
 
-// ── requestMemberRaidEntry ──────────────────────────────────────────────────
+// -- requestMemberRaidEntry --------------------------------------------------
 
 describe('requestMemberRaidEntry', () => {
     it('writes pendingRaidEntryAt + pendingRaidEntryRaidId', () => {
@@ -624,7 +624,7 @@ describe('requestMemberRaidEntry', () => {
     });
 });
 
-// ── publishState / publishMemberHit / publishAttackAction / publishMonsterKilled ──
+// -- publishState / publishMemberHit / publishAttackAction / publishMonsterKilled --
 
 describe('publishState', () => {
     it('is a no-op when no channel is open (no module-level seq bump)', () => {
@@ -754,7 +754,7 @@ describe('publishMonsterKilled', () => {
     });
 });
 
-// ── publishCombatSpeed / publishCombatEnd / publishVictory / publishBossEntrySkip ──
+// -- publishCombatSpeed / publishCombatEnd / publishVictory / publishBossEntrySkip --
 
 describe('publishCombatSpeed', () => {
     it('is a no-op when no channel is open', () => {
@@ -814,7 +814,7 @@ describe('publishBossEntrySkip', () => {
     });
 });
 
-// ── clear ───────────────────────────────────────────────────────────────────
+// -- clear -------------------------------------------------------------------
 
 describe('clear', () => {
     it('wipes channel + partyId + every transient field', () => {
@@ -879,7 +879,7 @@ describe('clear', () => {
     });
 });
 
-// ── Initial state ───────────────────────────────────────────────────────────
+// -- Initial state -----------------------------------------------------------
 
 describe('initial state', () => {
     it('boots with everything null / empty', () => {

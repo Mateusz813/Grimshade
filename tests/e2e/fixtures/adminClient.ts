@@ -12,7 +12,7 @@
  * Fix: cache `user_id` per email w module-level Map. Pierwsza call =
  * jeden listUsers (cache się WSZYSTKICH userów na raz), kolejne =
  * O(1) Map lookup. Per-worker (każdy Playwright worker ma własny
- * proces → własny cache, ale max 2 workers = max 2 listUsers calls
+ * proces -> własny cache, ale max 2 workers = max 2 listUsers calls
  * per full run zamiast 80+).
  *
  * Bonus: cache jest **append-only** — jak ktoś stworzy nowego usera w
@@ -44,7 +44,7 @@ export const getAdminClient = (): SupabaseClient => {
     if (!serviceKey) {
         throw new Error(
             '[fixtures] Brak SUPABASE_SERVICE_ROLE_KEY w env. ' +
-            'Supabase Dashboard → Settings → API → service_role. Wklej do .env.test.',
+            'Supabase Dashboard -> Settings -> API -> service_role. Wklej do .env.test.',
         );
     }
 
@@ -57,15 +57,15 @@ export const getAdminClient = (): SupabaseClient => {
     return adminClient;
 };
 
-// ── Transient-error retry (Supabase under load) ───────────────────────────────
+// -- Transient-error retry (Supabase under load) -------------------------------
 //
 // Pod obciążeniem (cały E2E run hammeruje NANO/MICRO compute) Supabase
 // zwraca przejściowe błędy które NIE są bugiem testu:
-//   • PostgREST: "Could not query the database for the schema cache. Retrying."
+//   - PostgREST: "Could not query the database for the schema cache. Retrying."
 //     (PGRST002 — PostgREST przeładowuje schema cache, np. po cold-start /
 //     pod presją connection poola)
-//   • GoTrue admin API: pusty error `{}` z `listUsers` (network blip)
-//   • generyczne: fetch failed / timeout / ECONNRESET / 502-504
+//   - GoTrue admin API: pusty error `{}` z `listUsers` (network blip)
+//   - generyczne: fetch failed / timeout / ECONNRESET / 502-504
 //
 // Retry-with-backoff zamienia te flaki w sukces. Błędy PERMANENTNE
 // (duplicate nick 23505, FK 23503, RLS 42501, …) NIE są retry'owane —
@@ -108,17 +108,17 @@ const TRANSIENT_MESSAGE_PATTERNS = [
 
 /**
  * Czy błąd jest przejściowy (warto retry'ować)?
- *  • brak błędu → false (sukces)
- *  • znany permanentny kod → false (leci od razu)
- *  • pusty / brak message ({} error) → true (traktujemy jak network blip)
- *  • message pasuje do transient-patterns → true
- *  • cokolwiek innego → false (nieznany permanentny — nie maskujemy go retry'em)
+ *  - brak błędu -> false (sukces)
+ *  - znany permanentny kod -> false (leci od razu)
+ *  - pusty / brak message ({} error) -> true (traktujemy jak network blip)
+ *  - message pasuje do transient-patterns -> true
+ *  - cokolwiek innego -> false (nieznany permanentny — nie maskujemy go retry'em)
  */
 export const isTransientError = (error: IPgErrorLike | null | undefined): boolean => {
     if (!error) return false;
     if (error.code && PERMANENT_ERROR_CODES.has(error.code)) return false;
     const msg = (error.message ?? '').toLowerCase();
-    if (!msg) return true; // pusty {} / brak message → retry
+    if (!msg) return true; // pusty {} / brak message -> retry
     return TRANSIENT_MESSAGE_PATTERNS.some((p) => msg.includes(p));
 };
 
@@ -127,7 +127,7 @@ export const isTransientError = (error: IPgErrorLike | null | undefined): boolea
  * kontrakt — zwraca pełny result (z `data` typing), więc caller robi swoje
  * istniejące `if (error) throw`. Retry tylko gdy `isTransientError`.
  *
- * Backoff: 400ms, 800ms, 1600ms (maxAttempts=4 → 3 retry).
+ * Backoff: 400ms, 800ms, 1600ms (maxAttempts=4 -> 3 retry).
  */
 export const withSupabaseRetry = async <R extends { error: IPgErrorLike | null }>(
     op: () => PromiseLike<R>,
@@ -143,7 +143,7 @@ export const withSupabaseRetry = async <R extends { error: IPgErrorLike | null }
     return result;
 };
 
-// Module-level cache: email (lowercase) → user_id.
+// Module-level cache: email (lowercase) -> user_id.
 // Per-worker scope — każdy Playwright worker ma swój proces + cache.
 const emailToUserIdCache = new Map<string, string>();
 
@@ -164,7 +164,7 @@ export const findUserIdByEmail = async (email: string): Promise<string | null> =
         return emailToUserIdCache.get(lower)!;
     }
 
-    // Cache miss → populate cache (pierwsza call w worker procesie).
+    // Cache miss -> populate cache (pierwsza call w worker procesie).
     // Retry na przejściowe GoTrue blips (pusty `{}` error pod obciążeniem).
     const admin = getAdminClient();
     const { data: list, error } = await withSupabaseRetry(

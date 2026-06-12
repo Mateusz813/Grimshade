@@ -11,13 +11,15 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import { useTransformStore } from '../../stores/transformStore';
 import Chat from '../../components/ui/Chat/Chat';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import './Party.scss';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 const CLASS_ICONS: Record<string, string> = {
-  Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-  Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+  Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+  Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 const CLASS_COLORS: Record<string, string> = {
@@ -25,7 +27,7 @@ const CLASS_COLORS: Record<string, string> = {
   Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 const Party = () => {
   const character  = useCharacterStore((s) => s.character);
@@ -48,7 +50,7 @@ const Party = () => {
     hydrateActiveParty,
   } = usePartyStore();
 
-  // ── Local form state ─────────────────────────────────────────────────────
+  // -- Local form state -----------------------------------------------------
   const [createOpen, setCreateOpen]         = useState(false);
   const [formName, setFormName]             = useState('');
   const [formDesc, setFormDesc]             = useState('');
@@ -83,7 +85,7 @@ const Party = () => {
     if (error) showToast(error);
   }, [error]);
 
-  // ── Boot hydration ──────────────────────────────────────────────────────
+  // -- Boot hydration ------------------------------------------------------
   // 2026-05-09 spec ("dalej widze stare party"): on mount, ask the
   // server for our actual active membership. If found, hydrate the
   // local store (handles refresh-while-in-party). If not found AND
@@ -95,7 +97,7 @@ const Party = () => {
     void hydrateActiveParty(character.id);
   }, [character?.id, hydrateActiveParty]);
 
-  // ── Subscriptions — live browser feed + active party updates ────────────
+  // -- Subscriptions — live browser feed + active party updates ------------
   // 2026-05-10 spec ("co pare sekund dziwne przeladowania"): only
   // refresh + subscribe to the public feed when the player ISN'T in a
   // party (i.e. they're actually browsing). Inside a party we don't
@@ -107,7 +109,7 @@ const Party = () => {
   // `subscribePublicFeed()` already pushes realtime updates when
   // parties open / fill / close — the periodic poll was just a fallback
   // that fired the loading-overlay every 8 s, shifting the layout under
-  // the player's cursor. Manual refresh via the 🔄 button still works.
+  // the player's cursor. Manual refresh via the :counterclockwise-arrows-button: button still works.
   useEffect(() => {
     if (party?.id) return; // already in a party — no need to fetch the feed
     void refreshPublicParties();
@@ -145,7 +147,7 @@ const Party = () => {
 
   const isLeader = party?.leaderId === character.id;
 
-  // ── Browser view helpers ─────────────────────────────────────────────────
+  // -- Browser view helpers -------------------------------------------------
   const browsable = useMemo(
     () => publicParties.filter((p) => p.members.length < p.max_members),
     [publicParties],
@@ -212,11 +214,11 @@ const Party = () => {
       <div className="party__content">
         {/* 2026-05-13: dropped the global `loading` overlay. It used to
             sit on top of the browser list and flicker on every refresh —
-            the player saw the page "jump" each tick. The 🔄 button's
-            inline icon swap (⏳ during loading) is enough feedback for
+            the player saw the page "jump" each tick. The :counterclockwise-arrows-button: button's
+            inline icon swap (:hourglass-not-done: during loading) is enough feedback for
             manual refreshes; realtime sub handles auto-updates. */}
 
-        {/* ── No party: browser + create ────────────────────────────────────── */}
+        {/* -- No party: browser + create -------------------------------------- */}
         {!party && (
           <>
             <div className="party__intro">
@@ -316,7 +318,7 @@ const Party = () => {
                 disabled={loading}
                 title="Odśwież listę"
               >
-                {loading ? '⏳' : '🔄'}
+                {loading ? <GameIcon name="hourglass-not-done" /> : <GameIcon name="counterclockwise-arrows-button" />}
               </button>
             </div>
 
@@ -364,7 +366,7 @@ const Party = () => {
                       {/* Center: name top, description bottom, member avatars middle */}
                       <div className="party__card-center">
                         <div className="party__card-name">
-                          {p.has_password && <span className="party__card-lock">🔒</span>}
+                          {p.has_password && <span className="party__card-lock"><GameIcon name="locked" /></span>}
                           {p.name || 'Party'}
                         </div>
                         <div className="party__card-avatars">
@@ -387,7 +389,7 @@ const Party = () => {
                                 style={{ '--avatar-color': c } as React.CSSProperties}
                                 title={`${m.character_name} · ${cClass} Lv ${m.character_level}`}
                               >
-                                {CLASS_ICONS[cClass] ?? '?'}
+                                <GameIcon name={CLASS_ICONS[cClass] ?? '?'} />
                                 <span className="party__card-avatar-lvl">{m.character_level}</span>
                               </span>
                             );
@@ -432,12 +434,12 @@ const Party = () => {
           </>
         )}
 
-        {/* ── In party ────────────────────────────────────────────────── */}
+        {/* -- In party -------------------------------------------------- */}
         {party && (
           <>
             <div className="party__roster-header">
               <h2 className="party__roster-title">
-                {party.hasPassword && <span className="party__card-lock">🔒</span>}
+                {party.hasPassword && <span className="party__card-lock"><GameIcon name="locked" /></span>}
                 {party.name ?? 'Party'}
               </h2>
               {party.description && (
@@ -451,7 +453,7 @@ const Party = () => {
                     className="party__edit-btn"
                     onClick={() => setEditOpen((v) => !v)}
                   >
-                    {editOpen ? 'Schowaj' : '✎ Edytuj'}
+                    {editOpen ? 'Schowaj' : <><GameIcon name="pencil" /> Edytuj</>}
                   </button>
                 )}
               </div>
@@ -527,12 +529,12 @@ const Party = () => {
                     <div className="party__roster-avatar">
                       {avatarSrc
                         ? <img src={avatarSrc} alt={member.name} />
-                        : <span>{CLASS_ICONS[member.class] ?? '?'}</span>}
+                        : <span><GameIcon name={CLASS_ICONS[member.class] ?? '?'} /></span>}
                     </div>
                     <div className="party__roster-info">
                       <span className="party__roster-name">
-                        {member.name}
-                        {isMemberLeader && <span className="party__roster-crown" title="Lider">👑</span>}
+                        <EmojiText>{member.name}</EmojiText>
+                        {isMemberLeader && <span className="party__roster-crown" title="Lider"><GameIcon name="crown" /></span>}
                         {isMe && <span className="party__roster-you">(Ty)</span>}
                       </span>
                       <span className="party__roster-class">{member.class} · Lv {member.level}</span>
@@ -580,7 +582,7 @@ const Party = () => {
         )}
       </div>
 
-      {/* ── Modals ─────────────────────────────────────────────────── */}
+      {/* -- Modals --------------------------------------------------- */}
       <AnimatePresence>
         {joinPromptFor && (
           <motion.div
@@ -595,7 +597,7 @@ const Party = () => {
               exit={{ scale: 0.96, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="party__modal-title">🔒 {joinPromptFor.name}</div>
+              <div className="party__modal-title"><GameIcon name="locked" /> {joinPromptFor.name}</div>
               <p className="party__modal-text">Party wymaga hasła. Wpisz hasło, by dołączyć.</p>
               <input
                 className="party__modal-input"
@@ -638,7 +640,7 @@ const Party = () => {
               exit={{ scale: 0.96, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="party__modal-title">👑 Przekaż lidera</div>
+              <div className="party__modal-title"><GameIcon name="crown" /> Przekaż lidera</div>
               <p className="party__modal-text">
                 Czy na pewno chcesz przekazać lidera graczowi <strong>{transferTarget.name}</strong>?
                 Stracisz uprawnienia lidera natychmiast.

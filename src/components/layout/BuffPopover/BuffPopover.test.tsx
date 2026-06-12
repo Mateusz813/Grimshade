@@ -8,7 +8,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
  * Escape and on outside click.
  *
  * Mocks:
- *   - TinyIcon → trivial passthrough so we don't need to load actual sprite
+ *   - TinyIcon -> trivial passthrough so we don't need to load actual sprite
  *     assets / Vite asset URLs in tests.
  */
 
@@ -54,7 +54,7 @@ const makeBuff = (overrides: Partial<IActiveBuff> = {}): IActiveBuff => ({
     id: `buff-${Math.random().toString(36).slice(2, 6)}`,
     characterId: 'char-1',
     name: 'Tarcza',
-    icon: '🛡️',
+    icon: 'shield',
     effect: 'shield',
     expiresAt: Date.now() + 60_000,
     timerMode: 'realtime',
@@ -106,8 +106,8 @@ describe('BuffPopover — buff list', () => {
     it('lists active realtime buffs for the current character', () => {
         useBuffStore.setState({
             allBuffs: [
-                makeBuff({ name: 'Tarcza Many', icon: '🛡️', effect: 'mana_shield', expiresAt: Date.now() + 30_000 }),
-                makeBuff({ name: 'Berserk', icon: '⚔️', effect: 'berserk', expiresAt: Date.now() + 12_000 }),
+                makeBuff({ name: 'Tarcza Many', icon: 'shield', effect: 'mana_shield', expiresAt: Date.now() + 30_000 }),
+                makeBuff({ name: 'Berserk', icon: 'crossed-swords', effect: 'berserk', expiresAt: Date.now() + 12_000 }),
             ],
         });
         render(<Harness />);
@@ -142,7 +142,7 @@ describe('BuffPopover — buff list', () => {
     it('renders charge-based buffs with charges/maxCharges fraction', () => {
         useBuffStore.setState({
             allBuffs: [
-                makeBuff({ name: 'Krok Cienia', icon: '👻', effect: 'shadow_step', charges: 2, maxCharges: 3 }),
+                makeBuff({ name: 'Krok Cienia', icon: 'ghost', effect: 'shadow_step', charges: 2, maxCharges: 3 }),
             ],
         });
         render(<Harness />);
@@ -156,7 +156,7 @@ describe('BuffPopover — buff list', () => {
             allBuffs: [
                 makeBuff({
                     name: 'XP Boost',
-                    icon: '✨',
+                    icon: 'sparkles',
                     effect: 'xp_boost',
                     timerMode: 'pausable',
                     remainingMs: 120_000,
@@ -168,7 +168,7 @@ describe('BuffPopover — buff list', () => {
         const row = screen.getByText('XP Boost').closest('.buff-popover__row');
         expect(row?.className.includes('buff-popover__row--paused')).toBe(true);
         // The pause indicator is prepended to the time display.
-        expect(row?.textContent).toContain('⏸');
+        expect((row as Element).querySelector('svg.game-icon[data-icon="pause-button"]')).toBeTruthy();
     });
 });
 

@@ -25,7 +25,7 @@ import {
     type IArenaRewardBucket,
 } from '../types/arena';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const makeCompetitor = (
     id: string,
@@ -53,7 +53,7 @@ const makeCompetitor = (
     },
 });
 
-// ── LEAGUE_BOUNDARIES ────────────────────────────────────────────────────────
+// -- LEAGUE_BOUNDARIES --------------------------------------------------------
 
 describe('LEAGUE_BOUNDARIES', () => {
     it('bronze has no relegation (lowest league)', () => {
@@ -81,7 +81,7 @@ describe('LEAGUE_BOUNDARIES', () => {
     });
 });
 
-// ── getLeagueMultiplier ──────────────────────────────────────────────────────
+// -- getLeagueMultiplier ------------------------------------------------------
 
 describe('getLeagueMultiplier', () => {
     it('returns 1 for bronze (index 0 + 1)', () => {
@@ -106,7 +106,7 @@ describe('getLeagueMultiplier', () => {
     });
 });
 
-// ── getNextLeague / getPreviousLeague ────────────────────────────────────────
+// -- getNextLeague / getPreviousLeague ----------------------------------------
 
 describe('getNextLeague', () => {
     it('returns silver from bronze', () => {
@@ -148,7 +148,7 @@ describe('getPreviousLeague', () => {
     });
 });
 
-// ── getMatchReward ───────────────────────────────────────────────────────────
+// -- getMatchReward -----------------------------------------------------------
 
 describe('getMatchReward', () => {
     it('attacker wins attacking up: 200 AP / 2 LP, defender 0/0', () => {
@@ -201,7 +201,7 @@ describe('getMatchReward', () => {
     });
 });
 
-// ── ARENA_DAMAGE_MULTIPLIER ──────────────────────────────────────────────────
+// -- ARENA_DAMAGE_MULTIPLIER --------------------------------------------------
 
 describe('ARENA_DAMAGE_MULTIPLIER', () => {
     it('is 0.2 (= -80% damage vs world combat)', () => {
@@ -213,7 +213,7 @@ describe('ARENA_DAMAGE_MULTIPLIER', () => {
     });
 });
 
-// ── rankCompetitors ──────────────────────────────────────────────────────────
+// -- rankCompetitors ----------------------------------------------------------
 
 describe('rankCompetitors', () => {
     it('returns empty list for empty input', () => {
@@ -277,7 +277,7 @@ describe('rankCompetitors', () => {
     });
 });
 
-// ── getAttackableIndices ─────────────────────────────────────────────────────
+// -- getAttackableIndices -----------------------------------------------------
 
 describe('getAttackableIndices', () => {
     it('returns empty list when self id not found', () => {
@@ -336,7 +336,7 @@ describe('getAttackableIndices', () => {
     });
 });
 
-// ── getSeasonOutcome ─────────────────────────────────────────────────────────
+// -- getSeasonOutcome ---------------------------------------------------------
 
 describe('getSeasonOutcome', () => {
     it('rank 1 in bronze promotes to silver', () => {
@@ -383,7 +383,7 @@ describe('getSeasonOutcome', () => {
     });
 });
 
-// ── getRewardBuckets / findRewardBucket ──────────────────────────────────────
+// -- getRewardBuckets / findRewardBucket --------------------------------------
 
 describe('getRewardBuckets', () => {
     it('returns 7 buckets (1, 2, 3, 4-5, 6-10, 11-50, 51-100)', () => {
@@ -455,7 +455,7 @@ describe('findRewardBucket', () => {
     });
 });
 
-// ── applyLeagueMultiplier ────────────────────────────────────────────────────
+// -- applyLeagueMultiplier ----------------------------------------------------
 
 describe('applyLeagueMultiplier', () => {
     const baseBucket: IArenaRewardBucket = {
@@ -504,7 +504,7 @@ describe('applyLeagueMultiplier', () => {
     });
 });
 
-// ── generateBotsForArena ─────────────────────────────────────────────────────
+// -- generateBotsForArena -----------------------------------------------------
 
 describe('generateBotsForArena', () => {
     it('returns the requested number of bots', () => {
@@ -535,7 +535,7 @@ describe('generateBotsForArena', () => {
         }
     });
 
-    it('deterministic by seed (same seed → same roster)', () => {
+    it('deterministic by seed (same seed -> same roster)', () => {
         const a = generateBotsForArena('platinum', 8, 999, 30);
         const b = generateBotsForArena('platinum', 8, 999, 30);
         // Compare keys that don't depend on Date.now (so id/achievedAt may
@@ -594,7 +594,7 @@ describe('generateBotsForArena', () => {
     });
 });
 
-// ── Season clock ─────────────────────────────────────────────────────────────
+// -- Season clock -------------------------------------------------------------
 
 describe('getSeasonStart', () => {
     it('returns the most recent Monday 00:00 UTC for a Wednesday', () => {
@@ -660,7 +660,7 @@ describe('formatSeasonRemaining', () => {
     });
 
     it('formats hours for sub-day intervals', () => {
-        // 3h 25m → "3h 25m".
+        // 3h 25m -> "3h 25m".
         const ms = 3 * 3600_000 + 25 * 60_000;
         expect(formatSeasonRemaining(ms)).toBe('3h 25m');
     });
@@ -677,12 +677,12 @@ describe('formatSeasonRemaining', () => {
     });
 
     it('rounds down to the floor minute', () => {
-        // 59 seconds → 0m.
+        // 59 seconds -> 0m.
         expect(formatSeasonRemaining(59 * 1000)).toBe('0m');
     });
 });
 
-// ── Deterministic random tests ───────────────────────────────────────────────
+// -- Deterministic random tests -----------------------------------------------
 
 describe('arenaSystem with mocked Math.random', () => {
     let randomSpy: ReturnType<typeof vi.spyOn>;

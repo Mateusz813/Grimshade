@@ -75,8 +75,12 @@ describe('DeathNotification — visibility', () => {
         renderInRouter();
         expect(screen.getByText('ZGINĄŁEŚ')).toBeTruthy();
         expect(screen.getByText('Lich King')).toBeTruthy();
-        // Level transition copy.
-        expect(screen.getByText(/30 → 28/)).toBeTruthy();
+        // Level transition copy. The arrow is now an inline <Icon name="arrowRight">
+        // svg between the two numbers, so the text is split across nodes — assert
+        // the level row's combined textContent carries both the old and new level.
+        const levelRow = document.querySelector('.death__penalty--level');
+        expect(levelRow?.textContent).toMatch(/Poziom\s*30/);
+        expect(levelRow?.textContent).toMatch(/28/);
     });
 
     it('renders the flee variant with UCIEKŁEŚ label and no killer block', () => {

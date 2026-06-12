@@ -62,7 +62,7 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// -- Helpers ----------------------------------------------------------------
 
 describe('buildGuildChannel', () => {
     it('builds a per-guild realtime channel name', () => {
@@ -70,7 +70,7 @@ describe('buildGuildChannel', () => {
     });
 });
 
-// ── List / lookup ─────────────────────────────────────────────────────────
+// -- List / lookup ---------------------------------------------------------
 
 describe('guildApi.listGuilds', () => {
     it('builds URL with offset, limit, order, and select=*', async () => {
@@ -190,7 +190,7 @@ describe('guildApi.listGuildSummaries', () => {
         expect(mockApi.get).not.toHaveBeenCalled();
     });
 
-    it('counts members per guild and pairs leader id → name', async () => {
+    it('counts members per guild and pairs leader id -> name', async () => {
         // 2 members in g1 (one is leader), 1 in g2.
         mockApi.get
             .mockResolvedValueOnce(mkRes([
@@ -210,7 +210,7 @@ describe('guildApi.listGuildSummaries', () => {
     });
 });
 
-// ── Create / leave / kick ─────────────────────────────────────────────────
+// -- Create / leave / kick -------------------------------------------------
 
 describe('guildApi.createGuild', () => {
     it('inserts the guild then adds the founder as first member', async () => {
@@ -452,7 +452,7 @@ describe('guildApi.updateGuildLevelXp', () => {
     });
 });
 
-// ── Join requests ─────────────────────────────────────────────────────────
+// -- Join requests ---------------------------------------------------------
 
 describe('guildApi.requestJoin', () => {
     it('inserts a join request', async () => {
@@ -541,7 +541,7 @@ describe('guildApi.acceptRequest', () => {
     });
 });
 
-// ── Boss ──────────────────────────────────────────────────────────────────
+// -- Boss ------------------------------------------------------------------
 
 describe('guildApi.fetchOrCreateWeeklyBoss', () => {
     it('returns existing boss row when one already exists for the week', async () => {
@@ -563,7 +563,7 @@ describe('guildApi.fetchOrCreateWeeklyBoss', () => {
         expect(payload).toMatchObject({
             guild_id: 'g1',
             boss_tier: 1,
-            boss_current_hp: payload.boss_max_hp, // freshly created → full HP
+            boss_current_hp: payload.boss_max_hp, // freshly created -> full HP
             boss_killed: false,
             current_attacker_id: null,
         });
@@ -809,7 +809,7 @@ describe('guildApi.markContributionClaimed', () => {
     });
 });
 
-// ── Treasury ──────────────────────────────────────────────────────────────
+// -- Treasury --------------------------------------------------------------
 
 describe('guildApi.listTreasury', () => {
     it('queries items ordered by deposited_at desc, limit 1000', async () => {

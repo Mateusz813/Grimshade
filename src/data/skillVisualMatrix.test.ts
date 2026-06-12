@@ -20,14 +20,14 @@ import { isImageUrl } from '../systems/spriteAssets';
  *
  *   ALL 8 combat views (Combat, Dungeon, Boss, Raid, Transform, Arena,
  *   Trainer, Guild) render skill visuals through ONE shared primitive —
- *   `useCombatFx` → `triggerEnemySkillAnim` (MY cast, shown on the target
+ *   `useCombatFx` -> `triggerEnemySkillAnim` (MY cast, shown on the target
  *   card on MY screen) and `triggerAllySkillAnim` (an ally's cast, shown on
  *   the ally card — i.e. the ally-screen path). Both resolve the visual via
  *   `getSkillAnimation(skillId)` + `getSkillIcon(skillId)`, and BOTH bail out
  *   silently when `getSkillAnimation` returns undefined:
  *
  *       const animData = getSkillAnimation(skillId);
- *       if (!animData) return;          // ← NO overlay renders. The spell is
+ *       if (!animData) return;          // <- NO overlay renders. The spell is
  *                                       //   invisible on every view + screen.
  *
  *   So a skill present in skills.json but MISSING from SKILL_ANIMATIONS would
@@ -76,12 +76,12 @@ describe('#14 spell-visual matrix — every active skill of every class', () => 
         expect(new Set(ids).size).toBe(ids.length);
     });
 
-    // ── The core exhaustive loop — one assertion path per skill ──────────────
+    // -- The core exhaustive loop — one assertion path per skill --------------
     for (const { cls, skill } of ALL_SKILLS) {
         describe(`${cls} › ${skill.id} (${skill.name})`, () => {
             it('resolves a DEFINED animation (will not silently skip the overlay)', () => {
                 const anim = getSkillAnimation(skill.id);
-                expect(anim, `skill "${skill.id}" has no SKILL_ANIMATIONS entry → renders NO visual on any combat view`).toBeDefined();
+                expect(anim, `skill "${skill.id}" has no SKILL_ANIMATIONS entry -> renders NO visual on any combat view`).toBeDefined();
             });
 
             it('animation uses a documented category', () => {

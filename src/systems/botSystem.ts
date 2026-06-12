@@ -4,7 +4,7 @@ import type { IBoss } from './bossSystem';
 import classesData from '../data/classes.json';
 import skillsData from '../data/skills.json';
 
-// ── Class base stats from classes.json ───────────────────────────────────────
+// -- Class base stats from classes.json ---------------------------------------
 
 interface IClassData {
     id: string;
@@ -22,11 +22,11 @@ for (const cls of classesData as IClassData[]) {
     CLASS_DATA[cls.id as TCharacterClass] = cls;
 }
 
-// ── All character classes ────────────────────────────────────────────────────
+// -- All character classes ----------------------------------------------------
 
 const ALL_CLASSES: TCharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'];
 
-// ── Bot name pools ───────────────────────────────────────────────────────────
+// -- Bot name pools -----------------------------------------------------------
 
 const BOT_NAMES: Record<TCharacterClass, string[]> = {
     Knight:      ['Sir Aldric', 'Sir Gavain', 'Dame Irina', 'Sir Borin', 'Dame Elsa', 'Sir Tormund', 'Dame Kira'],
@@ -38,19 +38,19 @@ const BOT_NAMES: Record<TCharacterClass, string[]> = {
     Bard:        ['Melody Aria', 'Minstrel Jay', 'Troubadour Lute', 'Songbird Faye', 'Rhymer Cal', 'Harmony Sage', 'Balladeer Tine'],
 };
 
-// ── Class icons (same as Boss.tsx) ───────────────────────────────────────────
+// -- Class icons (same as Boss.tsx) -------------------------------------------
 
 export const BOT_CLASS_ICONS: Record<TCharacterClass, string> = {
-    Knight: '⚔️',
-    Mage: '🔮',
-    Cleric: '✨',
-    Archer: '🏹',
-    Rogue: '🗡️',
-    Necromancer: '💀',
-    Bard: '🎵',
+    Knight: 'crossed-swords',
+    Mage: 'crystal-ball',
+    Cleric: 'sparkles',
+    Archer: 'bow-and-arrow',
+    Rogue: 'dagger',
+    Necromancer: 'skull',
+    Bard: 'musical-note',
 };
 
-// ── First available skill per class ──────────────────────────────────────────
+// -- First available skill per class ------------------------------------------
 
 interface ISkillInfo {
     id: string;
@@ -95,7 +95,7 @@ for (const cls of ALL_CLASSES) {
     }
 }
 
-// ── Bot stat calculation ─────────────────────────────────────────────────────
+// -- Bot stat calculation -----------------------------------------------------
 // Bot stats are 80% of what a player of that level/class would have.
 
 const BOT_STAT_MULTIPLIER = 0.8;
@@ -117,7 +117,7 @@ const calculateBotStats = (level: number, cls: TCharacterClass) => {
     return { hp, mp, attack, defense, speed, magicLevel };
 };
 
-// ── Generate a single bot ────────────────────────────────────────────────────
+// -- Generate a single bot ----------------------------------------------------
 
 let botIdCounter = 0;
 
@@ -168,7 +168,7 @@ export const generateBot = (
     };
 };
 
-// ── Generate a bot with an explicit class ───────────────────────────────────
+// -- Generate a bot with an explicit class -----------------------------------
 // Used when the player manually selects which class a companion should be.
 
 export const generateBotWithClass = (
@@ -205,7 +205,7 @@ export const generateBotWithClass = (
     };
 };
 
-// ── Generate a full bot party ────────────────────────────────────────────────
+// -- Generate a full bot party ------------------------------------------------
 
 export const generateBotParty = (
     playerLevel: number,
@@ -222,7 +222,7 @@ export const generateBotParty = (
     return bots;
 };
 
-// ── Calculate bot action ─────────────────────────────────────────────────────
+// -- Calculate bot action -----------------------------------------------------
 
 export const calculateBotAction = (
     bot: IBot,
@@ -254,7 +254,7 @@ export const calculateBotAction = (
     };
 };
 
-// ── Boss aggro target selection ──────────────────────────────────────────────
+// -- Boss aggro target selection ----------------------------------------------
 // Boss switches target every 3-5 turns. Uses class-weighted selection so
 // Knights tank most aggro, while Cleric/Bard are least likely to be targeted.
 
@@ -270,9 +270,9 @@ export interface IAggroCandidate {
  * Pick the boss's next aggro target.
  *
  * Overloads:
- *  - Legacy: `pickAggroTarget(aliveBotIds: string[])` → random uniform over
+ *  - Legacy: `pickAggroTarget(aliveBotIds: string[])` -> random uniform over
  *    `['player', ...aliveBotIds]` (kept for backward compat with old tests).
- *  - New:    `pickAggroTarget(candidates: IAggroCandidate[])` → class-weighted
+ *  - New:    `pickAggroTarget(candidates: IAggroCandidate[])` -> class-weighted
  *    selection using `AGGRO_CLASS_WEIGHTS`.
  */
 export function pickAggroTarget(aliveBotIds: string[]): string;
@@ -288,7 +288,7 @@ export function pickAggroTarget(arg: string[] | IAggroCandidate[]): string {
     return pickWeightedAggroTarget(candidates) ?? 'player';
 }
 
-// ── AOE damage calculation (every 5th attack, 50% damage) ────────────────────
+// -- AOE damage calculation (every 5th attack, 50% damage) --------------------
 
 export const calculateAoeDamage = (
     bossAttack: number,
@@ -298,12 +298,12 @@ export const calculateAoeDamage = (
     return Math.max(1, Math.floor(baseDmg * 0.5));
 };
 
-// ── Check if boss turn is AOE (every 5th attack) ────────────────────────────
+// -- Check if boss turn is AOE (every 5th attack) ----------------------------
 
 export const isBossAoeTurn = (turnCounter: number): boolean =>
     turnCounter > 0 && turnCounter % 5 === 0;
 
-// ── Get aggro switch interval (3-5 turns) ────────────────────────────────────
+// -- Get aggro switch interval (3-5 turns) ------------------------------------
 
 export const getAggroSwitchInterval = (): number =>
     3 + Math.floor(Math.random() * 3); // 3, 4, or 5

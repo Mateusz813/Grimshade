@@ -82,7 +82,7 @@ export const useBackgroundCombat = () => {
     // route again.
     const isCharacterlessRoute = useAppRouteStore((s) => s.isCharacterless);
 
-    // ── Offline catch-up on mount / visibility change ───────────────────────
+    // -- Offline catch-up on mount / visibility change -----------------------
     const offlineCatchUpDone = useRef(false);
 
     useEffect(() => {
@@ -113,17 +113,17 @@ export const useBackgroundCombat = () => {
                 const result = simulateOfflineCombat(gapMs);
                 if (result && result.kills > 0) {
                     useCombatStore.getState().addLog(
-                        `⏰ Walka offline: ${result.kills} killi, +${result.xpEarned.toLocaleString('pl-PL')} XP, +${formatGoldShort(result.goldEarned)} (${result.elapsedMinutes} min)`,
+                        `:alarm-clock: Walka offline: ${result.kills} killi, +${result.xpEarned.toLocaleString('pl-PL')} XP, +${formatGoldShort(result.goldEarned)} (${result.elapsedMinutes} min)`,
                         'system',
                     );
                     if (result.levelUps > 0) {
                         useCombatStore.getState().addLog(
-                            `🎉 Awans! Zdobyłeś ${result.levelUps} poziomów podczas walki offline!`,
+                            `:party-popper: Awans! Zdobyłeś ${result.levelUps} poziomów podczas walki offline!`,
                             'system',
                         );
                     }
                     if (result.died) {
-                        useCombatStore.getState().addLog('💀 Zginąłeś podczas walki offline!', 'system');
+                        useCombatStore.getState().addLog(':skull: Zginąłeś podczas walki offline!', 'system');
                     }
                 }
             }
@@ -145,7 +145,7 @@ export const useBackgroundCombat = () => {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
-    // ── Player attack interval (timestamp-based catch-up) ──────────────────
+    // -- Player attack interval (timestamp-based catch-up) ------------------
     useEffect(() => {
         if (phase !== 'fighting' || combatSpeed === 'SKIP' || !character) return;
         if (isCharacterlessRoute) return;
@@ -193,7 +193,7 @@ export const useBackgroundCombat = () => {
         return () => clearInterval(id);
     }, [phase, combatSpeed, character?.id, character?.attack_speed, monster?.id, isCharacterlessRoute, isNonLeaderMember]);
 
-    // ── Monster attack interval (timestamp-based catch-up) ─────────────────
+    // -- Monster attack interval (timestamp-based catch-up) -----------------
     useEffect(() => {
         if (phase !== 'fighting' || combatSpeed === 'SKIP' || !monster) return;
         if (isCharacterlessRoute) return;
@@ -228,7 +228,7 @@ export const useBackgroundCombat = () => {
         return () => clearInterval(id);
     }, [phase, combatSpeed, monster?.id, monster?.speed, isCharacterlessRoute, isNonLeaderMember]);
 
-    // ── Bot attack interval ─────────────────────────────────────────────────
+    // -- Bot attack interval -------------------------------------------------
     // All alive party bots share one interval — they attack roughly every
     // 1800ms (divided by the combat speed multiplier). Simple and readable.
     // Interval resets when bots change or combat state changes.
@@ -247,7 +247,7 @@ export const useBackgroundCombat = () => {
         return () => clearInterval(id);
     }, [phase, combatSpeed, botsKey, isCharacterlessRoute, isNonLeaderMember]);
 
-    // ── Skill effects status tick (DOT, stun timers, marks) ──────────────────
+    // -- Skill effects status tick (DOT, stun timers, marks) ------------------
     // Runs at 250 ms while fighting — drains stun / DOT / mark / immortal
     // timers and applies DOT damage to player + every alive wave monster.
     // Independent of combat speed because the effect runtime already takes
@@ -259,7 +259,7 @@ export const useBackgroundCombat = () => {
         return () => clearInterval(id);
     }, [phase, isCharacterlessRoute]);
 
-    // ── Auto-skill fast poller (250 ms) ──────────────────────────────────────
+    // -- Auto-skill fast poller (250 ms) --------------------------------------
     // 2026-05-11 spec ("auto spelle slabo dzialaja, mija strasznie duzo
     // czasu zanim sie uzyja"): the auto-skill cast logic lives inside
     // `doPlayerAttackTick`, so before this tick it only ran at the
@@ -281,7 +281,7 @@ export const useBackgroundCombat = () => {
         return () => clearInterval(id);
     }, [phase, combatSpeed, isCharacterlessRoute]);
 
-    // ── Cooldown tick timer (smooth UI in foreground) ────────────────────────
+    // -- Cooldown tick timer (smooth UI in foreground) ------------------------
     // Runs during fighting AND victory so cooldowns continue draining during
     // the ~1s gap between waves. Previously the tick paused on victory, which
     // made cooldowns appear to "never reach zero" and "jump backward" when the
@@ -303,7 +303,7 @@ export const useBackgroundCombat = () => {
         return () => clearInterval(interval);
     }, [phase, combatSpeed, isCharacterlessRoute]);
 
-    // ── Auto-fight after victory ────────────────────────────────────────────
+    // -- Auto-fight after victory --------------------------------------------
     useEffect(() => {
         if (phase !== 'victory') return;
         if (!autoFight) return;
@@ -345,7 +345,7 @@ export const useBackgroundCombat = () => {
         };
     }, [phase, combatSpeed, autoFight, isCharacterlessRoute, isNonLeaderMember]);
 
-    // ── SKIP mode trigger: if SKIP is activated mid-fight ───────────────────
+    // -- SKIP mode trigger: if SKIP is activated mid-fight -------------------
     useEffect(() => {
         if (combatSpeed !== 'SKIP' || phase !== 'fighting' || !monster || !character) return;
         if (isCharacterlessRoute) return;
@@ -356,7 +356,7 @@ export const useBackgroundCombat = () => {
         resolveInstantFight(monster, s.playerCurrentHp, s.playerCurrentMp, rarity);
     }, [combatSpeed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── 10h cap ─────────────────────────────────────────────────────────────
+    // -- 10h cap -------------------------------------------------------------
     useEffect(() => {
         if (!backgroundStartedAt) return;
         const elapsed = Date.now() - new Date(backgroundStartedAt).getTime();
@@ -371,7 +371,7 @@ export const useBackgroundCombat = () => {
         return () => clearTimeout(timer);
     }, [backgroundStartedAt]);
 
-    // ── XP/h calculation (runs every second) ────────────────────────────────
+    // -- XP/h calculation (runs every second) --------------------------------
     const xpSessionRef = useRef({
         startedAt: Date.now(),
         totalEarned: 0,

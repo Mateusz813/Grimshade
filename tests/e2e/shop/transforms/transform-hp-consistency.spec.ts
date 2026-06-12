@@ -2,9 +2,9 @@
  * Atomic E2E — Transform HP consistency across Town / TopHeader popover /
  * CharacterSelect for a Knight with tier 1 transform completed.
  *
- * Spec (BACKLOG 3.8): "Transform dający +HP → ta sama konsystencja"
+ * Spec (BACKLOG 3.8): "Transform dający +HP -> ta sama konsystencja"
  * (Town, TopHeader, CharacterSelect — i wszystkie inne widoki). Original
- * status ⚠️ partial because the seedGameSave fixture didn't yet support a
+ * status :warning: partial because the seedGameSave fixture didn't yet support a
  * `transforms` slot — that was added in the 8.1 round (verified by the
  * `transforms: { completedTransforms: [1], bakedBonusesApplied: false }`
  * key on `seedGameSave` per fixtures/seedGameSave.ts line 206-215).
@@ -30,10 +30,10 @@
  *            = floor(561.6)
  *            = 561
  *
- * Town:                `.town__bar-value` → `${character.hp}/${effMaxHp}` → `40/561`
- * TopHeader popover:   `.top-header__pulse-popover-row--hp` → `40/561` (toLocaleString
+ * Town:                `.town__bar-value` -> `${character.hp}/${effMaxHp}` -> `40/561`
+ * TopHeader popover:   `.top-header__pulse-popover-row--hp` -> `40/561` (toLocaleString
  *                      adds no separator under 1000)
- * CharacterSelect:     `.char-select__bar-value` → `40/561`
+ * CharacterSelect:     `.char-select__bar-value` -> `40/561`
  *   - CharSelect's `getEffectiveMaxStats` (CharacterSelect.tsx line 114)
  *     reads transforms via `getTransformMaxBonuses` (line 74) which calls
  *     `peekCharacterStore(charId, 'transforms')` reading from localStorage.
@@ -49,7 +49,7 @@
  *
  * Solution: `page.addInitScript` sets the marker BEFORE the first
  * character pick, so the bakedBonusesApplied=false (seeded) survives
- * and `getLiveTransformBreakdown` returns active=true → transform flat
+ * and `getLiveTransformBreakdown` returns active=true -> transform flat
  * + % bonuses apply LIVE in every helper.
  *
  * Same caveat as the 8.1 expansion test
@@ -66,7 +66,7 @@
  *   "+HP transform" demo. Other classes work identically (would be
  *   mechanical copy-paste of variants).
  * - flatHp=420 (largest in the per-class table at line 227) so the
- *   delta (120 → 561) is unambiguous in test output.
+ *   delta (120 -> 561) is unambiguous in test output.
  *
  * ## Setup
  *
@@ -79,9 +79,9 @@
  *
  * ## Visit order — same as elixir consistency tests (3.5/3.6)
  *
- * /character-select → Wybierz (warms localStorage via switchToCharacter
- * → forceSaveCharacterData) → Town (asserts Town value + TopHeader popover
- * value) → /character-select (asserts CharSelect value with warmed
+ * /character-select -> Wybierz (warms localStorage via switchToCharacter
+ * -> forceSaveCharacterData) -> Town (asserts Town value + TopHeader popover
+ * value) -> /character-select (asserts CharSelect value with warmed
  * localStorage so getTransformMaxBonuses can peek it).
  *
  * Cleanup: try/finally + cleanupCharacterById (game_saves cascade kills
@@ -98,7 +98,7 @@ import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 test.describe('Shop › Transforms', { tag: '@shop' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('Knight tier 1 transform (+420 flat HP + 4% HP) → Town, TopHeader popover, CharacterSelect all show 40/561 effective max HP', async ({ page }) => {
+    test('Knight tier 1 transform (+420 flat HP + 4% HP) -> Town, TopHeader popover, CharacterSelect all show 40/561 effective max HP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -142,12 +142,12 @@ test.describe('Shop › Transforms', { tag: '@shop' }, () => {
                 } catch { /* private mode / quota */ }
             }, createdId);
 
-            // 4. Login → /character-select.
+            // 4. Login -> /character-select.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 15_000 });
 
-            // 5. Tap "Wybierz" → Town. switchToCharacter → applyBlobToStores
+            // 5. Tap "Wybierz" -> Town. switchToCharacter -> applyBlobToStores
             //    hydrates transforms slice into useTransformStore +
             //    forceSaveCharacterData writes blob to localStorage. After
             //    this step localStorage[`dungeon_rpg_save_char_${createdId}`]
@@ -198,7 +198,7 @@ test.describe('Shop › Transforms', { tag: '@shop' }, () => {
             // floor((120 + 0 + 0 + 0 + 420) × 1.0 × 1.04) = floor(561.6) = 561
             expect(engineMaxHp).toBe(561);
 
-            // 8. Town: `.town__bar-value` shows `${hp}/${effMaxHp}` → "40/561".
+            // 8. Town: `.town__bar-value` shows `${hp}/${effMaxHp}` -> "40/561".
             //    Town.tsx line 200-202: effMaxHp uses engineGetEffectiveChar.
             const townHp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--hp') })
@@ -208,7 +208,7 @@ test.describe('Shop › Transforms', { tag: '@shop' }, () => {
 
             // 9. TopHeader pulse popover (`.top-header__pulse-popover-row--hp`).
             //    TopHeader.tsx line 193-194 reads getEffectiveChar(character).max_hp.
-            //    pl-PL toLocaleString does NOT insert separator under 1000 →
+            //    pl-PL toLocaleString does NOT insert separator under 1000 ->
             //    "40/561".
             const pulseBtn = page.locator('.top-header__pulse').first();
             await expect(pulseBtn).toBeVisible({ timeout: 5_000 });
@@ -222,9 +222,9 @@ test.describe('Shop › Transforms', { tag: '@shop' }, () => {
             // 10. CharacterSelect: navigate back. `getEffectiveMaxStats`
             //     (CharacterSelect.tsx line 114) calls `getTransformMaxBonuses`
             //     (line 74) which reads `peekCharacterStore(charId, 'transforms')`
-            //     → localStorage now has the warm save with transforms.
+            //     -> localStorage now has the warm save with transforms.
             //     Same math as engine: (120 + 0 + 0 + 0 + 420) × 1.04 = 561.6
-            //     → floor = 561.
+            //     -> floor = 561.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
             const reloadedCard = page.locator('.char-select__card', {

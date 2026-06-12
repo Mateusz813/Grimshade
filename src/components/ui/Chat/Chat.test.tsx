@@ -46,7 +46,7 @@ vi.mock('../TinyIcon/TinyIcon', () => ({
 }));
 
 vi.mock('../../../data/skillIcons', () => ({
-    getSkillIcon: () => '✨',
+    getSkillIcon: () => 'sparkles',
 }));
 
 import Chat from './Chat';

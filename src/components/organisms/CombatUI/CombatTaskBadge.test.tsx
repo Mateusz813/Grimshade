@@ -26,7 +26,9 @@ describe('CombatTaskBadge — visibility', () => {
 
     it('renders badge + count when items present', () => {
         render(<CombatTaskBadge items={[makeQuest(), makeQuest({ id: 'q-2' })]} />);
-        expect(screen.getByText('📜')).toBeTruthy();
+        // Dropdown closed: only the trigger button's :scroll: is rendered, via
+        // <Emoji> as a Twemoji <img> (alt carries the glyph).
+        expect(document.querySelector('svg.game-icon[data-icon="scroll"]')).toBeTruthy();
         expect(screen.getByText('2')).toBeTruthy();
     });
 });
@@ -65,18 +67,19 @@ describe('CombatTaskBadge — interactions', () => {
             />,
         );
         fireEvent.click(container.querySelector('.combat-ui__task-badge-btn')!);
-        // 📋 task icon, 📜 quest icon. The 📜 also lives on the trigger
-        // button so we expect at least 2 occurrences total.
-        expect(screen.getAllByText('📜').length).toBeGreaterThanOrEqual(2);
-        expect(screen.getByText('📋')).toBeTruthy();
+        // :clipboard: task icon, :scroll: quest icon — both rendered via <Emoji> as svg.game-icon
+        // in the rows. The trigger button also shows :scroll: via <Emoji>, so :scroll:
+        // appears twice (trigger + quest row); :clipboard: only in the task row.
+        expect(document.querySelectorAll('svg.game-icon[data-icon="scroll"]').length).toBe(2);
+        expect(document.querySelector('svg.game-icon[data-icon="clipboard"]')).toBeTruthy();
     });
 
-    it('renders completed row with ✅ icon and done modifier', () => {
+    it('renders completed row with :check-mark-button: icon and done modifier', () => {
         const { container } = render(
             <CombatTaskBadge items={[makeQuest({ completed: true, progress: 10, goal: 10 })]} />,
         );
         fireEvent.click(container.querySelector('.combat-ui__task-badge-btn')!);
-        expect(screen.getByText('✅')).toBeTruthy();
+        expect(document.querySelector('svg.game-icon[data-icon="check-mark-button"]')).toBeTruthy();
         expect(container.querySelector('.combat-ui__task-row--done')).toBeTruthy();
     });
 

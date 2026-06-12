@@ -34,7 +34,7 @@ interface IGuildStoreState {
     requests: IGuildJoinRequestRow[];
     /** True while membership is being hydrated. */
     loading: boolean;
-    /** Per-character map: characterId → guildId. Used by routing to
+    /** Per-character map: characterId -> guildId. Used by routing to
      *  decide whether /guild lands on the list or the detail view. */
     guildIdByCharacter: Record<string, string | null>;
     /** Active realtime channel (per-guild). */

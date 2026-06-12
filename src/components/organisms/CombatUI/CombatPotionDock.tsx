@@ -1,5 +1,6 @@
 import type { ICombatPotionSlot } from './types';
 import { isImageUrl } from '../../../systems/spriteAssets';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
 
 interface IProps {
     /** Flat HP potion (small/normal/strong). */
@@ -15,10 +16,10 @@ interface IProps {
 // Legacy emoji fallback per kind — used when the slot doesn't carry an
 // `icon` URL (e.g. tests, older callers).
 const FALLBACK_GLYPHS: Record<ICombatPotionSlot['kind'], string> = {
-    'hp':     '❤️',
-    'pct-hp': '❤️%',
-    'mp':     '💧',
-    'pct-mp': '💧%',
+    'hp':     'red-heart',
+    'pct-hp': ':red-heart:%',
+    'mp':     'droplet',
+    'pct-mp': ':droplet:%',
 };
 
 const PotionDockButton = ({ p }: { p: ICombatPotionSlot | null | undefined }) => {
@@ -53,7 +54,7 @@ const PotionDockButton = ({ p }: { p: ICombatPotionSlot | null | undefined }) =>
             <span className="combat-ui__pot-dock-icon">
                 {isImageUrl(iconValue)
                     ? <img src={iconValue} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
-                    : iconValue}
+                    : <EmojiText>{iconValue}</EmojiText>}
             </span>
             <span className="combat-ui__pot-dock-count">x{p.count}</span>
             {p.cooldownProgress < 1 && (

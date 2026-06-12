@@ -1,11 +1,11 @@
 /**
- * Atomic E2E — BACKLOG 15.3: rapid-click "Kup" → only 1 item bought.
+ * Atomic E2E — BACKLOG 15.3: rapid-click "Kup" -> only 1 item bought.
  *
  * The anti-dupe guarantee comes from `inventoryStore.spendGold` (line
  * 342-347 of `src/stores/inventoryStore.ts`):
  *   spendGold: (amount) => {
  *     const { gold } = get();
- *     if (gold < amount) return false;   // ← idempotency gate
+ *     if (gold < amount) return false;   // <- idempotency gate
  *     set({ gold: gold - amount });
  *     return true;
  *   }
@@ -16,12 +16,12 @@
  *   - exactly ONE item added to the bag (toast count "Kupiono: Miecz"
  *     fires once; bag size = 1 NOT 5)
  *   - gold deducted exactly once (final gold = 0, not -200)
- *   - the remaining 4 taps short-circuit at `spendGold` → 'no_gold'
+ *   - the remaining 4 taps short-circuit at `spendGold` -> 'no_gold'
  *
  * Why we use `button.click()` via `page.evaluate` (vs 5× `.tap()`):
  *   The Shop disables the Kup button when `gold < item.price` via
  *   `disabled={!canBuy}` (Shop.tsx line 380). After the FIRST successful
- *   tap, Zustand fires its subscribers → Shop re-renders → button
+ *   tap, Zustand fires its subscribers -> Shop re-renders -> button
  *   becomes `disabled=true`. Playwright's `.tap()` auto-waits for the
  *   element to be actionable (enabled, stable, visible) — so taps 2-5
  *   would either time out (waiting for an enabled state that never
@@ -37,7 +37,7 @@
  *   `handleBuyItem` handler 5× in a row inside one microtask, but
  *   Zustand `set()` flushes state synchronously inside the handler.
  *   So call #2's `get()` already sees `gold=0` and `spendGold` returns
- *   false → 'no_gold' branch. The "race" is real (5 events fire) but
+ *   false -> 'no_gold' branch. The "race" is real (5 events fire) but
  *   the guard is robust (only 1 commits).
  *
  * Setup:
@@ -46,7 +46,7 @@
  *       inventoryStore which is hydrated from game_saves, not from
  *       characters.gold — see comment in `item-appears-in-inventory-
  *       and-deducts-gold.spec.ts`).
- *   2. Login → /character-select → pick character → Town.
+ *   2. Login -> /character-select -> pick character -> Town.
  *   3. SPA-nav to /shop via BottomNav (preserves Zustand stores).
  *   4. Locate the common "Miecz" card (Lv 1 sword = 50g).
  *
@@ -106,7 +106,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
                 gold: STARTING_GOLD,
             });
 
-            // 2. Login + pick character → Town.
+            // 2. Login + pick character -> Town.
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');

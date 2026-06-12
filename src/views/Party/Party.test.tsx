@@ -5,8 +5,8 @@ import { MemoryRouter } from 'react-router-dom';
 /**
  * Party view — server-backed party browser + create form + active-party
  * dashboard. Two main render branches:
- *   1. NOT in a party → intro + create form + public browser list.
- *   2. IN a party → active dashboard (member roster, chat, action row).
+ *   1. NOT in a party -> intro + create form + public browser list.
+ *   2. IN a party -> active dashboard (member roster, chat, action row).
  *
  * Coverage:
  *   - Smoke render + spinner fallback for null character.
@@ -215,13 +215,13 @@ describe('Party — public browser cards', () => {
             }],
         } as never);
         const { container } = renderParty();
-        // Full party gets filtered out → still empty list message.
+        // Full party gets filtered out -> still empty list message.
         expect(container.querySelector('.party__empty')).not.toBeNull();
     });
 });
 
 describe('Party — refresh button', () => {
-    it('calls refreshPublicParties when the 🔄 button is clicked', () => {
+    it('calls refreshPublicParties when the :counterclockwise-arrows-button: button is clicked', () => {
         const refreshPublicParties = vi.fn(async () => { /* noop */ });
         usePartyStore.setState({ refreshPublicParties } as never);
         const { container } = renderParty();

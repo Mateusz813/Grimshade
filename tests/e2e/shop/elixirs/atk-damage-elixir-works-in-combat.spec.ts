@@ -72,7 +72,7 @@
  *     the buff is being READ by the combat path — guards against the
  *     hashing/lookup bug where buff exists but multiplier helper looks
  *     for wrong effect string).
- *  6. Run `runCombatViaSkip(page, 'rat')` → resolveInstantFight reads
+ *  6. Run `runCombatViaSkip(page, 'rat')` -> resolveInstantFight reads
  *     the multiplier mid-loop and applies it to every attack roll.
  *  7. Assert victory + XP delta + kill counter.
  *
@@ -90,7 +90,7 @@ import { runCombatViaSkip, getCharacterSnapshot } from '../../fixtures/combatSim
 test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('atk_dmg_25 buff active → SKIP fight against rat resolves to victory + rewards land + multiplier reads 1.25', async ({ page }) => {
+    test('atk_dmg_25 buff active -> SKIP fight against rat resolves to victory + rewards land + multiplier reads 1.25', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -118,11 +118,11 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
                     {
                         id: 'atk_dmg_25',
                         name: 'ATK DMG +25%',
-                        icon: '⚔️',
+                        icon: 'crossed-swords',
                         effect: 'atk_dmg_25',
                         // Defaults: timerMode='pausable', remainingMs=24h,
                         // expiresAt=now+24h. Pausable means no real-time
-                        // drain out of combat → assertions are race-free.
+                        // drain out of combat -> assertions are race-free.
                     },
                 ],
             });

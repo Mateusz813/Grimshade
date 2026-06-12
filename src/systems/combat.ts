@@ -1,4 +1,4 @@
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 /** Coerces any value to a finite number, returning `fallback` for NaN/Infinity/null/undefined. */
 const safeN = (v: number | null | undefined, fallback = 0): number => {
@@ -6,7 +6,7 @@ const safeN = (v: number | null | undefined, fallback = 0): number => {
     return isFinite(n) ? n : fallback;
 };
 
-// ── Interfaces ────────────────────────────────────────────────────────────────
+// -- Interfaces ----------------------------------------------------------------
 
 export interface ICombatParams {
     baseAtk: number;
@@ -51,7 +51,7 @@ export interface IAutoAttackParams {
     baseInterval: number;
 }
 
-// ── Dual Wield result (Rogue) ─────────────────────────────────────────────────
+// -- Dual Wield result (Rogue) -------------------------------------------------
 
 export interface IDualWieldResult {
     hit1: ICombatResult;
@@ -59,7 +59,7 @@ export interface IDualWieldResult {
     totalDamage: number;
 }
 
-// ── Core calculations ─────────────────────────────────────────────────────────
+// -- Core calculations ---------------------------------------------------------
 
 export const calculateDamage = (params: ICombatParams): ICombatResult => {
     const baseAtk      = safeN(params.baseAtk);
@@ -110,7 +110,7 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     };
 };
 
-// ── Dual Wield calculation (Rogue) ────────────────────────────────────────────
+// -- Dual Wield calculation (Rogue) --------------------------------------------
 // Each dagger does 60% of normal DMG, 2 separate attacks per turn
 
 /**
@@ -135,7 +135,7 @@ export const calculateDualWieldDamage = (
     };
 };
 
-// ── Block chance calculation (Knight) ─────────────────────────────────────────
+// -- Block chance calculation (Knight) -----------------------------------------
 // Base 5%, scales with Shielding skill up to max 25%
 
 export const calculateBlockChance = (
@@ -152,7 +152,7 @@ export const calculateBlockChance = (
     return Math.min(max, base + safeN(shieldingLevel) * perLevel);
 };
 
-// ── Dodge chance calculation (Archer/Rogue/Bard) ──────────────────────────────
+// -- Dodge chance calculation (Archer/Rogue/Bard) ------------------------------
 // Base 5%, scales with agility-related stats up to max 20-25%
 
 export const calculateDodgeChance = (
@@ -175,7 +175,7 @@ export const calculateDodgeChance = (
     return Math.min(config.max, config.base + safeN(agilityLevel) * config.perLevel);
 };
 
-// ── MLVL bonus to skill damage ────────────────────────────────────────────────
+// -- MLVL bonus to skill damage ------------------------------------------------
 // Skill damage = baseSkillDmg * (1 + MLVL * 0.02)
 
 export const calculateSkillDamageWithMlvl = (
@@ -201,14 +201,14 @@ export const calculateSkillDamage = (
 
 /**
  * Returns the base auto-attack interval in ms.
- * speed 1 → 2000 ms  |  speed 4+ → 500 ms minimum.
+ * speed 1 -> 2000 ms  |  speed 4+ -> 500 ms minimum.
  */
 export const calculateAttackInterval = (attackSpeed: number): number => {
     const BASE_INTERVAL = 2000;
     return Math.max(500, Math.floor(BASE_INTERVAL / Math.max(1, safeN(attackSpeed, 1))));
 };
 
-// ── Death penalty (NEW - can lose levels!) ────────────────────────────────────
+// -- Death penalty (NEW - can lose levels!) ------------------------------------
 
 export interface IDeathPenaltyResult {
     newLevel: number;
@@ -279,7 +279,7 @@ export const calculateDeathPenalty = (
     };
 };
 
-// ── Legacy death penalty (kept for backwards compat) ──────────────────────────
+// -- Legacy death penalty (kept for backwards compat) --------------------------
 
 export const applyDeathPenalty = (
     currentXp: number,
@@ -301,7 +301,7 @@ export const getSpeedMultiplier = (speed: CombatSpeed): number => {
     return multipliers[speed];
 };
 
-// ── Monster damage helpers ────────────────────────────────────────────────────
+// -- Monster damage helpers ----------------------------------------------------
 
 /**
  * Returns min/max attack range for a monster.
@@ -331,7 +331,7 @@ export const rollMonsterDamage = (monster: {
     return min + Math.floor(Math.random() * (max - min + 1));
 };
 
-// ── Monster rarity stat scaling ───────────────────────────────────────────────
+// -- Monster rarity stat scaling -----------------------------------------------
 
 export interface IMonsterCombatStats {
     hp: number;

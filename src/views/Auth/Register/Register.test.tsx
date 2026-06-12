@@ -8,11 +8,11 @@ import { MemoryRouter } from 'react-router-dom';
  * the two passwords match.
  *
  * Coverage:
- *   • Smoke render: root, 3 inputs, submit button, "back to login" link.
- *   • Form submit calls supabase.auth.signUp with email + password.
- *   • Successful signup navigates to `/`.
- *   • Server error renders as a root `.register__error`.
- *   • zod refine() flags a mismatch between the two passwords.
+ *   - Smoke render: root, 3 inputs, submit button, "back to login" link.
+ *   - Form submit calls supabase.auth.signUp with email + password.
+ *   - Successful signup navigates to `/`.
+ *   - Server error renders as a root `.register__error`.
+ *   - zod refine() flags a mismatch between the two passwords.
  */
 
 const navigateMock = vi.fn();

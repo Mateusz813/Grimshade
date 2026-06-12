@@ -3,7 +3,7 @@ import { RARITY_BONUS_SLOTS, getBaseStatKeysForSlot } from './itemSystem';
 import { getItemImage } from './spriteAssets';
 import itemTemplates from '../data/itemTemplates.json';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface IItemTemplate {
     type: string;
@@ -36,7 +36,7 @@ interface IRarityMultiplier {
     priceMultiplier: number;
 }
 
-// ── Bonus stat pool ───────────────────────────────────────────────────────────
+// -- Bonus stat pool -----------------------------------------------------------
 
 const BONUS_STAT_POOL = ['hp', 'mp', 'attack', 'defense', 'speed', 'critChance', 'critDmg'];
 
@@ -49,12 +49,12 @@ const BONUS_STAT_RANGES: Record<Rarity, { min: number; max: number }> = {
     heroic:    { min: 40, max: 100 },
 };
 
-// ── Helper: random int in range ───────────────────────────────────────────────
+// -- Helper: random int in range -----------------------------------------------
 
 const randInt = (min: number, max: number): number =>
     min + Math.floor(Math.random() * (max - min + 1));
 
-// ── Generate base stat value for an item ──────────────────────────────────────
+// -- Generate base stat value for an item --------------------------------------
 
 const calculateBaseStat = (
     scaling: { baseMin: number; baseMax: number; perLevel: number },
@@ -71,7 +71,7 @@ const calculateBaseStat = (
     return Math.max(1, total);
 };
 
-// ── Generate bonus stats ──────────────────────────────────────────────────────
+// -- Generate bonus stats ------------------------------------------------------
 
 /**
  * Stat-specific multipliers applied on top of BONUS_STAT_RANGES.
@@ -89,7 +89,7 @@ const STAT_RANGE_MULTIPLIER: Record<string, number> = {
     defense:   1.0,
     speed:     1.0,
     critChance: 0.3,  // e.g. mythic: 20-60 * 0.3 = 6-18% crit chance
-    critDmg:   1.5,   // e.g. mythic: 20-60 * 1.5 = 30-90 (→ +0.30-0.90 multiplier)
+    critDmg:   1.5,   // e.g. mythic: 20-60 * 1.5 = 30-90 (-> +0.30-0.90 multiplier)
 };
 
 const generateBonusStats = (rarity: Rarity, excludeStats: string[] = []): Record<string, number> => {
@@ -111,7 +111,7 @@ const generateBonusStats = (rarity: Rarity, excludeStats: string[] = []): Record
     return bonuses;
 };
 
-// ── Weapon base damage scaling ────────────────────────────────────────────────
+// -- Weapon base damage scaling ------------------------------------------------
 // Spec: weapons use dmg_min / dmg_max range; values scale ~20-30x by level 100.
 
 interface IWeaponDamageScaling {
@@ -138,7 +138,7 @@ const getWeaponBaseDamage = (
     return { min: rolledMin, max: rolledMax };
 };
 
-// ── Generate weapon item ──────────────────────────────────────────────────────
+// -- Generate weapon item ------------------------------------------------------
 
 export const generateWeapon = (
     weaponType: string,
@@ -170,7 +170,7 @@ export const generateWeapon = (
     };
 };
 
-// ── Generate offhand item ─────────────────────────────────────────────────────
+// -- Generate offhand item -----------------------------------------------------
 
 export const generateOffhand = (
     offhandType: string,
@@ -218,9 +218,9 @@ export const generateOffhand = (
     };
 };
 
-// ── Armor slot base stat mapping (per spec) ───────────────────────────────────
-// helmet/armor/pants/shoulders/boots → +HP (primary)
-// gloves → +attack (flat)
+// -- Armor slot base stat mapping (per spec) -----------------------------------
+// helmet/armor/pants/shoulders/boots -> +HP (primary)
+// gloves -> +attack (flat)
 
 const ARMOR_SLOT_BASE_STAT: Record<string, 'hp' | 'attack'> = {
     helmet:    'hp',
@@ -232,10 +232,10 @@ const ARMOR_SLOT_BASE_STAT: Record<string, 'hp' | 'attack'> = {
 };
 
 // HP scaling factor for armor pieces (defense scaling * this = base HP)
-// At level 100 armor slot 'baseMin*perLevel' ~ 100, multiplied by 5-8 → 500-800 HP per piece
+// At level 100 armor slot 'baseMin*perLevel' ~ 100, multiplied by 5-8 -> 500-800 HP per piece
 const ARMOR_HP_MULTIPLIER = 6;
 
-// ── Generate armor item ───────────────────────────────────────────────────────
+// -- Generate armor item -------------------------------------------------------
 
 export const generateArmor = (
     armorPrefix: string,
@@ -257,7 +257,7 @@ export const generateArmor = (
     if (baseStatKey === 'hp') {
         bonuses['hp'] = (bonuses['hp'] ?? 0) + rawBase * ARMOR_HP_MULTIPLIER;
     } else {
-        // gloves → flat attack
+        // gloves -> flat attack
         bonuses['attack'] = (bonuses['attack'] ?? 0) + rawBase;
     }
 
@@ -273,10 +273,10 @@ export const generateArmor = (
     };
 };
 
-// ── Accessory slot base stat mapping (per spec) ───────────────────────────────
-// ring1/ring2  → small +attack
-// necklace     → +DEF
-// earrings     → +DEF
+// -- Accessory slot base stat mapping (per spec) -------------------------------
+// ring1/ring2  -> small +attack
+// necklace     -> +DEF
+// earrings     -> +DEF
 
 const ACCESSORY_SLOT_BASE_STAT: Record<string, 'attack' | 'defense'> = {
     ring1:    'attack',
@@ -285,7 +285,7 @@ const ACCESSORY_SLOT_BASE_STAT: Record<string, 'attack' | 'defense'> = {
     earrings: 'defense',
 };
 
-// ── Generate accessory ────────────────────────────────────────────────────────
+// -- Generate accessory --------------------------------------------------------
 
 export const generateAccessory = (
     accessoryType: string,
@@ -299,7 +299,7 @@ export const generateAccessory = (
 
     const baseStat = calculateBaseStat(template.scaling, level, rarity);
 
-    // Map accessory type → canonical slot key for base stat mapping
+    // Map accessory type -> canonical slot key for base stat mapping
     const slotKey = template.type === 'ring' ? 'ring1' : template.slot;
     const baseStatKey = ACCESSORY_SLOT_BASE_STAT[slotKey] ?? 'defense';
 
@@ -318,7 +318,7 @@ export const generateAccessory = (
     };
 };
 
-// ── Generate random item for a class at a given level ─────────────────────────
+// -- Generate random item for a class at a given level -------------------------
 
 export type TItemCategory = 'weapon' | 'offhand' | 'armor' | 'accessory';
 
@@ -385,7 +385,7 @@ export const generateRandomItemForClass = (
     return null;
 };
 
-// ── Generate random item for ANY class (drops from monsters) ──────────────────
+// -- Generate random item for ANY class (drops from monsters) ------------------
 
 export const generateRandomItem = (
     level: number,
@@ -396,7 +396,7 @@ export const generateRandomItem = (
     return generateRandomItemForClass(randomClass, level, rarity);
 };
 
-// ── Get item display info from itemId ─────────────────────────────────────────
+// -- Get item display info from itemId -----------------------------------------
 
 export interface IItemDisplayInfo {
     name_pl: string;
@@ -486,23 +486,23 @@ const resolveImageIcon = (itemId: string, info: IItemDisplayInfo | null): IItemD
     return info;
 };
 
-// ── Legacy item ID support ────────────────────────────────────────────────────
+// -- Legacy item ID support ----------------------------------------------------
 
 const getLegacyItemInfo = (itemId: string): IItemDisplayInfo | null => {
     const legacyMap: Record<string, IItemDisplayInfo> = {
-        sword_of_beginnings: { name_pl: 'Miecz Poczatku', name_en: 'Sword of Beginnings', icon: '⚔️', type: 'sword', slot: 'mainHand' },
-        apprentice_staff:    { name_pl: 'Kostur Ucznia', name_en: 'Apprentice Staff', icon: '🪄', type: 'staff', slot: 'mainHand' },
-        wooden_mace:         { name_pl: 'Drewniana Bulawa', name_en: 'Wooden Mace', icon: '✨', type: 'holy_wand', slot: 'mainHand' },
-        short_bow:           { name_pl: 'Krotki Luk', name_en: 'Short Bow', icon: '🏹', type: 'bow', slot: 'mainHand' },
-        rusty_dagger:        { name_pl: 'Zardzewialy Sztylet', name_en: 'Rusty Dagger', icon: '🗡️', type: 'dagger', slot: 'mainHand' },
-        bone_staff:          { name_pl: 'Kostur Kosciany', name_en: 'Bone Staff', icon: '💀', type: 'dead_staff', slot: 'mainHand' },
-        lute:                { name_pl: 'Lutnia', name_en: 'Lute', icon: '🎵', type: 'harp', slot: 'mainHand' },
+        sword_of_beginnings: { name_pl: 'Miecz Poczatku', name_en: 'Sword of Beginnings', icon: 'crossed-swords', type: 'sword', slot: 'mainHand' },
+        apprentice_staff:    { name_pl: 'Kostur Ucznia', name_en: 'Apprentice Staff', icon: 'magic-wand', type: 'staff', slot: 'mainHand' },
+        wooden_mace:         { name_pl: 'Drewniana Bulawa', name_en: 'Wooden Mace', icon: 'sparkles', type: 'holy_wand', slot: 'mainHand' },
+        short_bow:           { name_pl: 'Krotki Luk', name_en: 'Short Bow', icon: 'bow-and-arrow', type: 'bow', slot: 'mainHand' },
+        rusty_dagger:        { name_pl: 'Zardzewialy Sztylet', name_en: 'Rusty Dagger', icon: 'dagger', type: 'dagger', slot: 'mainHand' },
+        bone_staff:          { name_pl: 'Kostur Kosciany', name_en: 'Bone Staff', icon: 'skull', type: 'dead_staff', slot: 'mainHand' },
+        lute:                { name_pl: 'Lutnia', name_en: 'Lute', icon: 'musical-note', type: 'harp', slot: 'mainHand' },
     };
 
     return legacyMap[itemId] ?? null;
 };
 
-// ── Generate starter weapon for a class ───────────────────────────────────────
+// -- Generate starter weapon for a class ---------------------------------------
 
 export const generateStarterWeapon = (characterClass: string): IInventoryItem | null => {
     const starterData = (itemTemplates.starterWeapons as Record<string, {
@@ -530,7 +530,7 @@ export const generateStarterWeapon = (characterClass: string): IInventoryItem | 
     };
 };
 
-// ── Reroll bonus stats (Bonus Change) ────────────────────────────────────────
+// -- Reroll bonus stats (Bonus Change) ----------------------------------------
 /**
  * Generates new random bonuses for an item while preserving its base stats.
  * Base stats are identified by the item's equipment slot.

@@ -2,15 +2,15 @@
  * Atomic E2E — `/leaderboard` Mastery tab pokazuje naszą seedowaną postać
  * z wysokim `mastery_points`.
  *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria (test akcja → ranking
- * się aktualizuje → cleanup postaci → ranking się czyści)". Ten test
+ * Spec (BACKLOG 5.11): "Rankingi: każda kategoria (test akcja -> ranking
+ * się aktualizuje -> cleanup postaci -> ranking się czyści)". Ten test
  * rozszerza pokrycie z LVL tab (5.11a w `level-tab-shows-seeded-character.spec.ts`)
  * o jedną z 30+ kategorii — Mastery.
  *
  * Test flow (kopia 5.11a):
  *   1. Seed postać z wysokim `mastery_points` (gwarantuje top spot).
  *   2. Open /leaderboard (default tab to LVL).
- *   3. Tap tab "Mastery" → ranking się przewija.
+ *   3. Tap tab "Mastery" -> ranking się przewija.
  *   4. Verify nasz wiersz na liście z wartością `Mastery 999`.
  *
  * **Defensive seeding**: production / local DB ma realnych graczy.
@@ -18,19 +18,19 @@
  * (Mastery max level = 25/monster × ~50 monsters w grze = ~1250 punktów
  * teoretyczny max gdyby ktoś wszystko max-out, ale w praktyce live
  * gracze ledwo przekraczają 10-20). Nasze 999 = niemal pewny #1.
- * Cleanup usuwa postać → leaderboard wraca do stanu pre-test
+ * Cleanup usuwa postać -> leaderboard wraca do stanu pre-test
  * (Leaderboard.tsx czyta z `characters` table direct).
  *
  * Tab definition (Leaderboard.tsx linia 163):
  *   ```
- *   { key: 'mastery_points', label: 'Mastery', icon: '🌟',
+ *   { key: 'mastery_points', label: 'Mastery', icon: 'glowing-star',
  *     source: 'characters', characterColumn: 'mastery_points',
  *     order: 'desc', valueLabel: 'Mastery' }
  *   ```
  *
  * formatValue (linia 402):
  *   `${activeTabDef.valueLabel} ${entry.value.toLocaleString('pl-PL')}`
- *   → 'Mastery 999'
+ *   -> 'Mastery 999'
  *
  * Selektory:
  *  - `.leaderboard__tab` — pojedynczy tab button.
@@ -69,8 +69,8 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             //    game_saves (krok 2), bo `useLeaderboardStatSync` hook
             //    (`src/hooks/useLeaderboardStatSync.ts` linia 49-66) odpala
             //    się przy każdym character switch i SETuje `mastery_points`
-            //    na sumę `masteries[*].level`. Bez seedu masteries → suma=0
-            //    → mastery_points reset do 0 PRZED tym jak leaderboard
+            //    na sumę `masteries[*].level`. Bez seedu masteries -> suma=0
+            //    -> mastery_points reset do 0 PRZED tym jak leaderboard
             //    odpyta DB. Z masteries=999 hook ustawi mastery_points=999
             //    (zgodnie z naszą intencją).
             //

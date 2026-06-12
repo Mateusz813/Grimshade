@@ -8,7 +8,7 @@ import { useBuffStore } from '../stores/buffStore';
 import { useCharacterStore } from '../stores/characterStore';
 import type { ICharacter } from '../api/v1/characterApi';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const CHAR_ID = 'char-skillbuff-test';
 
@@ -48,7 +48,7 @@ beforeEach(() => {
 const charBuffs = () =>
     useBuffStore.getState().allBuffs.filter((b) => b.characterId === CHAR_ID);
 
-// ── CHARGE_BUFF_EFFECT_KEY ───────────────────────────────────────────────────
+// -- CHARGE_BUFF_EFFECT_KEY ---------------------------------------------------
 
 describe('CHARGE_BUFF_EFFECT_KEY', () => {
     it('prefixes the atom head with skill_charge_', () => {
@@ -58,7 +58,7 @@ describe('CHARGE_BUFF_EFFECT_KEY', () => {
     });
 });
 
-// ── getSkillDef ──────────────────────────────────────────────────────────────
+// -- getSkillDef --------------------------------------------------------------
 
 describe('getSkillDef', () => {
     it('returns undefined for unknown skill ids', () => {
@@ -80,7 +80,7 @@ describe('getSkillDef', () => {
     });
 });
 
-// ── applySkillBuff — early returns ───────────────────────────────────────────
+// -- applySkillBuff — early returns -------------------------------------------
 
 describe('applySkillBuff — early returns', () => {
     it('is a no-op when effect is null', () => {
@@ -99,7 +99,7 @@ describe('applySkillBuff — early returns', () => {
     });
 });
 
-// ── applySkillBuff — timed self buffs ────────────────────────────────────────
+// -- applySkillBuff — timed self buffs ----------------------------------------
 
 describe('applySkillBuff — timed self buffs', () => {
     it('registers a crit_buff atom as a game-time buff', () => {
@@ -139,7 +139,7 @@ describe('applySkillBuff — timed self buffs', () => {
     });
 
     it('skips atoms whose duration parses to 0', () => {
-        // crit_buff:30:0 → durationMs = 0 → spec.durationMs <= 0 → skipped.
+        // crit_buff:30:0 -> durationMs = 0 -> spec.durationMs <= 0 -> skipped.
         applySkillBuff('s', { effect: 'crit_buff:30:0' });
         expect(charBuffs()).toHaveLength(0);
     });
@@ -151,7 +151,7 @@ describe('applySkillBuff — timed self buffs', () => {
     });
 });
 
-// ── applySkillBuff — party buffs ─────────────────────────────────────────────
+// -- applySkillBuff — party buffs ---------------------------------------------
 
 describe('applySkillBuff — party buffs', () => {
     it('registers party_attack_up with "(party)" suffix', () => {
@@ -175,7 +175,7 @@ describe('applySkillBuff — party buffs', () => {
     });
 
     it('attaches healPctPerSec payload for heal_party_dot', () => {
-        // heal_party_dot:durationMs:pctPerSec → duration = n1, pct = parts[2].
+        // heal_party_dot:durationMs:pctPerSec -> duration = n1, pct = parts[2].
         applySkillBuff('blessing', { effect: 'heal_party_dot:10000:5', name_pl: 'Heal' });
         const b = charBuffs()[0];
         expect(b.gameMsRemaining).toBe(10000);
@@ -183,12 +183,12 @@ describe('applySkillBuff — party buffs', () => {
     });
 });
 
-// ── applySkillBuff — multi-atom effects ──────────────────────────────────────
+// -- applySkillBuff — multi-atom effects --------------------------------------
 
 describe('applySkillBuff — multi-atom effects', () => {
     it('emits ONE BuffBar entry per qualifying atom', () => {
         applySkillBuff('s', { effect: 'aoe;party_attack_up:50:30000', name_pl: 'Combo' });
-        // `aoe` is not a buff atom → no entry. `party_attack_up` → 1 entry.
+        // `aoe` is not a buff atom -> no entry. `party_attack_up` -> 1 entry.
         expect(charBuffs()).toHaveLength(1);
         expect(charBuffs()[0].effect).toBe('skill_s_1');
     });
@@ -213,11 +213,11 @@ describe('applySkillBuff — multi-atom effects', () => {
     });
 });
 
-// ── applySkillBuff — charge-based atoms ──────────────────────────────────────
+// -- applySkillBuff — charge-based atoms --------------------------------------
 
 describe('applySkillBuff — charge buffs', () => {
     it('registers dodge_next as a charge buff (parts[1] = N charges)', () => {
-        // dodge_next:N:scope → N is parts[1].
+        // dodge_next:N:scope -> N is parts[1].
         applySkillBuff('shadow_step', { effect: 'dodge_next:3', name_pl: 'Krok Cienia' });
         const b = charBuffs()[0];
         expect(b.effect).toBe('skill_charge_dodge_next');
@@ -295,7 +295,7 @@ describe('applySkillBuff — charge buffs', () => {
     });
 
     it('defaults dmg_amp_next charge count to 1 when parts[2] is missing', () => {
-        // `dmg_amp_next:2` — only mult, no count → defaults to 1.
+        // `dmg_amp_next:2` — only mult, no count -> defaults to 1.
         applySkillBuff('s', { effect: 'dmg_amp_next:2' });
         const b = charBuffs()[0];
         expect(b.charges).toBe(1);
@@ -310,7 +310,7 @@ describe('applySkillBuff — charge buffs', () => {
     });
 });
 
-// ── applySkillBuff — non-buff atoms ──────────────────────────────────────────
+// -- applySkillBuff — non-buff atoms ------------------------------------------
 
 describe('applySkillBuff — non-buff atoms (no BuffBar entry)', () => {
     it('does not register entries for damage / enemy-debuff atoms', () => {
@@ -333,7 +333,7 @@ describe('applySkillBuff — non-buff atoms (no BuffBar entry)', () => {
     });
 });
 
-// ── applySkillBuff — special timed atoms with implicit duration ──────────────
+// -- applySkillBuff — special timed atoms with implicit duration --------------
 
 describe('applySkillBuff — special atoms', () => {
     it('aggro_steal gets a 2000 ms display window', () => {
@@ -359,7 +359,7 @@ describe('applySkillBuff — special atoms', () => {
     });
 });
 
-// ── applySkillBuff — speedMult ignored ───────────────────────────────────────
+// -- applySkillBuff — speedMult ignored ---------------------------------------
 
 describe('applySkillBuff — _speedMult is ignored', () => {
     it('ignores the deprecated speedMult arg (game-time buffs scale via tickGameTimeBuffs)', () => {

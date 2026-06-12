@@ -11,16 +11,16 @@
  * ## Pragmatic adaptation vs. spec
  *
  * Full spec scenario = multi-context party in live combat, one human
- * member's HP drains to 0 (or they tap "Opuść party") mid-tick → leader's
- * authoritative engine notices the missing member → next `maybeSwitchWaveAggro`
+ * member's HP drains to 0 (or they tap "Opuść party") mid-tick -> leader's
+ * authoritative engine notices the missing member -> next `maybeSwitchWaveAggro`
  * call re-rolls aggro from a pool excluding the dead/gone human.
  *
  * Reproducing that full chain requires:
- *   • 2 browser contexts × login + party flow (~30s setup)
- *   • Stage live combat with monster aggressively attacking
- *   • Force secondary's HP to 0 via direct mutation (no easy "kill self"
+ *   - 2 browser contexts × login + party flow (~30s setup)
+ *   - Stage live combat with monster aggressively attacking
+ *   - Force secondary's HP to 0 via direct mutation (no easy "kill self"
  *     button in hunt combat — players are auto-healed to 1 HP on tick)
- *   • Wait for AGGRO_SWITCH_INTERVAL_MS (10s) for next re-roll
+ *   - Wait for AGGRO_SWITCH_INTERVAL_MS (10s) for next re-roll
  *
  * Instead we test the CONTRACT directly on a single context:
  *   1. Seed Knight lvl 10 (primary) + secondary Knight lvl 10 in DB.
@@ -37,27 +37,27 @@
  *      analog of "secondary left party / died offline / disconnected".
  *   6. Roll aggro again — `maybeSwitchWaveAggro` should detect the
  *      previous human target is no longer in the party (combatEngine.ts
- *      line 640-643: `knownHumanIds` rebuilt from current partyStore →
- *      stale target invalidated → re-roll).
+ *      line 640-643: `knownHumanIds` rebuilt from current partyStore ->
+ *      stale target invalidated -> re-roll).
  *   7. Drive a few `doSingleWaveMonsterAttack` ticks to verify no
  *      exception is thrown when the engine reads the updated party.
  *
  * Assertions:
- *   • Pre-leave: aggro pool CAN include the secondary human (best-effort:
+ *   - Pre-leave: aggro pool CAN include the secondary human (best-effort:
  *     a small roll budget like 30 attempts to land on `human_*`; we
  *     accept zero hits as long as the pool size is correct — class
  *     weighting can starve human picks).
- *   • Post-leave: NO aggro re-roll lands on the now-removed human id.
- *   • Combat phase stays 'fighting' (no crash transition to 'dead'/'idle').
- *   • Monster damage path completes without throwing.
+ *   - Post-leave: NO aggro re-roll lands on the now-removed human id.
+ *   - Combat phase stays 'fighting' (no crash transition to 'dead'/'idle').
+ *   - Monster damage path completes without throwing.
  *
  * ## What we don't test (deferred to multi-context follow-up)
  *
- *   • Real death-mid-combat (Knight HP→0 via monster swings) — requires
+ *   - Real death-mid-combat (Knight HP->0 via monster swings) — requires
  *     full multi-context combat tick framework + AGGRO_SWITCH_INTERVAL_MS
  *     wait. Covered by skeleton "leader pseudo-dies in multi-human party"
  *     follow-up flagged in `ally-resurrect-broadcasts-through-channel.spec.ts`.
- *   • Bot death — when a bot's HP hits 0 during a wave attack, the engine
+ *   - Bot death — when a bot's HP hits 0 during a wave attack, the engine
  *     deletes its waveAggro entry (combatEngine.ts line 2146) — that's
  *     a different code branch from human leave. Worth a separate test if
  *     real-time bot combat is in scope.
@@ -106,7 +106,7 @@ test.describe('Combat › Aggro', { tag: '@combat' }, () => {
             });
             secondaryCharId = secondaryCreated.id;
 
-            // 2. Login + pick primary character → Town.
+            // 2. Login + pick primary character -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -249,7 +249,7 @@ test.describe('Combat › Aggro', { tag: '@combat' }, () => {
                 // 3g. Run a few aggro re-rolls by invoking the public
                 //     waveMonster attack path. Each call goes through
                 //     maybeSwitchWaveAggro (line 627), which now sees no
-                //     human in knownHumanIds (line 635-639) → any stale
+                //     human in knownHumanIds (line 635-639) -> any stale
                 //     human_<id> target would be invalidated and re-rolled.
                 //
                 //     We don't have access to the per-aggro internal map
@@ -271,11 +271,11 @@ test.describe('Combat › Aggro', { tag: '@combat' }, () => {
                     // closest public surface is `maybeSwitchWaveAggro` —
                     // but it's also not exported. So we test the CONTRACT
                     // through the public partyStore shape:
-                    //   • partyStore.party.members now lacks the secondary
-                    //     → combatEngine's rollAggroTarget (line 676-684)
+                    //   - partyStore.party.members now lacks the secondary
+                    //     -> combatEngine's rollAggroTarget (line 676-684)
                     //     wouldn't include `human_<secondaryId>` in its
                     //     candidates pool
-                    //   • combatEngine's maybeSwitchWaveAggro (line 635-647)
+                    //   - combatEngine's maybeSwitchWaveAggro (line 635-647)
                     //     would invalidate any stale `human_<secondaryId>`
                     //     entry because knownHumanIds no longer contains it
                     //
@@ -318,17 +318,17 @@ test.describe('Combat › Aggro', { tag: '@combat' }, () => {
                 };
             }, { secondaryCharId: secondaryCharId!, secondaryNick });
 
-            // 4. Pre-leave: party was set up as 2-human → pool widening
+            // 4. Pre-leave: party was set up as 2-human -> pool widening
             //    (`iAmLeader` branch) was armed. Bug-surface: if seed
             //    didn't apply, this test would silently degrade to a solo
             //    case and not exercise the multi-human aggro path at all.
             expect(result.preLeaveHumanCount).toBe(1);
             expect(result.preLeavePoolWidens).toBe(true);
 
-            // 5. Post-leave: party shrank to 1 (just primary) → no remote
-            //    humans → combatEngine.ts line 2050 `partyStateForAggro.
+            // 5. Post-leave: party shrank to 1 (just primary) -> no remote
+            //    humans -> combatEngine.ts line 2050 `partyStateForAggro.
             //    members.some((m) => !m.isBot && m.id !== char.id)` returns
-            //    false → `iAmLeader` is false → aggro pool no longer
+            //    false -> `iAmLeader` is false -> aggro pool no longer
             //    includes human_<id> entries.
             expect(result.postLeaveHumanCount).toBe(0);
             expect(result.postLeavePoolWidens).toBe(false);

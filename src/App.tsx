@@ -53,7 +53,7 @@ const App = () => {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, []);
 
-    // ── Global skill-slot purge ─────────────────────────────────────────────
+    // -- Global skill-slot purge ---------------------------------------------
     // Subscribe to character.level + class so any time the player drops below
     // a slotted spell's unlock-level (death penalty in any view, including
     // legacy deaths from before the per-view purge landed) the slot clears

@@ -11,7 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
  *
  * Mocks:
  *   - useNavigate via react-router mock so we can assert click behaviour.
- *   - useTransformAccent → simple object (no DOM side-effects).
+ *   - useTransformAccent -> simple object (no DOM side-effects).
  */
 
 const navigateMock = vi.fn();

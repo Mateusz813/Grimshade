@@ -11,18 +11,18 @@
  * This is the **DOT / buff / resurrect animations at all speeds** test:
  * pragmatic interpretation per the task brief — verify the animation div
  * RENDERS at all 3 speeds without crashing. We use Knight's
- * `shield_bash` (effect=stun:3000, category=physical 🛡️) as the
+ * `shield_bash` (effect=stun:3000, category=physical :shield:) as the
  * representative cast — the same overlay machinery (`fx.triggerEnemySkillAnim`
- * → `.skill-anim-overlay`) lives behind every category (DOT/buff/heal/
+ * -> `.skill-anim-overlay`) lives behind every category (DOT/buff/heal/
  * resurrect/damage). The skill-category-specific render path is already
  * covered per-class by `solo-trainer-per-class.spec.ts`; this test pins
  * the speed-dimension contract.
  *
  * Why `/trainer`:
- *   • Sandbox: no MP, dummy invincible, no fight end mid-cast.
- *   • Speed cycle works: `cycleSpeed` advances 1 → 2 → 4 → 1 in trainer
- *     (Trainer.tsx ~3285 `setSpeedMult` via the `⏩` chip).
- *   • Skill cooldown stays enforced (8s on shield_bash), but trainer's
+ *   - Sandbox: no MP, dummy invincible, no fight end mid-cast.
+ *   - Speed cycle works: `cycleSpeed` advances 1 -> 2 -> 4 -> 1 in trainer
+ *     (Trainer.tsx ~3285 `setSpeedMult` via the `:fast-forward-button:` chip).
+ *   - Skill cooldown stays enforced (8s on shield_bash), but trainer's
  *     `noCooldowns` toggle bypasses it — we ENABLE it so we can cast
  *     3 times in quick succession (one per speed step).
  *
@@ -60,7 +60,7 @@ import { cleanupCharacterById } from '../../fixtures/cleanup';
 const SKILL_ID = 'shield_bash';
 const EXPECTED_CATEGORY_CLASS = 'skill-anim--physical';
 
-/** Pick the player's seeded character on /character-select → land in Town. */
+/** Pick the player's seeded character on /character-select -> land in Town. */
 const pickCharacter = async (page: Page, nick: string): Promise<void> => {
     await page.goto('/character-select');
     const card = page.locator('.char-select__card', {
@@ -133,14 +133,14 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             // 3 times back-to-back (one per speed step). Without it the
             // 8s shield_bash CD blocks us mid-suite.
             // The chip title text from Trainer.tsx line 3319 is
-            // 'Wyłącz cooldowny skilli (sandbox)' (the ⏱️ chip).
+            // 'Wyłącz cooldowny skilli (sandbox)' (the :stopwatch: chip).
             const noCooldownChip = page.locator('.combat-ui__chip[title*="cooldowny"]');
             if (await noCooldownChip.count() > 0) {
                 const wasOn = (await noCooldownChip.textContent())?.includes('ON');
                 if (!wasOn) await noCooldownChip.tap();
             }
 
-            // Speed chip cycles X1 → X2 → X4 → X1 on tap.
+            // Speed chip cycles X1 -> X2 -> X4 -> X1 on tap.
             const speedChip = page.locator('.combat-ui__chip[title="Prędkość walki"]');
             await expect(speedChip).toBeVisible({ timeout: 5_000 });
 
@@ -156,7 +156,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             const overlayLocator = page.locator(`.combat-ui__enemy .${EXPECTED_CATEGORY_CLASS}`);
 
             // Iterate through the 3 speed settings. Speed chip starts at
-            // X1, then cycles X1→X2→X4 on subsequent taps.
+            // X1, then cycles X1->X2->X4 on subsequent taps.
             const SPEEDS_TO_TEST: ReadonlyArray<'X1' | 'X2' | 'X4'> = ['X1', 'X2', 'X4'];
 
             for (const targetLabel of SPEEDS_TO_TEST) {
@@ -187,7 +187,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                 await skillBtn.tap();
 
                 // Within 2500 ms, overlay appears with expected category
-                // class. Bumped from 1500ms (solo-trainer per-class) →
+                // class. Bumped from 1500ms (solo-trainer per-class) ->
                 // 2500ms because at x4 the trainer tick interval drops
                 // to ~125 ms which can produce a brief "blink"
                 // unmount/remount cycle.

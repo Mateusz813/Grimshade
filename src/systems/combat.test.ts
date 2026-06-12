@@ -13,7 +13,7 @@ import {
     getSpeedMultiplier,
 } from './combat';
 
-// ── calculateDamage ──────────────────────────────────────────────────────────
+// -- calculateDamage ----------------------------------------------------------
 
 describe('calculateDamage', () => {
     it('should return minimum 1 damage', () => {
@@ -67,7 +67,7 @@ describe('calculateDamage', () => {
     });
 });
 
-// ── calculateDualWieldDamage ─────────────────────────────────────────────────
+// -- calculateDualWieldDamage -------------------------------------------------
 
 describe('calculateDualWieldDamage', () => {
     it('should return two hits', () => {
@@ -99,7 +99,7 @@ describe('calculateDualWieldDamage', () => {
     });
 });
 
-// ── calculateBlockChance ─────────────────────────────────────────────────────
+// -- calculateBlockChance -----------------------------------------------------
 
 describe('calculateBlockChance', () => {
     it('should return 5% base at shielding 0', () => {
@@ -119,7 +119,7 @@ describe('calculateBlockChance', () => {
     });
 });
 
-// ── calculateDodgeChance ─────────────────────────────────────────────────────
+// -- calculateDodgeChance -----------------------------------------------------
 
 describe('calculateDodgeChance', () => {
     it('should return 5% base for Archer at agility 0', () => {
@@ -151,7 +151,7 @@ describe('calculateDodgeChance', () => {
     });
 });
 
-// ── calculateSkillDamage ─────────────────────────────────────────────────────
+// -- calculateSkillDamage -----------------------------------------------------
 
 describe('calculateSkillDamage', () => {
     it('should multiply base attack by skill multiplier', () => {
@@ -163,16 +163,16 @@ describe('calculateSkillDamage', () => {
     });
 });
 
-// ── calculateSkillDamageWithMlvl ─────────────────────────────────────────────
+// -- calculateSkillDamageWithMlvl ---------------------------------------------
 
 describe('calculateSkillDamageWithMlvl', () => {
     it('should scale with MLVL (2% per level)', () => {
-        // baseSkillDmg=100, mlvl=10, no def, classMod=1 → 100 * (1 + 10*0.02) = 120
+        // baseSkillDmg=100, mlvl=10, no def, classMod=1 -> 100 * (1 + 10*0.02) = 120
         expect(calculateSkillDamageWithMlvl(100, 10, 0, 1)).toBe(120);
     });
 
     it('should apply class modifier', () => {
-        // baseSkillDmg=100, mlvl=0, no def, classMod=1.3 → 130
+        // baseSkillDmg=100, mlvl=0, no def, classMod=1.3 -> 130
         expect(calculateSkillDamageWithMlvl(100, 0, 0, 1.3)).toBe(130);
     });
 
@@ -181,7 +181,7 @@ describe('calculateSkillDamageWithMlvl', () => {
     });
 });
 
-// ── calculateAttackInterval ──────────────────────────────────────────────────
+// -- calculateAttackInterval --------------------------------------------------
 
 describe('calculateAttackInterval', () => {
     it('should return 2000ms at speed 1', () => {
@@ -197,7 +197,7 @@ describe('calculateAttackInterval', () => {
     });
 });
 
-// ── calculateDeathPenalty (new level-loss system) ────────────────────────────
+// -- calculateDeathPenalty (new level-loss system) ----------------------------
 
 describe('calculateDeathPenalty', () => {
     it('should not lose level at level 1', () => {
@@ -230,7 +230,7 @@ describe('calculateDeathPenalty', () => {
         // floor(100 * (0.03 + 100*0.00002)) = floor(100 * 0.032) = 3
         expect(result.levelsLost).toBe(3);
         expect(result.newLevel).toBe(97);
-        // level <= 100 → xpPercent = 15
+        // level <= 100 -> xpPercent = 15
         expect(result.xpPercent).toBe(15);
         expect(result.newXp).toBe(1500); // 15% of xpToNext=10000
     });
@@ -241,7 +241,7 @@ describe('calculateDeathPenalty', () => {
         // floor(500 * (0.03 + 500*0.00002)) = floor(500 * 0.04) = 20
         expect(result.levelsLost).toBe(20);
         expect(result.newLevel).toBe(480);
-        // level > 300 → xpPercent = 5
+        // level > 300 -> xpPercent = 5
         expect(result.xpPercent).toBe(5);
         expect(result.newXp).toBe(10000); // 5% of 200000
     });
@@ -255,7 +255,7 @@ describe('calculateDeathPenalty', () => {
     });
 });
 
-// ── applyDeathPenalty (legacy) ───────────────────────────────────────────────
+// -- applyDeathPenalty (legacy) -----------------------------------------------
 
 describe('applyDeathPenalty (legacy)', () => {
     it('should reduce XP by 10%', () => {
@@ -274,7 +274,7 @@ describe('applyDeathPenalty (legacy)', () => {
     });
 });
 
-// ── applyMonsterRarity ───────────────────────────────────────────────────────
+// -- applyMonsterRarity -------------------------------------------------------
 
 describe('applyMonsterRarity', () => {
     const baseStats = { hp: 100, attack: 10, defense: 5, xp: 50, gold: [10, 20] as [number, number] };
@@ -311,7 +311,7 @@ describe('applyMonsterRarity', () => {
     });
 });
 
-// ── getSpeedMultiplier ───────────────────────────────────────────────────────
+// -- getSpeedMultiplier -------------------------------------------------------
 
 describe('getSpeedMultiplier', () => {
     it('should return 1 for x1', () => {

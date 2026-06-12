@@ -2,7 +2,7 @@
 -- Characters table — public SELECT RLS policy (cross-user nick lookup)
 -- ----------------------------------------------------------------------------
 -- Spec (BACKLOG 4.10 + testyE2E.docx "Dodaj znajomego"): the friend-add
--- flow (`/friends` → type nick → "🔍 Szukaj" → "➕ Dodaj") fails today
+-- flow (`/friends` -> type nick -> ":magnifying-glass-tilted-left: Szukaj" -> ":plus: Dodaj") fails today
 -- when the typed nick belongs to a DIFFERENT user. Root cause: the
 -- `characters` table has an RLS policy restricting SELECT to rows where
 -- `user_id = auth.uid()`. So `friendsApi.findByName` (and `findManyByName`)
@@ -13,16 +13,16 @@
 -- authenticated user to SELECT any row). Without this, the canonical
 -- friend-add UX is broken in production cross-user.
 --
--- ⚠️ DECISION REQUIRED FROM OWNER BEFORE APPLYING ⚠️
+-- :warning: DECISION REQUIRED FROM OWNER BEFORE APPLYING :warning:
 --
 -- Privacy implications:
---   • Currently: each player's character list is private — no one can
+--   - Currently: each player's character list is private — no one can
 --     see who else exists on the same Supabase project unless they
 --     happen to encounter them in chat / party / guild flows.
---   • After this migration: ANY authenticated user can SELECT * FROM
+--   - After this migration: ANY authenticated user can SELECT * FROM
 --     characters and enumerate every character on the server — names,
 --     levels, classes, equipment slots, gold balance, every counter.
---   • This is FINE if the game design assumes public leaderboards (which
+--   - This is FINE if the game design assumes public leaderboards (which
 --     Grimshade does — `/leaderboard` already exposes top-N per category,
 --     same data) but worth confirming the owner is OK with TOTAL public
 --     visibility of every character, not just the leaderboard top-N.
@@ -46,13 +46,13 @@
 -- broad public-read policy below. Tighten later if privacy concerns
 -- arise.
 --
--- ── Rollback path ────────────────────────────────────────────────────────────
+-- -- Rollback path ------------------------------------------------------------
 --   DROP POLICY IF EXISTS "anyone reads characters" ON characters;
 --
 -- Idempotent: `CREATE POLICY IF NOT EXISTS` (Postgres 15+) — re-runs are
 -- safe no-ops.
 --
--- ── Verification after applying ──────────────────────────────────────────────
+-- -- Verification after applying ----------------------------------------------
 -- 1. Log in as `test@grimshade.pl`, run
 --    `await admin.from('characters').select('*').limit(5)` and confirm
 --    rows from `test2@grimshade.pl` appear.
@@ -80,7 +80,7 @@ BEGIN
 END
 $$;
 
--- ── Sanity ─────────────────────────────────────────────────────────────────
+-- -- Sanity -----------------------------------------------------------------
 -- Should be exactly 1 row after applying.
 SELECT 'policy installed (should be 1)' AS check, COUNT(*)
 FROM pg_policies

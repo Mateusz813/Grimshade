@@ -19,9 +19,13 @@
 
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import svgr from 'vite-plugin-svgr';
 
 export default defineConfig({
-    plugins: [react()],
+    // svgr MUST be here too (vitest uses its own config, not vite.config.ts):
+    // <GameIcon> imports icons via `?react`, so without this plugin the glob
+    // returns nothing in tests and every icon renders null.
+    plugins: [svgr({ svgrOptions: { icon: true } }), react()],
     // Vite `define` z głównego configu nie jest wczytywany przez vitest
     // gdy config jest dedykowany — musimy re-deklarować zmienne global-e
     // które kod używa (patrz `src/lib/appVersion.ts`).
@@ -31,6 +35,12 @@ export default defineConfig({
     test: {
         globals: false,
         environment: 'happy-dom',
+        // svgr `?react` eager-globs all icon SVGs, which makes icon-heavy view
+        // renders (MonsterList, Tasks) slow under full-suite parallel load —
+        // they pass in isolation but can brush past the 5s default when a
+        // worker is saturated. 15s absorbs the contention without masking a
+        // real hang (isolated runs finish in <100ms).
+        testTimeout: 15_000,
         include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             // Integration suites live OUTSIDE `src/` because they exercise
@@ -73,7 +83,7 @@ export default defineConfig({
                 'src/systems/combatEngine.ts',
                 'tests/**',
             ],
-            // ── Per-layer HIGH thresholds (2026-06-08) ───────────────────────
+            // -- Per-layer HIGH thresholds (2026-06-08) -----------------------
             //
             // Progi ustawione WYSOKO na warstwach logiki gdzie unit/integration
             // jest właściwym narzędziem testowym. Floor = aktualnie osiągnięte
@@ -87,17 +97,17 @@ export default defineConfig({
             // fixture) są dopuszczalne dopóki agregat trzyma floor.
             //
             // CO NIE MA wymuszanego unit-floor-a (świadomie — to warstwa E2E):
-            //   • src/views/**       — duże interaktywne komponenty (Boss, Dungeon,
+            //   - src/views/**       — duże interaktywne komponenty (Boss, Dungeon,
             //                          Guild, Raid, Combat, Market) pokryte przez
             //                          Playwright E2E (147 spec files). Unit-test
             //                          całego combat UI = ogromny koszt, niski zysk.
-            //   • src/routes/**      — AppRouter + guards = czysta konfiguracja
+            //   - src/routes/**      — AppRouter + guards = czysta konfiguracja
             //                          routingu, pokryta E2E redirect-flow testami.
-            //   • src/App.tsx        — bootstrap, pokryty E2E (login→restore→render).
-            //   • src/components/**  — mix; krytyczne (CombatUI, BottomNav,
+            //   - src/App.tsx        — bootstrap, pokryty E2E (login->restore->render).
+            //   - src/components/**  — mix; krytyczne (CombatUI, BottomNav,
             //                          BuffPopover, TaskBadge) mają unit testy,
             //                          reszta przez E2E.
-            //   • combatEngine.ts    — 3000-liniowy orchestrator; pokryty przez
+            //   - combatEngine.ts    — 3000-liniowy orchestrator; pokryty przez
             //                          E2E `combatSim` fixture (SKIP/live/death) +
             //                          `combat.test.ts` (88% branch na czystej
             //                          logice DMG/crit/block). Unit w izolacji
@@ -111,7 +121,7 @@ export default defineConfig({
             //   storage  87.0 / 75 / 100 / 86
             //   lib      ~100 / ~75 / 100 / 100 (appVersion + appReady; supabase.ts excluded)
             thresholds: {
-                // combatEngine.ts excluded (E2E-covered orchestrator) → ten
+                // combatEngine.ts excluded (E2E-covered orchestrator) -> ten
                 // floor dotyczy czystej logiki systems, która jest ~92%+.
                 'src/systems/**/*.ts': {
                     statements: 88,

@@ -83,7 +83,7 @@ describe('usePartyCombatSync — gates', () => {
         usePartyStore.setState({ party: makeParty('me-1', [makeMember('me-1'), makeMember('other')]) });
         const subscribeSpy = vi.spyOn(usePartyCombatSyncStore.getState(), 'subscribe');
         renderHook(() => usePartyCombatSync(), { wrapper });
-        // No character → guard returns immediately, clear() called, never subscribes.
+        // No character -> guard returns immediately, clear() called, never subscribes.
         expect(subscribeSpy).not.toHaveBeenCalled();
     });
 

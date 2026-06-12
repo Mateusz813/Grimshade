@@ -104,6 +104,8 @@ import { flattenItemsData, getTotalEquipmentStats, formatItemName, STONE_GENERIC
 import { getItemDisplayInfo, generateRandomItemForClass } from '../../systems/itemGenerator';
 import { getPotionDropInfo, rollPotionDrop, rollSpellChestDrop, getSpellChestIcon, getSpellChestEmoji, getSpellChestDisplayName, getSpellChestDropInfo } from '../../systems/lootSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
 import { getTrainingBonuses } from '../../systems/skillSystem';
 import { useTaskStore } from '../../stores/taskStore';
 import { useQuestStore } from '../../stores/questStore';
@@ -132,7 +134,7 @@ import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
 import './Boss.scss';
 
-// ── Class config for dual wield ──────────────────────────────────────────────
+// -- Class config for dual wield ----------------------------------------------
 
 interface IBossClassData {
     dualWield?: boolean;
@@ -172,7 +174,7 @@ const rollOffHandDamage = (): number => {
 };
 
 /**
- * Maps boss level → HSL hue for unique gradient backgrounds.
+ * Maps boss level -> HSL hue for unique gradient backgrounds.
  * Each tier gets a distinct colour palette so the list looks epic.
  */
 const getBossCardHue = (level: number): number => {
@@ -189,7 +191,7 @@ const getBossCardHue = (level: number): number => {
     return 10;                        // fire-red
 };
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 type ScreenPhase = 'list' | 'fighting' | 'result';
 
@@ -198,7 +200,7 @@ const ALL_BOT_CLASSES: TCharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer'
 
 // Bosses ALWAYS run at x1 speed (independent of normal combat speed)
 
-// ── Drop table helpers ───────────────────────────────────────────────────────
+// -- Drop table helpers -------------------------------------------------------
 
 const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'] as const;
 const RARITY_LABELS: Record<string, { label: string; color: string }> = {
@@ -253,7 +255,7 @@ const getBossItemDropTiers = (bossLevel: number) => {
     return tiers;
 };
 
-// ── Skill / Potion constants ─────────────────────────────────────────────────
+// -- Skill / Potion constants -------------------------------------------------
 
 const SKILL_COOLDOWN_MS = 5000;
 const SKILL_MP_COST = 15;
@@ -279,7 +281,7 @@ const getBestPotion = (
     return reversed.find((e) => (consumables[e.id] ?? 0) > 0) ?? reversed[0] ?? null;
 };
 
-// ── Combat log entry type ────────────────────────────────────────────────────
+// -- Combat log entry type ----------------------------------------------------
 
 interface ILogEntry {
     id: number;
@@ -287,12 +289,12 @@ interface ILogEntry {
     type: 'player' | 'monster' | 'crit' | 'system' | 'boss-spell' | 'block' | 'dodge';
 }
 
-// ── Get attack interval ms ───────────────────────────────────────────────────
+// -- Get attack interval ms ---------------------------------------------------
 
 const getAttackMs = (speed: number): number =>
     Math.max(500, Math.floor(3000 / Math.max(1, speed || 1)));
 
-// ── Boss spell system ────────────────────────────────────────────────────────
+// -- Boss spell system --------------------------------------------------------
 
 interface IBossSpell {
     name: string;
@@ -302,12 +304,12 @@ interface IBossSpell {
 }
 
 const BOSS_SPELLS: IBossSpell[] = [
-    { name: 'Cios Mocy', icon: '💥', type: 'damage', power: 2.5 },
-    { name: 'Mroczny Pocisk', icon: '🌑', type: 'damage', power: 1.8 },
-    { name: 'Leczenie', icon: '💚', type: 'heal', power: 0.1 },
-    { name: 'Wściekłość', icon: '🔥', type: 'buff', power: 1.5 },
-    { name: 'Trucizna', icon: '☠️', type: 'damage', power: 1.5 },
-    { name: 'Drenaż Życia', icon: '🩸', type: 'damage', power: 2.0 },
+    { name: 'Cios Mocy', icon: 'collision', type: 'damage', power: 2.5 },
+    { name: 'Mroczny Pocisk', icon: 'new-moon', type: 'damage', power: 1.8 },
+    { name: 'Leczenie', icon: 'green-heart', type: 'heal', power: 0.1 },
+    { name: 'Wściekłość', icon: 'fire', type: 'buff', power: 1.5 },
+    { name: 'Trucizna', icon: 'skull-and-crossbones', type: 'damage', power: 1.5 },
+    { name: 'Drenaż Życia', icon: 'drop-of-blood', type: 'damage', power: 2.0 },
 ];
 
 const pickBossSpell = (boss: IBoss): IBossSpell => {
@@ -316,7 +318,7 @@ const pickBossSpell = (boss: IBoss): IBossSpell => {
     return BOSS_SPELLS[Math.floor(Math.random() * maxIdx)];
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 const Boss = () => {
     const navigate = useNavigate();
@@ -355,7 +357,7 @@ const Boss = () => {
     const isLeaderInPartyCombat = isMultiHumanParty && party?.leaderId === character?.id;
     const isNonLeaderMember     = isMultiHumanParty && party?.leaderId !== character?.id;
 
-    // ── Boss-list filter / sort state (per-character via characterScope) ────
+    // -- Boss-list filter / sort state (per-character via characterScope) ----
     // Same persistence pattern as the dungeon hub: pulled from settingsStore
     // so toggles survive sessions and class swaps. Defaults are "show
     // everything" so existing players see no behaviour change until they
@@ -381,7 +383,7 @@ const Boss = () => {
         const prev = prevBossPhaseRef.current;
         prevBossPhaseRef.current = phase;
         if (prev === 'list' || phase !== 'list') return;
-        // phase transitioned from non-list → list (we exited a fight).
+        // phase transitioned from non-list -> list (we exited a fight).
         const partyState = usePartyStore.getState().party;
         const me = useCharacterStore.getState().character?.id;
         if (!partyState || !me) return;
@@ -398,9 +400,9 @@ const Boss = () => {
     // when in a multi-human party and our character's HP hits 0 we
     // show a death-decision popup INSTEAD of running the full
     // handlePlayerDeath path. Two choices:
-    //   • "Wróć do miasta" → run the standard death penalty + flee
+    //   - "Wróć do miasta" -> run the standard death penalty + flee
     //     home (full XP/skill loss + leave party).
-    //   • "Czekaj na sojuszników" → close popup, stay incapacitated.
+    //   - "Czekaj na sojuszników" -> close popup, stay incapacitated.
     //     If a teammate revives us (HP > 0 again) we auto-close +
     //     resume normal play. If the party wins without our revive,
     //     no rewards + automatic death. If party wipes, death is
@@ -424,7 +426,7 @@ const Boss = () => {
     // already shows the door-opening animation instead of the empty boss
     // list. Before this fix, the member's Boss.tsx mounted with phase='list',
     // rendered the boss browser for ~1 frame, then the mount effect ran
-    // playEntryThenFight which finally set bossEntryBoss → overlay popped
+    // playEntryThenFight which finally set bossEntryBoss -> overlay popped
     // in late. Each member saw a visible "/boss page" flash. The
     // initializer captures the same data the mount effect's tryStart()
     // would and arms the overlay synchronously during render.
@@ -440,7 +442,7 @@ const Boss = () => {
         // here AFTER the ready-check resolved. With the new pre-nav
         // flow, the member mounts during the popup phase; in that
         // case bossEntryBoss stays null until the replicator-driven
-        // `pendingBossEntryAt` trigger flips it after Gotowy → `go`.
+        // `pendingBossEntryAt` trigger flips it after Gotowy -> `go`.
         if (rc.open) return null;
         const p = rc.payload as { bossId?: string } | null;
         if (!p?.bossId) return null;
@@ -452,13 +454,13 @@ const Boss = () => {
         return (bossData as Array<{ id: string }>).find((b) => b.id === p.bossId) as IBoss | null;
     });
 
-    // ── Pre-fight bot picker modal ──────────────────────────────────────────
+    // -- Pre-fight bot picker modal ------------------------------------------
     const [pendingBoss, setPendingBoss] = useState<IBoss | null>(null);
     const [partySize, setPartySize]     = useState<0 | 1 | 3>(3);
     const [botPicks, setBotPicks]       = useState<TBotClassOrNone[]>(['Knight', 'Cleric', 'Mage']);
     const lastBotPicksRef = useRef<TCharacterClass[]>([]);
 
-    // ── Combat state ─────────────────────────────────────────────────────────
+    // -- Combat state ---------------------------------------------------------
     const [bossHp, setBossHp]         = useState(0);
     const [playerHp, setPlayerHp]     = useState(0);
     const [playerMp, setPlayerMp]     = useState(0);
@@ -612,7 +614,7 @@ const Boss = () => {
     // 2026-05 v7: one-shot guard for handleBossDeath. The death handler
     // schedules `setPhase('result')` via a 500ms setTimeout, which means
     // between the kill and the phase change there's a window where every
-    // 250ms-cadence interval (×speedMult: at x4 → ~60ms wall-time) sees
+    // 250ms-cadence interval (×speedMult: at x4 -> ~60ms wall-time) sees
     // `phaseRef.current === 'fighting' && bossHpRef.current <= 0` and
     // re-fires the death handler. Each fire calls `setBossDefeated` (one
     // attempt) + `addBossKill` (one kill). Without the guard, killing a
@@ -644,7 +646,7 @@ const Boss = () => {
     const [scaledBossMaxHp, setScaledBossMaxHp] = useState(0);
     const spellCounterRef = useRef(0);
 
-    // ── Bot companion state ─────────────────────────────────────────────────
+    // -- Bot companion state -------------------------------------------------
     const { bots, generateBotsCustom, updateBotHp, updateBotMp, killBot, clearBots } = useBotStore();
     const botsRef = useRef<IBot[]>([]);
     const aggroTargetRef = useRef<string>('player');
@@ -712,7 +714,7 @@ const Boss = () => {
     phaseRef.current = phase;
     activeBossRef.current = activeBoss;
 
-    // ── Live HP/MP mirror → characterStore ─────────────────────────────────
+    // -- Live HP/MP mirror -> characterStore ---------------------------------
     // Same pattern as Dungeon — mirror local fight HP/MP into characterStore
     // on every change so the global TopHeader bars stay live. Gated by the
     // 'fighting' phase so we never clobber the real character HP with the
@@ -735,7 +737,7 @@ const Boss = () => {
         useCharacterStore.getState().updateCharacter({ hp: safeHp, mp: safeMp });
     }, [playerHp, playerMp, phase]);
 
-    // ── URL-leave / tab-close = death (anti-cheat) ─────────────────────────
+    // -- URL-leave / tab-close = death (anti-cheat) -------------------------
     // Same anti-cheat guard as Dungeon — if the player navigates away mid-
     // fight (back button, address bar, tab close) we treat it as a real
     // death. See `applyCombatLeaveDeath` for the rationale (consumable-
@@ -798,7 +800,7 @@ const Boss = () => {
                 const actual = playerHpRef.current - before;
                 const cappedTag = actual < playerHeal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, playerHeal, 'heal', {
-                    icon: '💚',
+                    icon: 'green-heart',
                     label: cappedTag ? `+${playerHeal}${cappedTag}` : undefined,
                 });
                 if (pulseSkillId) fx.triggerAllySkillAnim(0, pulseSkillId);
@@ -814,7 +816,7 @@ const Boss = () => {
                     const botActual = newHp - bot.hp;
                     const botCapped = botActual < heal ? ' (MAX)' : '';
                     fx.pushAllyFloat(i + 1, heal, 'heal', {
-                        icon: '💚',
+                        icon: 'green-heart',
                         label: botCapped ? `+${heal}${botCapped}` : undefined,
                     });
                     if (pulseSkillId) fx.triggerAllySkillAnim(i + 1, pulseSkillId);
@@ -836,7 +838,7 @@ const Boss = () => {
         logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [combatLog.length]);
 
-    // ── Cooldown tick (100ms, scaled by speedMult) ───────────────────────────
+    // -- Cooldown tick (100ms, scaled by speedMult) ---------------------------
     useEffect(() => {
         if (phase !== 'fighting') return;
         const TICK_MS = 100;
@@ -858,7 +860,7 @@ const Boss = () => {
         return () => clearInterval(id);
     }, [phase, speedMult]);
 
-    // ── Helpers: heal / spend MP ─────────────────────────────────────────────
+    // -- Helpers: heal / spend MP ---------------------------------------------
     const healPlayerHp = useCallback((amount: number, max: number) => {
         const newHp = Math.min(max, playerHpRef.current + amount);
         playerHpRef.current = newHp;
@@ -881,7 +883,7 @@ const Boss = () => {
         mpPotionCooldownRef.current = POTION_COOLDOWN_MS;
     }, []);
 
-    // ── Auto-potion helper ──────────────────────────────────────────────────
+    // -- Auto-potion helper --------------------------------------------------
     const tryAutoPotion = useCallback(() => {
         const settings = useSettingsStore.getState();
         const inv = useInventoryStore.getState();
@@ -964,7 +966,7 @@ const Boss = () => {
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, addLog]);
 
-    // ── Manual potion use ───────────────────────────────────────────────────
+    // -- Manual potion use ---------------------------------------------------
     const doUsePotion = useCallback((elixirId: string) => {
         const elixir = ELIXIRS.find((e) => e.id === elixirId);
         if (!elixir) return;
@@ -1022,7 +1024,7 @@ const Boss = () => {
     // setup without making the player walk back through the prefight UI.
     const lastBossPartyRef = useRef<TCharacterClass[]>([]);
 
-    // ── Actually start boss fight with chosen bot party ────────────────────
+    // -- Actually start boss fight with chosen bot party --------------------
     const beginBossFight = useCallback((boss: IBoss, chosenBotClasses: TCharacterClass[]) => {
         if (!character) return;
         lastBossPartyRef.current = chosenBotClasses;
@@ -1096,7 +1098,7 @@ const Boss = () => {
             // 100 000 at lvl 1000) while the human's real maxHp could be
             // 5 000 — so when boss damage drops bot.hp to 50 000, the
             // leader's bar shows 50% but the broadcast hp value of 50 000
-            // overflows the human's real 5 000 maxHp → member's bar
+            // overflows the human's real 5 000 maxHp -> member's bar
             // renders meaninglessly. By taking maxHp from presence we
             // anchor the bot's scale to reality, and bot.hp tracks
             // damage out of a maxHp the member shares.
@@ -1172,12 +1174,12 @@ const Boss = () => {
     // Capped at 2 seconds total per UX directive — the previous 2.1s build
     // dragged on; players want a punchy cut into combat. All sub-animations
     // (doors / seam / label / shockwave) were scaled down accordingly so the
-    // sequence still reads as "doors → reveal → fight" without feeling rushed.
+    // sequence still reads as "doors -> reveal -> fight" without feeling rushed.
     // Timings:
-    //  0ms          → overlay appears, doors closed, faint boss backdrop visible behind
-    //  250–950ms    → doors slide off to the sides (0.7s ease)
-    //  950–1800ms   → doors are gone, boss centered + label settling
-    //  ~1800ms      → navigate to combat (overlay fades during combat mount)
+    //  0ms          -> overlay appears, doors closed, faint boss backdrop visible behind
+    //  250–950ms    -> doors slide off to the sides (0.7s ease)
+    //  950–1800ms   -> doors are gone, boss centered + label settling
+    //  ~1800ms      -> navigate to combat (overlay fades during combat mount)
     const BOSS_ENTRY_MS = 1800;
 
     // Refs for the entry-skip path. We need to reach the pending fight
@@ -1193,10 +1195,10 @@ const Boss = () => {
     //
     // 2026-05-13 spec ("Tylko lider moze pominac animacje wtedy wszystkim
     // sie pomija ona ale to tylko w party tak dziala"):
-    //   • Solo / bots-only: anyone clicks → skips locally (unchanged).
-    //   • Multi-human party leader: skipping broadcasts a `boss-entry-skip`
+    //   - Solo / bots-only: anyone clicks -> skips locally (unchanged).
+    //   - Multi-human party leader: skipping broadcasts a `boss-entry-skip`
     //     so members fast-forward in lockstep.
-    //   • Multi-human party member: clicks are silently ignored (their
+    //   - Multi-human party member: clicks are silently ignored (their
     //     own subscriber receives the leader's skip event and runs the
     //     local fast-forward then).
     const skipBossEntry = useCallback(() => {
@@ -1295,7 +1297,7 @@ const Boss = () => {
             // banner with no target — fight never starts.
             //
             // Also bail early if the ready-check modal is still OPEN
-            // (meaning we're inside the start→ready→go window, not a
+            // (meaning we're inside the start->ready->go window, not a
             // direct go / instant-go arrival).
             const partyState = usePartyStore.getState().party;
             if (!partyState) return;
@@ -1341,12 +1343,12 @@ const Boss = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [character?.id, playEntryThenFight]);
 
-    // ── Open pre-fight bot picker (or skip if already in party) ─────────────
+    // -- Open pre-fight bot picker (or skip if already in party) -------------
     const handleChallenge = useCallback((boss: IBoss) => {
         // 2026-05-12 spec ("ready-check popup przed bossem / raidem /
         // trainerem"): route the click through `requestPartyCombatStart`.
         // For solo / leader: runs the onConfirmed action (immediate or
-        // queued for `go`). For non-leader member: returns false →
+        // queued for `go`). For non-leader member: returns false ->
         // silent no-op (member can't start; leader must summon).
         const partyState = usePartyStore.getState().party;
         const me = useCharacterStore.getState().character?.id;
@@ -1396,11 +1398,11 @@ const Boss = () => {
         playEntryThenFight(boss, picks);
     }, [pendingBoss, partySize, botPicks, playEntryThenFight]);
 
-    // `retryBossFight` lived here to power the now-removed "🔄 Ponów walkę"
+    // `retryBossFight` lived here to power the now-removed ":counterclockwise-arrows-button: Ponów walkę"
     // button. The unified-combat spec drops the in-result fight-again CTA so
     // the helper is gone too — players head back to the list to re-engage.
 
-    // ── Handle boss death ────────────────────────────────────────────────────
+    // -- Handle boss death ----------------------------------------------------
     const handleBossDeath = useCallback(() => {
         const boss = activeBossRef.current;
         if (!boss) return;
@@ -1413,7 +1415,7 @@ const Boss = () => {
         // player saw 3/3 attempts used after a single kill (the necro's
         // summon swung at ~the same time the ritual fired, then the next
         // 250ms DOT tick re-fired the handler too because phaseRef was
-        // still 'fighting'). One kill → one attempt consumed → one
+        // still 'fighting'). One kill -> one attempt consumed -> one
         // reward roll. Reset in `handleChallenge` for the next fight.
         if (bossDeathHandledRef.current) return;
         bossDeathHandledRef.current = true;
@@ -1527,19 +1529,19 @@ const Boss = () => {
             potionNames.push(`${pd.potionId} ×${pd.count}`);
         }
         if (potionNames.length > 0) {
-            addLog(`🧪 Drop: ${potionNames.join(', ')}`, 'system');
+            addLog(`:test-tube: Drop: ${potionNames.join(', ')}`, 'system');
         }
 
-        addLog(`🏆 ${boss.name_pl} pokonany! +${gold.toLocaleString('pl-PL')} Gold, +${xp.toLocaleString('pl-PL')} XP`, 'system');
+        addLog(`:trophy: ${boss.name_pl} pokonany! +${gold.toLocaleString('pl-PL')} Gold, +${xp.toLocaleString('pl-PL')} XP`, 'system');
         if (drops.length > 0) {
             const dropNames = drops.map((d) => {
                 const info = getItemDisplayInfo(d.itemId);
                 return info?.name_pl ?? formatItemName(d.itemId);
             });
-            addLog(`📦 Drop: ${dropNames.join(', ')}`, 'system');
+            addLog(`:package: Drop: ${dropNames.join(', ')}`, 'system');
         }
         if (chestNames.length > 0) {
-            addLog(`📦 Spell Chests: ${chestNames.join(', ')}`, 'system');
+            addLog(`:package: Spell Chests: ${chestNames.join(', ')}`, 'system');
         }
 
         setResult({
@@ -1610,7 +1612,7 @@ const Boss = () => {
             cs.appendDrops(drops.map((d) => {
                 const info = getItemDisplayInfo(d.itemId);
                 return {
-                    icon: info?.icon ?? '📦',
+                    icon: info?.icon ?? 'package',
                     name: info?.name_pl ?? formatItemName(d.itemId),
                     rarity: d.rarity ?? 'legendary',
                 };
@@ -1620,7 +1622,7 @@ const Boss = () => {
         setTimeout(() => setPhase('result'), 500);
     }, [addLog, setBossDefeated, addBossKill, clearBots]);
 
-    // ── Handle player death ──────────────────────────────────────────────────
+    // -- Handle player death --------------------------------------------------
     const handlePlayerDeath = useCallback((forceConfirm: boolean = false) => {
         const boss = activeBossRef.current;
         if (!boss) return;
@@ -1678,7 +1680,7 @@ const Boss = () => {
             let skillXpLossPercent = 0;
 
             if (usedDeathProtection) {
-                addLog('🛡️ Eliksir Ochrony uchronił Cię od utraty poziomu!', 'system');
+                addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!', 'system');
             } else {
                 const penalty = applyDeathPenalty(char.level, char.xp);
                 newLevel = penalty.newLevel;
@@ -1700,18 +1702,18 @@ const Boss = () => {
                 useSkillStore.getState().purgeLockedSkillSlots(char.class, penalty.newLevel);
                 const skillPctTxt = `-${penalty.skillXpLossPercent}% Skill XP`;
                 if (penalty.levelsLost > 0) {
-                    addLog(`💀 Zginąłeś! Tracisz ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}: ${char.level} → ${penalty.newLevel} · ${skillPctTxt}`, 'system');
+                    addLog(`:skull: Zginąłeś! Tracisz ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}: ${char.level} -> ${penalty.newLevel} · ${skillPctTxt}`, 'system');
                 } else {
-                    addLog(`💀 Zginąłeś w walce z ${boss.name_pl}! ${skillPctTxt}`, 'system');
+                    addLog(`:skull: Zginąłeś w walce z ${boss.name_pl}! ${skillPctTxt}`, 'system');
                 }
             }
 
             // Item loss with optional Amulet of Loss protection
             const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
             if (usedAol) {
-                addLog('🔱 Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
+                addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
             } else if (itemsLost > 0) {
-                addLog(`💀 Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
             }
             void saveCurrentCharacterStores();
 
@@ -1728,7 +1730,7 @@ const Boss = () => {
                 source: 'boss',
             });
         } else {
-            addLog(`💀 Zginąłeś w walce z ${boss.name_pl}!`, 'system');
+            addLog(`:skull: Zginąłeś w walce z ${boss.name_pl}!`, 'system');
         }
 
         setResult({
@@ -1745,7 +1747,7 @@ const Boss = () => {
         setTimeout(() => setPhase('result'), 500);
     }, [addLog, clearBots]);
 
-    // ── Manual skill use (click a slot when skillMode === 'manual') ──────────
+    // -- Manual skill use (click a slot when skillMode === 'manual') ----------
     const doManualSkill = useCallback((slotIdx: 0 | 1 | 2 | 3) => {
         if (phaseRef.current !== 'fighting') return;
         if (bossHpRef.current <= 0) return;
@@ -1790,15 +1792,15 @@ const Boss = () => {
         }
         // 2026-05 v7: Apokalipsa Śmierci — drives HP cost SYNCHRONOUSLY
         // at the top of the cast handler so nothing downstream can
-        // erase it. Spec: HP > 20% → 20%, HP 5-20% → 3%, HP < 5% → block.
+        // erase it. Spec: HP > 20% -> 20%, HP 5-20% -> 3%, HP < 5% -> block.
         const sDefGate = getSkillDef(skillId);
         if ((sDefGate?.effect ?? '').includes('death_apocalypse')) {
             const hpPct = playerHpRef.current / Math.max(1, charMaxHp);
             if (hpPct < 0.05) {
-                addLog('💔 Apokalipsa zablokowana: < 5% HP', 'system');
+                addLog(':broken-heart: Apokalipsa zablokowana: < 5% HP', 'system');
                 return;
             }
-            // > 20% → lose 20% of max HP; 5–20% → drop to 3% of max
+            // > 20% -> lose 20% of max HP; 5–20% -> drop to 3% of max
             let newPlayerHp: number;
             if (hpPct > 0.20) {
                 newPlayerHp = Math.max(1, playerHpRef.current - Math.floor(charMaxHp * 0.20));
@@ -1810,8 +1812,8 @@ const Boss = () => {
                 playerHpRef.current = newPlayerHp;
                 setPlayerHp(newPlayerHp);
                 useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
-                fx.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                addLog(`💔 Apokalipsa: -${lost} HP (kanał życia)`, 'system');
+                fx.pushAllyFloat(0, lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                addLog(`:broken-heart: Apokalipsa: -${lost} HP (kanał życia)`, 'system');
             }
         }
         // Apply v2 effects (stun/dot/aoe/instant_kill/marks/etc.) to boss.
@@ -1853,7 +1855,7 @@ const Boss = () => {
             const ampBoss = consumeTargetMarkAmp(bossSt);
             if (ampBoss.mult !== 1) {
                 skillDmg = Math.max(1, Math.floor(skillDmg * ampBoss.mult));
-                addLog(`☠️ Klątwa Śmierci: ${formatSkillName(skillId)} ×${ampBoss.mult} dmg`, 'system');
+                addLog(`:skull-and-crossbones: Klątwa Śmierci: ${formatSkillName(skillId)} ×${ampBoss.mult} dmg`, 'system');
             }
         }
         const afterSkill = Math.max(0, bossHpRef.current - skillDmg);
@@ -1876,10 +1878,10 @@ const Boss = () => {
             if (heal > 0) {
                 const cappedTag = actual < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
-                addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
             }
         }
         if (apply.healCasterPctOfMaxHp > 0) {
@@ -1889,7 +1891,7 @@ const Boss = () => {
             setPlayerHp(playerHpRef.current);
             const actual = playerHpRef.current - before;
             if (actual > 0) {
-                fx.pushAllyFloat(0, actual, 'heal', { icon: '✨' });
+                fx.pushAllyFloat(0, actual, 'heal', { icon: 'sparkles' });
             }
         }
         // 2026-05 v6: Cleric `heal` / `holy_nova` — heal_lowest_ally_pct.
@@ -1904,11 +1906,11 @@ const Boss = () => {
             if (heal > 0) {
                 const cappedTag = actual < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
                 fx.triggerAllySkillAnim(0, skillId);
-                addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
             }
         }
         if (apply.healPartyPctInstant > 0) {
@@ -1940,15 +1942,15 @@ const Boss = () => {
             bossHpRef.current = newBossHp;
             setBossHp(newBossHp);
             setMonsterHitPulse((p) => p + 1);
-            fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
-            addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
+            fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
+            addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
             if (newBossHp <= 0) handleBossDeath();
         }
         triggerSkillAnim(skillId);
         if (!targetsEnemy) {
             // Pure self/party buff — animacja na PLAYERZE.
             fx.triggerAllySkillAnim(0, skillId);
-            addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
+            addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
             // 2026-05-18 spec ("animacje buffow itp byly poprawnie
             // pokazywane"): mirror the buff cue to members. Target =
             // 'player' (self-buff) so the receiver routes to the
@@ -1975,9 +1977,9 @@ const Boss = () => {
             if (isDamageHit) {
                 fx.pushEnemyFloat(0, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
                 showFloatingDmg(`-${skillDmg}`, 'player');
-                addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
             } else {
-                addLog(`✨ ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
             }
             // 2026-05-14: broadcast leader's MANUAL skill cast so the
             // member sees the same overlay + spell float on the boss.
@@ -2000,9 +2002,9 @@ const Boss = () => {
             // apply result so failed `stun_chance:30:…` rolls (Smite) no
             // longer flash STUN every cast.
             if (apply.stunApplied) {
-                fx.pushEnemyFloat(0, 0, 'spell', { icon: '💫', label: 'STUN' });
+                fx.pushEnemyFloat(0, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
             } else if (apply.paralyzeApplied) {
-                fx.pushEnemyFloat(0, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                fx.pushEnemyFloat(0, 0, 'spell', { icon: 'locked', label: 'PARAL' });
             }
         }
         // 2026-05 v6: Cleric Aura Wskrzeszenia — revive dead bots to 50%
@@ -2017,12 +2019,12 @@ const Boss = () => {
                     const reviveHp = Math.max(1, Math.floor(bot.maxHp * 0.5));
                     updateBotHp(bot.id, reviveHp);
                     revivedNames.push(bot.name);
-                    fx.pushAllyFloat(i + 1, reviveHp, 'heal', { icon: '✨', label: '+REZ' });
+                    fx.pushAllyFloat(i + 1, reviveHp, 'heal', { icon: 'sparkles', label: '+REZ' });
                     fx.triggerAllySkillAnim(i + 1, skillId);
                 }
             }
             if (revivedNames.length > 0) {
-                addLog(`✨ ${formatSkillName(skillId)}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
             }
         }
         // Multistrike — fire N follow-up basic attacks on the boss.
@@ -2036,7 +2038,7 @@ const Boss = () => {
                     bossHpRef.current = Math.max(0, bossHpRef.current - followup);
                     setBossHp(bossHpRef.current);
                     fx.pushEnemyFloat(0, followup, 'basic');
-                    addLog(`🏹×${n + 2} ${followup} dmg`, 'player');
+                    addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`, 'player');
                     if (bossHpRef.current <= 0) handleBossDeath();
                 }, 120 * (n + 1));
             }
@@ -2049,7 +2051,7 @@ const Boss = () => {
         }
     }, [addLog, charAtk, character, handleBossDeath, showFloatingDmg, fx]);
 
-    // ── Player attack callback ───────────────────────────────────────────────
+    // -- Player attack callback -----------------------------------------------
     const doPlayerAttack = useCallback(() => {
         if (phaseRef.current !== 'fighting') return;
         if (bossHpRef.current <= 0) return;
@@ -2066,7 +2068,7 @@ const Boss = () => {
         const sDef = scaledBossRef.current.defense;
         const sMaxHp = scaledBossRef.current.hp;
 
-        // ── Helper: single hit ──────────────────────────────────────────────
+        // -- Helper: single hit ----------------------------------------------
         const doSingleHit = (hand: 'left' | 'right' | undefined, weaponRollFn: () => number, dmgPercent: number) => {
             if (bossHpRef.current <= 0 || phaseRef.current !== 'fighting') return 0;
             const wRoll = Math.floor(weaponRollFn() * dmgPercent);
@@ -2097,7 +2099,7 @@ const Boss = () => {
             const ampBasic = consumeTargetMarkAmp(bossStBasic);
             if (ampBasic.mult !== 1) {
                 finalDmg = Math.max(1, Math.floor(finalDmg * ampBasic.mult));
-                addLog(`☠️ Klątwa Śmierci! ×${ampBasic.mult} dmg`, 'player');
+                addLog(`:skull-and-crossbones: Klątwa Śmierci! ×${ampBasic.mult} dmg`, 'player');
             }
 
             const newBossHp = Math.max(0, bossHpRef.current - finalDmg);
@@ -2110,14 +2112,14 @@ const Boss = () => {
             setTimeout(() => { setPlayerAttacking(false); }, animDur);
 
             if (hand) {
-                showFloatingDmg(`🗡️ -${finalDmg}`, 'player', hand);
+                showFloatingDmg(`:dagger: -${finalDmg}`, 'player', hand);
             } else {
                 showFloatingDmg(`-${finalDmg}`, 'player');
             }
             // Anchored basic-attack float on the boss (slot 0). Dual-wield
             // off-hand passes through with `hand: 'right'`, also picked up
             // here so each swing gets its own number on the same target.
-            fx.pushEnemyFloat(0, finalDmg, 'basic', { icon: hand ? '🗡️' : undefined });
+            fx.pushEnemyFloat(0, finalDmg, 'basic', { icon: hand ? 'dagger' : undefined });
             // 2026-05-14: tally for party widget.
             if (character?.id) {
                 void import('../../stores/partyDamageStore').then(({ usePartyDamageStore }) => {
@@ -2135,7 +2137,7 @@ const Boss = () => {
                         damage: finalDmg,
                         isCrit: baseCrit,
                         kind: 'basic',
-                        icon: hand ? '🗡️' : undefined,
+                        icon: hand ? 'dagger' : undefined,
                     });
                 }).catch(() => { /* offline */ });
             }
@@ -2145,7 +2147,7 @@ const Boss = () => {
             return finalDmg;
         };
 
-        // ── Execute attack(s) ────────────────────────────────────────────────
+        // -- Execute attack(s) ------------------------------------------------
         if (isDualWield) {
             // Hit 1: left hand (mainHand, 60%)
             doSingleHit('left', rollWeaponDamage, 0.6);
@@ -2199,7 +2201,7 @@ const Boss = () => {
         // the necro's basic attack. Each summon gets its own staggered
         // setTimeout (~100 ms apart so the boss card flashes per-hit
         // instead of merging) and pushes a type-specific float
-        // (skel ☠️ / ghost 👻 / demon 😈 / lich 👑). Display order
+        // (skel :skull-and-crossbones: / ghost :ghost: / demon :smiling-face-with-horns: / lich :crown:). Display order
         // mirrors the avatar damage-soak order: skeleton first, lich
         // last. Summons don't double-consume mark_amp — only the
         // player's first hit does.
@@ -2210,7 +2212,7 @@ const Boss = () => {
             if (list.length > 0) {
                 const SUMMON_TYPE_RANK = { skeleton: 0, ghost: 1, demon: 2, lich: 3 } as const;
                 const SUMMON_ICON: Record<'skeleton' | 'ghost' | 'demon' | 'lich', string> = {
-                    skeleton: '☠️', ghost: '👻', demon: '😈', lich: '👑',
+                    skeleton: 'skull-and-crossbones', ghost: 'ghost', demon: 'smiling-face-with-horns', lich: 'crown',
                 };
                 const sortedSummons = [...list].sort(
                     (a, b) => SUMMON_TYPE_RANK[a.type] - SUMMON_TYPE_RANK[b.type],
@@ -2235,7 +2237,7 @@ const Boss = () => {
                         setBossHp(newHpAfter);
                         setMonsterHitPulse((p) => p + 1);
                         fx.pushEnemyFloat(0, summonDmg, 'ally-basic', { icon: SUMMON_ICON[sm.type] });
-                        addLog(`💀 ${sm.type}: ${summonDmg} dmg`, 'player');
+                        addLog(`:skull: ${sm.type}: ${summonDmg} dmg`, 'player');
                         if (newHpAfter <= 0) handleBossDeath();
                     }, 80 + idx * 100);
                 });
@@ -2288,8 +2290,8 @@ const Boss = () => {
                             playerHpRef.current = newPlayerHp;
                             setPlayerHp(newPlayerHp);
                             useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
-                            fx.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                            addLog(`💔 Apokalipsa: -${lost} HP (kanał życia)`, 'system');
+                            fx.pushAllyFloat(0, lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                            addLog(`:broken-heart: Apokalipsa: -${lost} HP (kanał życia)`, 'system');
                         }
                     }
                 }
@@ -2323,7 +2325,7 @@ const Boss = () => {
                     const ampAuto = consumeTargetMarkAmp(bossSt);
                     if (ampAuto.mult !== 1) {
                         skillDmg = Math.max(1, Math.floor(skillDmg * ampAuto.mult));
-                        addLog(`☠️ Klątwa Śmierci! ${formatSkillName(skillId)} ×${ampAuto.mult} dmg`, 'system');
+                        addLog(`:skull-and-crossbones: Klątwa Śmierci! ${formatSkillName(skillId)} ×${ampAuto.mult} dmg`, 'system');
                     }
                 }
                 const afterSkill = isPureBuff ? bossHpRef.current : Math.max(0, bossHpRef.current - skillDmg);
@@ -2338,11 +2340,11 @@ const Boss = () => {
                 triggerSkillAnim(skillId);
                 if (isPureBuff) {
                     fx.triggerAllySkillAnim(0, skillId);
-                    addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
+                    addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
                 } else {
                     fx.triggerEnemySkillAnim(0, skillId);
                     fx.pushEnemyFloat(0, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
-                    addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
+                    addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
                 }
                 // 2026-05-14 spec ("Lider uzywa spella a sojusznik nie
                 // widzi tego, nie widzi ani animacji spella ze uzywa
@@ -2382,7 +2384,7 @@ const Boss = () => {
                     }).catch(() => { /* offline */ });
                 }
 
-                // ── Side-effect consumers (mirror of manual cast) ────
+                // -- Side-effect consumers (mirror of manual cast) ----
                 // Necromancer summon spawn — Przywołaj Szkieleta /
                 // Wskrześ Umarłych / Powstanie Apokalipsy / Przemiana
                 // Lisza / Burza Dusz / Armia Ciemności.
@@ -2396,10 +2398,10 @@ const Boss = () => {
                             // 2026-05 v7: per-type spawn anim (2s)
                             fx.triggerAllySummonSpawn(0, sm.type);
                             fx.pushAllyFloat(0, spawned, 'heal', {
-                                icon: '💀',
+                                icon: 'skull',
                                 label: `+${spawned}× ${sm.type.toUpperCase()}`,
                             });
-                            addLog(`💀 ${formatSkillName(skillId)}: przywołano ${spawned}× ${sm.type}`, 'system');
+                            addLog(`:skull: ${formatSkillName(skillId)}: przywołano ${spawned}× ${sm.type}`, 'system');
                         }
                     }
                 }
@@ -2411,8 +2413,8 @@ const Boss = () => {
                     bossHpRef.current = newBossHp;
                     setBossHp(newBossHp);
                     setMonsterHitPulse((p) => p + 1);
-                    fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
-                    addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
+                    fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
+                    addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
                     if (newBossHp <= 0) handleBossDeath();
                 }
                 // heal_self_pct_dmg (Pochłonięcie Życia, Żniwa Dusz,
@@ -2427,10 +2429,10 @@ const Boss = () => {
                         const actual = playerHpRef.current - before;
                         const cappedTag = actual < heal ? ' (MAX)' : '';
                         fx.pushAllyFloat(0, heal, 'heal', {
-                            icon: '✨',
+                            icon: 'sparkles',
                             label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                         });
-                        addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                        addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
                     }
                 }
                 if (apply.healCasterPctOfMaxHp > 0) {
@@ -2440,7 +2442,7 @@ const Boss = () => {
                     setPlayerHp(playerHpRef.current);
                     const actual = playerHpRef.current - before;
                     if (actual > 0) {
-                        fx.pushAllyFloat(0, actual, 'heal', { icon: '✨' });
+                        fx.pushAllyFloat(0, actual, 'heal', { icon: 'sparkles' });
                     }
                 }
                 // heal_lowest_ally_pct — Cleric heal / holy_nova. Boss
@@ -2454,7 +2456,7 @@ const Boss = () => {
                     if (heal > 0) {
                         const cappedTag = actual < heal ? ' (MAX)' : '';
                         fx.pushAllyFloat(0, heal, 'heal', {
-                            icon: '✨',
+                            icon: 'sparkles',
                             label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                         });
                         fx.triggerAllySkillAnim(0, skillId);
@@ -2471,7 +2473,7 @@ const Boss = () => {
                         const actual = playerHpRef.current - before;
                         const cappedTag = actual < heal ? ' (MAX)' : '';
                         fx.pushAllyFloat(0, heal, 'heal', {
-                            icon: '✨',
+                            icon: 'sparkles',
                             label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                         });
                         fx.triggerAllySkillAnim(0, skillId);
@@ -2491,9 +2493,9 @@ const Boss = () => {
                         if (!bot.alive) {
                             const reviveHp = Math.max(1, Math.floor(bot.maxHp * 0.5));
                             updateBotHp(bot.id, reviveHp);
-                            fx.pushAllyFloat(bi + 1, reviveHp, 'heal', { icon: '✨', label: '+REZ' });
+                            fx.pushAllyFloat(bi + 1, reviveHp, 'heal', { icon: 'sparkles', label: '+REZ' });
                             fx.triggerAllySkillAnim(bi + 1, skillId);
-                            addLog(`✨ ${formatSkillName(skillId)}: wskrzeszono ${bot.name}`, 'system');
+                            addLog(`:sparkles: ${formatSkillName(skillId)}: wskrzeszono ${bot.name}`, 'system');
                         }
                     }
                 }
@@ -2502,7 +2504,7 @@ const Boss = () => {
                 // here we just paint the IMMORTAL anim on each card.
                 if (apply.partyImmortalMs > 0) {
                     fx.triggerAllySkillAnim(0, skillId);
-                    fx.pushAllyFloat(0, 0, 'heal', { icon: '✨', label: 'IMMORTAL' });
+                    fx.pushAllyFloat(0, 0, 'heal', { icon: 'sparkles', label: 'IMMORTAL' });
                 }
 
                 if (!isPureBuff && afterSkill <= 0) { handleBossDeath(); return; }
@@ -2518,8 +2520,8 @@ const Boss = () => {
         }
     }, [charAtk, addLog, showFloatingDmg, handleBossDeath, tryAutoPotion, character, fx]);
 
-    // ── Boss attack callback ─────────────────────────────────────────────────
-    // ── Helper: deal damage to a bot target ────────────────────────────────
+    // -- Boss attack callback -------------------------------------------------
+    // -- Helper: deal damage to a bot target --------------------------------
     const dealDamageToBot = useCallback((botId: string, damage: number, bossName: string, kind: 'monster' | 'monster-spell' = 'monster', icon?: string): boolean => {
         const currentBots = botsRef.current;
         const bot = currentBots.find((b) => b.id === botId && b.alive);
@@ -2557,7 +2559,7 @@ const Boss = () => {
         return true;
     }, [updateBotHp, killBot, addLog, fx]);
 
-    // ── Necro summon damage routing ─────────────────────────────────────────
+    // -- Necro summon damage routing -----------------------------------------
     // Front-of-queue summon takes single-target hits before the necro does.
     // For AOE hits, every summon takes the full splash (necro still takes
     // their own hit normally — caller handles that).
@@ -2574,7 +2576,7 @@ const Boss = () => {
         return Math.max(0, rawDmg - r.dmgConsumed);
     }, [character?.class]);
 
-    // ── Utamo Vita helper for boss damage to player ────────────────────────
+    // -- Utamo Vita helper for boss damage to player ------------------------
     const applyUtamoDamageToPlayer = useCallback((rawDmg: number): { newPHp: number; hpDmg: number; mpDmg: number; shieldActive: boolean } => {
         // 2026-05 v6: immortal (Knight Absolutne Cięcie) zeroes incoming
         // damage entirely. defBuffPct (Umocnienie / Żelazna Obrona) scales
@@ -2582,8 +2584,8 @@ const Boss = () => {
         const ps = effectsRef.current.statuses.get(PLAYER_FX_ID);
         if (ps && ps.immortalMs > 0) {
             // BLOCK label on player slot so the immortal window is visible.
-            fx.pushAllyFloat(0, 0, 'heal', { icon: '✨', label: 'BLOCK' });
-            addLog(`✨ BLOCK! Niewrażliwość chroni przed atakiem`, 'block');
+            fx.pushAllyFloat(0, 0, 'heal', { icon: 'sparkles', label: 'BLOCK' });
+            addLog(`:sparkles: BLOCK! Niewrażliwość chroni przed atakiem`, 'block');
             return { newPHp: playerHpRef.current, hpDmg: 0, mpDmg: 0, shieldActive: false };
         }
         if (ps && ps.defBuffMs > 0 && ps.defBuffPct > 0) {
@@ -2605,9 +2607,9 @@ const Boss = () => {
                 const newMp = Math.max(0, playerMpRef.current - ms);
                 playerMpRef.current = newMp;
                 setPlayerMp(newMp);
-                addLog(`🛡️ Tarcza Many pochłania ${ms} MP`, 'block');
+                addLog(`:shield: Tarcza Many pochłania ${ms} MP`, 'block');
                 // Blue MP float on the player slot so it's visible.
-                fx.pushAllyFloat(0, ms, 'spell', { icon: '🛡️' });
+                fx.pushAllyFloat(0, ms, 'spell', { icon: 'shield' });
             }
         }
         const hasUtamo = useBuffStore.getState().hasBuff('utamo_vita');
@@ -2628,7 +2630,7 @@ const Boss = () => {
             setPlayerMp(newMp);
             if (newMp <= 0) {
                 useBuffStore.getState().removeBuffByEffect('utamo_vita');
-                addLog('🔵 Utamo Vita peka! Brak many.', 'system');
+                addLog(':blue-circle: Utamo Vita peka! Brak many.', 'system');
             }
         }
         const newPHp = Math.max(0, playerHpRef.current - hpDmg);
@@ -2684,8 +2686,8 @@ const Boss = () => {
         // the entire hit (BLOCK float). Same fall-through as dodge.
         if (useBuffStore.getState().getBuffCharges('skill_charge_block_next_party') > 0) {
             useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
-            fx.pushAllyFloat(0, 0, 'heal', { icon: '🛡️', label: 'BLOCK' });
-            addLog(`🛡️ Boska Tarcza! Blok!`, 'system');
+            fx.pushAllyFloat(0, 0, 'heal', { icon: 'shield', label: 'BLOCK' });
+            addLog(`:shield: Boska Tarcza! Blok!`, 'system');
             return;
         }
         // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000) — % chance
@@ -2693,8 +2695,8 @@ const Boss = () => {
         const bossPlayerSt = ensureStatus(effectsRef.current, PLAYER_FX_ID);
         if (bossPlayerSt.dodgeBuffMs > 0 && bossPlayerSt.dodgeBuffPct > 0) {
             if (Math.random() * 100 < bossPlayerSt.dodgeBuffPct) {
-                fx.pushAllyFloat(0, 0, 'heal', { icon: '💨', label: 'UNIK' });
-                addLog(`💨 Bomba Dymna! Unik (${bossPlayerSt.dodgeBuffPct}%)`, 'system');
+                fx.pushAllyFloat(0, 0, 'heal', { icon: 'dashing-away', label: 'UNIK' });
+                addLog(`:dashing-away: Bomba Dymna! Unik (${bossPlayerSt.dodgeBuffPct}%)`, 'system');
                 return;
             }
         }
@@ -2708,9 +2710,9 @@ const Boss = () => {
         const sMaxHp = scaledBossRef.current.hp;
         const phaseMult = getBossPhaseMultiplier(bossHpRef.current / sMaxHp);
 
-        // ── AOE attack every 5th turn (50% damage to all) ────────────────────
+        // -- AOE attack every 5th turn (50% damage to all) --------------------
         if (isBossAoeTurn(bossTurnCounterRef.current)) {
-            addLog(`💥 ${boss.name_pl} wykonuje ATAK OBSZAROWY!`, 'boss-spell');
+            addLog(`:collision: ${boss.name_pl} wykonuje ATAK OBSZAROWY!`, 'boss-spell');
 
             // Damage player (with Utamo Vita). For necro, AOE also splashes
             // every live summon in parallel — the necro still takes their hit.
@@ -2720,12 +2722,12 @@ const Boss = () => {
             }
             const aoeResult = applyUtamoDamageToPlayer(aoeDmgPlayer);
             setPlayerHitPulse((p) => p + 1);
-            showFloatingDmg(`-${aoeDmgPlayer} AOE${aoeResult.shieldActive ? ' 🔵' : ''}`, 'monster');
+            showFloatingDmg(`-${aoeDmgPlayer} AOE${aoeResult.shieldActive ? 'blue-circle' : ''}`, 'monster');
             // Floating monster-AOE float on the player ally slot. AOE is
             // categorically magical (boss spells), so 'monster-spell' kind
-            // gives it the dark-red halo to read as a magical hit. The 💥
+            // gives it the dark-red halo to read as a magical hit. The :collision:
             // glyph mirrors the addLog suffix.
-            fx.pushAllyFloat(0, aoeDmgPlayer, 'monster-spell', { icon: '💥' });
+            fx.pushAllyFloat(0, aoeDmgPlayer, 'monster-spell', { icon: 'collision' });
             // 2026-05-14 spec ("nie widze jak przeciwnik atakuje np
             // spellami aoe to nie widze za ile dostaje dmg od niego"):
             // broadcast the AOE float to the member so their own card
@@ -2742,7 +2744,7 @@ const Boss = () => {
                         targetId: 'player',
                         damage: aoeDmgPlayer,
                         kind: 'monster-spell',
-                        icon: '💥',
+                        icon: 'collision',
                         // 2026-05-14: omit label — overlay renders label IN
                         // PLACE of the damage number, so "AOE" hid the real
                         // value on member's screen. Match the per-bot AOE
@@ -2750,7 +2752,7 @@ const Boss = () => {
                     });
                 }).catch(() => { /* offline */ });
             }
-            const aoeSuffix = aoeResult.shieldActive ? ` 🔵 (${aoeResult.hpDmg} HP / ${aoeResult.mpDmg} MP)` : '';
+            const aoeSuffix = aoeResult.shieldActive ? ` :blue-circle: (${aoeResult.hpDmg} HP / ${aoeResult.mpDmg} MP)` : '';
             addLog(`  Ty: -${aoeDmgPlayer} dmg${aoeSuffix} (HP: ${aoeResult.newPHp}/${charMaxHp})`, 'monster');
 
             // Damage all alive bots — each gets its own pulse increment so
@@ -2765,7 +2767,7 @@ const Boss = () => {
                 setBotHitPulses((prev) => ({ ...prev, [bot.id]: (prev[bot.id] ?? 0) + 1 }));
                 // AOE on bot — same magical 'monster-spell' kind. Bot's
                 // ally slot is `bIdx + 1` (player occupies slot 0).
-                fx.pushAllyFloat(bIdx + 1, aoeDmgBot, 'monster-spell', { icon: '💥' });
+                fx.pushAllyFloat(bIdx + 1, aoeDmgBot, 'monster-spell', { icon: 'collision' });
                 // 2026-05-14: broadcast per-bot AOE so the targeted
                 // member's own slot (or other bots') shows the float.
                 if (aoeBroadcastEnabled) {
@@ -2777,11 +2779,11 @@ const Boss = () => {
                             targetId: botIdCapture,
                             damage: aoeDmgCapture,
                             kind: 'monster-spell',
-                            icon: '💥',
+                            icon: 'collision',
                             // 2026-05-14: omit `label` — the float overlay
                             // uses label IN PLACE of the damage number, so
                             // setting label: 'AOE' made the member see
-                            // "💥 AOE" instead of "💥 1234". Let the float
+                            // ":collision: AOE" instead of ":collision: 1234". Let the float
                             // render the damage value with the bomb icon.
                         });
                     }).catch(() => { /* offline */ });
@@ -2803,7 +2805,7 @@ const Boss = () => {
             return;
         }
 
-        // ── Aggro switch check (time-based, every 10s wall-clock) ────────────
+        // -- Aggro switch check (time-based, every 10s wall-clock) ------------
         // Boss re-rolls its target every 10 seconds using class-weighted aggro
         // (Knight 80%, Rogue 60%, Archer 50%, Necro 40%, Mage 30%, Cleric/Bard 20%).
         if (Date.now() >= aggroSwitchAtRef.current) {
@@ -2914,13 +2916,13 @@ const Boss = () => {
                 const bossSt = ensureStatus(effectsRef.current, BOSS_FX_ID);
                 const hr = applyIncomingHeal(bossSt, healAmount);
                 if (hr.hpDelta < 0) {
-                    // Mark active → heal flips to damage of equal size.
+                    // Mark active -> heal flips to damage of equal size.
                     const reversed = -hr.hpDelta;
                     const newBossHp = Math.max(0, bossHpRef.current - reversed);
                     bossHpRef.current = newBossHp;
                     setBossHp(newBossHp);
-                    fx.pushEnemyFloat(0, reversed, 'spell', { icon: '☠️' });
-                    addLog(`☠️ Naznaczony na Śmierć: ${boss.name_pl} próbuje się leczyć ale traci ${reversed.toLocaleString('pl-PL')} HP!`, 'boss-spell');
+                    fx.pushEnemyFloat(0, reversed, 'spell', { icon: 'skull-and-crossbones' });
+                    addLog(`:skull-and-crossbones: Naznaczony na Śmierć: ${boss.name_pl} próbuje się leczyć ale traci ${reversed.toLocaleString('pl-PL')} HP!`, 'boss-spell');
                     if (newBossHp <= 0) {
                         handleBossDeath();
                     }
@@ -2941,7 +2943,7 @@ const Boss = () => {
             return;
         }
 
-        // ── Normal boss attack (targeted via aggro) ──────────────────────────
+        // -- Normal boss attack (targeted via aggro) --------------------------
         // 2026-05-14: if aggro is on a dead-but-waiting leader (multi-
         // human party), switch to a random alive bot so the fight
         // continues to deal damage somewhere instead of pummelling
@@ -2969,7 +2971,7 @@ const Boss = () => {
             setPlayerHp(newPHp);
             setPlayerHitPulse((p) => p + 1);
             showFloatingDmg(`-${finalDmg}`, 'monster');
-            // Plain physical boss swing on the player → 'monster' kind (red).
+            // Plain physical boss swing on the player -> 'monster' kind (red).
             fx.pushAllyFloat(0, finalDmg, 'monster');
             // 2026-05-14: broadcast so member's view shows the float
             // even when the boss is hitting the leader (the member's
@@ -3029,7 +3031,7 @@ const Boss = () => {
         }
     }, [charDef, charMaxHp, addLog, showFloatingDmg, handlePlayerDeath, handleBossDeath, enraged, tryAutoPotion, updateBotHp, killBot, dealDamageToBot, fx, routeIncomingNecroDmg, character?.class]);
 
-    // ── Bot attack callback ──────────────────────────────────────────────────
+    // -- Bot attack callback --------------------------------------------------
     const doBotAttacks = useCallback(() => {
         if (phaseRef.current !== 'fighting') return;
         if (bossHpRef.current <= 0) return;
@@ -3127,7 +3129,7 @@ const Boss = () => {
                 addLog(`${icon} ${bot.name} rzuca ${action.skillName}: ${action.damage} dmg (Boss HP: ${newBossHp.toLocaleString('pl-PL')})`, 'player');
                 // Per-slot themed overlay + ally-spell float on the boss
                 // card. Uses the bot's actual skillId so the visual matches
-                // (e.g. Mage cast → fire halo).
+                // (e.g. Mage cast -> fire halo).
                 fx.triggerEnemySkillAnim(0, botForAction.skillId);
                 fx.pushEnemyFloat(0, action.damage, 'ally-spell', { icon: getSkillIcon(botForAction.skillId) });
                 // Tally for party widget.
@@ -3194,8 +3196,8 @@ const Boss = () => {
     // walka trwa dalej"): wipe detection runs WHENEVER the player is
     // dead AND every bot is dead — works for BOTH leader and member
     // because:
-    //   • Leader's local bots reflect their own combat tick
-    //   • Member's local bots are MIRRORED from the leader's allies
+    //   - Leader's local bots reflect their own combat tick
+    //   - Member's local bots are MIRRORED from the leader's allies
     //     broadcast, so once the leader sees everyone dead the
     //     broadcast lands on member with the same all-dead state
     // We accept BOTH `phase === 'fighting'` and `phase === 'result'`
@@ -3284,7 +3286,7 @@ const Boss = () => {
         fx.resetAllyFx();
     }, [party, character?.id, fx]);
 
-    // ── Refs for stable intervals ────────────────────────────────────────────
+    // -- Refs for stable intervals --------------------------------------------
     const playerAtkRef = useRef(doPlayerAttack);
     const bossAtkRef   = useRef(doBossAttack);
     const botAtkRef    = useRef(doBotAttacks);
@@ -3292,7 +3294,7 @@ const Boss = () => {
     useEffect(() => { bossAtkRef.current   = doBossAttack; });
     useEffect(() => { botAtkRef.current    = doBotAttacks; });
 
-    // ── Party-shared boss combat (2026-05-13) ────────────────────────────────
+    // -- Party-shared boss combat (2026-05-13) --------------------------------
     // Leader-side: publish authoritative boss-state on every meaningful
     // change. The store throttles non-phase updates to ~120 ms; phase
     // transitions go through immediately so the member's result popup
@@ -3482,7 +3484,7 @@ const Boss = () => {
                         }
                         continue;
                     }
-                    // Ally hits the boss → enemy float on slot 0 of the
+                    // Ally hits the boss -> enemy float on slot 0 of the
                     // arena + bot-attacking-class flash (drives the same
                     // swing animation the leader sees).
                     if (ev.targetId === 'boss') {
@@ -3499,29 +3501,29 @@ const Boss = () => {
                                 animMs,
                             );
                         }
-                        // 2026-05-14: spell cast → fire the themed enemy
+                        // 2026-05-14: spell cast -> fire the themed enemy
                         // skill animation overlay so the member sees the
                         // same fire halo / arrow trail / etc.
                         if (ev.skillId) {
                             fx.triggerEnemySkillAnim(0, ev.skillId);
                         }
                     }
-                    // Boss hits an ally → push float on the right fx slot.
+                    // Boss hits an ally -> push float on the right fx slot.
                     //
                     // CRITICAL fix (2026-05-14): the useCombatFx slot index
                     // is INDEPENDENT of the uiAllies reorder. The arena
                     // cards bind:
-                    //   • selfCard → fx.allyFloats[0]   (always slot 0,
+                    //   - selfCard -> fx.allyFloats[0]   (always slot 0,
                     //                                    regardless of
                     //                                    visual position)
-                    //   • botCards[i] → fx.allyFloats[i + 1]
+                    //   - botCards[i] -> fx.allyFloats[i + 1]
                     // So:
-                    //   • Boss hit the LEADER → find leader bot in local
+                    //   - Boss hit the LEADER -> find leader bot in local
                     //     mirror, push at (leaderIdx + 1).
-                    //   • Boss hit OUR character (no bot match in mirror,
-                    //     because we're filtered out) → push at slot 0
+                    //   - Boss hit OUR character (no bot match in mirror,
+                    //     because we're filtered out) -> push at slot 0
                     //     (self).
-                    //   • Boss hit any other bot → push at (botIdx + 1).
+                    //   - Boss hit any other bot -> push at (botIdx + 1).
                     if (ev.attackerId === 'boss') {
                         const localBotsForFx = useBotStore.getState().bots;
                         let fxSlot = 0;
@@ -3683,7 +3685,7 @@ const Boss = () => {
                 // INTO a fight from list/result and beginBossFight hasn't
                 // run yet (its setTimeout fires after the entry animation,
                 // ~1.8 s later), the in-fight player card would render
-                // with playerHp=0 → isDead=true (greyed). Push our own
+                // with playerHp=0 -> isDead=true (greyed). Push our own
                 // HP/MP from the character store immediately so the card
                 // shows alive from frame 1 of the arena render. Heal a
                 // corpse first to match the entry replicator's behaviour.
@@ -3962,11 +3964,11 @@ const Boss = () => {
         }
         const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
         if (usedAol) {
-            addLog('🔱 Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
+            addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
         } else if (itemsLost > 0) {
-            addLog(`💀 Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+            addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
         }
-        addLog('💀 Nikt Cię nie wskrzesił — ginieesz.', 'system');
+        addLog(':skull: Nikt Cię nie wskrzesił — ginieesz.', 'system');
         useDeathStore.getState().triggerDeath({
             killedBy: boss?.name_pl ?? 'Boss',
             sourceLevel: boss?.level ?? ch.level,
@@ -3997,7 +3999,7 @@ const Boss = () => {
         navigate('/');
     }, [phase, addLog, clearBots, navigate]);
 
-    // ── Attack intervals (scaled by speedMult) ───────────────────────────────
+    // -- Attack intervals (scaled by speedMult) -------------------------------
     useEffect(() => {
         if (phase !== 'fighting' || !activeBoss) return;
         // 2026-05-13: non-leader members mirror the leader's authoritative
@@ -4062,11 +4064,11 @@ const Boss = () => {
                     // Miecza ticking instead of the HP bar silently
                     // shrinking.
                     if (apply.appliedDmg > 0) {
-                        fx.pushEnemyFloat(0, apply.appliedDmg, 'spell', { icon: '☠️' });
+                        fx.pushEnemyFloat(0, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
                         // 2026-05-14 spec ("Nie widze animacji DOT i
                         // wszystkich animacji spelli sojusznikow"):
                         // broadcast the DOT tick so every party member
-                        // sees the same floating ☠️ damage number on
+                        // sees the same floating :skull-and-crossbones: damage number on
                         // the boss card. Without this, only the leader
                         // saw DOT damage; members had a silently
                         // shrinking boss HP bar.
@@ -4078,7 +4080,7 @@ const Boss = () => {
                                     targetId: 'boss',
                                     damage: dotDmgCap,
                                     kind: 'spell',
-                                    icon: '☠️',
+                                    icon: 'skull-and-crossbones',
                                 });
                             }).catch(() => { /* offline */ });
                         }
@@ -4090,7 +4092,7 @@ const Boss = () => {
                 if (r.id === BOSS_FX_ID && r.darkRitualTriggered && r.darkRitualDamage > 0) {
                     bossHpRef.current = Math.max(0, bossHpRef.current - r.darkRitualDamage);
                     setBossHp(bossHpRef.current);
-                    fx.pushEnemyFloat(0, r.darkRitualDamage, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+                    fx.pushEnemyFloat(0, r.darkRitualDamage, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
                     // 2026-05-14: ritual detonation visible on every
                     // member's screen (matches leader's RITUAL float).
                     if (isLeaderInPartyCombat) {
@@ -4101,7 +4103,7 @@ const Boss = () => {
                                 targetId: 'boss',
                                 damage: ritDmgCap,
                                 kind: 'spell',
-                                icon: '💀',
+                                icon: 'skull',
                                 label: 'RITUAL',
                                 isCrit: true,
                             });
@@ -4138,8 +4140,8 @@ const Boss = () => {
     return (
         <div className={`boss${phase === 'fighting' ? ' boss--fighting' : ''}`}>
             {/* Header now only carries the trophy + boss-score badge under
-                a small top margin — the page title ("👹 Bossowie") and the
-                "← Miasto" back button were dropped in the latest UX pass.
+                a small top margin — the page title (":ogre: Bossowie") and the
+                "<- Miasto" back button were dropped in the latest UX pass.
                 Navigation back to town lives in the global BottomNav, so the
                 in-page back button became redundant chrome. The trophy is
                 centred and visually breathes; everything else is gone. */}
@@ -4147,17 +4149,17 @@ const Boss = () => {
                 {/* Trophy / total-score badge only makes sense on the list
                     view — during a live fight or the result screen the
                     player's looking at boss HP and rewards, so the global
-                    score widget would be visual noise. The "⚔️ Walka" pill
+                    score widget would be visual noise. The ":crossed-swords: Walka" pill
                     that used to sit here was also dropped per UX pass; the
                     fighting phase is already obvious from the arena layout. */}
                 {phase === 'list' && (
-                    <span className="boss__score">🏆 {getTotalScore().toLocaleString('pl-PL')}</span>
+                    <span className="boss__score"><GameIcon name="trophy" /> {getTotalScore().toLocaleString('pl-PL')}</span>
                 )}
             </header>
 
             <AnimatePresence mode="wait">
 
-                {/* ── Boss list ─────────────────────────────────────────────────── */}
+                {/* -- Boss list --------------------------------------------------- */}
                 {phase === 'list' && (() => {
                     // Apply the three persisted filters before rendering. The
                     // gate level is identical to the in-card calculation —
@@ -4244,7 +4246,7 @@ const Boss = () => {
                                         }}
                                         title="Wyczyść filtry"
                                     >
-                                        ✕ Wyczyść
+                                        <Icon name="x" /> Wyczyść
                                     </button>
                                 )}
                             </div>
@@ -4307,7 +4309,7 @@ const Boss = () => {
                                         same kind of "you did it for today"
                                         signal. */}
                                     {allDone && cleared && (
-                                        <div className="boss__card-cleared-badge">✓ Pokonany</div>
+                                        <div className="boss__card-cleared-badge"><GameIcon name="check-mark-button" /> Pokonany</div>
                                     )}
                                     <div className="boss__card-top">
                                         <span className="boss__sprite">
@@ -4333,26 +4335,26 @@ const Boss = () => {
 
                                     {/* Stats — split into two rows per the
                                         latest UX spec:
-                                          • Row 1: combat numbers the player
+                                          - Row 1: combat numbers the player
                                             cares about up-front (HP / ATK /
                                             DEF).
-                                          • Row 2: rewards (Gold / XP) plus the
-                                            📦 drop-table icon button that opens
+                                          - Row 2: rewards (Gold / XP) plus the
+                                            :package: drop-table icon button that opens
                                             the full reward modal. Splitting
                                             the row gives each group enough
                                             breathing room on narrow tiles
                                             instead of wrapping awkwardly when
                                             the gold range is long. */}
                                     <div className="boss__card-stats boss__card-stats--combat">
-                                        <span>❤️ HP: {getScaledBossStats(b).hp.toLocaleString('pl-PL')}</span>
-                                        <span>⚔️ ATK: {getScaledBossStats(b).attack}</span>
-                                        <span>🛡️ DEF: {getScaledBossStats(b).defense}</span>
+                                        <span><GameIcon name="red-heart" /> HP: {getScaledBossStats(b).hp.toLocaleString('pl-PL')}</span>
+                                        <span><GameIcon name="crossed-swords" /> ATK: {getScaledBossStats(b).attack}</span>
+                                        <span><GameIcon name="shield" /> DEF: {getScaledBossStats(b).defense}</span>
                                     </div>
                                     <div className="boss__card-stats boss__card-stats--rewards">
                                         <span className="boss__card-stat-gold">
-                                            💰 {formatGoldShort(computeBossRewards(b.level).goldMin)}–{formatGoldShort(computeBossRewards(b.level).goldMax)}
+                                            <GameIcon name="money-bag" /> {formatGoldShort(computeBossRewards(b.level).goldMin)}–{formatGoldShort(computeBossRewards(b.level).goldMax)}
                                         </span>
-                                        <span>⭐ XP: {getBossXp(b).toLocaleString('pl-PL')}</span>
+                                        <span><GameIcon name="star" /> XP: {getBossXp(b).toLocaleString('pl-PL')}</span>
                                         <button
                                             type="button"
                                             className="boss__drop-icon"
@@ -4360,7 +4362,7 @@ const Boss = () => {
                                             aria-label="Pokaż drop table"
                                             title="Drop table"
                                         >
-                                            📦
+                                            <GameIcon name="package" />
                                         </button>
                                     </div>
 
@@ -4384,7 +4386,7 @@ const Boss = () => {
                                     <div className="boss__card-footer">
                                         <div className="boss__card-footer-row">
                                             <div className="boss__attempts">
-                                                <span>⚔️ {attemptsUsed}/{attemptsMax}</span>
+                                                <span><GameIcon name="crossed-swords" /> {attemptsUsed}/{attemptsMax}</span>
                                                 <div className="boss__attempts-bar">
                                                     <div
                                                         className={`boss__attempts-bar-fill${allDone ? ' boss__attempts-bar-fill--full' : ''}`}
@@ -4393,10 +4395,10 @@ const Boss = () => {
                                                 </div>
                                             </div>
                                             {noAttempts && (
-                                                <span className="boss__cooldown">❌ Brak prób · reset o północy</span>
+                                                <span className="boss__cooldown"><GameIcon name="cross-mark" /> Brak prób · reset o północy</span>
                                             )}
                                             {!noAttempts && tooLow && (
-                                                <span className="boss__locked">🔒 Lvl {b.level} wymagany</span>
+                                                <span className="boss__locked"><GameIcon name="locked" /> Lvl {b.level} wymagany</span>
                                             )}
                                         </div>
                                         {!blocked && (
@@ -4410,7 +4412,7 @@ const Boss = () => {
                         })}
 
                         {/* Drop-table modal — single instance for all bosses,
-                            opened by the 📦 icon next to the gold cell. */}
+                            opened by the :package: icon next to the gold cell. */}
                         {dropModalBoss && (() => {
                             const b = bosses.find((x) => x.id === dropModalBoss);
                             if (!b) return null;
@@ -4428,18 +4430,18 @@ const Boss = () => {
                                         style={{ '--card-hue': getBossCardHue(b.level) } as React.CSSProperties}
                                     >
                                         <div className="boss__modal-header">
-                                            <span className="boss__modal-title"><TinyIcon icon={getSpellChestImage(1000) ?? '📦'} size="sm" /> {b.name_pl} · Drop table</span>
+                                            <span className="boss__modal-title"><TinyIcon icon={getSpellChestImage(1000) ?? 'package'} size="sm" /> {b.name_pl} · Drop table</span>
                                             <button
                                                 className="boss__modal-close"
                                                 onClick={() => setDropModalBoss(null)}
                                                 aria-label="Zamknij"
                                             >
-                                                ✕
+                                                <Icon name="x" />
                                             </button>
                                         </div>
                                         <div className="boss__modal-body">
                                             <div className="boss__drop-section">
-                                                <div className="boss__drop-section-title">💰 Nagrody</div>
+                                                <div className="boss__drop-section-title"><GameIcon name="money-bag" /> Nagrody</div>
                                                 <div className="boss__drop-info">
                                                     Gold: {formatGoldShort(computeBossRewards(b.level).goldMin)}–{formatGoldShort(computeBossRewards(b.level).goldMax)}
                                                 </div>
@@ -4467,7 +4469,7 @@ const Boss = () => {
                                             </div>
 
                                             <div className="boss__drop-section">
-                                                <div className="boss__drop-section-title">🎒 Przedmioty (Lvl {b.level})</div>
+                                                <div className="boss__drop-section-title"><GameIcon name="backpack" /> Przedmioty (Lvl {b.level})</div>
                                                 {itemTiers.map((tier) => (
                                                     <div key={tier.key} className="boss__drop-tier">
                                                         <span className="boss__drop-dot" style={{ background: tier.color, boxShadow: `0 0 4px ${tier.color}` }} />
@@ -4478,18 +4480,18 @@ const Boss = () => {
                                             </div>
 
                                             <div className="boss__drop-section">
-                                                <div className="boss__drop-section-title"><TinyIcon icon={getPotionImage(null) ?? '🧪'} size="sm" /> Potiony</div>
+                                                <div className="boss__drop-section-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                                                 <div className="boss__drop-tier">
                                                     <span className="boss__drop-dot" style={{ background: '#e57373' }} />
                                                     <span className="boss__drop-tier-name" style={{ color: '#e57373' }}>
-                                                        <TinyIcon icon={getPotionImage('hp_potion_sm') ?? '❤️'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
+                                                        <TinyIcon icon={getPotionImage('hp_potion_sm') ?? 'red-heart'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
                                                     </span>
                                                     <span className="boss__drop-tier-chance">{(potionInfo.hpChance * 100).toFixed(2)}%</span>
                                                 </div>
                                                 <div className="boss__drop-tier">
                                                     <span className="boss__drop-dot" style={{ background: '#64b5f6' }} />
                                                     <span className="boss__drop-tier-name" style={{ color: '#64b5f6' }}>
-                                                        <TinyIcon icon={getPotionImage('mp_potion_sm') ?? '💧'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
+                                                        <TinyIcon icon={getPotionImage('mp_potion_sm') ?? 'droplet'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
                                                     </span>
                                                     <span className="boss__drop-tier-chance">{(potionInfo.mpChance * 100).toFixed(2)}%</span>
                                                 </div>
@@ -4498,14 +4500,14 @@ const Boss = () => {
                                                         <div className="boss__drop-tier">
                                                             <span className="boss__drop-dot" style={{ background: '#ff5252' }} />
                                                             <span className="boss__drop-tier-name" style={{ color: '#ff5252' }}>
-                                                                <TinyIcon icon={getPotionImage('hp_potion_mega') ?? '❤️‍🔥'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
+                                                                <TinyIcon icon={getPotionImage('hp_potion_mega') ?? 'heart-on-fire'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
                                                             </span>
                                                             <span className="boss__drop-tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                                         </div>
                                                         <div className="boss__drop-tier">
                                                             <span className="boss__drop-dot" style={{ background: '#448aff' }} />
                                                             <span className="boss__drop-tier-name" style={{ color: '#448aff' }}>
-                                                                <TinyIcon icon={getPotionImage('mp_potion_mega') ?? '💎'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
+                                                                <TinyIcon icon={getPotionImage('mp_potion_mega') ?? 'gem-stone'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
                                                             </span>
                                                             <span className="boss__drop-tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                                         </div>
@@ -4515,7 +4517,7 @@ const Boss = () => {
 
                                             {chestInfo.levels.length > 0 && (
                                                 <div className="boss__drop-section">
-                                                    <div className="boss__drop-section-title"><TinyIcon icon={getSpellChestImage(1000) ?? '📦'} size="sm" /> Spell Chests</div>
+                                                    <div className="boss__drop-section-title"><TinyIcon icon={getSpellChestImage(1000) ?? 'package'} size="sm" /> Spell Chests</div>
                                                     {chestInfo.levels.map((lvl) => (
                                                         <div key={lvl} className="boss__drop-tier">
                                                             <span className="boss__drop-dot" style={{ background: '#ab47bc' }} />
@@ -4536,7 +4538,7 @@ const Boss = () => {
                     );
                 })()}
 
-                {/* ── Pre-fight bot picker modal ──────────────────────────────── */}
+                {/* -- Pre-fight bot picker modal -------------------------------- */}
                 {pendingBoss && (
                     <motion.div
                         key="prefight"
@@ -4584,7 +4586,7 @@ const Boss = () => {
                                                             onClick={() => updateBotPick(i, cls)}
                                                             title={cls}
                                                         >
-                                                            {BOT_CLASS_ICONS[cls]}
+                                                            <GameIcon name={BOT_CLASS_ICONS[cls]} />
                                                         </button>
                                                     ))}
                                                 </div>
@@ -4599,20 +4601,20 @@ const Boss = () => {
                                     Anuluj
                                 </button>
                                 <button className="boss__prefight-start" onClick={confirmBossFight}>
-                                    ⚔️ Rozpocznij walkę
+                                    <GameIcon name="crossed-swords" /> Rozpocznij walkę
                                 </button>
                             </div>
                         </motion.div>
                     </motion.div>
                 )}
 
-                {/* ── Fighting (unified CombatUI) ───────────────────────────────
+                {/* -- Fighting (unified CombatUI) -------------------------------
                     Boss feeds into the same shared component tree as every other
                     combat view: 1 boss in slot 0 of the enemies column, player
                     + bots in the allies column. Daily-boss shimmering bg via
                     `bgVariant="daily-boss"` since every boss in this view is a
                     daily-attempt encounter.
-                ──────────────────────────────────────────────────────────── */}
+                ------------------------------------------------------------ */}
                 {phase === 'fighting' && activeBoss && (() => {
                     const classColorFallbackMap: Record<string, string> = {
                         Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
@@ -4620,13 +4622,13 @@ const Boss = () => {
                     };
                     const playerAccent = classColorFallbackMap[character.class] ?? '#e94560';
 
-                    // ── Enemy slots (boss occupies slot 0; pad to 4) ──────────
+                    // -- Enemy slots (boss occupies slot 0; pad to 4) ----------
                     const uiEnemies: Array<ICombatEnemy | null> = [
                         {
                             id: activeBoss.id,
                             name: activeBoss.name_pl,
                             level: activeBoss.level,
-                            sprite: activeBoss.sprite ?? '👹',
+                            sprite: activeBoss.sprite ?? 'ogre',
                             kind: 'boss' as const,
                             currentHp: Math.max(0, bossHp),
                             maxHp: scaledBossMaxHp,
@@ -4676,7 +4678,7 @@ const Boss = () => {
                         },
                     ];
 
-                    // ── Ally slots (player + up to 3 bots) ────────────────────
+                    // -- Ally slots (player + up to 3 bots) --------------------
                     const playerAggro = aggroTargetRef.current === 'player' ? 1 : 0;
                     const playerSummonList = necroSummons[PLAYER_FX_ID] ?? [];
                     const playerSummonsByType: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>> = {};
@@ -4751,7 +4753,7 @@ const Boss = () => {
                             summonsByType: playerSummonsByType,
                             onSummonClick: (type) => {
                                 useNecroSummonStore.getState().despawnOne(PLAYER_FX_ID, type);
-                                addLog(`💨 Odesłano: ${type}`, 'system');
+                                addLog(`:dashing-away: Odesłano: ${type}`, 'system');
                             },
                     };
                     const botCards: ICombatAlly[] = bots.map<ICombatAlly>((bot, bIdx) => {
@@ -4828,7 +4830,7 @@ const Boss = () => {
                             ]
                             : [selfCard, ...botCards];
 
-                    // ── Skill slots ───────────────────────────────────────────
+                    // -- Skill slots -------------------------------------------
                     const uiSkills: Array<ICombatSkillSlot | null> =
                         (activeSkillSlots as (string | null)[]).map((skillId, i) => {
                             if (!skillId) return null;
@@ -4847,7 +4849,7 @@ const Boss = () => {
                             };
                         });
 
-                    // ── Potion slots ──────────────────────────────────────────
+                    // -- Potion slots ------------------------------------------
                     const buildPotion = (
                         potion: typeof bestHpPotion,
                         kind: ICombatPotionSlot['kind'],
@@ -4973,7 +4975,7 @@ const Boss = () => {
                                                     const lvlTxt = pen.levelsLost > 0
                                                         ? ` · -${pen.levelsLost} lvl`
                                                         : '';
-                                                    addLog(`🏃 Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
+                                                    addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
                                                     useDeathStore.getState().triggerDeath({
                                                         kind: 'flee',
                                                         killedBy: activeBoss?.name_pl ?? 'Boss',
@@ -5039,7 +5041,7 @@ const Boss = () => {
                 })()}
 
 
-                {/* ── Result ──────────────────────────────────────────────────────
+                {/* -- Result ------------------------------------------------------
                     Mirrors Dungeon's victory view 1:1 per spec — same banner
                     shimmer, same per-card background painting (when art is
                     present), same Odbierz/Wróć CTA palette. The result card
@@ -5079,29 +5081,29 @@ const Boss = () => {
                                     through), exactly like Dungeon. */}
                                 {result.won && (
                                     <div className="boss__victory-banner">
-                                        <span className="boss__victory-icon">🏆</span>
+                                        <span className="boss__victory-icon"><GameIcon name="trophy" /></span>
                                         <div className="boss__victory-name">{activeBoss.name_pl}</div>
                                         <div className="boss__victory-sub">Boss pokonany!</div>
                                     </div>
                                 )}
                                 {!result.won && (
                                     <>
-                                        <div className="boss__result-title">💀 Porażka</div>
+                                        <div className="boss__result-title"><GameIcon name="skull" /> Porażka</div>
                                         <div className="boss__result-boss">{activeBoss.name_pl}</div>
                                     </>
                                 )}
 
                                 {result.won ? (
                                     <div className="boss__rewards">
-                                        <div className="boss__reward-row"><span>💰 Gold</span><span>+{formatGoldShort(result.gold)}</span></div>
-                                        <div className="boss__reward-row"><span>⭐ XP</span><span>+{result.xp.toLocaleString('pl-PL')}</span></div>
+                                        <div className="boss__reward-row"><span><GameIcon name="money-bag" /> Gold</span><span>+{formatGoldShort(result.gold)}</span></div>
+                                        <div className="boss__reward-row"><span><GameIcon name="star" /> XP</span><span>+{result.xp.toLocaleString('pl-PL')}</span></div>
                                         {result.drops.length > 0 ? (
                                             <div className="boss__drops">
                                                 <div className="boss__drops-title">Zdobyte przedmioty ({result.drops.length})</div>
                                                 <div className="boss__drops-grid">
                                                     {result.drops.map((drop: IBossUniqueItem, i: number) => {
                                                         const info = getItemDisplayInfo(drop.itemId);
-                                                        const icon = info?.icon ?? '📦';
+                                                        const icon = info?.icon ?? 'package';
                                                         const rarity = drop.rarity ?? 'legendary';
                                                         return (
                                                             <div key={i} className="boss__drop-item">
@@ -5207,7 +5209,7 @@ const Boss = () => {
                                                             });
                                                         }}
                                                     >
-                                                        ⚔️ Walcz ponownie
+                                                        <GameIcon name="crossed-swords" /> Walcz ponownie
                                                     </button>
                                                 );
                                             })()}
@@ -5245,7 +5247,7 @@ const Boss = () => {
                                                         }}
                                                         title={`${nextBoss.name_pl} (lvl ${nextBoss.level})`}
                                                     >
-                                                        ⬆️ Walcz wyżej (lvl {nextBoss.level})
+                                                        <GameIcon name="up-arrow" /> Walcz wyżej (lvl {nextBoss.level})
                                                     </button>
                                                 );
                                             })()}
@@ -5272,7 +5274,7 @@ const Boss = () => {
                 })()}
             </AnimatePresence>
 
-            {/* ── Epic boss entry: doors sliding open ────────────────────────
+            {/* -- Epic boss entry: doors sliding open ------------------------
                 Clickable anywhere on the overlay to short-circuit the
                 animation and drop straight into combat (per UX direction:
                 "Daj mozliwosc pominiecia animacji poprzez klikniecie
@@ -5350,7 +5352,7 @@ const Boss = () => {
                                     differed between the two surfaces the artwork would
                                     visibly resize mid-flight. Keep both call sites in
                                     lock-step. */}
-                                <BossSprite level={bossEntryBoss.level} sprite={bossEntryBoss.sprite ?? '👹'} name={bossEntryBoss.name_pl} style={{ objectFit: 'cover' }} />
+                                <BossSprite level={bossEntryBoss.level} sprite={bossEntryBoss.sprite ?? 'ogre'} name={bossEntryBoss.name_pl} style={{ objectFit: 'cover' }} />
                             </span>
                             <span className="boss__entry-name">{bossEntryBoss.name_pl}</span>
                             <span className="boss__entry-level">Lvl {bossEntryBoss.level}</span>
@@ -5371,11 +5373,11 @@ const Boss = () => {
                 popupie w zaleznosci co kliknie to albo animacja albo
                 nic"): party-combat death decision modal. Pops when our
                 HP hits 0 inside a multi-human party. Two outcomes:
-                  • Wróć do miasta → run the full handlePlayerDeath
+                  - Wróć do miasta -> run the full handlePlayerDeath
                     sequence (XP/skill loss, item loss, death overlay,
                     /). The hadnler's deathChoiceShownRef latch lets
                     the second call through unconditionally.
-                  • Czekaj na sojuszników → close popup, stay
+                  - Czekaj na sojuszników -> close popup, stay
                     incapacitated. Combat keeps ticking around us;
                     a teammate's revive auto-closes via the useEffect
                     above. */}
@@ -5416,7 +5418,7 @@ const Boss = () => {
                                 textAlign: 'center',
                             }}
                         >
-                            <div style={{ fontSize: 36, marginBottom: 8 }}>💀</div>
+                            <div style={{ fontSize: 36, marginBottom: 8 }}><GameIcon name="skull" /></div>
                             <div style={{ fontSize: 20, fontWeight: 800, color: '#ff8a80', marginBottom: 6 }}>
                                 Zostałeś pokonany
                             </div>
@@ -5431,9 +5433,9 @@ const Boss = () => {
                                         setDeathChoicePopup(false);
                                         // 2026-05-14 spec: confirming death also
                                         // removes us from party so the fight cleans up:
-                                        //   • Member confirms → leaveParty (removes
+                                        //   - Member confirms -> leaveParty (removes
                                         //     us from party_members; party persists).
-                                        //   • Leader confirms → transfer leadership
+                                        //   - Leader confirms -> transfer leadership
                                         //     to any alive teammate first, THEN
                                         //     leaveParty (which now treats us as a
                                         //     plain member, party persists with the

@@ -1,20 +1,20 @@
 /**
  * Atomic E2E — Shop buy edge case: bag full.
  *
- * Backlog item 3.12 ("Pełny plecak + kup broń → komunikat / auto-sell
+ * Backlog item 3.12 ("Pełny plecak + kup broń -> komunikat / auto-sell
  * / poprawne UX"). The current app behaviour (see
  * `useShopStore.buyShopItem` in src/stores/shopStore.ts):
  *   1. `spendGold(price)` — debits cost up-front.
  *   2. Generates the item.
  *   3. Calls `inv.restoreItem(generated)` which returns FALSE when
  *      `bag.length >= MAX_BAG_SIZE` (1000 slots).
- *   4. On `restoreItem === false` → `addGold(price)` (refund) +
- *      returns `'bag_full'` → Shop maps to toast "Plecak pełny!".
+ *   4. On `restoreItem === false` -> `addGold(price)` (refund) +
+ *      returns `'bag_full'` -> Shop maps to toast "Plecak pełny!".
  *
  * So the contract under test is:
- *   • Toast text: "Plecak pełny!"
- *   • Gold AFTER buy attempt = gold BEFORE (refund was issued).
- *   • Bag count stays at 1000 (no overflow).
+ *   - Toast text: "Plecak pełny!"
+ *   - Gold AFTER buy attempt = gold BEFORE (refund was issued).
+ *   - Bag count stays at 1000 (no overflow).
  *
  * Setup: `seedGameSave` with `bagItems` = 1000 filler items. The
  * items themselves are dummy commons (uuid + itemId + rarity), enough
@@ -54,7 +54,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
 
         try {
             // Seed Knight + bag pre-filled with 1000 filler items.
-            // MAX_BAG_SIZE = 1000 in inventoryStore.ts → 1000 fillers is
+            // MAX_BAG_SIZE = 1000 in inventoryStore.ts -> 1000 fillers is
             // exactly full. Any incoming item from buyShopItem fails restoreItem.
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
@@ -73,7 +73,7 @@ test.describe('Shop › Buy', { tag: '@shop' }, () => {
                 bagItems: filler,
             });
 
-            // Login → select character → Town
+            // Login -> select character -> Town
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');

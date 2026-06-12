@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
+// -- Hoisted mocks ------------------------------------------------------------
 // raidStore relies on `getRaidById` (lookup) and `todayIso` (clock) from
 // raidSystem. We stub both so daily-cap logic is testable without the
 // DUNGEONS JSON's real layout, and so we can fast-forward "today" by
@@ -40,7 +40,7 @@ beforeEach(() => {
     getRaidByIdMock.mockImplementation((id: string) => (id === 'raid_1' ? RAID : null));
 });
 
-// ── setActiveRaid ────────────────────────────────────────────────────────────
+// -- setActiveRaid ------------------------------------------------------------
 
 describe('setActiveRaid', () => {
     it('stores the raid id (entering the raid view)', () => {
@@ -61,7 +61,7 @@ describe('setActiveRaid', () => {
     });
 });
 
-// ── attemptsRemaining ────────────────────────────────────────────────────────
+// -- attemptsRemaining --------------------------------------------------------
 
 describe('attemptsRemaining', () => {
     it('returns 0 for an unknown raid id (defensive: never hand out attempts for missing data)', () => {
@@ -97,7 +97,7 @@ describe('attemptsRemaining', () => {
     });
 });
 
-// ── consumeAttempt ───────────────────────────────────────────────────────────
+// -- consumeAttempt -----------------------------------------------------------
 
 describe('consumeAttempt', () => {
     it('returns false and writes nothing for an unknown raid', () => {
@@ -152,7 +152,7 @@ describe('consumeAttempt', () => {
     });
 });
 
-// ── refundAttempt ────────────────────────────────────────────────────────────
+// -- refundAttempt ------------------------------------------------------------
 
 describe('refundAttempt', () => {
     it('is a no-op for a raid the player has never tried today', () => {
@@ -205,7 +205,7 @@ describe('refundAttempt', () => {
     });
 });
 
-// ── resetDay ─────────────────────────────────────────────────────────────────
+// -- resetDay -----------------------------------------------------------------
 
 describe('resetDay', () => {
     it('wipes every raid\'s daily counter', () => {
@@ -235,10 +235,10 @@ describe('resetDay', () => {
     });
 });
 
-// ── Cross-action integration ────────────────────────────────────────────────
+// -- Cross-action integration ------------------------------------------------
 
 describe('consumeAttempt + refundAttempt + attemptsRemaining', () => {
-    it('round-trips: consume 3 → 2 left; refund 1 → 3 left', () => {
+    it('round-trips: consume 3 -> 2 left; refund 1 -> 3 left', () => {
         const store = useRaidStore.getState();
         store.consumeAttempt('raid_1');
         store.consumeAttempt('raid_1');

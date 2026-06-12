@@ -1,6 +1,8 @@
 import { MonsterSprite, BossSprite } from '../../ui/Sprite/MonsterSprite';
 import type { ICombatEnemy } from './types';
 import { isImageUrl } from '../../../systems/spriteAssets';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import TinyIcon from '../../ui/TinyIcon/TinyIcon';
 
 interface IProps {
     enemy: ICombatEnemy | null;
@@ -20,11 +22,11 @@ const RARITY_LABEL: Record<string, string> = {
  * One slot in the 4-slot enemies column. Renders an empty placeholder when
  * `enemy` is null so the next-slot-up never reflows.
  *
- * Layout (top → bottom):
- *   • sprite (PNG via MonsterSprite/BossSprite, falls back to emoji)
- *   • thin HP bar
- *   • thin MP bar (only if maxMp > 0)
- *   • name + optional rarity label
+ * Layout (top -> bottom):
+ *   - sprite (PNG via MonsterSprite/BossSprite, falls back to emoji)
+ *   - thin HP bar
+ *   - thin MP bar (only if maxMp > 0)
+ *   - name + optional rarity label
  *
  * Bars sit BELOW the sprite so the artwork is never clipped/shoved by the
  * bar row. The whole card is rarity-tinted via `combat-ui__enemy--{rarity}`.
@@ -80,49 +82,49 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                 const sec = (ms: number) => (ms / 1000).toFixed(ms > 1000 ? 0 : 1);
                 const items: Array<{ key: string; icon: string; text: string; cls: string }> = [];
                 if ((enemy.statusOverlay.stunMs ?? 0) > 0) {
-                    items.push({ key: 'stun', icon: '💫', text: `${sec(enemy.statusOverlay.stunMs!)}s`, cls: 'combat-ui__status-badge--stun' });
+                    items.push({ key: 'stun', icon: 'dizzy', text: `${sec(enemy.statusOverlay.stunMs!)}s`, cls: 'combat-ui__status-badge--stun' });
                 }
                 if ((enemy.statusOverlay.paralyzeMs ?? 0) > 0) {
-                    items.push({ key: 'paral', icon: '🔒', text: `${sec(enemy.statusOverlay.paralyzeMs!)}s`, cls: 'combat-ui__status-badge--paral' });
+                    items.push({ key: 'paral', icon: 'locked', text: `${sec(enemy.statusOverlay.paralyzeMs!)}s`, cls: 'combat-ui__status-badge--paral' });
                 }
                 if ((enemy.statusOverlay.immortalMs ?? 0) > 0) {
-                    items.push({ key: 'immortal', icon: '✨', text: `${sec(enemy.statusOverlay.immortalMs!)}s`, cls: 'combat-ui__status-badge--immortal' });
+                    items.push({ key: 'immortal', icon: 'sparkles', text: `${sec(enemy.statusOverlay.immortalMs!)}s`, cls: 'combat-ui__status-badge--immortal' });
                 }
                 if ((enemy.statusOverlay.markHealToDmgMs ?? 0) > 0) {
                     // Rogue Naznaczony na Śmierć — heals reversed to dmg.
                     // Reuses the stun badge styling for visual cohesion.
-                    items.push({ key: 'mark', icon: '☠️', text: `${sec(enemy.statusOverlay.markHealToDmgMs!)}s`, cls: 'combat-ui__status-badge--stun' });
+                    items.push({ key: 'mark', icon: 'skull-and-crossbones', text: `${sec(enemy.statusOverlay.markHealToDmgMs!)}s`, cls: 'combat-ui__status-badge--stun' });
                 }
                 if ((enemy.statusOverlay.markAmpMs ?? 0) > 0) {
                     // Necromancer Klątwa Śmierci — next hit gets ×N dmg.
-                    // Badge reads "☠️ ×N · Ts" so the player sees the
+                    // Badge reads ":skull-and-crossbones: ×N · Ts" so the player sees the
                     // amp value AND the time-to-expire at a glance.
                     const mult = enemy.statusOverlay.markAmpMult ?? 0;
                     const label = mult > 1
                         ? `×${mult} · ${sec(enemy.statusOverlay.markAmpMs!)}s`
                         : `${sec(enemy.statusOverlay.markAmpMs!)}s`;
-                    items.push({ key: 'amp', icon: '☠️', text: label, cls: 'combat-ui__status-badge--stun' });
+                    items.push({ key: 'amp', icon: 'skull-and-crossbones', text: label, cls: 'combat-ui__status-badge--stun' });
                 }
                 if ((enemy.statusOverlay.darkRitualMs ?? 0) > 0) {
                     // Necromancer Mroczny Rytuał — countdown until target
-                    // loses N% of max HP. Badge reads "💀 25% · 4.7s" so
+                    // loses N% of max HP. Badge reads ":skull: 25% · 4.7s" so
                     // the player can time burst windows around it.
                     const pct = enemy.statusOverlay.darkRitualPct ?? 0;
                     const label = pct > 0
                         ? `${pct}% · ${sec(enemy.statusOverlay.darkRitualMs!)}s`
                         : `${sec(enemy.statusOverlay.darkRitualMs!)}s`;
-                    items.push({ key: 'ritual', icon: '💀', text: label, cls: 'combat-ui__status-badge--stun' });
+                    items.push({ key: 'ritual', icon: 'skull', text: label, cls: 'combat-ui__status-badge--stun' });
                 }
                 if ((enemy.statusOverlay.markAmpAllMs ?? 0) > 0) {
                     // Necromancer Kraina Śmierci — duration-based ×mult
                     // damage on EVERY hit until the timer expires.
-                    // Distinct from Klątwa Śmierci ☠️ (one-shot count
-                    // charge); reuse the 🩸 icon to differentiate.
+                    // Distinct from Klątwa Śmierci :skull-and-crossbones: (one-shot count
+                    // charge); reuse the :drop-of-blood: icon to differentiate.
                     const mult = enemy.statusOverlay.markAmpAllMult ?? 0;
                     const label = mult > 1
                         ? `×${mult} · ${sec(enemy.statusOverlay.markAmpAllMs!)}s`
                         : `${sec(enemy.statusOverlay.markAmpAllMs!)}s`;
-                    items.push({ key: 'ampAll', icon: '🩸', text: label, cls: 'combat-ui__status-badge--stun' });
+                    items.push({ key: 'ampAll', icon: 'drop-of-blood', text: label, cls: 'combat-ui__status-badge--stun' });
                 }
                 if ((enemy.statusOverlay.enemyAtkDownMs ?? 0) > 0) {
                     // Bard Kołysanka — enemy ATK reduced by N% for the
@@ -132,19 +134,19 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                     const label = pct > 0
                         ? `-${pct}% · ${sec(enemy.statusOverlay.enemyAtkDownMs!)}s`
                         : `${sec(enemy.statusOverlay.enemyAtkDownMs!)}s`;
-                    items.push({ key: 'lull', icon: '😴', text: label, cls: 'combat-ui__status-badge--paral' });
+                    items.push({ key: 'lull', icon: 'sleeping-face', text: label, cls: 'combat-ui__status-badge--paral' });
                 }
                 if ((enemy.statusOverlay.enemyNoHealMs ?? 0) > 0) {
                     // Bard Pieśń Syren — enemy can't heal for N s. Heals
                     // attempted during the window have zero effect.
-                    items.push({ key: 'noheal', icon: '🔇', text: `${sec(enemy.statusOverlay.enemyNoHealMs!)}s`, cls: 'combat-ui__status-badge--paral' });
+                    items.push({ key: 'noheal', icon: 'muted-speaker', text: `${sec(enemy.statusOverlay.enemyNoHealMs!)}s`, cls: 'combat-ui__status-badge--paral' });
                 }
                 if (items.length === 0) return null;
                 return (
                     <div className="combat-ui__status-stack">
                         {items.map((it) => (
                             <span key={it.key} className={`combat-ui__status-badge ${it.cls}`}>
-                                <span className="combat-ui__status-badge-icon">{it.icon}</span>
+                                <span className="combat-ui__status-badge-icon"><GameIcon name={it.icon} /></span>
                                 <span className="combat-ui__status-badge-time">{it.text}</span>
                             </span>
                         ))}
@@ -183,7 +185,7 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                     <Sprite level={enemy.level} sprite={enemy.sprite} name={enemy.name} style={{ objectFit: 'contain' }} />
                 )}
                 {enemy.isDead && (
-                    <span className="combat-ui__enemy-skull" aria-hidden="true">💀</span>
+                    <span className="combat-ui__enemy-skull" aria-hidden="true"><GameIcon name="skull" /></span>
                 )}
             </div>
 
@@ -202,7 +204,7 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
             </div>
 
             {enemy.isTargetedByPlayer && (
-                <span className="combat-ui__enemy-target" aria-hidden="true">🎯</span>
+                <span className="combat-ui__enemy-target" aria-hidden="true"><GameIcon name="bullseye" /></span>
             )}
 
             {/* Per-attack hit pulse — same pattern as AllyCard. The keyed
@@ -217,7 +219,7 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                 means the first flash is still ~70% visible when the second
                 begins. With identical full-card flashes the eye reads it as
                 ONE strike; offsetting them spatially makes the player see
-                two distinct hit points (left dagger → right dagger). For
+                two distinct hit points (left dagger -> right dagger). For
                 non-dual classes this just means consecutive autos alternate
                 sides, which adds a bit of visual variety without breaking
                 the "got hit" read. */}
@@ -251,7 +253,7 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                     {isImageUrl(enemy.skillAnim.emoji) ? (
                         <img className="skill-anim-emoji skill-anim-emoji--img" src={enemy.skillAnim.emoji} alt="" draggable={false} />
                     ) : (
-                        <span className="skill-anim-emoji">{enemy.skillAnim.emoji}</span>
+                        <span className="skill-anim-emoji"><TinyIcon icon={enemy.skillAnim.emoji} /></span>
                     )}
                 </span>
             )}
@@ -281,7 +283,7 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                             >
                                 {f.icon && (isImageUrl(f.icon)
                                     ? <img className="combat-ui__float-icon combat-ui__float-icon--img" src={f.icon} alt="" draggable={false} />
-                                    : <span className="combat-ui__float-icon">{f.icon}</span>
+                                    : <span className="combat-ui__float-icon"><TinyIcon icon={f.icon} /></span>
                                 )}
                                 {/* `label` (e.g. "STUN", "PARAL", "DEATH ATTACK")
                                     replaces the numeric value for status-effect

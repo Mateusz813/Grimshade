@@ -9,13 +9,13 @@ import { MemoryRouter } from 'react-router-dom';
  * icons + medals for top-3.
  *
  * Coverage:
- *   • Smoke: root mounts + page-tabs row renders all the tabs.
- *   • Default tab is "level" (active modifier).
- *   • Loading spinner mounts on first render before data resolves.
- *   • Empty payload renders the "Brak graczy w rankingu" copy.
- *   • Tab click switches the active tab.
- *   • Populated character list renders one row per entry with class icon.
- *   • My-rank badge surfaces when the active character is in the entries.
+ *   - Smoke: root mounts + page-tabs row renders all the tabs.
+ *   - Default tab is "level" (active modifier).
+ *   - Loading spinner mounts on first render before data resolves.
+ *   - Empty payload renders the "Brak graczy w rankingu" copy.
+ *   - Tab click switches the active tab.
+ *   - Populated character list renders one row per entry with class icon.
+ *   - My-rank badge surfaces when the active character is in the entries.
  */
 
 vi.mock('framer-motion', async () => {
@@ -106,7 +106,7 @@ describe('Leaderboard — smoke', () => {
 describe('Leaderboard — content states', () => {
     it('mounts a loading spinner before the first response resolves', () => {
         const { container } = renderLeaderboard();
-        // The component flips loading=true synchronously on tab change → at
+        // The component flips loading=true synchronously on tab change -> at
         // first render the spinner branch renders.
         expect(container.querySelector('.leaderboard__loading')).not.toBeNull();
     });
@@ -208,5 +208,5 @@ describe('Leaderboard — my-rank badge', () => {
 //       transforms the rows differently. Smoke-asserting render here is
 //       enough; per-branch transformation correctness lives in api/v1
 //       integration tests.
-// TODO: Top-3 medal rendering (🥇 / 🥈 / 🥉) → trivial slice but already
+// TODO: Top-3 medal rendering (:1st-place-medal: / :2nd-place-medal: / :3rd-place-medal:) -> trivial slice but already
 //       implicitly covered by the populated-list test.

@@ -1,17 +1,17 @@
 /**
  * Multi-context E2E — ally Cleric's `resurrection_aura` actually
- * transitions a downed Knight's HP from 0 → max via the in-engine
+ * transitions a downed Knight's HP from 0 -> max via the in-engine
  * `fullHealEffective` primitive that the revive path keys off.
  *
  * BACKLOG 13.22 closing gap. The sibling
  * `combat/party/ally-resurrect-broadcasts-through-channel.spec.ts`
  * proves two legs of the multi-context revive contract:
- *   • LEG 1: Cleric's `spell-cast` broadcast for `resurrection_aura`
+ *   - LEG 1: Cleric's `spell-cast` broadcast for `resurrection_aura`
  *     reaches the Knight's `usePartyCombatSyncStore.lastSpellByCaster`.
- *   • LEG 2: `parseEffects('revive_party:0:0')` → `applyEffects` sets
+ *   - LEG 2: `parseEffects('revive_party:0:0')` -> `applyEffects` sets
  *     `reviveDeadAllies: true` on the result.
  *
- * Explicitly NOT covered there: "player HP actually rising from 0 → N
+ * Explicitly NOT covered there: "player HP actually rising from 0 -> N
  * after revive flag fires" — flagged as deferred to a "leader pseudo-
  * dies in party combat" helper.
  *
@@ -21,7 +21,7 @@
  *
  * ## Why this approach
  *
- * The full "Cleric cast → engine reads reviveDeadAllies → revive HUMAN
+ * The full "Cleric cast -> engine reads reviveDeadAllies -> revive HUMAN
  * player" path goes through:
  *   1. Player HP hits 0 via `member-hit` broadcast.
  *   2. Combat.tsx renders the PartyDeathChoice popup.
@@ -37,17 +37,17 @@
  * this is too fragile to set up without infrastructure that doesn't
  * exist yet. The PRAGMATIC contract test:
  *
- *   • Set HP=0 directly via `useCharacterStore.updateCharacter({ hp: 0 })`
+ *   - Set HP=0 directly via `useCharacterStore.updateCharacter({ hp: 0 })`
  *     — simulates the post-`member-hit` state.
- *   • Verify HP=0 in snapshot.
- *   • Invoke `useCharacterStore.fullHealEffective()` — the EXACT
+ *   - Verify HP=0 in snapshot.
+ *   - Invoke `useCharacterStore.fullHealEffective()` — the EXACT
  *     primitive the engine calls when revive applies (combatEngine.ts
  *     line 1398 + 1419 + 2808 — all the heal-to-max paths). It's also
  *     what the `revive_party` effect SHOULD ultimately resolve to for
  *     human party members (engineering branch in line 1900-1913
  *     currently revives bots only; revival of human leaders happens
  *     via the death-popup gate + fullHealEffective).
- *   • Verify HP > 0 (specifically === max_hp).
+ *   - Verify HP > 0 (specifically === max_hp).
  *
  * Multi-context wrapping: we use `openMultiContext` to mirror the
  * canonical scenario (Cleric secondary + Knight primary in a party
@@ -72,7 +72,7 @@
  *  5. PRIMARY: invoke `fullHealEffective` — same call site
  *     `handlePlayerDeath` uses on the death-protection branch (line
  *     1398) and ALL post-revival heals.
- *  6. PRIMARY: snapshot confirms HP === max_hp (transition 0 → 120
+ *  6. PRIMARY: snapshot confirms HP === max_hp (transition 0 -> 120
  *     happened).
  *  7. SECONDARY: snapshot Cleric — proves the HP set on PRIMARY did
  *     NOT bleed into secondary's session (state isolation guard —
@@ -91,7 +91,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { openMultiContext } from '../../fixtures/multiContext';
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 
-/** Pick the seeded character on `/character-select` → land in Town. */
+/** Pick the seeded character on `/character-select` -> land in Town. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     if (!page.url().endsWith('/character-select')) {
         await page.goto('/character-select');
@@ -146,7 +146,7 @@ const invokeFullHealEffective = async (page: Page): Promise<void> => {
 test.describe('Combat › Party', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 180_000 });
 
-    test('Cleric resurrection_aura HP transition: primary at HP=0 → fullHealEffective applies → HP=max, secondary unaffected', async ({ browser }) => {
+    test('Cleric resurrection_aura HP transition: primary at HP=0 -> fullHealEffective applies -> HP=max, secondary unaffected', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
 
@@ -182,7 +182,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 3. Both pick character → Town. Done in parallel — independent.
+            // 3. Both pick character -> Town. Done in parallel — independent.
             await Promise.all([
                 pickCharacterAndEnterTown(primaryPage, primaryNick),
                 pickCharacterAndEnterTown(secondaryPage, secondaryNick),
@@ -224,15 +224,15 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             //    every engine revive / heal-to-max path calls (combatEngine.ts
             //    line 1398 / 1419 / 2808). For human party members in
             //    multi-ctx revive, the eventual contract is: ally's
-            //    resurrection_aura → `reviveDeadAllies` flag → engine
-            //    tick reaches "leader was at 0, now needs heal" gate →
+            //    resurrection_aura -> `reviveDeadAllies` flag -> engine
+            //    tick reaches "leader was at 0, now needs heal" gate ->
             //    calls fullHealEffective(). The intermediate gate logic
             //    is the deferred work from the sibling broadcast test;
             //    THIS test validates the terminal primitive.
             await invokeFullHealEffective(primaryPage);
 
             // 8. PRIMARY post-snapshot — HP === max_hp. Proves the
-            //    transition 0 → max actually happened.
+            //    transition 0 -> max actually happened.
             const revived = await getCharacterHpSnapshot(primaryPage);
             expect(revived).not.toBeNull();
             expect(revived!.hp).toBe(120);
@@ -246,7 +246,7 @@ test.describe('Combat › Party', { tag: '@combat' }, () => {
             //    from a global instead of per-context state).
             //
             //    Note: each Playwright context has its own browser
-            //    page → its own JS heap → its own zustand store
+            //    page -> its own JS heap -> its own zustand store
             //    instance. Cross-context bleed would mean we wired
             //    state to a non-context-scoped global (e.g. localStorage
             //    accidentally synced). Asserting secondary.hp = 100

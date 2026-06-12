@@ -13,6 +13,8 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { getSummonImage } from '../../systems/spriteAssets';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import { getSkillIcon } from '../../data/skillIcons';
 import { useCombatFx } from '../../hooks/useCombatFx';
 import { applySkillBuff, getSkillDef } from '../../systems/skillBuffs';
@@ -167,7 +169,7 @@ const Trainer = () => {
     // Without this the sandbox couldn't actually demonstrate that buffs
     // affect the next swing — exactly the user's complaint.
     const effectsRef = useRef<ICombatEffectsSession>(newCombatEffectsSession());
-    // Per-ally per-skill cooldown maps. Keyed by `memberId → { skillId → tick-when-ready }`
+    // Per-ally per-skill cooldown maps. Keyed by `memberId -> { skillId -> tick-when-ready }`
     // so each party member's spell rotation is independent.
     const allyCooldownsRef = useRef<Record<string, Record<string, number>>>({});
     // Skill cooldowns drive the action-bar sweep; held in state (not a
@@ -207,7 +209,7 @@ const Trainer = () => {
     // actual HP from before they walked in.
     //
     // 2026-05 v7: dropped `character` from deps — keeping it caused an
-    // infinite loop with the sandbox→header mirror effect below. When
+    // infinite loop with the sandbox->header mirror effect below. When
     // sandboxHp dropped (Apokalipsa Śmierci self-cost), the mirror
     // updated `character.hp` in the store; the new `character`
     // reference fed back into THIS effect's deps, which immediately
@@ -235,7 +237,7 @@ const Trainer = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [character?.max_hp, character?.max_mp]);
 
-    // 2026-05 v7: mirror sandbox HP/MP → characterStore so the global
+    // 2026-05 v7: mirror sandbox HP/MP -> characterStore so the global
     // TopHeader bars reflect every fight event (basic-damage tick,
     // self-heal cast, Apokalipsa Śmierci self-cost). Pre-fix the header
     // stayed pinned at 100% / 100% the whole Trainer visit even after
@@ -313,11 +315,11 @@ const Trainer = () => {
             // Per user spec "po wyjsciu HP nie powinno wracac do 100%".
             //
             // Safety guards:
-            //   • If somehow live.hp === 0 (snapshot race wrote 0,
+            //   - If somehow live.hp === 0 (snapshot race wrote 0,
             //     auto-potion suppress was active, etc.) restore to
             //     snapshotHp if non-zero, else live.max_hp. Prevents
             //     the "0/4345 in town, can't fight anything" trap.
-            //   • Clamp to live.max_hp in case max changed mid-session
+            //   - Clamp to live.max_hp in case max changed mid-session
             //     (level-up).
             const currentHp = live.hp;
             const currentMp = live.mp;
@@ -604,7 +606,7 @@ const Trainer = () => {
                     if (ev.attackerId === 'monster' && iAmLeader) continue;
                     // 2026-05-15 v9 spec ("Inni sojusznicy nie widza
                     // tez ze mnie atakuje i ile zabiera mi HP
-                    // przeciwnik"): monster→ally events carry a
+                    // przeciwnik"): monster->ally events carry a
                     // `targetAllyId` instead of a dummy index. Render
                     // a red 'monster' float on the targeted ally's
                     // slot + a hit pulse on their card.
@@ -681,8 +683,8 @@ const Trainer = () => {
                         // character should read as ally-* (light
                         // blue) instead of basic/spell (white) so
                         // each client can tell THEIR own hits apart
-                        // from teammates'. `basic` → `ally-basic`,
-                        // `spell` → `ally-spell`; `ally-*` and
+                        // from teammates'. `basic` -> `ally-basic`,
+                        // `spell` -> `ally-spell`; `ally-*` and
                         // `monster*` pass through unchanged.
                         const remappedKind: typeof ev.kind = ev.kind === 'basic'
                             ? 'ally-basic'
@@ -701,7 +703,7 @@ const Trainer = () => {
                         setDummyAttackingClass(`attack-${ev.attackerClass}`);
                         window.setTimeout(() => setDummyAttackingClass(null), ATTACK_FLASH_MS);
                     }
-                    // Skill cast → fire the themed enemy overlay so
+                    // Skill cast -> fire the themed enemy overlay so
                     // every client sees the same fire / arrow / etc.
                     // glyph fly toward the dummy. Buff casts skip
                     // the dummy overlay and only animate the caster.
@@ -716,7 +718,7 @@ const Trainer = () => {
                         // 2026-05-15 v8 spec ("Buff Orle oko nie
                         // widac ze uzywam u innych napraw"): for
                         // pure-buff casts (damage=0, label='BUFF')
-                        // push a ✨ BUFF float on the caster's slot
+                        // push a :sparkles: BUFF float on the caster's slot
                         // so every client sees a visible cue that
                         // a self-buff (Orle Oko / Krok Cienia /
                         // Bomba Dymna / etc.) was used — even when
@@ -724,7 +726,7 @@ const Trainer = () => {
                         // propagate via applySkillBuff to the
                         // receiver's BuffBar.
                         if (isBuffCast && slot >= 0) {
-                            fx.pushAllyFloat(slot, 0, 'heal', { icon: '✨', label: 'BUFF' });
+                            fx.pushAllyFloat(slot, 0, 'heal', { icon: 'sparkles', label: 'BUFF' });
                         }
                         // 2026-05-15 v3 spec ("nie dostaja im sie a
                         // powinny w zakladce z buffami"): when the
@@ -752,7 +754,7 @@ const Trainer = () => {
                             // broadcast skill carries an ally-wide
                             // buff atom (party_immortal / party_*_up
                             // / next_ally_heal / etc.), push the
-                            // matching 'IMMORTAL' / '🎵 BUFF' / '+REZ'
+                            // matching 'IMMORTAL' / ':musical-note: BUFF' / '+REZ'
                             // float on every visible party slot so
                             // every client renders the same row of
                             // labels the caster's local code already
@@ -767,14 +769,14 @@ const Trainer = () => {
                                     const idx = slotOfMemberLive(m.id);
                                     if (idx < 0) continue;
                                     fx.triggerAllySkillAnim(idx, ev.skillId);
-                                    fx.pushAllyFloat(idx, 0, 'heal', { icon: '✨', label: 'IMMORTAL' });
+                                    fx.pushAllyFloat(idx, 0, 'heal', { icon: 'sparkles', label: 'IMMORTAL' });
                                 }
                             } else if (hasGenericPartyBuff) {
                                 for (const m of orderedMembersRef.current) {
                                     const idx = slotOfMemberLive(m.id);
                                     if (idx < 0) continue;
                                     fx.triggerAllySkillAnim(idx, ev.skillId);
-                                    fx.pushAllyFloat(idx, 0, 'heal', { icon: '🎵', label: 'BUFF' });
+                                    fx.pushAllyFloat(idx, 0, 'heal', { icon: 'musical-note', label: 'BUFF' });
                                 }
                             }
                         }
@@ -969,7 +971,7 @@ const Trainer = () => {
                     // Player slot 0 — heal sandbox HP, push float, and
                     // play the spell's animation overlay so the player
                     // sees the cast art on every ally each second
-                    // (Błogosławieństwo → 🙏 holy glow).
+                    // (Błogosławieństwo -> :folded-hands: holy glow).
                     const playerHeal = Math.max(1, Math.floor(character.max_hp * (partyHealPct / 100)));
                     const before = sandboxHpRef.current;
                     sandboxHpRef.current = Math.min(character.max_hp, before + playerHeal);
@@ -977,17 +979,17 @@ const Trainer = () => {
                     const playerActual = sandboxHpRef.current - before;
                     const playerCapped = playerActual < playerHeal ? ' (MAX)' : '';
                     fx.pushAllyFloat(mySlot,playerHeal, 'heal', {
-                        icon: '💚',
+                        icon: 'green-heart',
                         label: playerCapped ? `+${playerHeal}${playerCapped}` : undefined,
                     });
                     if (pulseSkillId) fx.triggerAllySkillAnim(mySlot,pulseSkillId);
                     // Bot slots 1+ — same per-second pulse + animation
                     // on every alive ally. Two HP scales here:
-                    //   • botHpMap is the cosmetic 0..100 bar value
+                    //   - botHpMap is the cosmetic 0..100 bar value
                     //     (bots show a static 100-max bar in Trainer).
-                    //   • The float shows the REAL heal value computed
+                    //   - The float shows the REAL heal value computed
                     //     from the bot's actual party maxHp (lvl 1000
-                    //     Knight has ~20000 HP → +1000 per pulse at 5%).
+                    //     Knight has ~20000 HP -> +1000 per pulse at 5%).
                     // Without the second scale the float read "+5 HP"
                     // even though Blessing healed for 5% of real maxHp.
                     for (let i = 0; i < otherPartyMembers.length; i++) {
@@ -1009,14 +1011,14 @@ const Trainer = () => {
                         const botCapped = cur >= 100 ? ' (MAX)' : '';
                         const allySlot = slotOfMember(m.id);
                         fx.pushAllyFloat(allySlot, realHeal, 'heal', {
-                            icon: '💚',
+                            icon: 'green-heart',
                             label: botCapped ? `+${realHeal}${botCapped}` : undefined,
                         });
                         if (pulseSkillId) fx.triggerAllySkillAnim(allySlot, pulseSkillId);
                     }
                 }
             } else if (partyHealAccumRef.current !== 0) {
-                // Buff expired / never had one → reset so the next cast
+                // Buff expired / never had one -> reset so the next cast
                 // doesn't fire a stale partial pulse on first tick.
                 partyHealAccumRef.current = 0;
             }
@@ -1108,8 +1110,8 @@ const Trainer = () => {
                         // a system log line so the player knows the
                         // 5% rolled (Trainer dummies are invincible
                         // so we just float the marker).
-                        fx.pushEnemyFloat(0, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
-                        addLog(`💀 Pieśń Wszechświata: DEATH ATTACK!`);
+                        fx.pushEnemyFloat(0, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                        addLog(`:skull: Pieśń Wszechświata: DEATH ATTACK!`);
                     }
                     // 2026-05 v6: Necromancer Klątwa Śmierci (mark_amp)
                     // — first damaging hit on the marked target
@@ -1121,15 +1123,15 @@ const Trainer = () => {
                     const ampBasic = consumeTargetMarkAmp(dummySt);
                     if (ampBasic.mult !== 1) {
                         dmg = Math.max(1, Math.floor(dmg * ampBasic.mult));
-                        addLog(`☠️ Klątwa Śmierci! ×${ampBasic.mult} dmg`);
+                        addLog(`:skull-and-crossbones: Klątwa Śmierci! ×${ampBasic.mult} dmg`);
                     }
                     pushDamage(dmg);
                     setDummyHitPulse((p) => p + 1);
-                    fx.pushEnemyFloat(0, dmg, 'basic', { isCrit, icon: hand ? '🗡️' : undefined });
+                    fx.pushEnemyFloat(0, dmg, 'basic', { isCrit, icon: hand ? 'dagger' : undefined });
                     setDummyAttackingClass(`attack-${character.class}`);
                     window.setTimeout(() => setDummyAttackingClass(null), ATTACK_FLASH_MS);
                     const handPrefix = hand === 'left' ? '[Lewa] ' : hand === 'right' ? '[Prawa] ' : '';
-                    addLog(isCrit ? `⚡ KRYTYK! ${handPrefix}${dmg} dmg` : `⚔️ ${handPrefix}${dmg} dmg`);
+                    addLog(isCrit ? `:high-voltage: KRYTYK! ${handPrefix}${dmg} dmg` : `:crossed-swords: ${handPrefix}${dmg} dmg`);
                     // 2026-05-15 v3 spec ("Dlaczego widze 2 ataki skoro
                     // tylko sojusznik wlaczyl atak w potwora a lider
                     // nie ... Dlaczego na ekranie wyzej nie widze
@@ -1153,7 +1155,7 @@ const Trainer = () => {
                                 damage: dmgCap,
                                 isCrit: isCritCap,
                                 kind: 'basic',
-                                icon: hand ? '🗡️' : undefined,
+                                icon: hand ? 'dagger' : undefined,
                             });
                         }).catch(() => { /* offline */ });
                     }
@@ -1167,10 +1169,10 @@ const Trainer = () => {
                         const actual = sandboxHpRef.current - before;
                         const tag = actual < heal ? ' (MAX)' : '';
                         fx.pushAllyFloat(mySlot,heal, 'heal', {
-                            icon: '🩸',
+                            icon: 'drop-of-blood',
                             label: tag ? `+${heal}${tag}` : undefined,
                         });
-                        addLog(`🩸 Lifesteal: ${handPrefix}+${heal} HP${tag}`);
+                        addLog(`:drop-of-blood: Lifesteal: ${handPrefix}+${heal} HP${tag}`);
                     }
                     // Per-hit next_ally_heal (Sąd Boży) — heals only
                     // the caster for pct% of their max HP.
@@ -1182,10 +1184,10 @@ const Trainer = () => {
                         const actual = sandboxHpRef.current - before;
                         const tag = actual < heal ? ' (MAX)' : '';
                         fx.pushAllyFloat(mySlot,heal, 'heal', {
-                            icon: '✨',
+                            icon: 'sparkles',
                             label: tag ? `+${heal}${tag}` : undefined,
                         });
-                        addLog(`✨ Sąd Boży heal: ${handPrefix}+${heal} HP${tag}`);
+                        addLog(`:sparkles: Sąd Boży heal: ${handPrefix}+${heal} HP${tag}`);
                     }
                     return dmg;
                 };
@@ -1200,13 +1202,13 @@ const Trainer = () => {
                 }
                 // 2026-05 v6: Necromancer summons swing INDEPENDENTLY
                 // alongside the necro's basic. Each summon gets:
-                //   • own staggered swing (~120 ms apart so the
+                //   - own staggered swing (~120 ms apart so the
                 //     dummy card flashes one-per-summon, not a single
                 //     merged shake)
-                //   • own type-specific float on the dummy (skeleton
-                //     ☠️ / ghost 👻 / demon 😈 / lich 👑) so the
+                //   - own type-specific float on the dummy (skeleton
+                //     :skull-and-crossbones: / ghost :ghost: / demon :smiling-face-with-horns: / lich :crown:) so the
                 //     player can read who hit for what
-                //   • own damage = floor(necroAttack × dmgMult)
+                //   - own damage = floor(necroAttack × dmgMult)
                 //     (skeleton 25% / ghost 50% / demon 120% / lich
                 //     200%)
                 // Summons don't consume mark_amp (only the player's
@@ -1216,7 +1218,7 @@ const Trainer = () => {
                 if (character.class === 'Necromancer' && necroSummonsForPlayer.length > 0) {
                     const SUMMON_TYPE_RANK = { skeleton: 0, ghost: 1, demon: 2, lich: 3 } as const;
                     const SUMMON_ICON: Record<'skeleton' | 'ghost' | 'demon' | 'lich', string> = {
-                        skeleton: '☠️', ghost: '👻', demon: '😈', lich: '👑',
+                        skeleton: 'skull-and-crossbones', ghost: 'ghost', demon: 'smiling-face-with-horns', lich: 'crown',
                     };
                     const sortedSummons = [...necroSummonsForPlayer].sort(
                         (a, b) => SUMMON_TYPE_RANK[a.type] - SUMMON_TYPE_RANK[b.type],
@@ -1290,8 +1292,8 @@ const Trainer = () => {
                             sandboxHpRef.current = newHpAfter;
                             setSandboxHp(newHpAfter);
                             useCharacterStore.getState().updateCharacter({ hp: newHpAfter });
-                            fx.pushAllyFloat(mySlot,lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                            addLog(`💔 Apokalipsa: -${lost} HP`);
+                            fx.pushAllyFloat(mySlot,lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                            addLog(`:broken-heart: Apokalipsa: -${lost} HP`);
                         }
                     }
                     if (!noCooldowns) {
@@ -1343,7 +1345,7 @@ const Trainer = () => {
                         const ampAutoSpell = consumeTargetMarkAmp(dummyStAuto);
                         if (ampAutoSpell.mult !== 1) {
                             dmgAuto = Math.max(1, Math.floor(dmgAuto * ampAutoSpell.mult));
-                            addLog(`☠️ Klątwa Śmierci! ${ready.id} ×${ampAutoSpell.mult} dmg`);
+                            addLog(`:skull-and-crossbones: Klątwa Śmierci! ${ready.id} ×${ampAutoSpell.mult} dmg`);
                         }
                     }
                     // Track total dmg dealt (primary + splashes) so
@@ -1353,9 +1355,9 @@ const Trainer = () => {
                         fx.triggerAllySkillAnim(mySlot, ready.id);
                         // 2026-05-15 v14: match the receiver's BUFF
                         // float on caster slot so the caster sees the
-                        // same ✨ BUFF label every ally sees.
-                        fx.pushAllyFloat(mySlot, 0, 'heal', { icon: '✨', label: 'BUFF' });
-                        addLog(`✨ ${ready.id}: BUFF`);
+                        // same :sparkles: BUFF label every ally sees.
+                        fx.pushAllyFloat(mySlot, 0, 'heal', { icon: 'sparkles', label: 'BUFF' });
+                        addLog(`:sparkles: ${ready.id}: BUFF`);
                         // 2026-05-15 v5 spec ("Tak samo jak uzywam
                         // buffa to widze tylko na swoim ekranie ze go
                         // uzylem i nigdzie wiecej"): broadcast the
@@ -1481,9 +1483,9 @@ const Trainer = () => {
                                 isAoeAuto ? 'AOE' : '',
                                 defPenAuto > 0 ? `ignoruje ${defPenAuto}% DEF` : '',
                             ].filter(Boolean).join(', ');
-                            addLog(`✨ ${ready.id}: ${dmgAuto} dmg${tags ? ` (${tags})` : ''}`);
+                            addLog(`:sparkles: ${ready.id}: ${dmgAuto} dmg${tags ? ` (${tags})` : ''}`);
                         } else {
-                            addLog(`✨ ${ready.id}: DEBUFF`);
+                            addLog(`:sparkles: ${ready.id}: DEBUFF`);
                         }
                         // Żniwa Dusz on auto-skill — heal 50% of TOTAL
                         // damage dealt this cast (primary + splashes).
@@ -1493,8 +1495,8 @@ const Trainer = () => {
                                 const before = sandboxHpRef.current;
                                 sandboxHpRef.current = Math.min(character.max_hp, before + heal);
                                 setSandboxHp(sandboxHpRef.current);
-                                fx.pushAllyFloat(mySlot,heal, 'heal', { icon: '✨', label: `+${heal}` });
-                                addLog(`✨ ${ready.id}: +${heal} HP`);
+                                fx.pushAllyFloat(mySlot,heal, 'heal', { icon: 'sparkles', label: `+${heal}` });
+                                addLog(`:sparkles: ${ready.id}: +${heal} HP`);
                             }
                         }
                         // Stun/paralyze label — per-target. AOE rolls
@@ -1503,18 +1505,18 @@ const Trainer = () => {
                         if (isAoeAuto) {
                             for (const idx of applyAuto.aoeStunIdxs) {
                                 if (idx < trainerCount) {
-                                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: '💫', label: 'STUN' });
+                                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
                                 }
                             }
                             for (const idx of applyAuto.aoeParalyzeIdxs) {
                                 if (idx < trainerCount) {
-                                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                                 }
                             }
                         } else if (applyAuto.stunApplied) {
-                            fx.pushEnemyFloat(0, 0, 'spell', { icon: '💫', label: 'STUN' });
+                            fx.pushEnemyFloat(0, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
                         } else if (applyAuto.paralyzeApplied) {
-                            fx.pushEnemyFloat(0, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                            fx.pushEnemyFloat(0, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                         }
                     }
                     // Multistrike (Wielostrzał auto)
@@ -1526,7 +1528,7 @@ const Trainer = () => {
                                 pushDamage(followup);
                                 setDummyHitPulse((p) => p + 1);
                                 fx.pushEnemyFloat(0, followup, 'basic');
-                                addLog(`🏹×${n + 2} ${followup} dmg`);
+                                addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`);
                             }, 120 * (n + 1));
                         }
                     }
@@ -1541,14 +1543,14 @@ const Trainer = () => {
                         .slice(0, 3);
                     if (applyAuto.partyImmortalMs > 0) {
                         fx.triggerAllySkillAnim(mySlot, ready.id);
-                        fx.pushAllyFloat(mySlot, 0, 'heal', { icon: '✨', label: 'IMMORTAL' });
+                        fx.pushAllyFloat(mySlot, 0, 'heal', { icon: 'sparkles', label: 'IMMORTAL' });
                         for (let i = 0; i < autoAllies.length; i++) {
                             const m = autoAllies[i];
                             const cur = botHpMap[m.id] ?? 100;
                             if (deadAllies.has(m.id) || cur <= 0) continue;
                             const allySlot = slotOfMember(m.id);
                             fx.triggerAllySkillAnim(allySlot, ready.id);
-                            fx.pushAllyFloat(allySlot, 0, 'heal', { icon: '✨', label: 'IMMORTAL' });
+                            fx.pushAllyFloat(allySlot, 0, 'heal', { icon: 'sparkles', label: 'IMMORTAL' });
                         }
                     }
                     // 2026-05 v7: Bard party-buff visualization — auto cast.
@@ -1564,20 +1566,20 @@ const Trainer = () => {
                         );
                         if (hasPartyBuffAuto) {
                             fx.triggerAllySkillAnim(mySlot, ready.id);
-                            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: '🎵', label: 'BUFF' });
+                            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: 'musical-note', label: 'BUFF' });
                             for (let i = 0; i < autoAllies.length; i++) {
                                 const m = autoAllies[i];
                                 const cur = botHpMap[m.id] ?? 100;
                                 if (deadAllies.has(m.id) || cur <= 0) continue;
                                 const allySlot = slotOfMember(m.id);
                                 fx.triggerAllySkillAnim(allySlot, ready.id);
-                                fx.pushAllyFloat(allySlot, 0, 'heal', { icon: '🎵', label: 'BUFF' });
+                                fx.pushAllyFloat(allySlot, 0, 'heal', { icon: 'musical-note', label: 'BUFF' });
                             }
                         }
                         const hasEnemyDebuffAuto = autoBuffAtoms.some((a) => a.startsWith('enemy_atk_down') || a.startsWith('enemy_no_heal'));
                         if (hasEnemyDebuffAuto) {
                             for (let dIdx = 0; dIdx < trainerCount; dIdx++) {
-                                fx.pushEnemyFloat(dIdx, 0, 'spell', { icon: '😴', label: 'DEBUFF' });
+                                fx.pushEnemyFloat(dIdx, 0, 'spell', { icon: 'sleeping-face', label: 'DEBUFF' });
                             }
                         }
                     }
@@ -1608,11 +1610,11 @@ const Trainer = () => {
                                 const m = autoAllies[i];
                                 if (reviveIds.has(m.id)) {
                                     const allySlot = slotOfMember(m.id);
-                                    fx.pushAllyFloat(allySlot, 100, 'heal', { icon: '✨', label: '+REZ' });
+                                    fx.pushAllyFloat(allySlot, 100, 'heal', { icon: 'sparkles', label: '+REZ' });
                                     fx.triggerAllySkillAnim(allySlot, ready.id);
                                 }
                             }
-                            addLog(`✨ ${ready.id} → wskrzeszono: ${reviveNames.join(', ')}`);
+                            addLog(`:sparkles: ${ready.id} -> wskrzeszono: ${reviveNames.join(', ')}`);
                         }
                     }
                     if (applyAuto.healPartyPctInstant > 0 && character) {
@@ -1623,7 +1625,7 @@ const Trainer = () => {
                         const playerActual = sandboxHpRef.current - beforePlayer;
                         const playerTag = playerActual < playerHeal ? ' (MAX)' : '';
                         fx.pushAllyFloat(mySlot, playerHeal, 'heal', {
-                            icon: '✨',
+                            icon: 'sparkles',
                             label: playerTag ? `+${playerHeal}${playerTag}` : undefined,
                         });
                         fx.triggerAllySkillAnim(mySlot, ready.id);
@@ -1639,7 +1641,7 @@ const Trainer = () => {
                             const tag = cur >= 100 ? ' (MAX)' : '';
                             const allySlot = slotOfMember(m.id);
                             fx.pushAllyFloat(allySlot, realHeal, 'heal', {
-                                icon: '✨',
+                                icon: 'sparkles',
                                 label: tag ? `+${realHeal}${tag}` : undefined,
                             });
                             fx.triggerAllySkillAnim(allySlot, ready.id);
@@ -1660,12 +1662,12 @@ const Trainer = () => {
                         for (const sm of applyAuto.summons) {
                             const spawned = store.spawn(character.id, sm.type, sm.count, myAttack, character.max_hp, character.max_mp);
                             if (spawned > 0) {
-                                addLog(`💀 Przywołano ${spawned}× ${sm.type}`);
+                                addLog(`:skull: Przywołano ${spawned}× ${sm.type}`);
                                 fx.triggerAllySkillAnim(mySlot,ready.id);
                                 // 2026-05 v7: per-type spawn animation (2s)
                                 fx.triggerAllySummonSpawn(mySlot,sm.type);
                                 fx.pushAllyFloat(mySlot,spawned, 'heal', {
-                                    icon: '💀',
+                                    icon: 'skull',
                                     label: `+${spawned}× ${sm.type.toUpperCase()}`,
                                 });
                             }
@@ -1676,9 +1678,9 @@ const Trainer = () => {
                     if (applyAuto.deathApocalypse) {
                         const dummyPseudoMaxHp = Math.max(100, myAttack * 4);
                         const apocDmg = Math.max(1, Math.floor(dummyPseudoMaxHp * (applyAuto.deathApocalypseTargetMaxHpPct / 100)));
-                        fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
+                        fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
                         pushDamage(apocDmg);
-                        addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`);
+                        addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`);
                     }
                     // Fire one skill per tick — staggers casts so the
                     // float stack stays readable instead of N spells
@@ -1710,8 +1712,8 @@ const Trainer = () => {
                 ? partyMembers.filter((m) => m.id !== character.id && m.isBot).slice(0, 3)
                 : partyMembers.filter((m) => m.id !== character.id).slice(0, 3);
             // 2026-05 v6: per-class AS so allies don't all swing on the
-            // same tick (Mage 2.0 → every 3 ticks, Knight 1.5 → every 4,
-            // Rogue/Archer 2.5 → every 2). Plus per-ally offset (idx %)
+            // same tick (Mage 2.0 -> every 3 ticks, Knight 1.5 -> every 4,
+            // Rogue/Archer 2.5 -> every 2). Plus per-ally offset (idx %)
             // so two members of the same class still desync.
             const CLASS_TICK_PERIOD: Record<string, number> = {
                 Knight: 4, Mage: 3, Cleric: 3, Archer: 2,
@@ -1730,9 +1732,9 @@ const Trainer = () => {
                 // 2026-05 v7: Ballada Bohaterów (party_as_up:1.5:12000) —
                 // pull the ally's AS multiplier from their v2 status so
                 // their swing cadence speeds up while the buff is live.
-                // Period scales inversely (higher AS → fewer ticks
+                // Period scales inversely (higher AS -> fewer ticks
                 // between swings). Floored to 1 so x1.5 still works
-                // even on Rogue/Archer (basePeriod=2 → 1).
+                // even on Rogue/Archer (basePeriod=2 -> 1).
                 const allyFxIdSwingCadence = `trainer_ally_${ally.id}`;
                 const allyStCadence = effectsRef.current.statuses.get(allyFxIdSwingCadence);
                 const asMult = (allyStCadence && allyStCadence.asMultMs > 0 && allyStCadence.asMult > 1)
@@ -1786,8 +1788,8 @@ const Trainer = () => {
                         }
                     }
                     if (universeIKAlly) {
-                        fx.pushEnemyFloat(0, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
-                        addLog(`💀 ${ally.name ?? 'Sojusznik'}: DEATH ATTACK!`);
+                        fx.pushEnemyFloat(0, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                        addLog(`:skull: ${ally.name ?? 'Sojusznik'}: DEATH ATTACK!`);
                     }
                     // 2026-05 v7: ally basics consume Klątwa Śmierci AND
                     // get Kraina Śmierci ×N — every attacker (player /
@@ -1821,7 +1823,7 @@ const Trainer = () => {
                             }
                             const tag = cur >= 100 ? ' (MAX)' : '';
                             fx.pushAllyFloat(allySlot, heal, 'heal', {
-                                icon: '🩸',
+                                icon: 'drop-of-blood',
                                 label: tag ? `+${heal}${tag}` : undefined,
                             });
                         }
@@ -1891,7 +1893,7 @@ const Trainer = () => {
                 if (!dummyStatus) continue;
                 const r = tickStatus(dummyStatus, dotPerTickMs, pseudoMaxHp);
                 if (r.dotDamage > 0) {
-                    fx.pushEnemyFloat(dummyIdx, r.dotDamage, 'spell', { icon: '☠️' });
+                    fx.pushEnemyFloat(dummyIdx, r.dotDamage, 'spell', { icon: 'skull-and-crossbones' });
                     pushDamage(r.dotDamage);
                     // 2026-05-15 v5 spec ("Na trainerze nie widze
                     // spelli sojusznikow w 100% jak np efektu DOT"):
@@ -1911,7 +1913,7 @@ const Trainer = () => {
                                 dummyIdx: idxCap,
                                 damage: dmgCap,
                                 kind: 'spell',
-                                icon: '☠️',
+                                icon: 'skull-and-crossbones',
                             });
                         }).catch(() => { /* offline */ });
                     }
@@ -1921,9 +1923,9 @@ const Trainer = () => {
                 // to see the proc and the damage that *would* have hit
                 // a real enemy with that maxHp.
                 if (r.darkRitualTriggered && r.darkRitualDamage > 0) {
-                    fx.pushEnemyFloat(dummyIdx, r.darkRitualDamage, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+                    fx.pushEnemyFloat(dummyIdx, r.darkRitualDamage, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
                     pushDamage(r.darkRitualDamage);
-                    addLog(`💀 Mroczny Rytuał: ${r.darkRitualDamage} dmg`);
+                    addLog(`:skull: Mroczny Rytuał: ${r.darkRitualDamage} dmg`);
                     // Broadcast Mroczny Rytuał too.
                     if (isMultiHumanParty && character) {
                         const dmgCap = r.darkRitualDamage;
@@ -1937,7 +1939,7 @@ const Trainer = () => {
                                 dummyIdx: idxCap,
                                 damage: dmgCap,
                                 kind: 'spell',
-                                icon: '💀',
+                                icon: 'skull',
                                 label: 'RITUAL',
                                 isCrit: true,
                             });
@@ -1973,7 +1975,7 @@ const Trainer = () => {
             // hits-back simulation. Each member's local mirror would
             // otherwise treat the broadcast aggroTargetId (a real
             // character id) as a "bot" target and independently
-            // drain THAT card's botHpMap → on the next swing it dies
+            // drain THAT card's botHpMap -> on the next swing it dies
             // locally on the member's screen even though the leader
             // is the actual target. The leader's deadAllies broadcast
             // is the single source of truth.
@@ -1981,7 +1983,7 @@ const Trainer = () => {
                 const dummyStunned = isCombatantStunned(effectsRef.current, TRAINER_DUMMY_FX_ID(0));
                 if (!dummyStunned) {
                     // 2026-05 v6: hit the chosen aggro target. 'player'
-                    // → local char takes 1 HP. Otherwise → push a visual
+                    // -> local char takes 1 HP. Otherwise -> push a visual
                     // hit on the bot's slot (synthetic, no real HP loss
                     // because trainer party members are static 100/100
                     // by design — sandbox).
@@ -1994,8 +1996,8 @@ const Trainer = () => {
                         // Knight Absolutne Cięcie immortal — block first.
                         const playerSt = effectsRef.current.statuses.get(TRAINER_PLAYER_FX_ID);
                         if (playerSt && playerSt.immortalMs > 0) {
-                            fx.pushAllyFloat(mySlot,0, 'heal', { icon: '✨', label: 'BLOCK' });
-                            addLog(`✨ BLOCK! Niewrażliwość`);
+                            fx.pushAllyFloat(mySlot,0, 'heal', { icon: 'sparkles', label: 'BLOCK' });
+                            addLog(`:sparkles: BLOCK! Niewrażliwość`);
                             return;
                         }
                         // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000)
@@ -2006,8 +2008,8 @@ const Trainer = () => {
                         // BuffBar but the player still ate every hit.
                         if (playerSt && playerSt.dodgeBuffMs > 0 && playerSt.dodgeBuffPct > 0) {
                             if (Math.random() * 100 < playerSt.dodgeBuffPct) {
-                                fx.pushAllyFloat(mySlot,0, 'heal', { icon: '💨', label: 'UNIK' });
-                                addLog(`💨 Bomba Dymna! Unik (${playerSt.dodgeBuffPct}%)`);
+                                fx.pushAllyFloat(mySlot,0, 'heal', { icon: 'dashing-away', label: 'UNIK' });
+                                addLog(`:dashing-away: Bomba Dymna! Unik (${playerSt.dodgeBuffPct}%)`);
                                 return;
                             }
                         }
@@ -2018,8 +2020,8 @@ const Trainer = () => {
                             if (sandboxMpRef.current > 0) {
                                 sandboxMpRef.current = Math.max(0, sandboxMpRef.current - 1);
                                 setSandboxMp(sandboxMpRef.current);
-                                fx.pushAllyFloat(mySlot,1, 'spell', { icon: '🛡️' });
-                                addLog(`🛡️ Tarcza Many pochłania 1 MP`);
+                                fx.pushAllyFloat(mySlot,1, 'spell', { icon: 'shield' });
+                                addLog(`:shield: Tarcza Many pochłania 1 MP`);
                                 return;
                             }
                         }
@@ -2027,20 +2029,20 @@ const Trainer = () => {
                         const dodgedByCharge = useBuffStore.getState().getBuffCharges('skill_charge_dodge_next') > 0;
                         if (dodgedByCharge) {
                             useBuffStore.getState().consumeBuffCharge('skill_charge_dodge_next');
-                            addLog(`💨 Krok Cienia! Unik!`);
-                            fx.pushAllyFloat(mySlot,0, 'heal', { icon: '💨', label: 'UNIK' });
+                            addLog(`:dashing-away: Krok Cienia! Unik!`);
+                            fx.pushAllyFloat(mySlot,0, 'heal', { icon: 'dashing-away', label: 'UNIK' });
                         } else {
                             // Cleric Boska Tarcza — block_next_party charge
                             // eats the hit. Pre-empts HP loss.
                             const blockCharges = useBuffStore.getState().getBuffCharges('skill_charge_block_next_party');
                             if (blockCharges > 0) {
                                 useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
-                                addLog(`🛡️ Boska Tarcza! Blok!`);
-                                fx.pushAllyFloat(mySlot,0, 'heal', { icon: '🛡️', label: 'BLOCK' });
+                                addLog(`:shield: Boska Tarcza! Blok!`);
+                                fx.pushAllyFloat(mySlot,0, 'heal', { icon: 'shield', label: 'BLOCK' });
                             } else {
                                 // 2026-05 v6: Necromancer summon shield —
-                                // front-of-queue summon (skeleton →
-                                // ghost → demon → lich) eats the hit
+                                // front-of-queue summon (skeleton ->
+                                // ghost -> demon -> lich) eats the hit
                                 // BEFORE the necro takes HP damage.
                                 // Dummy hit value is 1, so the summon
                                 // either tanks 1 HP (still alive) or
@@ -2053,8 +2055,8 @@ const Trainer = () => {
                                     if (necroStore.count(character.id) > 0) {
                                         const r2 = necroStore.damageFirst(character.id, 1);
                                         if (r2.dmgConsumed > 0) {
-                                            fx.pushAllyFloat(mySlot,1, 'monster', { icon: '💀' });
-                                            addLog(`💀 Summon przyjął 1 dmg (${r2.queueEmpty ? 'ostatni padł!' : 'wciąż żyje'})`);
+                                            fx.pushAllyFloat(mySlot,1, 'monster', { icon: 'skull' });
+                                            addLog(`:skull: Summon przyjął 1 dmg (${r2.queueEmpty ? 'ostatni padł!' : 'wciąż żyje'})`);
                                             setPlayerHitPulse((p) => p + 1);
                                             return;
                                         }
@@ -2147,8 +2149,8 @@ const Trainer = () => {
                             const allyFxId = `trainer_ally_${aggroTargetId}`;
                             const allySt = effectsRef.current.statuses.get(allyFxId);
                             if (allySt && allySt.immortalMs > 0) {
-                                fx.pushAllyFloat(targetSlot, 0, 'heal', { icon: '✨', label: 'BLOCK' });
-                                addLog(`✨ BLOCK (party_immortal) → slot ${targetSlot}`);
+                                fx.pushAllyFloat(targetSlot, 0, 'heal', { icon: 'sparkles', label: 'BLOCK' });
+                                addLog(`:sparkles: BLOCK (party_immortal) -> slot ${targetSlot}`);
                             } else {
                                 const dmg = 5; // out of 100 max
                                 // 2026-05-15 v11: compute `killed`
@@ -2211,7 +2213,7 @@ const Trainer = () => {
                                         });
                                     }).catch(() => { /* offline */ });
                                 }
-                                // 2026-05 v6: bot HP just hit 0 → mark
+                                // 2026-05 v6: bot HP just hit 0 -> mark
                                 // dead so the global "no actions on
                                 // corpses + only revive_party can
                                 // bring them back" rule kicks in.
@@ -2222,7 +2224,7 @@ const Trainer = () => {
                                         return nx;
                                     });
                                     setAggroTargetId('player');
-                                    addLog(`💀 ${aggroTargetId} padł — aggro wraca do gracza`);
+                                    addLog(`:skull: ${aggroTargetId} padł — aggro wraca do gracza`);
                                 }
                             }
                         }
@@ -2270,7 +2272,7 @@ const Trainer = () => {
         cooldownsRef.current = {};
         allyCooldownsRef.current = {};
         setSkillCooldownsMs({});
-        addLog('🔄 Sesja zresetowana');
+        addLog(':counterclockwise-arrows-button: Sesja zresetowana');
     };
 
     // Manual skill cast — triggered by clicking a slot in the action bar.
@@ -2306,9 +2308,9 @@ const Trainer = () => {
         // store write removes every plausible race condition.
         //
         // Spec from user (final, 2026-05-07):
-        //   • HP > 20% → drop to 20%
-        //   • HP between 5% and 20% → drop to 3%
-        //   • HP < 5% → cast refused
+        //   - HP > 20% -> drop to 20%
+        //   - HP between 5% and 20% -> drop to 3%
+        //   - HP < 5% -> cast refused
         const isApocalypse = (def.effect ?? '').includes('death_apocalypse');
         if (isApocalypse) {
             // Use EFFECTIVE max HP (base + equipment + training + elixirs
@@ -2321,14 +2323,14 @@ const Trainer = () => {
             const effMax = eff?.max_hp ?? character.max_hp;
             const hpPct = sandboxHpRef.current / Math.max(1, effMax);
             if (hpPct < 0.05) {
-                addLog('💔 Apokalipsa zablokowana: < 5% HP');
+                addLog(':broken-heart: Apokalipsa zablokowana: < 5% HP');
                 return;
             }
             // Spec (final 2026-05-07):
-            //   • HP > 20%  → lose 20% of EFFECTIVE max HP per cast
-            //                 (100→80→60→40→20 in successive casts)
-            //   • 5% ≤ HP ≤ 20% → drop directly to 3% of effective max
-            //   • HP < 5%  → cast refused (handled above)
+            //   - HP > 20%  -> lose 20% of EFFECTIVE max HP per cast
+            //                 (100->80->60->40->20 in successive casts)
+            //   - 5% ≤ HP ≤ 20% -> drop directly to 3% of effective max
+            //   - HP < 5%  -> cast refused (handled above)
             let newHpAfter: number;
             if (hpPct > 0.20) {
                 newHpAfter = Math.max(1, sandboxHpRef.current - Math.floor(effMax * 0.20));
@@ -2344,8 +2346,8 @@ const Trainer = () => {
                 sandboxHpRef.current = newHpAfter;
                 setSandboxHp(newHpAfter);
                 useCharacterStore.getState().updateCharacter({ hp: newHpAfter });
-                fx.pushAllyFloat(mySlot,lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                addLog(`💔 Apokalipsa: -${lost} HP`);
+                fx.pushAllyFloat(mySlot,lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                addLog(`:broken-heart: Apokalipsa: -${lost} HP`);
             }
         }
         const tick = tickRef.current;
@@ -2359,11 +2361,11 @@ const Trainer = () => {
         }
 
         // 2026-05 v6: full classification — same as Combat/Boss/Dungeon.
-        //   • damage > 0 → damage hit, animate on enemy
-        //   • damage = 0 + enemy-debuff atom (Pułapka stun:3000, Strzała
-        //     Wiatru, mark_*, def_pen) → animate on enemy
-        //   • damage = 0 + self/party buff only (Orle Oko, Bomba Dymna,
-        //     Tarcza Many, Okrzyk Bojowy) → animate on player avatar
+        //   - damage > 0 -> damage hit, animate on enemy
+        //   - damage = 0 + enemy-debuff atom (Pułapka stun:3000, Strzała
+        //     Wiatru, mark_*, def_pen) -> animate on enemy
+        //   - damage = 0 + self/party buff only (Orle Oko, Bomba Dymna,
+        //     Tarcza Many, Okrzyk Bojowy) -> animate on player avatar
         const isDamageHit = def.damage > 0;
         const targetsEnemy = isDamageHit || skillTargetsEnemy(def.effect ?? null);
         const isAoe = (def.effect ?? '').split(';').some((a) => a.trim().toLowerCase().startsWith('aoe'));
@@ -2409,7 +2411,7 @@ const Trainer = () => {
             const ampSpell = consumeTargetMarkAmp(dummyStManual);
             if (ampSpell.mult !== 1) {
                 dmg = Math.max(1, Math.floor(dmg * ampSpell.mult));
-                addLog(`☠️ Klątwa Śmierci! ${def.id} ×${ampSpell.mult} dmg`);
+                addLog(`:skull-and-crossbones: Klątwa Śmierci! ${def.id} ×${ampSpell.mult} dmg`);
             }
         }
 
@@ -2423,9 +2425,9 @@ const Trainer = () => {
             // client already does this when it gets the broadcast,
             // so without the matching local push the caster sees
             // only the spell animation while every other ally also
-            // sees the ✨ BUFF label. Symmetrise it.
-            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: '✨', label: 'BUFF' });
-            addLog(`✨ ${def.id}: BUFF`);
+            // sees the :sparkles: BUFF label. Symmetrise it.
+            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: 'sparkles', label: 'BUFF' });
+            addLog(`:sparkles: ${def.id}: BUFF`);
             // 2026-05-15 v5: broadcast pure-buff manual casts too so
             // every client sees the caster's animation + (filtered)
             // applies the buff in their BuffBar.
@@ -2508,7 +2510,7 @@ const Trainer = () => {
                         const splashIk = splashIkPctT > 0 && Math.random() * 100 < splashIkPctT;
                         fx.triggerEnemySkillAnim(i, def.id);
                         if (splashIk) {
-                            fx.pushEnemyFloat(i, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
+                            fx.pushEnemyFloat(i, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
                             // 2026-05 v7: each splash dummy consumes its
                             // own markAmp / markAmpAll so AOE Kraina hits
@@ -2552,9 +2554,9 @@ const Trainer = () => {
                     isAoe ? 'AOE' : '',
                     defPenPct > 0 ? `ignoruje ${defPenPct}% DEF` : '',
                 ].filter(Boolean).join(', ');
-                addLog(`✨ ${def.id}: ${dmg} dmg${tags ? ` (${tags})` : ''}`);
+                addLog(`:sparkles: ${def.id}: ${dmg} dmg${tags ? ` (${tags})` : ''}`);
             } else {
-                addLog(`✨ ${def.id}: DEBUFF`);
+                addLog(`:sparkles: ${def.id}: DEBUFF`);
             }
             // Stun / paralyze label — gated on the per-target apply
             // result. For AOE+stun_chance (Smite `aoe;stun_chance:30`)
@@ -2566,21 +2568,21 @@ const Trainer = () => {
                 if (apply.aoeStunIdxs.length > 0) {
                     for (const idx of apply.aoeStunIdxs) {
                         if (idx < trainerCount) {
-                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: '💫', label: 'STUN' });
+                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
                         }
                     }
                 }
                 if (apply.aoeParalyzeIdxs.length > 0) {
                     for (const idx of apply.aoeParalyzeIdxs) {
                         if (idx < trainerCount) {
-                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                         }
                     }
                 }
             } else if (apply.stunApplied) {
-                fx.pushEnemyFloat(0, 0, 'spell', { icon: '💫', label: 'STUN' });
+                fx.pushEnemyFloat(0, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
             } else if (apply.paralyzeApplied) {
-                fx.pushEnemyFloat(0, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                fx.pushEnemyFloat(0, 0, 'spell', { icon: 'locked', label: 'PARAL' });
             }
             // 2026-05 v6: DEATH ATTACK — instant_kill_chance / execute_below
             // / Skrytobójstwo procc'd. Push a special "DEATH ATTACK" float
@@ -2588,8 +2590,8 @@ const Trainer = () => {
             // (Trainer dummies are invincible, but the player still wants
             // to see "I rolled the 5%!"). Crit-styled float for emphasis.
             if (apply.instantKill) {
-                fx.pushEnemyFloat(0, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
-                addLog(`💀 ${def.id}: DEATH ATTACK!`);
+                fx.pushEnemyFloat(0, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                addLog(`:skull: ${def.id}: DEATH ATTACK!`);
             }
             // 2026-05 v6: heal-on-cast (Mage Promień Pustki, Cleric
             // Pochłonięcie Życia, Necro Żniwa Dusz, …). Requires `dmg > 0`
@@ -2598,7 +2600,7 @@ const Trainer = () => {
             if (apply.healCasterPctOfDmg > 0 && totalDmgDealtThisCast > 0) {
                 // Żniwa Dusz `aoe;heal_self_pct_dmg:50` — heal on TOTAL
                 // damage (primary + every AOE splash). 4 enemies hit by
-                // a single cast → heal scales with all four hits.
+                // a single cast -> heal scales with all four hits.
                 const heal = Math.floor(totalDmgDealtThisCast * (apply.healCasterPctOfDmg / 100));
                 if (heal > 0) {
                     const before = sandboxHpRef.current;
@@ -2616,10 +2618,10 @@ const Trainer = () => {
                         ? ' (necro)'
                         : '';
                     fx.pushAllyFloat(mySlot,heal, 'heal', {
-                        icon: '✨',
+                        icon: 'sparkles',
                         label: `+${heal}${cappedTag}${necroTag}`,
                     });
-                    addLog(`✨ ${def.id}: +${heal} HP${cappedTag}${necroTag}`);
+                    addLog(`:sparkles: ${def.id}: +${heal} HP${cappedTag}${necroTag}`);
                 }
             }
         }
@@ -2640,11 +2642,11 @@ const Trainer = () => {
                     ? ' (necro)'
                     : '';
                 fx.pushAllyFloat(mySlot,heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: `+${heal}${cappedTag}${necroTag}`,
                 });
                 fx.triggerAllySkillAnim(mySlot,def.id);
-                addLog(`✨ ${def.id}: +${heal} HP${cappedTag}${necroTag}`);
+                addLog(`:sparkles: ${def.id}: +${heal} HP${cappedTag}${necroTag}`);
             }
         }
         // 2026-05 v6: Cleric Niebiańskie Leczenie / Modlitwa Niebios —
@@ -2660,7 +2662,7 @@ const Trainer = () => {
             const playerActual = sandboxHpRef.current - beforePlayer;
             const playerTag = playerActual < playerHeal ? ' (MAX)' : '';
             fx.pushAllyFloat(mySlot,playerHeal, 'heal', {
-                icon: '✨',
+                icon: 'sparkles',
                 label: playerTag ? `+${playerHeal}${playerTag}` : undefined,
             });
             fx.triggerAllySkillAnim(mySlot,def.id);
@@ -2683,7 +2685,7 @@ const Trainer = () => {
                 const tag = cur >= 100 ? ' (MAX)' : '';
                 const allySlot = slotOfMember(m.id);
                 fx.pushAllyFloat(allySlot, realHeal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: tag ? `+${realHeal}${tag}` : undefined,
                 });
                 fx.triggerAllySkillAnim(allySlot, def.id);
@@ -2693,7 +2695,7 @@ const Trainer = () => {
             if (character.class === 'Necromancer') {
                 useNecroSummonStore.getState().healAllPct(character.id, apply.healPartyPctInstant);
             }
-            addLog(`✨ ${def.id}: heal_party_pct ${apply.healPartyPctInstant}%`);
+            addLog(`:sparkles: ${def.id}: heal_party_pct ${apply.healPartyPctInstant}%`);
         }
         // Cleric `heal` / `holy_nova` — heal_lowest_ally_pct. Picks the
         // ally with the lowest HP% across the live party (player
@@ -2755,11 +2757,11 @@ const Trainer = () => {
                 const actual = after - before;
                 const cappedTag = actual < barHeal ? ' (MAX)' : '';
                 fx.pushAllyFloat(lowest.slot, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
                 fx.triggerAllySkillAnim(lowest.slot, def.id);
-                addLog(`✨ ${def.id} → ${lowest.name}: +${heal} HP${cappedTag}`);
+                addLog(`:sparkles: ${def.id} -> ${lowest.name}: +${heal} HP${cappedTag}`);
             }
         }
 
@@ -2800,13 +2802,13 @@ const Trainer = () => {
                     const m = otherPartyMembers[i];
                     if (revivedIds.has(m.id)) {
                         const allySlot = slotOfMember(m.id);
-                        fx.pushAllyFloat(allySlot, 100, 'heal', { icon: '✨', label: '+REZ' });
+                        fx.pushAllyFloat(allySlot, 100, 'heal', { icon: 'sparkles', label: '+REZ' });
                         fx.triggerAllySkillAnim(allySlot, def.id);
                     }
                 }
-                addLog(`✨ ${def.id} → wskrzeszono: ${revivedNames.join(', ')}`);
+                addLog(`:sparkles: ${def.id} -> wskrzeszono: ${revivedNames.join(', ')}`);
             } else {
-                addLog(`✨ ${def.id}: brak martwych sojuszników`);
+                addLog(`:sparkles: ${def.id}: brak martwych sojuszników`);
             }
         }
 
@@ -2820,7 +2822,7 @@ const Trainer = () => {
         if (apply.partyImmortalMs > 0) {
             // Player slot
             fx.triggerAllySkillAnim(mySlot, def.id);
-            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: '✨', label: 'IMMORTAL' });
+            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: 'sparkles', label: 'IMMORTAL' });
             for (let i = 0; i < otherPartyMembers.length; i++) {
                 const m = otherPartyMembers[i];
                 const cur = botHpMap[m.id] ?? 100;
@@ -2830,9 +2832,9 @@ const Trainer = () => {
                 if (deadAllies.has(m.id) || cur <= 0) continue;
                 const allySlot = slotOfMember(m.id);
                 fx.triggerAllySkillAnim(allySlot, def.id);
-                fx.pushAllyFloat(allySlot, 0, 'heal', { icon: '✨', label: 'IMMORTAL' });
+                fx.pushAllyFloat(allySlot, 0, 'heal', { icon: 'sparkles', label: 'IMMORTAL' });
             }
-            addLog(`✨ ${def.id}: party_immortal ${(apply.partyImmortalMs / 1000).toFixed(1)}s`);
+            addLog(`:sparkles: ${def.id}: party_immortal ${(apply.partyImmortalMs / 1000).toFixed(1)}s`);
         }
         // 2026-05 v7: Bard / Knight party-buff visualization. The atoms
         // (party_attack_up / party_as_up / party_crit_up / party_def_pen
@@ -2858,22 +2860,22 @@ const Trainer = () => {
             // !targetsEnemy, but party buffs animate on the player even
             // for self-cast bard tunes. Tag + float for clarity.
             fx.triggerAllySkillAnim(mySlot, def.id);
-            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: '🎵', label: 'BUFF' });
+            fx.pushAllyFloat(mySlot, 0, 'heal', { icon: 'musical-note', label: 'BUFF' });
             for (let i = 0; i < otherPartyMembers.length; i++) {
                 const m = otherPartyMembers[i];
                 const cur = botHpMap[m.id] ?? 100;
                 if (deadAllies.has(m.id) || cur <= 0) continue;
                 const allySlot = slotOfMember(m.id);
                 fx.triggerAllySkillAnim(allySlot, def.id);
-                fx.pushAllyFloat(allySlot, 0, 'heal', { icon: '🎵', label: 'BUFF' });
+                fx.pushAllyFloat(allySlot, 0, 'heal', { icon: 'musical-note', label: 'BUFF' });
             }
         }
         // Enemy-debuff visualization — Kołysanka (enemy_atk_down) lands
-        // a 😴 float on the dummy slot so the player has visual feedback.
+        // a :sleeping-face: float on the dummy slot so the player has visual feedback.
         const hasEnemyDebuff = partyBuffAtoms.some((a) => a.startsWith('enemy_atk_down') || a.startsWith('enemy_no_heal'));
         if (hasEnemyDebuff) {
             for (let dIdx = 0; dIdx < trainerCount; dIdx++) {
-                fx.pushEnemyFloat(dIdx, 0, 'spell', { icon: '😴', label: 'DEBUFF' });
+                fx.pushEnemyFloat(dIdx, 0, 'spell', { icon: 'sleeping-face', label: 'DEBUFF' });
             }
         }
 
@@ -2892,7 +2894,7 @@ const Trainer = () => {
             for (const sm of apply.summons) {
                 const spawned = store.spawn(character.id, sm.type, sm.count, myAttack, character.max_hp, character.max_mp);
                 if (spawned > 0) {
-                    addLog(`💀 Przywołano ${spawned}× ${sm.type}`);
+                    addLog(`:skull: Przywołano ${spawned}× ${sm.type}`);
                     // Spawn animation: skill anim flash + a green
                     // "+SUMMON" float on the necro's slot so the
                     // player sees the summoning visually pop.
@@ -2900,7 +2902,7 @@ const Trainer = () => {
                     // 2026-05 v7: per-type spawn animation (2s)
                     fx.triggerAllySummonSpawn(mySlot,sm.type);
                     fx.pushAllyFloat(mySlot,spawned, 'heal', {
-                        icon: '💀',
+                        icon: 'skull',
                         label: `+${spawned}× ${sm.type.toUpperCase()}`,
                     });
                 }
@@ -2915,14 +2917,14 @@ const Trainer = () => {
         if (apply.deathApocalypse && character) {
             const dummyPseudoMaxHp = Math.max(100, myAttack * 4);
             const apocDmg = Math.max(1, Math.floor(dummyPseudoMaxHp * (apply.deathApocalypseTargetMaxHpPct / 100)));
-            fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
+            fx.pushEnemyFloat(0, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
             pushDamage(apocDmg);
-            addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`);
+            addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`);
         }
 
         if (apply.aggroSteal && aggroTargetId !== 'player') {
             setAggroTargetId('player');
-            addLog(`💢 Aggro przejęte na Ciebie!`);
+            addLog(`:anger-symbol: Aggro przejęte na Ciebie!`);
         }
 
         // Multistrike (Wielostrzał) — fire N follow-up basic attacks on
@@ -2936,7 +2938,7 @@ const Trainer = () => {
                     pushDamage(followup);
                     setDummyHitPulse((p) => p + 1);
                     fx.pushEnemyFloat(0, followup, 'basic');
-                    addLog(`🏹×${n + 2} ${followup} dmg`);
+                    addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`);
                 }, 120 * (n + 1));
             }
         }
@@ -2962,7 +2964,7 @@ const Trainer = () => {
     // 2026-05-25: necroSummons subscription ALSO moved here (was previously
     // line 3066, AFTER the early return). The store reads via
     // `summons[character.id]` — when character is null we fall back to an
-    // empty string key which never matches → store returns undefined → the
+    // empty string key which never matches -> store returns undefined -> the
     // `?? []` fallback yields an empty list. Identical visible behaviour as
     // returning empty when character is null, but the hook order is now
     // stable across renders.
@@ -2976,7 +2978,7 @@ const Trainer = () => {
         );
     }
 
-    // ── Speed cycle (X1→X2→X4→X1) for the unified chip ────────────────
+    // -- Speed cycle (X1->X2->X4->X1) for the unified chip ----------------
     // BuffStore.combatSpeedMult sync is handled by the
     // useEffect([speedMult]) above. Calling Zustand inside the same
     // render that triggers React state updates caused TopHeader to
@@ -2993,9 +2995,9 @@ const Trainer = () => {
     // in-game is still 5 seconds. So the label stays a constant "5s".
     const winLabel = `${BEST_WINDOW_BASE_MS / 1000}s`;
 
-    // ── Enemy slots (1 invincible dummy in slot 0; pad to 4) ────────────
+    // -- Enemy slots (1 invincible dummy in slot 0; pad to 4) ------------
     // The dummy uses the per-art image at /assets/images/trainer/trainer.png
-    // instead of the legacy 🎯 emoji.
+    // instead of the legacy :bullseye: emoji.
     const uiEnemies: Array<ICombatEnemy | null> = (() => {
         const slots: Array<ICombatEnemy | null> = [];
         for (let i = 0; i < 4; i++) {
@@ -3010,7 +3012,7 @@ const Trainer = () => {
                     id: `training-dummy-${i}`,
                     name: i === 0 ? 'Trening Dummy (∞)' : `Trening Dummy #${i + 1} (∞)`,
                     level: character.level,
-                    sprite: '🎯',
+                    sprite: 'bullseye',
                     kind: 'monster' as const,
                     currentHp: 100, // invincible — bar always full
                     maxHp: 100,
@@ -3028,7 +3030,7 @@ const Trainer = () => {
                     statusOverlay: dummyStatus ? (() => {
                         // Necromancer Klątwa Śmierci — surface the
                         // longest-remaining active mark_amp charge so
-                        // the badge ☠️ ×N · Ts can render.
+                        // the badge :skull-and-crossbones: ×N · Ts can render.
                         const topAmp = dummyStatus.markAmp.find((m) => m.count > 0 && m.remainingMs > 0);
                         // Mroczny Rytuał — soonest-firing pending entry.
                         const topRitual = dummyStatus.darkRitualPending.length > 0
@@ -3068,7 +3070,7 @@ const Trainer = () => {
     // Necromancer avatar swap — when summons are alive, the front-of-
     // queue summon's portrait replaces the necro's own image (per
     // user spec "skeleton zamiast na zdjeciu z necromanta"). Order
-    // mirrors the damage-soak priority: skeleton → ghost → demon →
+    // mirrors the damage-soak priority: skeleton -> ghost -> demon ->
     // lich. Lets the player see who's currently shielding them.
     // REACTIVE subscription via the hook (not getState()) so spawning
     // a new summon re-renders this view immediately. With getState()
@@ -3166,7 +3168,7 @@ const Trainer = () => {
                 summonsByType: necroSummonsForPlayer.length > 0 ? summonsByTypeMap : undefined,
                 onSummonClick: (type) => {
                     useNecroSummonStore.getState().despawnOne(character.id, type);
-                    addLog(`💨 Odesłano: ${type}`);
+                    addLog(`:dashing-away: Odesłano: ${type}`);
                 },
                 hitPulse: playerHitPulse,
                 attackingClassName: playerAttackingClass,
@@ -3225,7 +3227,7 @@ const Trainer = () => {
             skillAnim: fx.allySkill[slotIdx] ?? null,
             floats: fx.allyFloats[slotIdx] ?? [],
             // 2026-05-15 v16: surface remote summon counts so the
-            // per-type badges (💀×N 👻×M 😈×K 👑×L) render on every
+            // per-type badges (:skull:×N :ghost:×M :smiling-face-with-horns:×K :crown:×L) render on every
             // client, matching the necro's own card.
             summonCount: remoteSummons.length || undefined,
             summonsByType: remoteSummons.length > 0 ? remoteSummonsByType : undefined,
@@ -3233,7 +3235,7 @@ const Trainer = () => {
     });
     while (uiAllies.length < 4) uiAllies.push(null);
 
-    // ── Skill bar (read-only) — show the player's loadout with cooldown
+    // -- Skill bar (read-only) — show the player's loadout with cooldown
     // sweeps. Trainer combat is fully automatic so the slots aren't
     // clickable (`disabled: true`); the visual purpose is to give the
     // player situational awareness ("my big AOE is coming back in 4s").
@@ -3281,7 +3283,7 @@ const Trainer = () => {
                         // are per-client (each client toggles their
                         // OWN local simulation of auto-fires).
                         // Other chips reflect the leader's broadcast
-                        // (publishTrainerState → mirror into local
+                        // (publishTrainerState -> mirror into local
                         // state via the subscriber below).
                         speed={{ label: `X${speedMult}`, onCycle: cycleSpeed, disabled: isNonLeaderMember }}
                         autoSkill={{ on: autoSkill, onToggle: () => setAutoSkill((v) => !v) }}
@@ -3305,7 +3307,7 @@ const Trainer = () => {
                                         style={disabledStyle}
                                         title={memberDisabled ? memberTitle : 'Trainer oddaje (1 HP / cios)'}
                                     >
-                                        🎯 {trainerAttacks ? 'ON' : 'OFF'}
+                                        <GameIcon name="bullseye" /> {trainerAttacks ? 'ON' : 'OFF'}
                                     </button>
                                     {/* Sandbox: bypass per-skill cooldown so the
                                         player can spam any spell back-to-back to
@@ -3319,7 +3321,7 @@ const Trainer = () => {
                                         style={disabledStyle}
                                         title={memberDisabled ? memberTitle : 'Wyłącz cooldowny skilli (sandbox)'}
                                     >
-                                        ⏱️ Brak CD: {noCooldowns ? 'ON' : 'OFF'}
+                                        <GameIcon name="stopwatch" /> Brak CD: {noCooldowns ? 'ON' : 'OFF'}
                                     </button>
                                     {/* Sandbox: dummy "HP %" — drives the
                                         targetHpPct passed to effectsCastSkill
@@ -3334,7 +3336,7 @@ const Trainer = () => {
                                         title={memberDisabled ? memberTitle : 'Symulowany % HP trainera dla execute_below (Egzekucja / Skrytobójstwo)'}
                                         style={disabledStyle}
                                     >
-                                        <span className="trainer__hp-slider-label">🩸 Dummy HP:</span>
+                                        <span className="trainer__hp-slider-label"><GameIcon name="drop-of-blood" /> Dummy HP:</span>
                                         <input
                                             type="range"
                                             min={0}
@@ -3358,7 +3360,7 @@ const Trainer = () => {
                                             style={disabledStyle}
                                             title={memberDisabled ? memberTitle : 'Uśmierć sojusznika (sandbox)'}
                                         >
-                                            💀 Uśmierć
+                                            <GameIcon name="skull" /> Uśmierć
                                         </button>
                                     )}
                                     {/* Sandbox: switch trainer aggro to a
@@ -3375,7 +3377,7 @@ const Trainer = () => {
                                             style={disabledStyle}
                                             title={memberDisabled ? memberTitle : 'Zmień cel ataków trainera'}
                                         >
-                                            🎯 Cel: {(() => {
+                                            <GameIcon name="bullseye" /> Cel: {(() => {
                                                 if (aggroTargetId === 'player') return character.name;
                                                 const m = otherPartyMembers.find((x) => x.id === aggroTargetId);
                                                 return m ? m.name : 'Player';
@@ -3392,7 +3394,7 @@ const Trainer = () => {
                                         style={disabledStyle}
                                         title={memberDisabled ? memberTitle : 'Dodaj trening dummy (max 4)'}
                                     >
-                                        ➕ Trainer ({trainerCount}/4)
+                                        <Icon name="plus" /> Trainer ({trainerCount}/4)
                                     </button>
                                     <button
                                         type="button"
@@ -3402,7 +3404,7 @@ const Trainer = () => {
                                         style={disabledStyle}
                                         title={memberDisabled ? memberTitle : 'Reset sesji'}
                                     >
-                                        🔄 Reset
+                                        <GameIcon name="counterclockwise-arrows-button" /> Reset
                                     </button>
                                 </>
                             );
@@ -3433,12 +3435,12 @@ const Trainer = () => {
                             // party, tak samo jak lider wyjdzie z
                             // trainera to zostaje dalej liderem a
                             // reszta zostaje przeniesiona do miasta"):
-                            //  • Member's flee: just clear session +
+                            //  - Member's flee: just clear session +
                             //    navigate home. Do NOT call leaveParty
                             //    — they remain in the party so the
                             //    leader can re-invite them or chain
                             //    them into another mode.
-                            //  • Leader's flee in multi-human party:
+                            //  - Leader's flee in multi-human party:
                             //    broadcast combat-end so every other
                             //    member's `usePartyCombatSync`
                             //    listener pulls them back to city.
@@ -3475,14 +3477,14 @@ const Trainer = () => {
             {aggroPickerOpen && (
                 <div className="trainer__kill-overlay" onClick={() => setAggroPickerOpen(false)}>
                     <div className="trainer__kill-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="trainer__kill-title">🎯 Wybierz cel ataków trainera</div>
+                        <div className="trainer__kill-title"><GameIcon name="bullseye" /> Wybierz cel ataków trainera</div>
                         <div className="trainer__kill-hint">
                             Trainer będzie atakował wybrany cel. Knight Wicher / Cięcie Boga (aggro_steal) automatycznie przeniesie cel z powrotem na Ciebie.
                         </div>
                         <ul className="trainer__kill-list">
                             <li className="trainer__kill-row">
                                 <span className="trainer__kill-row-name">
-                                    <span style={{ color: CLASS_COLORS[character.class] ?? '#fff' }}>●</span> {character.name}
+                                    <span style={{ color: CLASS_COLORS[character.class] ?? '#fff' }}><Icon name="dot" /></span> {character.name}
                                     <small> (Ty, lvl {character.level} {character.class})</small>
                                 </span>
                                 <button
@@ -3490,11 +3492,11 @@ const Trainer = () => {
                                     className={`trainer__kill-row-btn${aggroTargetId === 'player' ? ' trainer__kill-row-btn--revive' : ' trainer__kill-row-btn--kill'}`}
                                     onClick={() => {
                                         setAggroTargetId('player');
-                                        addLog(`🎯 Cel trainera: ${character.name}`);
+                                        addLog(`:bullseye: Cel trainera: ${character.name}`);
                                         setAggroPickerOpen(false);
                                     }}
                                 >
-                                    {aggroTargetId === 'player' ? '✓ Aktywny' : '🎯 Wybierz'}
+                                    {aggroTargetId === 'player' ? <><GameIcon name="check-mark-button" /> Aktywny</> : <><GameIcon name="bullseye" /> Wybierz</>}
                                 </button>
                             </li>
                             {otherPartyMembers.map((m) => {
@@ -3502,7 +3504,7 @@ const Trainer = () => {
                                 return (
                                     <li key={m.id} className="trainer__kill-row">
                                         <span className="trainer__kill-row-name">
-                                            <span style={{ color: CLASS_COLORS[m.class] ?? '#fff' }}>●</span> {m.name}
+                                            <span style={{ color: CLASS_COLORS[m.class] ?? '#fff' }}><Icon name="dot" /></span> {m.name}
                                             <small> (lvl {m.level} {m.class})</small>
                                         </span>
                                         <button
@@ -3510,11 +3512,11 @@ const Trainer = () => {
                                             className={`trainer__kill-row-btn${isActive ? ' trainer__kill-row-btn--revive' : ' trainer__kill-row-btn--kill'}`}
                                             onClick={() => {
                                                 setAggroTargetId(m.id);
-                                                addLog(`🎯 Cel trainera: ${m.name}`);
+                                                addLog(`:bullseye: Cel trainera: ${m.name}`);
                                                 setAggroPickerOpen(false);
                                             }}
                                         >
-                                            {isActive ? '✓ Aktywny' : '🎯 Wybierz'}
+                                            {isActive ? <><GameIcon name="check-mark-button" /> Aktywny</> : <><GameIcon name="bullseye" /> Wybierz</>}
                                         </button>
                                     </li>
                                 );
@@ -3537,7 +3539,7 @@ const Trainer = () => {
             {killAllyPickerOpen && (
                 <div className="trainer__kill-overlay" onClick={() => setKillAllyPickerOpen(false)}>
                     <div className="trainer__kill-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="trainer__kill-title">💀 Sandbox: uśmierć / wskrześ sojusznika</div>
+                        <div className="trainer__kill-title"><GameIcon name="skull" /> Sandbox: uśmierć / wskrześ sojusznika</div>
                         <div className="trainer__kill-hint">
                             Tylko do testów spelli (rez / heal / tarcza). Brak konsekwencji — XP, eq i poziom postaci sojusznika pozostają nietknięte.
                         </div>
@@ -3550,7 +3552,7 @@ const Trainer = () => {
                                     return (
                                         <li key={m.id} className="trainer__kill-row">
                                             <span className="trainer__kill-row-name">
-                                                <span style={{ color: CLASS_COLORS[m.class] ?? '#fff' }}>●</span> {m.name}
+                                                <span style={{ color: CLASS_COLORS[m.class] ?? '#fff' }}><Icon name="dot" /></span> {m.name}
                                                 <small> (lvl {m.level} {m.class})</small>
                                             </span>
                                             <button
@@ -3562,10 +3564,10 @@ const Trainer = () => {
                                                         const next = new Set(prev);
                                                         if (next.has(m.id)) {
                                                             next.delete(m.id);
-                                                            addLog(`✨ Wskrzeszono ${m.name} (sandbox)`);
+                                                            addLog(`:sparkles: Wskrzeszono ${m.name} (sandbox)`);
                                                         } else {
                                                             next.add(m.id);
-                                                            addLog(`💀 Uśmiercono ${m.name} (sandbox, 0 konsekwencji)`);
+                                                            addLog(`:skull: Uśmiercono ${m.name} (sandbox, 0 konsekwencji)`);
                                                             nowKilled = true;
                                                         }
                                                         return next;
@@ -3578,11 +3580,11 @@ const Trainer = () => {
                                                     // via the aggro picker if they want.)
                                                     if (nowKilled && aggroTargetId === m.id) {
                                                         setAggroTargetId('player');
-                                                        addLog(`💢 Aggro spadło z ${m.name} → wracasz do gracza`);
+                                                        addLog(`:anger-symbol: Aggro spadło z ${m.name} -> wracasz do gracza`);
                                                     }
                                                 }}
                                             >
-                                                {isDead ? '✨ Wskrześ' : '💀 Uśmierć'}
+                                                {isDead ? <><GameIcon name="sparkles" /> Wskrześ</> : <><GameIcon name="skull" /> Uśmierć</>}
                                             </button>
                                         </li>
                                     );

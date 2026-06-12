@@ -1,7 +1,7 @@
 /**
  * Character-scoped storage – saves/loads per-character state for all persisted stores.
  *
- * Primary storage: Supabase `game_saves` table (character_id → state JSONB).
+ * Primary storage: Supabase `game_saves` table (character_id -> state JSONB).
  * Fallback: localStorage (offline mode or when Supabase is unreachable).
  *
  * All 12 stores are serialised into ONE JSON blob per character.
@@ -35,7 +35,7 @@ import { characterApi } from '../api/v1/characterApi';
 import { supabase } from '../lib/supabase';
 import skillsData from '../data/skills.json';
 
-// ── Active character tracker ────────────────────────────────────────────────
+// -- Active character tracker ------------------------------------------------
 
 let _activeCharacterId: string | null = null;
 const ACTIVE_CHAR_KEY = 'tibia_active_character_id';
@@ -50,7 +50,7 @@ const TAB_SESSION_ID = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 
 
 /**
  * Per-tab lock system: each tab registers which character it owns in localStorage.
- * Key: `tibia_tab_lock_{charId}` → value: TAB_SESSION_ID
+ * Key: `tibia_tab_lock_{charId}` -> value: TAB_SESSION_ID
  * Before writing, a tab checks if it still owns the lock for that character.
  * This prevents Tab A (char X) from overwriting char Y's data after Tab B
  * switched to char Y and took ownership.
@@ -132,7 +132,7 @@ if (typeof window !== 'undefined') {
  */
 let _switchInProgress = false;
 
-// ── Auto-save debounce state ────────────────────────────────────────────────
+// -- Auto-save debounce state ------------------------------------------------
 
 let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 /** How often (ms) to flush all store state to localStorage after a change. */
@@ -157,7 +157,7 @@ export const getActiveCharacterId = (): string | null => _activeCharacterId;
 export const getActiveCharacterIdForRestore = (): string | null =>
   _activeCharacterId ?? localStorage.getItem(ACTIVE_CHAR_KEY);
 
-// ── Store definitions: base key + how to get/set pure state ─────────────────
+// -- Store definitions: base key + how to get/set pure state -----------------
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface IStoreEntry {
@@ -353,7 +353,7 @@ const STORE_ENTRIES: IStoreEntry[] = [
   },
 ];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 /** Pick only the data keys from the full store state (skip functions). */
 const pickState = (full: Record<string, unknown>, keys: string[]): Record<string, unknown> => {
@@ -460,7 +460,7 @@ const resetStoresToDefaults = (): void => {
   }
 };
 
-// ── Auto-save: persist stores to localStorage on every change ───────────────
+// -- Auto-save: persist stores to localStorage on every change ---------------
 
 /**
  * Ensure training is running at 1x (background) speed before persisting.
@@ -735,7 +735,7 @@ export const peekCharacterStore = (charId: string, baseKey: string): Record<stri
   }
 };
 
-// ── Clean up stale global persist keys (one-time migration) ─────────────────
+// -- Clean up stale global persist keys (one-time migration) -----------------
 
 const STALE_GLOBAL_KEYS = [
   'dungeon_rpg_inventory', 'dungeon_rpg_skills', 'dungeon_rpg_tasks',
@@ -750,7 +750,7 @@ const cleanStaleGlobalKeys = (): void => {
   }
 };
 
-// ── Also keep old localStorage per-char keys for migration ──────────────────
+// -- Also keep old localStorage per-char keys for migration ------------------
 
 const oldCharKey = (baseKey: string, charId: string): string =>
   `dungeon_rpg_${baseKey}_char_${charId}`;
@@ -791,7 +791,7 @@ const migrateOldLocalStorage = (charId: string): Record<string, Record<string, u
   return found ? blob : null;
 };
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// -- Public API ---------------------------------------------------------------
 
 /**
  * Force-save current character stores to BOTH localStorage and Supabase.
@@ -875,7 +875,7 @@ const forceSaveCharacterData = async (charId: string): Promise<void> => {
 export const switchToCharacter = async (newCharacterId: string): Promise<void> => {
   const oldId = _activeCharacterId;
 
-  // ── PHASE 1: Save outgoing character (BEFORE blocking auto-saves) ──────
+  // -- PHASE 1: Save outgoing character (BEFORE blocking auto-saves) ------
   // Stop subscriptions first so no concurrent auto-save can interfere,
   // but do NOT set _switchInProgress yet — we need saveCurrentCharacterStores
   // to actually run.
@@ -889,7 +889,7 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
     await forceSaveCharacterData(oldId);
   }
 
-  // ── PHASE 2: Block all saves, reset stores, load new character ─────────
+  // -- PHASE 2: Block all saves, reset stores, load new character ---------
   _switchInProgress = true;
 
   // Remove stale global persist keys that old Zustand persist middleware wrote
@@ -943,7 +943,7 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
     }
   }
 
-  // ── PHASE 3: Claim tab lock and re-enable saves for new character ───
+  // -- PHASE 3: Claim tab lock and re-enable saves for new character ---
   // Claim exclusive ownership of this character for THIS tab.
   // Other tabs will see this lock and refuse to auto-save to this character.
   claimTabLock(newCharacterId);
@@ -957,12 +957,12 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
   // refill them. Used to be gated on `phase !== 'fighting'` so an
   // in-progress fight could resume from where it left off, but the
   // realistic failure modes are:
-  //   • Tab closed mid-fight as a non-leader party member (engine was
+  //   - Tab closed mid-fight as a non-leader party member (engine was
   //     suppressed, character.hp got nuked by stopCombat's bad sync —
   //     see Combat.tsx exit handler fix). On reload Knight loads with
   //     hp=0 AND phase='fighting' so the old guard skipped the heal.
-  //   • Death penalty crashed before fullHealEffective could land.
-  //   • Stale Supabase row from a pre-fix version of the death flow.
+  //   - Death penalty crashed before fullHealEffective could land.
+  //   - Stale Supabase row from a pre-fix version of the death flow.
   // None of these warrant keeping the player at 0 HP — they're all
   // bugs we'd rather paper over than punish. Always heal on load.
   // The combat store's phase / monster state still survive so the
@@ -974,12 +974,12 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
     }
   } catch { /* non-critical */ }
 
-  // ── PHASE 4: Lvl-1000 perk hook ─────────────────────────────────────────
+  // -- PHASE 4: Lvl-1000 perk hook -----------------------------------------
   // When the loaded character is at the level cap (1000), auto-unlock every
   // active skill for their class. Lets the SQL `promote_all_to_1000.sql`
   // migration take effect without us having to ship a per-browser localStorage
   // edit — players just re-enter the character and skills appear in the
-  // Postać → Active Skills panel ready to slot.
+  // Postać -> Active Skills panel ready to slot.
   ensureMaxLevelPerks();
 };
 

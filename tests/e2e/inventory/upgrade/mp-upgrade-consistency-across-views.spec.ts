@@ -7,8 +7,8 @@
  *
  * **Kluczowa różnica vs HP analog 6.13**: MP NIE jest base stat dla żadnego
  * slot-u (patrz `getBaseStatKeysForSlot` w itemSystem.ts linia 490 —
- * helmet/armor/pants/shoulders/boots → `['hp']`, gloves/ring → `['attack']`,
- * necklace/earrings → `['defense']`, weapon → `['dmg_min', 'dmg_max', ...]`).
+ * helmet/armor/pants/shoulders/boots -> `['hp']`, gloves/ring -> `['attack']`,
+ * necklace/earrings -> `['defense']`, weapon -> `['dmg_min', 'dmg_max', ...]`).
  *
  * Konsekwencja w `getTotalEquipmentStats` (itemSystem.ts linia 662-670):
  *   ```
@@ -16,7 +16,7 @@
  *   const finalVal = isBase ? getUpgradedBaseStat(val, upgradeLevel) : val;
  *   ```
  *
- * Dla `slot='helmet'` + `key='mp'`: isBaseStatKey → false → finalVal = val
+ * Dla `slot='helmet'` + `key='mp'`: isBaseStatKey -> false -> finalVal = val
  * (flat, **NIE** mnożone przez upgrade multiplier). Więc helmet z
  * `bonuses: { mp: 20 }` i `upgradeLevel: 3` daje +20 MP, NIE +30 (jak HP
  * w analogicznym teście 6.13).
@@ -30,9 +30,9 @@
  *
  * Pragmatic scoping (mirrors 6.13 pattern):
  * Sprawdzamy 3 reprezentatywne widoki:
- *   1. Town `/` → MP `.town__bar-value`
- *   2. TopHeader pulse popover → `.top-header__pulse-popover-row--mp`
- *   3. `/character-select` card → MP `.char-select__bar-value`
+ *   1. Town `/` -> MP `.town__bar-value`
+ *   2. TopHeader pulse popover -> `.top-header__pulse-popover-row--mp`
+ *   3. `/character-select` card -> MP `.char-select__bar-value`
  *
  * ## Setup
  *
@@ -42,7 +42,7 @@
  *
  * ## Expected math
  *
- * `isBaseStatKey('helmet', 'mp')` = false → mp bonus zostaje flat 20.
+ * `isBaseStatKey('helmet', 'mp')` = false -> mp bonus zostaje flat 20.
  *
  *   raw = 200 (Mage base) + 20 (helmet flat, upgrade NIE scale-uje) + 0 + 0 + 0
  *       = 220
@@ -74,7 +74,7 @@ import { seedEquippedItem } from '../../fixtures/seedInventory';
 test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('helmet +3 with +20 MP bonus → Town, TopHeader popover, CharacterSelect all show same flat max MP (upgrade does NOT scale non-base stat)', async ({ page }) => {
+    test('helmet +3 with +20 MP bonus -> Town, TopHeader popover, CharacterSelect all show same flat max MP (upgrade does NOT scale non-base stat)', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -90,7 +90,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
 
             // 2. Equip upgraded helmet z +20 MP bonusem.
             //    Helmet's base stat to `hp` (per `getBaseStatKeysForSlot`).
-            //    Klucz `mp` NIE jest base stat → upgradeLevel=3 nie wpływa.
+            //    Klucz `mp` NIE jest base stat -> upgradeLevel=3 nie wpływa.
             //    Flat 20 MP zostaje w `getTotalEquipmentStats`.
             await seedEquippedItem({
                 characterId: created.id,
@@ -102,12 +102,12 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
                 upgradeLevel: 3,
             });
 
-            // 3. Login → /character-select.
+            // 3. Login -> /character-select.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
 
-            // 4. Tap "Wybierz" → Town (warm localStorage).
+            // 4. Tap "Wybierz" -> Town (warm localStorage).
             const card = page.locator('.char-select__card', {
                 has: page.locator('.char-select__card-name', { hasText: nick }),
             });
@@ -117,7 +117,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
 
             // 5. Read MP value from Town bar.
             //    Mage base 200 + 20 (flat MP, upgrade NIE scale-uje) = 220.
-            //    MP=80 → expect `80/220` (NIE `80/230` jak HP w 6.13).
+            //    MP=80 -> expect `80/220` (NIE `80/230` jak HP w 6.13).
             const townMp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--mp') })
                 .locator('.town__bar-value')
@@ -136,7 +136,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
 
             // 7. Wróć do /character-select. `getEffectiveMaxStats` w
             //    CharacterSelect ma TĄ SAMĄ ścieżkę `getTotalEquipmentStats`
-            //    → mp bonus zostaje flat 20, niezależnie od upgradeLevel-a.
+            //    -> mp bonus zostaje flat 20, niezależnie od upgradeLevel-a.
             //    Effective 220.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });

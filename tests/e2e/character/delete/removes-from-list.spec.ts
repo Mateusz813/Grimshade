@@ -7,8 +7,8 @@
  *  1. Seed postać przez API z unikalnym nickiem
  *  2. Login + nav do /character-select
  *  3. Znajdź kartę po nicku
- *  4. Tap trash icon 🗑️ → pokazuje się prompt "Na pewno?"
- *  5. Tap "Usuń" → kasuje postać przez DELETE /rest/v1/characters
+ *  4. Tap trash icon :wastebasket: -> pokazuje się prompt "Na pewno?"
+ *  5. Tap "Usuń" -> kasuje postać przez DELETE /rest/v1/characters
  *  6. Wait + assert że karta zniknęła z listy
  *
  * Cleanup w finally — defensywnie na wypadek crashu PRZED kliknięciem
@@ -48,7 +48,7 @@ test.describe('Character › Delete', { tag: '@character' }, () => {
             });
             await expect(card).toBeVisible({ timeout: 10_000 });
 
-            // 4. Tap trash icon → prompt się rozwija (`.char-select__confirm-wrap`)
+            // 4. Tap trash icon -> prompt się rozwija (`.char-select__confirm-wrap`)
             await card.locator('.char-select__delete-btn').tap();
             await expect(card.locator('.char-select__confirm-wrap')).toBeVisible();
 

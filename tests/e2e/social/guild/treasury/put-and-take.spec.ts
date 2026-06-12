@@ -2,21 +2,21 @@
  * Multi-context E2E — guild treasury put + take (BACKLOG 4.6).
  *
  * Spec ("Skarbiec gildii: put + take"): two members of the same guild.
- * Primary has an item in their bag → opens Skarbiec gildii → taps
- * "Włóż →" on the bag tile → item moves from bag to treasury (DB row in
+ * Primary has an item in their bag -> opens Skarbiec gildii -> taps
+ * "Włóż ->" on the bag tile -> item moves from bag to treasury (DB row in
  * `guild_treasury_items`, `guild_treasury_logs` row with action='deposit').
- * Secondary opens Skarbiec → sees the deposited item in the vault column
+ * Secondary opens Skarbiec -> sees the deposited item in the vault column
  * (poll up to 5 s — `GuildTreasury` refreshes every 5 s, no Realtime sub)
- * → taps "← Wyciągnij" → item moves from treasury to secondary's bag
+ * -> taps "<- Wyciągnij" -> item moves from treasury to secondary's bag
  * (DELETE from `guild_treasury_items`, INSERT into `guild_treasury_logs`
  * with action='withdraw').
  *
  * Final assertions:
- *   • Primary's bag count drops by 1 (item left primary).
- *   • Secondary's `inventoryStore.bag` has the item with same UUID.
- *   • `guild_treasury_logs` table has BOTH 'deposit' (primary) AND
+ *   - Primary's bag count drops by 1 (item left primary).
+ *   - Secondary's `inventoryStore.bag` has the item with same UUID.
+ *   - `guild_treasury_logs` table has BOTH 'deposit' (primary) AND
  *     'withdraw' (secondary) rows for this guild.
- *   • `guild_treasury_items` table is empty for this guild after the take.
+ *   - `guild_treasury_items` table is empty for this guild after the take.
  *
  * Why multi-context:
  *   The take half MUST happen on secondary's screen to prove the item
@@ -36,12 +36,12 @@
  *   2-3 poll cycles + WebKit cold start.
  *
  * Cleanup:
- *   • cleanupGuildsByLeaderIds — CASCADE wipes `guild_treasury_items` +
+ *   - cleanupGuildsByLeaderIds — CASCADE wipes `guild_treasury_items` +
  *     `guild_treasury_logs` rows automatically (FK on guild_id).
- *   • characters cleaned via multiContext.cleanup.
+ *   - characters cleaned via multiContext.cleanup.
  *
  * Why no UI dialog for picking the item:
- *   The bag column renders all items as a list with "Włóż →" buttons
+ *   The bag column renders all items as a list with "Włóż ->" buttons
  *   per row. We pick by UUID match — we seeded the item with a known
  *   UUID prefix (`treasury-test-<rand>`) so even if other test runs left
  *   sibling items, our row is identifiable by the unique item's name and
@@ -61,7 +61,7 @@ import { getAdminClient } from '../../../fixtures/adminClient';
 test.describe('Social › Guild', { tag: '@guild' }, () => {
     test.describe.configure({ timeout: 180_000 });
 
-    test('multi-context: primary deposits item → secondary withdraws → treasury logs show deposit + withdraw', async ({ browser }) => {
+    test('multi-context: primary deposits item -> secondary withdraws -> treasury logs show deposit + withdraw', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
@@ -71,7 +71,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
         // present in `getLegacyItemInfo` map in src/systems/itemGenerator.ts)
         // so the Polish name "Miecz Poczatku" resolves cleanly. Plain
         // items.json IDs like `iron_sword` don't have a `_lvlX_` suffix
-        // OR a legacy map entry → getItemDisplayInfo returns null → the
+        // OR a legacy map entry -> getItemDisplayInfo returns null -> the
         // treasury UI falls back to rendering the raw itemId, which
         // makes our locator-by-name brittle.
         const itemUuid = `treasury-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -133,7 +133,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 5. Both pick characters → Town.
+            // 5. Both pick characters -> Town.
             const pickCharacter = async (page: Page, nick: string): Promise<void> => {
                 if (!page.url().endsWith('/character-select')) {
                     await page.goto('/character-select');
@@ -152,7 +152,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // 6. Both navigate Town → Społeczność → Gildia → Skarbiec.
+            // 6. Both navigate Town -> Społeczność -> Gildia -> Skarbiec.
             const navToTreasury = async (page: Page): Promise<void> => {
                 await page.getByRole('button', { name: /^Społeczność$/i }).tap();
                 await expect(page).toHaveURL(/\/social$/, { timeout: 10_000 });
@@ -160,9 +160,9 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 await expect(page).toHaveURL(/\/guild$/, { timeout: 10_000 });
                 // Wait for guild home view to mount.
                 await expect(page.locator('.guild__home-banner')).toBeVisible({ timeout: 20_000 });
-                // Tap "Skarbiec" nav tile → GuildTreasury sub-screen.
+                // Tap "Skarbiec" nav tile -> GuildTreasury sub-screen.
                 await page.locator('.guild__nav-tile-label', { hasText: /^Skarbiec$/i }).tap();
-                // GuildTreasury renders "💎 Skarbiec gildii" in the top-bar.
+                // GuildTreasury renders ":gem-stone: Skarbiec gildii" in the top-bar.
                 await expect(page.locator('.guild__top-title', { hasText: /Skarbiec gildii/i }))
                     .toBeVisible({ timeout: 15_000 });
             };
@@ -174,7 +174,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             // 7. PRIMARY: bag column shows the seeded iron_sword. Its
             //    Polish name is "Miecz Poczatku" per legacy item map. We find
             //    the row in the LEFT (bag) column by name, then tap its
-            //    "Włóż →" button.
+            //    "Włóż ->" button.
             //
             //    There are TWO columns of `.guild__treasury-row` (bag +
             //    vault). The bag column is the first `.guild__treasury-col`
@@ -194,9 +194,9 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await expect(primaryVaultCol.locator('.guild__treasury-empty'))
                 .toBeVisible({ timeout: 5_000 });
 
-            // 8. PRIMARY: tap "Włóż →" in the bag row. After deposit:
-            //    • bag row disappears (item left bag — `removeItem(uuid)`).
-            //    • vault column gets the same item row (refresh fetches new
+            // 8. PRIMARY: tap "Włóż ->" in the bag row. After deposit:
+            //    - bag row disappears (item left bag — `removeItem(uuid)`).
+            //    - vault column gets the same item row (refresh fetches new
             //      treasury list).
             //    Button text contains "Włóż" (with an arrow) per Guild.tsx
             //    line 2129.
@@ -232,12 +232,12 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await expect(secondaryBagCol.locator('.guild__treasury-empty'))
                 .toBeVisible({ timeout: 5_000 });
 
-            // 10. SECONDARY: tap "← Wyciągnij" on the vault row. After
+            // 10. SECONDARY: tap "<- Wyciągnij" on the vault row. After
             //     withdraw:
-            //     • vault row disappears (server DELETE → next refresh has
+            //     - vault row disappears (server DELETE -> next refresh has
             //       empty treasury).
-            //     • secondary's bag column gets the item row (restoreItem
-            //       in inventoryStore appends to bag → next refresh of
+            //     - secondary's bag column gets the item row (restoreItem
+            //       in inventoryStore appends to bag -> next refresh of
             //       the local bag view).
             await secondaryVaultRow.locator('button', { hasText: /Wyciągnij/ }).tap();
             await expect(secondaryVaultRow).toBeHidden({ timeout: 15_000 });
@@ -247,8 +247,8 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await expect(secondaryBagRow).toBeVisible({ timeout: 15_000 });
 
             // 11. Cross-context DB validation via service_role:
-            //     • guild_treasury_items: 0 rows for this guild.
-            //     • guild_treasury_logs: 2 rows for this guild — one
+            //     - guild_treasury_items: 0 rows for this guild.
+            //     - guild_treasury_logs: 2 rows for this guild — one
             //       'deposit' by primary, one 'withdraw' by secondary.
             const admin = getAdminClient();
             const { data: treasuryRowsAfter } = await admin

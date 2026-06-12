@@ -7,7 +7,7 @@
  *
  * Mage chosen for visible delta: max_mp baseline = 200, so 25% buff gives
  * 250 — a clear differential from raw 200. Knight (max_mp=30) would also
- * work numerically (raw 30 → eff 37) but the smaller numbers are less
+ * work numerically (raw 30 -> eff 37) but the smaller numbers are less
  * obvious in failure debug output.
  *
  * ## Why test MP on /combat specifically
@@ -32,7 +32,7 @@
  *   raw = 200 + 0 + 0 + 0 + 0 = 200
  *   eff = floor(200 × 1.25) = 250
  *
- * MP starts at 80 → expect `80/250` on TopHeader popover.
+ * MP starts at 80 -> expect `80/250` on TopHeader popover.
  *
  * Cleanup: try/finally + `cleanupCharacterById`.
  */
@@ -48,21 +48,21 @@ import { runCombatViaSkip } from '../../fixtures/combatSim';
 test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('mp_pct_25 buff active → /combat TopHeader popover shows boosted max MP + engine getEffectiveChar agrees + SKIP fight resolves', async ({ page }) => {
+    test('mp_pct_25 buff active -> /combat TopHeader popover shows boosted max MP + engine getEffectiveChar agrees + SKIP fight resolves', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
         try {
             // 1. Seed Mage lvl 5 on SECONDARY.
             //    Mage base max_mp=200 — sufficient baseline for 25% to be
-            //    visually distinctive (200 → 250).
+            //    visually distinctive (200 -> 250).
             //    HP stays at class baseline (80) — the SKIP fight against
             //    rat (atk=7, speed=5) would burn through a Mage with hp=50
             //    before they finish their 8 hits needed to kill rat
-            //    (atk=6, def=2 → ~4 dmg per hit; Mage atk_speed=2.0 vs
-            //    rat speed=5 → rat hits faster). Full HP gives Mage the
+            //    (atk=6, def=2 -> ~4 dmg per hit; Mage atk_speed=2.0 vs
+            //    rat speed=5 -> rat hits faster). Full HP gives Mage the
             //    cushion to win deterministically on both profiles.
-            //    Under-max MP (80/200 → 80/250 effective) is what we
+            //    Under-max MP (80/200 -> 80/250 effective) is what we
             //    actually need to read on the popover.
             const created = await createCharacterViaApi({
                 userEmail: testUsers.secondary.email,
@@ -82,7 +82,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
                     {
                         id: 'mp_pct_25',
                         name: 'Max MP +25%',
-                        icon: '💠',
+                        icon: 'diamond-with-a-dot',
                         effect: 'mp_pct_25',
                     },
                 ],

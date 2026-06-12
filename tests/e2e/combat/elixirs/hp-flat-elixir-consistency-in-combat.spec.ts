@@ -49,7 +49,7 @@ import { runCombatViaSkip } from '../../fixtures/combatSim';
 test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('hp_boost_500 buff active → /combat TopHeader popover shows boosted max HP + engine getEffectiveChar agrees + SKIP fight resolves', async ({ page }) => {
+    test('hp_boost_500 buff active -> /combat TopHeader popover shows boosted max HP + engine getEffectiveChar agrees + SKIP fight resolves', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -64,8 +64,8 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
             createdId = created.id;
 
             // 2. Seed buff. effect `hp_boost_500` is read by
-            //    `getElixirHpBonus` (combatElixirs.ts) → returns 500 when
-            //    buff active. Pausable timerMode → no drain out-of-combat.
+            //    `getElixirHpBonus` (combatElixirs.ts) -> returns 500 when
+            //    buff active. Pausable timerMode -> no drain out-of-combat.
             const userId = await findUserIdByEmail(testUsers.secondary.email);
             await seedGameSave({
                 characterId: createdId,
@@ -74,7 +74,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
                     {
                         id: 'hp_boost_500',
                         name: '+500 Max HP',
-                        icon: '🩸',
+                        icon: 'drop-of-blood',
                         effect: 'hp_boost_500',
                     },
                 ],

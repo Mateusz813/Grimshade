@@ -4,18 +4,18 @@
  * Spec (BACKLOG 5.6): "Market: wystaw ofertę". Verifies the full sell
  * happy path:
  *   1. Pre-seed a player with a stackable consumable.
- *   2. Open Market → Sprzedaj tab → tap the consumable tile.
+ *   2. Open Market -> Sprzedaj tab -> tap the consumable tile.
  *   3. Fill price + tap Wystaw.
  *   4. Verify: My listings (Sprzedaż) tab now has the row + the
  *      inventory consumable count decreased by `qty`.
  *
  * Source path (production):
- *   Market.tsx tab='sell' → renders `.market__sell-tile` per sellable
+ *   Market.tsx tab='sell' -> renders `.market__sell-tile` per sellable
  *     stack (consumables / stones / arena points / bag equipment).
- *   onClick → setSellTarget(tile) → opens `<SellModal>` (line 1289).
- *   SellModal → user fills qty (consumable max picker default = 1) +
- *     priceStr → tap "Wystaw" (line 1386) → calls onConfirm(price, qty).
- *   handleConfirmSell (line 652) → listItem({...}) via marketStore → on
+ *   onClick -> setSellTarget(tile) -> opens `<SellModal>` (line 1289).
+ *   SellModal -> user fills qty (consumable max picker default = 1) +
+ *     priceStr -> tap "Wystaw" (line 1386) -> calls onConfirm(price, qty).
+ *   handleConfirmSell (line 652) -> listItem({...}) via marketStore -> on
  *     success: setTab('my') + showToast("Wystawiono: ...") and the
  *     escrow `inv.addConsumable(consumableId, -qty)` already deducted
  *     stock pre-listing (line 703).
@@ -24,12 +24,12 @@
  *
  * Stackable consumables are simpler than bag equipment for this contract
  * test:
- *   • `isStackKind('potion')` = true (marketSystem.ts line 174), so the
+ *   - `isStackKind('potion')` = true (marketSystem.ts line 174), so the
  *     sell modal renders a quantity picker (one explicit "qty = 1" tap
  *     ramp before pricing).
- *   • Inventory tile renders with kind='potion' → no rarity reroll math
+ *   - Inventory tile renders with kind='potion' -> no rarity reroll math
  *     to set up.
- *   • Price floor = 1 (isValidPrice line 153 — Number.isInteger ≥ 1).
+ *   - Price floor = 1 (isValidPrice line 153 — Number.isInteger ≥ 1).
  *
  * MIN_PRICE: 1 gp (isValidPrice). We list for 100 gp / unit, qty=1.
  *
@@ -47,15 +47,15 @@
  *
  * ## Flow + assertions
  *
- *  1. Login → pick character → Town.
- *  2. /market → wait for `.market` view.
- *  3. Tap "Sprzedaj" tab → tab becomes active.
+ *  1. Login -> pick character -> Town.
+ *  2. /market -> wait for `.market` view.
+ *  3. Tap "Sprzedaj" tab -> tab becomes active.
  *  4. Find the hp_potion_sm sell-tile by name "Mały Eliksir HP" (the
- *     ELIXIRS table maps hp_potion_sm → name_pl 'Mały Eliksir HP').
- *  5. Tap tile → SellModal opens (`.market__modal` visible).
+ *     ELIXIRS table maps hp_potion_sm -> name_pl 'Mały Eliksir HP').
+ *  5. Tap tile -> SellModal opens (`.market__modal` visible).
  *  6. Type price '100' into the price input.
- *  7. Tap "Wystaw" → modal closes → tab auto-switches to 'my'
- *     (handleConfirmSell line 720) → toast "Wystawiono: ..." appears.
+ *  7. Tap "Wystaw" -> modal closes -> tab auto-switches to 'my'
+ *     (handleConfirmSell line 720) -> toast "Wystawiono: ..." appears.
  *  8. Verify: row visible under `.market__row` filtered by the item
  *     name, price formatted (formatGoldShort(100) = "100").
  *  9. Verify: DB-side via service_role — `market_listings` has 1 row
@@ -97,7 +97,7 @@ test.describe('City › Market', { tag: '@city' }, () => {
                 counts: { hp_potion_sm: 5 },
             });
 
-            // 3. Login → pick character → Town.
+            // 3. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -124,7 +124,7 @@ test.describe('City › Market', { tag: '@city' }, () => {
             // 6. Find the hp_potion_sm sell-tile by name.
             //    consumableName('hp_potion_sm') = 'Mały Eliksir HP' per
             //    ELIXIRS table in shopStore — Market.tsx line 122 resolves
-            //    via that table → consumableName helper line 482.
+            //    via that table -> consumableName helper line 482.
             //    Anchor on `.market__sell-tile-name` to match the tile by
             //    its rendered name string (avoid grabbing the tile by a
             //    secondary text element like the count badge).
@@ -136,7 +136,7 @@ test.describe('City › Market', { tag: '@city' }, () => {
             // Sanity — qty badge shows ×5 (Market.tsx line 968-970).
             await expect(sellTile.locator('.market__sell-tile-qty')).toContainText('×5');
 
-            // 7. Tap tile → opens SellModal.
+            // 7. Tap tile -> opens SellModal.
             await sellTile.tap();
             const modal = page.locator('.market__modal').last();
             await expect(modal).toBeVisible({ timeout: 5_000 });

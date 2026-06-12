@@ -2,11 +2,11 @@
  * Atomic E2E — full combat flow (BACKLOG 13.5 hunting expanded + 13.13).
  *
  * Spec coverage:
- *  • 13.5 hunting → "real combat" version of the smoke. The existing
+ *  - 13.5 hunting -> "real combat" version of the smoke. The existing
  *    `combat/hunting/page-loads.spec.ts` only proves the picker hub
  *    renders. THIS test takes the next step: actually win a fight via the
  *    SKIP-speed instant-resolution path and assert the rewards landed.
- *  • 13.13 partial → "Drop + logi wyświetlają się poprawnie". We assert
+ *  - 13.13 partial -> "Drop + logi wyświetlają się poprawnie". We assert
  *    the sessionLog contains a kill log entry that names the monster +
  *    rewards (this is the same string the in-fight ticker + the
  *    CombatLogsModal render — Combat.tsx line 1046 of combatEngine.ts).
@@ -14,18 +14,18 @@
  * Test strategy (combatSim helper):
  *  1. Seed Knight lvl 1 (default base stats, hp_regen/mp_regen=0 to keep
  *     HP stable during the assertion window).
- *  2. Login + pick character → Town hydration (combatStore.character set).
+ *  2. Login + pick character -> Town hydration (combatStore.character set).
  *  3. `runCombatViaSkip(page, 'rat')` — sets SKIP speed, invokes
  *     `startNewFight(rat)` directly via dynamic-import. SKIP mode collapses
  *     the entire fight into one synchronous `resolveInstantFight` call
  *     (combatEngine.ts line 2446). By the time the helper returns:
- *       • combatStore.phase === 'victory' (rat dies — Knight one-shots it).
- *       • combatStore.earnedXp === rat.xp × multipliers (base 3, but SKIP
- *         applies `*0.75` factor per line 2527 → ~2 XP).
- *       • combatStore.sessionKills.normal === 1 (line 2565).
- *       • combatStore.sessionLog contains the "ginie" log line +
+ *       - combatStore.phase === 'victory' (rat dies — Knight one-shots it).
+ *       - combatStore.earnedXp === rat.xp × multipliers (base 3, but SKIP
+ *         applies `*0.75` factor per line 2527 -> ~2 XP).
+ *       - combatStore.sessionKills.normal === 1 (line 2565).
+ *       - combatStore.sessionLog contains the "ginie" log line +
  *         "Walka z … rozpoczęta" line.
- *       • characterStore.xp += earnedXp.
+ *       - characterStore.xp += earnedXp.
  *
  *  4. Snapshot character via `getCharacterSnapshot` — assert XP went up.
  *
@@ -37,14 +37,14 @@
  *  doubles, deterministic.
  *
  * What we DON'T assert (and why):
- *  • Specific XP value (3 vs 2 vs 4) — SKIP applies a 0.75 multiplier
+ *  - Specific XP value (3 vs 2 vs 4) — SKIP applies a 0.75 multiplier
  *    per `resolveInstantFight` line 2527, plus mastery bonus (=0 at first
  *    kill), plus party bonuses (=0 solo). We only assert `> 0` because
  *    the engine's internal multiplier stack could shift between releases.
- *  • Specific drops — rat has `dropTable: []` and the dynamic drop roll
+ *  - Specific drops — rat has `dropTable: []` and the dynamic drop roll
  *    is RNG-based. We don't assert any specific drop; some kills produce
  *    a copper drop, others nothing.
- *  • Combat view UI render — SKIP doesn't navigate to /combat. We're
+ *  - Combat view UI render — SKIP doesn't navigate to /combat. We're
  *    testing the engine path; the smoke test covers UI render.
  *
  * Cleanup: try/finally + cleanupCharacterById (drops SKIP-mode session
@@ -129,7 +129,7 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
             expect(hasOpenLog).toBe(true);
 
             // 8. Character XP DID rise vs pre-snapshot. Direct evidence
-            //    that engine.addReward → characterStore.addXp ran (line
+            //    that engine.addReward -> characterStore.addXp ran (line
             //    2535 of resolveInstantFight). This is the missing
             //    assertion that the SMOKE test couldn't make — proves
             //    rewards persisted into the character store.

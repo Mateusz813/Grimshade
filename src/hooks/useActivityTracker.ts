@@ -13,9 +13,9 @@ const TRAINING_COLLECT_INTERVAL_MS = 30_000;
 /**
  * Tracks user activity (clicks, mouse movement, key presses, touches).
  * Controls training speed based on activity:
- *   - Active play → 2x training speed
- *   - 2+ minutes of inactivity → 1x training speed
- *   - Tab hidden / beforeunload → 1x training speed (flush segment)
+ *   - Active play -> 2x training speed
+ *   - 2+ minutes of inactivity -> 1x training speed
+ *   - Tab hidden / beforeunload -> 1x training speed (flush segment)
  *
  * Also periodically collects training XP so skill levels update in real-time.
  * Training runs ALWAYS when a skill is selected — never pauses.
@@ -60,7 +60,7 @@ export const useActivityTracker = () => {
     useSkillStore.getState().onActivityChange(true);
     resetInactivityTimer();
 
-    // ── Periodic XP collection ────────────────────────────────────────────
+    // -- Periodic XP collection --------------------------------------------
     // Collect accumulated training XP every 30s so skill levels update live.
     collectIntervalRef.current = setInterval(() => {
       const state = useSkillStore.getState();
@@ -75,7 +75,7 @@ export const useActivityTracker = () => {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // visibilitychange: hidden → 1x, visible → 2x
+    // visibilitychange: hidden -> 1x, visible -> 2x
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {
         isInactiveRef.current = true;

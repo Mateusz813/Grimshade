@@ -3,7 +3,7 @@
  *
  * Spec ("Napisz na chacie gildii"): primary + secondary are already
  * members of the same guild. Primary writes a message in the guild
- * chat input → submits. Secondary's Chat panel (per-guild channel
+ * chat input -> submits. Secondary's Chat panel (per-guild channel
  * `guild_${guildId}`) receives the message via Supabase Realtime and
  * renders it in the message list.
  *
@@ -14,23 +14,23 @@
  *
  * Setup strategy: pre-seed both characters as members of the same
  * guild via `seedGuild` (direct INSERT into `guilds` + `guild_members`
- * by service_role). Skips the UI flow of create-guild → apply →
+ * by service_role). Skips the UI flow of create-guild -> apply ->
  * accept which is already covered by `join-requests/accept.spec.ts`.
  * Both contexts navigate to /guild and land on the home view (because
  * `hydrateForCharacter` finds the membership row on mount).
  *
  * Realtime timing:
- *   • Primary's `chatApi.sendMessage` POSTs to /messages with
+ *   - Primary's `chatApi.sendMessage` POSTs to /messages with
  *     `channel = 'guild_<guildId>'` and `Prefer: return=representation`.
- *   • Postgres INSERT triggers a Realtime broadcast on table=messages.
- *   • Secondary's `chat:guild_<guildId>:...` channel subscription fires
- *     the `INSERT` handler with the new row → message appended to local
- *     state → re-render.
- *   • End-to-end latency: typically 1-3s in dev, with brittle p99
+ *   - Postgres INSERT triggers a Realtime broadcast on table=messages.
+ *   - Secondary's `chat:guild_<guildId>:...` channel subscription fires
+ *     the `INSERT` handler with the new row -> message appended to local
+ *     state -> re-render.
+ *   - End-to-end latency: typically 1-3s in dev, with brittle p99
  *     bursts to 8-10s during connection storm. 30s headroom on the
  *     expect.toBeVisible() catches both.
  *
- * Cleanup: characters + the seeded guild (CASCADE → guild_members).
+ * Cleanup: characters + the seeded guild (CASCADE -> guild_members).
  *   Chat messages on the `guild_${guildId}` channel are also wiped
  *   via `cleanupGuildsByLeaderIds`'s optional `channelsToClean` arg —
  *   guild_${id} messages are orphaned post-guild-delete so cleaning
@@ -49,7 +49,7 @@ import { cleanupGuildsByLeaderIds } from '../../../fixtures/guildCleanup';
 test.describe('Social › Guild', { tag: '@guild' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary writes guild chat message → secondary receives it via Realtime', async ({ browser }) => {
+    test('multi-context: primary writes guild chat message -> secondary receives it via Realtime', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
@@ -98,7 +98,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             handles = await openMultiContext(browser);
             const { primaryPage, secondaryPage } = handles;
 
-            // 5. Both pick characters → Town.
+            // 5. Both pick characters -> Town.
             const pickCharacter = async (page: Page, nick: string): Promise<void> => {
                 if (!page.url().endsWith('/character-select')) {
                     await page.goto('/character-select');
@@ -117,7 +117,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // 6. Both navigate Town → Społeczność → Gildia. Both should
+            // 6. Both navigate Town -> Społeczność -> Gildia. Both should
             //    land on the home view because `hydrateForCharacter`
             //    finds their guild_members row on mount.
             const navToGuildHome = async (page: Page): Promise<void> => {
@@ -180,7 +180,7 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             await expect(secondaryChat.locator('.chat__msg-name', { hasText: primaryNick }))
                 .toBeVisible({ timeout: 10_000 });
         } finally {
-            // Order: guild (CASCADE → guild_members), chat channel,
+            // Order: guild (CASCADE -> guild_members), chat channel,
             // then characters via fixture cleanup.
             const channels = guildId ? [`guild_${guildId}`] : [];
             await cleanupGuildsByLeaderIds([primaryCharId, secondaryCharId], channels);

@@ -5,10 +5,10 @@ import { renderHook, cleanup } from '@testing-library/react';
  * useLeaderboardStatSync tests
  *
  * On character mount the hook computes a one-shot snapshot of
- *  • mastery_points       (sum of mastery levels)
- *  • quests_oneshot_done  (length of completedQuestIds)
- *  • quests_daily_done    (today's claimed daily count)
- *  • skill_upgrades_done  (sum of skillUpgradeLevels)
+ *  - mastery_points       (sum of mastery levels)
+ *  - quests_oneshot_done  (length of completedQuestIds)
+ *  - quests_daily_done    (today's claimed daily count)
+ *  - skill_upgrades_done  (sum of skillUpgradeLevels)
  *
  * and fires `characterApi.bumpStat` once per stat. It dedupes by
  * `character.id` via a ref so unrelated re-renders don't re-fire.
@@ -152,7 +152,7 @@ describe('useLeaderboardStatSync', () => {
         const { rerender } = renderHook(() => useLeaderboardStatSync());
         expect(characterApi.bumpStat).toHaveBeenCalledTimes(4);
         // Force another render with same identity — store update without
-        // an id change → effect should not re-run.
+        // an id change -> effect should not re-run.
         useCharacterStore.setState({
             character: { ...makeChar('same-id'), gold: 999 } as ICharacter,
         });

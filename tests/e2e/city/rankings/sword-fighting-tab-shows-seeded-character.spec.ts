@@ -6,7 +6,7 @@
  * — Sword Fighting ranking (weapon_skill source).
  *
  * Tab definition (Leaderboard.tsx linia 136):
- *   { key: 'sword_fighting', label: 'Sword', icon: '⚔️',
+ *   { key: 'sword_fighting', label: 'Sword', icon: 'crossed-swords',
  *     source: 'weapon_skill', skillName: 'sword_fighting',
  *     valueLabel: 'Sword' }
  *
@@ -16,14 +16,14 @@
  *  2. GET `characters?id=in.(...)` żeby zmatchować names+class
  *  3. Build entries: `{ id, name, class, value: skill_level,
  *     secondaryValue: skill_xp }`
- *  4. Display via formatValue fallback → `Sword 999`.
+ *  4. Display via formatValue fallback -> `Sword 999`.
  *
  * Seed: `seedWeaponSkill({ skillName: 'sword_fighting', skillLevel: 999 })`
  * + matching `skills.skillLevels.sword_fighting=999` w game_save żeby
  * defensywnie przeżyć stray sync.
  *
  * Cleanup: try/finally + cleanupCharacterById. `character_weapon_skills`
- * jest w `CHARACTER_CHILD_TABLES` (cleanup.ts linia 84) → wipe razem
+ * jest w `CHARACTER_CHILD_TABLES` (cleanup.ts linia 84) -> wipe razem
  * z postacią.
  */
 

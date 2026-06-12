@@ -25,15 +25,15 @@ export const loginViaUI = async (page: Page, user: ITestUser): Promise<void> => 
     await page.getByRole('button', { name: /zaloguj/i }).tap();
 
     // Akceptujemy dwa stany pos-login:
-    //  • /character-select — świeży user, brak postaci w storze
-    //  • / — user z postacią ustawioną w characterStore (Town view)
+    //  - /character-select — świeży user, brak postaci w storze
+    //  - / — user z postacią ustawioną w characterStore (Town view)
     // Regex łapie oba.
     await page.waitForURL(/\/(character-select)?$/, { timeout: 20_000 });
 
     // 2026-05-26 batch-flake fix: czekamy aż Supabase session zapisze się
     // w localStorage (`sb-<projectref>-auth-token`). Bez tego niektóre
     // testy w pełnym suicie widzą "logged in" URL ale następne RLS-gated
-    // Supabase calls jeszcze nie mają session → empty result → race.
+    // Supabase calls jeszcze nie mają session -> empty result -> race.
     // Zero-impact na isolation runs (od razu return true), zero modyfikacji
     // żadnego testu.
     await page.waitForFunction(

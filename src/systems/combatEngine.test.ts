@@ -41,7 +41,7 @@ import type { IMonster } from '../types/monster';
 import type { ICharacter } from '../api/v1/characterApi';
 import type { IInventoryItem } from './itemSystem';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -75,7 +75,7 @@ const makeMonster = (overrides: Partial<IMonster> = {}): IMonster => ({
     id: 'rat',
     name_pl: 'Szczur',
     name_en: 'Rat',
-    icon: '🐀',
+    icon: 'rat',
     level: 1,
     hp: 27,
     attack: 4,
@@ -138,7 +138,7 @@ const resetAllStores = (): void => {
     resetAggro();
 };
 
-// ── getSkillMpCost ───────────────────────────────────────────────────────────
+// -- getSkillMpCost -----------------------------------------------------------
 
 describe('getSkillMpCost', () => {
     it('returns floor (15) for null skillId', () => {
@@ -167,7 +167,7 @@ describe('getSkillMpCost', () => {
     });
 });
 
-// ── getAttackMs ──────────────────────────────────────────────────────────────
+// -- getAttackMs --------------------------------------------------------------
 
 describe('getAttackMs', () => {
     it('maps speed 1.5 to 2000ms', () => {
@@ -202,7 +202,7 @@ describe('getAttackMs', () => {
     });
 });
 
-// ── SPEED_MULT / SPEED_ORDER ─────────────────────────────────────────────────
+// -- SPEED_MULT / SPEED_ORDER -------------------------------------------------
 
 describe('SPEED_MULT', () => {
     it('has x1 = 1', () => {
@@ -219,12 +219,12 @@ describe('SPEED_MULT', () => {
 });
 
 describe('SPEED_ORDER', () => {
-    it('cycles in x1 → x2 → x4 → SKIP order', () => {
+    it('cycles in x1 -> x2 -> x4 -> SKIP order', () => {
         expect(SPEED_ORDER).toEqual(['x1', 'x2', 'x4', 'SKIP']);
     });
 });
 
-// ── applyRarityToMonster ─────────────────────────────────────────────────────
+// -- applyRarityToMonster -----------------------------------------------------
 
 describe('applyRarityToMonster', () => {
     const baseMonster: IMonster = makeMonster({
@@ -273,9 +273,9 @@ describe('applyRarityToMonster', () => {
     it('floors fractional results', () => {
         const m: IMonster = makeMonster({ hp: 3, attack: 3, defense: 3, xp: 3, gold: [3, 7] });
         const result = applyRarityToMonster(m, 'strong');
-        // hp 3*1.5=4.5 → 4
+        // hp 3*1.5=4.5 -> 4
         expect(result.hp).toBe(4);
-        // attack 3*1.2=3.6 → 3
+        // attack 3*1.2=3.6 -> 3
         expect(result.attack).toBe(3);
     });
 
@@ -287,7 +287,7 @@ describe('applyRarityToMonster', () => {
     });
 });
 
-// ── getEffectiveChar ─────────────────────────────────────────────────────────
+// -- getEffectiveChar ---------------------------------------------------------
 
 describe('getEffectiveChar', () => {
     beforeEach(() => {
@@ -346,7 +346,7 @@ describe('getEffectiveChar', () => {
 
     it('defaults undefined attack/defense/crit_chance to 0 (NaN hardening 2026-05-25)', () => {
         // CLAUDE.md "NaN w combat = krytyczny bug — waliduj WSZYSTKIE
-        // wartości przed obliczeniami, undefined/null → 0". This used to
+        // wartości przed obliczeniami, undefined/null -> 0". This used to
         // propagate NaN through Math.floor / Math.min when any of these
         // base fields were undefined — fixed by `?? 0` defaults in
         // `getEffectiveChar`. Regression test: every output field must
@@ -366,7 +366,7 @@ describe('getEffectiveChar', () => {
     });
 });
 
-// ── Hunt effects session ─────────────────────────────────────────────────────
+// -- Hunt effects session -----------------------------------------------------
 
 describe('resetHuntEffects', () => {
     it('clears stun status — player not stunned after reset', () => {
@@ -436,7 +436,7 @@ describe('clearHuntNecroSummons', () => {
     });
 });
 
-// ── Aggro ────────────────────────────────────────────────────────────────────
+// -- Aggro --------------------------------------------------------------------
 
 describe('resetAggro', () => {
     it('runs without throwing', () => {
@@ -480,7 +480,7 @@ describe('maybeSwitchAggro', () => {
     });
 });
 
-// ── advanceSkillCooldowns ────────────────────────────────────────────────────
+// -- advanceSkillCooldowns ----------------------------------------------------
 
 describe('advanceSkillCooldowns', () => {
     it('runs without throwing when no cooldowns are tracked', () => {
@@ -499,7 +499,7 @@ describe('advanceSkillCooldowns', () => {
     });
 });
 
-// ── getAllMonsters ───────────────────────────────────────────────────────────
+// -- getAllMonsters -----------------------------------------------------------
 
 describe('getAllMonsters', () => {
     it('returns a non-empty list', () => {
@@ -526,7 +526,7 @@ describe('getAllMonsters', () => {
     });
 });
 
-// ── syncCasterChargeConsume ──────────────────────────────────────────────────
+// -- syncCasterChargeConsume --------------------------------------------------
 
 describe('syncCasterChargeConsume', () => {
     beforeEach(() => {
@@ -560,7 +560,7 @@ describe('syncCasterChargeConsume', () => {
     });
 });
 
-// ── dropLootToInventory ──────────────────────────────────────────────────────
+// -- dropLootToInventory ------------------------------------------------------
 
 describe('dropLootToInventory', () => {
     beforeEach(() => {
@@ -603,7 +603,7 @@ describe('dropLootToInventory', () => {
     });
 });
 
-// ── applyMonsterKillRewardsForMember ─────────────────────────────────────────
+// -- applyMonsterKillRewardsForMember -----------------------------------------
 
 describe('applyMonsterKillRewardsForMember', () => {
     beforeEach(() => {
@@ -639,7 +639,7 @@ describe('applyMonsterKillRewardsForMember', () => {
     });
 });
 
-// ── addMonsterToWave ─────────────────────────────────────────────────────────
+// -- addMonsterToWave ---------------------------------------------------------
 
 describe('addMonsterToWave', () => {
     beforeEach(() => {
@@ -679,7 +679,7 @@ describe('addMonsterToWave', () => {
     });
 });
 
-// ── startAutoNextFight ───────────────────────────────────────────────────────
+// -- startAutoNextFight -------------------------------------------------------
 
 describe('startAutoNextFight', () => {
     beforeEach(() => {
@@ -702,7 +702,7 @@ describe('startAutoNextFight', () => {
     });
 });
 
-// ── stopCombat ───────────────────────────────────────────────────────────────
+// -- stopCombat ---------------------------------------------------------------
 
 describe('stopCombat', () => {
     beforeEach(() => {
@@ -747,17 +747,17 @@ describe('stopCombat', () => {
     });
 });
 
-// ── IDropDisplay type sanity ─────────────────────────────────────────────────
+// -- IDropDisplay type sanity -------------------------------------------------
 
 describe('IDropDisplay shape', () => {
     it('supports the minimal icon+name+rarity contract', () => {
-        const d: IDropDisplay = { icon: '⚔️', name: 'Sword', rarity: 'common' };
-        expect(d.icon).toBe('⚔️');
+        const d: IDropDisplay = { icon: 'crossed-swords', name: 'Sword', rarity: 'common' };
+        expect(d.icon).toBe('crossed-swords');
     });
 
     it('supports optional fields upgradeLevel/sold/soldPrice', () => {
         const d: IDropDisplay = {
-            icon: '⚔️',
+            icon: 'crossed-swords',
             name: 'Sword',
             rarity: 'rare',
             upgradeLevel: 3,
@@ -769,7 +769,7 @@ describe('IDropDisplay shape', () => {
     });
 });
 
-// ── Guard: spy on Math.random to make stochastic tests deterministic ─────────
+// -- Guard: spy on Math.random to make stochastic tests deterministic ---------
 
 describe('applyRarityToMonster determinism guard', () => {
     let randomSpy: ReturnType<typeof vi.spyOn>;
@@ -787,7 +787,7 @@ describe('applyRarityToMonster determinism guard', () => {
     });
 });
 
-// ── Equipment-aware getEffectiveChar tests ───────────────────────────────────
+// -- Equipment-aware getEffectiveChar tests -----------------------------------
 
 describe('getEffectiveChar with equipped item', () => {
     beforeEach(() => {

@@ -98,31 +98,31 @@ export interface ICombatEnemy {
         markAmpMult?: number;
         /** Necromancer Mroczny Rytuał (`dark_ritual:dur:pct`) — ms
          *  remaining on the soonest-firing pending ritual on this
-         *  target. View renders 💀 + countdown so the player can see
+         *  target. View renders :skull: + countdown so the player can see
          *  "5.2s until detonation". Drains × speedMult so x2/x4 burn
          *  the badge faster. The percent-of-max-HP that will fire
          *  when this expires is on `darkRitualPct` for the label. */
         darkRitualMs?: number;
         /** % of target max HP that the soonest-firing dark_ritual
          *  will deal when it triggers. Mirrors the spec's `:25` arg
-         *  so the badge can render "💀 25% in 5.2s". */
+         *  so the badge can render ":skull: 25% in 5.2s". */
         darkRitualPct?: number;
         /** Necromancer Kraina Śmierci (`mark_amp_all:mult:dur`) —
          *  duration-based amp window. Every hit by ANY ally on this
          *  target deals ×mult damage while > 0. Distinct from the
          *  count-based markAmp (which gives one bonus hit and
          *  expires); this one is passive for the whole window.
-         *  Card renders 🩸 ×N · Ts so the player sees the active
+         *  Card renders :drop-of-blood: ×N · Ts so the player sees the active
          *  multiplier and seconds remaining. */
         markAmpAllMs?: number;
         markAmpAllMult?: number;
         /** Bard Kołysanka (`enemy_atk_down:25:8000`) — enemy ATK reduced
-         *  by N% for the window. Card renders 😴 N% · Ts so the player
+         *  by N% for the window. Card renders :sleeping-face: N% · Ts so the player
          *  can see "this enemy hits 25% less for 6s". */
         enemyAtkDownMs?: number;
         enemyAtkDownPct?: number;
         /** Bard Pieśń Syren (`aoe;enemy_no_heal:5000`) — enemy heals
-         *  reverse to damage while > 0. Card renders 🔇 + countdown
+         *  reverse to damage while > 0. Card renders :muted-speaker: + countdown
          *  so the player sees "boss self-heal will fail for 4.2s". */
         enemyNoHealMs?: number;
     };
@@ -144,7 +144,7 @@ export interface ICombatAlly {
     currentMp: number;
     maxMp: number;
     isDead: boolean;
-    /** True for the local player so we can mark it visually (★). */
+    /** True for the local player so we can mark it visually (:star:). */
     isPlayer: boolean;
     /** Character level — shown as a small badge on the avatar (top-left). */
     level?: number;
@@ -176,8 +176,8 @@ export interface ICombatAlly {
     summonsByType?: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>>;
     /**
      * 2026-05 v7: click-to-despawn callback. Fires when the player taps
-     * one of the per-type summon badges (💀×N skeletons / 👻×M ghosts /
-     * 😈×K demons / 👑×L liches). The view forwards the click to
+     * one of the per-type summon badges (:skull:×N skeletons / :ghost:×M ghosts /
+     * :smiling-face-with-horns:×K demons / :crown:×L liches). The view forwards the click to
      * `useNecroSummonStore.despawnOne(necroId, type)` which removes the
      * oldest summon of that type from the queue. Card badges only render
      * the click handler when this callback is provided (typically only
@@ -188,10 +188,10 @@ export interface ICombatAlly {
     /**
      * 2026-05 v7: live "summon raised!" overlay animation on the
      * caster's avatar (~2s). Each type has its own visual:
-     *   • skeleton — gray bone dust burst
-     *   • ghost    — cyan ethereal swirl
-     *   • demon    — red/orange flame eruption
-     *   • lich     — purple vortex + golden runes (epic)
+     *   - skeleton — gray bone dust burst
+     *   - ghost    — cyan ethereal swirl
+     *   - demon    — red/orange flame eruption
+     *   - lich     — purple vortex + golden runes (epic)
      *
      * Set by views from `useCombatFx.allySummonSpawn[slot]` after a
      * `useNecroSummonStore.spawn()` call.
@@ -226,7 +226,7 @@ export interface ICombatPotionSlot {
     /** What the potion restores — drives the accent color + cooldown rule. */
     kind: 'hp' | 'mp' | 'pct-hp' | 'pct-mp';
     /** Optional icon URL or emoji glyph for the dock button. When omitted,
-     *  the dock falls back to the legacy ❤️/💧/❤️%/💧% emoji per kind.
+     *  the dock falls back to the legacy :red-heart:/:droplet:/:red-heart:%/:droplet:% emoji per kind.
      *  2026-05: Combat fills this with the actual selected potion's PNG
      *  (`getPotionImage(potion.id)`) so the dock shows the same art as
      *  the Inventory bag tile. */
@@ -256,7 +256,7 @@ export interface ICombatSessionDrop {
  *  the top-left scroll badge dropdown. */
 export interface ICombatActiveQuest {
     id: string;
-    /** 'task' = daily-style task, 'quest' = main quest (📜 vs 📋 icon). */
+    /** 'task' = daily-style task, 'quest' = main quest (:scroll: vs :clipboard: icon). */
     kind: 'task' | 'quest';
     /** Short label (monster name + " x10" etc.). */
     label: string;

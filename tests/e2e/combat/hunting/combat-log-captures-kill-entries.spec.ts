@@ -3,42 +3,42 @@
  * "Drop + logi wyświetlają się poprawnie", log half).
  *
  * What we test:
- *  • Run a SKIP fight against rat (Knight one-shots; entries are
+ *  - Run a SKIP fight against rat (Knight one-shots; entries are
  *    deterministic regardless of damage RNG because SKIP collapses to
- *    "fight starts → fight ends" with the same fixed event sequence).
- *  • Assert the sessionLog contains the expected event tags:
+ *    "fight starts -> fight ends" with the same fixed event sequence).
+ *  - Assert the sessionLog contains the expected event tags:
  *      1. "system" entry: `Walka z Szczur (Poziom 1) rozpoczęta!`
  *         (combatEngine.ts line 2637).
  *      2. Either a "system" Awans entry (level-up if XP threshold hit)
  *         OR no awans line — both acceptable, we don't pin level-ups
  *         because Knight lvl 1 needs 35 XP for lvl 2 and one rat is ~2.
- *  • Assert sessionLog grew (length > 0) after the fight — proves
+ *  - Assert sessionLog grew (length > 0) after the fight — proves
  *    `addLog` actually pushed into the per-session array, not the
  *    capped legacy `log` array.
- *  • Assert at least one log entry has type 'system' (the "Walka z … rozpoczęta"
+ *  - Assert at least one log entry has type 'system' (the "Walka z … rozpoczęta"
  *    line is always system-typed per line 2635/2637).
  *
  * Why this matters:
- *  • `sessionLog` is the source of truth for the `CombatLogsModal`
- *    (CombatSubControls.tsx line 155 → `<CombatLogsModal>` reads
+ *  - `sessionLog` is the source of truth for the `CombatLogsModal`
+ *    (CombatSubControls.tsx line 155 -> `<CombatLogsModal>` reads
  *    `useCombatStore.sessionLog` directly). If combat doesn't write
  *    log entries, the modal renders an empty list and the player can't
  *    audit what happened.
- *  • The legacy 50-entry-capped `log` field powers the inline ticker
+ *  - The legacy 50-entry-capped `log` field powers the inline ticker
  *    in the combat hud — same write site (`addLog` writes both). If
  *    that desyncs, players lose attack/kill visibility mid-fight.
- *  • Past bug history: a refactor swapped `addLog` for a no-op stub
+ *  - Past bug history: a refactor swapped `addLog` for a no-op stub
  *    in an experimental "silent SKIP" branch — every fight succeeded
  *    but no log entries were created. Players reported "where did my
  *    kill go" — undetected until they manually opened the modal.
  *
  * Why we DON'T verify (and why):
- *  • Specific kill-log text — `handleMonsterDeath` (line 1046) writes
+ *  - Specific kill-log text — `handleMonsterDeath` (line 1046) writes
  *    `${monster.name_pl} ginie!`, but SKIP mode uses a DIFFERENT path
  *    (`resolveInstantFight`) which only writes the "rozpoczęta" opener
  *    + possible Awans logs. We assert what's actually guaranteed by
  *    SKIP, not what live combat would write.
- *  • Drop-line entries — rat has `dropTable: []` and dynamic drops are
+ *  - Drop-line entries — rat has `dropTable: []` and dynamic drops are
  *    RNG-low. Not deterministic enough for an assertion.
  *
  * Cleanup: try/finally + cleanupCharacterById.

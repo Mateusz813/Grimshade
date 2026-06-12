@@ -6,10 +6,10 @@ import { MemoryRouter } from 'react-router-dom';
  * Raid view — 8-wave boss train, party-only. 4358 lines. Phases:
  * 'lobby' | 'fighting' | 'victory' | 'wipe'. Mount has multiple gate
  * screens before showing the actual raid list:
- *   • noParty           → "Potrzebujesz Party"
- *   • partyTooSmall     → "Za mało osób" (less than 2 humans)
- *   • notLeader         → "Tylko lider"
- *   • showList          → the actual raid hub
+ *   - noParty           -> "Potrzebujesz Party"
+ *   - partyTooSmall     -> "Za mało osób" (less than 2 humans)
+ *   - notLeader         -> "Tylko lider"
+ *   - showList          -> the actual raid hub
  *
  * Coverage: render + each of the four gates + the leader's list view.
  */
@@ -163,7 +163,7 @@ afterEach(() => {
 });
 
 describe('Raid — smoke', () => {
-    it('renders without crashing (no party → gate screen)', () => {
+    it('renders without crashing (no party -> gate screen)', () => {
         const { container } = renderRaid();
         expect(container.querySelector('.raid')).not.toBeNull();
     });

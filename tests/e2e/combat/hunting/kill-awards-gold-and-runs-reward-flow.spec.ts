@@ -3,42 +3,42 @@
  * `handleMonsterDeath` (BACKLOG 13.5 hunting + 13.13 drop half).
  *
  * Complements the SKIP-flow tests:
- *  • `full-kill-rewards-xp-and-gold.spec.ts` uses SKIP — XP awarded
+ *  - `full-kill-rewards-xp-and-gold.spec.ts` uses SKIP — XP awarded
  *    but gold=0, drops=[] (per combatEngine.ts line 2515-2516, SKIP
  *    intentionally suppresses gold and drops to balance the speed
  *    advantage).
- *  • `kill-counter-increments-per-kill.spec.ts` uses SKIP — kill
+ *  - `kill-counter-increments-per-kill.spec.ts` uses SKIP — kill
  *    counter increments but again no gold/drops.
  *
  * THIS test uses `killMonsterViaEngine` which drives the LIVE-combat
  * `handleMonsterDeath` path. That path:
- *  • Calls `dropLootToInventory` (combatEngine.ts line 1027) →
+ *  - Calls `dropLootToInventory` (combatEngine.ts line 1027) ->
  *    `inventoryStore.addGold(gold)` for the rolled gold.
- *  • Calls `useCharacterStore.addXp(finalXp)` line 1080.
- *  • Calls `useCombatStore.incrementSessionKill(rarity)` line 1137.
+ *  - Calls `useCharacterStore.addXp(finalXp)` line 1080.
+ *  - Calls `useCombatStore.incrementSessionKill(rarity)` line 1137.
  *
  * Assertions:
- *  • Gold increases by exactly rat.gold range [1, 1] — `calculateGoldDrop`
+ *  - Gold increases by exactly rat.gold range [1, 1] — `calculateGoldDrop`
  *    rolls inclusive in [min, max], for rat that's [1, 1] = always 1.
- *  • Character XP increased (from 0 to >0).
- *  • Combat sessionKills.normal === 1.
- *  • Combat log captured "ginie!" entry per line 1046 (the live-combat
+ *  - Character XP increased (from 0 to >0).
+ *  - Combat sessionKills.normal === 1.
+ *  - Combat log captured "ginie!" entry per line 1046 (the live-combat
  *    kill log line — different from SKIP's "Walka z … rozpoczęta").
  *
  * What we DON'T verify:
- *  • Specific drop items in bag — `rollLoot` is RNG-based with low
+ *  - Specific drop items in bag — `rollLoot` is RNG-based with low
  *    drop chance for rat. Asserting "bag.length === 0 OR === 1" would
  *    be technically correct but adds noise; we focus on gold which is
  *    deterministic for rat.
- *  • Mastery / task / quest progress side effects — separate test surface.
- *  • Per-rarity (strong/epic) kills — same code path; one rarity proof.
+ *  - Mastery / task / quest progress side effects — separate test surface.
+ *  - Per-rarity (strong/epic) kills — same code path; one rarity proof.
  *
  * Why this matters as a regression test:
- *  • `handleMonsterDeath` is the canonical reward pipeline. Every
+ *  - `handleMonsterDeath` is the canonical reward pipeline. Every
  *    type of combat (hunting / boss / dungeon / raid / transform /
  *    trainer) routes through it for monster kills. A regression here
  *    silently kills every monster's reward in every combat type.
- *  • Past bug history: line 996-1003 has a non-leader-bail clause that
+ *  - Past bug history: line 996-1003 has a non-leader-bail clause that
  *    in early-2026 over-triggered for solo players when partyStore was
  *    in a "membership in progress" intermediate state, causing solo
  *    fights to award 0 gold. Strong regression net.
@@ -115,7 +115,7 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
             expect(after).not.toBeNull();
 
             // 8. Gold went up. Rat gold range is [1, 1] in monsters.json
-            //    line 11 → calculateGoldDrop always returns 1 (no
+            //    line 11 -> calculateGoldDrop always returns 1 (no
             //    mastery bonus on first kill, no party bonus solo).
             //    However drops can also auto-sell-add gold for any
             //    common rarity drops if auto-sell-common is on (default
@@ -123,8 +123,8 @@ test.describe('Combat › Hunting', { tag: '@combat' }, () => {
             //    >= preGold + 1 (the deterministic floor).
             expect(after!.gold).toBeGreaterThanOrEqual(preGold + 1);
 
-            // 9. XP went up. Rat base xp = 3, mastery=0 → multiplier 1.0,
-            //    solo party → 1.0, no buffs → 1.0; final = 3.
+            // 9. XP went up. Rat base xp = 3, mastery=0 -> multiplier 1.0,
+            //    solo party -> 1.0, no buffs -> 1.0; final = 3.
             expect(after!.xp).toBeGreaterThan(preXp);
             // Defensive upper bound: without any boosts, the XP gain
             // can't exceed rat.xp by more than 2× (mastery scaling +

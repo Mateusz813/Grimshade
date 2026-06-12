@@ -77,6 +77,9 @@ import {
 } from '../../systems/potionSystem';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
+import Icon from '../../components/atoms/Icon/Icon';
 import { getCharacterAvatar } from '../../data/classAvatars';
 import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
@@ -84,7 +87,7 @@ import './Inventory.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-// ── Stat display names (Polish) ──────────────────────────────────────────────
+// -- Stat display names (Polish) ----------------------------------------------
 const STAT_DISPLAY_NAMES: Record<string, string> = {
   hp: 'HP',
   mp: 'MP',
@@ -97,7 +100,7 @@ const STAT_DISPLAY_NAMES: Record<string, string> = {
   dmg_max: 'DMG Max',
 };
 
-// ── Upgrade indicator logic ────────────────────────────────────────────────
+// -- Upgrade indicator logic ------------------------------------------------
 
 type UpgradeIndicator = 'upgrade' | 'equal' | 'maybe' | null;
 
@@ -203,7 +206,7 @@ const hexToRgbAvatar = (hex: string): string => {
 const RARITY_FILTERS: RarityFilter[] = ['all', 'common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 const RARITY_SELECT_FILTERS: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 
-// ── Slot filter ────────────────────────────────────────────────────────────
+// -- Slot filter ------------------------------------------------------------
 // "all" = no slot filter, otherwise filter by specific equipment slot.
 // Spec 4: extra filter targets for stackable items in the bag.
 type TSlotFilter =
@@ -218,17 +221,17 @@ interface ISlotFilterDef { id: TSlotFilter; label: string; icon: string }
 // most universal-looking) instead of the legacy emoji ladder. The "icon"
 // field accepts either a URL (rendered as <img>) or an emoji glyph
 // (rendered as text) — see the JSX below for the branch.
-const ICON_HELMET   = getItemFile('helmet-lekki') ?? '⛑️';
-const ICON_ARMOR    = getItemFile('armor-lekki') ?? '🦺';
-const ICON_PANTS    = getItemFile('legs-lekki') ?? '👖';
-const ICON_BOOTS    = getItemFile('boots-lekki') ?? '👢';
-const ICON_GLOVES   = getItemFile('glove-lekki') ?? '🧤';
-const ICON_SHOULDER = getItemFile('shoulder-lekki') ?? '🎖️';
-const ICON_SWORD    = getItemFile('miecz') ?? '⚔️';
-const ICON_SHIELD   = getItemFile('tarcza') ?? '🛡️';
-const ICON_RING     = getItemFile('ring') ?? '💍';
-const ICON_NECK     = getItemFile('nackle') ?? '📿';
-const ICON_EARRINGS = getItemFile('earrings') ?? '✨';
+const ICON_HELMET   = getItemFile('helmet-lekki') ?? 'rescue-worker-s-helmet';
+const ICON_ARMOR    = getItemFile('armor-lekki') ?? 'safety-vest';
+const ICON_PANTS    = getItemFile('legs-lekki') ?? 'jeans';
+const ICON_BOOTS    = getItemFile('boots-lekki') ?? 'woman-s-boot';
+const ICON_GLOVES   = getItemFile('glove-lekki') ?? 'gloves';
+const ICON_SHOULDER = getItemFile('shoulder-lekki') ?? 'military-medal';
+const ICON_SWORD    = getItemFile('miecz') ?? 'crossed-swords';
+const ICON_SHIELD   = getItemFile('tarcza') ?? 'shield';
+const ICON_RING     = getItemFile('ring') ?? 'ring';
+const ICON_NECK     = getItemFile('nackle') ?? 'prayer-beads';
+const ICON_EARRINGS = getItemFile('earrings') ?? 'sparkles';
 
 // 2026-05-08: per spec ("Sortowanie po zbroi nie dziala, filtruje tez
 // helmy itp") the broad `armor` group filter that bundled helmet +
@@ -238,7 +241,7 @@ const ICON_EARRINGS = getItemFile('earrings') ?? '✨';
 // filter labelled "Zbroja". The remaining slot pills (Hełm, Spodnie,
 // Buty, etc.) handle the other armor types one-for-one.
 const SLOT_FILTERS: ISlotFilterDef[] = [
-    { id: 'all',        label: 'Wszystkie',    icon: '🎒' },
+    { id: 'all',        label: 'Wszystkie',    icon: 'backpack' },
     { id: 'weapons',    label: 'Bronie',       icon: ICON_SWORD },
     { id: 'jewelry',    label: 'Biżuteria',    icon: ICON_NECK },
     { id: 'mainHand',   label: 'Główna',       icon: ICON_SWORD },
@@ -258,9 +261,9 @@ const SLOT_FILTERS: ISlotFilterDef[] = [
     // tier picks (universal +50 HP potion / level-15 chest / generic
     // stone-7) keep them representative without committing to a specific
     // sub-tier when the filter spans many items.
-    { id: 'potions',    label: 'Potiony',      icon: getPotionImage(null) ?? '🧪' },
-    { id: 'chests',     label: 'Spell Chesty', icon: getSpellChestImage(1000) ?? '📦' },
-    { id: 'stones',     label: 'Kamienie',     icon: getStoneImage(null) ?? '💎' },
+    { id: 'potions',    label: 'Potiony',      icon: getPotionImage(null) ?? 'test-tube' },
+    { id: 'chests',     label: 'Spell Chesty', icon: getSpellChestImage(1000) ?? 'package' },
+    { id: 'stones',     label: 'Kamienie',     icon: getStoneImage(null) ?? 'gem-stone' },
 ];
 
 // De-duplicated by id to avoid duplicate keys (the "armor" id overlaps between
@@ -280,7 +283,7 @@ const SLOT_FILTER_BUTTONS: ISlotFilterDef[] = (() => {
 // players carrying near-1000 items.
 const PAGE_SIZE = 50;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const getItemDisplayName = (item: IInventoryItem): string => {
   const base = findBaseItem(item.itemId, ALL_ITEMS);
@@ -368,7 +371,7 @@ const getWeaponDmgRange = (item: IInventoryItem): { min: number; max: number } |
   };
 };
 
-// ── Memoized bag tile ────────────────────────────────────────────────────────
+// -- Memoized bag tile --------------------------------------------------------
 // Point 3: Each bag tile does non-trivial work (icon lookup, dmg range calc,
 // upgrade indicator). With 3500 items, re-running that on every parent render
 // (e.g. opening the DetailPanel) made the slide-up animation stutter. Wrapping
@@ -394,7 +397,7 @@ const BagTile = memo(({ item, isChecked, multiSellMode, indicator, onSelect }: I
     >
       {multiSellMode && (
         <span className={`inventory__bag-check${isChecked ? ' inventory__bag-check--on' : ''}`}>
-          {isChecked ? '✓' : ''}
+          {isChecked ? <GameIcon name="check-mark-button" /> : ''}
         </span>
       )}
       {indicator && (
@@ -450,15 +453,15 @@ const BASE_STAT_BY_SLOT: Partial<Record<EquipmentSlot, keyof IStatValues>> = {
 };
 
 const BASE_STAT_META: Record<keyof IStatValues, { icon: string; label: string; color: string }> = {
-  attack:     { icon: '⚔️', label: 'ATK',  color: '#ffc107' },
-  defense:    { icon: '🛡️', label: 'DEF',  color: '#64b5f6' },
-  hp:         { icon: '❤️', label: 'HP',   color: '#e57373' },
-  mp:         { icon: '💧', label: 'MP',   color: '#64b5f6' },
-  speed:      { icon: '🏃', label: 'SPD',  color: '#81c784' },
-  critChance: { icon: '🎯', label: 'CRIT', color: '#ffb74d' },
-  critDmg:    { icon: '💥', label: 'CDMG', color: '#ff8a65' },
-  dmgMin:     { icon: '⚔️', label: 'DMG',  color: '#ffc107' },
-  dmgMax:     { icon: '⚔️', label: 'DMG',  color: '#ffc107' },
+  attack:     { icon: 'crossed-swords', label: 'ATK',  color: '#ffc107' },
+  defense:    { icon: 'shield', label: 'DEF',  color: '#64b5f6' },
+  hp:         { icon: 'red-heart', label: 'HP',   color: '#e57373' },
+  mp:         { icon: 'droplet', label: 'MP',   color: '#64b5f6' },
+  speed:      { icon: 'person-running', label: 'SPD',  color: '#81c784' },
+  critChance: { icon: 'bullseye', label: 'CRIT', color: '#ffb74d' },
+  critDmg:    { icon: 'collision', label: 'CDMG', color: '#ff8a65' },
+  dmgMin:     { icon: 'crossed-swords', label: 'DMG',  color: '#ffc107' },
+  dmgMax:     { icon: 'crossed-swords', label: 'DMG',  color: '#ffc107' },
 };
 
 // Base stats per class (for stat reset calculation)
@@ -482,7 +485,7 @@ const handleStatReset = () => {
   const hpPerLevel = BASE_HP_PER_LEVEL[char.class] ?? 4;
   const mpPerLevel = BASE_MP_PER_LEVEL[char.class] ?? 3;
 
-  // Calculate total stat points ever earned (levels 1 → highest_level)
+  // Calculate total stat points ever earned (levels 1 -> highest_level)
   const highestLevel = char.highest_level ?? char.level;
   const levelsGained = Math.max(0, highestLevel - 1);
   const pointsPerLevel = statPointsForLevelUp(char.class);
@@ -507,7 +510,7 @@ const handleStatReset = () => {
   useInventoryStore.getState().useConsumable('stat_reset');
 };
 
-// ── Detail panel ────────────────────────────────────────────────────────────
+// -- Detail panel ------------------------------------------------------------
 interface IDetailPanelProps {
   item: IInventoryItem;
   isEquipped: boolean;
@@ -545,7 +548,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   // success ("Wpłacono!") or failure ("Depozyt pełny") message after click.
   const [depositToast, setDepositToast] = useState<'ok' | 'full' | null>(null);
 
-  // ── Bonus Reroll state ──────────────────────────────────────────────────────
+  // -- Bonus Reroll state ------------------------------------------------------
   const [rerollPhase, setRerollPhase] = useState<'idle' | 'rolling' | 'preview'>('idle');
   const [rerolledBonuses, setRerolledBonuses] = useState<Record<string, number> | null>(null);
 
@@ -672,7 +675,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     }, 1500);
   };
 
-  // ── Bonus Reroll logic ────────────────────────────────────────────────────
+  // -- Bonus Reroll logic ----------------------------------------------------
   const rerollStoneType = RARITY_STONE_MAP[item.rarity] ?? 'common_stone';
   const rerollStoneName = STONE_NAMES[rerollStoneType] ?? rerollStoneType;
   const rerollStoneCount = stones[rerollStoneType] ?? 0;
@@ -763,7 +766,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
         <button
           className="inventory__detail-close"
           onClick={() => { if (!disassembling && !disassembleResult) onClose(); }}
-        >✕</button>
+        ><Icon name="x" /></button>
 
         {/* Spec 12: when an equipped item exists for the same slot, the panel
             splits into two columns — NEW (left, the clicked item) vs
@@ -789,7 +792,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               if (weaponDmg) {
                 return (
                   <span className="inventory__detail-dmg-range" style={{ color: '#ffc107' }}>
-                    ⚔️ Atak: {weaponDmg.min}–{weaponDmg.max}
+                    <GameIcon name="crossed-swords" /> Atak: {weaponDmg.min}–{weaponDmg.max}
                   </span>
                 );
               }
@@ -801,7 +804,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               const meta = BASE_STAT_META[baseKey];
               return (
                 <span className="inventory__detail-dmg-range" style={{ color: meta.color }}>
-                  {meta.icon} +{baseVal} {meta.label}
+                  <GameIcon name={meta.icon} /> +{baseVal} {meta.label}
                 </span>
               );
             })()}
@@ -860,7 +863,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           );
         })()}
 
-        {/* ── Item comparison with equipped item ──────────────────────── */}
+        {/* -- Item comparison with equipped item ------------------------ */}
         {!isEquipped && itemSlot && (() => {
           const resolvedSlots: EquipmentSlot[] = (() => {
             if (itemSlot === 'ring1' || itemSlot === 'ring2') return ['ring1', 'ring2'] as EquipmentSlot[];
@@ -936,7 +939,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           Cena sprzedazy: <strong>{formatGoldShort(sellPrice)}</strong>
           {enhanceRefund.stones > 0 && (
             <span style={{ fontSize: '0.85em', opacity: 0.8, marginLeft: 8 }}>
-              +{enhanceRefund.stones} 💎
+              +{enhanceRefund.stones} <GameIcon name="gem-stone" />
             </span>
           )}
         </div>
@@ -960,7 +963,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
             // render-time, ale rapid-tap lub state race może spowodować
             // że gold/stones się zmienią między render a spend.
             // spendGold + useStones zwracają boolean — POPRZEDNIO ignorowane.
-            // Teraz: jeśli któryś zwróci false → bail bez success animation
+            // Teraz: jeśli któryś zwróci false -> bail bez success animation
             // + bez upgrade itemu. Zapobiega "darmowemu" upgrade'owi gdy
             // race condition zostawi dane niespójne.
             const goldOk = spendGold(cost.gold);
@@ -1054,7 +1057,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 <span>Szansa: <strong>{cost.successRate}%</strong></span>
                 <span>Koszt: <strong>{formatGoldShort(cost.gold)}</strong></span>
                 <span>
-                  <TinyIcon icon={STONE_ICONS[cost.stoneType] ?? '💎'} size="sm" /> {stoneName}: <strong style={{ color: hasEnoughStones ? '#4caf50' : '#f44336' }}>
+                  <TinyIcon icon={STONE_ICONS[cost.stoneType] ?? 'gem-stone'} size="sm" /> {stoneName}: <strong style={{ color: hasEnoughStones ? '#4caf50' : '#f44336' }}>
                     {ownedStones}/{cost.stones}
                   </strong>
                 </span>
@@ -1083,7 +1086,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 disabled={!canEnhance || enhancing}
                 onClick={handleEnhance}
               >
-                {enhancing ? '⏳ Ulepszanie...' : !canAffordGold ? 'Za malo zlota' : !hasEnoughStones ? `Brak ${stoneName}` : `Ulepsz (+${nextLevel})`}
+                {enhancing ? <><GameIcon name="hourglass-not-done" /> Ulepszanie...</> : !canAffordGold ? 'Za malo zlota' : !hasEnoughStones ? `Brak ${stoneName}` : `Ulepsz (+${nextLevel})`}
               </button>
 
               <AnimatePresence>
@@ -1095,9 +1098,9 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                     exit={{ opacity: 0, scale: 0.5 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                   >
-                    <span className="inventory__enhance-result-icon">🎉</span>
+                    <span className="inventory__enhance-result-icon"><GameIcon name="party-popper" /></span>
                     <span>Sukces! Przedmiot ulepszony do +{(item.upgradeLevel ?? 0)}</span>
-                    <span className="inventory__enhance-result-sparkles">✨✨✨</span>
+                    <span className="inventory__enhance-result-sparkles"><GameIcon name="sparkles" /><GameIcon name="sparkles" /><GameIcon name="sparkles" /></span>
                   </motion.div>
                 )}
                 {enhanceResult === 'fail' && (
@@ -1107,7 +1110,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <span className="inventory__enhance-result-icon">💔</span>
+                    <span className="inventory__enhance-result-icon"><GameIcon name="broken-heart" /></span>
                     <span>Niepowodzenie! Stracono {formatGoldShort(cost.gold)} i {cost.stones}x {stoneName}</span>
                   </motion.div>
                 )}
@@ -1165,7 +1168,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 disabled={actionInProgress}
                 title={`Wpłać do depozytu (${depositLength}/${MAX_DEPOSIT_SIZE})`}
               >
-                🏦 Do depozytu
+                <GameIcon name="bank" /> Do depozytu
               </button>
             )}
           </div>
@@ -1176,7 +1179,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 onClick={handleSell}
                 disabled={actionInProgress}
               >
-                Sprzedaj ({formatGoldShort(sellPrice)}{enhanceRefund.stones > 0 ? ` +${enhanceRefund.stones}💎` : ''})
+                Sprzedaj ({formatGoldShort(sellPrice)}{enhanceRefund.stones > 0 ? <> +{enhanceRefund.stones}<GameIcon name="gem-stone" /></> : ''})
               </button>
               {!disassembleResult && (
                 <button
@@ -1184,7 +1187,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                   onClick={handleDisassemble}
                   disabled={actionInProgress || disassembling}
                 >
-                  {disassembling ? '⏳ Rozkladanie...' : <>🔨 Rozloz (20% na <TinyIcon icon={STONE_ICONS[disassembleStoneType] ?? '💎'} size="sm" /> {disassembleStoneName})</>}
+                  {disassembling ? <><GameIcon name="hourglass-not-done" /> Rozkladanie...</> : <><GameIcon name="hammer" /> Rozloz (20% na <TinyIcon icon={STONE_ICONS[disassembleStoneType] ?? 'gem-stone'} size="sm" /> {disassembleStoneName})</>}
                 </button>
               )}
             </div>
@@ -1202,7 +1205,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              ✓ Wpłacono do depozytu
+              <GameIcon name="check-mark-button" /> Wpłacono do depozytu
             </motion.div>
           )}
           {depositToast === 'full' && (
@@ -1213,7 +1216,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              ✕ Depozyt pełny ({depositLength}/{MAX_DEPOSIT_SIZE})
+              <Icon name="x" /> Depozyt pełny ({depositLength}/{MAX_DEPOSIT_SIZE})
             </motion.div>
           )}
         </AnimatePresence>
@@ -1235,9 +1238,9 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               exit={{ opacity: 0, scale: 0.5 }}
               transition={{ type: 'spring', stiffness: 300, damping: 15 }}
             >
-              <span className="inventory__disassemble-result-icon">🎉</span>
-              <span>Otrzymano: <TinyIcon icon={STONE_ICONS[disassembleStoneType] ?? '💎'} size="sm" /> {disassembleStoneName} x1</span>
-              <span className="inventory__disassemble-result-sparkles">✨✨✨</span>
+              <span className="inventory__disassemble-result-icon"><GameIcon name="party-popper" /></span>
+              <span>Otrzymano: <TinyIcon icon={STONE_ICONS[disassembleStoneType] ?? 'gem-stone'} size="sm" /> {disassembleStoneName} x1</span>
+              <span className="inventory__disassemble-result-sparkles"><GameIcon name="sparkles" /><GameIcon name="sparkles" /><GameIcon name="sparkles" /></span>
             </motion.div>
           )}
           {disassembleResult === 'fail' && (
@@ -1247,13 +1250,13 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
             >
-              <span className="inventory__disassemble-result-icon">💔</span>
+              <span className="inventory__disassemble-result-icon"><GameIcon name="broken-heart" /></span>
               <span>Nie otrzymano kamienia</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Bonus Reroll Section ─────────────────────────────────── */}
+        {/* -- Bonus Reroll Section ----------------------------------- */}
         {item.rarity !== 'common' && RARITY_BONUS_SLOTS[item.rarity] > 0 && rerollPhase === 'idle' && !disassembling && !disassembleResult && (
           <div className="inventory__reroll-section">
             {/* Spec 3 (2026-05 v2): skip-animation toggle for the bonus
@@ -1271,10 +1274,10 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               disabled={!canReroll || actionInProgress}
               onClick={handleStartReroll}
             >
-              🎲 Zmiana Bonusu ({REROLL_STONE_COST}× <TinyIcon icon={STONE_ICONS[rerollStoneType] ?? '💎'} size="sm" /> {rerollStoneName})
+              <GameIcon name="game-die" /> Zmiana Bonusu ({REROLL_STONE_COST}× <TinyIcon icon={STONE_ICONS[rerollStoneType] ?? 'gem-stone'} size="sm" /> {rerollStoneName})
             </button>
             <span className="inventory__reroll-stone-info">
-              Posiadasz: {rerollStoneCount} <TinyIcon icon={STONE_ICONS[rerollStoneType] ?? '💎'} size="sm" /> {rerollStoneName}
+              Posiadasz: {rerollStoneCount} <TinyIcon icon={STONE_ICONS[rerollStoneType] ?? 'gem-stone'} size="sm" /> {rerollStoneName}
             </span>
           </div>
         )}
@@ -1289,7 +1292,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               exit={{ opacity: 0 }}
             >
               <div className="inventory__reroll-rolling">
-                <div className="inventory__reroll-dice">🎲</div>
+                <div className="inventory__reroll-dice"><GameIcon name="game-die" /></div>
                 <div className="inventory__reroll-sparks">
                   {Array.from({ length: 20 }).map((_, i) => (
                     <span
@@ -1327,7 +1330,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 animate={{ scale: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15 }}
               >
-                <div className="inventory__reroll-preview-title">🎲 Nowe Bonusy</div>
+                <div className="inventory__reroll-preview-title"><GameIcon name="game-die" /> Nowe Bonusy</div>
                 <div className="inventory__reroll-compare">
                   {/* Old bonuses */}
                   <div className="inventory__reroll-col inventory__reroll-col--old">
@@ -1343,7 +1346,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                       <span className="inventory__reroll-empty">Brak</span>
                     )}
                   </div>
-                  <span className="inventory__reroll-vs">→</span>
+                  <span className="inventory__reroll-vs"><Icon name="arrowRight" /></span>
                   {/* New bonuses */}
                   <div className="inventory__reroll-col inventory__reroll-col--new">
                     <span className="inventory__reroll-col-title">Nowe</span>
@@ -1379,17 +1382,17 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 </div>
                 <div className="inventory__reroll-actions">
                   <button className="inventory__reroll-accept" onClick={handleAcceptReroll}>
-                    ✅ Przyjmij nowe
+                    <GameIcon name="check-mark-button" /> Przyjmij nowe
                   </button>
                   <button
                     className="inventory__reroll-again"
                     disabled={(useInventoryStore.getState().stones[rerollStoneType] ?? 0) < REROLL_STONE_COST}
                     onClick={handleStartReroll}
                   >
-                    🎲 Losuj ponownie ({REROLL_STONE_COST}× 💎)
+                    <GameIcon name="game-die" /> Losuj ponownie ({REROLL_STONE_COST}× <GameIcon name="gem-stone" />)
                   </button>
                   <button className="inventory__reroll-reject" onClick={handleRejectReroll}>
-                    ❌ Zostaw obecne
+                    <GameIcon name="cross-mark" /> Zostaw obecne
                   </button>
                 </div>
               </motion.div>
@@ -1400,7 +1403,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
           {/* Spec 12: comparison column — shows the currently equipped item
               for the same slot so the player can see exactly what they'd
-              swap out. Stat diffs use ↑/↓ arrows + green/red colours so
+              swap out. Stat diffs use ^/v arrows + green/red colours so
               "is this an upgrade?" reads at a glance. */}
           {equippedToCompare && (
             <EquippedComparisonColumn newItem={item} equippedItem={equippedToCompare} />
@@ -1411,12 +1414,12 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   );
 };
 
-// ── Spec 12: equipped-item comparison column ────────────────────────────────
+// -- Spec 12: equipped-item comparison column --------------------------------
 //
 // Renders inside the DetailPanel's right column whenever a non-equipped item
 // is being viewed AND the player has something equipped in the same slot.
 // Shows the equipped item's icon, rarity, base stat, and a stat-by-stat
-// diff (↑ green = upgrade, ↓ red = downgrade) against the clicked item.
+// diff (^ green = upgrade, v red = downgrade) against the clicked item.
 
 interface IEquippedComparisonProps {
   newItem: IInventoryItem;
@@ -1485,7 +1488,7 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
           </h2>
           {eqWeaponDmg && (
             <span className="inventory__detail-dmg-range" style={{ color: '#ffc107' }}>
-              ⚔️ Atak: {eqWeaponDmg.min}–{eqWeaponDmg.max}
+              <GameIcon name="crossed-swords" /> Atak: {eqWeaponDmg.min}–{eqWeaponDmg.max}
             </span>
           )}
         </div>
@@ -1507,7 +1510,7 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
       </div>
 
       {/* Stat diff list — each row shows the stat name, equipped value,
-          and the delta. Green ↑ = better, red ↓ = worse. */}
+          and the delta. Green ^ = better, red v = worse. */}
       <div className="inventory__compare-stats">
         {sortedKeys.map((key) => {
           const newVal = newStats[key] ?? 0;
@@ -1522,7 +1525,7 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
               <span className="inventory__compare-stat-eq">{eqVal}</span>
               {delta !== 0 && (
                 <span className={`inventory__compare-stat-delta inventory__compare-stat-delta--${better ? 'better' : 'worse'}`}>
-                  {better ? '↑' : worse ? '↓' : ''} {delta > 0 ? '+' : ''}{delta}
+                  {better ? <Icon name="arrowUp" /> : worse ? <Icon name="arrowDown" /> : null} {delta > 0 ? '+' : ''}{delta}
                 </span>
               )}
             </div>
@@ -1533,7 +1536,7 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
   );
 };
 
-// ── Postać popup bodies (specs 7, 8, 10) ────────────────────────────────────
+// -- Postać popup bodies (specs 7, 8, 10) ------------------------------------
 //
 // Each body is a self-contained sub-component rendered inside the shared
 // `inventory__popup` shell. They subscribe to their own stores so the main
@@ -1656,7 +1659,7 @@ const StatsPopupBody = memo(() => {
     <div className="inventory__stats-popup-body">
       {/* Combat stats grid */}
       <div className="inventory__stats-section">
-        <h3 className="inventory__stats-section-title">⚔️ Statystyki Walki</h3>
+        <h3 className="inventory__stats-section-title"><GameIcon name="crossed-swords" /> Statystyki Walki</h3>
         {/* Spec 4 (2026-05 v3): every combat stat shows its full
             contribution breakdown so the player can see exactly
             where each number comes from. Helper builds a non-zero
@@ -1757,17 +1760,17 @@ const StatsPopupBody = memo(() => {
 
       {/* Damage estimates */}
       <div className="inventory__stats-section">
-        <h3 className="inventory__stats-section-title">💥 Obrazenia w Walce</h3>
+        <h3 className="inventory__stats-section-title"><GameIcon name="collision" /> Obrazenia w Walce</h3>
         <div className="inventory__stats-dmg">
           <div className="inventory__stats-dmg-row">
-            <span className="inventory__stats-dmg-icon">⚔️</span>
+            <span className="inventory__stats-dmg-icon"><GameIcon name="crossed-swords" /></span>
             <span className="inventory__stats-dmg-label">Atak podstawowy</span>
             <span className="inventory__stats-dmg-value">
               {isRogue ? <>{basicMin}-{basicMax} ×2 = <strong>{rogueBasicMinTotal}-{rogueBasicMaxTotal}</strong> DMG</> : <><strong>{basicMin}-{basicMax}</strong> DMG</>}
             </span>
           </div>
           <div className="inventory__stats-dmg-row inventory__stats-dmg-row--crit">
-            <span className="inventory__stats-dmg-icon">⚡</span>
+            <span className="inventory__stats-dmg-icon"><GameIcon name="high-voltage" /></span>
             <span className="inventory__stats-dmg-label">Atak krytyczny</span>
             <span className="inventory__stats-dmg-value">
               <strong>{critMin}-{critMax}</strong>{isRogue ? ' ×2' : ''} DMG
@@ -1792,7 +1795,7 @@ const StatsPopupBody = memo(() => {
 
       {/* Weapon skill XP */}
       <div className="inventory__stats-section">
-        <h3 className="inventory__stats-section-title">🎯 Skill Bojowy</h3>
+        <h3 className="inventory__stats-section-title"><GameIcon name="bullseye" /> Skill Bojowy</h3>
         <div className="inventory__stats-skill-row">
           <span className="inventory__stats-skill-name">{SKILL_BOJOWY_NAMES_PL[mainSkillId] ?? mainSkillId}</span>
           <span className="inventory__stats-skill-level">Poziom {weaponSkillLevel}</span>
@@ -1904,15 +1907,15 @@ const TrainingPopupBody = memo(() => {
       <div className="inventory__training-status">
         {isTrainingActive ? (
           <span className="inventory__training-status-pill inventory__training-status-pill--active">
-            🟢 Aktywne · {isActiveSpeed ? '×2' : '×1'} szybkosc · trenuje: <strong>{SKILL_NAMES_PL[offlineTrainingSkillId ?? ''] ?? offlineTrainingSkillId}</strong>
+            <GameIcon name="green-circle" /> Aktywne · {isActiveSpeed ? '×2' : '×1'} szybkosc · trenuje: <strong>{SKILL_NAMES_PL[offlineTrainingSkillId ?? ''] ?? offlineTrainingSkillId}</strong>
           </span>
         ) : isPausedByHunt ? (
           <span className="inventory__training-status-pill inventory__training-status-pill--paused">
-            ⏸ Wstrzymane (aktywna hunta)
+            <GameIcon name="pause-button" /> Wstrzymane (aktywna hunta)
           </span>
         ) : (
           <span className="inventory__training-status-pill">
-            ⚪ Brak aktywnego treningu
+            <GameIcon name="white-circle" /> Brak aktywnego treningu
           </span>
         )}
       </div>
@@ -1978,11 +1981,11 @@ TrainingPopupBody.displayName = 'TrainingPopupBody';
  * caller can suppress the row.
  *
  * Examples:
- *   "stun:3000"                  → "Ogłusza wroga na 3s"
- *   "dot:5000:5"                 → "Trucizna przez 5s (5 ticków)"
+ *   "stun:3000"                  -> "Ogłusza wroga na 3s"
+ *   "dot:5000:5"                 -> "Trucizna przez 5s (5 ticków)"
  *   "aoe;def_pen:80;heal_party_pct:30"
- *                                → "Atak obszarowy · Ignoruje 80% obrony · Leczy drużynę o 30% maks. HP"
- *   "summon:skeleton:5"          → "Przyzywa 5 szkieletów"
+ *                                -> "Atak obszarowy · Ignoruje 80% obrony · Leczy drużynę o 30% maks. HP"
+ *   "summon:skeleton:5"          -> "Przyzywa 5 szkieletów"
  *
  * Quick fix (2026-05): old impl used outdated underscore tags
  * (`stun_3000`, `burn_chance_…`) which never matched the actual
@@ -2108,7 +2111,7 @@ const ActiveSkillsPopupBody = memo(() => {
   // Result toast after upgrade/unlock attempt — auto-clears after 2.5s.
   const [actionResult, setActionResult] = useState<{ skillId: string; ok: boolean; msg: string } | null>(null);
   // Spec 2 (2026-05 v6): in-popup animation state for the Ulepsz flow.
-  // 'idle' → ready, 'rolling' → progress bar filling, 'done' → result
+  // 'idle' -> ready, 'rolling' -> progress bar filling, 'done' -> result
   // panel (success / fail) shown until the player closes the modal.
   const [upgradePhase, setUpgradePhase] = useState<'idle' | 'rolling' | 'done'>('idle');
   const [upgradeOutcome, setUpgradeOutcome] = useState<{ ok: boolean; newLevel: number } | null>(null);
@@ -2140,7 +2143,7 @@ const ActiveSkillsPopupBody = memo(() => {
   };
   const resolveSwap = (slotIdx: 0 | 1 | 2 | 3) => {
     if (!swapTarget) return;
-    // If clicking the slot already holding the same skill → unequip.
+    // If clicking the slot already holding the same skill -> unequip.
     if (activeSkillSlots[slotIdx] === swapTarget) {
       setActiveSkillSlot(slotIdx, null);
     } else {
@@ -2295,11 +2298,11 @@ const ActiveSkillsPopupBody = memo(() => {
                         chip next to the name, tinted with the live
                         transform colour so it reads as a tier marker.
                         When the player is below that level the chip
-                        also gets a 🔒 prefix. */}
+                        also gets a :locked: prefix. */}
                     <span className={`inventory__skills-card-lvl${isLevelLocked ? ' inventory__skills-card-lvl--locked' : ''}`}>
-                      {isLevelLocked ? '🔒 ' : ''}Lv {skill.unlockLevel}
+                      {isLevelLocked ? <><GameIcon name="locked" /> </> : ''}Lv {skill.unlockLevel}
                     </span>
-                    {needsPurchase && <span className="inventory__skills-card-lock">🗝️ ×{chestUnlockCost.chests} + {formatGoldShort(chestUnlockCost.gold)}</span>}
+                    {needsPurchase && <span className="inventory__skills-card-lock"><GameIcon name="old-key" /> ×{chestUnlockCost.chests} + {formatGoldShort(chestUnlockCost.gold)}</span>}
                     {isEquipped && <span className="inventory__skills-card-active">Aktywny</span>}
                   </div>
                   <div className="inventory__skills-card-stats">
@@ -2312,17 +2315,17 @@ const ActiveSkillsPopupBody = memo(() => {
 
               {/* Spec 5+8: damage + effect description above the buttons. */}
               <div className="inventory__skills-card-desc">
-                <div className="inventory__skills-card-desc-line">⚔️ {dmgLine}</div>
+                <div className="inventory__skills-card-desc-line"><GameIcon name="crossed-swords" /> {dmgLine}</div>
                 {effectDesc && (
-                  <div className="inventory__skills-card-desc-line">🎯 {effectDesc}</div>
+                  <div className="inventory__skills-card-desc-line"><GameIcon name="bullseye" /> {effectDesc}</div>
                 )}
               </div>
 
               {/* Spec 6: action buttons row. */}
               <div className="inventory__skills-card-actions" onClick={(e) => e.stopPropagation()}>
-                {/* Spec 4 (2026-05 v6): equipped → "Zdejmij" (unequips
+                {/* Spec 4 (2026-05 v6): equipped -> "Zdejmij" (unequips
                     immediately from the slot the skill currently sits in);
-                    not equipped → "Załóż" (opens the slot picker). */}
+                    not equipped -> "Załóż" (opens the slot picker). */}
                 {isPurchased && isEquipped && (
                   <button
                     type="button"
@@ -2332,7 +2335,7 @@ const ActiveSkillsPopupBody = memo(() => {
                       if (i !== -1) setActiveSkillSlot(i as 0 | 1 | 2 | 3, null);
                     }}
                   >
-                    ✕ Zdejmij
+                    <Icon name="x" /> Zdejmij
                   </button>
                 )}
                 {isPurchased && !isEquipped && (
@@ -2342,7 +2345,7 @@ const ActiveSkillsPopupBody = memo(() => {
                     onClick={() => openSlotPicker(skill.id)}
                     disabled={isLevelLocked}
                   >
-                    ✨ Załóż
+                    <GameIcon name="sparkles" /> Załóż
                   </button>
                 )}
                 {isPurchased && (
@@ -2355,7 +2358,7 @@ const ActiveSkillsPopupBody = memo(() => {
                     disabled={isLevelLocked}
                     title={isLevelLocked ? `Wymagany poziom ${skill.unlockLevel}` : 'Ulepsz skill'}
                   >
-                    🔧 Ulepsz
+                    <GameIcon name="wrench" /> Ulepsz
                   </button>
                 )}
                 {needsPurchase && (
@@ -2364,7 +2367,7 @@ const ActiveSkillsPopupBody = memo(() => {
                     className="inventory__skills-card-btn inventory__skills-card-btn--unlock"
                     onClick={() => setUnlockTarget(skill.id)}
                   >
-                    🗝️ Odblokuj
+                    <GameIcon name="old-key" /> Odblokuj
                   </button>
                 )}
               </div>
@@ -2403,10 +2406,10 @@ const ActiveSkillsPopupBody = memo(() => {
           <div className="inventory__skills-swap" onClick={() => upgradePhase !== 'rolling' && closeUpgradeModal()}>
             <div className="inventory__skills-swap-modal" onClick={(e) => e.stopPropagation()}>
               <div className="inventory__skills-swap-title">
-                🔧 Ulepsz: <strong>{skill.name_pl}</strong>
+                <GameIcon name="wrench" /> Ulepsz: <strong>{skill.name_pl}</strong>
               </div>
               <div className="inventory__skills-swap-hint">
-                +{currentLevel} → +{targetLevel} · szansa <strong>{cost.successRate}%</strong>
+                +{currentLevel} <Icon name="arrowRight" /> +{targetLevel} · szansa <strong>{cost.successRate}%</strong>
               </div>
               <ul className="inventory__skills-cost-list">
                 <li>Koszt gold: <strong style={{ color: enoughGold ? '#81c784' : '#ef5350' }}>{formatGoldShort(cost.gold)}</strong> (masz: {formatGoldShort(gold)})</li>
@@ -2416,7 +2419,7 @@ const ActiveSkillsPopupBody = memo(() => {
                   </li>
                 )}
                 {!levelOk && (
-                  <li style={{ color: '#ef5350' }}>⚠ Wymagany poziom <strong>{skill.unlockLevel}</strong> (masz {character.level})</li>
+                  <li style={{ color: '#ef5350' }}><GameIcon name="warning" /> Wymagany poziom <strong>{skill.unlockLevel}</strong> (masz {character.level})</li>
                 )}
               </ul>
 
@@ -2444,8 +2447,8 @@ const ActiveSkillsPopupBody = memo(() => {
               {upgradePhase === 'done' && upgradeOutcome && (
                 <div className={`inventory__skills-result inventory__skills-result--${upgradeOutcome.ok ? 'ok' : 'fail'}`}>
                   {upgradeOutcome.ok
-                    ? <>🎉 Sukces! Skill ulepszony do <strong>+{upgradeOutcome.newLevel}</strong>.</>
-                    : <>💔 Próba nie powiodła się. Materiały zostały zużyte.</>
+                    ? <><GameIcon name="party-popper" /> Sukces! Skill ulepszony do <strong>+{upgradeOutcome.newLevel}</strong>.</>
+                    : <><GameIcon name="broken-heart" /> Próba nie powiodła się. Materiały zostały zużyte.</>
                   }
                 </div>
               )}
@@ -2472,8 +2475,8 @@ const ActiveSkillsPopupBody = memo(() => {
                   }}
                 >
                   {upgradePhase === 'rolling'
-                    ? '⏳ Ulepszanie...'
-                    : `🔧 Ulepsz (+${targetLevel})`}
+                    ? <><GameIcon name="hourglass-not-done" /> Ulepszanie...</>
+                    : <><GameIcon name="wrench" /> Ulepsz (+{targetLevel})</>}
                 </button>
               </div>
             </div>
@@ -2494,7 +2497,7 @@ const ActiveSkillsPopupBody = memo(() => {
           <div className="inventory__skills-swap" onClick={() => setUnlockTarget(null)}>
             <div className="inventory__skills-swap-modal" onClick={(e) => e.stopPropagation()}>
               <div className="inventory__skills-swap-title">
-                🗝️ Odblokuj: <strong>{skill.name_pl}</strong>
+                <GameIcon name="old-key" /> Odblokuj: <strong>{skill.name_pl}</strong>
               </div>
               <div className="inventory__skills-swap-hint">
                 Skill Lv{skill.unlockLevel} — koszt jednorazowy.
@@ -2519,7 +2522,7 @@ const ActiveSkillsPopupBody = memo(() => {
                   disabled={!canUnlock}
                   onClick={() => confirmUnlock(skill.id)}
                 >
-                  🗝️ Odblokuj
+                  <GameIcon name="old-key" /> Odblokuj
                 </button>
               </div>
             </div>
@@ -2581,7 +2584,7 @@ const ActiveSkillsPopupBody = memo(() => {
 });
 ActiveSkillsPopupBody.displayName = 'ActiveSkillsPopupBody';
 
-// ── Spec 2: BUFF_CONFIG + isBuffEffect (module-level so the use-popup can
+// -- Spec 2: BUFF_CONFIG + isBuffEffect (module-level so the use-popup can
 // reach them without recreating the table per render). Maps an elixir's
 // `effect` field to the buff data the buffStore needs to spawn it.
 interface IBuffConfig {
@@ -2593,27 +2596,27 @@ interface IBuffConfig {
   pausable?: boolean;
 }
 const BUFF_CONFIG: Record<string, IBuffConfig> = {
-  'xp_boost_1h':                      { id: 'xp_boost',              name: 'XP +50%',         icon: '⭐',  effect: 'xp_boost',              durationMs: 3600000, pausable: true },
-  'xp_boost_100_1h':                  { id: 'xp_boost_100',          name: 'XP +100%',        icon: '🌟', effect: 'xp_boost_100',          durationMs: 3600000, pausable: true },
-  'skill_xp_boost_1h':                { id: 'skill_xp_boost',        name: 'Skill XP +50%',   icon: '✨',  effect: 'skill_xp_boost',        durationMs: 3600000, pausable: true },
-  'skill_xp_boost_100_1h':            { id: 'skill_xp_boost_100',    name: 'Skill XP +100%',  icon: '🔆', effect: 'skill_xp_boost_100',    durationMs: 3600000, pausable: true },
-  'attack_speed_0.20_15m_pausable':   { id: 'attack_speed',          name: 'AS +20%',         icon: '⚡',  effect: 'attack_speed',          durationMs: 900000,  pausable: true },
-  'cooldown_reduction_0.20_30m':      { id: 'cooldown_reduction',    name: 'CD -20%',         icon: '🌀',  effect: 'cooldown_reduction',    durationMs: 1800000 },
-  'hp_pct_25_15m':                    { id: 'hp_pct_25',             name: 'Max HP +25%',     icon: '❤️‍🔥', effect: 'hp_pct_25',     durationMs: 900000,  pausable: true },
-  'mp_pct_25_15m':                    { id: 'mp_pct_25',             name: 'Max MP +25%',     icon: '💠',  effect: 'mp_pct_25',             durationMs: 900000,  pausable: true },
-  'offline_training_boost':           { id: 'offline_training_boost',name: 'Trening x2',      icon: '🏋️', effect: 'offline_training_boost',durationMs: 3600000, pausable: true },
-  'utamo_vita':                       { id: 'utamo_vita',            name: 'Utamo Vita',      icon: '🔵',  effect: 'utamo_vita',            durationMs: 600000 },
-  'premium_xp_boost':                 { id: 'premium_xp_boost',      name: 'Premium XP x2',   icon: '💎',  effect: 'premium_xp_boost',      durationMs: 43200000,pausable: true },
-  'atk_dmg_25_15m':                   { id: 'atk_dmg_25',            name: 'ATK DMG +25%',    icon: '⚔️',  effect: 'atk_dmg_25',            durationMs: 900000,  pausable: true },
-  'atk_dmg_50_15m':                   { id: 'atk_dmg_50',            name: 'ATK DMG +50%',    icon: '⚔️',  effect: 'atk_dmg_50',            durationMs: 900000,  pausable: true },
-  'atk_dmg_100_15m':                  { id: 'atk_dmg_100',           name: 'ATK DMG +100%',   icon: '⚔️',  effect: 'atk_dmg_100',           durationMs: 900000,  pausable: true },
-  'spell_dmg_25_15m':                 { id: 'spell_dmg_25',          name: 'SPELL DMG +25%',  icon: '🔮',  effect: 'spell_dmg_25',          durationMs: 900000,  pausable: true },
-  'spell_dmg_50_15m':                 { id: 'spell_dmg_50',          name: 'SPELL DMG +50%',  icon: '🔮',  effect: 'spell_dmg_50',          durationMs: 900000,  pausable: true },
-  'spell_dmg_100_15m':                { id: 'spell_dmg_100',         name: 'SPELL DMG +100%', icon: '🔮',  effect: 'spell_dmg_100',         durationMs: 900000,  pausable: true },
-  'hp_boost_500_15m':                 { id: 'hp_boost_500',          name: '+500 Max HP',     icon: '🩸',  effect: 'hp_boost_500',          durationMs: 900000,  pausable: true },
-  'mp_boost_500_15m':                 { id: 'mp_boost_500',          name: '+500 Max MP',     icon: '🔷',  effect: 'mp_boost_500',          durationMs: 900000,  pausable: true },
-  'atk_boost_50_15m':                 { id: 'atk_boost_50',          name: '+50 ATK',         icon: '💪',  effect: 'atk_boost_50',          durationMs: 900000,  pausable: true },
-  'def_boost_50_15m':                 { id: 'def_boost_50',          name: '+50 DEF',         icon: '🛡️', effect: 'def_boost_50',          durationMs: 900000,  pausable: true },
+  'xp_boost_1h':                      { id: 'xp_boost',              name: 'XP +50%',         icon: 'star',  effect: 'xp_boost',              durationMs: 3600000, pausable: true },
+  'xp_boost_100_1h':                  { id: 'xp_boost_100',          name: 'XP +100%',        icon: 'glowing-star', effect: 'xp_boost_100',          durationMs: 3600000, pausable: true },
+  'skill_xp_boost_1h':                { id: 'skill_xp_boost',        name: 'Skill XP +50%',   icon: 'sparkles',  effect: 'skill_xp_boost',        durationMs: 3600000, pausable: true },
+  'skill_xp_boost_100_1h':            { id: 'skill_xp_boost_100',    name: 'Skill XP +100%',  icon: 'bright-button', effect: 'skill_xp_boost_100',    durationMs: 3600000, pausable: true },
+  'attack_speed_0.20_15m_pausable':   { id: 'attack_speed',          name: 'AS +20%',         icon: 'high-voltage',  effect: 'attack_speed',          durationMs: 900000,  pausable: true },
+  'cooldown_reduction_0.20_30m':      { id: 'cooldown_reduction',    name: 'CD -20%',         icon: 'cyclone',  effect: 'cooldown_reduction',    durationMs: 1800000 },
+  'hp_pct_25_15m':                    { id: 'hp_pct_25',             name: 'Max HP +25%',     icon: 'heart-on-fire', effect: 'hp_pct_25',     durationMs: 900000,  pausable: true },
+  'mp_pct_25_15m':                    { id: 'mp_pct_25',             name: 'Max MP +25%',     icon: 'diamond-with-a-dot',  effect: 'mp_pct_25',             durationMs: 900000,  pausable: true },
+  'offline_training_boost':           { id: 'offline_training_boost',name: 'Trening x2',      icon: 'person-lifting-weights', effect: 'offline_training_boost',durationMs: 3600000, pausable: true },
+  'utamo_vita':                       { id: 'utamo_vita',            name: 'Utamo Vita',      icon: 'blue-circle',  effect: 'utamo_vita',            durationMs: 600000 },
+  'premium_xp_boost':                 { id: 'premium_xp_boost',      name: 'Premium XP x2',   icon: 'gem-stone',  effect: 'premium_xp_boost',      durationMs: 43200000,pausable: true },
+  'atk_dmg_25_15m':                   { id: 'atk_dmg_25',            name: 'ATK DMG +25%',    icon: 'crossed-swords',  effect: 'atk_dmg_25',            durationMs: 900000,  pausable: true },
+  'atk_dmg_50_15m':                   { id: 'atk_dmg_50',            name: 'ATK DMG +50%',    icon: 'crossed-swords',  effect: 'atk_dmg_50',            durationMs: 900000,  pausable: true },
+  'atk_dmg_100_15m':                  { id: 'atk_dmg_100',           name: 'ATK DMG +100%',   icon: 'crossed-swords',  effect: 'atk_dmg_100',           durationMs: 900000,  pausable: true },
+  'spell_dmg_25_15m':                 { id: 'spell_dmg_25',          name: 'SPELL DMG +25%',  icon: 'crystal-ball',  effect: 'spell_dmg_25',          durationMs: 900000,  pausable: true },
+  'spell_dmg_50_15m':                 { id: 'spell_dmg_50',          name: 'SPELL DMG +50%',  icon: 'crystal-ball',  effect: 'spell_dmg_50',          durationMs: 900000,  pausable: true },
+  'spell_dmg_100_15m':                { id: 'spell_dmg_100',         name: 'SPELL DMG +100%', icon: 'crystal-ball',  effect: 'spell_dmg_100',         durationMs: 900000,  pausable: true },
+  'hp_boost_500_15m':                 { id: 'hp_boost_500',          name: '+500 Max HP',     icon: 'drop-of-blood',  effect: 'hp_boost_500',          durationMs: 900000,  pausable: true },
+  'mp_boost_500_15m':                 { id: 'mp_boost_500',          name: '+500 Max MP',     icon: 'large-blue-diamond',  effect: 'mp_boost_500',          durationMs: 900000,  pausable: true },
+  'atk_boost_50_15m':                 { id: 'atk_boost_50',          name: '+50 ATK',         icon: 'flexed-biceps',  effect: 'atk_boost_50',          durationMs: 900000,  pausable: true },
+  'def_boost_50_15m':                 { id: 'def_boost_50',          name: '+50 DEF',         icon: 'shield', effect: 'def_boost_50',          durationMs: 900000,  pausable: true },
 };
 const isBuffEffect = (effect: string): boolean => (
   effect === 'xp_boost_1h'
@@ -2635,7 +2638,7 @@ const isBuffEffect = (effect: string): boolean => (
     || effect.startsWith('mp_pct_')
 );
 
-// ── Main screen ─────────────────────────────────────────────────────────────
+// -- Main screen -------------------------------------------------------------
 type BulkMode = 'none' | 'sell' | 'disassemble';
 
 const Inventory = () => {
@@ -2696,7 +2699,7 @@ const Inventory = () => {
     slot: EquipmentSlot | null;
   } | null>(null);
 
-  // ── Stone conversion popup state ──────────────────────────────────────────
+  // -- Stone conversion popup state ------------------------------------------
   const [stoneConvertId, setStoneConvertId] = useState<string | null>(null);
   // Postać-spec items 4, 5, 7-10: single state machine for the row of icons
   // under the paperdoll. Only one popup is open at a time; null = closed.
@@ -2726,7 +2729,7 @@ const Inventory = () => {
     setTimeout(() => setStoneConvertResult(null), 2000);
   }, [convertStones]);
 
-  // ── Alchemy (potion conversion) state ─────────────────────────────────────
+  // -- Alchemy (potion conversion) state -------------------------------------
   // `alchemyOpen` retired — the Alchemia surface now lives inside the
   // Potion popup (spec 13c) so it doesn't need its own collapsed/open
   // state in the main view.
@@ -2753,8 +2756,8 @@ const Inventory = () => {
       return true;
     }
     // 2026-05-08: Eliksir Siły — combined +50 ATK + +50 DEF buff. Spec
-    // says "+50 atk DEF koszt 80k" → one purchase, two buffs. The
-    // BUFF_CONFIG can't model a one-effect→two-buffs relation cleanly,
+    // says "+50 atk DEF koszt 80k" -> one purchase, two buffs. The
+    // BUFF_CONFIG can't model a one-effect->two-buffs relation cleanly,
     // so we fan out manually here before the generic isBuffEffect path.
     if (effect === 'atk_def_boost_50_15m') {
       const dur = 900000; // 15 min
@@ -2763,11 +2766,11 @@ const Inventory = () => {
       // no PNG exists in the registry.
       const sily = getElixirImage('atk_boost_50') ?? getElixirImage('atk_boost_elixir');
       useBuffStore.getState().addPausableBuff(
-        { id: 'atk_boost_50', name: '+50 ATK', icon: sily ?? '💪', effect: 'atk_boost_50' },
+        { id: 'atk_boost_50', name: '+50 ATK', icon: sily ?? 'flexed-biceps', effect: 'atk_boost_50' },
         dur,
       );
       useBuffStore.getState().addPausableBuff(
-        { id: 'def_boost_50', name: '+50 DEF', icon: sily ?? '🛡️', effect: 'def_boost_50' },
+        { id: 'def_boost_50', name: '+50 DEF', icon: sily ?? 'shield', effect: 'def_boost_50' },
         dur,
       );
       useInventoryStore.getState().addConsumable(elixirId, -1);
@@ -2887,12 +2890,12 @@ const Inventory = () => {
       setTimeout(() => setAlchemyToast(null), 2200);
   }, []);
 
-  // ── Multi-sell / disassemble state ─────────────────────────────────────────
+  // -- Multi-sell / disassemble state -----------------------------------------
   const [bulkMode, setBulkMode] = useState<BulkMode>('none');
   const multiSellMode = bulkMode !== 'none';
   const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set());
 
-  // ── Disassemble animation state ────────────────────────────────────────────
+  // -- Disassemble animation state --------------------------------------------
   const [disassembleAnimating, setDisassembleAnimating] = useState(false);
   const [disassembleProgress, setDisassembleProgress] = useState(0);
   const [disassembleTotalItems, setDisassembleTotalItems] = useState(0);
@@ -2987,13 +2990,13 @@ const Inventory = () => {
     return out;
   }, [sortedBag, rarityFilter, slotFilter]);
 
-  // ── Spec 4: stackable items as bag tiles ──────────────────────────────────
+  // -- Spec 4: stackable items as bag tiles ----------------------------------
   // Potions, spell chests and enhancement stones used to live in their own
   // sections (Potiony i Eliksiry / Spell Chesty / Kamienie). The 2026-05
   // spec folds them into the bag grid as "stack tiles" — one tile per
   // distinct stack with a count badge. Each click opens the appropriate
-  // popup (potion → potion popup → alchemia tab; chest → skills popup;
-  // stone → stone conversion popup).
+  // popup (potion -> potion popup -> alchemia tab; chest -> skills popup;
+  // stone -> stone conversion popup).
   interface IStackTile {
     id: string;
     icon: string;
@@ -3011,12 +3014,12 @@ const Inventory = () => {
       if (count <= 0) continue;
       // 2026-05 spec: HP/MP potion tiers cycle the rarity ladder so the
       // bag visually scales with the potion's strength:
-      //   • sm  / md       → common  (gray)
-      //   • lg  / great    → rare    (blue)
-      //   • super          → epic    (green)
-      //   • ultimate       → legendary (red)
-      //   • divine         → mythic  (yellow)
-      //   • mega           → heroic  (purple)
+      //   - sm  / md       -> common  (gray)
+      //   - lg  / great    -> rare    (blue)
+      //   - super          -> epic    (green)
+      //   - ultimate       -> legendary (red)
+      //   - divine         -> mythic  (yellow)
+      //   - mega           -> heroic  (purple)
       // Buff elixirs keep the legacy "epic by default, legendary for
       // premium / +100% combat boosts" rule.
       const fx = elixir.effect ?? '';
@@ -3062,7 +3065,7 @@ const Inventory = () => {
     // 2026-05 spec: chest rarity follows the 15-tier art ladder so the
     // border colour matches the chest art itself (1-4 gray / 5-8 blue /
     // 9-10 green / 11-12 red / 13-14 yellow / 15 purple). Mapping uses
-    // the game's chest-level → art-tier table from spriteAssets.
+    // the game's chest-level -> art-tier table from spriteAssets.
     const CHEST_LEVEL_TO_TIER_INV: Record<number, number> = {
       5: 1, 10: 2, 20: 3, 30: 4, 40: 5, 50: 6, 60: 7, 70: 8,
       80: 9, 100: 10, 150: 11, 300: 12, 600: 13, 800: 14, 1000: 15,
@@ -3099,7 +3102,7 @@ const Inventory = () => {
       if (count <= 0) continue;
       tiles.push({
         id: `stone-${stoneId}`,
-        icon: STONE_ICONS[stoneId] ?? '💎',
+        icon: STONE_ICONS[stoneId] ?? 'gem-stone',
         name: STONE_NAMES[stoneId] ?? stoneId,
         count,
         rarity,
@@ -3122,7 +3125,7 @@ const Inventory = () => {
     return [];
   }, [stackTiles, slotFilter, rarityFilter]);
 
-  // ── Pagination ─────────────────────────────────────────────────────────────
+  // -- Pagination -------------------------------------------------------------
   const totalPages = Math.max(1, Math.ceil(filteredBag.length / PAGE_SIZE));
   // Clamp current page when filters shrink the list
   const safePage = Math.min(currentPage, totalPages - 1);
@@ -3140,7 +3143,7 @@ const Inventory = () => {
     }
   }
 
-  // ── Multi-sell helpers ──────────────────────────────────────────────────────
+  // -- Multi-sell helpers ------------------------------------------------------
 
   const selectAll = useCallback(() => {
     setSelectedUuids(new Set(filteredBag.map((i) => i.uuid)));
@@ -3174,7 +3177,7 @@ const Inventory = () => {
     setBulkMode('none');
   };
 
-  // ── Mass Disassemble (dedicated mode with animation) ───────────────────────
+  // -- Mass Disassemble (dedicated mode with animation) -----------------------
   const [bulkDisassembleResult, setBulkDisassembleResult] = useState<{
     total: number; stones: Record<string, number>;
   } | null>(null);
@@ -3235,7 +3238,7 @@ const Inventory = () => {
     requestAnimationFrame(tick);
   };
 
-  // ── Disassemble summary for footer ─────────────────────────────────────────
+  // -- Disassemble summary for footer -----------------------------------------
   const disassembleSummary = useMemo(() => {
     if (bulkMode !== 'disassemble') return { count: 0, stonesByRarity: {} as Record<string, number> };
     const items = bag.filter((i) => selectedUuids.has(i.uuid));
@@ -3281,13 +3284,13 @@ const Inventory = () => {
         '--tx-accent-rgb': accentColorRgb,
       } as React.CSSProperties}
     >
-      {/* Postać-spec items 1 + 3: the old page header (back button + "🎒
+      {/* Postać-spec items 1 + 3: the old page header (back button + ":backpack:
           Ekwipunek" title + gold pill) is gone. The Postać tab now lands
           straight on this view, so a redundant header would just push the
           paperdoll down. Gold and navigation live in the bottom nav and
           the paperdoll chrome. */}
 
-      {/* ── Paperdoll: avatar + equipment overlay ─────────────────────── */}
+      {/* -- Paperdoll: avatar + equipment overlay ----------------------- */}
       {character && (() => {
           const eff = engineGetEffectiveChar(character);
           const effMaxHp = eff?.max_hp ?? character.max_hp;
@@ -3416,7 +3419,7 @@ const Inventory = () => {
                                       onClick={() => handleClick('max_hp')}
                                       title={tooltip('HP', hpBonus, 'HP')}
                                   >
-                                      <span className="inventory__stat-alloc-tile-icon">❤️</span>
+                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="red-heart" /></span>
                                       <span className="inventory__stat-alloc-tile-name">HP</span>
                                       <span className="inventory__stat-alloc-tile-bonus">+{hpBonus}</span>
                                   </button>
@@ -3426,7 +3429,7 @@ const Inventory = () => {
                                       onClick={() => handleClick('max_mp')}
                                       title={tooltip('MP', mpBonus, 'MP')}
                                   >
-                                      <span className="inventory__stat-alloc-tile-icon">💧</span>
+                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="droplet" /></span>
                                       <span className="inventory__stat-alloc-tile-name">MP</span>
                                       <span className="inventory__stat-alloc-tile-bonus">+{mpBonus}</span>
                                   </button>
@@ -3436,7 +3439,7 @@ const Inventory = () => {
                                       onClick={() => handleClick('attack')}
                                       title={tooltip('Atak', atkBonus, 'ATK')}
                                   >
-                                      <span className="inventory__stat-alloc-tile-icon">⚔️</span>
+                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="crossed-swords" /></span>
                                       <span className="inventory__stat-alloc-tile-name">Atak</span>
                                       <span className="inventory__stat-alloc-tile-bonus">+{atkBonus}</span>
                                   </button>
@@ -3446,7 +3449,7 @@ const Inventory = () => {
                                       onClick={() => handleClick('defense')}
                                       title={tooltip('Obrona', defBonus, 'DEF')}
                                   >
-                                      <span className="inventory__stat-alloc-tile-icon">🛡️</span>
+                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="shield" /></span>
                                       <span className="inventory__stat-alloc-tile-name">Obrona</span>
                                       <span className="inventory__stat-alloc-tile-bonus">+{defBonus}</span>
                                   </button>
@@ -3468,7 +3471,7 @@ const Inventory = () => {
                           aria-label="Aktywne skille"
                           title="Aktywne skille"
                       >
-                          <span className="inventory__paperdoll-action-icon">✨</span>
+                          <span className="inventory__paperdoll-action-icon"><GameIcon name="sparkles" /></span>
                           <span className="inventory__paperdoll-action-label">Skille</span>
                       </button>
                       <button
@@ -3479,7 +3482,7 @@ const Inventory = () => {
                           title="Auto-potion"
                       >
                           <span className="inventory__paperdoll-action-icon">
-                              <TinyIcon icon={getPotionImage('hp_potion_sm') ?? '🧪'} size="lg" />
+                              <TinyIcon icon={getPotionImage('hp_potion_sm') ?? 'test-tube'} size="lg" />
                           </span>
                           <span className="inventory__paperdoll-action-label">Potion</span>
                       </button>
@@ -3490,7 +3493,7 @@ const Inventory = () => {
                           aria-label="Trening skilli"
                           title="Trening skilli"
                       >
-                          <span className="inventory__paperdoll-action-icon">📚</span>
+                          <span className="inventory__paperdoll-action-icon"><GameIcon name="books" /></span>
                           <span className="inventory__paperdoll-action-label">Trening</span>
                       </button>
                       <button
@@ -3500,7 +3503,7 @@ const Inventory = () => {
                           aria-label="Statystyki"
                           title="Statystyki"
                       >
-                          <span className="inventory__paperdoll-action-icon">📊</span>
+                          <span className="inventory__paperdoll-action-icon"><GameIcon name="bar-chart" /></span>
                           <span className="inventory__paperdoll-action-label">Stats</span>
                       </button>
                   </div>
@@ -3508,7 +3511,7 @@ const Inventory = () => {
           );
       })()}
 
-      {/* ── Postać popups: avatar zoom + auto-potion config ─────────────
+      {/* -- Postać popups: avatar zoom + auto-potion config -------------
           Single AnimatePresence stack — only one popup is open at a time
           (see `popupKey` state). Backdrop click closes; modal content
           stops propagation so an inner click doesn't dismiss. */}
@@ -3577,7 +3580,7 @@ const Inventory = () => {
                           onClick={(e) => e.stopPropagation()}
                       >
                           <header className="inventory__popup-header">
-                              <h2 className="inventory__popup-title">🧪 Potiony</h2>
+                              <h2 className="inventory__popup-title"><GameIcon name="test-tube" /> Potiony</h2>
                               <button
                                   className="inventory__popup-close"
                                   onClick={closePopup}
@@ -3596,14 +3599,14 @@ const Inventory = () => {
                                   className={`inventory__popup-tab${potionTab === 'auto' ? ' inventory__popup-tab--active' : ''}`}
                                   onClick={() => setPotionTab('auto')}
                               >
-                                  ⚙️ Auto-potion
+                                  <GameIcon name="gear" /> Auto-potion
                               </button>
                               <button
                                   type="button"
                                   className={`inventory__popup-tab${potionTab === 'alchemy' ? ' inventory__popup-tab--active' : ''}`}
                                   onClick={() => setPotionTab('alchemy')}
                               >
-                                  🧪 Alchemia
+                                  <GameIcon name="test-tube" /> Alchemia
                               </button>
                           </div>
 
@@ -3620,7 +3623,7 @@ const Inventory = () => {
                                               className="inventory__potion-checkbox"
                                           />
                                           <span className="inventory__potion-icon">
-                                              <TinyIcon icon={selectedFlatHpPotion?.icon ?? '❤️'} size="lg" />
+                                              <TinyIcon icon={selectedFlatHpPotion?.icon ?? 'red-heart'} size="lg" />
                                           </span>
                                           <span className="inventory__potion-label">Auto HP Potion</span>
                                       </label>
@@ -3669,7 +3672,7 @@ const Inventory = () => {
                                               className="inventory__potion-checkbox"
                                           />
                                           <span className="inventory__potion-icon">
-                                              <TinyIcon icon={selectedFlatMpPotion?.icon ?? '💧'} size="lg" />
+                                              <TinyIcon icon={selectedFlatMpPotion?.icon ?? 'droplet'} size="lg" />
                                           </span>
                                           <span className="inventory__potion-label">Auto MP Potion</span>
                                       </label>
@@ -3718,7 +3721,7 @@ const Inventory = () => {
                                               className="inventory__potion-checkbox"
                                           />
                                           <span className="inventory__potion-icon">
-                                              <TinyIcon icon={selectedPctHpPotion?.icon ?? '🩸'} size="lg" />
+                                              <TinyIcon icon={selectedPctHpPotion?.icon ?? 'drop-of-blood'} size="lg" />
                                           </span>
                                           <span className="inventory__potion-label">Auto % HP Potion</span>
                                       </label>
@@ -3767,7 +3770,7 @@ const Inventory = () => {
                                               className="inventory__potion-checkbox"
                                           />
                                           <span className="inventory__potion-icon">
-                                              <TinyIcon icon={selectedPctMpPotion?.icon ?? '💎'} size="lg" />
+                                              <TinyIcon icon={selectedPctMpPotion?.icon ?? 'gem-stone'} size="lg" />
                                           </span>
                                           <span className="inventory__potion-label">Auto % MP Potion</span>
                                       </label>
@@ -3841,7 +3844,7 @@ const Inventory = () => {
                                             </div>
                                           </div>
                                           {/* Spec 2 (2026-05 v3): arrow direction set via SCSS
-                                              `::before` (↓ on mobile, → on desktop) so the layout
+                                              `::before` (v on mobile, -> on desktop) so the layout
                                               swaps cleanly between vertical and horizontal flow. */}
                                           <span className="inventory__alchemy-arrow" aria-hidden="true" />
                                           <div className="inventory__alchemy-output">
@@ -3872,7 +3875,7 @@ const Inventory = () => {
                                               >MAX</button>
                                             </div>
                                             <span className="inventory__alchemy-summary">
-                                              {levelTooLow ? `Wymagany lvl ${conv.outputMinLevel}` : canConvert ? `${totalInput} → ${amount}` : 'Za malo'}
+                                              {levelTooLow ? `Wymagany lvl ${conv.outputMinLevel}` : canConvert ? `${totalInput} -> ${amount}` : 'Za malo'}
                                             </span>
                                           </div>
                                           <button
@@ -3883,7 +3886,7 @@ const Inventory = () => {
                                               setAlchemyAmounts((p) => ({ ...p, [key]: 1 }));
                                             }}
                                           >
-                                            🧪 Przetworz
+                                            <GameIcon name="test-tube" /> Przetworz
                                           </button>
                                         </div>
                                       );
@@ -3916,7 +3919,7 @@ const Inventory = () => {
                           onClick={(e) => e.stopPropagation()}
                       >
                           <header className="inventory__popup-header">
-                              <h2 className="inventory__popup-title">📊 Statystyki</h2>
+                              <h2 className="inventory__popup-title"><GameIcon name="bar-chart" /> Statystyki</h2>
                               <button className="inventory__popup-close" onClick={closePopup} aria-label="Zamknij">×</button>
                           </header>
                           <div className="inventory__popup-body">
@@ -3946,7 +3949,7 @@ const Inventory = () => {
                           onClick={(e) => e.stopPropagation()}
                       >
                           <header className="inventory__popup-header">
-                              <h2 className="inventory__popup-title">📚 Trening Skilli</h2>
+                              <h2 className="inventory__popup-title"><GameIcon name="books" /> Trening Skilli</h2>
                               <button className="inventory__popup-close" onClick={closePopup} aria-label="Zamknij">×</button>
                           </header>
                           <div className="inventory__popup-body">
@@ -3976,7 +3979,7 @@ const Inventory = () => {
                           onClick={(e) => e.stopPropagation()}
                       >
                           <header className="inventory__popup-header">
-                              <h2 className="inventory__popup-title">✨ Aktywne Skille</h2>
+                              <h2 className="inventory__popup-title"><GameIcon name="sparkles" /> Aktywne Skille</h2>
                               <button className="inventory__popup-close" onClick={closePopup} aria-label="Zamknij">×</button>
                           </header>
                           <div className="inventory__popup-body">
@@ -4066,7 +4069,7 @@ const Inventory = () => {
                         const full = (isHp && ch.hp >= maxHp) || (isMp && ch.mp >= maxMp);
                         return full ? (
                           <p className="inventory__use-potion-warn">
-                            ℹ️ {isHp ? 'HP' : 'MP'} jest juz pelne — eliksir nie zostanie uzyty.
+                            <GameIcon name="information" /> {isHp ? 'HP' : 'MP'} jest juz pelne — eliksir nie zostanie uzyty.
                           </p>
                         ) : null;
                       })()}
@@ -4083,7 +4086,7 @@ const Inventory = () => {
                           disabled={max <= 0}
                           onClick={() => { useElixirToFull(usePotionId); close(); }}
                         >
-                          ⬆️ Uzyj do max {isHp ? 'HP' : 'MP'}
+                          <GameIcon name="up-arrow" /> Uzyj do max {isHp ? 'HP' : 'MP'}
                         </button>
                       </div>
                     </>
@@ -4097,7 +4100,7 @@ const Inventory = () => {
                         disabled={stack <= 0}
                         onClick={() => { applyElixirDose(usePotionId); close(); }}
                       >
-                        ✨ Aktywuj buff
+                        <GameIcon name="sparkles" /> Aktywuj buff
                       </button>
                     </div>
                   )}
@@ -4115,7 +4118,7 @@ const Inventory = () => {
                           }
                         }}
                       >
-                        ⚠️ Resetuj statystyki
+                        <GameIcon name="warning" /> Resetuj statystyki
                       </button>
                     </div>
                   )}
@@ -4132,19 +4135,19 @@ const Inventory = () => {
                   {!isHeal && !isBuff && !isReset && (() => {
                     let infoLabel = '';
                     if (fx === 'amulet_of_loss') {
-                      infoLabel = `🛡️ Posiadasz ${stack} amuletów = ${stack} ochron przedmiotów. Każda śmierć automatycznie zużywa 1 sztukę i ratuje plecak + ekwipunek.`;
+                      infoLabel = `:shield: Posiadasz ${stack} amuletów = ${stack} ochron przedmiotów. Każda śmierć automatycznie zużywa 1 sztukę i ratuje plecak + ekwipunek.`;
                     } else if (fx === 'death_protection') {
-                      infoLabel = `🛡️ Posiadasz ${stack} eliksirów = ${stack} ochron statystyk i poziomu. Każda śmierć automatycznie zużywa 1 sztukę.`;
+                      infoLabel = `:shield: Posiadasz ${stack} eliksirów = ${stack} ochron statystyk i poziomu. Każda śmierć automatycznie zużywa 1 sztukę.`;
                     } else if (fx === 'dungeon_reset') {
-                      infoLabel = `🏰 Posiadasz ${stack} resetów. Użyj na ekranie konkretnego dungeonu — przycisk "Reset" pojawia się gdy próby się skończą.`;
+                      infoLabel = `:castle: Posiadasz ${stack} resetów. Użyj na ekranie konkretnego dungeonu — przycisk "Reset" pojawia się gdy próby się skończą.`;
                     } else if (fx === 'boss_reset') {
-                      infoLabel = `👹 Posiadasz ${stack} resetów. Użyj na ekranie konkretnego bossa — przycisk "Reset" pojawia się gdy próby się skończą.`;
+                      infoLabel = `:ogre: Posiadasz ${stack} resetów. Użyj na ekranie konkretnego bossa — przycisk "Reset" pojawia się gdy próby się skończą.`;
                     } else {
-                      infoLabel = `ℹ️ Posiadasz ${stack} sztuk. Eliksir aktywuje się automatycznie w odpowiedniej sytuacji.`;
+                      infoLabel = `:information: Posiadasz ${stack} sztuk. Eliksir aktywuje się automatycznie w odpowiedniej sytuacji.`;
                     }
                     return (
                       <p className="inventory__use-potion-warn">
-                        {infoLabel}
+                        <EmojiText>{infoLabel}</EmojiText>
                       </p>
                     );
                   })()}
@@ -4162,7 +4165,7 @@ const Inventory = () => {
           stack count) inside the bag grid below. Click a stone tile to
           open the same conversion popup as before. */}
 
-      {/* ── Stone Conversion Popup ───────────────────────────────────────── */}
+      {/* -- Stone Conversion Popup ----------------------------------------- */}
       <AnimatePresence>
         {stoneConvertId && (() => {
           const higherStone = STONE_CONVERSION_CHAIN[stoneConvertId];
@@ -4196,13 +4199,13 @@ const Inventory = () => {
                 transition={{ type: 'spring', stiffness: 300, damping: 22 }}
               >
                 <button className="inventory__stone-popup-close" onClick={() => { setStoneConvertId(null); setStoneConvertResult(null); }}>
-                  ✕
+                  <Icon name="x" />
                 </button>
                 <h3 className="inventory__stone-popup-title">Zamiana kamieni</h3>
 
                 <div className="inventory__stone-popup-current">
                   <span className="inventory__stone-popup-gem" style={{ color: currentColor }}>
-                    <TinyIcon icon={STONE_ICONS[stoneConvertId] ?? '💎'} size="lg" />
+                    <TinyIcon icon={STONE_ICONS[stoneConvertId] ?? 'gem-stone'} size="lg" />
                   </span>
                   <span className="inventory__stone-popup-name" style={{ color: currentColor }}>{currentName}</span>
                   <span className="inventory__stone-popup-count">x{currentCount}</span>
@@ -4220,7 +4223,7 @@ const Inventory = () => {
 
                     <div className="inventory__stone-popup-target">
                       <span className="inventory__stone-popup-gem" style={{ color: higherColor }}>
-                        <TinyIcon icon={higherStone ? (STONE_ICONS[higherStone] ?? '💎') : '💎'} size="lg" />
+                        <TinyIcon icon={higherStone ? (STONE_ICONS[higherStone] ?? 'gem-stone') : 'gem-stone'} size="lg" />
                       </span>
                       <span className="inventory__stone-popup-name" style={{ color: higherColor }}>{higherName}</span>
                       <span className="inventory__stone-popup-count">x{higherCount}</span>
@@ -4271,7 +4274,7 @@ const Inventory = () => {
         })()}
       </AnimatePresence>
 
-      {/* ── Bag section ───────────────────────────────────────────────────── */}
+      {/* -- Bag section ----------------------------------------------------- */}
       <div className="inventory__bag-header">
         <span className="inventory__bag-count">Plecak: {bag.length} / 1000</span>
         {bulkMode !== 'none' ? (
@@ -4279,7 +4282,7 @@ const Inventory = () => {
             className="inventory__multi-sell-toggle inventory__multi-sell-toggle--active"
             onClick={exitMultiSell}
           >
-            ✕ Anuluj
+            <Icon name="x" /> Anuluj
           </button>
         ) : (
           <>
@@ -4287,13 +4290,13 @@ const Inventory = () => {
               className="inventory__multi-sell-toggle inventory__multi-sell-toggle--sell"
               onClick={() => setBulkMode('sell')}
             >
-              💰 Sprzedaj
+              <GameIcon name="money-bag" /> Sprzedaj
             </button>
             <button
               className="inventory__multi-sell-toggle inventory__multi-sell-toggle--disassemble"
               onClick={() => setBulkMode('disassemble')}
             >
-              🔨 Rozloz
+              <GameIcon name="hammer" /> Rozloz
             </button>
           </>
         )}
@@ -4304,35 +4307,35 @@ const Inventory = () => {
             onClick={() => setAutoSellCommon(!autoSellCommon)}
             title="Automatycznie sprzedawaj Common przedmioty"
           >
-            Zwykle {autoSellCommon ? '✓' : '✗'}
+            Zwykle {autoSellCommon ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
           </button>
           <button
             className={`inventory__auto-sell-btn inventory__auto-sell-btn--rare${autoSellRare ? ' inventory__auto-sell-btn--active' : ''}`}
             onClick={() => setAutoSellRare(!autoSellRare)}
             title="Automatycznie sprzedawaj Rare przedmioty"
           >
-            Rzadkie {autoSellRare ? '✓' : '✗'}
+            Rzadkie {autoSellRare ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
           </button>
           <button
             className={`inventory__auto-sell-btn inventory__auto-sell-btn--epic${autoSellEpic ? ' inventory__auto-sell-btn--active' : ''}`}
             onClick={() => setAutoSellEpic(!autoSellEpic)}
             title="Automatycznie sprzedawaj Epic przedmioty"
           >
-            Epickie {autoSellEpic ? '✓' : '✗'}
+            Epickie {autoSellEpic ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
           </button>
           <button
             className={`inventory__auto-sell-btn inventory__auto-sell-btn--legendary${autoSellLegendary ? ' inventory__auto-sell-btn--active' : ''}`}
             onClick={() => setAutoSellLegendary(!autoSellLegendary)}
             title="Automatycznie sprzedawaj Legendary przedmioty"
           >
-            Legendarne {autoSellLegendary ? '✓' : '✗'}
+            Legendarne {autoSellLegendary ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
           </button>
           <button
             className={`inventory__auto-sell-btn inventory__auto-sell-btn--mythic${autoSellMythic ? ' inventory__auto-sell-btn--active' : ''}`}
             onClick={() => setAutoSellMythic(!autoSellMythic)}
             title="Automatycznie sprzedawaj Mythic przedmioty"
           >
-            Mityczne {autoSellMythic ? '✓' : '✗'}
+            Mityczne {autoSellMythic ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
           </button>
         </div>
       </div>
@@ -4370,7 +4373,7 @@ const Inventory = () => {
               title={f.label}
             >
               <span className="inventory__filter-btn-icon">
-                {isImg ? <img src={f.icon} alt="" draggable={false} /> : f.icon}
+                {isImg ? <img src={f.icon} alt="" draggable={false} /> : <GameIcon name={f.icon} />}
               </span>
               <span className="inventory__filter-btn-label">{f.label}</span>
             </button>
@@ -4382,7 +4385,7 @@ const Inventory = () => {
       {bulkMode !== 'none' && (
         <div className="inventory__multi-controls">
           <span className={`inventory__bulk-mode-label${bulkMode === 'disassemble' ? ' inventory__bulk-mode-label--disassemble' : ''}`}>
-            {bulkMode === 'sell' ? '💰 Tryb sprzedazy' : '🔨 Tryb rozkladania'}
+            {bulkMode === 'sell' ? <><GameIcon name="money-bag" /> Tryb sprzedazy</> : <><GameIcon name="hammer" /> Tryb rozkladania</>}
           </span>
           {/* Spec 2: select-all / deselect-all read in the live transform
               colour (not the legacy red) so the action chrome matches the
@@ -4412,25 +4415,25 @@ const Inventory = () => {
         const ownedConsumables = ELIXIRS.filter((e) => (consumables[e.id] ?? 0) > 0);
         if (ownedConsumables.length === 0) return null;
         const BUFF_CONFIG: Record<string, { id: string; name: string; icon: string; effect: string; durationMs: number; pausable?: boolean }> = {
-            'xp_boost_1h': { id: 'xp_boost', name: 'XP +50%', icon: '⭐', effect: 'xp_boost', durationMs: 3600000, pausable: true },
-            'skill_xp_boost_1h': { id: 'skill_xp_boost', name: 'Skill XP +50%', icon: '✨', effect: 'skill_xp_boost', durationMs: 3600000, pausable: true },
-            'attack_speed_0.20_15m_pausable': { id: 'attack_speed', name: 'AS +20%', icon: '⚡', effect: 'attack_speed', durationMs: 900000, pausable: true },
-            'cooldown_reduction_0.20_30m': { id: 'cooldown_reduction', name: 'CD -20%', icon: '🌀', effect: 'cooldown_reduction', durationMs: 1800000 },
-            'hp_pct_25_15m': { id: 'hp_pct_25', name: 'Max HP +25%', icon: '❤️‍🔥', effect: 'hp_pct_25', durationMs: 900000, pausable: true },
-            'mp_pct_25_15m': { id: 'mp_pct_25', name: 'Max MP +25%', icon: '💠', effect: 'mp_pct_25', durationMs: 900000, pausable: true },
-            'offline_training_boost': { id: 'offline_training_boost', name: 'Trening x2', icon: '🏋️', effect: 'offline_training_boost', durationMs: 3600000, pausable: true },
-            'utamo_vita': { id: 'utamo_vita', name: 'Utamo Vita', icon: '🔵', effect: 'utamo_vita', durationMs: 600000 },
-            'premium_xp_boost': { id: 'premium_xp_boost', name: 'Premium XP x2', icon: '💎', effect: 'premium_xp_boost', durationMs: 43200000, pausable: true },
-            'atk_dmg_25_15m': { id: 'atk_dmg_25', name: 'ATK DMG +25%', icon: '⚔️', effect: 'atk_dmg_25', durationMs: 900000, pausable: true },
-            'atk_dmg_50_15m': { id: 'atk_dmg_50', name: 'ATK DMG +50%', icon: '⚔️', effect: 'atk_dmg_50', durationMs: 900000, pausable: true },
-            'atk_dmg_100_15m': { id: 'atk_dmg_100', name: 'ATK DMG +100%', icon: '⚔️', effect: 'atk_dmg_100', durationMs: 900000, pausable: true },
-            'spell_dmg_25_15m': { id: 'spell_dmg_25', name: 'SPELL DMG +25%', icon: '🔮', effect: 'spell_dmg_25', durationMs: 900000, pausable: true },
-            'spell_dmg_50_15m': { id: 'spell_dmg_50', name: 'SPELL DMG +50%', icon: '🔮', effect: 'spell_dmg_50', durationMs: 900000, pausable: true },
-            'spell_dmg_100_15m': { id: 'spell_dmg_100', name: 'SPELL DMG +100%', icon: '🔮', effect: 'spell_dmg_100', durationMs: 900000, pausable: true },
-            'hp_boost_500_15m': { id: 'hp_boost_500', name: '+500 Max HP', icon: '🩸', effect: 'hp_boost_500', durationMs: 900000, pausable: true },
-            'mp_boost_500_15m': { id: 'mp_boost_500', name: '+500 Max MP', icon: '🔷', effect: 'mp_boost_500', durationMs: 900000, pausable: true },
-            'atk_boost_50_15m': { id: 'atk_boost_50', name: '+50 ATK', icon: '💪', effect: 'atk_boost_50', durationMs: 900000, pausable: true },
-            'def_boost_50_15m': { id: 'def_boost_50', name: '+50 DEF', icon: '🛡️', effect: 'def_boost_50', durationMs: 900000, pausable: true },
+            'xp_boost_1h': { id: 'xp_boost', name: 'XP +50%', icon: 'star', effect: 'xp_boost', durationMs: 3600000, pausable: true },
+            'skill_xp_boost_1h': { id: 'skill_xp_boost', name: 'Skill XP +50%', icon: 'sparkles', effect: 'skill_xp_boost', durationMs: 3600000, pausable: true },
+            'attack_speed_0.20_15m_pausable': { id: 'attack_speed', name: 'AS +20%', icon: 'high-voltage', effect: 'attack_speed', durationMs: 900000, pausable: true },
+            'cooldown_reduction_0.20_30m': { id: 'cooldown_reduction', name: 'CD -20%', icon: 'cyclone', effect: 'cooldown_reduction', durationMs: 1800000 },
+            'hp_pct_25_15m': { id: 'hp_pct_25', name: 'Max HP +25%', icon: 'heart-on-fire', effect: 'hp_pct_25', durationMs: 900000, pausable: true },
+            'mp_pct_25_15m': { id: 'mp_pct_25', name: 'Max MP +25%', icon: 'diamond-with-a-dot', effect: 'mp_pct_25', durationMs: 900000, pausable: true },
+            'offline_training_boost': { id: 'offline_training_boost', name: 'Trening x2', icon: 'person-lifting-weights', effect: 'offline_training_boost', durationMs: 3600000, pausable: true },
+            'utamo_vita': { id: 'utamo_vita', name: 'Utamo Vita', icon: 'blue-circle', effect: 'utamo_vita', durationMs: 600000 },
+            'premium_xp_boost': { id: 'premium_xp_boost', name: 'Premium XP x2', icon: 'gem-stone', effect: 'premium_xp_boost', durationMs: 43200000, pausable: true },
+            'atk_dmg_25_15m': { id: 'atk_dmg_25', name: 'ATK DMG +25%', icon: 'crossed-swords', effect: 'atk_dmg_25', durationMs: 900000, pausable: true },
+            'atk_dmg_50_15m': { id: 'atk_dmg_50', name: 'ATK DMG +50%', icon: 'crossed-swords', effect: 'atk_dmg_50', durationMs: 900000, pausable: true },
+            'atk_dmg_100_15m': { id: 'atk_dmg_100', name: 'ATK DMG +100%', icon: 'crossed-swords', effect: 'atk_dmg_100', durationMs: 900000, pausable: true },
+            'spell_dmg_25_15m': { id: 'spell_dmg_25', name: 'SPELL DMG +25%', icon: 'crystal-ball', effect: 'spell_dmg_25', durationMs: 900000, pausable: true },
+            'spell_dmg_50_15m': { id: 'spell_dmg_50', name: 'SPELL DMG +50%', icon: 'crystal-ball', effect: 'spell_dmg_50', durationMs: 900000, pausable: true },
+            'spell_dmg_100_15m': { id: 'spell_dmg_100', name: 'SPELL DMG +100%', icon: 'crystal-ball', effect: 'spell_dmg_100', durationMs: 900000, pausable: true },
+            'hp_boost_500_15m': { id: 'hp_boost_500', name: '+500 Max HP', icon: 'drop-of-blood', effect: 'hp_boost_500', durationMs: 900000, pausable: true },
+            'mp_boost_500_15m': { id: 'mp_boost_500', name: '+500 Max MP', icon: 'large-blue-diamond', effect: 'mp_boost_500', durationMs: 900000, pausable: true },
+            'atk_boost_50_15m': { id: 'atk_boost_50', name: '+50 ATK', icon: 'flexed-biceps', effect: 'atk_boost_50', durationMs: 900000, pausable: true },
+            'def_boost_50_15m': { id: 'def_boost_50', name: '+50 DEF', icon: 'shield', effect: 'def_boost_50', durationMs: 900000, pausable: true },
         };
         const isBuffEffect = (effect: string): boolean => (
           effect === 'xp_boost_1h'
@@ -4461,7 +4464,7 @@ const Inventory = () => {
                 onClick={openPotionAlchemy}
                 title="Otwórz Alchemię (zamiana eliksirów)"
               >
-                🧪 Alchemia →
+                <GameIcon name="test-tube" /> Alchemia <Icon name="arrowRight" />
               </button>
             </div>
             <div className="inventory__consumables-grid">
@@ -4470,7 +4473,7 @@ const Inventory = () => {
                 const effect = elixir.effect;
                 // 2026-05-08 v3 spec ("eliksiry maja taki sam border
                 // wszedzie") — utility / buff elixirs (anything that's
-                // NOT an HP/MP heal potion) gets the gold→purple
+                // NOT an HP/MP heal potion) gets the gold->purple
                 // gradient border. HP/MP potions keep their normal
                 // tile chrome since they live in the "Potiony" family.
                 const isHealPotion = effect.startsWith('heal_hp') || effect.startsWith('heal_mp');
@@ -4620,7 +4623,7 @@ const Inventory = () => {
                   title={`${getSpellChestDisplayName(level)} — kliknij aby otworzyc skille (uzywany do odblokowywania i ulepszania skilli Lvl ${level}+)`}
                 >
                   <span className="inventory__consumable-tile-count">×{count}</span>
-                  <span className="inventory__consumable-tile-icon">{getSpellChestIcon(level)}</span>
+                  <span className="inventory__consumable-tile-icon"><TinyIcon icon={getSpellChestIcon(level)} /></span>
                   <span className="inventory__consumable-tile-name">{getSpellChestDisplayName(level)}</span>
                 </button>
               ))}
@@ -4630,7 +4633,7 @@ const Inventory = () => {
       })()}
 
       {/* Spec 13c: standalone alchemia panel removed — moved into the
-          Auto-potion popup as the "Alchemia" tab. Click 🧪 Potion in
+          Auto-potion popup as the "Alchemia" tab. Click :test-tube: Potion in
           the action row, or click any potion tile in the consumables
           grid above, to deep-link there. */}
 
@@ -4643,7 +4646,7 @@ const Inventory = () => {
           onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
           disabled={safePage === 0}
         >
-          ← Poprzednia
+          <Icon name="arrowLeft" /> Poprzednia
         </button>
         <span className="inventory__pagination-info">
           Strona {safePage + 1} / {Math.max(1, totalPages)}
@@ -4658,7 +4661,7 @@ const Inventory = () => {
           onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
           disabled={safePage >= totalPages - 1}
         >
-          Następna →
+          Następna <Icon name="arrowRight" />
         </button>
       </div>
 
@@ -4714,7 +4717,7 @@ const Inventory = () => {
                 onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                 disabled={safePage === 0}
               >
-                ← Poprzednia
+                <Icon name="arrowLeft" /> Poprzednia
               </button>
               <span className="inventory__pagination-info">
                 Strona {safePage + 1} / {totalPages}
@@ -4724,7 +4727,7 @@ const Inventory = () => {
                 onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={safePage >= totalPages - 1}
               >
-                Następna →
+                Następna <Icon name="arrowRight" />
               </button>
             </div>
           )}
@@ -4735,7 +4738,7 @@ const Inventory = () => {
       {bulkMode === 'sell' && multiSellSummary.count > 0 && (
         <div className="inventory__multi-footer">
           <button className="inventory__multi-sell-btn" onClick={handleMultiSell}>
-            💰 Sprzedaj ({multiSellSummary.count} szt. za {formatGoldShort(multiSellSummary.totalGold)})
+            <GameIcon name="money-bag" /> Sprzedaj ({multiSellSummary.count} szt. za {formatGoldShort(multiSellSummary.totalGold)})
           </button>
         </div>
       )}
@@ -4746,12 +4749,12 @@ const Inventory = () => {
           <div className="inventory__disassemble-preview">
             {Object.entries(disassembleSummary.stonesByRarity).map(([stoneId, count]) => (
               <span key={stoneId} className="inventory__disassemble-preview-stone">
-                <TinyIcon icon={STONE_ICONS[stoneId] ?? '💎'} size="sm" /> {STONE_NAMES[stoneId] ?? stoneId}: <strong>x{count}</strong>
+                <TinyIcon icon={STONE_ICONS[stoneId] ?? 'gem-stone'} size="sm" /> {STONE_NAMES[stoneId] ?? stoneId}: <strong>x{count}</strong>
               </span>
             ))}
           </div>
           <button className="inventory__mass-disassemble-btn" onClick={handleMassDisassemble}>
-            🔨 Rozloz zaznaczone ({disassembleSummary.count} szt.)
+            <GameIcon name="hammer" /> Rozloz zaznaczone ({disassembleSummary.count} szt.)
           </button>
         </div>
       )}
@@ -4760,7 +4763,7 @@ const Inventory = () => {
       {disassembleAnimating && (
         <div className="inventory__disassemble-anim-overlay">
           <div className="inventory__disassemble-anim-box">
-            <h3 className="inventory__disassemble-anim-title">🔨 Rozkladanie przedmiotow...</h3>
+            <h3 className="inventory__disassemble-anim-title"><GameIcon name="hammer" /> Rozkladanie przedmiotow...</h3>
             <div className="inventory__disassemble-anim-counter">
               {disassembleProgress} / {disassembleTotalItems}
             </div>
@@ -4781,10 +4784,10 @@ const Inventory = () => {
                 >
                   {(() => {
                     const item = bag.find((i) => i.uuid === disassembleCurrentItem);
-                    if (!item) return '📦';
+                    if (!item) return <GameIcon name="package" />;
                     return (
                       <span style={{ color: RARITY_COLORS[item.rarity] }}>
-                        {slotEmoji(item.itemId)} {getItemDisplayName(item)}
+                        <GameIcon name={slotEmoji(item.itemId)} /> {getItemDisplayName(item)}
                       </span>
                     );
                   })()}
@@ -4805,7 +4808,7 @@ const Inventory = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
-            <h3 className="inventory__bulk-result-title">🔨 Rozkladanie zakonczone!</h3>
+            <h3 className="inventory__bulk-result-title"><GameIcon name="hammer" /> Rozkladanie zakonczone!</h3>
             <div className="inventory__bulk-result-summary">
               <div>Rozlozono przedmiotow: <strong>{bulkDisassembleResult.total}</strong></div>
             </div>
@@ -4814,7 +4817,7 @@ const Inventory = () => {
                 <div className="inventory__bulk-result-stones-title">Otrzymane kamienie:</div>
                 {Object.entries(bulkDisassembleResult.stones).map(([stoneType, count]) => (
                   <div key={stoneType} className="inventory__bulk-result-stone">
-                    <TinyIcon icon={STONE_ICONS[stoneType] ?? '💎'} size="sm" /> {STONE_NAMES[stoneType] ?? stoneType}: <strong>x{count}</strong>
+                    <TinyIcon icon={STONE_ICONS[stoneType] ?? 'gem-stone'} size="sm" /> {STONE_NAMES[stoneType] ?? stoneType}: <strong>x{count}</strong>
                   </div>
                 ))}
               </div>
@@ -4826,7 +4829,7 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* ── Detail panel ──────────────────────────────────────────────────── */}
+      {/* -- Detail panel ---------------------------------------------------- */}
       <AnimatePresence>
         {freshSelected && (
           <DetailPanel

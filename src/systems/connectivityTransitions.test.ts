@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// ── characterScope mock ──────────────────────────────────────────────────────
-// transitionToOnline awaits saveCurrentCharacterStores → we need to spy on it
+// -- characterScope mock ------------------------------------------------------
+// transitionToOnline awaits saveCurrentCharacterStores -> we need to spy on it
 // without doing real Supabase / file IO. saveCurrentCharacterStoresSync is
 // called synchronously by captureOfflineSnapshot; it must not throw.
 //
@@ -34,7 +34,7 @@ import type { ICharacter } from '../api/v1/characterApi';
 import type { IMonster } from '../types/monster';
 import type { IPartyInfo } from '../types/party';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeCharacter = (overrides?: Partial<ICharacter>): ICharacter => ({
     id: 'char-1',
@@ -74,7 +74,7 @@ const makeBagItem = (overrides?: Partial<IInventoryItem>): IInventoryItem => ({
     ...overrides,
 });
 
-// ── Lifecycle ────────────────────────────────────────────────────────────────
+// -- Lifecycle ----------------------------------------------------------------
 
 beforeEach(() => {
     // Reset both Zustand stores to a known empty state before each test so
@@ -109,7 +109,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ── captureOfflineSnapshot ───────────────────────────────────────────────────
+// -- captureOfflineSnapshot ---------------------------------------------------
 
 describe('captureOfflineSnapshot', () => {
     it('returns null when there is no active character', () => {
@@ -226,7 +226,7 @@ describe('captureOfflineSnapshot', () => {
     });
 });
 
-// ── computeOfflineDelta ──────────────────────────────────────────────────────
+// -- computeOfflineDelta ------------------------------------------------------
 
 describe('computeOfflineDelta', () => {
     it('returns null when no character is loaded', () => {
@@ -284,7 +284,7 @@ describe('computeOfflineDelta', () => {
         expect(delta.xpGained).toBe(2000);
         expect(delta.goldDelta).toBe(1500);
         expect(delta.itemCountDelta).toBe(1);
-        // None of these breach the absurd thresholds → not suspicious.
+        // None of these breach the absurd thresholds -> not suspicious.
         expect(delta.suspicious).toBe(false);
     });
 
@@ -381,7 +381,7 @@ describe('computeOfflineDelta', () => {
     });
 });
 
-// ── transitionToOffline ──────────────────────────────────────────────────────
+// -- transitionToOffline ------------------------------------------------------
 
 describe('transitionToOffline', () => {
     it('sets mode to "offline" and records the explicit flag', () => {
@@ -401,7 +401,7 @@ describe('transitionToOffline', () => {
         expect(snap).not.toBeNull();
         expect(snap!.level).toBe(12);
         expect(snap!.xp).toBe(600);
-        // explicit=false → store remembers the auto-flip flavour
+        // explicit=false -> store remembers the auto-flip flavour
         expect(useConnectivityStore.getState().userExplicitlyOffline).toBe(false);
     });
 
@@ -414,7 +414,7 @@ describe('transitionToOffline', () => {
     });
 });
 
-// ── GAP #17 — offline transition does NOT drop party / kill the player ───────
+// -- GAP #17 — offline transition does NOT drop party / kill the player -------
 //
 // FINDING (documented, not a bug): the *system* function `transitionToOffline`
 // is a pure snapshot-and-flip. It does NOT leave the party, clear party state,
@@ -446,7 +446,7 @@ const makeMonster = (overrides?: Partial<IMonster>): IMonster => ({
     id: 'rat',
     name_pl: 'Szczur',
     name_en: 'Rat',
-    icon: '🐀',
+    icon: 'rat',
     level: 1,
     hp: 27,
     attack: 4,
@@ -473,7 +473,7 @@ describe('transitionToOffline — GAP #17 party / combat side-effect contract', 
     });
 
     it('does NOT mutate the player HP / level when going offline solo mid-combat', () => {
-        // Solo combat in progress → offline must NOT kill the player or strip
+        // Solo combat in progress -> offline must NOT kill the player or strip
         // levels. Combat state + character vitals are preserved verbatim so
         // the fight can keep running offline.
         useCharacterStore.setState({ character: makeCharacter({ level: 10, hp: 150, max_hp: 200 }) });
@@ -512,7 +512,7 @@ describe('transitionToOffline — GAP #17 party / combat side-effect contract', 
     });
 });
 
-// ── transitionToOnline ───────────────────────────────────────────────────────
+// -- transitionToOnline -------------------------------------------------------
 
 describe('transitionToOnline', () => {
     it('flips mode to "online" and clears the explicit-offline flag', async () => {
@@ -656,7 +656,7 @@ describe('transitionToOnline', () => {
     });
 });
 
-// ── TODO ─────────────────────────────────────────────────────────────────────
+// -- TODO ---------------------------------------------------------------------
 // TODO(line ~80): the snapshot serialization round-trip via sessionStorage is
 // exercised only indirectly here. A dedicated test would set a snapshot,
 // reload the module, and assert it bootstraps in offline mode — that

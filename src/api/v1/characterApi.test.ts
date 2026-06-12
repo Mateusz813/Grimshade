@@ -36,7 +36,7 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// -- Helpers ----------------------------------------------------------------
 const mkRes = <T>(data: T) => ({ data });
 
 describe('characterApi.getCharacter', () => {

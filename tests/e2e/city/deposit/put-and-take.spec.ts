@@ -7,12 +7,12 @@
  * between Plecak and Depozyt panels.
  *
  * Setup:
- *   • Seed Knight + 3× iron_helmet (distinct UUIDs) in bag via
+ *   - Seed Knight + 3× iron_helmet (distinct UUIDs) in bag via
  *     `seedGameSave({ bagItems: [...] })`. Empty deposit (default).
- *   • Use 3 items so we can leave 2 in bag while moving 1 around and
+ *   - Use 3 items so we can leave 2 in bag while moving 1 around and
  *     differentiate "the tile we taped" from "tiles we didn't touch"
  *     (verifying counters tick correctly).
- *   • Items are real `iron_helmet` from items.json so `getDisplayName`
+ *   - Items are real `iron_helmet` from items.json so `getDisplayName`
  *     resolves the legacy lookup and the tile renders a stable name —
  *     "filler" items have a non-distinct name but `iron_helmet` shows
  *     "Żelazny Hełm" which is anchor-able.
@@ -22,23 +22,23 @@
  *   2. Pre-state assertions: Plecak shows 3 tiles + counter "3 / 1000",
  *      Depozyt shows 0 tiles + counter "0 / 10000" + empty-state visible.
  *   3. Tap first bag tile (`.deposit__tile` in panel #0) — `handleDeposit`
- *      → `depositItem(uuid)` runs synchronously, set() reduces bag from
- *      3 → 2 and grows deposit from 0 → 1.
+ *      -> `depositItem(uuid)` runs synchronously, set() reduces bag from
+ *      3 -> 2 and grows deposit from 0 -> 1.
  *   4. Post-deposit assertions: Plecak counter "2 / 1000" + 2 tiles in
  *      bag panel; Depozyt counter "1 / 10000" + 1 tile in deposit panel
  *      + empty-state gone.
- *   5. Tap deposit tile in panel #1 — `handleWithdraw` →
+ *   5. Tap deposit tile in panel #1 — `handleWithdraw` ->
  *      `withdrawItem(uuid)` reverses the move.
  *   6. Post-withdraw assertions: counters back to "3 / 1000" and "0 / 10000",
  *      3 tiles in bag, 0 tiles in deposit + empty-state visible again.
  *
  * Why three items not one:
- *   • Single-item edge: bag panel becomes empty after deposit → bag-side
- *     empty-state shows → the `.deposit__tile` count assertion crosses
- *     0/N boundary. With 3 items the assertion is "3 → 2 → 3" — strictly
+ *   - Single-item edge: bag panel becomes empty after deposit -> bag-side
+ *     empty-state shows -> the `.deposit__tile` count assertion crosses
+ *     0/N boundary. With 3 items the assertion is "3 -> 2 -> 3" — strictly
  *     monotonic in both directions, no empty-state border crossings, no
  *     ambiguity about which tile we tap.
- *   • If `depositItem` regressed to "moves only the FIRST item ever" or
+ *   - If `depositItem` regressed to "moves only the FIRST item ever" or
  *     "swaps bag entirely with deposit", a 3-item round-trip would catch
  *     it; a 1-item test could pass with either bug.
  *
@@ -63,17 +63,17 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
     // "Brak przedmiotów w depozycie" + "0 / 10000" mimo passed-through
     // intermediate assertions na "2 / 1000" + "1 / 10000"). Root cause to
     // wyścig między applyBlobToStores z `switchToCharacter` (uruchamianym
-    // po `page.goto('/deposit')` reload → App.tsx restore() useEffect) a
+    // po `page.goto('/deposit')` reload -> App.tsx restore() useEffect) a
     // user-action mutation; klasyczny anti-flake `expect.poll` przed tap-em
     // łapie 95% przypadków, ale ostatnie 5% wymaga retry. Globalne
     // `retries: 2` daje 3 próby (1 + 2 retries) — niewystarczające na CPU-
     // contended local runs (mobile-safari WebKit + 2 mobile profile
     // File-level `retries: 8` (global is 2). Test passes alone, batch
     // może wymagać 3-7 retries z safari race. 8 daje 9 attempts total
-    // → 0.20^9 ≈ 5e-7 false-fail rate w batch.
+    // -> 0.20^9 ≈ 5e-7 false-fail rate w batch.
     test.describe.configure({ retries: 8 });
 
-    test('put item → moves to deposit panel; take item → moves back to bag; counters tick in lockstep', async ({ page }) => {
+    test('put item -> moves to deposit panel; take item -> moves back to bag; counters tick in lockstep', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -127,11 +127,11 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
             await page.goto('/deposit');
             // Deterministic hydration barrier — blocks until App.tsx restore()
             // finished (cloud loadGame + applyBlobToStores). Kills the
-            // "3 → 2 → 3" revert race at its source. See fixtures/appReady.ts.
+            // "3 -> 2 -> 3" revert race at its source. See fixtures/appReady.ts.
             await waitForAppReady(page);
             // Wait for TopHeader to mount + render character data — this
             // confirms App.tsx's async `restore()` (calls switchToCharacter
-            // → loadGame → applyBlobToStores) has FINISHED. Without this
+            // -> loadGame -> applyBlobToStores) has FINISHED. Without this
             // wait, our subsequent tap can race with a late `applyBlobToStores`
             // that overwrites our depositItem mutation with the stale
             // blob (3 items in bag, 0 in deposit) from before the tap.
@@ -174,7 +174,7 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
             //     applyBlobToStores). This is the critical anti-flake
             //     barrier: without it, a tap that lands during a hydration
             //     race produces "state reverted" failure mode where bag/deposit
-            //     panel counts went 3→2→3 between the polls of the
+            //     panel counts went 3->2->3 between the polls of the
             //     post-tap assertions and the final empty-state check.
             await expect.poll(async () => {
                 return await page.evaluate(async () => {
@@ -187,8 +187,8 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
                 });
             }, { timeout: 10_000, intervals: [500, 500, 500] }).toBe('bag=3,deposit=0');
 
-            // 6. ACTION 1 — Tap first bag tile → depositItem(uuid) →
-            //    bag: 3 → 2, deposit: 0 → 1.
+            // 6. ACTION 1 — Tap first bag tile -> depositItem(uuid) ->
+            //    bag: 3 -> 2, deposit: 0 -> 1.
             //    `force:true` defends against the tile being momentarily
             //    overlaid by the panel's flex layout during react re-render.
             await bagTiles.first().tap({ force: true });
@@ -207,14 +207,14 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
             await expect(depositPanel.locator('.deposit__empty')).toHaveCount(0);
 
             // 8. Sanity: the deposit tile renders our item — `iron_helmet`
-            //    resolves via `findBaseItem` → "Żelazny Hełm" (items.json).
+            //    resolves via `findBaseItem` -> "Żelazny Hełm" (items.json).
             //    Confirms the FULL IInventoryItem traveled through depositItem
             //    set() reducer, not just a uuid stub.
             await expect(depositTiles.first().locator('.deposit__tile-name'))
                 .toContainText('Żelazny Hełm', { timeout: 3_000 });
 
-            // 9. ACTION 2 — Tap the deposit tile → withdrawItem(uuid) →
-            //    bag: 2 → 3, deposit: 1 → 0.
+            // 9. ACTION 2 — Tap the deposit tile -> withdrawItem(uuid) ->
+            //    bag: 2 -> 3, deposit: 1 -> 0.
             await depositTiles.first().tap({ force: true });
 
             // 10. Post-withdraw assertions: counters return to initial,

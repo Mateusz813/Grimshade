@@ -7,9 +7,9 @@ import { useSkillStore } from './skillStore';
  * Offline Hunt – passive kill accumulation while player is away or busy.
  *
  * Model:
- *  - Player picks a trainable skill + target monster → hunt starts.
+ *  - Player picks a trainable skill + target monster -> hunt starts.
  *  - Base rate: 1 kill per 5 seconds. Mastery level of that monster
- *    accelerates the rate (x1 → x2 → x3 → x4). Max mastery = x4.
+ *    accelerates the rate (x1 -> x2 -> x3 -> x4). Max mastery = x4.
  *  - Timestamp-based: `startedAt` ISO string captured on start. On claim
  *    we compute `elapsedMs = now - startedAt`, cap at 12h, derive kills,
  *    and apply rewards in bulk.
@@ -90,15 +90,15 @@ export const useOfflineHuntStore = create<IOfflineHuntStore>((set) => ({
 }));
 
 // Register on globalThis so skillStore can probe hunt state without creating
-// a circular import (skillStore → offlineHuntStore → skillStore).
+// a circular import (skillStore -> offlineHuntStore -> skillStore).
 (globalThis as unknown as { __offlineHuntStore: typeof useOfflineHuntStore }).__offlineHuntStore = useOfflineHuntStore;
 
 /**
  * Compute kills-per-second multiplier based on mastery level of the target monster.
- *  mastery 0-4   → x1 (1 kill / 10s)
- *  mastery 5-11  → x2 (1 kill / 5s)
- *  mastery 12-19 → x3 (1 kill / ~3.33s)
- *  mastery 20+   → x4 (1 kill / 2.5s)
+ *  mastery 0-4   -> x1 (1 kill / 10s)
+ *  mastery 5-11  -> x2 (1 kill / 5s)
+ *  mastery 12-19 -> x3 (1 kill / ~3.33s)
+ *  mastery 20+   -> x4 (1 kill / 2.5s)
  */
 export const getOfflineHuntSpeedMultiplier = (masteryLevel: number): number => {
     if (masteryLevel >= 20) return 4;

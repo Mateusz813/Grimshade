@@ -42,6 +42,8 @@ import {
 import { SPELL_CHEST_LEVELS } from '../../systems/skillSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
 import './Market.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -50,7 +52,7 @@ type MarketTab = 'browse' | 'sell' | 'my';
 
 const PAGE_SIZE = 50;
 
-// ── Filter category metadata (label + icon resolver) ────────────────────────
+// -- Filter category metadata (label + icon resolver) ------------------------
 // Drives both the dropdown render AND the per-listing kind/slot mapping.
 const CATEGORY_OPTIONS: { value: MarketFilterCategory; label: string; iconKind: 'item' | 'potion' | 'elixir' | 'stone' | 'arena' | 'all' }[] = [
     { value: 'all',           label: 'Wszystkie',     iconKind: 'all' },
@@ -74,10 +76,10 @@ const CATEGORY_OPTIONS: { value: MarketFilterCategory; label: string; iconKind: 
 
 const SORT_OPTIONS: { value: MarketSortBy; label: string }[] = [
     { value: 'newest',     label: 'Najnowsze' },
-    { value: 'price_asc',  label: 'Cena ↑' },
-    { value: 'price_desc', label: 'Cena ↓' },
-    { value: 'level_asc',  label: 'Lvl ↑' },
-    { value: 'level_desc', label: 'Lvl ↓' },
+    { value: 'price_asc',  label: 'Cena rosnąco' },
+    { value: 'price_desc', label: 'Cena malejąco' },
+    { value: 'level_asc',  label: 'Lvl rosnąco' },
+    { value: 'level_desc', label: 'Lvl malejąco' },
 ];
 
 const RARITY_OPTIONS: { value: Rarity | 'all'; label: string }[] = [
@@ -94,7 +96,7 @@ const RARITY_OPTIONS: { value: Rarity | 'all'; label: string }[] = [
 // `potion` listings, while the rest of consumables are `elixir` kind.
 const isPotionId = (id: string): boolean => id.startsWith('hp_potion_') || id.startsWith('mp_potion_');
 
-// 2026-05-08 v3: legacy → shop-id alias map. The consumables store key
+// 2026-05-08 v3: legacy -> shop-id alias map. The consumables store key
 // the player's counts under quest-data IDs (`xp_elixir`, `cooldown_elixir`,
 // `hp_sm` etc.) that don't match the shop's canonical IDs
 // (`xp_boost`, `cd_reduction_elixir`, `hp_potion_sm`...). At display
@@ -126,12 +128,12 @@ const consumableName = (id: string): string => {
 };
 
 const consumableIcon = (id: string): string =>
-    getConsumableImage(aliasConsumableId(id)) ?? '🧪';
+    getConsumableImage(aliasConsumableId(id)) ?? 'test-tube';
 
 const consumableRarity = (id: string): Rarity => {
-    // Premium / 100% boosters → mythic; "great" % potions → legendary;
-    // standard buff elixirs / mid-tier potions → epic; cheap flats → rare;
-    // anything else → common. Loose heuristic only used as a colour hint.
+    // Premium / 100% boosters -> mythic; "great" % potions -> legendary;
+    // standard buff elixirs / mid-tier potions -> epic; cheap flats -> rare;
+    // anything else -> common. Loose heuristic only used as a colour hint.
     const x = aliasConsumableId(id);
     if (x === 'premium_xp_boost') return 'heroic';
     if (x.endsWith('_100') || x.includes('_divine') || x.includes('_ultimate')) return 'mythic';
@@ -185,7 +187,7 @@ const cleanItemName = (itemId: string): string => {
     if (gen?.name_pl) return gen.name_pl;
     const base = findBaseItem(itemId, ALL_ITEMS);
     if (base?.name_pl) return base.name_pl;
-    // formatItemName turns `magic_boots_lvl27_rare` → "Magic Boots Lvl27 Rare".
+    // formatItemName turns `magic_boots_lvl27_rare` -> "Magic Boots Lvl27 Rare".
     // Strip the trailing " LvlN <Rarity>" suffix so the display name is
     // just the core item name.
     return formatItemName(itemId)
@@ -242,16 +244,16 @@ const resolveListingIcon = (itemId: string, kind: MarketKind, slot?: string): st
         return getItemImage(itemId, slot) ?? getItemIcon(itemId, slot ?? '', ALL_ITEMS);
     }
     if (kind === 'potion' || kind === 'elixir') {
-        // Resolve aliases (xp_elixir → xp_boost) so legacy IDs still
+        // Resolve aliases (xp_elixir -> xp_boost) so legacy IDs still
         // hit the shop's PNG registry.
-        return getConsumableImage(aliasConsumableId(itemId)) ?? '🧪';
+        return getConsumableImage(aliasConsumableId(itemId)) ?? 'test-tube';
     }
-    if (kind === 'stone') return getStoneImage(itemId) ?? '💎';
-    if (kind === 'arena_points') return '🏅';
+    if (kind === 'stone') return getStoneImage(itemId) ?? 'gem-stone';
+    if (kind === 'arena_points') return 'sports-medal';
     if (kind === 'spell_chest') {
-        return getSpellChestImage(parseSpellChestLevel(itemId)) ?? '📦';
+        return getSpellChestImage(parseSpellChestLevel(itemId)) ?? 'package';
     }
-    return '📦';
+    return 'package';
 };
 
 // Clean display name resolver — same priority chain as the icon.
@@ -267,7 +269,7 @@ const resolveListingName = (itemId: string, kind: MarketKind, fallback: string):
     return cleanItemName(itemId);
 };
 
-// ── Component ───────────────────────────────────────────────────────────────
+// -- Component ---------------------------------------------------------------
 
 interface IMarketProps { embedded?: boolean }
 
@@ -304,10 +306,10 @@ const Market = ({ embedded = false }: IMarketProps) => {
         return () => clearInterval(id);
     }, [character, fetchSaleNotifications]);
 
-    // ── Tab state ──────────────────────────────────────────────────────────
+    // -- Tab state ----------------------------------------------------------
     const [tab, setTab] = useState<MarketTab>('browse');
 
-    // ── Shared filter state ───────────────────────────────────────────────
+    // -- Shared filter state -----------------------------------------------
     const [category, setCategory] = useState<MarketFilterCategory>('all');
     const [rarityFilter, setRarityFilter] = useState<Rarity | 'all'>('all');
     const [sortBy, setSortBy] = useState<MarketSortBy>('newest');
@@ -319,7 +321,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
     // Reset to page 1 whenever the active filter set changes.
     useEffect(() => { setPage(1); }, [category, rarityFilter, sortBy, search, minLevel, maxLevel, tab]);
 
-    // ── Modals ────────────────────────────────────────────────────────────
+    // -- Modals ------------------------------------------------------------
     const [buyTarget, setBuyTarget] = useState<IMarketListing | null>(null);
     const [sellTarget, setSellTarget] = useState<{
         kind: MarketKind;
@@ -346,7 +348,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
         setTimeout(() => setToast(null), 2500);
     };
 
-    // ── Derived: filtered + sorted listings ───────────────────────────────
+    // -- Derived: filtered + sorted listings -------------------------------
     // 2026-05-08 v3: dedupe by id BEFORE filtering so React never sees
     // two children with the same key. The optimistic-prepend in
     // listItem can collide with a concurrent fetchListings re-fetch
@@ -385,7 +387,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
     const totalBrowsePages = Math.max(1, Math.ceil(filteredBrowse.length / PAGE_SIZE));
     const totalMyPages = Math.max(1, Math.ceil(filteredMy.length / PAGE_SIZE));
 
-    // ── Sell-tab inventory grid ──────────────────────────────────────────
+    // -- Sell-tab inventory grid ------------------------------------------
     // Combines bag equipment, stackable consumables, stones, and arena
     // points into a flat list of "sellable tiles" the player can click.
     interface ISellTile {
@@ -447,7 +449,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                     kind: 'spell_chest',
                     name: `Spell Chest Lv ${lvl}`,
                     rarity: spellChestRarity(lvl),
-                    icon: getSpellChestImage(lvl) ?? '📦',
+                    icon: getSpellChestImage(lvl) ?? 'package',
                     slot: '',
                     itemLevel: lvl,
                     bonuses: {},
@@ -467,7 +469,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                     kind: 'stone',
                     name: STONE_NAMES[id] ?? id,
                     rarity: (['common','rare','epic','legendary','mythic','heroic'] as Rarity[]).includes(tier) ? tier : 'common',
-                    icon: getStoneImage(id) ?? STONE_ICONS[id] ?? '💎',
+                    icon: getStoneImage(id) ?? STONE_ICONS[id] ?? 'gem-stone',
                     slot: '',
                     itemLevel: 1,
                     bonuses: {},
@@ -500,7 +502,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 kind: 'stone',
                 name: STONE_NAMES[id] ?? id,
                 rarity: (['common','rare','epic','legendary','mythic','heroic'] as Rarity[]).includes(tier) ? tier : 'common',
-                icon: getStoneImage(id) ?? STONE_ICONS[id] ?? '💎',
+                icon: getStoneImage(id) ?? STONE_ICONS[id] ?? 'gem-stone',
                 slot: '',
                 itemLevel: 1,
                 bonuses: {},
@@ -516,7 +518,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 kind: 'arena_points',
                 name: 'Punkty Areny',
                 rarity: 'legendary',
-                icon: '🏅',
+                icon: 'sports-medal',
                 slot: '',
                 itemLevel: 1,
                 bonuses: {},
@@ -554,7 +556,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
     }, [filteredSellTiles, page]);
     const totalSellPages = Math.max(1, Math.ceil(filteredSellTiles.length / PAGE_SIZE));
 
-    // ── Buy flow ─────────────────────────────────────────────────────────
+    // -- Buy flow ---------------------------------------------------------
     // 2026-05-08 v3: surface failures via toast so the user sees WHY a
     // buy didn't go through (RLS, sold-out, quantity column missing,
     // network, etc.) instead of the modal silently doing nothing.
@@ -648,7 +650,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
         setBuyTarget(null);
     };
 
-    // ── Sell flow ────────────────────────────────────────────────────────
+    // -- Sell flow --------------------------------------------------------
     const handleConfirmSell = async (price: number, qty: number) => {
         if (!sellTarget || !character) return;
         if (!isValidPrice(price)) { showToast('Nieprawidłowa cena!'); return; }
@@ -727,7 +729,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
         // actually changes hands.
     };
 
-    // ── Edit / cancel flow ───────────────────────────────────────────────
+    // -- Edit / cancel flow -----------------------------------------------
     const handleEditPrice = async (newPrice: number) => {
         if (!editTarget) return;
         if (!isValidPrice(newPrice)) { showToast('Nieprawidłowa cena!'); return; }
@@ -824,7 +826,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                     title="Powiadomienia o sprzedaży"
                     onClick={() => setShowNotifications(true)}
                 >
-                    🔔
+                    <GameIcon name="bell" />
                     {saleNotifications.length > 0 && (
                         <span className="market__notify-badge">{saleNotifications.length}</span>
                     )}
@@ -895,7 +897,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
             {error && (
                 <div className="market__error">
                     <span>{error}</span>
-                    <button onClick={clearError}>✕</button>
+                    <button onClick={clearError}><Icon name="x" /></button>
                 </div>
             )}
 
@@ -919,7 +921,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                                     listing={l}
                                     isOwn={isOwn}
                                     onClick={() => {
-                                        // Browse own listing → reroute to edit
+                                        // Browse own listing -> reroute to edit
                                         // popup (matches My-tab behaviour, since
                                         // buying your own item is a no-op).
                                         if (isOwn) setEditTarget(l);
@@ -1010,7 +1012,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         disabled={page <= 1}
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
-                        ← Poprzednia
+                        <Icon name="arrowLeft" /> Poprzednia
                     </button>
                     <span className="market__page-info">
                         Strona {page} / {totalPagesForTab}
@@ -1021,12 +1023,12 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         disabled={page >= totalPagesForTab}
                         onClick={() => setPage((p) => Math.min(totalPagesForTab, p + 1))}
                     >
-                        Następna →
+                        Następna <Icon name="arrowRight" />
                     </button>
                 </div>
             )}
 
-            {/* ── Modals ─────────────────────────────────────────────── */}
+            {/* -- Modals ----------------------------------------------- */}
             <AnimatePresence>
                 {buyTarget && (
                     <BuyModal
@@ -1083,7 +1085,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
     );
 };
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// -- Sub-components ----------------------------------------------------------
 
 interface IListingRowProps {
     listing: IMarketListing;
@@ -1102,7 +1104,7 @@ const ListingRow = ({ listing, isOwn, isMyTab, onClick }: IListingRowProps) => {
     const stats = formatBonusEntries(listing.bonuses);
     // 2026-05-08 v3 spec ("tylko eliksiry te co sa w sklepie w zakladce
     // eliksir maja miec taki border, takto potiony maja miec swoj rarity
-    // border"): the gold→purple gradient is reserved for `kind === 'elixir'`.
+    // border"): the gold->purple gradient is reserved for `kind === 'elixir'`.
     // HP/MP potions (kind: 'potion') stay on their rarity-tinted border so
     // the family stays visually distinct.
     const isElixirRow = listing.kind === 'elixir';
@@ -1158,7 +1160,7 @@ const ListingRow = ({ listing, isOwn, isMyTab, onClick }: IListingRowProps) => {
     );
 };
 
-// ── Buy modal ──
+// -- Buy modal --
 interface IBuyModalProps {
     listing: IMarketListing;
     playerGold: number;
@@ -1201,7 +1203,7 @@ const BuyModal = ({ listing, playerGold, onClose, onConfirm }: IBuyModalProps) =
                 exit={{ scale: 0.96, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <button className="market__modal-close" onClick={onClose}>✕</button>
+                <button className="market__modal-close" onClick={onClose}><Icon name="x" /></button>
                 <div
                     className={`market__modal-hero${(listing.kind === 'elixir') ? ' market__modal-hero--elixir' : ''}`}
                     style={(listing.kind === 'elixir')
@@ -1270,7 +1272,7 @@ const BuyModal = ({ listing, playerGold, onClose, onConfirm }: IBuyModalProps) =
     );
 };
 
-// ── Sell modal ──
+// -- Sell modal --
 interface ISellModalProps {
     target: {
         kind: MarketKind;
@@ -1317,7 +1319,7 @@ const SellModal = ({ target, onClose, onConfirm }: ISellModalProps) => {
                 exit={{ scale: 0.96, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <button className="market__modal-close" onClick={onClose}>✕</button>
+                <button className="market__modal-close" onClick={onClose}><Icon name="x" /></button>
                 <div
                     className={`market__modal-hero${target.kind === 'elixir' ? ' market__modal-hero--elixir' : ''}`}
                     style={target.kind === 'elixir'
@@ -1391,7 +1393,7 @@ const SellModal = ({ target, onClose, onConfirm }: ISellModalProps) => {
     );
 };
 
-// ── Edit modal ──
+// -- Edit modal --
 interface IEditModalProps {
     listing: IMarketListing;
     onClose: () => void;
@@ -1419,7 +1421,7 @@ const EditListingModal = ({ listing, onClose, onEditPrice, onCancelListing }: IE
                 exit={{ scale: 0.96, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <button className="market__modal-close" onClick={onClose}>✕</button>
+                <button className="market__modal-close" onClick={onClose}><Icon name="x" /></button>
                 <div
                     className={`market__modal-hero${(listing.kind === 'elixir') ? ' market__modal-hero--elixir' : ''}`}
                     style={(listing.kind === 'elixir')
@@ -1446,7 +1448,7 @@ const EditListingModal = ({ listing, onClose, onEditPrice, onCancelListing }: IE
                 </div>
                 {/* Stats list — same as buy/sell modal so the seller
                     sees what they're listing. Stack kinds (potion /
-                    elixir / stone) have no bonuses → empty. */}
+                    elixir / stone) have no bonuses -> empty. */}
                 {(() => {
                     const stats = formatBonusEntries(listing.bonuses);
                     if (stats.length === 0) return null;
@@ -1493,7 +1495,7 @@ const EditListingModal = ({ listing, onClose, onEditPrice, onCancelListing }: IE
     );
 };
 
-// ── Sale notifications modal ──
+// -- Sale notifications modal --
 interface INotificationsModalProps {
     notifications: IMarketSaleNotification[];
     onClose: () => void;
@@ -1513,8 +1515,8 @@ const NotificationsModal = ({ notifications, onClose, onDismiss }: INotification
             exit={{ scale: 0.96, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
         >
-            <button className="market__modal-close" onClick={onClose}>✕</button>
-            <div className="market__modal-title">📦 Powiadomienia o sprzedaży</div>
+            <button className="market__modal-close" onClick={onClose}><Icon name="x" /></button>
+            <div className="market__modal-title"><GameIcon name="package" /> Powiadomienia o sprzedaży</div>
             {notifications.length === 0 ? (
                 <p className="market__empty">Brak nowych powiadomień.</p>
             ) : (
@@ -1554,7 +1556,7 @@ const NotificationsModal = ({ notifications, onClose, onDismiss }: INotification
                                     onClick={() => onDismiss(n.id)}
                                     aria-label="Odrzuć"
                                 >
-                                    ✓
+                                    <GameIcon name="check-mark-button" />
                                 </button>
                             </motion.li>
                         );

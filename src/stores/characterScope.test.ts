@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // characterScope.ts is the central per-character persistence module. It glues
 // 15+ stores to localStorage + Supabase with:
-//   • Module-level state (_activeCharacterId, _switchInProgress, debounce timer)
-//   • Tab-lock localStorage protocol
-//   • Async character switch flow
-//   • Auto-save subscriptions (Zustand subscribe)
+//   - Module-level state (_activeCharacterId, _switchInProgress, debounce timer)
+//   - Tab-lock localStorage protocol
+//   - Async character switch flow
+//   - Auto-save subscriptions (Zustand subscribe)
 //
 // Strategy: mock EVERY store dependency with a stateful spy harness so we can
 // verify what characterScope reads/writes without dragging the real stores
@@ -17,9 +17,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // happens. Each test resets module state via dynamic re-import so the
 // module-level singletons (_activeCharacterId, debounce timer, etc.) don't
 // bleed between tests.
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
-// ── Hoisted mock state ──────────────────────────────────────────────────────
+// -- Hoisted mock state ------------------------------------------------------
 
 const {
     // Store mock state holders
@@ -61,7 +61,7 @@ const {
     };
 });
 
-// ── Mock factory helper ─────────────────────────────────────────────────────
+// -- Mock factory helper -----------------------------------------------------
 // Each store mock exposes the same shape characterScope expects: getState(),
 // setState() (which merges into the mock's "current" pointer), and subscribe()
 // (which captures the listener so we can fire it manually in autosave tests).
@@ -86,7 +86,7 @@ const makeMockStore = <T>(holder: IStateHolder<T>): {
     },
 });
 
-// ── vi.mock all dependencies ────────────────────────────────────────────────
+// -- vi.mock all dependencies ------------------------------------------------
 
 vi.mock('./inventoryStore', () => ({ useInventoryStore: makeMockStore(inventoryState) }));
 vi.mock('./skillStore', () => ({ useSkillStore: makeMockStore(skillState) }));
@@ -125,9 +125,9 @@ vi.mock('../data/skills.json', () => ({
     default: { activeSkills: { knight: [{ id: 'sword_mastery' }, { id: 'shield_bash' }] } },
 }));
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // Test helpers
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 /**
  * Reset every state holder, mock, and module-level singleton between tests.
@@ -201,9 +201,9 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // peekCharacterStore — read a sub-store without switching active character
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('peekCharacterStore', () => {
     it('returns null when no save exists for the character', async () => {
@@ -240,9 +240,9 @@ describe('peekCharacterStore', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // restoreFromLocalStorageSync — sync restore on page load
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('restoreFromLocalStorageSync', () => {
     it('returns false and resets stores to defaults when no save exists', async () => {
@@ -311,7 +311,7 @@ describe('restoreFromLocalStorageSync', () => {
         const mod = await import('./characterScope');
         mod.restoreFromLocalStorageSync('char-1');
         expect(inventoryState.current.gold).toBe(42);
-        // `malicious` is NOT in inventory.stateKeys → must not appear in the state.
+        // `malicious` is NOT in inventory.stateKeys -> must not appear in the state.
         expect((inventoryState.current as Record<string, unknown>).malicious).toBeUndefined();
     });
 
@@ -323,9 +323,9 @@ describe('restoreFromLocalStorageSync', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // switchToCharacter — full character switch flow
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('switchToCharacter', () => {
     it('persists the chosen character id to localStorage', async () => {
@@ -428,14 +428,14 @@ describe('switchToCharacter', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // saveCurrentCharacterStoresSync — flush blob on beforeunload
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('saveCurrentCharacterStoresSync', () => {
     it('is a no-op when no active character is set', async () => {
         const mod = await import('./characterScope');
-        // No switch performed → _activeCharacterId is null.
+        // No switch performed -> _activeCharacterId is null.
         mod.saveCurrentCharacterStoresSync();
         // No save key should have been written.
         const keys: string[] = [];
@@ -485,9 +485,9 @@ describe('saveCurrentCharacterStoresSync', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // saveCurrentCharacterStores — async save (throttled)
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('saveCurrentCharacterStores', () => {
     it('calls saveGame + updateCharacter when an active character is set', async () => {
@@ -545,9 +545,9 @@ describe('saveCurrentCharacterStores', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // scheduleAutoSave — debounce timing + offline-mode bypass
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('scheduleAutoSave (via store subscriptions)', () => {
     it('debounces multiple rapid store changes into one localStorage write (online mode)', async () => {
@@ -588,7 +588,7 @@ describe('scheduleAutoSave (via store subscriptions)', () => {
         // stop + restart cannot trigger a save because there's no listener attached.
         const mod = await import('./characterScope');
         const switchPromise = mod.switchToCharacter('char-MID');
-        // While the switch is in flight, no subscribers exist → store changes
+        // While the switch is in flight, no subscribers exist -> store changes
         // won't reach scheduleAutoSave.
         await switchPromise;
         // After the switch resolves, subscriptions are active again.
@@ -596,10 +596,10 @@ describe('scheduleAutoSave (via store subscriptions)', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // Tab lock mechanism — claimTabLock, refreshTabLock, thisTabOwnsLock
 // (private functions — tested via observable side effects through switchToCharacter)
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('Tab lock mechanism', () => {
     it('writes a tab lock to localStorage on character switch', async () => {
@@ -656,9 +656,9 @@ describe('Tab lock mechanism', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // deleteCharacterData — wipe localStorage + cloud
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('deleteCharacterData', () => {
     it('calls deleteGameSave with the character id', async () => {
@@ -679,9 +679,9 @@ describe('deleteCharacterData', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // getActiveCharacterId / getActiveCharacterIdForRestore
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     it('returns null when no switch has happened (per-tab isolation)', async () => {
@@ -698,7 +698,7 @@ describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     it('getActiveCharacterIdForRestore falls back to localStorage on cold load', async () => {
         window.localStorage.setItem('tibia_active_character_id', 'char-PERSISTED');
         const mod = await import('./characterScope');
-        // No switch performed → _activeCharacterId is null, but the restore helper
+        // No switch performed -> _activeCharacterId is null, but the restore helper
         // checks localStorage as a fallback.
         expect(mod.getActiveCharacterIdForRestore()).toBe('char-PERSISTED');
     });
@@ -711,9 +711,9 @@ describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // TODOs — coverage gaps
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 // Functions / scenarios we couldn't fully test (and why):
 //
 // 1. `forceSaveCharacterData` is a private fn; we exercise it indirectly through

@@ -6,7 +6,7 @@
  * — DPS Solo tab (5-second DPS high-water mark dla solo combat).
  *
  * Tab definition (Leaderboard.tsx linia 170):
- *   { key: 'best_dps5_solo', label: 'DPS Solo', icon: '⚡',
+ *   { key: 'best_dps5_solo', label: 'DPS Solo', icon: 'high-voltage',
  *     source: 'characters', characterColumn: 'best_dps5_solo',
  *     order: 'desc', valueLabel: 'DPS' }
  *
@@ -16,11 +16,11 @@
  *   `>=1k`: `(n/1_000).toFixed(2) + 'K'`
  *   else: `n.toLocaleString('pl-PL')`
  *
- * Format gotcha: `99999999 / 1M = 99.999999`, toFixed(2) → "100.00".
+ * Format gotcha: `99999999 / 1M = 99.999999`, toFixed(2) -> "100.00".
  * Seed używa `12345678` żeby format był deterministyczny "12.35M"
- * (12345678 / 1M = 12.345678 → toFixed(2) = "12.35").
+ * (12345678 / 1M = 12.345678 -> toFixed(2) = "12.35").
  *
- * Display: `valueOverride = `DPS ${formatDpsCompact(dps)}`` (linia 280) →
+ * Display: `valueOverride = `DPS ${formatDpsCompact(dps)}`` (linia 280) ->
  * "DPS 12.35M".
  *
  * **Sync-hook SAFE**: hook NIE dotyka kolumny.
@@ -70,7 +70,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await page.goto('/leaderboard');
             await waitForAppReady(page);
 
-            // formatDpsCompact(12345678) → "12.35M". valueOverride = "DPS 12.35M".
+            // formatDpsCompact(12345678) -> "12.35M". valueOverride = "DPS 12.35M".
             // Combined regex matches the DPS label AND the 12.35M value.
             await assertSeededRankingRow(page, {
                 tabLabel: /^DPS Solo$/,

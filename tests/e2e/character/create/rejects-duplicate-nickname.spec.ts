@@ -7,15 +7,15 @@
  * The case-insensitive UNIQUE INDEX on `LOWER(characters.name)` from
  * `scripts/character_unique_nick_migration.sql` has been APPLIED to
  * production Supabase. Verified end-to-end via service_role probe:
- *   • `INSERT … name='X'` succeeds the first time
- *   • A second `INSERT … name='X'` (different user, different class)
+ *   - `INSERT … name='X'` succeeds the first time
+ *   - A second `INSERT … name='X'` (different user, different class)
  *     fails with `23505 duplicate key value violates unique constraint
  *     "characters_name_unique_ci"`.
  *
  * The earlier runtime-probe + `test.skip()` gating is therefore removed —
  * the test now drives the canonical UI flow unconditionally. If the
  * constraint is ever rolled back, the test will fail at step 6a (the
- * primary's INSERT will succeed → URL navigates to `/` → assertion
+ * primary's INSERT will succeed -> URL navigates to `/` -> assertion
  * `toHaveURL(/\/create-character$/)` blows up) and the failure
  * surfaces immediately.
  *
@@ -25,7 +25,7 @@
  *     (so the conflict comes from a DIFFERENT user — proves the constraint
  *     is GLOBAL, not per-user; per-user UNIQUE would let primary still
  *     create the same nick).
- *  2. Login as primary via UI → /character-select.
+ *  2. Login as primary via UI -> /character-select.
  *  3. Navigate to /create-character.
  *  4. Pick a class (Knight) and fill the SAME nick as the seeded char.
  *  5. Tap "Stwórz postać".
@@ -45,11 +45,11 @@
  * ## Why cross-user collision (secondary's nick), not same-user
  *
  * Same-user collision is a weaker test:
- *   • If we seeded `nick` on primary then tried to create `nick` again,
+ *   - If we seeded `nick` on primary then tried to create `nick` again,
  *     it could pass on a per-user UNIQUE constraint (e.g. UNIQUE
  *     (user_id, name)) and we'd think the test is green — but cross-user
  *     duplicates would still happen in production.
- *   • The leaderboard / friend lookup / deaths-feed identity problem
+ *   - The leaderboard / friend lookup / deaths-feed identity problem
  *     only manifests CROSS-user anyway — within one account the player
  *     just sees their own char.
  *
@@ -86,7 +86,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
         let secondaryCharId: string | null = null;
 
         try {
-            // ── Step 1: seed secondary's char with the contested nick ──────
+            // -- Step 1: seed secondary's char with the contested nick ------
             // Seeding on SECONDARY (not primary) ensures we're testing the
             // GLOBAL constraint, not a per-user one. If the migration was
             // accidentally `UNIQUE (user_id, name)` instead of `UNIQUE
@@ -101,19 +101,19 @@ test.describe('Character › Create', { tag: '@character' }, () => {
             });
             secondaryCharId = seeded.id;
 
-            // ── Step 2: primary logs in via UI ─────────────────────────────
+            // -- Step 2: primary logs in via UI -----------------------------
             await loginViaUI(page, testUsers.primary);
             if (!page.url().endsWith('/character-select')) {
                 await page.goto('/character-select');
             }
 
-            // ── Step 3: navigate to /create-character ──────────────────────
+            // -- Step 3: navigate to /create-character ----------------------
             const createBtn = page.getByRole('button', { name: /Stwórz nową postać/i });
             await createBtn.scrollIntoViewIfNeeded();
             await createBtn.tap();
             await expect(page).toHaveURL(/\/create-character$/, { timeout: 10_000 });
 
-            // ── Step 4: pick Knight + fill the contested nick ──────────────
+            // -- Step 4: pick Knight + fill the contested nick --------------
             const knightBtn = page.locator('.character-create__class-btn').filter({
                 hasText: /Rycerz/,
             });
@@ -122,17 +122,17 @@ test.describe('Character › Create', { tag: '@character' }, () => {
 
             await page.locator('.character-create__input').fill(sharedNick);
 
-            // ── Step 5: submit ─────────────────────────────────────────────
+            // -- Step 5: submit ---------------------------------------------
             await page.getByRole('button', { name: /Stwórz postać/i }).tap();
 
-            // ── Step 6a: URL stays on /create-character ────────────────────
+            // -- Step 6a: URL stays on /create-character --------------------
             // Success path navigates to '/' (Town). Rejection keeps us on
             // /create-character because the catch block calls setError
             // instead of navigate. ~2 s headroom for the API round-trip.
             await page.waitForTimeout(2000);
             await expect(page).toHaveURL(/\/create-character$/);
 
-            // ── Step 6b: error message is visible ──────────────────────────
+            // -- Step 6b: error message is visible --------------------------
             // CharacterCreate.tsx line 195-197 catch block sets
             // `errors.root.message = 'Błąd tworzenia postaci. Spróbuj
             // ponownie.'` — selector `.character-create__error`.
@@ -142,7 +142,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
             const errorEl = page.locator('.character-create__error');
             await expect(errorEl).toBeVisible({ timeout: 5_000 });
 
-            // ── Step 6c: primary has NO character with the contested nick ──
+            // -- Step 6c: primary has NO character with the contested nick --
             // Service_role probe — the rejected INSERT must not have
             // partially landed (e.g. row inserted then transaction
             // rolled back leaving the row visible to subsequent reads).

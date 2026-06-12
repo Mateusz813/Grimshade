@@ -295,7 +295,7 @@ describe('marketApi.decrementListing', () => {
         vi.mocked(supabase.from)
             .mockReturnValueOnce(fetchChain as never)
             .mockReturnValueOnce(deleteChain as never);
-        // qty=1, decrement by 1 → delete path.
+        // qty=1, decrement by 1 -> delete path.
         await marketApi.decrementListing('L1', 1);
         expect(deleteChain.delete).toHaveBeenCalled();
     });

@@ -10,30 +10,30 @@
  * spell icon + Polish formatted line "ulepszył(a) skill <name> do +<lvl>!".
  *
  * Source path (production):
- *   Inventory.tsx line 2181 →
- *   isUpgradeMilestone(newLevel) → true →
+ *   Inventory.tsx line 2181 ->
+ *   isUpgradeMilestone(newLevel) -> true ->
  *   formatSystemMessage({ type: 'skillUpgrade', skillId, skillName, upgradeLevel })
- *     → '[SYS]{"type":"skillUpgrade",...}' (Inventory.tsx line 2185)
- *   chatApi.postSystemEvent(name, class, level, content) →
+ *     -> '[SYS]{"type":"skillUpgrade",...}' (Inventory.tsx line 2185)
+ *   chatApi.postSystemEvent(name, class, level, content) ->
  *     INSERT INTO messages(channel='system', content=...)
- *   GlobalChat /chat → System tab → Chat.tsx line 358 parseSystemMessage →
+ *   GlobalChat /chat -> System tab -> Chat.tsx line 358 parseSystemMessage ->
  *     line 359-381 renders `.chat__msg-text--skill` row with icon + body.
  *
  * ## Test strategy — seed the broadcast directly (skip combat trigger)
  *
- * Full UI flow ("login → /inventory → tap Skille → tap +1 button on
- * tier-1 spell → wait through 1.8 s animation → upgrade succeeds → row
- * fires → System tab updates") has too many failure modes for an atomic
+ * Full UI flow ("login -> /inventory -> tap Skille -> tap +1 button on
+ * tier-1 spell -> wait through 1.8 s animation -> upgrade succeeds -> row
+ * fires -> System tab updates") has too many failure modes for an atomic
  * test:
- *   • Upgrade success is randomized (`rollSkillUpgrade(targetLevel)` in
+ *   - Upgrade success is randomized (`rollSkillUpgrade(targetLevel)` in
  *     `skillStore.ts` line 477) — a roll fail leaves the skill at
  *     current level and no broadcast fires. Stubbing Math.random in
  *     Playwright is brittle because the upgrade roll happens inside a
  *     dynamic import that runs after a setTimeout.
- *   • Reaching milestone +5 from +0 requires 5 successful rolls — even
+ *   - Reaching milestone +5 from +0 requires 5 successful rolls — even
  *     with a generous probability, statistical odds of 5 wins in a row
  *     are low enough to flake.
- *   • Gold + spell chest cost would need pre-seeding for 5 attempts.
+ *   - Gold + spell chest cost would need pre-seeding for 5 attempts.
  *
  * Pragmatic alternative: seed the SAME exact `messages` row directly
  * via service_role (bypasses RLS, matches what `postSystemEvent` would
@@ -57,7 +57,7 @@
  *     Knight tier-1 active spell — guaranteed to have a getSkillIcon
  *     mapping. Anchor on a UNIQUE content suffix so we can find the row
  *     deterministically among other system messages in the feed.
- *  3. Login → pick char → /chat.
+ *  3. Login -> pick char -> /chat.
  *  4. Click System tab (it's always present; CITY_TAB + SYSTEM_TAB are
  *     seeded by default in chatTabsStore.ts line 179).
  *  5. Find our seeded row by content anchor (`hasText` filter).
@@ -69,11 +69,11 @@
  *     c. Contains "+10" wrapped in <strong>.
  *     d. Contains the "ulepszył(a) skill" phrase from Chat.tsx line 373.
  *     e. Spell icon container `.chat__msg-sys-icon` rendered (proves
- *        getSkillIcon → TinyIcon mounted).
+ *        getSkillIcon -> TinyIcon mounted).
  *
  * ## Why we don't anchor on skill icon CSS — fragile across builds
  *
- * Spell icons are loaded via `getSkillIcon(skillId)` → Vite-hashed URLs
+ * Spell icons are loaded via `getSkillIcon(skillId)` -> Vite-hashed URLs
  * that change per build. Testing the exact icon src would flake on every
  * dev rebuild. We assert that the icon CONTAINER is present (proves the
  * conditional render branch ran) but not the specific icon URL.
@@ -129,7 +129,7 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
         let seededMsgId: string | null = null;
 
         try {
-            // ── Step 1: seed Knight on primary ────────────────────────────
+            // -- Step 1: seed Knight on primary ----------------------------
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
                 name: nick,
@@ -138,7 +138,7 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
             });
             createdId = created.id;
 
-            // ── Step 2: insert the system message via admin ───────────────
+            // -- Step 2: insert the system message via admin ---------------
             const admin = getAdminClient();
             const userId = await findUserIdByEmail(testUsers.primary.email);
             if (!userId) throw new Error('[test 12.7] primary userId not found');
@@ -158,7 +158,7 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
             if (insertErr) throw new Error(`[test 12.7] message insert failed: ${insertErr.message}`);
             seededMsgId = msgRow.id as string;
 
-            // ── Step 3: login + character pick ────────────────────────────
+            // -- Step 3: login + character pick ----------------------------
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -168,13 +168,13 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // ── Step 4: navigate to /chat + activate System tab ───────────
+            // -- Step 4: navigate to /chat + activate System tab -----------
             await page.goto('/chat');
             await expect(page.locator('.global-chat')).toBeVisible({ timeout: 10_000 });
 
             // System tab is always present (chatTabsStore line 179 default).
             // Click it to switch active. The tab button label includes
-            // the SYSTEM_TAB.title from chatTabsStore line 117: "⚠️ System".
+            // the SYSTEM_TAB.title from chatTabsStore line 117: ":warning: System".
             const systemTab = page.locator('.global-chat__tab-btn', { hasText: /System/i });
             await expect(systemTab).toBeVisible({ timeout: 5_000 });
             await systemTab.tap();
@@ -183,7 +183,7 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
             const activeTab = page.locator('.global-chat__tab--active');
             await expect(activeTab).toContainText(/System/i, { timeout: 5_000 });
 
-            // ── Step 5: find seeded row by unique anchor ──────────────────
+            // -- Step 5: find seeded row by unique anchor ------------------
             // The seeded payload's skillName contains the anchor — when
             // Chat.tsx renders the row, the anchor appears inside the
             // <strong> tag wrapping skillName. We anchor `.chat__msg` by
@@ -192,7 +192,7 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
             const myMsg = page.locator('.chat__msg', { hasText: anchor }).first();
             await expect(myMsg).toBeVisible({ timeout: 15_000 });
 
-            // ── Step 6: assertions on rich-render output ──────────────────
+            // -- Step 6: assertions on rich-render output ------------------
 
             // 6a. The skill-upgrade-specific text class is present —
             //     proves parseSystemMessage hit the skillUpgrade branch
@@ -214,10 +214,10 @@ test.describe('Skills › Upgrade', { tag: '@skills' }, () => {
             // 6d. Body phrase "ulepszył(a) skill" — proves Chat.tsx
             //     line 373 ran. The exact phrase is the contract per
             //     2026-05-20 spec — if someone changes the wording
-            //     ("ulepszył" → "polepszył"), regression flagged.
+            //     ("ulepszył" -> "polepszył"), regression flagged.
             await expect(myMsg.locator('.chat__msg-sys-body')).toContainText(/ulepszył\(a\)\s+skill/i);
 
-            // 6e. Icon container rendered — proves getSkillIcon →
+            // 6e. Icon container rendered — proves getSkillIcon ->
             //     TinyIcon mounted (Chat.tsx line 369-371). We don't
             //     assert the exact icon src URL because Vite hashing
             //     mutates it per build (flake risk).

@@ -17,30 +17,30 @@
  *  3. Login + Town.
  *  4. Pre-snapshot: 3 items in bag, AOL count=3.
  *  5. `triggerPlayerDeath(page)` — engine fires:
- *       • line 1395: useConsumable('death_protection') returns FALSE (none
- *         seeded) → `usedDeathProtection=false`.
- *       • line 1396: useConsumable('amulet_of_loss') returns TRUE +
- *         decrements 3 → 2 → `usedAol=true`.
- *       • line 1408: applyDeathPenalty fires (no DP), level drops 50 → 49,
+ *       - line 1395: useConsumable('death_protection') returns FALSE (none
+ *         seeded) -> `usedDeathProtection=false`.
+ *       - line 1396: useConsumable('amulet_of_loss') returns TRUE +
+ *         decrements 3 -> 2 -> `usedAol=true`.
+ *       - line 1408: applyDeathPenalty fires (no DP), level drops 50 -> 49,
  *         XP reset to 0.
- *       • line 1430: applyDeathItemLoss(true) — inventoryStore returns 0
- *         immediately (line 527: `if (protectedByAol) return 0;`) → bag
+ *       - line 1430: applyDeathItemLoss(true) — inventoryStore returns 0
+ *         immediately (line 527: `if (protectedByAol) return 0;`) -> bag
  *         UNCHANGED.
- *       • line 1432: log "🔱 Amulet of Loss roztrzaskał się…".
+ *       - line 1432: log ":trident-emblem: Amulet of Loss roztrzaskał się…".
  *  6. Post-assert:
- *       • All 3 items STILL in bag (count unchanged) + their UUIDs match
+ *       - All 3 items STILL in bag (count unchanged) + their UUIDs match
  *         the seeded ones (no swap-out by some accidental side effect).
- *       • `consumables.amulet_of_loss === 2` (1 used).
- *       • level dropped (50 → 49) — proves the test actually triggered
+ *       - `consumables.amulet_of_loss === 2` (1 used).
+ *       - level dropped (50 -> 49) — proves the test actually triggered
  *         death (not a no-op) and that AOL does NOT protect XP/level,
  *         only items (separate contract from `death_protection`).
- *       • hp === max_hp (fullHealEffective ran).
+ *       - hp === max_hp (fullHealEffective ran).
  *
  * Why this matters vs the sibling tests:
- *  • `death-protection-prevents-level-loss.spec.ts` proves DP consume +
+ *  - `death-protection-prevents-level-loss.spec.ts` proves DP consume +
  *    LEVEL preservation (XP/level branch).
- *  • THIS test proves AOL consume + ITEM preservation (item branch).
- *  • Together both consumable protection paths are now fully covered.
+ *  - THIS test proves AOL consume + ITEM preservation (item branch).
+ *  - Together both consumable protection paths are now fully covered.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  *
@@ -61,7 +61,7 @@ import { triggerPlayerDeath, getCharacterSnapshot } from '../../fixtures/combatS
 test.describe('Combat › Death', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('Knight lvl 50 with 3× AOL + 3 bag items dies → items preserved, AOL count 3 → 2, level still drops', async ({ page }) => {
+    test('Knight lvl 50 with 3× AOL + 3 bag items dies -> items preserved, AOL count 3 -> 2, level still drops', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -83,7 +83,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
 
             // 2. Seed 3 common items in the bag. `applyDeathItemLoss` runs
             //    over `bag + equipped` pool with min 1 lost. Without AOL,
-            //    pool size 3 → floor(3 * 0.05) = 0 → max(1, 0) = 1 item
+            //    pool size 3 -> floor(3 * 0.05) = 0 -> max(1, 0) = 1 item
             //    would normally be lost. With AOL, ALL 3 stay (line 527
             //    early-return).
             await seedInventoryItem({
@@ -106,13 +106,13 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             });
 
             // 3. Seed 3× AOL. The `useConsumable('amulet_of_loss')` call
-            //    decrements by 1 → after death, count should be 2.
+            //    decrements by 1 -> after death, count should be 2.
             await seedConsumables({
                 characterId: created.id,
                 counts: { amulet_of_loss: 3 },
             });
 
-            // 4. Login → Town.
+            // 4. Login -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -150,8 +150,8 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             expect(preState.bagUuids).toHaveLength(3);
             expect(preState.bagItemIds.sort()).toEqual(['iron_helmet', 'iron_sword', 'leather_armor']);
 
-            // 6. Trigger death. Engine consumes 1× AOL + sets usedAol=true →
-            //    applyDeathItemLoss(true) early-returns 0 (line 527) → bag
+            // 6. Trigger death. Engine consumes 1× AOL + sets usedAol=true ->
+            //    applyDeathItemLoss(true) early-returns 0 (line 527) -> bag
             //    untouched. Level penalty STILL fires because AOL doesn't
             //    block the XP/level branch.
             await triggerPlayerDeath(page, 'rat');
@@ -159,7 +159,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             // 7. Post-snapshot — XP/level branch did fire (no DP seeded).
             const after = await getCharacterSnapshot(page);
             expect(after).not.toBeNull();
-            // 50 → 49 (floor(50 * 0.02) = 1 lost level) — confirms the
+            // 50 -> 49 (floor(50 * 0.02) = 1 lost level) — confirms the
             // death actually went through. If `triggerPlayerDeath` was a
             // no-op, level would still be 50.
             expect(after!.level).toBe(49);
@@ -196,7 +196,7 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             );
 
             // 9. KRYTYCZNE: AOL consumed by exactly 1 (line 1396's
-            //    useConsumable). 3 → 2.
+            //    useConsumable). 3 -> 2.
             expect(postState.aolCount).toBe(2);
         } finally {
             if (createdId) {

@@ -44,6 +44,8 @@ import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import { getTrainingBonuses } from '../../systems/skillSystem';
 import { getPotionDropInfo, rollPotionDrop, rollSpellChestDrop, getSpellChestIcon, getSpellChestEmoji, getSpellChestDisplayName, getSpellChestDropInfo, type IGeneratedItem, type TMonsterRarity } from '../../systems/lootSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { useCombatStore } from '../../stores/combatStore';
@@ -99,7 +101,7 @@ import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
 import './Dungeon.scss';
 
-// ── Class config for dual wield ──────────────────────────────────────────────
+// -- Class config for dual wield ----------------------------------------------
 
 interface IDungeonClassData {
     dualWield?: boolean;
@@ -154,7 +156,7 @@ const rollOffHandDamage = (): number => {
     return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
 };
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// -- Constants -----------------------------------------------------------------
 
 // `entering` is a brief cinematic phase between the lobby and combat — the
 // dungeon image zooms from the clicked card to fullscreen while the screen
@@ -181,13 +183,13 @@ const ENTRY_ANIM_COMBAT_START_AT_MS = 1340;
 
 const MONSTER_TYPE_BADGES: Record<DungeonMonsterType, { label: string; icon: string; color: string }> = {
     Normal:    { label: 'Normal',    icon: '',   color: '#9e9e9e' },
-    Strong:    { label: 'Strong',    icon: '💪', color: '#2196f3' },
-    Epic:      { label: 'Epic',      icon: '⚡', color: '#4caf50' },
-    Legendary: { label: 'Legendary', icon: '🔥', color: '#f44336' },
-    Boss:      { label: 'BOSS',      icon: '👑', color: '#ffc107' },
+    Strong:    { label: 'Strong',    icon: 'flexed-biceps', color: '#2196f3' },
+    Epic:      { label: 'Epic',      icon: 'high-voltage', color: '#4caf50' },
+    Legendary: { label: 'Legendary', icon: 'fire', color: '#f44336' },
+    Boss:      { label: 'BOSS',      icon: 'crown', color: '#ffc107' },
 };
 
-// ── Drop table helpers ───────────────────────────────────────────────────────
+// -- Drop table helpers -------------------------------------------------------
 
 const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'] as const;
 // Heroic isn't part of the regular item drop, but stones include a "Heroic
@@ -240,7 +242,7 @@ const getDungeonItemDropTiers = () => {
 const getDungeonStoneDrops = (dungeonLevel: number) =>
     DUNGEON_STONE_DROPS.filter((s) => dungeonLevel >= s.minLevel);
 
-// ── Skill / Potion constants ─────────────────────────────────────────────────
+// -- Skill / Potion constants -------------------------------------------------
 
 const SKILL_COOLDOWN_MS = 5000;
 const SKILL_MP_COST = 15;
@@ -263,7 +265,7 @@ const getBestPotion = (
     return reversed.find((e) => (consumables[e.id] ?? 0) > 0) ?? reversed[0] ?? null;
 };
 
-// ── Combat log entry type ────────────────────────────────────────────────────
+// -- Combat log entry type ----------------------------------------------------
 
 interface ILogEntry {
     id: number;
@@ -271,7 +273,7 @@ interface ILogEntry {
     type: 'player' | 'monster' | 'crit' | 'system' | 'wave' | 'block' | 'dodge';
 }
 
-// ── Get attack interval ms ───────────────────────────────────────────────────
+// -- Get attack interval ms ---------------------------------------------------
 
 const getAttackMs = (speed: number): number =>
     Math.max(500, Math.floor(3000 / Math.max(1, speed || 1)));
@@ -281,7 +283,7 @@ const getAttackMs = (speed: number): number =>
 // TopHeader so the player has a visible cue during the lull.
 const WAVE_SPAWN_DELAY_MS = 600;
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 const Dungeon = () => {
     const character    = useCharacterStore((s) => s.character);
@@ -319,7 +321,7 @@ const Dungeon = () => {
     // (which is also used by the offline simulator).
     const [resultKind, setResultKind] = useState<'win' | 'death' | 'flee' | null>(null);
 
-    // ── Tile-zoom entry animation ─────────────────────────────────────────────
+    // -- Tile-zoom entry animation ---------------------------------------------
     // When the player clicks "Wejdź" we capture the source card's bounding
     // box + visual identity (hue + image), animate a fixed overlay growing
     // from that rect to fullscreen, then flip phase to 'running'. The
@@ -342,7 +344,7 @@ const Dungeon = () => {
         };
     }, []);
 
-    // ── Wave combat state ──────────────────────────────────────────────────────
+    // -- Wave combat state ------------------------------------------------------
     // A wave now spawns 1–4 monsters at once (see `getWaveComposition`).
     // `currentMonsters` carries each enemy with per-slot HP + rarity tier so
     // the arena can render the lineup, the attack callbacks can target the
@@ -426,7 +428,7 @@ const Dungeon = () => {
 
     // Wave-spawn countdown — flips ON the moment a wave's monster dies and
     // OFF when the next wave's monster spawns. While ON, an rAF loop fills
-    // `spawnProgress` 0→1 over the speed-scaled `WAVE_SPAWN_DELAY_MS` so
+    // `spawnProgress` 0->1 over the speed-scaled `WAVE_SPAWN_DELAY_MS` so
     // the slim "next monster in…" bar pinned under the header animates
     // smoothly. We carry the start timestamp + duration in a ref so the
     // effect can pick the loop back up if speed changes mid-countdown.
@@ -491,7 +493,7 @@ const Dungeon = () => {
     const allItems: IBaseItem[] = flattenItemsData(itemsData as Parameters<typeof flattenItemsData>[0]);
     const skillLevels = useSkillStore((s) => s.skillLevels);
 
-    // ── Filter / sort state (per-character via characterScope) ──────────────
+    // -- Filter / sort state (per-character via characterScope) --------------
     // Pulled from settingsStore so the toggles persist between sessions and
     // across class swaps. Defaults are "show everything" (no filter) so an
     // existing player opening the dungeon list sees no behavioural change.
@@ -551,7 +553,7 @@ const Dungeon = () => {
                 const actual = playerHpRef.current - before;
                 const cappedTag = actual < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, heal, 'heal', {
-                    icon: '💚',
+                    icon: 'green-heart',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
                 if (pulseSkillId) fx.triggerAllySkillAnim(0, pulseSkillId);
@@ -571,7 +573,7 @@ const Dungeon = () => {
     phaseRef.current = phase;
     activeDungeonRef.current = activeDungeon;
 
-    // ── Live HP/MP mirror → characterStore ─────────────────────────────────
+    // -- Live HP/MP mirror -> characterStore ---------------------------------
     // Mirrors the local `playerHp` / `playerMp` state into the global
     // characterStore on every change so the TopHeader's mini-bars (which
     // read `character.hp` / `character.mp`) update in real time as the
@@ -582,7 +584,7 @@ const Dungeon = () => {
     // CRITICAL: clamp to the EFFECTIVE max (base + equipment + training +
     // active elixirs + transform), NOT the raw `liveChar.max_hp`. Without
     // this, drinking an HP potion while a +50% HP elixir is active would
-    // bring local HP from 100 → 130 (cap = 150 effective) but the mirror
+    // bring local HP from 100 -> 130 (cap = 150 effective) but the mirror
     // would clamp the store write to 100 (base) — making the TopHeader
     // bar show a stale, lower value, and worse, persisting a sub-effective
     // HP that any later "read character.hp" branch would see as truth.
@@ -599,7 +601,7 @@ const Dungeon = () => {
         useCharacterStore.getState().updateCharacter({ hp: safeHp, mp: safeMp });
     }, [playerHp, playerMp, phase]);
 
-    // ── URL-leave / tab-close = death (anti-cheat) ─────────────────────────
+    // -- URL-leave / tab-close = death (anti-cheat) -------------------------
     // If the player navigates away mid-fight (back button, address bar, tab
     // close) we treat it as a real death — see `applyCombatLeaveDeath` for
     // why. The guard fires at most ONCE per leave event via `appliedRef` so
@@ -641,7 +643,7 @@ const Dungeon = () => {
         // Mirror into the unified session log (uncapped) so the shared
         // <CombatLogsModal> in <CombatSubControls> can render the full
         // dungeon-run feed without each view rolling its own modal. The local
-        // `'wave'` separator type doesn't exist in the store union → map to
+        // `'wave'` separator type doesn't exist in the store union -> map to
         // `'system'` so the modal renders it as a neutral log line.
         const sessionType = type === 'wave' ? 'system' : type;
         useCombatStore.getState().addSessionLog(text, sessionType);
@@ -658,7 +660,7 @@ const Dungeon = () => {
         logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [combatLog.length]);
 
-    // ── Cooldown tick (100ms, scaled by speedMult) ───────────────────────────
+    // -- Cooldown tick (100ms, scaled by speedMult) ---------------------------
     useEffect(() => {
         if (phase !== 'running') return;
         const TICK_MS = 100;
@@ -685,7 +687,7 @@ const Dungeon = () => {
         return () => clearInterval(id);
     }, [phase, speedMult]);
 
-    // ── Helpers: heal / spend MP ─────────────────────────────────────────────
+    // -- Helpers: heal / spend MP ---------------------------------------------
     const healPlayerHp = useCallback((amount: number, max: number) => {
         const newHp = Math.min(max, playerHpRef.current + amount);
         playerHpRef.current = newHp;
@@ -710,10 +712,10 @@ const Dungeon = () => {
         mpPotionCooldownRef.current = POTION_COOLDOWN_MS;
     }, []);
 
-    // ── Settings toggles ──────────────────────────────────────────────────
+    // -- Settings toggles --------------------------------------------------
     const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore();
 
-    // ── Auto-potion helper ──────────────────────────────────────────────────
+    // -- Auto-potion helper --------------------------------------------------
     const tryAutoPotion = useCallback(() => {
         const settings = useSettingsStore.getState();
         const inv = useInventoryStore.getState();
@@ -817,7 +819,7 @@ const Dungeon = () => {
         pctMpCooldownRef.current = PCT_POTION_COOLDOWN_MS;
     }, []);
 
-    // ── Manual potion use ───────────────────────────────────────────────────
+    // -- Manual potion use ---------------------------------------------------
     const doUsePotion = useCallback((elixirId: string) => {
         const elixir = ELIXIRS.find((e) => e.id === elixirId);
         if (!elixir) return;
@@ -859,7 +861,7 @@ const Dungeon = () => {
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, startPctHpCooldown, startPctMpCooldown, addLog]);
 
-    // ── Start a wave's monsters (1–4 enemies at once) ────────────────────────
+    // -- Start a wave's monsters (1–4 enemies at once) ------------------------
     // The composition + count come from `getWaveComposition` / `pickWaveMonsters`
     // in dungeonSystem. Each spawned monster is independently scaled to its own
     // tier (lead = wave's nominal type, escorts = same or one tier below) so the
@@ -886,7 +888,7 @@ const Dungeon = () => {
         currentMonstersRef.current = spawned;
         monsterHpsRef.current = spawned.map((m) => m.currentHp);
         // Reset pulse counters on every fresh wave so the first hit on any
-        // slot bumps from 0→1 (rendered) instead of e.g. 5→6 with the
+        // slot bumps from 0->1 (rendered) instead of e.g. 5->6 with the
         // EnemyCard already holding key=5 from a finished animation.
         setMonsterHitPulses({});
         setPlayerAttackingSlot(null);
@@ -908,12 +910,12 @@ const Dungeon = () => {
             ? `${spawned[0].monster.name_pl} ×${spawned.length}`
             : spawned[0].monster.name_pl;
         addLog(
-            `═══ Fala ${waveIdx + 1}/${totalWaves}${typeLabel}: ${namesSummary} ═══`,
+            `=== Fala ${waveIdx + 1}/${totalWaves}${typeLabel}: ${namesSummary} ===`,
             'wave',
         );
     }, [allMonsters, addLog, fx]);
 
-    // ── Start dungeon ────────────────────────────────────────────────────────
+    // -- Start dungeon --------------------------------------------------------
     const handleStart = useCallback((dungeon: IDungeon) => {
         setActiveDungeon(dungeon);
         setCurrentWave(0);
@@ -1058,7 +1060,7 @@ const Dungeon = () => {
         setEnterAnim(null);
     }, [enterAnim, handleStart]);
 
-    // ── Handle a single monster dying inside the current wave ───────────────
+    // -- Handle a single monster dying inside the current wave ---------------
     // Per-slot rewards (XP, gold, mastery, kill counters, item drops, potion
     // drops) fire here. Wave-clear logic (advance wave / end dungeon) only
     // triggers once every slot in `currentMonstersRef.current` reports
@@ -1090,9 +1092,9 @@ const Dungeon = () => {
             setWaveItems([...waveItemsRef.current]);
             const info = getItemDisplayInfo(drop.itemId);
             const displayName = info?.name_pl ?? formatItemName(drop.itemId);
-            addLog(`📦 Drop: ${displayName} [${drop.rarity}]`, 'system');
+            addLog(`:package: Drop: ${displayName} [${drop.rarity}]`, 'system');
             useCombatStore.getState().appendDrops([{
-                icon: info?.icon ?? '📦',
+                icon: info?.icon ?? 'package',
                 name: displayName,
                 rarity: drop.rarity,
             }]);
@@ -1106,7 +1108,7 @@ const Dungeon = () => {
             const inv = useInventoryStore.getState();
             for (const pd of potionDrops) {
                 inv.addConsumable(pd.potionId, pd.count);
-                addLog(`🧪 Drop: ${pd.potionId} ×${pd.count}`, 'system');
+                addLog(`:test-tube: Drop: ${pd.potionId} ×${pd.count}`, 'system');
             }
         }
 
@@ -1185,9 +1187,9 @@ const Dungeon = () => {
             useQuestStore.getState().addProgress('complete_dungeons_any', 'any', 1);
             useDailyQuestStore.getState().addProgress('complete_dungeon', 1);
             useDailyQuestStore.getState().addProgress('earn_gold', gold);
-            addLog(`🏆 Dungeon ukończony! +${gold.toLocaleString('pl-PL')} Gold, +${xp.toLocaleString('pl-PL')} XP`, 'system');
+            addLog(`:trophy: Dungeon ukończony! +${gold.toLocaleString('pl-PL')} Gold, +${xp.toLocaleString('pl-PL')} XP`, 'system');
             if (chestNames.length > 0) {
-                addLog(`📦 Spell Chests: ${chestNames.join(', ')}`, 'system');
+                addLog(`:package: Spell Chests: ${chestNames.join(', ')}`, 'system');
             }
             setResult({ success: true, wavesCleared: totalWaves, playerHpLeft: hp, gold, xp, items });
             setResultKind('win');
@@ -1233,7 +1235,7 @@ const Dungeon = () => {
             // attack tempo (otherwise the lull stretches the run out).
             const nextWave = wave + 1;
             setCurrentWave(nextWave);
-            addLog(`✓ Fala ${wave + 1} zaliczona! HP: ${hp}/${charMaxHp}`, 'system');
+            addLog(`:check-mark-button: Fala ${wave + 1} zaliczona! HP: ${hp}/${charMaxHp}`, 'system');
             const delayMs = Math.max(60, Math.floor(WAVE_SPAWN_DELAY_MS / speedMult));
             spawnStartRef.current = Date.now();
             spawnDurationRef.current = delayMs;
@@ -1257,7 +1259,7 @@ const Dungeon = () => {
         }
     }, [character, allItems, addLog, setDungeonCompleted, charMaxHp, charMaxMp, startWaveMonster, speedMult]);
 
-    // ── Handle player death ──────────────────────────────────────────────────
+    // -- Handle player death --------------------------------------------------
     const handlePlayerDeath = useCallback(() => {
         const dungeon = activeDungeonRef.current;
         if (!dungeon) return;
@@ -1295,7 +1297,7 @@ const Dungeon = () => {
             let skillXpLossPercent = 0;
 
             if (usedDeathProtection) {
-                addLog('🛡️ Eliksir Ochrony uchronił Cię od utraty poziomu!', 'system');
+                addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!', 'system');
             } else {
                 const penalty = applyDeathPenalty(char.level, char.xp);
                 newLevel = penalty.newLevel;
@@ -1314,18 +1316,18 @@ const Dungeon = () => {
                 useSkillStore.getState().purgeLockedSkillSlots(char.class, penalty.newLevel);
                 const skillPctTxt = `-${penalty.skillXpLossPercent}% Skill XP`;
                 if (penalty.levelsLost > 0) {
-                    addLog(`💀 Poległeś na fali ${wave + 1}/${totalWaves}! Tracisz ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}: ${char.level} → ${penalty.newLevel} · ${skillPctTxt}`, 'system');
+                    addLog(`:skull: Poległeś na fali ${wave + 1}/${totalWaves}! Tracisz ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}: ${char.level} -> ${penalty.newLevel} · ${skillPctTxt}`, 'system');
                 } else {
-                    addLog(`💀 Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony. ${skillPctTxt}`, 'system');
+                    addLog(`:skull: Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony. ${skillPctTxt}`, 'system');
                 }
             }
 
             // Item loss with optional Amulet of Loss protection
             const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
             if (usedAol) {
-                addLog('🔱 Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
+                addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
             } else if (itemsLost > 0) {
-                addLog(`💀 Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
             }
             void saveCurrentCharacterStores();
 
@@ -1342,7 +1344,7 @@ const Dungeon = () => {
                 source: 'dungeon',
             });
         } else {
-            addLog(`💀 Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony.`, 'system');
+            addLog(`:skull: Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony.`, 'system');
         }
 
         // Death wipes the in-flight session feed/loot — the death modal owns
@@ -1356,7 +1358,7 @@ const Dungeon = () => {
         setPhase('result');
     }, [addLog]);
 
-    // ── Helpers for multi-monster targeting ──────────────────────────────────
+    // -- Helpers for multi-monster targeting ----------------------------------
     // Both attack callbacks below funnel through these so the "front of the
     // line" rule (player always swings at the first alive slot) is enforced
     // in one place. Mutates the shared HP ref + the slot-keyed React state
@@ -1391,7 +1393,7 @@ const Dungeon = () => {
         return after;
     }, []);
 
-    // ── Manual skill use (click a slot when skillMode === 'manual') ──────────
+    // -- Manual skill use (click a slot when skillMode === 'manual') ----------
     const doManualSkill = useCallback((slotIdx: 0 | 1 | 2 | 3) => {
         if (phaseRef.current !== 'running') return;
         // Stun gate — caster cannot cast while paralysed.
@@ -1413,7 +1415,7 @@ const Dungeon = () => {
         if ((skillDefDng?.effect ?? '').includes('death_apocalypse')) {
             const hpPct = playerHpRef.current / Math.max(1, charMaxHp);
             if (hpPct < 0.05) {
-                addLog('💔 Apokalipsa zablokowana: < 5% HP', 'system');
+                addLog(':broken-heart: Apokalipsa zablokowana: < 5% HP', 'system');
                 return;
             }
             let newPlayerHp: number;
@@ -1427,8 +1429,8 @@ const Dungeon = () => {
                 playerHpRef.current = newPlayerHp;
                 setPlayerHp(newPlayerHp);
                 useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
-                fx.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                addLog(`💔 Apokalipsa: -${lost} HP`, 'system');
+                fx.pushAllyFloat(0, lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                addLog(`:broken-heart: Apokalipsa: -${lost} HP`, 'system');
             }
         }
         // Apply v2 effects (stun/dot/aoe/instant_kill/marks/etc.) to the
@@ -1504,11 +1506,11 @@ const Dungeon = () => {
             const actual = playerHpRef.current - before;
             const tag = actual < heal ? ' (MAX)' : '';
             fx.pushAllyFloat(0, heal, 'heal', {
-                icon: '✨',
+                icon: 'sparkles',
                 label: tag ? `+${heal}${tag}` : undefined,
             });
             fx.triggerAllySkillAnim(0, skillId);
-            addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${tag}`, 'system');
+            addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${tag}`, 'system');
         }
         // 2026-05 v6: Cleric `heal` / `holy_nova` — heal_lowest_ally_pct.
         // Dungeon is solo so player IS the lowest ally; heals N% of
@@ -1523,40 +1525,40 @@ const Dungeon = () => {
             if (heal > 0) {
                 const cappedTag = actual < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
                 fx.triggerAllySkillAnim(0, skillId);
-                addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
             }
         }
         triggerSkillAnim(skillId);
         if (!targetsEnemy) {
             fx.triggerAllySkillAnim(0, skillId);
-            addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
+            addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
         } else {
             fx.triggerEnemySkillAnim(targetSlot, skillId);
             if (isDamageHit) {
                 fx.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
                 showFloatingDmg(`-${skillDmg}`, 'player');
-                addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
             } else {
-                addLog(`✨ ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
             }
             // Stun / paralyze label — per-target. AOE casts push the
             // float ONLY on the slots that actually got stunned (each
             // enemy rolls independently in the engine).
             if (apply.aoe) {
                 for (const idx of apply.aoeStunIdxs ?? []) {
-                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: '💫', label: 'STUN' });
+                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
                 }
                 for (const idx of apply.aoeParalyzeIdxs ?? []) {
-                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                    fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                 }
             } else if (apply.stunApplied) {
-                fx.pushEnemyFloat(targetSlot, 0, 'spell', { icon: '💫', label: 'STUN' });
+                fx.pushEnemyFloat(targetSlot, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
             } else if (apply.paralyzeApplied) {
-                fx.pushEnemyFloat(targetSlot, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                fx.pushEnemyFloat(targetSlot, 0, 'spell', { icon: 'locked', label: 'PARAL' });
             }
         }
         // MLVL XP from skill use (all classes)
@@ -1579,7 +1581,7 @@ const Dungeon = () => {
                     const followup = Math.max(1, Math.floor((charAtk + wRoll - Math.max(0, slot.monster.defense * (1 - defPenFracDng))) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
                     const after = applyDamageToSlot(targetSlot, followup);
                     fx.pushEnemyFloat(targetSlot, followup, 'basic');
-                    addLog(`🏹×${n + 2} ${followup} dmg`, 'player');
+                    addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`, 'player');
                     if (after <= 0) handleWaveMonsterDeath(targetSlot);
                 }, 120 * (n + 1));
             }
@@ -1609,7 +1611,7 @@ const Dungeon = () => {
                 totalDmgDealtThisCast += splashApplied;
                 fx.triggerEnemySkillAnim(i, skillId);
                 if (splashIk) {
-                    fx.pushEnemyFloat(i, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
+                    fx.pushEnemyFloat(i, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                 } else {
                     fx.pushEnemyFloat(i, splashApplied, 'spell', { icon: getSkillIcon(skillId) });
                 }
@@ -1631,10 +1633,10 @@ const Dungeon = () => {
             if (heal > 0) {
                 const cappedTag = actual < heal ? ' (MAX)' : '';
                 fx.pushAllyFloat(0, heal, 'heal', {
-                    icon: '✨',
+                    icon: 'sparkles',
                     label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                 });
-                addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
             }
         }
         // Necro summon spawn — only when the local player is a necro.
@@ -1654,15 +1656,15 @@ const Dungeon = () => {
             if (tgtMon && tgtMon.currentHp > 0) {
                 const apocDmg = Math.max(1, Math.floor(tgtMon.maxHp * (apply.deathApocalypseTargetMaxHpPct / 100)));
                 const after = applyDamageToSlot(targetSlot, apocDmg);
-                fx.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
-                addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
+                fx.pushEnemyFloat(targetSlot, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
+                addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
                 if (after <= 0) handleWaveMonsterDeath(targetSlot);
             }
         }
     }, [addLog, charAtk, charMaxHp, character, handleWaveMonsterDeath, showFloatingDmg, getFirstAliveSlot, applyDamageToSlot, fx]);
 
-    // ── Player attack callback ───────────────────────────────────────────────
-    // Targets the FIRST ALIVE slot (left → right). After each hit, if the
+    // -- Player attack callback -----------------------------------------------
+    // Targets the FIRST ALIVE slot (left -> right). After each hit, if the
     // target dies, the auto-skill / overflow chain naturally retargets to
     // the next alive slot via `getFirstAliveSlot()` so a single tick can
     // chain into the next escort if the player overkills.
@@ -1675,7 +1677,7 @@ const Dungeon = () => {
 
         const isDualWield = !!classesDataMap[character?.class ?? '']?.dualWield;
 
-        // ── Helper: single hit with weapon roll, retargets each call ─────────
+        // -- Helper: single hit with weapon roll, retargets each call ---------
         const doSingleHit = (hand: 'left' | 'right' | undefined, weaponRollFn: () => number, dmgPercent: number) => {
             if (phaseRef.current !== 'running') return 0;
             const slot = getFirstAliveSlot();
@@ -1714,14 +1716,14 @@ const Dungeon = () => {
             }, animDur);
 
             if (hand) {
-                showFloatingDmg(`🗡️ -${finalDmg}`, 'player', hand);
+                showFloatingDmg(`:dagger: -${finalDmg}`, 'player', hand);
             } else {
                 showFloatingDmg(`-${finalDmg}`, 'player');
             }
             // Anchored basic-hit float on the targeted slot. Dual-wield's
             // off-hand strike also goes through here, so each swing gets its
             // own float with the sword-hand glyph as a visual cue.
-            fx.pushEnemyFloat(slot, finalDmg, 'basic', { icon: hand ? '🗡️' : undefined });
+            fx.pushEnemyFloat(slot, finalDmg, 'basic', { icon: hand ? 'dagger' : undefined });
 
             const handPrefix = hand === 'left' ? '[Lewa] ' : hand === 'right' ? '[Prawa] ' : '';
             addLog(
@@ -1734,7 +1736,7 @@ const Dungeon = () => {
             return finalDmg;
         };
 
-        // ── Execute attack(s) ────────────────────────────────────────────────
+        // -- Execute attack(s) ------------------------------------------------
         if (isDualWield) {
             // Hit 1: left hand (mainHand, 60%)
             doSingleHit('left', rollWeaponDamage, 0.6);
@@ -1800,8 +1802,8 @@ const Dungeon = () => {
                         dmg = Math.max(1, Math.floor(dmg * ampSum.mult));
                     }
                     const newMHp = applyDamageToSlot(tgt, dmg);
-                    fx.pushEnemyFloat(tgt, dmg, 'basic', { icon: '💀' });
-                    addLog(`💀 Summony zadają ${dmg} dmg`, 'player');
+                    fx.pushEnemyFloat(tgt, dmg, 'basic', { icon: 'skull' });
+                    addLog(`:skull: Summony zadają ${dmg} dmg`, 'player');
                     if (newMHp <= 0) handleWaveMonsterDeath(tgt);
                 }
             }
@@ -1849,8 +1851,8 @@ const Dungeon = () => {
                         playerHpRef.current = newPlayerHp;
                         setPlayerHp(newPlayerHp);
                         useCharacterStore.getState().updateCharacter({ hp: newPlayerHp });
-                        fx.pushAllyFloat(0, lost, 'spell', { icon: '💔', label: `-${lost} HP` });
-                        addLog(`💔 Apokalipsa: -${lost} HP`, 'system');
+                        fx.pushAllyFloat(0, lost, 'spell', { icon: 'broken-heart', label: `-${lost} HP` });
+                        addLog(`:broken-heart: Apokalipsa: -${lost} HP`, 'system');
                     }
                 }
                 const apply = effectsCastSkill({
@@ -1892,27 +1894,27 @@ const Dungeon = () => {
                 triggerSkillAnim(skillId);
                 if (!targetsEnemyAuto) {
                     fx.triggerAllySkillAnim(0, skillId);
-                    addLog(`✨ ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
+                    addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
                 } else {
                     fx.triggerEnemySkillAnim(tgt, skillId);
                     if (isDamageHitAuto) {
                         fx.pushEnemyFloat(tgt, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
-                        addLog(`✨ ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
+                        addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
                         if (afterSkill <= 0) { handleWaveMonsterDeath(tgt); }
                     } else {
-                        addLog(`✨ ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
+                        addLog(`:sparkles: ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
                     }
                     if (apply.aoe) {
                         for (const idx of apply.aoeStunIdxs ?? []) {
-                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: '💫', label: 'STUN' });
+                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
                         }
                         for (const idx of apply.aoeParalyzeIdxs ?? []) {
-                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                            fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                         }
                     } else if (apply.stunApplied) {
-                        fx.pushEnemyFloat(tgt, 0, 'spell', { icon: '💫', label: 'STUN' });
+                        fx.pushEnemyFloat(tgt, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
                     } else if (apply.paralyzeApplied) {
-                        fx.pushEnemyFloat(tgt, 0, 'spell', { icon: '🔒', label: 'PARAL' });
+                        fx.pushEnemyFloat(tgt, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                     }
                 }
                 // Multistrike — fire N follow-up basic attacks on same slot.
@@ -1927,7 +1929,7 @@ const Dungeon = () => {
                             const followup = Math.max(1, Math.floor((charAtk + wRoll - Math.max(0, slot.monster.defense * (1 - defPenFracAuto))) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
                             const after = applyDamageToSlot(tgt, followup);
                             fx.pushEnemyFloat(tgt, followup, 'basic');
-                            addLog(`🏹×${n + 2} ${followup} dmg`, 'player');
+                            addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`, 'player');
                             if (after <= 0) handleWaveMonsterDeath(tgt);
                         }, 120 * (n + 1));
                     }
@@ -1958,7 +1960,7 @@ const Dungeon = () => {
                         totalDmgAuto += splashApplied;
                         fx.triggerEnemySkillAnim(j, skillId);
                         if (splashIk) {
-                            fx.pushEnemyFloat(j, 0, 'spell', { icon: '💀', label: 'DEATH ATTACK', isCrit: true });
+                            fx.pushEnemyFloat(j, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
                             fx.pushEnemyFloat(j, splashApplied, 'spell', { icon: getSkillIcon(skillId) });
                         }
@@ -1978,8 +1980,8 @@ const Dungeon = () => {
                         setPlayerHp(playerHpRef.current);
                         const actual = playerHpRef.current - before;
                         const cappedTag = actual < heal ? ' (MAX)' : '';
-                        fx.pushAllyFloat(0, heal, 'heal', { icon: '✨', label: `+${heal}${cappedTag}` });
-                        addLog(`✨ ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
+                        fx.pushAllyFloat(0, heal, 'heal', { icon: 'sparkles', label: `+${heal}${cappedTag}` });
+                        addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
                     }
                 }
                 // Necro summon spawn — only when the local player is a necro.
@@ -1998,8 +2000,8 @@ const Dungeon = () => {
                     if (tgtMon && tgtMon.currentHp > 0) {
                         const apocDmg = Math.max(1, Math.floor(tgtMon.maxHp * (apply.deathApocalypseTargetMaxHpPct / 100)));
                         const after = applyDamageToSlot(tgt, apocDmg);
-                        fx.pushEnemyFloat(tgt, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
-                        addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
+                        fx.pushEnemyFloat(tgt, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
+                        addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
                         if (after <= 0) handleWaveMonsterDeath(tgt);
                     }
                 }
@@ -2011,7 +2013,7 @@ const Dungeon = () => {
         tryAutoPotion();
     }, [charAtk, addLog, showFloatingDmg, handleWaveMonsterDeath, tryAutoPotion, character, getFirstAliveSlot, applyDamageToSlot, fx]);
 
-    // ── Monster attack callback ──────────────────────────────────────────────
+    // -- Monster attack callback ----------------------------------------------
     // Processes ONE monster's swing — driven by a per-slot interval clocked at
     // that monster's individual attack speed. This is the per-attacker model
     // the player asked for: 4 escorts with different speeds = 4 independent
@@ -2038,8 +2040,8 @@ const Dungeon = () => {
         // the entire hit.
         if (useBuffStore.getState().getBuffCharges('skill_charge_block_next_party') > 0) {
             useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
-            fx.pushAllyFloat(0, 0, 'heal', { icon: '🛡️', label: 'BLOCK' });
-            addLog(`🛡️ Boska Tarcza! Blok!`, 'system');
+            fx.pushAllyFloat(0, 0, 'heal', { icon: 'shield', label: 'BLOCK' });
+            addLog(`:shield: Boska Tarcza! Blok!`, 'system');
             return;
         }
         // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000) — % chance
@@ -2047,8 +2049,8 @@ const Dungeon = () => {
         const dngPlayerSt = ensureStatus(effectsRef.current, PLAYER_FX_ID);
         if (dngPlayerSt.dodgeBuffMs > 0 && dngPlayerSt.dodgeBuffPct > 0) {
             if (Math.random() * 100 < dngPlayerSt.dodgeBuffPct) {
-                fx.pushAllyFloat(0, 0, 'heal', { icon: '💨', label: 'UNIK' });
-                addLog(`💨 Bomba Dymna! Unik (${dngPlayerSt.dodgeBuffPct}%)`, 'system');
+                fx.pushAllyFloat(0, 0, 'heal', { icon: 'dashing-away', label: 'UNIK' });
+                addLog(`:dashing-away: Bomba Dymna! Unik (${dngPlayerSt.dodgeBuffPct}%)`, 'system');
                 return;
             }
         }
@@ -2063,8 +2065,8 @@ const Dungeon = () => {
 
         // immortal — Knight Absolutne Cięcie zeroes incoming damage.
         if (psDng && psDng.immortalMs > 0) {
-            fx.pushAllyFloat(0, 0, 'heal', { icon: '✨', label: 'BLOCK' });
-            addLog(`✨ BLOCK! Niewrażliwość chroni przed ${slotData.monster.name_pl}`, 'block');
+            fx.pushAllyFloat(0, 0, 'heal', { icon: 'sparkles', label: 'BLOCK' });
+            addLog(`:sparkles: BLOCK! Niewrażliwość chroni przed ${slotData.monster.name_pl}`, 'block');
             return;
         }
 
@@ -2082,11 +2084,11 @@ const Dungeon = () => {
                 const newMp = Math.max(0, playerMpRef.current - ms);
                 playerMpRef.current = newMp;
                 setPlayerMp(newMp);
-                addLog(`🛡️ Tarcza Many pochłania ${ms} MP`, 'block');
-                fx.pushAllyFloat(0, ms, 'spell', { icon: '🛡️' });
+                addLog(`:shield: Tarcza Many pochłania ${ms} MP`, 'block');
+                fx.pushAllyFloat(0, ms, 'spell', { icon: 'shield' });
             }
         }
-        // ── Utamo Vita (Magic Shield): 50% of remaining → MP ──────────
+        // -- Utamo Vita (Magic Shield): 50% of remaining -> MP ----------
         const hasUtamoDng = useBuffStore.getState().hasBuff('utamo_vita');
         if (hasUtamoDng && playerMpRef.current > 0 && hpDmg > 0) {
             const utamoMp = Math.floor(hpDmg * 0.5);
@@ -2103,7 +2105,7 @@ const Dungeon = () => {
             setPlayerMp(newMpAfterShield);
             if (newMpAfterShield <= 0) {
                 useBuffStore.getState().removeBuffByEffect('utamo_vita');
-                addLog('🔵 Utamo Vita peka! Brak many.', 'system');
+                addLog(':blue-circle: Utamo Vita peka! Brak many.', 'system');
             }
         }
 
@@ -2127,15 +2129,15 @@ const Dungeon = () => {
         // and replays from frame 0. Without this, two near-simultaneous hits
         // from different monsters would visually merge into a single shake.
         setPlayerHitPulse((p) => p + 1);
-        showFloatingDmg(`-${rawDmg}${hasUtamoDng && mpDmg > 0 ? ' 🔵' : ''}`, 'monster');
+        showFloatingDmg(`-${rawDmg}${hasUtamoDng && mpDmg > 0 ? 'blue-circle' : ''}`, 'monster');
         // Anchored monster-attack float on the player ally slot (0). Plain
-        // physical hit → 'monster' kind (red). The Utamo Vita 🔵 marker is
+        // physical hit -> 'monster' kind (red). The Utamo Vita :blue-circle: marker is
         // dropped here on purpose — the float colour already says "I got
         // hit" and the marker would just clutter the number; the addLog
         // line below still records the MP-shield split for the log reader.
         fx.pushAllyFloat(0, rawDmg, 'monster');
 
-        const utamoSuffix = hasUtamoDng && mpDmg > 0 ? ` 🔵 (${hpDmg} HP / ${mpDmg} MP)` : '';
+        const utamoSuffix = hasUtamoDng && mpDmg > 0 ? ` :blue-circle: (${hpDmg} HP / ${mpDmg} MP)` : '';
         addLog(
             `${slotData.monster.name_pl} atakuje za ${rawDmg} dmg${utamoSuffix} (HP: ${newPHp}/${charMaxHp})`,
             'monster',
@@ -2150,13 +2152,13 @@ const Dungeon = () => {
         }
     }, [charDef, charMaxHp, addLog, showFloatingDmg, handlePlayerDeath, tryAutoPotion, fx]);
 
-    // ── Refs for stable intervals ────────────────────────────────────────────
+    // -- Refs for stable intervals --------------------------------------------
     const playerAtkRef  = useRef(doPlayerAttack);
     const monsterAtkRef = useRef(doMonsterAttack);
     useEffect(() => { playerAtkRef.current  = doPlayerAttack; });
     useEffect(() => { monsterAtkRef.current = doMonsterAttack; });
 
-    // ── Attack intervals (scaled by speedMult) ───────────────────────────────
+    // -- Attack intervals (scaled by speedMult) -------------------------------
     // Player interval resets when the wave's lead monster id changes (fresh
     // wave spawns). Per-slot kills don't restart the timer — kills are
     // processed inside the callback via `handleWaveMonsterDeath`.
@@ -2240,7 +2242,7 @@ const Dungeon = () => {
                     if (apply.appliedDmg > 0) {
                         const after = applyDamageToSlot(m.slot, apply.appliedDmg);
                         // 2026-05 v6: per-tick DOT visual on the affected slot.
-                        fx.pushEnemyFloat(m.slot, apply.appliedDmg, 'spell', { icon: '☠️' });
+                        fx.pushEnemyFloat(m.slot, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
                         if (after <= 0) {
                             handleWaveMonsterDeath(m.slot);
                             continue;
@@ -2255,7 +2257,7 @@ const Dungeon = () => {
                     if (fresh && fresh.currentHp > 0) {
                         const ritualDmg = Math.min(fresh.currentHp, r.darkRitualDamage);
                         const after = applyDamageToSlot(m.slot, ritualDmg);
-                        fx.pushEnemyFloat(m.slot, ritualDmg, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+                        fx.pushEnemyFloat(m.slot, ritualDmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
                         if (after <= 0) {
                             handleWaveMonsterDeath(m.slot);
                         }
@@ -2266,8 +2268,8 @@ const Dungeon = () => {
         return () => clearInterval(id);
     }, [phase, speedMult, charMaxHp, monsterSlotKey, applyDamageToSlot, handlePlayerDeath, handleWaveMonsterDeath]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Spawn-bar progress driver (rAF) ──────────────────────────────────────
-    // While `waitingForSpawn` is true, fill `spawnProgress` 0→1 over the
+    // -- Spawn-bar progress driver (rAF) --------------------------------------
+    // While `waitingForSpawn` is true, fill `spawnProgress` 0->1 over the
     // duration captured when the wave-clear handler armed the timeout.
     // We restart the loop fresh on every transition so toggling speed mid
     // countdown re-syncs the bar to the new (already-shortened) timeout.
@@ -2310,7 +2312,7 @@ const Dungeon = () => {
         <div className="dungeon">
             <AnimatePresence mode="wait">
 
-                {/* ── List ──────────────────────────────────────────────────────── */}
+                {/* -- List -------------------------------------------------------- */}
                 {phase === 'list' && (() => {
                     // Apply the three persisted filters before rendering the
                     // list. Sorting happens last so the visible order always
@@ -2402,7 +2404,7 @@ const Dungeon = () => {
                                         }}
                                         title="Wyczyść filtry"
                                     >
-                                        ✕ Wyczyść
+                                        <Icon name="x" /> Wyczyść
                                     </button>
                                 )}
                             </div>
@@ -2440,7 +2442,7 @@ const Dungeon = () => {
                                     style={{
                                         '--card-hue': getDungeonCardHue(dungeonLvl),
                                         // Per-dungeon background art. The ID
-                                        // → image map in spriteAssets is
+                                        // -> image map in spriteAssets is
                                         // stable across filter / sort, so a
                                         // given dungeon always shows the
                                         // same picture. Falls back to `none`
@@ -2477,7 +2479,7 @@ const Dungeon = () => {
                                         the lvl and waves corners. */}
                                     {allDone && cleared && (
                                         <span className="dungeon__corner dungeon__corner--cleared">
-                                            ✓ Pokonany
+                                            <GameIcon name="check-mark-button" /> Pokonany
                                         </span>
                                     )}
 
@@ -2494,8 +2496,8 @@ const Dungeon = () => {
                                         info already lives in the corners, so the
                                         meta row is reduced to gold + XP. */}
                                     <div className="dungeon__card-rewards">
-                                        <span>💰 {formatGoldShort(est.goldMin)}–{formatGoldShort(est.goldMax)}</span>
-                                        <span>⭐ ~{est.xp.toLocaleString('pl-PL')} XP</span>
+                                        <span><GameIcon name="money-bag" /> {formatGoldShort(est.goldMin)}–{formatGoldShort(est.goldMax)}</span>
+                                        <span><GameIcon name="star" /> ~{est.xp.toLocaleString('pl-PL')} XP</span>
                                     </div>
 
                                     {/* Drop table is now a popup — opens the
@@ -2504,11 +2506,11 @@ const Dungeon = () => {
                                         className="dungeon__drop-btn"
                                         onClick={() => setDropModalDungeon(d.id)}
                                     >
-                                        📦 Pokaż drop table
+                                        <GameIcon name="package" /> Pokaż drop table
                                     </button>
 
                                     <div className="dungeon__attempts">
-                                        <span>⚔️ {attemptsUsed}/{attemptsMax}</span>
+                                        <span><GameIcon name="crossed-swords" /> {attemptsUsed}/{attemptsMax}</span>
                                         <div className="dungeon__attempts-bar">
                                             <div
                                                 className={`dungeon__attempts-bar-fill${allDone ? ' dungeon__attempts-bar-fill--full' : ''}`}
@@ -2518,10 +2520,10 @@ const Dungeon = () => {
                                     </div>
 
                                     {noAttempts && (
-                                        <span className="dungeon__cooldown">❌ Brak prób · reset o północy</span>
+                                        <span className="dungeon__cooldown"><GameIcon name="cross-mark" /> Brak prób · reset o północy</span>
                                     )}
                                     {!noAttempts && tooLow && (
-                                        <span className="dungeon__locked">🔒 Wymaga Lvl {dungeonLvl}</span>
+                                        <span className="dungeon__locked"><GameIcon name="locked" /> Wymaga Lvl {dungeonLvl}</span>
                                     )}
 
                                     {!blocked && (
@@ -2529,7 +2531,7 @@ const Dungeon = () => {
                                             className="dungeon__enter-btn dungeon__enter-btn--wide"
                                             onClick={(e) => handleEnterClick(e, d)}
                                         >
-                                            ⚔️ Wejdź
+                                            <GameIcon name="crossed-swords" /> Wejdź
                                         </button>
                                     )}
                                 </div>
@@ -2538,7 +2540,7 @@ const Dungeon = () => {
 
                         {/* Drop-table modal — single instance lives outside the
                             .map() so only one popup is mounted at a time.
-                            Backdrop click & explicit ✕ both dismiss. */}
+                            Backdrop click & explicit :multiply: both dismiss. */}
                         {dropModalDungeon && (() => {
                             const d = allDungeons.find((x) => x.id === dropModalDungeon);
                             if (!d) return null;
@@ -2567,12 +2569,12 @@ const Dungeon = () => {
                                                 onClick={() => setDropModalDungeon(null)}
                                                 aria-label="Zamknij"
                                             >
-                                                ✕
+                                                <Icon name="x" />
                                             </button>
                                         </div>
                                         <div className="dungeon__modal-body">
                                             <div className="dungeon__drop-section">
-                                                <div className="dungeon__drop-section-title">💰 Nagrody</div>
+                                                <div className="dungeon__drop-section-title"><GameIcon name="money-bag" /> Nagrody</div>
                                                 <div className="dungeon__drop-info">Gold: {formatGoldShort(estDrop.goldMin)}–{formatGoldShort(estDrop.goldMax)}</div>
                                                 <div className="dungeon__drop-info">XP: ~{estDrop.xp.toLocaleString('pl-PL')}</div>
                                                 <div className="dungeon__drop-info">
@@ -2596,7 +2598,7 @@ const Dungeon = () => {
                                             </div>
 
                                             <div className="dungeon__drop-section">
-                                                <div className="dungeon__drop-section-title">🎒 Przedmioty (Lvl {dungeonLvl})</div>
+                                                <div className="dungeon__drop-section-title"><GameIcon name="backpack" /> Przedmioty (Lvl {dungeonLvl})</div>
                                                 {itemTiers.map((tier) => (
                                                     <div key={tier.key} className="dungeon__drop-tier">
                                                         <span className="dungeon__drop-dot" style={{ background: tier.color, boxShadow: `0 0 4px ${tier.color}` }} />
@@ -2607,18 +2609,18 @@ const Dungeon = () => {
                                             </div>
 
                                             <div className="dungeon__drop-section">
-                                                <div className="dungeon__drop-section-title"><TinyIcon icon={getPotionImage(null) ?? '🧪'} size="sm" /> Potiony</div>
+                                                <div className="dungeon__drop-section-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                                                 <div className="dungeon__drop-tier">
                                                     <span className="dungeon__drop-dot" style={{ background: '#e57373' }} />
                                                     <span className="dungeon__drop-tier-name" style={{ color: '#e57373' }}>
-                                                        <TinyIcon icon={getPotionImage('hp_potion_sm') ?? '❤️'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
+                                                        <TinyIcon icon={getPotionImage('hp_potion_sm') ?? 'red-heart'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
                                                     </span>
                                                     <span className="dungeon__drop-tier-chance">{(potionInfo.hpChance * 100).toFixed(2)}%</span>
                                                 </div>
                                                 <div className="dungeon__drop-tier">
                                                     <span className="dungeon__drop-dot" style={{ background: '#64b5f6' }} />
                                                     <span className="dungeon__drop-tier-name" style={{ color: '#64b5f6' }}>
-                                                        <TinyIcon icon={getPotionImage('mp_potion_sm') ?? '💧'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
+                                                        <TinyIcon icon={getPotionImage('mp_potion_sm') ?? 'droplet'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
                                                     </span>
                                                     <span className="dungeon__drop-tier-chance">{(potionInfo.mpChance * 100).toFixed(2)}%</span>
                                                 </div>
@@ -2627,14 +2629,14 @@ const Dungeon = () => {
                                                         <div className="dungeon__drop-tier">
                                                             <span className="dungeon__drop-dot" style={{ background: '#ff5252' }} />
                                                             <span className="dungeon__drop-tier-name" style={{ color: '#ff5252' }}>
-                                                                <TinyIcon icon={getPotionImage('hp_potion_mega') ?? '❤️‍🔥'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
+                                                                <TinyIcon icon={getPotionImage('hp_potion_mega') ?? 'heart-on-fire'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
                                                             </span>
                                                             <span className="dungeon__drop-tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                                         </div>
                                                         <div className="dungeon__drop-tier">
                                                             <span className="dungeon__drop-dot" style={{ background: '#448aff' }} />
                                                             <span className="dungeon__drop-tier-name" style={{ color: '#448aff' }}>
-                                                                <TinyIcon icon={getPotionImage('mp_potion_mega') ?? '💎'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
+                                                                <TinyIcon icon={getPotionImage('mp_potion_mega') ?? 'gem-stone'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
                                                             </span>
                                                             <span className="dungeon__drop-tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                                         </div>
@@ -2644,7 +2646,7 @@ const Dungeon = () => {
 
                                             {chestInfo.levels.length > 0 && (
                                                 <div className="dungeon__drop-section">
-                                                    <div className="dungeon__drop-section-title"><TinyIcon icon={getSpellChestImage(1000) ?? '📦'} size="sm" /> Spell Chests (x1.5 w dungeonie)</div>
+                                                    <div className="dungeon__drop-section-title"><TinyIcon icon={getSpellChestImage(1000) ?? 'package'} size="sm" /> Spell Chests (x1.5 w dungeonie)</div>
                                                     {chestInfo.levels.map((lvl) => (
                                                         <div key={lvl} className="dungeon__drop-tier">
                                                             <span className="dungeon__drop-dot" style={{ background: '#ab47bc' }} />
@@ -2665,19 +2667,19 @@ const Dungeon = () => {
                     );
                 })()}
 
-                {/* ── Running (real combat) — unified shared CombatUI tree ─────
+                {/* -- Running (real combat) — unified shared CombatUI tree -----
                     Same JSX family used by hunting/boss/transform/raid/trainer.
                     Dungeon-specific shape:
-                      • 1–4 monsters in slots 0..3 (composition per wave)
-                      • 1 player in slot 0, 3 empty ally slots (no party bots)
-                      • bgVariant="default" (daily-boss reserved for Boss view)
-                      • Exit = `kind: 'flee'` with the standard 1/10 death penalty
-                ───────────────────────────────────────────────────────────── */}
+                      - 1–4 monsters in slots 0..3 (composition per wave)
+                      - 1 player in slot 0, 3 empty ally slots (no party bots)
+                      - bgVariant="default" (daily-boss reserved for Boss view)
+                      - Exit = `kind: 'flee'` with the standard 1/10 death penalty
+                ------------------------------------------------------------- */}
                 {phase === 'running' && activeDungeon && currentMonsters.length > 0 && (() => {
-                    // ── Enemy slots (left column, 4 fixed) ───────────────────
+                    // -- Enemy slots (left column, 4 fixed) -------------------
                     // Walk the wave's spawned monsters into 4 fixed slots,
                     // padding empties with `null`. The player always targets
-                    // the first alive slot (left → right) so we mark only
+                    // the first alive slot (left -> right) so we mark only
                     // that one as `isTargetedByPlayer` for the highlight.
                     const firstAliveIdx = currentMonsters.findIndex((m) => m.currentHp > 0);
                     const uiEnemies: Array<ICombatEnemy | null> = [null, null, null, null];
@@ -2734,7 +2736,7 @@ const Dungeon = () => {
                     }
                     const aliveCount = currentMonsters.filter((m) => m.currentHp > 0).length;
 
-                    // ── Player accent for transform-tinted HUD chrome ────────
+                    // -- Player accent for transform-tinted HUD chrome --------
                     const classColorFallbackMap: Record<string, string> = {
                         Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
                         Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
@@ -2746,7 +2748,7 @@ const Dungeon = () => {
                         ?? classColorFallbackMap[character.class]
                         ?? '#e94560';
 
-                    // ── Ally slots (right column) — Dungeon is solo ──────────
+                    // -- Ally slots (right column) — Dungeon is solo ----------
                     const playerSummonList = necroSummons[PLAYER_FX_ID] ?? [];
                     const playerSummonsByType: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>> = {};
                     for (const sm of playerSummonList) {
@@ -2795,7 +2797,7 @@ const Dungeon = () => {
                             summonsByType: playerSummonsByType,
                             onSummonClick: (type) => {
                                 useNecroSummonStore.getState().despawnOne(PLAYER_FX_ID, type);
-                                addLog(`💨 Odesłano: ${type}`, 'system');
+                                addLog(`:dashing-away: Odesłano: ${type}`, 'system');
                             },
                             // Aggro pip count = number of alive monsters
                             // currently hostile to the player. Drives the
@@ -2819,7 +2821,7 @@ const Dungeon = () => {
                         null, null, null,
                     ];
 
-                    // ── Skill slots (action-bar) ─────────────────────────────
+                    // -- Skill slots (action-bar) -----------------------------
                     const uiSkills: Array<ICombatSkillSlot | null> =
                         (activeSkillSlots as (string | null)[]).map((skillId, i) => {
                             if (!skillId) return null;
@@ -2838,7 +2840,7 @@ const Dungeon = () => {
                             };
                         });
 
-                    // ── Potion slots (action-bar = pct, sub-controls = flat) ─
+                    // -- Potion slots (action-bar = pct, sub-controls = flat) -
                     // Type the `potion` param as the widest of the four sources
                     // (`bestPctHpPotion` is `IElixir | null` — flat helpers
                     // never return null, so they fit in here too).
@@ -2988,7 +2990,7 @@ const Dungeon = () => {
                                                     const lvlTxt = pen.levelsLost > 0
                                                         ? ` · -${pen.levelsLost} lvl`
                                                         : '';
-                                                    addLog(`🏃 Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
+                                                    addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
                                                     // 2026-05-14 spec ("Jezeli sojusznik
                                                     // ucieknie z bossa lub dungeona ...
                                                     // powinien wyskoczyc mu popup ze
@@ -3036,7 +3038,7 @@ const Dungeon = () => {
                     );
                 })()}
 
-                {/* ── Result ────────────────────────────────────────────────────── */}
+                {/* -- Result ------------------------------------------------------ */}
                 {phase === 'result' && result && activeDungeon && (
                     // `--centered` modifier vertically centres the result
                     // card in the visible viewport (header + bottom nav
@@ -3066,29 +3068,29 @@ const Dungeon = () => {
                                 shimmer animation lives in SCSS via ::before. */}
                             {result.success && (
                                 <div className="dungeon__victory-banner">
-                                    <span className="dungeon__victory-icon">🏆</span>
+                                    <span className="dungeon__victory-icon"><GameIcon name="trophy" /></span>
                                     <div className="dungeon__victory-name">{activeDungeon.name_pl}</div>
                                     <div className="dungeon__victory-sub">Ukończono!</div>
                                 </div>
                             )}
                             {!result.success && (
                                 <>
-                                    <div className="dungeon__result-title">💀 Porażka</div>
+                                    <div className="dungeon__result-title"><GameIcon name="skull" /> Porażka</div>
                                     <div className="dungeon__result-dungeon">{activeDungeon.name_pl}</div>
                                 </>
                             )}
 
                             {result.success ? (
                                 <div className="dungeon__rewards">
-                                    <div className="dungeon__reward-row"><span>💰 Gold</span><span>+{formatGoldShort(result.gold)}</span></div>
-                                    <div className="dungeon__reward-row"><span>⭐ XP</span><span>+{result.xp.toLocaleString('pl-PL')}</span></div>
+                                    <div className="dungeon__reward-row"><span><GameIcon name="money-bag" /> Gold</span><span>+{formatGoldShort(result.gold)}</span></div>
+                                    <div className="dungeon__reward-row"><span><GameIcon name="star" /> XP</span><span>+{result.xp.toLocaleString('pl-PL')}</span></div>
                                     {result.items.length > 0 ? (
                                         <div className="dungeon__drops">
                                             <div className="dungeon__drops-title">Zdobyte przedmioty ({result.items.length})</div>
                                             <div className="dungeon__drops-grid">
                                                 {result.items.map((item, i) => {
                                                     const info = getItemDisplayInfo(item.itemId);
-                                                    const icon = info?.icon ?? '📦';
+                                                    const icon = info?.icon ?? 'package';
                                                     return (
                                                         <div key={i} className="dungeon__drop-item">
                                                             <ItemIcon icon={icon} rarity={item.rarity} size="md" />
@@ -3107,11 +3109,11 @@ const Dungeon = () => {
                                 </p>
                             )}
 
-                            {/* Result actions — single CTA. Win → green "Odbierz"
+                            {/* Result actions — single CTA. Win -> green "Odbierz"
                                 (celebratory claim-the-spoils beat; items
-                                already landed in the inventory). Flee → red
+                                already landed in the inventory). Flee -> red
                                 "Uciekaj" so the panel doesn't visually
-                                celebrate a bail-out. Death → red "Wróć" so
+                                celebrate a bail-out. Death -> red "Wróć" so
                                 the loss state stays consistent and never
                                 tempts the player into thinking there's loot
                                 to claim. */}
@@ -3121,7 +3123,7 @@ const Dungeon = () => {
                                         className="dungeon__back-btn dungeon__back-btn--retreat"
                                         onClick={() => setPhase('list')}
                                     >
-                                        🏃 Uciekaj
+                                        <GameIcon name="person-running" /> Uciekaj
                                     </button>
                                 ) : resultKind === 'death' ? (
                                     <button
@@ -3147,7 +3149,7 @@ const Dungeon = () => {
                                                 className="dungeon__back-btn dungeon__back-btn--again"
                                                 onClick={() => handleStart(activeDungeon)}
                                             >
-                                                ⚔️ Walcz ponownie
+                                                <GameIcon name="crossed-swords" /> Walcz ponownie
                                             </button>
                                         )}
                                         {/* 2026-05 v6: when this dungeon's daily attempts
@@ -3168,7 +3170,7 @@ const Dungeon = () => {
                                                     onClick={() => handleStart(nextDng)}
                                                     title={`${nextDng.name_pl} (lvl ${nextDng.level})`}
                                                 >
-                                                    ⬆️ Walcz wyżej (lvl {nextDng.level})
+                                                    <GameIcon name="up-arrow" /> Walcz wyżej (lvl {nextDng.level})
                                                 </button>
                                             );
                                         })()}
@@ -3186,8 +3188,8 @@ const Dungeon = () => {
                 running phase has mounted underneath. Lives outside the
                 phase-switching AnimatePresence (which uses mode="wait")
                 so it can stay on top during the brief
-                list→running swap and hide any visual flash. */}
-            {/* ── Cinematic entry sequence (2.0s) ─────────────────────────
+                list->running swap and hide any visual flash. */}
+            {/* -- Cinematic entry sequence (2.0s) -------------------------
                 Three stacked motion layers, all sharing the same total
                 duration so we can keep the timing readable in one place.
 
@@ -3197,9 +3199,9 @@ const Dungeon = () => {
                 fades out at the very end so the reveal lands on the
                 combat HUD underneath rather than on the dungeon image.
 
-                Layer 2 — DARKNESS: a flat black panel that fades 0 → 1 in
+                Layer 2 — DARKNESS: a flat black panel that fades 0 -> 1 in
                 lockstep with the image zoom, holds black through the mid
-                of the animation, then fades 1 → 0 to reveal whatever
+                of the animation, then fades 1 -> 0 to reveal whatever
                 mounted underneath (combat HUD, mounted at 2.4s).
 
                 Layer 3 — SKIP HINT: tiny "kliknij aby pominąć" label
@@ -3208,7 +3210,7 @@ const Dungeon = () => {
                 rest of the overlay. Pure UX-affordance — the whole
                 overlay is the click target, not just the hint.
 
-                The wrapper itself owns the click → skip handler and
+                The wrapper itself owns the click -> skip handler and
                 takes pointer events so the player can interrupt at any
                 point during the cinematic. */}
             <AnimatePresence>
@@ -3223,7 +3225,7 @@ const Dungeon = () => {
                         // already mounted underneath, no need to linger.
                         exit={{ opacity: 0, transition: { duration: 0.18, ease: 'linear' } }}
                     >
-                        {/* Layer 1 — dungeon image, card → fullscreen + soft zoom */}
+                        {/* Layer 1 — dungeon image, card -> fullscreen + soft zoom */}
                         <motion.div
                             className="dungeon__enter-image"
                             initial={{
@@ -3249,7 +3251,7 @@ const Dungeon = () => {
                                 opacity: [1, 1, 0, 0],
                             }}
                             transition={{
-                                // Faster card→fullscreen morph — gets the
+                                // Faster card->fullscreen morph — gets the
                                 // image filling the viewport just before the
                                 // darkness panel hits peak opacity at 0.66s,
                                 // so the geometry is settled by the time the
@@ -3273,7 +3275,7 @@ const Dungeon = () => {
                                 // underneath at 67% (1.34s). We hold full
                                 // opacity until 30% (image dominates the
                                 // zoom-in), then crossfade to 0 over the
-                                // 30→36% window (~0.12s) which lines up with
+                                // 30->36% window (~0.12s) which lines up with
                                 // the darkness panel hitting peak black at 33%.
                                 opacity:      { duration: 2.0, times: [0, 0.3, 0.36, 1], ease: 'linear' },
                             }}
@@ -3285,11 +3287,11 @@ const Dungeon = () => {
                             } as React.CSSProperties}
                         />
 
-                        {/* Layer 2 — darkness fade 0 → 1 → 1 → 0
+                        {/* Layer 2 — darkness fade 0 -> 1 -> 1 -> 0
                             Compressed to the new 2s total. The screen reaches
                             FULL black at 33% (≈0.66s) and holds. The combat
                             HUD mounts at 67% / 1.34s (under the still-opaque
-                            panel) so the reveal from 67%→100% (1.34s→2s)
+                            panel) so the reveal from 67%->100% (1.34s->2s)
                             crossfades the player straight into the live arena
                             instead of the dungeon image. */}
                         <motion.div
@@ -3298,8 +3300,8 @@ const Dungeon = () => {
                             animate={{ opacity: [0, 1, 1, 0] }}
                             transition={{
                                 duration: 2.0,
-                                // 0s clear → 0.66s full black → 1.34s still
-                                // black (combat mounts here) → 2.0s fully
+                                // 0s clear -> 0.66s full black -> 1.34s still
+                                // black (combat mounts here) -> 2.0s fully
                                 // transparent.
                                 times: [0, 0.33, 0.67, 1],
                                 ease: 'easeInOut',

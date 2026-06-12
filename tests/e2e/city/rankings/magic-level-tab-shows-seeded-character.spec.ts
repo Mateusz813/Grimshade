@@ -6,7 +6,7 @@
  * — Magic Level ranking (weapon_skill source).
  *
  * Tab definition (Leaderboard.tsx linia 135):
- *   { key: 'magic_level', label: 'MLVL', icon: '🔮',
+ *   { key: 'magic_level', label: 'MLVL', icon: 'crystal-ball',
  *     source: 'weapon_skill', skillName: 'magic_level',
  *     valueLabel: 'MLvl' }
  *
@@ -71,7 +71,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await page.goto('/leaderboard');
             await waitForAppReady(page);
 
-            // valueLabel='MLvl' + value=999 → "MLvl 999"
+            // valueLabel='MLvl' + value=999 -> "MLvl 999"
             await assertSeededRankingRow(page, {
                 tabLabel: /^MLVL$/,
                 nick,

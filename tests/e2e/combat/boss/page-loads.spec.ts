@@ -19,8 +19,8 @@
  *    odpalamy. ProtectedRoute przejdzie bo session jest aktywny.
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczna walka z bossem (tap "Walcz" → animacja entry → spawn →
- *    damage → result).
+ *  - Faktyczna walka z bossem (tap "Walcz" -> animacja entry -> spawn ->
+ *    damage -> result).
  *  - Boss filters (Available Only / sort / min level) — analogiczne
  *    do hunt filters z `city/monsters/filters.spec.ts`.
  *  - Ready-check flow w party (multi-context).
@@ -57,7 +57,7 @@ test.describe('Combat › Boss', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -69,7 +69,7 @@ test.describe('Combat › Boss', { tag: '@combat' }, () => {
 
             // 2b. Wait dla TopHeader żeby characterStore.character zostal
             //     w pełni zhydratowany. Bez tego /boss może mount-ować
-            //     wcześniej niż character store dostał blob → Boss.tsx
+            //     wcześniej niż character store dostał blob -> Boss.tsx
             //     linia 682 zwraca Spinner fallback + `.boss__header`
             //     nigdy się nie pojawia w time window.
             await expect(page.locator('.top-header')).toBeVisible({ timeout: 10_000 });

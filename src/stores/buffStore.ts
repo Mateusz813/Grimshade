@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useCharacterStore } from './characterStore';
 
-// ── Buff types ───────────────────────────────────────────────────────────────
+// -- Buff types ---------------------------------------------------------------
 
 /**
  * 'realtime'  – expiresAt counts down in real time (elixirs, AOL, etc.)
@@ -12,7 +12,7 @@ import { useCharacterStore } from './characterStore';
  *               `tickGameTimeBuffs(wallDelta, speedMult)`. Used for skill
  *               buffs (Tarcza Many, party_attack_up, etc.) so a 20s buff
  *               drains in 5 wall seconds at x4. Display is "game-time"
- *               seconds (always shows 20→0 on a 20s spec, regardless of
+ *               seconds (always shows 20->0 on a 20s spec, regardless of
  *               speed).
  */
 export type BuffTimerMode = 'realtime' | 'pausable' | 'game';
@@ -48,7 +48,7 @@ export interface IActiveBuff {
      * `tickGameTimeBuffs(wallDelta, speedMult)` at speed-scaled rate so
      * a 20s spec drains in 20 wall-seconds at x1, 10s at x2, 5s at x4.
      * BuffBar always displays the remaining VALUE (not wall time) so
-     * the player sees "20s → 0s" regardless of speed.
+     * the player sees "20s -> 0s" regardless of speed.
      */
     gameMsRemaining?: number;
     /**
@@ -111,7 +111,7 @@ interface IBuffStore {
      * the buff returning the max pct/sec from
      * `getPartyHealDotPctPerSec`). Combat views feed it into
      * `triggerAllySkillAnim` so each per-second pulse plays the
-     * spell's themed animation overlay (Blessing → 🙏 holy) on every
+     * spell's themed animation overlay (Blessing -> :folded-hands: holy) on every
      * ally slot. Returns null when no such buff is active.
      */
     getPartyHealDotSkillId: () => string | null;
@@ -141,9 +141,9 @@ interface IBuffStore {
      * Rescale every active realtime buff's `expiresAt` when combat speed
      * changes. Maps remaining wall-clock time so the buff drains at the
      * new game-time rate going forward. Example:
-     *   • Cast 15s buff at x1 → expires 15s wall later
-     *   • Switch to x4 → rebase: remaining 15s wall × (1/4) = 3.75s wall
-     *   • Switch back to x1 → rebase: remaining 3.75s × (4/1) = 15s
+     *   - Cast 15s buff at x1 -> expires 15s wall later
+     *   - Switch to x4 -> rebase: remaining 15s wall × (1/4) = 3.75s wall
+     *   - Switch back to x1 -> rebase: remaining 3.75s × (4/1) = 15s
      * Skips pausable buffs (elixirs / charge buffs) — those are wall-time
      * by design (an XP boost shouldn't drain faster just because the
      * player switched to x4 in trainer).
@@ -170,7 +170,7 @@ interface IBuffStore {
 
 const getCharId = (): string => useCharacterStore.getState().character?.id ?? '';
 
-// ── Mutually-exclusive buff groups ──────────────────────────────────────────
+// -- Mutually-exclusive buff groups ------------------------------------------
 // Some elixirs belong to a logical "category" where only one tier may be
 // active at a time (e.g. ATK damage tiers 25/50/100 + flat +50 ATK should be
 // mutually exclusive — picking a stronger one replaces the weaker one).

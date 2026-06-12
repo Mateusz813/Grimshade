@@ -4,6 +4,7 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { useChatTabsStore } from '../../stores/chatTabsStore';
 import Chat from '../../components/ui/Chat/Chat';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import './GlobalChat.scss';
 
 /**
@@ -66,7 +67,7 @@ const GlobalChat = () => {
                             className="global-chat__tab-btn"
                             onClick={() => setActive(t.id)}
                         >
-                            <span className="global-chat__tab-title">{t.title}</span>
+                            <span className="global-chat__tab-title"><EmojiText>{t.title}</EmojiText></span>
                             {t.unread > 0 && (
                                 <span className="global-chat__tab-badge">{t.unread > 99 ? '99+' : t.unread}</span>
                             )}

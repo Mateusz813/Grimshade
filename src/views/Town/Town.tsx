@@ -13,6 +13,8 @@ import itemsRaw from '../../data/items.json';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 import OfflineRewardModal from '../../components/ui/OfflineRewardModal/OfflineRewardModal';
+import Icon from '../../components/atoms/Icon/Icon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import { getCharacterAvatar } from '../../data/classAvatars';
 // Per-tile background art lives under `images/town/`. Each tile in the
 // 7-up nav grid below maps to one of these PNGs and is rendered as an
@@ -50,8 +52,8 @@ const RARITY_BORDER_COLORS: Record<string, string> = {
 };
 
 const CLASS_ICONS: Record<string, string> = {
-  Knight: '⚔️', Mage: '🔮', Cleric: '✨', Archer: '🏹',
-  Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+  Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
+  Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
 const CLASS_COLORS: Record<string, string> = {
@@ -204,7 +206,7 @@ const Town = () => {
     ? engineEff.max_mp
     : (character ? character.max_mp + (eqStats.mp ?? 0) + (tb.max_mp ?? 0) + getElixirMpBonus() : 0);
 
-  // ── Rest / Heal ─────────────────────────────────────────────────────────────
+  // -- Rest / Heal -------------------------------------------------------------
   const [isResting, setIsResting] = useState(false);
   const [restResult, setRestResult] = useState<{ hpHealed: number; mpHealed: number } | null>(null);
 
@@ -238,10 +240,10 @@ const Town = () => {
     ? character.hp < effMaxHp || character.mp < effMaxMp
     : false;
 
-  // ── Offline reward popup ───────────────────────────────────────────────────
+  // -- Offline reward popup ---------------------------------------------------
   const { reward: offlineReward, clearReward: clearOfflineReward } = useOfflineTrainingResume();
 
-  // ── Tile auto-pulse (every 30s) ────────────────────────────────────────────
+  // -- Tile auto-pulse (every 30s) --------------------------------------------
   // The user wanted tiles to come alive on their own (not just on hover). We
   // toggle a `town__nav--pulse` class on the nav root every 30 seconds; child
   // tiles use that to play a brief glow/scale animation, then we remove the
@@ -314,7 +316,7 @@ const Town = () => {
               <span className="town__char-class" style={{
                 color: CLASS_COLORS[character.class] ?? '#9e9e9e',
                 borderColor: CLASS_COLORS[character.class] ?? '#2a2a4a',
-              }}>{CLASS_ICONS[character.class] ?? '?'}</span>
+              }}><GameIcon name={CLASS_ICONS[character.class] ?? '?'} /></span>
               <span className="town__char-level">Poziom {character.level}</span>
             </div>
 
@@ -356,7 +358,7 @@ const Town = () => {
         );
       })()}
 
-      {/* ── Compact Combat Indicator ─────────────────────────────────────── */}
+      {/* -- Compact Combat Indicator --------------------------------------- */}
       {isCombatActive && combatMonster && (
         <div
           className={`town__combat-strip town__combat-strip--${combatMonsterRarity}`}
@@ -364,7 +366,7 @@ const Town = () => {
         >
           <div className="town__combat-strip-left" onClick={() => navigate('/combat')}>
             <span className="town__combat-strip-sprite">
-              <MonsterSprite level={combatMonster.level} sprite={combatMonster.sprite ?? '👾'} name={combatMonster.name_pl} />
+              <MonsterSprite level={combatMonster.level} sprite={combatMonster.sprite ?? 'alien-monster'} name={combatMonster.name_pl} />
             </span>
             <div className="town__combat-strip-info">
               <div className="town__combat-strip-name">
@@ -383,20 +385,20 @@ const Town = () => {
           </div>
           <div className="town__combat-strip-actions">
             <button className="town__combat-strip-btn town__combat-strip-btn--go" onClick={() => navigate('/combat')} title="Przejdź do walki">
-              ⚔️
+              <GameIcon name="crossed-swords" />
             </button>
             <button className="town__combat-strip-btn town__combat-strip-btn--stop" onClick={() => stopCombat()} title="Zakończ walkę">
-              ✕
+              <Icon name="x" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Party Expand Widget ──────────────────────────────────────── */}
+      {/* -- Party Expand Widget ---------------------------------------- */}
       {/* 2026-05-18 spec ("usun ten uuid party i napis party, zostaw tylko
           ikonki klasy od lewej sojusznikow party i color borderu ma byc
           color aktualnego ich transformu"): collapsed header now shows
-          ONLY the row of class-icon avatars (no 🤝 chip, no "Party"
+          ONLY the row of class-icon avatars (no :handshake: chip, no "Party"
           label, no UUID, no count badge). Each avatar's border is tinted
           with that ally's highest-completed-transform colour — local
           player resolves via the live transform store, remote allies via
@@ -411,11 +413,11 @@ const Town = () => {
             onClick={() => setPartyExpanded((v) => !v)}
           >
             {/* 2026-05-18 spec ("Dodaj tylko na samym przodze ikonke rak
-                ze to party, przed ikonkami klass"): re-add the 🤝 chip
+                ze to party, przed ikonkami klass"): re-add the :handshake: chip
                 at the very left edge so the strip still reads visually
                 as "this is your party" — the UUID + label stay gone,
                 only the small icon is back. */}
-            <span className="town__party-strip-icon">🤝</span>
+            <span className="town__party-strip-icon"><GameIcon name="handshake" /></span>
             <div className="town__party-strip-avatars">
               {party.members.slice(0, MAX_PARTY_SIZE).map((m) => {
                 const memberHpPct = m.maxHp > 0 ? Math.min(1, m.hp / m.maxHp) : 0;
@@ -423,7 +425,7 @@ const Town = () => {
                 // the live transform store so swapping a tier mid-
                 // session re-tints the border immediately; others come
                 // from the broadcast presence snapshot (transformTier:
-                // 0 means base class → no transform colour, falls back
+                // 0 means base class -> no transform colour, falls back
                 // to the class palette below).
                 let transformTier = 0;
                 if (!m.isBot) {
@@ -452,7 +454,7 @@ const Town = () => {
                     style={avatarStyle}
                   >
                     <span className="town__party-avatar-icon">
-                      {m.isBot ? '🤖' : (CLASS_ICONS[m.class] ?? '?')}
+                      {m.isBot ? <GameIcon name="robot" /> : (CLASS_ICONS[m.class] ?? '?')}
                     </span>
                     <span className="town__party-avatar-hp">
                       <span
@@ -468,7 +470,7 @@ const Town = () => {
               })}
             </div>
             <span className="town__party-strip-caret">
-              {partyExpanded ? '▲' : '▼'}
+              {partyExpanded ? <Icon name="chevronUp" /> : <Icon name="chevronDown" />}
             </span>
           </div>
 
@@ -498,7 +500,7 @@ const Town = () => {
                 return (
                   <div key={m.id} className={`town__party-row${isMe ? ' town__party-row--me' : ''}${m.isBot ? ' town__party-row--bot' : ''}`}>
                     <span className="town__party-row-icon">
-                      {m.isBot ? '🤖' : (CLASS_ICONS[m.class] ?? '?')}
+                      {m.isBot ? <GameIcon name="robot" /> : (CLASS_ICONS[m.class] ?? '?')}
                     </span>
                     <div className="town__party-row-info">
                       <div className="town__party-row-name">
@@ -524,7 +526,7 @@ const Town = () => {
                         </span>
                         <span>Lvl {m.level}</span>
                         <span className="town__party-aggro" title="Waga aggro bossa">
-                          🎯 {weight}
+                          <GameIcon name="bullseye" /> {weight}
                         </span>
                       </div>
                       <div className="town__party-hp-bar">
@@ -546,7 +548,7 @@ const Town = () => {
                         onClick={(e) => { e.stopPropagation(); removePartyMember(m.id); }}
                         title="Wyrzuć z party"
                       >
-                        ✕
+                        <Icon name="x" />
                       </button>
                     )}
                   </div>
@@ -573,7 +575,7 @@ const Town = () => {
                   className="town__party-action-btn"
                   onClick={(e) => { e.stopPropagation(); navigate('/party'); }}
                 >
-                  🤝 Party
+                  <GameIcon name="handshake" /> Party
                 </button>
                 {isPartyLeader ? (
                   <button
@@ -604,7 +606,7 @@ const Town = () => {
         </div>
       ) : character && (
         <div className="town__party-strip town__party-strip--empty">
-          <span className="town__party-strip-icon">🤝</span>
+          <span className="town__party-strip-icon"><GameIcon name="handshake" /></span>
           <span className="town__party-strip-empty-text">
             {isOffline ? 'Tryb offline — party niedostępne' : 'Solo — brak party'}
           </span>
@@ -620,14 +622,14 @@ const Town = () => {
             onClick={() => navigate('/party')}
             title="Dołącz do party"
           >
-            Dołącz →
+            Dołącz <Icon name="arrowRight" />
           </button>
           )}
         </div>
       )}
 
-      {/* ── Town tiles (mobile-first responsive grid) ─────────────────────
-          Order is fixed by user spec, left → right:
+      {/* -- Town tiles (mobile-first responsive grid) ---------------------
+          Order is fixed by user spec, left -> right:
           Offline trening · Depozyt · Market · Potwory · Odpoczynek · Rankingi · Śmierci  */}
       <nav
         className={`town__nav town__nav--seven${tilesPulsing ? ' town__nav--pulse' : ''}`}
@@ -698,7 +700,7 @@ const Town = () => {
         >
           <img className="town__nav-tile-img" src={imgRest} alt="" draggable={false} />
           <span className="town__nav-btn-label town__nav-btn-label--glass">{isResting ? 'Regeneracja...' : 'Odpoczynek'}</span>
-          <span className="town__rest-full-tag" style={{ visibility: !canRest && !isResting ? 'visible' : 'hidden' }}>✓ Pełne</span>
+          <span className="town__rest-full-tag" style={{ visibility: !canRest && !isResting ? 'visible' : 'hidden' }}><GameIcon name="check-mark-button" /> Pełne</span>
         </button>
 
         <button
@@ -722,7 +724,7 @@ const Town = () => {
         </button>
       </nav>
 
-      {/* ── Rest Healing Overlay ─────────────────────────────────────────── */}
+      {/* -- Rest Healing Overlay ------------------------------------------- */}
       {(isResting || restResult) && (
         <div className={`town__rest-overlay${restResult ? ' town__rest-overlay--done' : ''}`}>
           <div className="town__rest-particles">
@@ -747,18 +749,18 @@ const Town = () => {
           <div className="town__rest-center">
             {restResult ? (
               <>
-                <span className="town__rest-icon town__rest-icon--done">✨</span>
+                <span className="town__rest-icon town__rest-icon--done"><GameIcon name="sparkles" /></span>
                 <span className="town__rest-text">Regeneracja zakończona!</span>
                 {restResult.hpHealed > 0 && (
-                  <span className="town__rest-heal town__rest-heal--hp">❤️ +{restResult.hpHealed} HP</span>
+                  <span className="town__rest-heal town__rest-heal--hp"><GameIcon name="red-heart" /> +{restResult.hpHealed} HP</span>
                 )}
                 {restResult.mpHealed > 0 && (
-                  <span className="town__rest-heal town__rest-heal--mp">💙 +{restResult.mpHealed} MP</span>
+                  <span className="town__rest-heal town__rest-heal--mp"><GameIcon name="blue-heart" /> +{restResult.mpHealed} MP</span>
                 )}
               </>
             ) : (
               <>
-                <span className="town__rest-icon">🏕️</span>
+                <span className="town__rest-icon"><GameIcon name="camping" /></span>
                 <span className="town__rest-text">Odpoczywasz przy ognisku...</span>
                 <div className="town__rest-progress">
                   <div className="town__rest-progress-fill" />

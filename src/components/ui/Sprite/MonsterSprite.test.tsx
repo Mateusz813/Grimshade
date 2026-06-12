@@ -29,7 +29,7 @@ afterEach(() => {
 describe('MonsterSprite', () => {
     it('renders <img> with exact-level monster artwork', () => {
         const { container } = render(
-            <MonsterSprite level={5} sprite="👾" name="Slime" />,
+            <MonsterSprite level={5} sprite="alien-monster" name="Slime" />,
         );
         const img = container.querySelector('img');
         expect(img).toBeTruthy();
@@ -39,7 +39,7 @@ describe('MonsterSprite', () => {
 
     it('falls back to nearest-tier art when exact level missing', () => {
         const { container } = render(
-            <MonsterSprite level={55} sprite="👾" />,
+            <MonsterSprite level={55} sprite="alien-monster" />,
         );
         const img = container.querySelector('img');
         expect(img?.getAttribute('src')).toBe('/monsters/monster-50.png');
@@ -47,19 +47,19 @@ describe('MonsterSprite', () => {
 
     it('renders emoji fallback when neither exact nor nearest URL available', () => {
         const { container } = render(
-            <MonsterSprite level={999} sprite="👹" />,
+            <MonsterSprite level={999} sprite="ogre" />,
         );
         expect(container.querySelector('img')).toBeNull();
         const span = container.querySelector('span');
-        expect(span?.textContent).toBe('👹');
+        expect(span?.textContent).toBe('ogre');
         // aria-hidden because the emoji is decorative.
         expect(span?.getAttribute('aria-hidden')).toBe('true');
     });
 
-    it('renders default 👾 glyph when sprite is missing entirely', () => {
+    it('renders default :alien-monster: glyph when sprite is missing entirely', () => {
         const { container } = render(<MonsterSprite level={999} />);
         const span = container.querySelector('span');
-        expect(span?.textContent).toBe('👾');
+        expect(span?.textContent).toBe('alien-monster');
     });
 
     it('applies fill styling (100% width/height) by default', () => {
@@ -83,7 +83,7 @@ describe('MonsterSprite', () => {
 describe('BossSprite', () => {
     it('renders exact-level boss artwork', () => {
         const { container } = render(
-            <BossSprite level={100} sprite="👹" name="Demon Lord" />,
+            <BossSprite level={100} sprite="ogre" name="Demon Lord" />,
         );
         const img = container.querySelector('img');
         expect(img?.getAttribute('src')).toBe('/boss/boss-100.png');
@@ -91,14 +91,14 @@ describe('BossSprite', () => {
     });
 
     it('falls back to nearest-tier boss art', () => {
-        const { container } = render(<BossSprite level={92} sprite="👹" />);
+        const { container } = render(<BossSprite level={92} sprite="ogre" />);
         const img = container.querySelector('img');
         expect(img?.getAttribute('src')).toBe('/boss/boss-100.png');
     });
 
     it('renders emoji fallback when nothing matches', () => {
-        const { container } = render(<BossSprite level={1} sprite="🐉" />);
+        const { container } = render(<BossSprite level={1} sprite="dragon" />);
         expect(container.querySelector('img')).toBeNull();
-        expect(container.querySelector('span')?.textContent).toBe('🐉');
+        expect(container.querySelector('span')?.textContent).toBe('dragon');
     });
 });

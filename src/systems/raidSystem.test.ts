@@ -10,7 +10,7 @@ import {
 } from './raidSystem';
 import type { IRaid, IRaidMemberState } from '../types/raid';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const makeMember = (id: string = 'm1'): IRaidMemberState => ({
     id,
@@ -30,7 +30,7 @@ const makeMember = (id: string = 'm1'): IRaidMemberState => ({
     transformTier: 0,
 });
 
-// ── getRaidWaveCount ─────────────────────────────────────────────────────────
+// -- getRaidWaveCount ---------------------------------------------------------
 
 describe('getRaidWaveCount', () => {
     it('returns 1 for raids lvl ≤ 10', () => {
@@ -70,7 +70,7 @@ describe('getRaidWaveCount', () => {
     });
 });
 
-// ── getAllRaids ──────────────────────────────────────────────────────────────
+// -- getAllRaids --------------------------------------------------------------
 
 describe('getAllRaids', () => {
     it('returns at least one raid', () => {
@@ -121,7 +121,7 @@ describe('getAllRaids', () => {
     });
 });
 
-// ── getRaidById ──────────────────────────────────────────────────────────────
+// -- getRaidById --------------------------------------------------------------
 
 describe('getRaidById', () => {
     it('returns null for non-existent id', () => {
@@ -142,7 +142,7 @@ describe('getRaidById', () => {
     });
 });
 
-// ── estimateRaidRewards ──────────────────────────────────────────────────────
+// -- estimateRaidRewards ------------------------------------------------------
 
 describe('estimateRaidRewards', () => {
     it('returns goldMin <= goldMax', () => {
@@ -179,7 +179,7 @@ describe('estimateRaidRewards', () => {
     });
 });
 
-// ── generateWaveBosses ───────────────────────────────────────────────────────
+// -- generateWaveBosses -------------------------------------------------------
 
 describe('generateWaveBosses', () => {
     const raid: IRaid = getAllRaids()[0];
@@ -252,7 +252,7 @@ describe('generateWaveBosses', () => {
     });
 });
 
-// ── rollMemberRewards ────────────────────────────────────────────────────────
+// -- rollMemberRewards --------------------------------------------------------
 
 describe('rollMemberRewards', () => {
     let randomSpy: ReturnType<typeof vi.spyOn>;
@@ -269,7 +269,7 @@ describe('rollMemberRewards', () => {
     it('returns 0 XP / 0 gold when 0 bosses defeated', () => {
         const raid = getAllRaids()[0];
         const result = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: 0 });
-        // No bosses defeated AND no completion bonus → 0 across the board
+        // No bosses defeated AND no completion bonus -> 0 across the board
         // (cleared check is bossesDefeated >= waves*4; 0 fails that).
         expect(result.xp).toBe(0);
         expect(result.gold).toBe(0);
@@ -380,7 +380,7 @@ describe('rollMemberRewards', () => {
     });
 });
 
-// ── todayIso ─────────────────────────────────────────────────────────────────
+// -- todayIso -----------------------------------------------------------------
 
 describe('todayIso', () => {
     it('returns YYYY-MM-DD format', () => {

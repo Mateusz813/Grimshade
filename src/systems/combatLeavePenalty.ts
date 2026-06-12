@@ -1,4 +1,4 @@
-// ── URL-leave / tab-close death penalty ───────────────────────────────────────
+// -- URL-leave / tab-close death penalty ---------------------------------------
 //
 // Shared helper used by Dungeon, Boss, Raid and Transform views. When the
 // player navigates away mid-combat (back button, direct URL change, page
@@ -29,13 +29,13 @@ import { supabase } from '../lib/supabase';
 // surface in sync with what callers can legitimately pass.
 export type TLeaveSource = 'monster' | 'dungeon' | 'boss' | 'raid' | 'transform';
 
-// ── Supabase env (cached) ─────────────────────────────────────────────────────
+// -- Supabase env (cached) -----------------------------------------------------
 // Read once at module load so the keepalive PATCH below can fire synchronously
 // during a `beforeunload` event without paying for any module/import work.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// ── Access-token cache ────────────────────────────────────────────────────────
+// -- Access-token cache --------------------------------------------------------
 // `supabase.auth.getSession()` is async — useless inside a `beforeunload`
 // handler where the page is already navigating. We mirror the access token
 // to a module-level variable so the keepalive PATCH below can read it
@@ -131,7 +131,7 @@ export const applyCombatLeaveDeath = ({
     // navigation happens to be a tab-close (where async saves get killed).
     saveCurrentCharacterStoresSync();
 
-    // ── Persist the level/XP loss to Supabase (the canonical source) ────────
+    // -- Persist the level/XP loss to Supabase (the canonical source) --------
     // CRITICAL anti-cheat step. The local store + localStorage updates above
     // are NOT enough — on next page load `App.tsx` calls
     // `characterApi.getCharacters()` which reads the canonical `characters`

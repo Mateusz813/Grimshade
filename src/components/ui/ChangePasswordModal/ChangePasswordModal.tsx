@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authApi } from '../../../api/v1/authApi';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './ChangePasswordModal.scss';
 
 interface IChangePasswordModalProps {
@@ -34,7 +35,7 @@ type IChangePasswordForm = z.infer<ReturnType<typeof getChangePasswordSchema>>;
  * success it swaps the form for a success toast and auto-closes.
  *
  * Supabase changes the password of the CURRENT session (authApi.updatePassword
- * → supabase.auth.updateUser) — no current password is required, just a live
+ * -> supabase.auth.updateUser) — no current password is required, just a live
  * session.
  */
 const ChangePasswordModal = ({ onClose }: IChangePasswordModalProps) => {
@@ -96,7 +97,7 @@ const ChangePasswordModal = ({ onClose }: IChangePasswordModalProps) => {
       >
         {done ? (
           <div className="change-password__toast" role="status">
-            <span className="change-password__toast-icon">✅</span>
+            <span className="change-password__toast-icon"><GameIcon name="check-mark-button" /></span>
             <span>Hasło zmienione pomyślnie</span>
           </div>
         ) : (

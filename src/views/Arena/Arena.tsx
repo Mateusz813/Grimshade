@@ -8,6 +8,7 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import { STONE_ICONS } from '../../systems/itemSystem';
 import { getPotionImage } from '../../systems/spriteAssets';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import { characterApi } from '../../api/v1/characterApi';
 import { supabase } from '../../lib/supabase';
 import {
@@ -234,27 +235,27 @@ const Arena = () => {
                 style={{ '--league-color': leagueColor } as React.CSSProperties}
             >
                 <div className="arena__league-row">
-                    <span className="arena__league-icon">{leagueIcon}</span>
+                    <span className="arena__league-icon"><GameIcon name={leagueIcon} /></span>
                     <span className="arena__league-name">Liga {leagueLabel}</span>
-                    <span className="arena__league-ap">🏅 {arenaPoints.toLocaleString('pl-PL')} AP</span>
+                    <span className="arena__league-ap"><GameIcon name="sports-medal" /> {arenaPoints.toLocaleString('pl-PL')} AP</span>
                 </div>
                 <div className="arena__league-meta-block">
                     <div className="arena__league-meta arena__league-meta--num">Liga nr: {arenaIdNumeric}</div>
                 </div>
                 <div className="arena__league-countdown">
-                    ⏳ Sezon kończy się za: {formatSeasonRemaining(seasonMs)}
+                    <GameIcon name="hourglass-not-done" /> Sezon kończy się za: {formatSeasonRemaining(seasonMs)}
                 </div>
                 <div className="arena__league-actions">
-                    <button className="arena__action-chip" onClick={() => setRewardsOpen(true)}>🎁 Nagrody</button>
+                    <button className="arena__action-chip" onClick={() => setRewardsOpen(true)}><GameIcon name="wrapped-gift" /> Nagrody</button>
                     <button className="arena__action-chip" onClick={() => setLogOpen(true)}>
-                        📜 Historia ({matchLog.length})
+                        <GameIcon name="scroll" /> Historia ({matchLog.length})
                     </button>
                     {pendingRewards && isMonday && (
                         <button
                             className="arena__action-chip arena__action-chip--claim"
                             onClick={onClaimRewards}
                         >
-                            🏆 Odbierz nagrody (poprzedni sezon)
+                            <GameIcon name="trophy" /> Odbierz nagrody (poprzedni sezon)
                         </button>
                     )}
                 </div>
@@ -287,7 +288,7 @@ const Arena = () => {
                     disabled={attemptsRemaining() <= 0}
                     title={attemptsRemaining() > 0 ? 'Wybierz przeciwnika' : 'Brak ataków na dziś'}
                 >
-                    ⚔️ Walcz
+                    <GameIcon name="crossed-swords" /> Walcz
                 </button>
             </div>
 
@@ -327,7 +328,7 @@ const Arena = () => {
                         if (!promoRendered && promoteCutoff !== null && entry.rank > promoteCutoff) {
                             dividers.push(
                                 <div key={`promo-${idx}`} className="arena__divider arena__divider--promo">
-                                    ⬆ Awans do wyższej ligi
+                                    <GameIcon name="up-arrow" /> Awans do wyższej ligi
                                 </div>,
                             );
                             promoRendered = true;
@@ -337,7 +338,7 @@ const Arena = () => {
                         if (!relegRendered && relegateStartRank !== null && entry.rank >= relegateStartRank) {
                             dividers.push(
                                 <div key={`relegate-${idx}`} className="arena__divider arena__divider--relegate">
-                                    ⬇ Spadek do niższej ligi
+                                    <GameIcon name="down-arrow" /> Spadek do niższej ligi
                                 </div>,
                             );
                             relegRendered = true;
@@ -357,9 +358,9 @@ const Arena = () => {
                                 {/* Top-3 wear a medal in front of the rank
                                     chip. Lower ranks just show the number. */}
                                 <span className="arena__row-rank">
-                                    {entry.rank === 1 && <span className="arena__row-medal">🥇</span>}
-                                    {entry.rank === 2 && <span className="arena__row-medal">🥈</span>}
-                                    {entry.rank === 3 && <span className="arena__row-medal">🥉</span>}
+                                    {entry.rank === 1 && <span className="arena__row-medal"><GameIcon name="1st-place-medal" /></span>}
+                                    {entry.rank === 2 && <span className="arena__row-medal"><GameIcon name="2nd-place-medal" /></span>}
+                                    {entry.rank === 3 && <span className="arena__row-medal"><GameIcon name="3rd-place-medal" /></span>}
                                     #{entry.rank}
                                 </span>
                                 <span className="arena__row-avatar">
@@ -380,7 +381,7 @@ const Arena = () => {
                                         className="arena__row-attack"
                                         onClick={() => handleAttack(currentArena.competitors.indexOf(c))}
                                     >
-                                        ⚔️ Atak
+                                        <GameIcon name="crossed-swords" /> Atak
                                     </button>
                                 ) : (
                                     <span style={{ width: 60 }} aria-hidden="true" />
@@ -397,7 +398,7 @@ const Arena = () => {
                 <div className="arena__modal-bg" onClick={() => setRewardsOpen(false)}>
                     <div className="arena__modal" onClick={(e) => e.stopPropagation()}>
                         <div className="arena__modal-head">
-                            <span className="arena__modal-title">🎁 Nagrody — {leagueLabel}</span>
+                            <span className="arena__modal-title"><GameIcon name="wrapped-gift" /> Nagrody — {leagueLabel}</span>
                             <button className="arena__modal-close" onClick={() => setRewardsOpen(false)}>×</button>
                         </div>
                         {getRewardBuckets().map((b) => {
@@ -405,56 +406,56 @@ const Arena = () => {
                             // Medal glyph for the top 3 positions: gold / silver
                             // / bronze. Lower buckets show no medal — the rank
                             // chip alone is enough chrome.
-                            const medal = b.positionLabel === '1' ? '🥇'
-                                : b.positionLabel === '2' ? '🥈'
-                                : b.positionLabel === '3' ? '🥉'
+                            const medal = b.positionLabel === '1' ? '1st-place-medal'
+                                : b.positionLabel === '2' ? '2nd-place-medal'
+                                : b.positionLabel === '3' ? '3rd-place-medal'
                                 : null;
                             return (
                                 <div key={b.positionLabel} className="arena__reward-row">
                                     <span className="arena__reward-pos">
-                                        {medal && <span className="arena__reward-medal">{medal}</span>}
+                                        {medal && <span className="arena__reward-medal"><GameIcon name={medal} /></span>}
                                         #{b.positionLabel}
                                     </span>
                                     <span className="arena__reward-line">
                                         <span className="arena__reward-chip arena__reward-chip--ap">
-                                            🏅 {scaled.arenaPoints.toLocaleString('pl-PL')} AP
+                                            <GameIcon name="sports-medal" /> {scaled.arenaPoints.toLocaleString('pl-PL')} AP
                                         </span>
                                         <span className="arena__reward-chip arena__reward-chip--gold">
-                                            💰 {formatGoldShort(scaled.gold)}
+                                            <GameIcon name="money-bag" /> {formatGoldShort(scaled.gold)}
                                         </span>
                                         {scaled.mythicStones > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--mythic">
-                                                <TinyIcon icon={STONE_ICONS.mythic_stone ?? '💎'} size="sm" /> {scaled.mythicStones} mythic
+                                                <TinyIcon icon={STONE_ICONS.mythic_stone ?? 'gem-stone'} size="sm" /> {scaled.mythicStones} mythic
                                             </span>
                                         )}
                                         {scaled.legendaryStones > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--legendary">
-                                                <TinyIcon icon={STONE_ICONS.legendary_stone ?? '💎'} size="sm" /> {scaled.legendaryStones} legendary
+                                                <TinyIcon icon={STONE_ICONS.legendary_stone ?? 'gem-stone'} size="sm" /> {scaled.legendaryStones} legendary
                                             </span>
                                         )}
                                         {scaled.epicStones > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--epic">
-                                                <TinyIcon icon={STONE_ICONS.epic_stone ?? '💎'} size="sm" /> {scaled.epicStones} epic
+                                                <TinyIcon icon={STONE_ICONS.epic_stone ?? 'gem-stone'} size="sm" /> {scaled.epicStones} epic
                                             </span>
                                         )}
                                         {scaled.rareStones > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--rare">
-                                                <TinyIcon icon={STONE_ICONS.rare_stone ?? '💎'} size="sm" /> {scaled.rareStones} rare
+                                                <TinyIcon icon={STONE_ICONS.rare_stone ?? 'gem-stone'} size="sm" /> {scaled.rareStones} rare
                                             </span>
                                         )}
                                         {scaled.commonStones > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--common">
-                                                <TinyIcon icon={STONE_ICONS.common_stone ?? '💎'} size="sm" /> {scaled.commonStones} common
+                                                <TinyIcon icon={STONE_ICONS.common_stone ?? 'gem-stone'} size="sm" /> {scaled.commonStones} common
                                             </span>
                                         )}
                                         {scaled.pctHpPotion > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--hp">
-                                                <TinyIcon icon={getPotionImage('hp_potion_great') ?? '❤️'} size="sm" /> ×{scaled.pctHpPotion}
+                                                <TinyIcon icon={getPotionImage('hp_potion_great') ?? 'red-heart'} size="sm" /> ×{scaled.pctHpPotion}
                                             </span>
                                         )}
                                         {scaled.pctMpPotion > 0 && (
                                             <span className="arena__reward-chip arena__reward-chip--mp">
-                                                <TinyIcon icon={getPotionImage('mp_potion_great') ?? '💧'} size="sm" /> ×{scaled.pctMpPotion}
+                                                <TinyIcon icon={getPotionImage('mp_potion_great') ?? 'droplet'} size="sm" /> ×{scaled.pctMpPotion}
                                             </span>
                                         )}
                                     </span>
@@ -470,7 +471,7 @@ const Arena = () => {
                 <div className="arena__modal-bg" onClick={() => setLogOpen(false)}>
                     <div className="arena__modal" onClick={(e) => e.stopPropagation()}>
                         <div className="arena__modal-head">
-                            <span className="arena__modal-title">📜 Historia walk</span>
+                            <span className="arena__modal-title"><GameIcon name="scroll" /> Historia walk</span>
                             <button className="arena__modal-close" onClick={() => setLogOpen(false)}>×</button>
                         </div>
                         {matchLog.length === 0 ? (
@@ -480,7 +481,7 @@ const Arena = () => {
                                 key={m.id}
                                 className={`arena__log-row ${m.won ? 'arena__log-row--won' : 'arena__log-row--lost'}`}
                             >
-                                <span>{m.won ? '✅' : '❌'}</span>
+                                <span>{m.won ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}</span>
                                 <span>vs {m.opponentName} ({m.opponentClass} L{m.opponentLevel})</span>
                                 <span style={{ color: '#ffd54f' }}>+{m.arenaPointsDelta} AP</span>
                                 <span style={{ color: '#66bb6a' }}>+{m.leaguePointsDelta} LP</span>
@@ -490,7 +491,7 @@ const Arena = () => {
                 </div>
             )}
 
-            {/* Entry-to-fight overlay — fades from transparent → solid
+            {/* Entry-to-fight overlay — fades from transparent -> solid
                 black over 1.5s, then routes to /arena/match. Click anywhere
                 to skip and go immediately. The match view then plays its
                 own fade-in from black for a continuous transition. */}
@@ -512,7 +513,7 @@ const Arena = () => {
                 <div className="arena__modal-bg" onClick={() => setFightOpen(false)}>
                     <div className="arena__modal" onClick={(e) => e.stopPropagation()}>
                         <div className="arena__modal-head">
-                            <span className="arena__modal-title">⚔️ Wybierz przeciwnika</span>
+                            <span className="arena__modal-title"><GameIcon name="crossed-swords" /> Wybierz przeciwnika</span>
                             <button className="arena__modal-close" onClick={() => setFightOpen(false)}>×</button>
                         </div>
                         {attackableOrigIdx.length === 0 ? (
@@ -546,7 +547,7 @@ const Arena = () => {
                                         </span>
                                     </div>
                                     <span className="arena__row-points">{c.leaguePoints} LP</span>
-                                    <span className="arena__row-attack">⚔️ Atak</span>
+                                    <span className="arena__row-attack"><GameIcon name="crossed-swords" /> Atak</span>
                                 </div>
                             );
                         })}

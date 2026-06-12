@@ -21,7 +21,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Auth › Register', { tag: '@auth' }, () => {
-    test('rejects password mismatch → renders inline error + no signup', async ({ page }) => {
+    test('rejects password mismatch -> renders inline error + no signup', async ({ page }) => {
         await page.goto('/register');
 
         await expect(page.locator('input[type="email"]')).toBeVisible();

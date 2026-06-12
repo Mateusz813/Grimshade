@@ -9,13 +9,13 @@ import { MemoryRouter } from 'react-router-dom';
  * paginates 100/page.
  *
  * Coverage:
- *   • Smoke: root + filter row mount.
- *   • Spinner mounts before data resolves.
- *   • Empty payload renders the "Brak zapisanych śmierci" copy.
- *   • Populated payload renders one <li> per record.
- *   • Filter click switches the active filter chip.
- *   • Counts per filter render the row totals.
- *   • Pagination row appears when items > 100.
+ *   - Smoke: root + filter row mount.
+ *   - Spinner mounts before data resolves.
+ *   - Empty payload renders the "Brak zapisanych śmierci" copy.
+ *   - Populated payload renders one <li> per record.
+ *   - Filter click switches the active filter chip.
+ *   - Counts per filter render the row totals.
+ *   - Pagination row appears when items > 100.
  */
 
 vi.mock('../../api/v1/deathsApi', () => ({
@@ -132,9 +132,9 @@ describe('Deaths — load states', () => {
     // then a real-DB raid insert is rejected, so the raid-badge RENDERING is
     // covered HERE at the component level instead — deterministic, no DB.
     //
-    // SOURCE_META.raid → { label: 'Rajd', icon: '⚔️' } (Deaths.tsx line 50).
+    // SOURCE_META.raid -> { label: 'Rajd', icon: 'crossed-swords' } (Deaths.tsx line 50).
     // This asserts a source='raid' row renders the 'Rajd' badge so the feed's
-    // source→badge mapping for raid is regression-guarded regardless of the
+    // source->badge mapping for raid is regression-guarded regardless of the
     // DB constraint state. When the migration lands, the E2E parametrization
     // can re-add the 'raid' case for full end-to-end depth.
     it('renders the "Rajd" badge for a source="raid" death row', async () => {

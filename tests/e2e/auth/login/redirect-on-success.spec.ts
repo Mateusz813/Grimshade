@@ -4,14 +4,14 @@
  * Setup state:  fresh anonymous browser context.
  * One action:   wypełnij formularz prawdziwymi credentials + tap submit.
  * One outcome:  URL === `/character-select` (router widzi nową
- *               session + brak character-a → redirect chain
- *               `/login → / → /character-select`).
+ *               session + brak character-a -> redirect chain
+ *               `/login -> / -> /character-select`).
  *
  * Dlaczego nie sprawdzamy że trafiamy bezpośrednio na Town:
  * konto `test@grimshade.pl` jest świeże i nie ma jeszcze postaci
  * stworzonej w `characters` table. Po loginie `useCharacterStore`
- * ładuje pustą listę → AppRouter `/` route widzi `character === null`
- * → `<Navigate to="/character-select" />`. To jest UPRAWNIONY happy
+ * ładuje pustą listę -> AppRouter `/` route widzi `character === null`
+ * -> `<Navigate to="/character-select" />`. To jest UPRAWNIONY happy
  * path "user-bez-postaci": pokazuje że logowanie + session bootstrap
  * + redirect router działają end-to-end.
  *
@@ -25,7 +25,7 @@ import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
 
 test.describe('Auth › Login', { tag: '@auth' }, () => {
-    test('happy path: valid credentials → /character-select', async ({ page }) => {
+    test('happy path: valid credentials -> /character-select', async ({ page }) => {
         await page.goto('/login');
 
         // Sanity — formularz wyrenderował się, zanim w niego klikniemy
@@ -44,7 +44,7 @@ test.describe('Auth › Login', { tag: '@auth' }, () => {
         // zadziałał (emulowany jako tap) ale explicit tap jest czytelniejszy.
         await page.getByRole('button', { name: /zaloguj/i }).tap();
 
-        // Redirect chain `/login → / → /character-select` przez Supabase API call —
+        // Redirect chain `/login -> / -> /character-select` przez Supabase API call —
         // daję 15s żeby zmieścić sieć produkcyjnej Supabase.
         await expect(page).toHaveURL(/\/character-select$/, { timeout: 15_000 });
 

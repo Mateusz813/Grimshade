@@ -13,7 +13,7 @@ import {
 import { RARITY_BONUS_SLOTS } from './itemSystem';
 import type { IInventoryItem, Rarity, EquipmentSlot } from './itemSystem';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 /**
  * Pin Math.random() to a deterministic value so every test sees the same roll.
@@ -32,7 +32,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ── generateWeapon ───────────────────────────────────────────────────────────
+// -- generateWeapon -----------------------------------------------------------
 
 describe('generateWeapon', () => {
     beforeEach(() => {
@@ -76,13 +76,13 @@ describe('generateWeapon', () => {
         expect(heroic.bonuses['dmg_max']).toBeGreaterThan(common.bonuses['dmg_max']);
     });
 
-    it('rarity → bonus count: common = 0 bonus stats (apart from dmg_min/max)', () => {
+    it('rarity -> bonus count: common = 0 bonus stats (apart from dmg_min/max)', () => {
         const item = generateWeapon('sword', 5, 'common')!;
         const bonusKeys = Object.keys(item.bonuses).filter((k) => k !== 'dmg_min' && k !== 'dmg_max');
         expect(bonusKeys.length).toBe(RARITY_BONUS_SLOTS.common);
     });
 
-    it('rarity → bonus count: heroic should add up to 5 random bonuses', () => {
+    it('rarity -> bonus count: heroic should add up to 5 random bonuses', () => {
         const item = generateWeapon('sword', 5, 'heroic')!;
         const bonusKeys = Object.keys(item.bonuses).filter((k) => k !== 'dmg_min' && k !== 'dmg_max');
         // Pool excludes 'attack' so max possible bonuses = pool size (6). For
@@ -104,7 +104,7 @@ describe('generateWeapon', () => {
     });
 });
 
-// ── generateOffhand ──────────────────────────────────────────────────────────
+// -- generateOffhand ----------------------------------------------------------
 
 describe('generateOffhand', () => {
     beforeEach(() => {
@@ -145,7 +145,7 @@ describe('generateOffhand', () => {
     });
 });
 
-// ── generateArmor ────────────────────────────────────────────────────────────
+// -- generateArmor ------------------------------------------------------------
 
 describe('generateArmor', () => {
     beforeEach(() => {
@@ -193,7 +193,7 @@ describe('generateArmor', () => {
     });
 });
 
-// ── generateAccessory ────────────────────────────────────────────────────────
+// -- generateAccessory --------------------------------------------------------
 
 describe('generateAccessory', () => {
     beforeEach(() => {
@@ -220,7 +220,7 @@ describe('generateAccessory', () => {
     });
 });
 
-// ── generateRandomItem / generateRandomItemForClass ──────────────────────────
+// -- generateRandomItem / generateRandomItemForClass --------------------------
 
 describe('generateRandomItemForClass', () => {
     afterEach(() => {
@@ -229,7 +229,7 @@ describe('generateRandomItemForClass', () => {
 
     it('returns a valid item shape for each class', () => {
         // Use a Math.random value of 0.5 so we land in the "armor" category
-        // (weights: 0.20 + 0.15 + 0.45 → cumulative through 0.80 covers armor).
+        // (weights: 0.20 + 0.15 + 0.45 -> cumulative through 0.80 covers armor).
         lockRandom(0.5);
         for (const cls of ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard']) {
             const item = generateRandomItemForClass(cls, 10, 'common');
@@ -240,7 +240,7 @@ describe('generateRandomItemForClass', () => {
     });
 
     it('class restriction: routes to weapon category and respects allowedClasses', () => {
-        // First Math.random() call picks the category (0.1 → 'weapon')
+        // First Math.random() call picks the category (0.1 -> 'weapon')
         // Subsequent calls used internally by generateWeapon — all kept at 0.5.
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.1)
@@ -252,8 +252,8 @@ describe('generateRandomItemForClass', () => {
     });
 
     it('class restriction: armor prefix matches CLASS_ARMOR_TYPES mapping', () => {
-        // 0.5 → armor category (after cumulative weapon+offhand+armor → 0.80).
-        // Then 0 → first armor slot in ARMOR_SLOTS = 'helmet'.
+        // 0.5 -> armor category (after cumulative weapon+offhand+armor -> 0.80).
+        // Then 0 -> first armor slot in ARMOR_SLOTS = 'helmet'.
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.5)
             .mockReturnValueOnce(0)
@@ -265,7 +265,7 @@ describe('generateRandomItemForClass', () => {
 
     it('returns null when no armor category matches the class', () => {
         // Force 'armor' category (0.5 within 0.35-0.80 window) but pass a
-        // class that no armor category accepts → should be null.
+        // class that no armor category accepts -> should be null.
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.5)
             .mockReturnValue(0.5);
@@ -293,7 +293,7 @@ describe('generateRandomItem', () => {
     });
 });
 
-// ── generateStarterWeapon ────────────────────────────────────────────────────
+// -- generateStarterWeapon ----------------------------------------------------
 
 describe('generateStarterWeapon', () => {
     beforeEach(() => {
@@ -318,7 +318,7 @@ describe('generateStarterWeapon', () => {
     });
 
     it('Knight starter weapon = sword_of_beginnings-equivalent DMG range', () => {
-        // baseAtk=11 → dmg_min = floor(11 * 0.8) = 8 ; dmg_max = floor(11 * 1.2) = 13.
+        // baseAtk=11 -> dmg_min = floor(11 * 0.8) = 8 ; dmg_max = floor(11 * 1.2) = 13.
         const w = generateStarterWeapon('Knight')!;
         expect(w.bonuses['dmg_min']).toBe(8);
         expect(w.bonuses['dmg_max']).toBe(13);
@@ -331,7 +331,7 @@ describe('generateStarterWeapon', () => {
     });
 });
 
-// ── getItemDisplayInfo ───────────────────────────────────────────────────────
+// -- getItemDisplayInfo -------------------------------------------------------
 
 describe('getItemDisplayInfo', () => {
     it('returns weapon display info for a generated itemId', () => {
@@ -378,7 +378,7 @@ describe('getItemDisplayInfo', () => {
     });
 });
 
-// ── rerollItemBonuses ────────────────────────────────────────────────────────
+// -- rerollItemBonuses --------------------------------------------------------
 
 describe('rerollItemBonuses', () => {
     beforeEach(() => {
@@ -439,7 +439,7 @@ describe('rerollItemBonuses', () => {
             bonuses: { dmg_min: 10, dmg_max: 20, hp: 50 },
         });
         const result = rerollItemBonuses(item, 'mainHand');
-        // common has 0 bonus slots → only base keys remain
+        // common has 0 bonus slots -> only base keys remain
         const nonBaseKeys = Object.keys(result).filter(
             (k) => !['dmg_min', 'dmg_max', 'attack', 'defense'].includes(k),
         );
@@ -447,9 +447,9 @@ describe('rerollItemBonuses', () => {
     });
 });
 
-// ── Cross-cutting: rarity → bonus count mapping ──────────────────────────────
+// -- Cross-cutting: rarity -> bonus count mapping ------------------------------
 
-describe('rarity → bonus count mapping', () => {
+describe('rarity -> bonus count mapping', () => {
     afterEach(() => {
         vi.restoreAllMocks();
     });
@@ -474,7 +474,7 @@ describe('rarity → bonus count mapping', () => {
     });
 });
 
-// ── TODO ─────────────────────────────────────────────────────────────────────
+// -- TODO ---------------------------------------------------------------------
 // TODO(line ~340): cross-check upgrade bonus scaling formula. CLAUDE.md says
 // "each +1 = ~8% per CLAUDE.md" but the codebase actually uses an exponential
 // curve in `getEnhancementMultiplier` (1.15^level for +1..+10). Tests for

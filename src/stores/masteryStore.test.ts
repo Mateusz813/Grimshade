@@ -10,7 +10,7 @@ import {
     getMasteryGoldMultiplier,
 } from './masteryStore';
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
+// -- Mocks --------------------------------------------------------------------
 // `masteryStore` dynamically imports `questStore` (to refresh quest progress
 // on mastery level-ups) and `characterStore` + `characterApi` (to push the
 // mastery_points sum to the leaderboard). Both are best-effort and offline-
@@ -38,13 +38,13 @@ vi.mock('../api/v1/characterApi', () => ({
     },
 }));
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
 };
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
 describe('masteryStore — constants', () => {
     it('MASTERY_KILL_THRESHOLD is 5000', () => {
@@ -123,10 +123,10 @@ describe('masteryStore — addMasteryKills', () => {
     });
 
     it('requires more kills per level as mastery climbs (5000 * (lvl+1))', () => {
-        // Level 0 → 1 needs 5000 kills
+        // Level 0 -> 1 needs 5000 kills
         useMasteryStore.getState().addMasteryKills('rat', MASTERY_KILL_THRESHOLD);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(1);
-        // Level 1 → 2 needs 5000 * 2 = 10000 kills
+        // Level 1 -> 2 needs 5000 * 2 = 10000 kills
         useMasteryStore.getState().addMasteryKills('rat', MASTERY_KILL_THRESHOLD * 2);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(2);
         expect(useMasteryStore.getState().getMasteryKills('rat')).toBe(0);
@@ -150,7 +150,7 @@ describe('masteryStore — addMasteryKills', () => {
             masteries: { rat: { level: 24 } },
             masteryKills: { rat: 0 },
         });
-        // Level 24 → 25 needs 5000 * 25 = 125000 kills
+        // Level 24 -> 25 needs 5000 * 25 = 125000 kills
         useMasteryStore.getState().addMasteryKills('rat', 5000 * 25 + 999);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(MASTERY_MAX_LEVEL);
         // At max level the carry-over is discarded (kills set to 0)
@@ -171,7 +171,7 @@ describe('masteryStore — addMasteryLevel (deprecated direct level bump)', () =
         resetStore();
     });
 
-    it('increments level by 1 from 0 → 1', () => {
+    it('increments level by 1 from 0 -> 1', () => {
         useMasteryStore.getState().addMasteryLevel('rat');
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(1);
     });
@@ -234,7 +234,7 @@ describe('masteryStore — getMasteryProgress', () => {
         const p = useMasteryStore.getState().getMasteryProgress('rat');
         expect(p.level).toBe(3);
         expect(p.kills).toBe(500);
-        // level 3 → 4 needs 5000 * 4 = 20000 kills
+        // level 3 -> 4 needs 5000 * 4 = 20000 kills
         expect(p.required).toBe(MASTERY_KILL_THRESHOLD * 4);
     });
 

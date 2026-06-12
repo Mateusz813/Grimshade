@@ -1,5 +1,5 @@
 /**
- * Online ↔ Offline transition helpers.
+ * Online <-> Offline transition helpers.
  *
  * 2026-05-20 spec: every offline-mode entry MUST capture a "trusted
  * baseline" snapshot of the player's stats + full store blob at the
@@ -148,10 +148,10 @@ export const computeOfflineDelta = (snap: IOfflineSnapshot): IOfflineDelta | nul
         reasons.push(`+${levelGained} levels w jednej sesji offline`);
     }
     if (snap.gold > 0 && liveGold > snap.gold * ABSURD_GOLD_MULT) {
-        reasons.push(`gold ${snap.gold} → ${liveGold} (×${(liveGold / snap.gold).toFixed(1)})`);
+        reasons.push(`gold ${snap.gold} -> ${liveGold} (×${(liveGold / snap.gold).toFixed(1)})`);
     }
     if (snap.itemCount > 0 && liveItemCount > snap.itemCount * ABSURD_ITEM_MULT) {
-        reasons.push(`itemy ${snap.itemCount} → ${liveItemCount} (×${(liveItemCount / snap.itemCount).toFixed(1)})`);
+        reasons.push(`itemy ${snap.itemCount} -> ${liveItemCount} (×${(liveItemCount / snap.itemCount).toFixed(1)})`);
     }
     return {
         levelGained,

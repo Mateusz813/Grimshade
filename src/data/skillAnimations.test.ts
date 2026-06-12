@@ -8,9 +8,9 @@
  * emoji glyph.
  *
  * Public exports:
- *   • SKILL_ANIMATIONS    — the raw map (used directly by the combat
+ *   - SKILL_ANIMATIONS    — the raw map (used directly by the combat
  *                           overlay component for static lookups).
- *   • getSkillAnimation   — safe resolver; returns undefined when
+ *   - getSkillAnimation   — safe resolver; returns undefined when
  *                           the id isn't known.
  *
  * We assert structural invariants on the registry (so a stray
@@ -30,7 +30,7 @@ const VALID_CATEGORIES: SkillAnimCategory[] = [
     'arrow', 'music', 'arcane', 'poison', 'buff', 'summon',
 ];
 
-// ── SKILL_ANIMATIONS structural invariants ──────────────────────────────────
+// -- SKILL_ANIMATIONS structural invariants ----------------------------------
 
 describe('SKILL_ANIMATIONS', () => {
     it('every entry uses one of the 12 documented categories', () => {
@@ -65,7 +65,7 @@ describe('SKILL_ANIMATIONS', () => {
     });
 });
 
-// ── Per-class coverage (spot checks) ────────────────────────────────────────
+// -- Per-class coverage (spot checks) ----------------------------------------
 
 describe('SKILL_ANIMATIONS coverage', () => {
     it('includes signature Knight skills with the documented categories', () => {
@@ -92,14 +92,14 @@ describe('SKILL_ANIMATIONS coverage', () => {
     });
 });
 
-// ── getSkillAnimation resolver ──────────────────────────────────────────────
+// -- getSkillAnimation resolver ----------------------------------------------
 
 describe('getSkillAnimation', () => {
     it('returns the matching animation for a known id', () => {
         const a = getSkillAnimation('fireball');
         expect(a).toBeDefined();
         expect(a?.category).toBe('fire');
-        expect(a?.emoji).toBe('🔥');
+        expect(a?.emoji).toBe('fire');
     });
 
     it('is the SAME reference as SKILL_ANIMATIONS[id]', () => {

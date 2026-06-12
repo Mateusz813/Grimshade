@@ -8,9 +8,9 @@
  * inventory, etc.).
  *
  * Kiedy używać UI vs API seed:
- *  • UI flow (`tests/e2e/character/create/*`) → testujemy samo
+ *  - UI flow (`tests/e2e/character/create/*`) -> testujemy samo
  *    tworzenie, więc klikamy przez `/create-character`.
- *  • Wszystko inne (shop test, combat test, inventory test) →
+ *  - Wszystko inne (shop test, combat test, inventory test) ->
  *    `createCharacterViaApi` żeby setup state był szybki + atomowy.
  *
  * Architectural notes:
@@ -73,7 +73,7 @@ const CLASS_BASE_STATS: Record<CharacterClass, {
 
 // Admin client + user lookup są w shared `adminClient.ts` (cached lookup
 // — pierwsza call w worker procesie = 1 listUsers, kolejne O(1) Map).
-// Stary lokalny findUserIdByEmail wołał listUsers ZA KAŻDYM RAZEM →
+// Stary lokalny findUserIdByEmail wołał listUsers ZA KAŻDYM RAZEM ->
 // skoczyliśmy CPU NANO compute z 10-15% do 82% w jednym test runie.
 
 const findUserIdByEmailStrict = async (email: string): Promise<string> => {
@@ -103,7 +103,7 @@ export interface ICreateCharacterArgs {
      *
      * **Dla testów konsystencji HP/MP across views**: ustaw `hp_regen: 0`
      * + `mp_regen: 0` żeby wartości nie zmieniały się w trakcie testu
-     * (default regen tickuje co sekundę → race condition na asercjach
+     * (default regen tickuje co sekundę -> race condition na asercjach
      * "view A === view B").
      */
     overrides?: Partial<{
@@ -139,7 +139,7 @@ export interface ICreateCharacterArgs {
          *
          * Use case: BACKLOG 5.11 — rankingi expansion. Seed wysoką wartość
          * (np. 999) żeby GWARANTOWANIE wpaść w top-100 Mastery ranking
-         * niezależnie od stanu prod DB. Po teście cleanup usuwa postać →
+         * niezależnie od stanu prod DB. Po teście cleanup usuwa postać ->
          * ranking row znika automatycznie.
          */
         mastery_points: number;
@@ -165,12 +165,12 @@ export interface ICreateCharacterArgs {
          * Lifetime arena wins (attacker). Stored w `characters.arena_kills`
          * (leaderboard_migration.sql linia 20). Default 0.
          *
-         * Use case: BACKLOG 5.11 — Arena Killers ranking ("🗡️ Zabójcy" tab).
+         * Use case: BACKLOG 5.11 — Arena Killers ranking (":dagger: Zabójcy" tab).
          * Sortowanie `arena_kills DESC, limit 100`. Seed wysoką wartość
          * (np. 999) żeby GWARANTOWANIE wpaść w top-100.
          *
          * Synced from arenaStore only after arena combat (`bumpArenaStats`);
-         * NIE jest resetowany przez `useLeaderboardStatSync` hook → bezpiecznie
+         * NIE jest resetowany przez `useLeaderboardStatSync` hook -> bezpiecznie
          * pre-seedować przez column override.
          */
         arena_kills: number;
@@ -178,14 +178,14 @@ export interface ICreateCharacterArgs {
          * Lifetime arena losses (attacker). Stored w `characters.arena_deaths`
          * (leaderboard_migration.sql linia 21). Default 0.
          *
-         * Use case: BACKLOG 5.11 — Arena Victims ranking ("💀 Ofiary" tab).
+         * Use case: BACKLOG 5.11 — Arena Victims ranking (":skull: Ofiary" tab).
          */
         arena_deaths: number;
         /**
          * Crit damage multiplier (e.g. 2.5 = 250%). Stored w `characters.crit_damage`.
          * Base klasowy patrz `CLASS_BASE_STATS` (Knight 2.0 / Rogue 2.5 / etc.).
          *
-         * Use case: BACKLOG 5.11 — Crit DMG ranking ("💥 Crit DMG" tab,
+         * Use case: BACKLOG 5.11 — Crit DMG ranking (":collision: Crit DMG" tab,
          * Leaderboard.tsx linia 149, sort `crit_damage DESC`). Seed wysoką
          * wartość (np. 9.99) żeby wpaść w top-100.
          */

@@ -3,14 +3,14 @@
  * via the TopHeader popover (the canonical numeric HP display anchored
  * route-agnostically across the app).
  *
- * Spec (BACKLOG.md punkt 3.5 expansion): "Eliksir +25% HP → HP identyczne
+ * Spec (BACKLOG.md punkt 3.5 expansion): "Eliksir +25% HP -> HP identyczne
  * na: Town + TopHeader + CharacterSelect + każda walka + party + **gildia**"
  *
  * Pokrywa GUILD view (3.5-guild slice).
  *
  * ## What this test pins (and what it explicitly doesn't)
  *
- * The Guild member list (`.guild__members` → `MemberRow` rows) does NOT
+ * The Guild member list (`.guild__members` -> `MemberRow` rows) does NOT
  * render HP — it shows class + level + transform tier + boss contribution
  * only (Guild.tsx line 843-931). So there's no member-row HP locator to
  * assert "primary's row shows boosted HP".
@@ -76,7 +76,7 @@ import { cleanupGuildsByLeaderIds } from '../../../fixtures/guildCleanup';
 test.describe('Social › Guild › Elixirs', { tag: '@guild' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('hp_pct_25 buff active → /guild TopHeader popover shows boosted max HP + engine getEffectiveChar agrees', async ({ page }) => {
+    test('hp_pct_25 buff active -> /guild TopHeader popover shows boosted max HP + engine getEffectiveChar agrees', async ({ page }) => {
         const nick = generateTestCharacterName();
         const tag = Math.random().toString(36).slice(2, 5).toUpperCase().replace(/[^A-Z0-9]/g, 'A');
         const guildName = `E2E G ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -103,7 +103,7 @@ test.describe('Social › Guild › Elixirs', { tag: '@guild' }, () => {
                     {
                         id: 'hp_pct_25',
                         name: 'Max HP +25%',
-                        icon: '❤️‍🔥',
+                        icon: 'heart-on-fire',
                         effect: 'hp_pct_25',
                     },
                 ],
@@ -142,7 +142,7 @@ test.describe('Social › Guild › Elixirs', { tag: '@guild' }, () => {
             });
             expect(hasBuffAtTown).toBe(true);
 
-            // 6. Navigate to /guild via Społeczność → Gildia tile.
+            // 6. Navigate to /guild via Społeczność -> Gildia tile.
             //    Note: tile selector uses Polish id `gildia` (Social.tsx tile.id).
             await page.getByRole('button', { name: /^Społeczność$/i }).tap();
             await expect(page).toHaveURL(/\/social$/, { timeout: 10_000 });

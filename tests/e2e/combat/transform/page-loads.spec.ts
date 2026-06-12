@@ -22,8 +22,8 @@
  *    poprawnie zhydratowany z `allTransforms` data.
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczna walka z transformem (tap "Walcz" → entry overlay →
- *    escort spawn → boss → reward popup).
+ *  - Faktyczna walka z transformem (tap "Walcz" -> entry overlay ->
+ *    escort spawn -> boss -> reward popup).
  *  - Transform unlocked-state logic (Knight lvl 1 zobaczy wszystkie
  *    transformy jako locked — verify w 13.5 rewards spec).
  *  - Reward animation, transform complete popup, avatar reveal.
@@ -57,7 +57,7 @@ test.describe('Combat › Transform', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

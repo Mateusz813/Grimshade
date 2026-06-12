@@ -48,7 +48,7 @@ describe('chatApi.getMessages', () => {
         expect(url).toContain('channel=eq.global');
         expect(url).toContain('order=created_at.desc');
         expect(url).toContain('limit=100');
-        // Reversed → oldest first
+        // Reversed -> oldest first
         expect(result.map((m) => m.id)).toEqual(['1', '2', '3']);
     });
 

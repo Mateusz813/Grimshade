@@ -165,7 +165,7 @@ describe('rollRarity', () => {
     });
 });
 
-// ── GAP #2 — Mastery max → higher heroic drop chance ─────────────────────────
+// -- GAP #2 — Mastery max -> higher heroic drop chance -------------------------
 // At MAX mastery (25) `masteryStore.getMasteryBonuses().heroic` returns
 // `HEROIC_DROP_RATE_AT_MAX` (0.005). That value flows into the loot pipeline
 // as `rollRarity`/`rollLoot`'s `heroicDropRate` arg. These tests prove the
@@ -193,7 +193,7 @@ describe('GAP #2 — heroic drop bonus from max mastery (rollRarity)', () => {
     });
 
     it('does NOT return heroic when the first roll lands outside the band', () => {
-        // First random() above the heroic rate → falls through to the normal
+        // First random() above the heroic rate -> falls through to the normal
         // weighted distribution, never 'heroic'. 0.9 hits the common band.
         vi.spyOn(Math, 'random').mockReturnValue(0.9);
         expect(rollRarity('boss', 0.005)).not.toBe('heroic');
@@ -298,7 +298,7 @@ describe('getGeneratedSellPrice', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — rollMonsterRarity / SKIP mode + mastery ───────
+// -- Coverage push 2026-05-26 — rollMonsterRarity / SKIP mode + mastery -------
 
 describe('rollMonsterRarity', () => {
     it('always returns normal in SKIP mode', () => {
@@ -351,7 +351,7 @@ describe('getEffectiveRarityChances', () => {
 
 describe('formatRarityChance', () => {
     it('returns plain percent when no bonus (bases >= 0.1 use 1 decimal)', () => {
-        // base 0.9 → 90% → >= 0.1 threshold so 1 decimal
+        // base 0.9 -> 90% -> >= 0.1 threshold so 1 decimal
         expect(formatRarityChance({ base: 0.9, bonus: 0, total: 0.9 })).toBe('90.0%');
     });
 
@@ -360,13 +360,13 @@ describe('formatRarityChance', () => {
     });
 
     it('renders positive bonus with + sign', () => {
-        // bonus 0.02 > 0.001 → 1 decimal "2.0%"
+        // bonus 0.02 > 0.001 -> 1 decimal "2.0%"
         const s = formatRarityChance({ base: 0.9, bonus: 0.02, total: 0.92 });
         expect(s).toBe('90.0% + 2.0%');
     });
 
     it('renders negative bonus with − minus sign (unicode)', () => {
-        // |bonus| 0.05 > 0.001 → 1 decimal "5.0%"
+        // |bonus| 0.05 > 0.001 -> 1 decimal "5.0%"
         const s = formatRarityChance({ base: 0.9, bonus: -0.05, total: 0.85 });
         expect(s).toBe('90.0% − 5.0%');
     });
@@ -398,7 +398,7 @@ describe('scaleHeroicDropRate', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — potion drops ────────────────────────────────
+// -- Coverage push 2026-05-26 — potion drops --------------------------------
 
 describe('rollPotionDrop', () => {
     it('returns empty array most of the time (drops are scarce)', () => {
@@ -481,7 +481,7 @@ describe('getPotionDropInfo', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — spell chest drops ──────────────────────────
+// -- Coverage push 2026-05-26 — spell chest drops --------------------------
 
 describe('rollSpellChestDrop', () => {
     it('returns [] for monster level 1-4', () => {
@@ -557,13 +557,13 @@ describe('getSpellChestKey / getSpellChestDisplayName / getSpellChestIcon / getS
         expect(icon.length).toBeGreaterThan(0);
     });
 
-    it('getSpellChestEmoji returns 📦 for low and 🎁 for high', () => {
-        expect(getSpellChestEmoji(50)).toBe('📦');
-        expect(getSpellChestEmoji(100)).toBe('🎁');
+    it('getSpellChestEmoji returns :package: for low and :wrapped-gift: for high', () => {
+        expect(getSpellChestEmoji(50)).toBe('package');
+        expect(getSpellChestEmoji(100)).toBe('wrapped-gift');
     });
 });
 
-// ── Coverage push 2026-05-26 — rollStoneDrop misc & constants ────────────
+// -- Coverage push 2026-05-26 — rollStoneDrop misc & constants ------------
 
 describe('rollStoneDrop type map sanity', () => {
     it('every monster rarity maps to a valid stone type', () => {

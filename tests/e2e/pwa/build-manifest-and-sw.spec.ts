@@ -5,10 +5,10 @@
  * serwowanie cached assets". Pragmatic smoke test — verifies that the
  * production build wiring (vite + vite-plugin-pwa) emits the artifacts a
  * PWA-aware browser needs to surface the install prompt:
- *   • `manifest.webmanifest` with name / short_name / start_url / display
+ *   - `manifest.webmanifest` with name / short_name / start_url / display
  *     "standalone" / icons (192 + 512 + maskable).
- *   • `sw.js` registered service worker file that workbox generates.
- *   • Pre-cache manifest (in sw.js) includes core HTML/JS/CSS assets.
+ *   - `sw.js` registered service worker file that workbox generates.
+ *   - Pre-cache manifest (in sw.js) includes core HTML/JS/CSS assets.
  *
  * ## Why filesystem-only (not Playwright preview server)
  *
@@ -54,17 +54,17 @@
  *
  * ## What we do NOT verify
  *
- *  • `beforeinstallprompt` browser event — that's Chromium-only + requires
+ *  - `beforeinstallprompt` browser event — that's Chromium-only + requires
  *    HTTPS + user-interaction heuristics + 30-day re-prompt suppression.
  *    Untestable in headless deterministically.
- *  • iOS Add-to-Home-Screen UX — WebKit doesn't fire beforeinstallprompt;
+ *  - iOS Add-to-Home-Screen UX — WebKit doesn't fire beforeinstallprompt;
  *    iOS users discover install through Share menu. No programmatic hook.
- *  • Offline caching behavior of the SW at runtime — covered (in part) by
+ *  - Offline caching behavior of the SW at runtime — covered (in part) by
  *    BACKLOG 14.x (offline mode tests). This test is build-time only.
- *  • Lighthouse PWA score — that needs a separate `npx lighthouse` run,
+ *  - Lighthouse PWA score — that needs a separate `npx lighthouse` run,
  *    out of scope for atomic E2E.
  *
- * Anything that goes wrong with this test → check
+ * Anything that goes wrong with this test -> check
  * `vite.config.ts` `VitePWA({...})` block.
  */
 
@@ -132,7 +132,7 @@ test.describe('PWA › Build', { tag: '@pwa' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
     test('production build emits manifest.webmanifest + sw.js with PWA contract', async () => {
-        // ── Step 1: ensure a fresh build exists ───────────────────────────
+        // -- Step 1: ensure a fresh build exists ---------------------------
         // 2026-05-27: dist/ is pre-built via `npm run test:e2e` (chains
         // `npm run build && playwright test`). If it's somehow stale here
         // (manual run or interrupted setup), try to build inline. If THAT
@@ -148,7 +148,7 @@ test.describe('PWA › Build', { tag: '@pwa' }, () => {
             }
         }
 
-        // ── Step 2: manifest exists + parses + has PWA contract ───────────
+        // -- Step 2: manifest exists + parses + has PWA contract -----------
         expect(existsSync(MANIFEST_PATH), `Missing ${MANIFEST_PATH}`).toBe(true);
         const raw = readFileSync(MANIFEST_PATH, 'utf-8');
         let manifest: IManifest;
@@ -159,11 +159,11 @@ test.describe('PWA › Build', { tag: '@pwa' }, () => {
         }
 
         // PWA install prompt requirements (Chrome devtools spec):
-        //   • name (full app name shown on install dialog)
-        //   • short_name (home screen label, ≤12 chars best practice)
-        //   • start_url (entry route after install)
-        //   • display 'standalone' or 'fullscreen' (no browser chrome)
-        //   • icons including 192px + 512px
+        //   - name (full app name shown on install dialog)
+        //   - short_name (home screen label, ≤12 chars best practice)
+        //   - start_url (entry route after install)
+        //   - display 'standalone' or 'fullscreen' (no browser chrome)
+        //   - icons including 192px + 512px
         expect(manifest.name, 'manifest.name missing').toBeTruthy();
         expect(manifest.short_name, 'manifest.short_name missing').toBeTruthy();
         expect(manifest.start_url, 'manifest.start_url missing').toBeTruthy();
@@ -183,7 +183,7 @@ test.describe('PWA › Build', { tag: '@pwa' }, () => {
         );
         expect(hasMaskable, 'at least one icon must have purpose=\'any maskable\'').toBe(true);
 
-        // ── Step 3: service worker exists + has workbox runtime ───────────
+        // -- Step 3: service worker exists + has workbox runtime -----------
         expect(existsSync(SW_PATH), `Missing ${SW_PATH}`).toBe(true);
         const sw = readFileSync(SW_PATH, 'utf-8');
         expect(sw.length, 'sw.js is empty').toBeGreaterThan(100);

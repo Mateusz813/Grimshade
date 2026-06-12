@@ -10,14 +10,14 @@
  * effects the description promises.
  *
  * Why one consolidated file instead of `src/systems/skills/<class>/<skill>.test.ts`:
- *   • Every active skill is a JSON row that boils down to (mpCost,
+ *   - Every active skill is a JSON row that boils down to (mpCost,
  *     cooldown, damage, effect, unlockLevel, goldCost). They share the
  *     SAME runtime path — there's no per-skill `.ts` to test in isolation.
- *   • Maintaining 105 files of "this skill's effect parses to X" would be
+ *   - Maintaining 105 files of "this skill's effect parses to X" would be
  *     pure boilerplate that obscures the actual verification. A
  *     data-driven loop in ONE file produces 1 test per skill + targeted
  *     atom-level assertions, totaling ~150 tests with full coverage.
- *   • BACKLOG.md item 12.1 ("U×~70") originally proposed per-skill files
+ *   - BACKLOG.md item 12.1 ("U×~70") originally proposed per-skill files
  *     to ensure complete coverage; the consolidated approach delivers
  *     equivalent (in fact denser) coverage without N filesystem entries.
  *
@@ -33,11 +33,11 @@
  *      well-typed (catches typos in skills.json on import).
  *
  * What we DON'T verify here (covered elsewhere):
- *   • Combat-store wiring (cooldown enforcement, MP deduction, view
+ *   - Combat-store wiring (cooldown enforcement, MP deduction, view
  *     routing) — that's `combatEngine.test.ts` + `combatEffectsHelpers`
  *     integration via `castSkill`.
- *   • BuffBar registration — covered by `skillBuffs.test.ts`.
- *   • Per-class weapon damage formulas — covered by per-system tests
+ *   - BuffBar registration — covered by `skillBuffs.test.ts`.
+ *   - Per-class weapon damage formulas — covered by per-system tests
  *     (Boss / Dungeon / Hunt engines).
  */
 
@@ -57,7 +57,7 @@ import {
 import { getSkillMpCost } from './combatEngine';
 import { getSkillDamageBonus } from './skillSystem';
 
-// ── Type helpers ────────────────────────────────────────────────────────────
+// -- Type helpers ------------------------------------------------------------
 
 interface IActiveSkillRow {
     id: string;
@@ -121,9 +121,9 @@ const applySkill = (
     return { parsed, caster, target, party, enemies, result };
 };
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 1 — Catalog sanity (every skill is well-formed in skills.json)
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('skill catalog: structural integrity', () => {
     it('declares 7 classes of active skills (knight/mage/cleric/archer/rogue/necromancer/bard)', () => {
@@ -181,9 +181,9 @@ describe('skill catalog: structural integrity', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 2 — Per-skill: effect string parses + applies cleanly
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('every active skill: effect string parses and applies without throwing', () => {
     for (const cls of CLASS_KEYS) {
@@ -219,9 +219,9 @@ describe('every active skill: effect string parses and applies without throwing'
     }
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 3 — Knight: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Knight skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.knight.find((s) => s.id === id)!;
@@ -284,10 +284,10 @@ describe('Knight skills: each skill matches its declared effect', () => {
 
     it('execute: execute_below:25 oneshots when target HP%<=25', () => {
         const s = find('execute');
-        // Above threshold → no instant kill.
+        // Above threshold -> no instant kill.
         const above = applySkill(s.effect, { targetHpPct: 30 });
         expect(above.result.instantKill).toBe(false);
-        // At/below threshold → instant kill flag.
+        // At/below threshold -> instant kill flag.
         const at = applySkill(s.effect, { targetHpPct: 25 });
         expect(at.result.instantKill).toBe(true);
         const below = applySkill(s.effect, { targetHpPct: 10 });
@@ -304,7 +304,7 @@ describe('Knight skills: each skill matches its declared effect', () => {
     });
 
     it('ultimate_slash: crit_next:1:1 queues 1 guaranteed crit at ×1', () => {
-        // BuffBar stack cap = chargesToAdd × 2 → 1 × 2 = 2 entries in queue post-merge.
+        // BuffBar stack cap = chargesToAdd × 2 -> 1 × 2 = 2 entries in queue post-merge.
         const s = find('ultimate_slash');
         const h = applySkill(s.effect);
         expect(h.caster.critNext).toHaveLength(1);
@@ -340,7 +340,7 @@ describe('Knight skills: each skill matches its declared effect', () => {
         expect(h.result.aggroSteal).toBe(true);
         // crit_next queued.
         expect(h.caster.critNext[0]).toMatchObject({ mult: 1, count: 1 });
-        // dmg_amp_next:5:1 → next attack deals ×5 (1 charge, cap 2).
+        // dmg_amp_next:5:1 -> next attack deals ×5 (1 charge, cap 2).
         expect(h.caster.dmgAmpNext[0]).toMatchObject({ mult: 5, count: 1 });
     });
 
@@ -351,9 +351,9 @@ describe('Knight skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 4 — Mage: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Mage skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.mage.find((s) => s.id === id)!;
@@ -468,9 +468,9 @@ describe('Mage skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 5 — Cleric: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Cleric skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.cleric.find((s) => s.id === id)!;
@@ -511,7 +511,7 @@ describe('Cleric skills: each skill matches its declared effect', () => {
     it('smite: stun_chance:30 with Math.random forced ABOVE 0.3 means no stun', () => {
         const s = find('smite');
         const orig = Math.random;
-        Math.random = () => 0.99; // 99 ≥ 30 → fail every roll
+        Math.random = () => 0.99; // 99 ≥ 30 -> fail every roll
         try {
             const h = applySkill(s.effect, { enemies: 3 });
             for (const e of h.enemies) expect(e.stunMs).toBe(0);
@@ -609,7 +609,7 @@ describe('Cleric skills: each skill matches its declared effect', () => {
         expect(h.result.aoe).toBe(true);
         for (const p of h.party) {
             expect(p.immortalMs).toBe(5000);
-            // revive_party:5000:10000 → cannotDie window 5000ms.
+            // revive_party:5000:10000 -> cannotDie window 5000ms.
             expect(p.cannotDieMs).toBe(5000);
         }
         expect(h.result.reviveDeadAllies).toBe(true);
@@ -618,9 +618,9 @@ describe('Cleric skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 6 — Archer: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Archer skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.archer.find((s) => s.id === id)!;
@@ -724,9 +724,9 @@ describe('Archer skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 7 — Rogue: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Rogue skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.rogue.find((s) => s.id === id)!;
@@ -854,9 +854,9 @@ describe('Rogue skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 8 — Necromancer: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Necromancer skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.necromancer.find((s) => s.id === id)!;
@@ -924,7 +924,7 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         const mid = tickStatus(h.target, 5000, 10000);
         expect(mid.darkRitualTriggered).toBe(false);
         expect(h.target.darkRitualPending[0].triggerInMs).toBe(5000);
-        // Tick another 5s: timer hits 0 → fires 25% of targetMaxHp (10000) = 2500.
+        // Tick another 5s: timer hits 0 -> fires 25% of targetMaxHp (10000) = 2500.
         const fire = tickStatus(h.target, 5000, 10000);
         expect(fire.darkRitualTriggered).toBe(true);
         expect(fire.darkRitualDamage).toBe(2500);
@@ -984,9 +984,9 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 9 — Bard: per-skill effect verification
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('Bard skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.bard.find((s) => s.id === id)!;
@@ -1140,9 +1140,9 @@ describe('Bard skills: each skill matches its declared effect', () => {
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 10 — Weapon skills (per-level damage bonus matches damageBonus × lvl)
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('weapon skills: per-level damage bonus matches declared damageBonus', () => {
     for (const w of WEAPON) {
@@ -1177,16 +1177,16 @@ describe('weapon skills: per-level damage bonus matches declared damageBonus', (
     });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // SECTION 11 — Integration: castSkill (the high-level entry point used by combat views)
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 //
 // Each combat view (Hunt / Boss / Dungeon / Raid / Trainer / Transform /
 // Arena) wraps spell casts via `effectsCastSkill({...})` in
 // combatEffectsHelpers.ts. These tests prove the session-level path
 // produces the SAME mutations as the lower-level applyEffects calls
 // above — i.e. the indirection doesn't strip side effects.
-// ════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 describe('castSkill (combatEffectsHelpers): session-level integration', () => {
     it('shield_bash: target stunMs grows via session ensureStatus', () => {

@@ -11,11 +11,11 @@ import {
 /**
  * 2026-05-08 v2: Market store overhaul.
  *
- *  • Listings now carry a `quantity` (and `quantityInitial`) so the same
+ *  - Listings now carry a `quantity` (and `quantityInitial`) so the same
  *    row can serve multiple partial buyers.
- *  • `buyListing(id, qty)` decrements the row and returns the slice
+ *  - `buyListing(id, qty)` decrements the row and returns the slice
  *    that was sold; the caller handles inventory + gold.
- *  • Sale notifications surface as a separate slice so the Browse tab
+ *  - Sale notifications surface as a separate slice so the Browse tab
  *    can show a glowing notification button when someone bought one
  *    of the player's listings.
  */

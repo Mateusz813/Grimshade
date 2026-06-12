@@ -18,8 +18,8 @@
  *  Supabase `resetPasswordForEmail` WYSYŁA mailing nawet jeśli zwraca
  *  generic-success dla nieistniejących userów (anti-enumeration). Dla
  *  istniejącego `test@grimshade.pl` Supabase wyśle prawdziwego maila
- *  za każdym test-runem → zatłucze inbox. Dla fake-TLD `@grimshade-test.local`
- *  Supabase próbuje wysłać → SMTP nie znajdzie MX recordu → silently fails →
+ *  za każdym test-runem -> zatłucze inbox. Dla fake-TLD `@grimshade-test.local`
+ *  Supabase próbuje wysłać -> SMTP nie znajdzie MX recordu -> silently fails ->
  *  zero zaśmiecania.
  *
  *  Endpoint i tak zwraca success/no-error niezależnie od tego czy email

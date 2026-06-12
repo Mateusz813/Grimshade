@@ -1,5 +1,5 @@
 /**
- * Multi-context E2E — primary sends a city chat message → secondary
+ * Multi-context E2E — primary sends a city chat message -> secondary
  * sees it via Supabase Realtime broadcast (BACKLOG 4.13).
  *
  * Spec ("Wiadomość na chacie ogólnym"): the city channel is a global
@@ -9,7 +9,7 @@
  * subsystem.
  *
  * Wire path:
- *   1. Primary types text + taps send → `chatApi.sendMessage('city',
+ *   1. Primary types text + taps send -> `chatApi.sendMessage('city',
  *      ...)` does an INSERT on `messages` with `Prefer: return=
  *      representation`. The inserted row is pushed into the local
  *      `messages` state immediately (optimistic).
@@ -21,10 +21,10 @@
  *
  * Test flow:
  *   1. Open 2 contexts, parallel login, both pick their seeded character.
- *   2. Both navigate Town → Społeczność → Czat → `/chat` (city tab is
+ *   2. Both navigate Town -> Społeczność -> Czat -> `/chat` (city tab is
  *      always present + active by default per `ensureCityTab`).
  *   3. Primary types a unique tagged message (contains a random token
- *      + the test's primary nick) → tap send. Verify it appears in
+ *      + the test's primary nick) -> tap send. Verify it appears in
  *      primary's own chat (optimistic local insert).
  *   4. Wait up to 15 s for the message to surface in secondary's chat
  *      via Realtime broadcast. The longer-than-usual wait accounts for
@@ -38,9 +38,9 @@
  *   16-char token in the content makes the assertion text-search-safe.
  *
  * Cleanup:
- *   • Characters wiped via multiContext.cleanup (covers `inventory`,
+ *   - Characters wiped via multiContext.cleanup (covers `inventory`,
  *     `game_saves`, `character_skills`, etc.).
- *   • `messages` is NOT cleaned by character cleanup (uses `user_id`,
+ *   - `messages` is NOT cleaned by character cleanup (uses `user_id`,
  *     not `character_id`). The test's posted message will accumulate
  *     in the city log, but the unique token makes it identifiable +
  *     harmless. If accumulation becomes a problem, add a direct
@@ -61,7 +61,7 @@ test.describe('Social › Chat', { tag: '@social' }, () => {
     // Multi-context + Realtime wait = 120 s headroom.
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary posts to city chat → secondary receives via Realtime', async ({ browser }) => {
+    test('multi-context: primary posts to city chat -> secondary receives via Realtime', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         // Unique token guarantees text-search uniqueness even though the
@@ -115,7 +115,7 @@ test.describe('Social › Chat', { tag: '@social' }, () => {
                 pickCharacter(secondaryPage, secondaryNick),
             ]);
 
-            // Both navigate to /chat. We use the Społeczność → Czat tile
+            // Both navigate to /chat. We use the Społeczność -> Czat tile
             // path rather than `page.goto('/chat')` to exercise the same
             // user flow real players take, including the BottomNav route
             // transition + the Społeczność hub render.

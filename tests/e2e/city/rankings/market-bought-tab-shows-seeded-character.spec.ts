@@ -6,7 +6,7 @@
  * — Market Items Bought tab.
  *
  * Tab definition (Leaderboard.tsx linia 167):
- *   { key: 'market_items_bought', label: 'Zakupy', icon: '🛒',
+ *   { key: 'market_items_bought', label: 'Zakupy', icon: 'shopping-cart',
  *     source: 'characters', characterColumn: 'market_items_bought',
  *     order: 'desc', valueLabel: 'Kupione' }
  *
@@ -63,7 +63,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await waitForAppReady(page);
 
             // valueOverride: `{count.toLocaleString('pl-PL')} · {formatGoldShort(gold)}`
-            // → "999 · …". Combined regex matches the 999 count token AND the
+            // -> "999 · …". Combined regex matches the 999 count token AND the
             // " · " separator. The re-fetch poll helper absorbs full-suite DB
             // contention (REST cache / eventual consistency stale first read),
             // replacing the old manual single re-tap block.

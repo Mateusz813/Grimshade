@@ -19,7 +19,7 @@
     }
   }
 
-  // ── Header (collapsible) ────────────────────────────────────────────────────
+  // -- Header (collapsible) ----------------------------------------------------
   &__header {
     display: flex;
     justify-content: space-between;
@@ -44,7 +44,7 @@
     color: $color-text-muted;
   }
 
-  // ── Message list ───────────────────────────────────────────────────────────
+  // -- Message list -----------------------------------------------------------
   &__messages {
     position: relative;
     overflow-y: auto;
@@ -210,7 +210,7 @@
     overflow-wrap: break-word;
   }
 
-  // ── Context menu ───────────────────────────────────────────────────────────
+  // -- Context menu -----------------------------------------------------------
   // 2026-05-19 v9 spec ("Jak klikam w nick kogos co napisal to nie
   // wyskakuja mi opcje dodatkowe"): the menu portals to <body> at
   // `position: fixed`, so its z-index competes with every other
@@ -293,7 +293,7 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // -- Error ------------------------------------------------------------------
   &__error {
     font-size: $font-xs;
     color: $color-accent;
@@ -301,7 +301,7 @@
     margin: 0;
   }
 
-  // ── Input ──────────────────────────────────────────────────────────────────
+  // -- Input ------------------------------------------------------------------
   &__input-row {
     display: flex;
     gap: $spacing-xs;

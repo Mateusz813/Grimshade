@@ -1,5 +1,5 @@
 /**
- * Atomic E2E — BACKLOG 15.1: session expiry → protected route → redirect.
+ * Atomic E2E — BACKLOG 15.1: session expiry -> protected route -> redirect.
  *
  * Scenario: a logged-in player whose Supabase JWT was wiped (token
  * expired, manually cleared, lost via storage quota, etc.) tries to
@@ -9,16 +9,16 @@
  * Setup state:
  *   1. Seed character via API so `/inventory` has a real character to
  *      render after login (Inventory.tsx hard-returns null without one).
- *   2. Login via UI → pick character → land in Town with valid session.
+ *   2. Login via UI -> pick character -> land in Town with valid session.
  *   3. Verify avatar button is present (sanity: real session restored
  *      stores). Without this we can't tell if the redirect came from
  *      "no session" or "Inventory crashed on a fresh-character ID".
  *
  * One action:   wipe Supabase JWT from localStorage (key `sb-{ref}-auth-token`,
- *               default storage key for supabase-js v2 createClient) →
+ *               default storage key for supabase-js v2 createClient) ->
  *               `page.goto('/inventory')` (full page load forces App.tsx
  *               to re-run `supabase.auth.getSession()` against an empty
- *               localStorage → returns `{ data: { session: null } }`).
+ *               localStorage -> returns `{ data: { session: null } }`).
  * One outcome:  URL = `/login` + login form visible (proves we hit
  *               <Login /> via the `path="/login"` route, not just any
  *               redirect target).
@@ -34,7 +34,7 @@
  *   real failure modes (explicit logout vs ambient token loss).
  *
  * Why we navigate to `/inventory` (not `/`):
- *   `/` is special-cased in AppRouter (line 122-134): no session → redirect
+ *   `/` is special-cased in AppRouter (line 122-134): no session -> redirect
  *   to /login. That's the "happy path" of the redirect chain.
  *   `/inventory` is gated by the generic `<ProtectedRoute>` wrapper
  *   (the same pattern as 15+ other routes: /shop, /party, /quests, etc.).
@@ -57,7 +57,7 @@ test.describe('Auth › Session', { tag: '@auth' }, () => {
     // + redirect chain ≈ 4-5 nav transitions on WebKit cold start.
     test.describe.configure({ timeout: 60_000 });
 
-    test('cleared Supabase token → navigating to /inventory redirects to /login', async ({ page }) => {
+    test('cleared Supabase token -> navigating to /inventory redirects to /login', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -72,7 +72,7 @@ test.describe('Auth › Session', { tag: '@auth' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → /character-select → pick our character → Town.
+            // 2. Login -> /character-select -> pick our character -> Town.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -84,7 +84,7 @@ test.describe('Auth › Session', { tag: '@auth' }, () => {
 
             // 3. Sanity — Town rendered with our nick. Proves session was
             //    valid + stores hydrated. Without this assert, a flake in
-            //    character-select → Town transition would look like
+            //    character-select -> Town transition would look like
             //    "redirect worked" when really nothing was loaded.
             await expect(page.locator('.town__char-name')).toHaveText(nick, { timeout: 10_000 });
 
@@ -113,9 +113,9 @@ test.describe('Auth › Session', { tag: '@auth' }, () => {
             await page.goto('/inventory');
 
             // 6. PRIMARY assertion — URL settles on /login. AppRouter:
-            //      `path="/inventory"` → <ProtectedRoute session={null}>
-            //      → <Navigate to="/login" replace />
-            //    → URL changes synchronously after Navigate resolves.
+            //      `path="/inventory"` -> <ProtectedRoute session={null}>
+            //      -> <Navigate to="/login" replace />
+            //    -> URL changes synchronously after Navigate resolves.
             await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
 
             // 7. SANITY — login form actually rendered (proves we hit the

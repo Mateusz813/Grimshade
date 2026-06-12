@@ -8,15 +8,15 @@ import { buildPmChannel } from '../api/v1/friendsApi';
  * switch between.
  *
  * Always-present:
- *   - 🌆 Miasto      (city, global broadcast)
- *   - ⚠️ System       (server-wide gameplay milestones — +20 weapons etc.)
+ *   - :cityscape-at-dusk: Miasto      (city, global broadcast)
+ *   - :warning: System       (server-wide gameplay milestones — +20 weapons etc.)
  *
  * Conditional:
- *   - 🛡️ Drużyna     (party, while in one)
- *   - 🏰 Gildia       (guild, while in one)
+ *   - :shield: Drużyna     (party, while in one)
+ *   - :castle: Gildia       (guild, while in one)
  *
  * On-demand:
- *   - 💌 PM with `{name}` (per conversation)
+ *   - :love-letter: PM with `{name}` (per conversation)
  *
  * Unread counts are tracked here too so the chat icon can render a badge
  * and each tab button can show how many new messages arrived while it was
@@ -105,7 +105,7 @@ const CITY_TAB: IChatTab = {
     id: 'city',
     type: 'city',
     channel: 'city',
-    title: '🌆 Miasto',
+    title: ':cityscape-at-dusk: Miasto',
     unread: 0,
     closable: false,
 };
@@ -114,7 +114,7 @@ const SYSTEM_TAB: IChatTab = {
     id: 'system',
     type: 'system',
     channel: 'system',
-    title: '⚠️ System',
+    title: ':warning: System',
     unread: 0,
     closable: false,
 };
@@ -123,7 +123,7 @@ const partyTabFor = (partyId: string): IChatTab => ({
     id: `party_${partyId}`,
     type: 'party',
     channel: `party_${partyId}`,
-    title: '🛡️ Drużyna',
+    title: ':shield: Drużyna',
     unread: 0,
     closable: false,
 });
@@ -132,7 +132,7 @@ const guildTabFor = (guildId: string): IChatTab => ({
     id: `guild_${guildId}`,
     type: 'guild',
     channel: `guild_${guildId}`,
-    title: '🏰 Gildia',
+    title: ':castle: Gildia',
     unread: 0,
     closable: false,
 });
@@ -140,7 +140,7 @@ const guildTabFor = (guildId: string): IChatTab => ({
 /**
  * Re-order tabs into the canonical layout (2026-05-19 v2 spec
  * "Zamien miejscami ma byc miasto, gildia, druzyna, system a potem
- * DM"): city → guild → party → system → pm-tabs (insertion order).
+ * DM"): city -> guild -> party -> system -> pm-tabs (insertion order).
  * Keeps the user's mental model stable when party / guild membership
  * flips on and off.
  */
@@ -207,7 +207,7 @@ export const useChatTabsStore = create<IChatTabsState>()(
                     id: channel,
                     type: 'pm',
                     channel,
-                    title: `💌 ${targetName}`,
+                    title: `:love-letter: ${targetName}`,
                     targetName,
                     unread: 0,
                     closable: true,
@@ -224,7 +224,7 @@ export const useChatTabsStore = create<IChatTabsState>()(
                     id: channel,
                     type: 'pm',
                     channel,
-                    title: `💌 ${targetName}`,
+                    title: `:love-letter: ${targetName}`,
                     targetName,
                     unread: 0,
                     closable: true,

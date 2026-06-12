@@ -51,6 +51,8 @@ import classesData from '../../data/classes.json';
 import { getDungeonImage, getPotionImage, getSpellChestImage, getSummonImage } from '../../systems/spriteAssets';
 import { getPotionDropInfo, getSpellChestIcon } from '../../systems/lootSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
+import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import Icon from '../../components/atoms/Icon/Icon';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import { STONE_GENERIC_ICON, STONE_ICONS } from '../../systems/itemSystem';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
@@ -117,7 +119,7 @@ const CLASS_COLORS: Record<string, string> = {
 
 /**
  * Mirrors the dungeon-card hue function so raid cards walk through the same
- * level → colour ramp. Two views, one visual language: a Lvl 50 raid feels
+ * level -> colour ramp. Two views, one visual language: a Lvl 50 raid feels
  * like a Lvl 50 dungeon at a glance.
  */
 const getRaidCardHue = (level: number): number => {
@@ -344,11 +346,11 @@ const Raid = () => {
     // boss/wave HP bars.
     //
     // 2026-05-14 spec ("Klikam ponow i sojusznik umiera od razu"): the
-    // Ponów button briefly transitions selectedRaid → null (via
+    // Ponów button briefly transitions selectedRaid -> null (via
     // backToLobby) before setting it back to non-null (via startRaid
-    // in the next tick). That transient null fired combat-end →
+    // in the next tick). That transient null fired combat-end ->
     // member's `usePartyCombatSync` ran `stopCombat()` + `navigate('/')`
-    // → Raid.tsx unmounted on the member → the beforeunload-style
+    // -> Raid.tsx unmounted on the member -> the beforeunload-style
     // cleanup at `applyCombatLeaveDeath` triggered the full death
     // penalty with the previous raid's name. We now skip the
     // combat-end broadcast when a retry is in flight; the leader's
@@ -360,7 +362,7 @@ const Raid = () => {
         const prev = prevSelectedRaidRef.current;
         prevSelectedRaidRef.current = selectedRaid;
         if (!prev || selectedRaid) return;
-        // transitioned: non-null → null (raid ended)
+        // transitioned: non-null -> null (raid ended)
         if (retryInProgressRef.current) return;
         const partyState = usePartyStore.getState().party;
         const me = useCharacterStore.getState().character?.id;
@@ -412,7 +414,7 @@ const Raid = () => {
     // use `attack-Necromancer` (dark/spell-flavoured visual) as the
     // generic monster-strike theme. Auto-clears after ATTACK_FLASH_MS.
     const [memberAttackingClass, setMemberAttackingClass] = useState<Record<string, string>>({});
-    // Per-boss aggro pick — `bossId → memberId currently being targeted`.
+    // Per-boss aggro pick — `bossId -> memberId currently being targeted`.
     // Set by the boss-attack tick whenever a boss picks a member to swing
     // at; surfaces in the ally cards as `aggroCount` so the player can see
     // who's about to eat the next round of swings. Refreshes every boss
@@ -434,7 +436,7 @@ const Raid = () => {
     // timer (e.g. when the player attacks twice in quick succession at
     // X4 speed) can't wipe a fresher overlay scheduled by the second hit.
     // Duration matches the per-class CSS keyframes so the class string
-    // explicitly clears between hits → animation re-triggers on the next
+    // explicitly clears between hits -> animation re-triggers on the next
     // attack rather than just sitting there idle.
     const [bossAttackerClass, setBossAttackerClass] = useState<Record<string, { className: string; token: number }>>({});
     const ATTACK_ANIM_DURATION: Record<string, number> = {
@@ -528,7 +530,7 @@ const Raid = () => {
     }, [members]);
     useEffect(() => { phaseRef.current = phase; }, [phase]);
 
-    // ── Potion cooldown ticker ────────────────────────────────────────────────
+    // -- Potion cooldown ticker ------------------------------------------------
     // 100 ms decrement while fighting — drains the four potion-slot timers
     // (HP / %HP / MP / %MP) so re-clicks land at the right time. Mirrors
     // Boss / Combat: the dock shows a sweep over `cooldownProgress` and
@@ -606,11 +608,11 @@ const Raid = () => {
                             if (b.currentHp <= 0) b.isDead = true;
                             bossesDirty = true;
                             // 2026-05-14: mirror DOT tick to members
-                            // (same ☠️ icon as boss). Visual float on
+                            // (same :skull-and-crossbones: icon as boss). Visual float on
                             // the boss card so members don't see the
                             // HP bar silently shrink.
                             const dotPushSlot = bIdx;
-                            fx.pushEnemyFloat(dotPushSlot, apply.appliedDmg, 'spell', { icon: '☠️' });
+                            fx.pushEnemyFloat(dotPushSlot, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
                             if (isLeaderInPartyCombat) {
                                 const dotDmgCap = apply.appliedDmg;
                                 const bIdCap = b.id;
@@ -625,7 +627,7 @@ const Raid = () => {
                                         targetId: bIdCap,
                                         damage: dotDmgCap,
                                         kind: 'spell',
-                                        icon: '☠️',
+                                        icon: 'skull-and-crossbones',
                                     });
                                 }).catch(() => { /* offline */ });
                             }
@@ -639,8 +641,8 @@ const Raid = () => {
                         if (b.currentHp <= 0) b.isDead = true;
                         bossesDirty = true;
                         // 2026-05-14: ritual float on the boss card +
-                        // broadcast so member sees the same 💀 RITUAL.
-                        fx.pushEnemyFloat(bIdx, ritualDmg, 'spell', { icon: '💀', label: 'RITUAL', isCrit: true });
+                        // broadcast so member sees the same :skull: RITUAL.
+                        fx.pushEnemyFloat(bIdx, ritualDmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
                         if (isLeaderInPartyCombat) {
                             const rDmgCap = ritualDmg;
                             const bIdCap = b.id;
@@ -650,7 +652,7 @@ const Raid = () => {
                                     targetId: bIdCap,
                                     damage: rDmgCap,
                                     kind: 'spell',
-                                    icon: '💀',
+                                    icon: 'skull',
                                     label: 'RITUAL',
                                     isCrit: true,
                                 });
@@ -676,7 +678,7 @@ const Raid = () => {
                     membersDirty = true;
                     // 2026-05-14: member DOT float + broadcast so the
                     // ally card shows the bleed tick on every screen.
-                    fx.pushAllyFloat(mIdx, apply.appliedDmg, 'monster-spell', { icon: '☠️' });
+                    fx.pushAllyFloat(mIdx, apply.appliedDmg, 'monster-spell', { icon: 'skull-and-crossbones' });
                     if (isLeaderInPartyCombat) {
                         const dotDmgCap = apply.appliedDmg;
                         const mIdCap = m.id;
@@ -686,7 +688,7 @@ const Raid = () => {
                                 targetId: mIdCap,
                                 damage: dotDmgCap,
                                 kind: 'monster-spell',
-                                icon: '☠️',
+                                icon: 'skull-and-crossbones',
                             });
                         }).catch(() => { /* offline */ });
                     }
@@ -704,7 +706,7 @@ const Raid = () => {
         return () => clearInterval(id);
     }, [phase, speedMult, isNonLeaderMember]);
 
-    // ── Potion-use handler ────────────────────────────────────────────────────
+    // -- Potion-use handler ----------------------------------------------------
     // Parses the elixir's `effect` string ("heal_hp_50" / "heal_hp_pct_20"
     // etc.) to compute the heal amount, applies it to the local player
     // member's HP/MP, syncs the new pool back to the character store, and
@@ -763,7 +765,7 @@ const Raid = () => {
         else setMpPotionCooldown(MP_POTION_CD);
 
         useCombatStore.getState().addSessionLog(
-            `🧪 Użyto: ${elixir.name_pl} (+${heal.toLocaleString('pl-PL')} ${isHp ? 'HP' : 'MP'})`,
+            `:test-tube: Użyto: ${elixir.name_pl} (+${heal.toLocaleString('pl-PL')} ${isHp ? 'HP' : 'MP'})`,
             'system',
         );
     }, [character]);
@@ -811,7 +813,7 @@ const Raid = () => {
         skillQueueRef.current.push(slotIdx);
     }, [isNonLeaderMember, character?.id, character?.class, activeSkillSlots]);
 
-    // ── Level-up mid-fight = full HP/MP refill ───────────────────────────────
+    // -- Level-up mid-fight = full HP/MP refill -------------------------------
     // characterStore.addXp() already tops the persistent character pool to
     // max on level-up, but THIS view holds the player's live HP/MP inside
     // its `members` array. The next combat tick syncs back FROM members TO
@@ -832,7 +834,7 @@ const Raid = () => {
     // nowo powinno sie agroo potworow wyrenderowac na reszcie
     // uczestnikow party"): leader-side roster sync. When the
     // `party.members` row changes (e.g. a member leaves via the
-    // death-popup → leaveParty path), drop them from the local
+    // death-popup -> leaveParty path), drop them from the local
     // `members[]` AND clear any boss aggro pointing at them. Without
     // this, the leaver's card stayed visible at 0 HP and one or more
     // bosses kept "aggroing" a ghost slot for ~1.5 s until the
@@ -893,7 +895,7 @@ const Raid = () => {
         fx.resetAllyFx();
     }, [party, phase, character?.id, fx]);
 
-    // ── URL-leave / tab-close = death (anti-cheat) ─────────────────────────
+    // -- URL-leave / tab-close = death (anti-cheat) -------------------------
     // Same anti-cheat guard as Dungeon/Boss — if the player navigates away
     // mid-fight (back, address bar, tab close) we treat it as a real wipe.
     // Note: raid wipes don't normally log to the deaths feed (see handleWipe),
@@ -934,7 +936,7 @@ const Raid = () => {
         useCombatStore.getState().addSessionLog(text, 'system');
     }, []);
 
-    // ── Build member states from party + character ───────────────────────────
+    // -- Build member states from party + character ---------------------------
     const buildMemberStates = useCallback((): IRaidMemberState[] => {
         if (!character || !party) return [];
         const transformColor = useTransformStore.getState().getHighestTransformColor();
@@ -1043,7 +1045,7 @@ const Raid = () => {
         });
     }, [character, party]);
 
-    // ── Defensive skill-slot purge ──────────────────────────────────────────
+    // -- Defensive skill-slot purge ------------------------------------------
     // Whenever the player's level changes (level-up, death penalty, manual
     // intervention) sweep the active skill slots and clear any whose
     // unlock-level now exceeds the new level. Catches deaths that happened
@@ -1116,7 +1118,7 @@ const Raid = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [character?.id]);
 
-    // ── Start raid ──────────────────────────────────────────────────────────
+    // -- Start raid ----------------------------------------------------------
     const startRaid = useCallback((raid: IRaid) => {
         if (!consumeAttempt(raid.id)) {
             addLog('Brak dostępnych prób dzisiaj dla tego rajdu.');
@@ -1145,7 +1147,7 @@ const Raid = () => {
         // Reset shared session log to a clean slate, then post the opener.
         useCombatStore.getState().clearCombatSession();
         useCombatStore.getState().addSessionLog(
-            `⚔️ Rajd "${raid.name_pl}" rozpoczęty! Fala 1/${raid.waves}`,
+            `:crossed-swords: Rajd "${raid.name_pl}" rozpoczęty! Fala 1/${raid.waves}`,
             'system',
         );
         setDropsByMember({});
@@ -1168,7 +1170,7 @@ const Raid = () => {
         setPhase('fighting');
     }, [buildMemberStates, consumeAttempt, addLog, fx]);
 
-    // ── Party-shared raid combat (2026-05-13) ────────────────────────────────
+    // -- Party-shared raid combat (2026-05-13) --------------------------------
     // Leader-side: publish authoritative raid-state on every meaningful
     // change. Throttled internally (~120 ms); phase + wave changes go
     // through immediately so the member's UI advances together.
@@ -1237,7 +1239,7 @@ const Raid = () => {
                 // ally fx whenever the member-ID SIGNATURE changes
                 // (someone left OR roster reordered after leader
                 // hand-off). Length-only check missed reorders where
-                // length stays equal — Knight from slot 1 → slot 0
+                // length stays equal — Knight from slot 1 -> slot 0
                 // after the previous leader leaves would leave stale
                 // `fx.allyFloats[1]` ghosting onto the now-empty
                 // top-right tile. Also bumps `membersRef.current`
@@ -1297,7 +1299,7 @@ const Raid = () => {
                     // local tick set this state, so member screens just
                     // showed an unresponsive 0-HP card until the leader
                     // either won or wiped. Boss does the same in its
-                    // member subscriber (`meAlly.hp <= 0 →
+                    // member subscriber (`meAlly.hp <= 0 ->
                     // setDeathChoicePopup(true)`).
                     const aliveAlliesForMember = s.members.filter(
                         (m) => !m.isDead && !m.hasEscaped && m.id !== meId,
@@ -1311,7 +1313,7 @@ const Raid = () => {
                         playerDeathHandledRef.current = true;
                         setPartyChoiceAlliesAlive(aliveAlliesForMember);
                         setPartyChoiceOpen(true);
-                        addLog('💀 Padłeś! Wybierz: Powrót do miasta lub Czekaj na wskrzeszenie.');
+                        addLog(':skull: Padłeś! Wybierz: Powrót do miasta lub Czekaj na wskrzeszenie.');
                     }
                 }
                 // 2026-05-14 spec ("W dropie cos sie nie zgada kazdy
@@ -1379,7 +1381,7 @@ const Raid = () => {
                         useCombatStore.getState().addSessionStats(myXp, myGold);
                         useCombatStore.getState().appendDrops(
                             myDrops.map((d) => ({
-                                icon: '🎁',
+                                icon: 'wrapped-gift',
                                 name: d.label,
                                 rarity: d.rarity ?? 'common',
                             })),
@@ -1465,7 +1467,7 @@ const Raid = () => {
                         }
                         continue;
                     }
-                    // Ally hits a boss → enemy float on the matching
+                    // Ally hits a boss -> enemy float on the matching
                     // boss slot + class-swing pulse on that card.
                     if (ev.attackerId !== 'monster') {
                         const localBosses = bossesRef.current;
@@ -1507,7 +1509,7 @@ const Raid = () => {
                         }
                         continue;
                     }
-                    // Boss hits an ally → ally float on the matching
+                    // Boss hits an ally -> ally float on the matching
                     // member slot. `targetId` is the member id; we
                     // resolve to a slot via the FRESH raid state's
                     // members rather than `membersRef.current` so a
@@ -1559,7 +1561,7 @@ const Raid = () => {
         return () => { void unsub.then((fn) => fn?.()); };
     }, [isNonLeaderMember, fx, flashBossAttacker]);
 
-    // ── Combat tick loop ─────────────────────────────────────────────────────
+    // -- Combat tick loop -----------------------------------------------------
     useEffect(() => {
         if (phase !== 'fighting') return;
         // 2026-05-13: members mirror the leader's authoritative state;
@@ -1606,7 +1608,7 @@ const Raid = () => {
                         spawnDurationRef.current = waveDelayMs;
                         setSpawnProgress(0);
                         setWaitingForSpawn(true);
-                        addLog(`✓ Fala ${nextWaveIdx}/${selectedRaid.waves} zaliczona!`);
+                        addLog(`:check-mark-button: Fala ${nextWaveIdx}/${selectedRaid.waves} zaliczona!`);
                         setTimeout(() => {
                             if (phaseRef.current !== 'fighting') return;
                             setCurrentWave(nextWaveIdx);
@@ -1630,7 +1632,7 @@ const Raid = () => {
                 return;
             }
 
-            // ── Auto-potion check (player only) ───────────────────────────────
+            // -- Auto-potion check (player only) -------------------------------
             // Mirrors the hunting / boss / dungeon auto-potion: every tick we
             // check whether HP / MP have fallen below the configured
             // threshold and whether a matching potion is owned + off-cooldown.
@@ -1709,7 +1711,7 @@ const Raid = () => {
                         else if (which === 'mp' && isPct) setPctMpCooldown(PCT_CD_MS);
                         else setMpPotionCooldown(MP_POTION_CD);
                         useCombatStore.getState().addSessionLog(
-                            `🧪 Auto-potion: ${elixir.name_pl} (+${heal.toLocaleString('pl-PL')} ${which.toUpperCase()})`,
+                            `:test-tube: Auto-potion: ${elixir.name_pl} (+${heal.toLocaleString('pl-PL')} ${which.toUpperCase()})`,
                             'system',
                         );
                     };
@@ -1744,7 +1746,7 @@ const Raid = () => {
                 }
             }
 
-            // ── Resurrection roll (only when the player chose to wait) ───────
+            // -- Resurrection roll (only when the player chose to wait) -------
             // Every ~4 ticks (≈2s at x1) any alive ally rolls a small chance
             // to revive the downed player. Chance scales with number of
             // helpers so a full 4-person backup recovers the player in a
@@ -1769,7 +1771,7 @@ const Raid = () => {
                             me.hp = Math.max(1, Math.floor(me.maxHp * 0.5));
                             me.mp = Math.floor(me.maxMp * 0.3);
                             const helper = helpers[Math.floor(Math.random() * helpers.length)];
-                            addLog(`⚡ ${helper.name} wskrzesił Cię! (+50% HP / +30% MP)`);
+                            addLog(`:high-voltage: ${helper.name} wskrzesił Cię! (+50% HP / +30% MP)`);
                             playerWaitingResRef.current = false;
                             // Re-arm the death-popup gate so a SECOND death
                             // later this run shows the choice again.
@@ -1831,7 +1833,7 @@ const Raid = () => {
                             }));
                             if (targetSlot >= 0) {
                                 fx.pushEnemyFloat(targetSlot, dmg, isMe ? 'basic' : 'ally-basic', {
-                                    icon: hand ? '🗡️' : undefined,
+                                    icon: hand ? 'dagger' : undefined,
                                 });
                             }
                             // 2026-05-14 spec ("nie widac animacji ataku
@@ -1855,7 +1857,7 @@ const Raid = () => {
                                 const targetIdCap = target.id;
                                 const memIdCap = mem.id;
                                 const memClassCap = mem.class;
-                                const iconCap = hand ? '🗡️' : undefined;
+                                const iconCap = hand ? 'dagger' : undefined;
                                 const kindCap = isMe ? 'basic' : 'ally-basic';
                                 void import('../../stores/partyCombatSyncStore').then(({ usePartyCombatSyncStore }) => {
                                     usePartyCombatSyncStore.getState().publishRaidDamage({
@@ -1900,12 +1902,12 @@ const Raid = () => {
                         }
                         if (mem.id === character?.id) {
                             const dmgMode = memDual ? 'podwójne cięcie' : 'cios';
-                            addLog(`⚔️ ${dmgMode} → ${target.name}`);
+                            addLog(`:crossed-swords: ${dmgMode} -> ${target.name}`);
                         }
                     }
                 }
 
-                // ── Skill cast (manual queue first, then auto) ──────────────
+                // -- Skill cast (manual queue first, then auto) --------------
                 // Manual path runs every tick for the player so a click lands
                 // on the very next pulse. Auto path tries every 2 ticks
                 // (~1 s @ X1) and is gated by per-skill cooldowns — each
@@ -1961,7 +1963,7 @@ const Raid = () => {
 
                 let chosen = null as ReturnType<typeof getClassActiveSkills>[number] | null;
                 if (isPlayer && skillQueueRef.current.length > 0) {
-                    // Manual cast — pop queue, resolve slot → skill id, look
+                    // Manual cast — pop queue, resolve slot -> skill id, look
                     // up the def. Fall back to no cast if the slot is empty
                     // or the skill is on CD / over MP.
                     const slotIdx = skillQueueRef.current.shift()!;
@@ -2059,7 +2061,7 @@ const Raid = () => {
                             const hpPct = mem.hp / Math.max(1, mem.maxHp);
                             if (hpPct < 0.05) {
                                 if (mem.id === character?.id) {
-                                    addLog('💔 Apokalipsa zablokowana: < 5% HP');
+                                    addLog(':broken-heart: Apokalipsa zablokowana: < 5% HP');
                                 }
                                 continue;
                             }
@@ -2074,9 +2076,9 @@ const Raid = () => {
                                 mem.hp = newMemHp;
                                 if (mem.id === character?.id) {
                                     useCharacterStore.getState().updateCharacter({ hp: newMemHp });
-                                    addLog(`💔 Apokalipsa: -${lost} HP`);
+                                    addLog(`:broken-heart: Apokalipsa: -${lost} HP`);
                                 } else {
-                                    addLog(`💔 ${mem.name}: Apokalipsa -${lost} HP`);
+                                    addLog(`:broken-heart: ${mem.name}: Apokalipsa -${lost} HP`);
                                 }
                             }
                         }
@@ -2130,7 +2132,7 @@ const Raid = () => {
                                 }
                                 const apocSlot = nextBosses.indexOf(apocTarget);
                                 if (apocSlot >= 0) {
-                                    fx.pushEnemyFloat(apocSlot, apocDmg, 'spell', { icon: '☠️', label: 'APOKALIPSA', isCrit: true });
+                                    fx.pushEnemyFloat(apocSlot, apocDmg, 'spell', { icon: 'skull-and-crossbones', label: 'APOKALIPSA', isCrit: true });
                                 }
                                 // 2026-05-14: broadcast Apokalipsa hit.
                                 if (isLeaderInPartyCombat) {
@@ -2145,13 +2147,13 @@ const Raid = () => {
                                             targetId: tIdCap,
                                             damage: dmgCap,
                                             kind: 'spell',
-                                            icon: '☠️',
+                                            icon: 'skull-and-crossbones',
                                             label: 'APOKALIPSA',
                                             isCrit: true,
                                         });
                                     }).catch(() => { /* offline */ });
                                 }
-                                addLog(`☠️ ${mem.name}: Apokalipsa Śmierci ${apocDmg} dmg`);
+                                addLog(`:skull-and-crossbones: ${mem.name}: Apokalipsa Śmierci ${apocDmg} dmg`);
                             }
                         }
                         // Buffer skill-hit pulses to flush in a single setState
@@ -2308,10 +2310,10 @@ const Raid = () => {
                                 if (mem.id === character?.id) {
                                     const cappedTag = actual < heal ? ' (MAX)' : '';
                                     fx.pushAllyFloat(0, heal, 'heal', {
-                                        icon: '✨',
+                                        icon: 'sparkles',
                                         label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                                     });
-                                    addLog(`✨ ${chosen.id}: +${heal} HP${cappedTag}`);
+                                    addLog(`:sparkles: ${chosen.id}: +${heal} HP${cappedTag}`);
                                 }
                             }
                         }
@@ -2324,7 +2326,7 @@ const Raid = () => {
                                 if (mem.id === character?.id) {
                                     const cappedTag = actual < heal ? ' (MAX)' : '';
                                     fx.pushAllyFloat(0, heal, 'heal', {
-                                        icon: '✨',
+                                        icon: 'sparkles',
                                         label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                                     });
                                 }
@@ -2347,9 +2349,9 @@ const Raid = () => {
                                     m.isDead = false;
                                     m.hp = Math.max(1, Math.floor(m.maxHp * 0.5));
                                     if (m.id === character?.id) {
-                                        fx.pushAllyFloat(0, m.hp, 'heal', { icon: '✨', label: '+REZ' });
+                                        fx.pushAllyFloat(0, m.hp, 'heal', { icon: 'sparkles', label: '+REZ' });
                                         fx.triggerAllySkillAnim(0, chosen.id);
-                                        addLog(`✨ ${chosen.id}: wskrzeszony!`);
+                                        addLog(`:sparkles: ${chosen.id}: wskrzeszony!`);
                                     }
                                 }
                             }
@@ -2374,11 +2376,11 @@ const Raid = () => {
                                     if (lowest.id === character?.id) {
                                         const cappedTag = actual < heal ? ' (MAX)' : '';
                                         fx.pushAllyFloat(0, heal, 'heal', {
-                                            icon: '✨',
+                                            icon: 'sparkles',
                                             label: cappedTag ? `+${heal}${cappedTag}` : undefined,
                                         });
                                         fx.triggerAllySkillAnim(0, chosen.id);
-                                        addLog(`✨ ${chosen.id}: +${heal} HP${cappedTag}`);
+                                        addLog(`:sparkles: ${chosen.id}: +${heal} HP${cappedTag}`);
                                     }
                                 }
                             }
@@ -2390,7 +2392,7 @@ const Raid = () => {
                             expiresAt: Date.now() + 900,
                         });
                         if (mem.id === character?.id) {
-                            addLog(`✨ Używasz ${chosen.id} (${aoe ? 'AOE' : 'single'})`);
+                            addLog(`:sparkles: Używasz ${chosen.id} (${aoe ? 'AOE' : 'single'})`);
                         }
                     }
             }
@@ -2425,7 +2427,7 @@ const Raid = () => {
                             // rendered roster slot.
                             const tgtSlot = nextMembers.filter((m) => !m.hasEscaped).indexOf(tgt);
                             if (tgtSlot >= 0) {
-                                fx.pushAllyFloat(tgtSlot, 0, 'heal', { icon: '💨', label: 'UNIK' });
+                                fx.pushAllyFloat(tgtSlot, 0, 'heal', { icon: 'dashing-away', label: 'UNIK' });
                             }
                             // 2026-05-14: mirror dodge to members so
                             // their card shows the same UNIK label.
@@ -2439,13 +2441,13 @@ const Raid = () => {
                                         targetId: tgtIdCap,
                                         damage: 0,
                                         kind: 'heal',
-                                        icon: '💨',
+                                        icon: 'dashing-away',
                                         label: 'UNIK',
                                     });
                                 }).catch(() => { /* offline */ });
                             }
                             if (tgt.id === character?.id) {
-                                addLog(`💨 Bomba Dymna! Unikasz ataku ${boss.name} (${tgtSt.dodgeBuffPct}%)`);
+                                addLog(`:dashing-away: Bomba Dymna! Unikasz ataku ${boss.name} (${tgtSt.dodgeBuffPct}%)`);
                             }
                             continue;
                         }
@@ -2517,7 +2519,7 @@ const Raid = () => {
                     }
                     if (tgt.hp <= 0) {
                         tgt.isDead = true;
-                        addLog(`💀 ${tgt.name} pada!`);
+                        addLog(`:skull: ${tgt.name} pada!`);
                     }
                 }
                 if (memberPulseBumps.length > 0) {
@@ -2544,7 +2546,7 @@ const Raid = () => {
                 });
             }
 
-            // ── Player-death detection (mid-fight, party still alive) ────────
+            // -- Player-death detection (mid-fight, party still alive) --------
             // If the player went down THIS tick AND there's still at least
             // one ally swinging, surface the choice popup: bail to town now
             // (apply penalty) or wait for an ally rez. The one-shot guard
@@ -2560,7 +2562,7 @@ const Raid = () => {
                     playerDeathHandledRef.current = true;
                     setPartyChoiceAlliesAlive(aliveAllies);
                     setPartyChoiceOpen(true);
-                    addLog('💀 Padłeś! Wybierz: Powrót do miasta lub Czekaj na wskrzeszenie.');
+                    addLog(':skull: Padłeś! Wybierz: Powrót do miasta lub Czekaj na wskrzeszenie.');
                 }
             }
 
@@ -2587,7 +2589,7 @@ const Raid = () => {
                     spawnDurationRef.current = waveDelayMs;
                     setSpawnProgress(0);
                     setWaitingForSpawn(true);
-                    addLog(`✓ Fala ${nextWaveIdx}/${selectedRaid.waves} zaliczona!`);
+                    addLog(`:check-mark-button: Fala ${nextWaveIdx}/${selectedRaid.waves} zaliczona!`);
                     setTimeout(() => {
                         if (phaseRef.current !== 'fighting') return;
                         setCurrentWave(nextWaveIdx);
@@ -2631,7 +2633,7 @@ const Raid = () => {
         return () => clearTimeout(t);
     }, [skillFx]);
 
-    // Spawn-bar progress driver (rAF) — fills `spawnProgress` 0→1 over
+    // Spawn-bar progress driver (rAF) — fills `spawnProgress` 0->1 over
     // the duration captured when the wave-clear branch armed the
     // setTimeout. Cancelled on flag flip or unmount.
     useEffect(() => {
@@ -2667,7 +2669,7 @@ const Raid = () => {
         }
     }, [phase]);
 
-    // ── Wipe / death penalty ────────────────────────────────────────────────
+    // -- Wipe / death penalty ------------------------------------------------
     // A full party wipe = real death (everyone fell in combat). Apply the
     // full death penalty (level loss possible) — different from Ucieczka,
     // which is the optional flee. Also fires the global DeathNotification
@@ -2706,7 +2708,7 @@ const Raid = () => {
         };
         if (usedDeathProtection) {
             refillFullEffective();
-            addLog('🛡️ Eliksir Ochrony uchronił Cię od utraty poziomu!');
+            addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!');
         } else {
             const p = applyDeathPenalty(char.level, char.xp);
             useCharacterStore.getState().updateCharacter({
@@ -2723,13 +2725,13 @@ const Raid = () => {
             levelsLost = p.levelsLost;
             xpPercent = p.xpPercent;
             skillXpLossPercent = p.skillXpLossPercent;
-            addLog(`💀 Wipe! Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
+            addLog(`:skull: Wipe! Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
         }
         const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
         if (usedAol) {
-            addLog('🔱 Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!');
+            addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!');
         } else if (itemsLost > 0) {
-            addLog(`💀 Stracileś ${itemsLost} przedmiot(ow) przy wipe!`);
+            addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy wipe!`);
         }
         // Wipe ends the session — clear so the next combat view starts clean.
         useCombatStore.getState().clearCombatSession();
@@ -2796,7 +2798,7 @@ const Raid = () => {
         if (phase === 'fighting') wipeForcedRef.current = false;
     }, [phase]);
 
-    // ── Mid-fight choice handlers ────────────────────────────────────────────
+    // -- Mid-fight choice handlers --------------------------------------------
     // Player clicked "Powrót do miasta" while their character was downed but
     // the team was still fighting. Treat this as a real death NOW: full
     // penalty + global popup + nav to town. The interval clears on unmount,
@@ -2881,7 +2883,7 @@ const Raid = () => {
         };
         if (usedDeathProtection) {
             refillFullEffective();
-            addLog('🛡️ Eliksir Ochrony uchronił Cię od utraty poziomu!');
+            addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!');
         } else {
             const p = applyDeathPenalty(char.level, char.xp);
             useCharacterStore.getState().updateCharacter({
@@ -2898,13 +2900,13 @@ const Raid = () => {
             levelsLost = p.levelsLost;
             xpPercent = p.xpPercent;
             skillXpLossPercent = p.skillXpLossPercent;
-            addLog(`💀 Wracasz do miasta. Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
+            addLog(`:skull: Wracasz do miasta. Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
         }
         const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
         if (usedAol) {
-            addLog('🔱 Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!');
+            addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!');
         } else if (itemsLost > 0) {
-            addLog(`💀 Stracileś ${itemsLost} przedmiot(ow)!`);
+            addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow)!`);
         }
         useCombatStore.getState().clearCombatSession();
         const raid = selectedRaidRef.current;
@@ -2929,10 +2931,10 @@ const Raid = () => {
     const handleWaitForResurrection = useCallback(() => {
         setPartyChoiceOpen(false);
         playerWaitingResRef.current = true;
-        addLog('⏳ Czekasz na wskrzeszenie...');
+        addLog(':hourglass-not-done: Czekasz na wskrzeszenie...');
     }, [addLog]);
 
-    // ── Rewards ─────────────────────────────────────────────────────────────
+    // -- Rewards -------------------------------------------------------------
     const distributeRewards = useCallback((raid: IRaid, finalMembers: IRaidMemberState[]) => {
         const bossesDefeatedPerMember = raid.waves * 4;
         const perMember: Record<string, IRaidDropLine[]> = {};
@@ -2966,7 +2968,7 @@ const Raid = () => {
                 useCombatStore.getState().addSessionStats(result.xp, result.gold);
                 useCombatStore.getState().appendDrops(
                     result.drops.map((d) => ({
-                        icon: '🎁',
+                        icon: 'wrapped-gift',
                         name: d.label,
                         rarity: d.rarity ?? 'common',
                     })),
@@ -2977,12 +2979,12 @@ const Raid = () => {
         // 2026-05-15: store the rolled items so the leader's
         // broadcast effect can ship them to every member alongside
         // dropsByMember. Without this, each client rolled their OWN
-        // items → different drops shown on different screens.
+        // items -> different drops shown on different screens.
         setItemsByMember(itemsPerMember);
-        addLog('🏆 Rajd ukończony! Nagrody rozdzielone.');
+        addLog(':trophy: Rajd ukończony! Nagrody rozdzielone.');
     }, [character, addLog]);
 
-    // ── Escape handler ──────────────────────────────────────────────────────
+    // -- Escape handler ------------------------------------------------------
     // Spec: Ucieknij from a non-hunting fight = standard 1/10 flee penalty
     // (XP loss only — no level strip, no item loss, no HP/MP nuke). Same
     // contract as Boss/Dungeon/Transform.
@@ -2994,7 +2996,7 @@ const Raid = () => {
         setMembers((prev) =>
             prev.map((m) => (m.id === character.id ? { ...m, hasEscaped: true } : m)),
         );
-        addLog('🏳️ Uciekasz z rajdu! Party opuszczone.');
+        addLog(':white-flag: Uciekasz z rajdu! Party opuszczone.');
         // 2026-05-15 v11 spec ("Jezeli ucieklem z raidu a moi
         // soujusznicy i tak go zrobili to nie zabieraj mi limitow
         // robienia go"): refund the daily-attempt count for this
@@ -3011,7 +3013,7 @@ const Raid = () => {
         // sojusznicy gina co jest duzym bledem"): partyApi.leaveParty
         // dissolves the WHOLE party when the caller is the leader.
         // Without an explicit transferLeadership first, every other
-        // member's `party` flips to null → AppShell flee-watcher
+        // member's `party` flips to null -> AppShell flee-watcher
         // fires the flee penalty for ALL of them. Promote an alive
         // human teammate before bailing so the raid keeps going
         // under the new leader and only WE eat the flee. Mirrors
@@ -3119,7 +3121,7 @@ const Raid = () => {
             resultDeathAppliedRef.current = true;
             return;
         }
-        // Victory + dead-not-resurrected → personal death penalty.
+        // Victory + dead-not-resurrected -> personal death penalty.
         resultDeathAppliedRef.current = true;
         leavePenaltyAppliedRef.current = true;
         // 2026-05-19 v25 spec ("Dodać jeszcze raidy"): log dead-not-resurrected
@@ -3167,7 +3169,7 @@ const Raid = () => {
                 source: 'raid',
             });
         }
-        addLog('💀 Nikt Cię nie wskrzesił — ginieesz.');
+        addLog(':skull: Nikt Cię nie wskrzesił — ginieesz.');
         // 2026-05-17 v2 spec ("jezeli lider party kliknie ponow lub
         // walczy wyzej to mnie powinno wywalic z party i przejsc do
         // miasta"): leave the party + navigate home IMMEDIATELY so the
@@ -3175,7 +3177,7 @@ const Raid = () => {
         // player back into combat via the ready-check / go pipeline.
         // Without this, the dead player would re-enter the next fight
         // already in zero-HP state and the engine would loop them
-        // through Czekaj → death → Czekaj forever. Fire-and-forget
+        // through Czekaj -> death -> Czekaj forever. Fire-and-forget
         // the leaveParty call so the death overlay opens immediately.
         useCombatStore.getState().clearCombatSession();
         // Tear down the ready-check channel + clear any pending
@@ -3191,7 +3193,7 @@ const Raid = () => {
         navigate('/');
     }, [phase, addLog, navigate]);
 
-    // ── Render: lobby gate ──────────────────────────────────────────────────
+    // -- Render: lobby gate --------------------------------------------------
     // Three party gates run before the list — all must pass before the
     // player can pick a raid. The list itself is then a visual sibling of
     // the dungeon hub (same filter strip, same card chrome, same drop
@@ -3222,7 +3224,7 @@ const Raid = () => {
             <div className="raid">
                 {noParty && (
                     <div className="raid__gate">
-                        <span className="raid__gate-icon">🔒</span>
+                        <span className="raid__gate-icon"><GameIcon name="locked" /></span>
                         <h2>Potrzebujesz Party</h2>
                         <p>Raidy wymagają co najmniej 2 graczy w party. Dołącz lub załóż party.</p>
                         <button onClick={() => navigate('/party')}>Przejdź do Party</button>
@@ -3231,7 +3233,7 @@ const Raid = () => {
 
                 {partyTooSmall && (
                     <div className="raid__gate">
-                        <span className="raid__gate-icon">👥</span>
+                        <span className="raid__gate-icon"><GameIcon name="busts-in-silhouette" /></span>
                         <h2>Za mało osób</h2>
                         <p>Party musi mieć co najmniej 2 osoby ({humanMembers.length}/2). Dodaj członka lub bota.</p>
                         <button onClick={() => navigate('/party')}>Party</button>
@@ -3240,7 +3242,7 @@ const Raid = () => {
 
                 {notLeader && (
                     <div className="raid__gate">
-                        <span className="raid__gate-icon">👑</span>
+                        <span className="raid__gate-icon"><GameIcon name="crown" /></span>
                         <h2>Tylko lider</h2>
                         <p>Rajd wybiera i startuje lider party.</p>
                     </div>
@@ -3303,7 +3305,7 @@ const Raid = () => {
                                         }}
                                         title="Wyczyść filtry"
                                     >
-                                        ✕ Wyczyść
+                                        <Icon name="x" /> Wyczyść
                                     </button>
                                 )}
                             </div>
@@ -3345,7 +3347,7 @@ const Raid = () => {
                                         // raid is just the same biome run as a
                                         // 4-up party fight), keyed off the
                                         // canonical `sourceDungeonId` set when
-                                        // the raid was generated. The ID →
+                                        // the raid was generated. The ID ->
                                         // image map in spriteAssets is stable
                                         // across filter/sort, so a given raid
                                         // always shows the same picture. Falls
@@ -3383,7 +3385,7 @@ const Raid = () => {
                                         corner pills. */}
                                     {allDone && (
                                         <span className="raid__corner raid__corner--cleared">
-                                            ✓ Pokonany
+                                            <GameIcon name="check-mark-button" /> Pokonany
                                         </span>
                                     )}
 
@@ -3401,31 +3403,31 @@ const Raid = () => {
                                     </div>
 
                                     {/* Quick reward callout — same shape as
-                                        the dungeon ("💰 min–max" + "⭐ ~xp")
+                                        the dungeon (":money-bag: min–max" + ":star: ~xp")
                                         so a player can compare raid vs.
                                         dungeon yields directly without
                                         decoding a multiplier. Numbers come
                                         from `estimateRaidRewards`, which
                                         mirrors the live engine math. */}
                                     <div className="raid__card-rewards">
-                                        <span>💰 {formatGoldShort(est.goldMin)}–{formatGoldShort(est.goldMax)}</span>
-                                        <span>⭐ ~{est.xp.toLocaleString('pl-PL')} XP</span>
+                                        <span><GameIcon name="money-bag" /> {formatGoldShort(est.goldMin)}–{formatGoldShort(est.goldMax)}</span>
+                                        <span><GameIcon name="star" /> ~{est.xp.toLocaleString('pl-PL')} XP</span>
                                     </div>
 
                                     <button
                                         className="raid__drop-btn"
                                         onClick={() => setDropModalRaidId(r.id)}
                                     >
-                                        📦 Pokaż drop table
+                                        <GameIcon name="package" /> Pokaż drop table
                                     </button>
 
                                     {/* Attempts strip — used/max + bar.
                                         Drops the "Próby:" prefix to match
-                                        the dungeon's terser "⚔️ 1/5"
+                                        the dungeon's terser ":crossed-swords: 1/5"
                                         format; the swords icon already
                                         signals "attempts" semantically. */}
                                     <div className="raid__attempts">
-                                        <span>⚔️ {used}/{r.dailyAttempts}</span>
+                                        <span><GameIcon name="crossed-swords" /> {used}/{r.dailyAttempts}</span>
                                         <div className="raid__attempts-bar">
                                             <div
                                                 className={`raid__attempts-bar-fill${noAttempts ? ' raid__attempts-bar-fill--full' : ''}`}
@@ -3435,10 +3437,10 @@ const Raid = () => {
                                     </div>
 
                                     {noAttempts && (
-                                        <span className="raid__cooldown">❌ Brak prób · reset o północy</span>
+                                        <span className="raid__cooldown"><GameIcon name="cross-mark" /> Brak prób · reset o północy</span>
                                     )}
                                     {!noAttempts && tooLow && (
-                                        <span className="raid__locked">🔒 Wymaga Lvl {r.level} (party gate)</span>
+                                        <span className="raid__locked"><GameIcon name="locked" /> Wymaga Lvl {r.level} (party gate)</span>
                                     )}
 
                                     {!blocked && (
@@ -3446,7 +3448,7 @@ const Raid = () => {
                                             className="raid__enter-btn raid__enter-btn--wide"
                                             onClick={() => handleEnterRaid(r)}
                                         >
-                                            ⚔️ Wejdź
+                                            <GameIcon name="crossed-swords" /> Wejdź
                                         </button>
                                     )}
                                 </div>
@@ -3455,7 +3457,7 @@ const Raid = () => {
 
                         {/* Drop-table modal — single instance lives outside
                             the .map() so only one popup is mounted at once.
-                            Backdrop click & explicit ✕ both dismiss. */}
+                            Backdrop click & explicit :multiply: both dismiss. */}
                         {dropModalRaidId && (() => {
                             const r = raids.find((x) => x.id === dropModalRaidId);
                             if (!r) return null;
@@ -3487,7 +3489,7 @@ const Raid = () => {
                                                 onClick={() => setDropModalRaidId(null)}
                                                 aria-label="Zamknij"
                                             >
-                                                ✕
+                                                <Icon name="x" />
                                             </button>
                                         </div>
                                         <div className="raid__modal-body">
@@ -3497,7 +3499,7 @@ const Raid = () => {
                                                 line was redundant once the
                                                 actual numbers are visible. */}
                                             <div className="raid__drop-section">
-                                                <div className="raid__drop-section-title">💰 Nagrody</div>
+                                                <div className="raid__drop-section-title"><GameIcon name="money-bag" /> Nagrody</div>
                                                 <div className="raid__drop-info">Gold: {formatGoldShort(modalEst.goldMin)}–{formatGoldShort(modalEst.goldMax)}</div>
                                                 <div className="raid__drop-info">XP: ~{modalEst.xp.toLocaleString('pl-PL')}</div>
                                                 <div className="raid__drop-info">
@@ -3520,7 +3522,7 @@ const Raid = () => {
                                             </div>
 
                                             <div className="raid__drop-section">
-                                                <div className="raid__drop-section-title">🎒 Przedmioty (per boss)</div>
+                                                <div className="raid__drop-section-title"><GameIcon name="backpack" /> Przedmioty (per boss)</div>
                                                 {RAID_ITEM_TIERS.map((tier) => (
                                                     <div key={tier.key} className="raid__drop-tier">
                                                         <span className="raid__drop-dot" style={{ background: tier.color, boxShadow: `0 0 4px ${tier.color}` }} />
@@ -3541,18 +3543,18 @@ const Raid = () => {
                                                 hint was redundant — the tier
                                                 names already show that. */}
                                             <div className="raid__drop-section">
-                                                <div className="raid__drop-section-title"><TinyIcon icon={getPotionImage(null) ?? '🧪'} size="sm" /> Potiony</div>
+                                                <div className="raid__drop-section-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                                                 <div className="raid__drop-tier">
                                                     <span className="raid__drop-dot" style={{ background: '#e57373' }} />
                                                     <span className="raid__drop-tier-name" style={{ color: '#e57373' }}>
-                                                        <TinyIcon icon={getPotionImage('hp_potion_sm') ?? '❤️'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
+                                                        <TinyIcon icon={getPotionImage('hp_potion_sm') ?? 'red-heart'} size="sm" /> {potionInfo.hpLabel} ({potionInfo.hpHeal})
                                                     </span>
                                                     <span className="raid__drop-tier-chance">{(potionInfo.hpChance * 100).toFixed(2)}%</span>
                                                 </div>
                                                 <div className="raid__drop-tier">
                                                     <span className="raid__drop-dot" style={{ background: '#64b5f6' }} />
                                                     <span className="raid__drop-tier-name" style={{ color: '#64b5f6' }}>
-                                                        <TinyIcon icon={getPotionImage('mp_potion_sm') ?? '💧'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
+                                                        <TinyIcon icon={getPotionImage('mp_potion_sm') ?? 'droplet'} size="sm" /> {potionInfo.mpLabel} ({potionInfo.mpHeal})
                                                     </span>
                                                     <span className="raid__drop-tier-chance">{(potionInfo.mpChance * 100).toFixed(2)}%</span>
                                                 </div>
@@ -3561,14 +3563,14 @@ const Raid = () => {
                                                         <div className="raid__drop-tier">
                                                             <span className="raid__drop-dot" style={{ background: '#ff5252' }} />
                                                             <span className="raid__drop-tier-name" style={{ color: '#ff5252' }}>
-                                                                <TinyIcon icon={getPotionImage('hp_potion_mega') ?? '❤️‍🔥'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
+                                                                <TinyIcon icon={getPotionImage('hp_potion_mega') ?? 'heart-on-fire'} size="sm" /> {potionInfo.mega.hpLabel} ({potionInfo.mega.hpHeal})
                                                             </span>
                                                             <span className="raid__drop-tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                                         </div>
                                                         <div className="raid__drop-tier">
                                                             <span className="raid__drop-dot" style={{ background: '#448aff' }} />
                                                             <span className="raid__drop-tier-name" style={{ color: '#448aff' }}>
-                                                                <TinyIcon icon={getPotionImage('mp_potion_mega') ?? '💎'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
+                                                                <TinyIcon icon={getPotionImage('mp_potion_mega') ?? 'gem-stone'} size="sm" /> {potionInfo.mega.mpLabel} ({potionInfo.mega.mpHeal})
                                                             </span>
                                                             <span className="raid__drop-tier-chance">{(potionInfo.mega.chance * 100).toFixed(2)}%</span>
                                                         </div>
@@ -3587,7 +3589,7 @@ const Raid = () => {
                                                 chest to drop. */}
                                             {chestLevels.length > 0 && (
                                                 <div className="raid__drop-section">
-                                                    <div className="raid__drop-section-title"><TinyIcon icon={getSpellChestImage(1000) ?? '📦'} size="sm" /> Spell Chests (per boss)</div>
+                                                    <div className="raid__drop-section-title"><TinyIcon icon={getSpellChestImage(1000) ?? 'package'} size="sm" /> Spell Chests (per boss)</div>
                                                     {chestLevels.map((lvl) => (
                                                         <div key={lvl} className="raid__drop-tier">
                                                             <span className="raid__drop-dot" style={{ background: '#ab47bc' }} />
@@ -3614,7 +3616,7 @@ const Raid = () => {
                                                 "(1×)" suffix in favour of the
                                                 clearer "(dodatkowy drop)". */}
                                             <div className="raid__drop-section">
-                                                <div className="raid__drop-section-title">🏆 Bonus za ukończenie rajdu (dodatkowy drop)</div>
+                                                <div className="raid__drop-section-title"><GameIcon name="trophy" /> Bonus za ukończenie rajdu (dodatkowy drop)</div>
                                                 {RAID_BONUS_TIERS.map((tier) => (
                                                     <div key={tier.key} className="raid__drop-tier">
                                                         <span className="raid__drop-dot" style={{ background: tier.color, boxShadow: `0 0 4px ${tier.color}` }} />
@@ -3637,7 +3639,7 @@ const Raid = () => {
         );
     }
 
-    // ── Render: victory / wipe ──────────────────────────────────────────────
+    // -- Render: victory / wipe ----------------------------------------------
     // Per-member loot tiles on victory — each surviving member gets a
     // raid-tinted card listing every drop the engine rolled for them.
     // Hue is derived from the raid level (matches the lobby card colour
@@ -3663,7 +3665,7 @@ const Raid = () => {
             <div className="raid">
                 <div className="raid__result-header">
                     <h1>
-                        {phase === 'victory' ? '🏆 Rajd ukończony' : '💀 Wipe'}
+                        {phase === 'victory' ? <><GameIcon name="trophy" /> Rajd ukończony</> : <><GameIcon name="skull" /> Wipe</>}
                     </h1>
                     {selectedRaid && (
                         <p className="raid__result-sub">
@@ -3718,7 +3720,7 @@ const Raid = () => {
                                                     return (
                                                         <ItemIcon
                                                             key={i}
-                                                            icon={info?.icon ?? '📦'}
+                                                            icon={info?.icon ?? 'package'}
                                                             rarity={d.rarity ?? 'common'}
                                                             tooltip={info?.name_pl ?? d.label}
                                                             size="sm"
@@ -3757,7 +3759,7 @@ const Raid = () => {
                                                     return (
                                                         <ItemIcon
                                                             key={i}
-                                                            icon={getPotionImage(null) ?? '🧪'}
+                                                            icon={getPotionImage(null) ?? 'test-tube'}
                                                             rarity="rare"
                                                             tooltip={d.label}
                                                             size="sm"
@@ -3768,7 +3770,7 @@ const Raid = () => {
                                                     return (
                                                         <ItemIcon
                                                             key={i}
-                                                            icon="✨"
+                                                            icon="sparkles"
                                                             rarity="epic"
                                                             tooltip={`+${(d.amount ?? 0).toLocaleString('pl-PL')} XP`}
                                                             size="sm"
@@ -3779,7 +3781,7 @@ const Raid = () => {
                                                     return (
                                                         <ItemIcon
                                                             key={i}
-                                                            icon="💰"
+                                                            icon="money-bag"
                                                             rarity="mythic"
                                                             tooltip={formatGoldShort(d.amount ?? 0)}
                                                             size="sm"
@@ -3801,7 +3803,7 @@ const Raid = () => {
                                                     {bonusDrops.length > 0 && (
                                                         <div className="raid__result-bonus">
                                                             <span className="raid__result-bonus-label">
-                                                                🎁 Dodatkowy item:
+                                                                <GameIcon name="wrapped-gift" /> Dodatkowy item:
                                                             </span>
                                                             <div className="raid__result-bonus-icons">
                                                                 {bonusDrops.map(renderDrop)}
@@ -3880,7 +3882,7 @@ const Raid = () => {
                                         onClick={() => {
                                             const r = selectedRaid;
                                             // 2026-05-14: flag a retry so the
-                                            // selectedRaid → null transition
+                                            // selectedRaid -> null transition
                                             // (inside backToLobby) doesn't fire
                                             // publishCombatEnd — that flushed
                                             // members straight off the /raid
@@ -3900,7 +3902,7 @@ const Raid = () => {
                                             }, 0);
                                         }}
                                     >
-                                        ⚔️ Ponów
+                                        <GameIcon name="crossed-swords" /> Ponów
                                     </button>
                                 )}
                                 {/* 2026-05 v6: when this raid's daily attempts
@@ -3931,7 +3933,7 @@ const Raid = () => {
                                                 }}
                                                 title={`${nextRaid.name_pl ?? nextRaid.id} (lvl ${nextRaid.level})`}
                                             >
-                                                ⬆️ Walcz wyżej (lvl {nextRaid.level})
+                                                <GameIcon name="up-arrow" /> Walcz wyżej (lvl {nextRaid.level})
                                             </button>
                                         );
                                     })()}
@@ -3950,12 +3952,12 @@ const Raid = () => {
         );
     }
 
-    // ── Render: fighting (unified CombatUI) ─────────────────────────────────
+    // -- Render: fighting (unified CombatUI) ---------------------------------
     // Raid feeds into the same shared CombatUI tree as every other view: the
     // 4 wave bosses fill the enemies column and the (up to 4) party members
     // fill the allies column. Daily-boss shimmer bg since raids are 3×/day
     // boss-tier encounters. No skills/potions exposed (raids auto-resolve).
-    // Speed cycles X1→X2→X3→X4→X1 via the shared chip.
+    // Speed cycles X1->X2->X3->X4->X1 via the shared chip.
     const cycleSpeed = () => {
         // 2026-05-13: only the leader can change combat speed in a
         // shared raid. Members mirror via combat-speed broadcast.
@@ -3973,7 +3975,7 @@ const Raid = () => {
         return out;
     };
 
-    // ── Player accent for transform-tinted HUD chrome ──────────────────────
+    // -- Player accent for transform-tinted HUD chrome ----------------------
     const playerAccent = (() => {
         const tc = useTransformStore.getState().getHighestTransformColor();
         return tc?.solid ?? tc?.gradient?.[0] ?? CLASS_COLORS[character?.class ?? ''] ?? '#e94560';
@@ -3984,7 +3986,7 @@ const Raid = () => {
             id: b.id,
             name: b.name,
             level: b.level,
-            sprite: b.sprite ?? '👹',
+            sprite: b.sprite ?? 'ogre',
             // `monster` (not `boss`) so EnemyCard pulls `monster-{level}.png`
             // via MonsterSprite — raids now spawn boss-tier mobs from
             // monsters.json, so the matching image registry is the monster
@@ -4012,7 +4014,7 @@ const Raid = () => {
             skillAnim: fx.enemySkill[slot] ?? null,
             floats: fx.enemyFloats[slot] ?? [],
             // 2026-05 v7: live status countdowns on each raid boss.
-            // Klątwa Śmierci ☠️ ×N · Ts and Mroczny Rytuał 💀 N% · Ts
+            // Klątwa Śmierci :skull-and-crossbones: ×N · Ts and Mroczny Rytuał :skull: N% · Ts
             // both render so the player can time the burst window
             // before the mark/ritual expires.
             statusOverlay: (() => {
@@ -4139,11 +4141,11 @@ const Raid = () => {
             // summons. Each raid member has their own summon queue keyed
             // by `m.id`, so passing `m.id` here lets the player tap
             // their own card's badge to despawn one. Bot members'
-            // cards leave `onSummonClick` undefined → read-only.
+            // cards leave `onSummonClick` undefined -> read-only.
             onSummonClick: m.id === character?.id
                 ? (type) => {
                     useNecroSummonStore.getState().despawnOne(m.id, type);
-                    addLog(`💨 Odesłano: ${type}`);
+                    addLog(`:dashing-away: Odesłano: ${type}`);
                 }
                 : undefined,
             // How many alive bosses currently picked this member as their

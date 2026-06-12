@@ -10,8 +10,8 @@ import { supabase } from '../lib/supabase';
  * `channel.send is not a function`.
  *
  * Real wall-clock matters in two places:
- *   • `publish` throttle (MIN_PUBLISH_INTERVAL_MS = 500)
- *   • presence GC interval (10 s)
+ *   - `publish` throttle (MIN_PUBLISH_INTERVAL_MS = 500)
+ *   - presence GC interval (10 s)
  *
  * We use `vi.useFakeTimers()` where time-sensitive behaviour is in
  * play and otherwise let happy-dom's wall clock run.
@@ -56,7 +56,7 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-// ── subscribe ────────────────────────────────────────────────────────────────
+// -- subscribe ----------------------------------------------------------------
 
 describe('subscribe', () => {
     it('opens a channel + stores the partyId on first subscribe', () => {
@@ -110,12 +110,12 @@ describe('subscribe', () => {
     });
 });
 
-// ── publish ──────────────────────────────────────────────────────────────────
+// -- publish ------------------------------------------------------------------
 
 describe('publish', () => {
     it('is a no-op when no channel is open (no subscribe yet)', () => {
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 100 }));
-        // No subscribe → byMember stays empty (the early return fires
+        // No subscribe -> byMember stays empty (the early return fires
         // before the local-mirror step).
         expect(usePartyPresenceStore.getState().byMember).toEqual({});
     });
@@ -179,7 +179,7 @@ describe('publish', () => {
     });
 });
 
-// ── clear ────────────────────────────────────────────────────────────────────
+// -- clear --------------------------------------------------------------------
 
 describe('clear', () => {
     it('drops everything: channel, partyId, byMember', () => {
@@ -213,9 +213,9 @@ describe('clear', () => {
     });
 });
 
-// ── Lifecycle integration ───────────────────────────────────────────────────
+// -- Lifecycle integration ---------------------------------------------------
 
-describe('subscribe → publish → unsubscribe lifecycle', () => {
+describe('subscribe -> publish -> unsubscribe lifecycle', () => {
     it('local mirror persists across publishes until the cleanup is invoked', () => {
         const unsub = usePartyPresenceStore.getState().subscribe('party-1');
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 200 }));

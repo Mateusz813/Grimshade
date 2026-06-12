@@ -21,7 +21,7 @@ import { MONSTER_RARITY_TASK_KILLS } from './lootSystem';
 import type { IMonster } from '../types/monster';
 import type { ICharacter } from '../api/v1/characterApi';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeMonster = (overrides?: Partial<IMonster>): IMonster => ({
     id: 'rat',
@@ -69,14 +69,14 @@ const makeCharacter = (overrides?: Partial<ICharacter>): ICharacter => ({
 
 // Helper: deterministically zero out randomness so loot rolls produce nothing,
 // rarities all snap to 'normal'. Math.random returns 0.5 which is:
-//   - below normal-rarity cumulative threshold (0.90) → rarity = 'normal'
+//   - below normal-rarity cumulative threshold (0.90) -> rarity = 'normal'
 //   - above every drop chance band (loot 0.08, potion ≤0.05, stone 0.10,
-//     spell chest 0.01) → no drops roll through.
+//     spell chest 0.01) -> no drops roll through.
 const stubAllRandomness = (value = 0.5): void => {
     vi.spyOn(Math, 'random').mockReturnValue(value);
 };
 
-// ── Lifecycle ────────────────────────────────────────────────────────────────
+// -- Lifecycle ----------------------------------------------------------------
 
 beforeEach(() => {
     useOfflineHuntStore.setState({
@@ -123,7 +123,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ── previewOfflineHunt ───────────────────────────────────────────────────────
+// -- previewOfflineHunt -------------------------------------------------------
 
 describe('previewOfflineHunt', () => {
     it('returns null when no hunt is active', () => {
@@ -307,7 +307,7 @@ describe('previewOfflineHunt', () => {
 
     it('xpGained scales with mastery XP bonus (+2% per level)', () => {
         const monster = makeMonster({ id: 'rat', level: 5, xp: 100, gold: [10, 20] });
-        // mastery 10 → +20% XP bonus
+        // mastery 10 -> +20% XP bonus
         useMasteryStore.setState({
             masteries: { rat: { level: 10 } },
             masteryKills: {},
@@ -321,11 +321,11 @@ describe('previewOfflineHunt', () => {
             targetMonster: monster,
             trainedSkillId: 'sword_fighting',
         });
-        // 50s × (2/10) = 10 kills (mastery 10 → x2 speed)
+        // 50s × (2/10) = 10 kills (mastery 10 -> x2 speed)
         vi.setSystemTime(new Date(startMs + 50_000));
 
         const p = previewOfflineHunt()!;
-        // xpPerKill = floor(100 * 1.20) = 120, kills = 10 → 1200 xp
+        // xpPerKill = floor(100 * 1.20) = 120, kills = 10 -> 1200 xp
         expect(p.xpGained).toBe(p.kills * 120);
     });
 
@@ -343,7 +343,7 @@ describe('previewOfflineHunt', () => {
         vi.setSystemTime(new Date(startMs + 100_000));
 
         const p = previewOfflineHunt()!;
-        // midpoint = 20, mastery 0 → ×1, kills = 10 → 200 gold
+        // midpoint = 20, mastery 0 -> ×1, kills = 10 -> 200 gold
         expect(p.goldGained).toBe(p.kills * 20);
     });
 
@@ -370,7 +370,7 @@ describe('previewOfflineHunt', () => {
     });
 });
 
-// ── claimOfflineHunt ─────────────────────────────────────────────────────────
+// -- claimOfflineHunt ---------------------------------------------------------
 
 describe('claimOfflineHunt', () => {
     it('returns null when no hunt is active', () => {
@@ -388,7 +388,7 @@ describe('claimOfflineHunt', () => {
             targetMonster: makeMonster(),
             trainedSkillId: 'sword_fighting',
         });
-        // No time elapsed → 0 kills
+        // No time elapsed -> 0 kills
         const result = claimOfflineHunt();
         expect(result).toBeNull();
         // The hunt is stopped so the player can start fresh.
@@ -503,7 +503,7 @@ describe('claimOfflineHunt', () => {
 
         claimOfflineHunt();
 
-        // All 10 kills are 'normal' → weight 1 each → 10 mastery kills.
+        // All 10 kills are 'normal' -> weight 1 each -> 10 mastery kills.
         const masteryKills = useMasteryStore.getState().getMasteryKills('rat');
         expect(masteryKills).toBe(10 * MONSTER_RARITY_TASK_KILLS.normal);
     });
@@ -545,7 +545,7 @@ describe('claimOfflineHunt', () => {
             targetMonster: monster,
             trainedSkillId: 'sword_fighting',
         });
-        // 100s = 10 kills, all 'normal' → weighted task kills = 10 × 1 = 10
+        // 100s = 10 kills, all 'normal' -> weighted task kills = 10 × 1 = 10
         vi.setSystemTime(new Date(startMs + 100_000));
 
         const r = claimOfflineHunt()!;
@@ -594,7 +594,7 @@ describe('claimOfflineHunt', () => {
             targetMonster: monster,
             trainedSkillId: 'sword_fighting',
         });
-        // 48 hours elapsed → must clamp to OFFLINE_HUNT_MAX_SECONDS.
+        // 48 hours elapsed -> must clamp to OFFLINE_HUNT_MAX_SECONDS.
         vi.setSystemTime(new Date(startMs + 48 * 60 * 60 * 1000));
 
         const r = claimOfflineHunt()!;
@@ -630,7 +630,7 @@ describe('claimOfflineHunt', () => {
         stubAllRandomness();
         useCharacterStore.setState({ character: makeCharacter({ level: 100 }) });
         const monster = makeMonster({ id: 'rat', level: 5, xp: 100, gold: [10, 20] });
-        // mastery 10 → +20% XP
+        // mastery 10 -> +20% XP
         useMasteryStore.setState({
             masteries: { rat: { level: 10 } },
             masteryKills: {},
@@ -644,7 +644,7 @@ describe('claimOfflineHunt', () => {
             targetMonster: monster,
             trainedSkillId: 'sword_fighting',
         });
-        // At mastery 10 → x2 speed, 50s → 10 kills
+        // At mastery 10 -> x2 speed, 50s -> 10 kills
         vi.setSystemTime(new Date(startMs + 50_000));
 
         const r = claimOfflineHunt()!;
@@ -704,7 +704,7 @@ describe('claimOfflineHunt', () => {
     });
 });
 
-// ── Buff multiplier interactions ────────────────────────────────────────────
+// -- Buff multiplier interactions --------------------------------------------
 
 describe('previewOfflineHunt – buff multipliers', () => {
     it('does NOT multiply XP when no buff is active (sanity baseline)', () => {

@@ -23,7 +23,7 @@ import { useSkillStore } from './skillStore';
 import { useTransformStore } from './transformStore';
 import { getEffectiveChar } from '../systems/combatEngine';
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface IArenaState {
     /** The arena instance the player currently belongs to. Refreshed when
@@ -188,7 +188,7 @@ export const useArenaStore = create<IArenaStore>()(
                     return;
                 }
 
-                // ── New season — settle previous standings into a pending reward ──
+                // -- New season — settle previous standings into a pending reward --
                 let pendingRewards = state.pendingRewards;
                 if (state.currentArena) {
                     const me = state.currentArena.competitors.find((c) => !c.isBot);

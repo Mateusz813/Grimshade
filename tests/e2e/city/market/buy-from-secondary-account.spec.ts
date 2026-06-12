@@ -1,5 +1,5 @@
 /**
- * Multi-context E2E — Market: primary creates listing → secondary buys
+ * Multi-context E2E — Market: primary creates listing -> secondary buys
  * it (BACKLOG 5.7).
  *
  * 2026-05-25 v2: server-side RPC `buy_market_listing` now does the
@@ -11,44 +11,44 @@
  * Spec: "Market: kup ofertę z drugiego konta". This is the canonical
  * multi-context proof that buying from another player's listing works
  * end-to-end:
- *   • Seller listing materialises in DB (`market_listings` row).
- *   • Buyer can find the listing in the browse feed.
- *   • Buying decrements buyer's gold by `listing.price × qty`.
- *   • Item lands in buyer's inventory (consumable count increased).
- *   • Listing row is removed (qty went 1→0 → DELETE) from DB.
+ *   - Seller listing materialises in DB (`market_listings` row).
+ *   - Buyer can find the listing in the browse feed.
+ *   - Buying decrements buyer's gold by `listing.price × qty`.
+ *   - Item lands in buyer's inventory (consumable count increased).
+ *   - Listing row is removed (qty went 1->0 -> DELETE) from DB.
  *
  * Wire path (matches Market.tsx + marketStore.buyListing + marketApi
  * decrementListing):
- *   1. SELLER (primary): tap "Sprzedaj" tab → tap hp_potion_sm tile →
- *      SellModal → fill price=100 → tap "Wystaw" → `marketStore.listItem`
+ *   1. SELLER (primary): tap "Sprzedaj" tab -> tap hp_potion_sm tile ->
+ *      SellModal -> fill price=100 -> tap "Wystaw" -> `marketStore.listItem`
  *      writes a row into `market_listings` table + escrows 1× hp_potion_sm
  *      from inv.consumables (price seeded at 100, qty=1).
- *   2. BUYER (secondary): tap "Przeglądaj" tab → tap refresh / search →
- *      find listing by sellerName (primaryNick) + itemName → tap → BuyModal
- *      → tap "Zatwierdź" → `marketStore.buyListing` → `marketApi.decrementListing`
- *      (qty→0 → DELETE) → buyer's inv.consumables['hp_potion_sm'] += 1 +
+ *   2. BUYER (secondary): tap "Przeglądaj" tab -> tap refresh / search ->
+ *      find listing by sellerName (primaryNick) + itemName -> tap -> BuyModal
+ *      -> tap "Zatwierdź" -> `marketStore.buyListing` -> `marketApi.decrementListing`
+ *      (qty->0 -> DELETE) -> buyer's inv.consumables['hp_potion_sm'] += 1 +
  *      buyer's inv.gold -= 100 (Market.tsx line 584).
  *
  * Assertions:
- *   ★ Seller side, after listing: row visible in "Moje" tab, DB row
+ *   * Seller side, after listing: row visible in "Moje" tab, DB row
  *     materialised with price=100 / qty=1 / kind='potion'.
- *   ★ Buyer side, after buy: toast "Kupiono: ... ×1" appears, gold spent.
- *   ★ DB side, after buy: market_listings row for that itemId+seller_id
- *     is GONE (qty=1 → DELETE branch of decrementListing).
+ *   * Buyer side, after buy: toast "Kupiono: ... ×1" appears, gold spent.
+ *   * DB side, after buy: market_listings row for that itemId+seller_id
+ *     is GONE (qty=1 -> DELETE branch of decrementListing).
  *
  * Why multi-context vs single-context:
  *   Single-context can simulate seller+buyer with the same account but
  *   that bypasses the buyer=/=seller path which is the only interesting
  *   case (cross-user RLS + buyer's gold flow + seller's listing
  *   visibility from another auth context). The PRODUCTION code branches
- *   on `isOwn = l.sellerId === character.id` (Market.tsx line 915) → if
+ *   on `isOwn = l.sellerId === character.id` (Market.tsx line 915) -> if
  *   the buyer is the seller, tap on listing routes to EditModal, not
  *   BuyModal. Single-context can't reach the "buy from another player"
  *   path. Must be multi-ctx.
  *
  * Cleanup:
- *   • Both characters wiped via multiContext.cleanup.
- *   • market_listings is in CHARACTER_CHILD_TABLES under seller_id key
+ *   - Both characters wiped via multiContext.cleanup.
+ *   - market_listings is in CHARACTER_CHILD_TABLES under seller_id key
  *     (cleanup.ts line 95) — if the listing didn't get bought (test
  *     crashed before tap), wiping seller's character removes the row.
  *
@@ -117,7 +117,7 @@ const navToMarket = async (page: Page): Promise<void> => {
 test.describe('City › Market', { tag: '@city' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary lists hp_potion_sm → secondary buys → DB row removed + seller listing gone', async ({ browser }) => {
+    test('multi-context: primary lists hp_potion_sm -> secondary buys -> DB row removed + seller listing gone', async ({ browser }) => {
         // 2026-05-27: removed test.skip fallback (RPC IS deployed). If
         // probe fails, throw loudly so the regression isn't silently
         // bypassed.
@@ -140,9 +140,9 @@ test.describe('City › Market', { tag: '@city' }, () => {
 
         try {
             // 1. SEED both characters.
-            //    • Primary (seller): seeds 5× hp_potion_sm so the sell-tile
+            //    - Primary (seller): seeds 5× hp_potion_sm so the sell-tile
             //      shows up + has stock to escrow.
-            //    • Secondary (buyer): seeds 5000 gold via seedGameSave so
+            //    - Secondary (buyer): seeds 5000 gold via seedGameSave so
             //      they can afford the 100 gp listing.
             const primaryCreated = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
@@ -243,7 +243,7 @@ test.describe('City › Market', { tag: '@city' }, () => {
             //
             // Strategy: look for the row by anchoring on hp_potion_sm
             // (Mały Eliksir HP). If we don't see it within 5s try
-            // re-navigating /market (re-mounts → fresh fetch).
+            // re-navigating /market (re-mounts -> fresh fetch).
             const buyRow = secondaryPage.locator('.market__row', {
                 has: secondaryPage.locator('.market__row-name', { hasText: 'Mały Eliksir HP' }),
             });
@@ -261,7 +261,7 @@ test.describe('City › Market', { tag: '@city' }, () => {
                 await expect(buyRow.first()).toBeVisible({ timeout: 15_000 });
             }
 
-            // 6. Tap row → BuyModal opens.
+            // 6. Tap row -> BuyModal opens.
             await buyRow.first().tap();
             const buyModal = secondaryPage.locator('.market__modal').last();
             await expect(buyModal).toBeVisible({ timeout: 5_000 });

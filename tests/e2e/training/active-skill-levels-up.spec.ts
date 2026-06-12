@@ -25,7 +25,7 @@
  * `skillXpToNextLevel(0)` returns **100** (skillSystem.ts line 8-11:
  * `if (skillLevel <= 0) return 100`). Every attack tick line at
  * combatEngine.ts line 1709 calls `addWeaponSkillXpFromAttack(class)`
- * → `addSkillXp(skillId, 1)`. So 110 simulated attacks → 110 XP →
+ * -> `addSkillXp(skillId, 1)`. So 110 simulated attacks -> 110 XP ->
  * `processSkillXp(0, 0, 110)` returns `{ newLevel: 1, remainingXp: 10 }`.
  * Popup re-renders: `Lv 1` + `10 / X XP` (X = `skillXpToNextLevel(1) =
  * ceil(100 * 1^1.8) = 100`).
@@ -66,7 +66,7 @@
  *    still be 0 / 0 (SKIP doesn't grant weapon-skill XP).
  * 4. Invoke `addWeaponSkillXpFromAttack` 110× via page.evaluate.
  * 5. Snapshot skillLevels + skillXp AFTER — sword_fighting level === 1,
- *    XP === 10 (110 XP - 100 to level → 10 remainder).
+ *    XP === 10 (110 XP - 100 to level -> 10 remainder).
  * 6. Re-open Trening popup (close + re-tap because popup body memoizes).
  *    Sword Fighting card now shows `Lv 1`.
  * 7. Defensive: XP delta > 0 fallback assertion per brief (already
@@ -91,7 +91,7 @@ import { runCombatViaSkip } from '../fixtures/combatSim';
 test.describe('Training › Active', { tag: '@training' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('skill_xp gain from combat ticks → sword_fighting Lv 0 → Lv 1 + popup updates', async ({ page }) => {
+    test('skill_xp gain from combat ticks -> sword_fighting Lv 0 -> Lv 1 + popup updates', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -149,8 +149,8 @@ test.describe('Training › Active', { tag: '@training' }, () => {
             await expect(page.locator('.town__char-name')).toHaveText(nick, { timeout: 10_000 });
 
             // 4. Set active training to sword_fighting via direct store
-            //    mutation. UI equivalent: navigate /inventory → tap
-            //    Trening → tap Sword Fighting card. We bypass to keep
+            //    mutation. UI equivalent: navigate /inventory -> tap
+            //    Trening -> tap Sword Fighting card. We bypass to keep
             //    the test focused on the XP-accrual chain, not the
             //    select-card tap.
             await page.evaluate(async () => {
@@ -173,7 +173,7 @@ test.describe('Training › Active', { tag: '@training' }, () => {
             await expect(popup).toBeVisible({ timeout: 5_000 });
 
             // Sword Fighting card — locate by its name text. SKILL_NAMES_PL
-            // maps 'sword_fighting' → 'Walka Mieczem'. Card is a button.
+            // maps 'sword_fighting' -> 'Walka Mieczem'. Card is a button.
             const swordCard = popup.locator('.inventory__training-card', {
                 has: page.locator('.inventory__training-card-name', { hasText: 'Walka Mieczem' }),
             });
@@ -255,7 +255,7 @@ test.describe('Training › Active', { tag: '@training' }, () => {
             // 10. Simulate 110 attack ticks: invoke `addWeaponSkillXpFromAttack`
             //     in a loop. This is the EXACT call site combatEngine.ts
             //     line 1709 makes on every player attack tick. 110 × 1 XP =
-            //     110 XP total → processSkillXp(0, 0, 110) = { newLevel: 1,
+            //     110 XP total -> processSkillXp(0, 0, 110) = { newLevel: 1,
             //     remainingXp: 10 }.
             //
             //     A real-time hunt session of 110 attacks @ 1.5s attack
@@ -309,7 +309,7 @@ test.describe('Training › Active', { tag: '@training' }, () => {
             expect(postXpState.xp).toBeGreaterThan(preFightState.xp);
             expect(postXpState.level).toBeGreaterThan(preFightState.level);
 
-            // 12. Re-open Trening popup → Sword Fighting card now shows
+            // 12. Re-open Trening popup -> Sword Fighting card now shows
             //     `Lv 1` (was `Lv 0` pre-XP). Proves the popup body
             //     re-subscribes to skillStore after mutation — the
             //     TrainingPopupBody is `memo`-wrapped (Inventory.tsx

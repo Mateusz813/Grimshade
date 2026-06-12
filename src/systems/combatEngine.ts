@@ -124,7 +124,7 @@ export const syncCasterChargeConsume = (
 };
 import { useNecroSummonStore } from '../stores/necroSummonStore';
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// -- Constants ----------------------------------------------------------------
 
 /**
  * 2026-05-12 spec ("niech zabiera MP zgodnie z opisem"): each skill has
@@ -150,7 +150,7 @@ const SKILL_COOLDOWN_MS = 8000;
 // Hunt-engine module-level effect session. Single source of truth for stun /
 // DOT / immortal / mark / dodge state across the engine's tick callbacks
 // (doPlayerAttackTick / doMonsterAttackTick / doBotAttackTick) and the
-// view-side manual skill cast (Combat.tsx → doUseSkill). Reset by
+// view-side manual skill cast (Combat.tsx -> doUseSkill). Reset by
 // `startNewFight` so each fresh fight starts clean.
 let huntEffects: ICombatEffectsSession = newCombatEffectsSession();
 const HUNT_PLAYER_FX_ID = 'player';
@@ -392,8 +392,8 @@ export const huntApplySkillEffectV2 = (
     // resolves locally — manual or auto, leader or member — is broadcast
     // to the party-combat channel so the OTHER clients can play the
     // matching ally-card / enemy-card animation. If a player toggles
-    // auto-spells OFF locally, their engine never reaches this path →
-    // no broadcast → teammates see nothing.
+    // auto-spells OFF locally, their engine never reaches this path ->
+    // no broadcast -> teammates see nothing.
     {
         const partyState = usePartyStore.getState().party;
         if (partyState && ch?.id) {
@@ -424,7 +424,7 @@ export const huntApplySkillEffectV2 = (
         }
     }
     // 2026-05 v7: Apokalipsa Śmierci — synchronous self-cost BEFORE
-    // the cast resolves. Spec: > 20% → 20%, 5–20% → 3%, < 5% → blocked.
+    // the cast resolves. Spec: > 20% -> 20%, 5–20% -> 3%, < 5% -> blocked.
     if ((def?.effect ?? '').includes('death_apocalypse') && ch.class === 'Necromancer') {
         const playerCurHp = useCombatStore.getState().playerCurrentHp;
         // Use EFFECTIVE max HP (base + equipment + training + elixirs +
@@ -435,7 +435,7 @@ export const huntApplySkillEffectV2 = (
         const playerMaxHp = effChar?.max_hp ?? ch.max_hp;
         const hpPct = playerCurHp / Math.max(1, playerMaxHp);
         if (hpPct < 0.05) {
-            useCombatStore.getState().addLog('💔 Apokalipsa zablokowana: < 5% HP', 'system');
+            useCombatStore.getState().addLog(':broken-heart: Apokalipsa zablokowana: < 5% HP', 'system');
             return null;
         }
         let newPlayerHp: number;
@@ -451,7 +451,7 @@ export const huntApplySkillEffectV2 = (
                 hp: useCombatStore.getState().playerCurrentHp,
             });
             useCombatStore.getState().addLog(
-                `💔 Apokalipsa: -${lost} HP (kanał życia)`,
+                `:broken-heart: Apokalipsa: -${lost} HP (kanał życia)`,
                 'system',
             );
         }
@@ -497,7 +497,7 @@ export const huntApplySkillEffectV2 = (
     if (apply?.deathApocalypse && ch.class === 'Necromancer') {
         const apocDmg = Math.max(1, Math.floor(wm.maxHp * (apply.deathApocalypseTargetMaxHpPct / 100)));
         useCombatStore.getState().damageWaveMonster(activeIdx, apocDmg);
-        useCombatStore.getState().addLog(`☠️ Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
+        useCombatStore.getState().addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'system');
         useCombatStore.getState().emitCombatEvent({
             type: 'monsterHit',
             data: { damage: apocDmg, isCrit: true, isBlocked: false, hand: null, targetIdx: activeIdx },
@@ -552,7 +552,7 @@ const STONE_NAMES_MAP: Record<string, string> = {
 const stoneTypeToRarity = (stoneType: string): 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'heroic' =>
     STONE_TYPE_TO_RARITY[stoneType] ?? 'common';
 
-// ── Skill cooldown tracking ─────────────────────────────────────────────────
+// -- Skill cooldown tracking -------------------------------------------------
 // Module-level so it persists across all tick calls.
 const skillCooldownMap = new Map<string, number>();
 
@@ -567,7 +567,7 @@ export const advanceSkillCooldowns = (ms: number): void => {
     }
 };
 
-// ── Bot party helpers ───────────────────────────────────────────────────────
+// -- Bot party helpers -------------------------------------------------------
 // Bot companions from partyStore are lightweight IPartyMember objects.
 // For regular combat we need full IBot with attack/defense/etc. This helper
 // hydrates botStore from partyStore's bot members — runs at `startNewFight`.
@@ -593,12 +593,12 @@ export const hydrateBotsFromParty = (): void => {
     useBotStore.getState().generateBotsCustom(char.level, botClasses);
 
     useCombatStore.getState().addLog(
-        `🤝 Twoja drużyna (${botMembers.length} bot${botMembers.length === 1 ? '' : 'y'}) dołącza do walki!`,
+        `:handshake: Twoja drużyna (${botMembers.length} bot${botMembers.length === 1 ? '' : 'y'}) dołącza do walki!`,
         'system',
     );
 };
 
-// ── Aggro target tracking ───────────────────────────────────────────────────
+// -- Aggro target tracking ---------------------------------------------------
 // In multi-entity combat (player + bots), the monster rolls a class-weighted
 // target and sticks with it for AGGRO_SWITCH_INTERVAL_MS before re-rolling.
 // Knights eat most of the aggro, Cleric/Bard are backline.
@@ -614,7 +614,7 @@ export const resetAggro = (): void => {
     waveAggroState.clear();
 };
 
-// ── Per-wave-monster aggro tracking (parallel attacks) ─────────────────────
+// -- Per-wave-monster aggro tracking (parallel attacks) ---------------------
 // Each wave monster has its own independent aggro target which re-rolls at
 // an AGGRO_SWITCH_INTERVAL_MS interval. Keyed by monster wave index.
 interface IWaveAggroEntry {
@@ -655,9 +655,9 @@ const maybeSwitchWaveAggro = (waveIdx: number): string => {
 
 /** Re-roll the monster's aggro target using class weights.
  *  Returns one of:
- *    • 'player'           — the local player (leader when in a party)
- *    • `bot_<id>`         — a bot id (from useBotStore)
- *    • `human_<id>`       — a remote party human (only included when
+ *    - 'player'           — the local player (leader when in a party)
+ *    - `bot_<id>`         — a bot id (from useBotStore)
+ *    - `human_<id>`       — a remote party human (only included when
  *                            we ARE the leader of a multi-human party,
  *                            since the leader is the authoritative
  *                            aggro picker for everyone)
@@ -710,7 +710,7 @@ export const maybeSwitchAggro = (): string => {
     return aggroTargetId ?? 'player';
 };
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export interface IDropDisplay {
     icon: string;
@@ -732,7 +732,7 @@ export interface ICombatEvent {
           'dotTick' |
           // 2026-05 v7: Necromancer Mroczny Rytuał detonation — fires
           // when the per-target countdown hits 0 and the monster loses
-          // pct% of max HP. View renders 💀 RITUAL crit-styled float.
+          // pct% of max HP. View renders :skull: RITUAL crit-styled float.
           'darkRitualTick' |
           // 2026-05 v7: Necromancer raised a new summon — view plays
           // the per-type 2s avatar overlay animation. data.summonType
@@ -742,11 +742,11 @@ export interface ICombatEvent {
     timestamp: number;
 }
 
-// ── Pure helpers ─────────────────────────────────────────────────────────────
+// -- Pure helpers -------------------------------------------------------------
 
 /**
  * Maps game attackSpeed (1.5-4.0 typical) to an interval in ms.
- * speed 1.5 → 2000ms · speed 2.0 → 1500ms · speed 3.0 → 1000ms · min 500ms.
+ * speed 1.5 -> 2000ms · speed 2.0 -> 1500ms · speed 3.0 -> 1000ms · min 500ms.
  */
 export const getAttackMs = (speed: number): number =>
     Math.max(500, Math.floor(3000 / Math.max(1, speed || 1)));
@@ -780,7 +780,7 @@ export const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getSt
     const { skillLevels } = useSkillStore.getState();
     const tb = getTrainingBonuses(skillLevels, char.class);
     // 2026-05-25 NaN hardening (CLAUDE.md "NaN w combat = krytyczny bug —
-    // waliduj WSZYSTKIE wartości przed obliczeniami, undefined/null → 0"):
+    // waliduj WSZYSTKIE wartości przed obliczeniami, undefined/null -> 0"):
     // every numeric field read from `char` is defaulted via `?? 0` so a
     // partially-hydrated character (e.g. offline-mode snapshot mid-write,
     // a fresh row missing a column, or a corrupted save) cannot propagate
@@ -818,7 +818,7 @@ export const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getSt
     };
 };
 
-// ── Drop / loot logic ───────────────────────────────────────────────────────
+// -- Drop / loot logic -------------------------------------------------------
 
 export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRarity, heroicDropRate: number = 0): IDropDisplay[] => {
     const lootRolls = rollLoot(monster.level, monsterRarity, heroicDropRate);
@@ -833,7 +833,7 @@ export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRa
 
         const displayInfo = getItemDisplayInfo(inventoryItem.itemId);
         const displayName = displayInfo?.name_pl ?? formatItemName(roll.itemId);
-        const icon = displayInfo?.icon ?? '📦';
+        const icon = displayInfo?.icon ?? 'package';
 
         // Track drop rarity for quest progress
         useQuestStore.getState().addProgress('drop_rarity', roll.rarity, 1);
@@ -863,7 +863,7 @@ export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRa
         useInventoryStore.getState().addStones(stone.type, stone.count);
         const stoneRarity = stoneTypeToRarity(stone.type);
         const stoneLabel = STONE_NAMES_MAP[stone.type] ?? stone.type;
-        drops.push({ icon: STONE_ICONS[stone.type] ?? '💎', name: `${stoneLabel} x${stone.count}`, rarity: stoneRarity });
+        drops.push({ icon: STONE_ICONS[stone.type] ?? 'gem-stone', name: `${stoneLabel} x${stone.count}`, rarity: stoneRarity });
     }
 
     // Potion drops
@@ -872,7 +872,7 @@ export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRa
         useInventoryStore.getState().addConsumable(pd.potionId, pd.count);
         const potionInfo = ELIXIRS.find((e) => e.id === pd.potionId);
         const isHp = pd.potionId.includes('hp') || pd.potionId.includes('health');
-        drops.push({ icon: isHp ? '❤️' : '💙', name: potionInfo?.name_pl ?? pd.potionId, rarity: 'common' });
+        drops.push({ icon: isHp ? 'red-heart' : 'blue-heart', name: potionInfo?.name_pl ?? pd.potionId, rarity: 'common' });
     }
 
     // Spell chest drops — boss-rarity monsters with max mastery (25/25) also
@@ -906,7 +906,7 @@ export const applyRarityToMonster = (baseMonster: IMonster, rarity: TMonsterRari
     };
 };
 
-// ── Auto-potion helpers ─────────────────────────────────────────────────────
+// -- Auto-potion helpers -----------------------------------------------------
 
 const useAutoPotionSlot = (
     potionId: string,
@@ -984,7 +984,7 @@ export const tryAutoPotion = (
         currentMp, maxMp, cd.pctMpCooldown > 0, healMp, addLogFn, startPctMpCd, 'mp', 'pct');
 };
 
-// ── Monster death handler ───────────────────────────────────────────────────
+// -- Monster death handler ---------------------------------------------------
 
 export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void => {
     const s = useCombatStore.getState();
@@ -1040,7 +1040,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     // is the only spot where we can splice the bonus in cleanly).
     const drops = dropLootToInventory(s.monster, currentMonsterRarity, heroicRate * partyDropMult);
     // 2026-05-11 spec ("obrazki w logach sa popsute"): some drops carry
-    // an emoji icon (stones / potions / chests = '💎', '❤️', etc.) and
+    // an emoji icon (stones / potions / chests = 'gem-stone', 'red-heart', etc.) and
     // others carry an asset PATH (regular items via getItemDisplayInfo).
     // Paths render as raw `/src/assets/...` text in the log, which is
     // ugly + leaks asset routes. Strip path-style icons and keep only
@@ -1075,7 +1075,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     const finalXp = Math.floor(s.monster.xp * totalXpMult * masteryXpMult * partyXpMult);
     if (masteryLevel > 0) {
         const pct = Math.round((masteryXpMult - 1) * 100);
-        s.addLog(`🔥 Mastery Lvl ${masteryLevel}: +${pct}% XP & Gold`, 'system');
+        s.addLog(`:fire: Mastery Lvl ${masteryLevel}: +${pct}% XP & Gold`, 'system');
     }
     s.addReward(finalXp, gold);
     // Consume pausable XP buff time — drain only the active tier (100%
@@ -1099,7 +1099,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
         if (has100) boostParts.push('XP +100%');
         else if (has50) boostParts.push('XP +50%');
         if (premiumXpMult > 1) boostParts.push('Premium x2');
-        s.addLog(`⭐ ${boostParts.join(' + ')} aktywny! ${s.monster.xp} × ${totalXpMult} = ${finalXp} XP`, 'system');
+        s.addLog(`:star: ${boostParts.join(' + ')} aktywny! ${s.monster.xp} × ${totalXpMult} = ${finalXp} XP`, 'system');
     }
     // Persist HP/MP with level-up grants (re-read live combat store for fresh values).
     // On level-up: characterStore.addXp already full-heals HP/MP to the new max,
@@ -1173,7 +1173,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
             const next = useCombatStore.getState().monster;
             if (next) {
                 useCombatStore.getState().addLog(
-                    `🎯 Cel: ${next.name_pl} (${useCombatStore.getState().waveMonsters.filter(w => !w.isDead).length} żywych)`,
+                    `:bullseye: Cel: ${next.name_pl} (${useCombatStore.getState().waveMonsters.filter(w => !w.isDead).length} żywych)`,
                     'system',
                 );
             }
@@ -1181,7 +1181,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
             return;
         }
         // No more alive monsters – wave cleared, show victory
-        useCombatStore.getState().addLog(`⚔️ Fala pokonana! (${s.waveMonsters.length} potworów)`, 'system');
+        useCombatStore.getState().addLog(`:crossed-swords: Fala pokonana! (${s.waveMonsters.length} potworów)`, 'system');
         s.setPhase('victory');
         return;
     }
@@ -1312,7 +1312,7 @@ const markPartyExitGrace = (): void => {
     _partyExitGraceUntil = Date.now() + PARTY_EXIT_GRACE_MS;
 };
 
-// ── Player death handler ────────────────────────────────────────────────────
+// -- Player death handler ----------------------------------------------------
 
 export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
     const s = useCombatStore.getState();
@@ -1327,7 +1327,7 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
     //
     // 1. Synchronous member check — works when party is still set.
     // 2. Time-window grace — covers the gap between `leaveParty()`
-    //    resolving (party→null) and any delayed death trigger from
+    //    resolving (party->null) and any delayed death trigger from
     //    queued ticks / pending broadcasts. Without this, a death
     //    fired ~100 ms after Wyjdź lands when party is already null
     //    and the sync gate misses, costing the member -17 levels.
@@ -1402,7 +1402,7 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
     let xpPercent = 100;
 
     if (usedDeathProtection) {
-        s.addLog('🛡️ Eliksir Ochrony uchronil Cie od utraty poziomu!', 'system');
+        s.addLog(':shield: Eliksir Ochrony uchronil Cie od utraty poziomu!', 'system');
     } else {
         const penalty = applyDeathPenalty(char.level, char.xp);
         newLevel = penalty.newLevel;
@@ -1420,7 +1420,7 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
         useSkillStore.getState().purgeLockedSkillSlots(char.class, penalty.newLevel);
         const skillPctTxt = `-${penalty.skillXpLossPercent}% Skill XP`;
         if (penalty.levelsLost > 0) {
-            s.addLog(`Giniesz… Tracisz ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}! ${char.level} → ${penalty.newLevel} · ${skillPctTxt}`, 'system');
+            s.addLog(`Giniesz… Tracisz ${penalty.levelsLost} poziom${penalty.levelsLost === 1 ? '' : 'y'}! ${char.level} -> ${penalty.newLevel} · ${skillPctTxt}`, 'system');
         } else {
             s.addLog(`Giniesz… ${skillPctTxt}`, 'system');
         }
@@ -1428,9 +1428,9 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
 
     const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
     if (usedAol) {
-        s.addLog('🔱 Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
+        s.addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
     } else if (itemsLost > 0) {
-        s.addLog(`💀 Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+        s.addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
     }
 
     // Force-save: death is a once-in-a-while event, not part of the
@@ -1456,7 +1456,7 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
     });
 };
 
-// ── Player attack tick ──────────────────────────────────────────────────────
+// -- Player attack tick ------------------------------------------------------
 
 export const doPlayerAttackTick = (autoSkillOnly = false): void => {
     const s = useCombatStore.getState();
@@ -1532,7 +1532,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
         // Emit combat event for animations (only if on combat view)
         const handPrefix = hand === 'left' ? '[Lewa] ' : hand === 'right' ? '[Prawa] ' : '';
         let text = `${handPrefix}Atakujesz ${freshS.monster.name_pl} za ${r.finalDamage} dmg`;
-        if (r.isCrit) text += ' ⚡KRYTYK!';
+        if (r.isCrit) text += ' :high-voltage:KRYTYK!';
         if (r.isBlocked) text += ' (zablokowane)';
         freshS.addLog(text, hand ? (r.isCrit ? 'crit' : 'dualwield') : (r.isCrit ? 'crit' : 'player'));
         // Snapshot the target index AT THE MOMENT we deal damage. Without
@@ -1636,7 +1636,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
     // extra swing each tick).
     const psAs = ensureStatus(huntEffects, HUNT_PLAYER_FX_ID);
     if (!autoSkillOnly && psAs.asMultMs > 0 && psAs.asMult > 1) {
-        const bonus = psAs.asMult - 1; // e.g. 1.5 → 0.5
+        const bonus = psAs.asMult - 1; // e.g. 1.5 -> 0.5
         const guaranteed = Math.floor(bonus);
         const fractional = bonus - guaranteed;
         const extra = guaranteed + (Math.random() < fractional ? 1 : 0);
@@ -1656,8 +1656,8 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
     // Necromancer summon swing — every live summon swings INDEPENDENTLY
     // of the player's basic attack. Each summon emits its own
     // `monsterHit` event (with isSummon + summonType payload) so the
-    // view can flash a distinct float per summon (skel ☠️ / ghost 👻 /
-    // demon 😈 / lich 👑) rather than one combined sum. Display order
+    // view can flash a distinct float per summon (skel :skull-and-crossbones: / ghost :ghost: /
+    // demon :smiling-face-with-horns: / lich :crown:) rather than one combined sum. Display order
     // is type-priority (skel first, lich last) — matches the avatar
     // damage-soak order.
     if (!autoSkillOnly && char.class === 'Necromancer') {
@@ -1681,7 +1681,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                         dmg = Math.max(1, Math.floor(dmg * ampSum.mult));
                     }
                     useCombatStore.getState().damageWaveMonster(targetIdx, dmg);
-                    freshS.addLog(`💀 ${sm.type}: ${dmg} dmg`, 'player');
+                    freshS.addLog(`:skull: ${sm.type}: ${dmg} dmg`, 'player');
                     useCombatStore.getState().emitCombatEvent({
                         type: 'monsterHit',
                         data: {
@@ -1720,10 +1720,10 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             const autoMpCost = getSkillMpCost(skillId);
             if (s.playerCurrentMp < autoMpCost) continue;
             // 2026-05 v6: pull skill def + classify cast affinity:
-            //   • damage > 0 → damage hit, animate on enemy
-            //   • damage = 0 + enemy-debuff atom (Pułapka stun, Strzała
-            //     Wiatru) → animate on enemy, no number
-            //   • damage = 0 + self-buff only (Orle Oko, Bomba Dymna) →
+            //   - damage > 0 -> damage hit, animate on enemy
+            //   - damage = 0 + enemy-debuff atom (Pułapka stun, Strzała
+            //     Wiatru) -> animate on enemy, no number
+            //   - damage = 0 + self-buff only (Orle Oko, Bomba Dymna) ->
             //     animate on player avatar
             const sDef = getSkillDef(skillId);
             const skillMult = sDef?.damage ?? 0;
@@ -1907,7 +1907,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     }
                 }
                 if (revivedNames.length > 0) {
-                    s.addLog(`✨ ${skillId}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
+                    s.addLog(`:sparkles: ${skillId}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
                 }
             }
             // Multistrike (Wielostrzał) — schedule N follow-up basic attacks
@@ -1936,7 +1936,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                             data: { damage: followup.finalDamage, isCrit: followup.isCrit, isBlocked: false, hand: null, targetIdx: fresh.activeTargetIdx },
                             timestamp: Date.now(),
                         });
-                        fresh.addLog(`🏹×${n + 2} ${followup.finalDamage} dmg${followup.isCrit ? ' ⚡' : ''}`, followup.isCrit ? 'crit' : 'player');
+                        fresh.addLog(`:bow-and-arrow:×${n + 2} ${followup.finalDamage} dmg${followup.isCrit ? 'high-voltage' : ''}`, followup.isCrit ? 'crit' : 'player');
                     }, 120 * (n + 1));
                 }
             }
@@ -1957,14 +1957,14 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     : null;
             s.addLog(
                 isDamageHit
-                    ? `[AUTO] ${skillId}: ${sr.finalDamage} dmg${sr.isCrit ? ' ⚡KRYTYK!' : ''} (-${autoMpCost} MP)`
+                    ? `[AUTO] ${skillId}: ${sr.finalDamage} dmg${sr.isCrit ? ' :high-voltage:KRYTYK!' : ''} (-${autoMpCost} MP)`
                     : `[AUTO] ${skillId}: ${targetsEnemy ? 'DEBUFF' : 'BUFF'} (-${autoMpCost} MP)`,
                 sr.isCrit ? 'crit' : 'player',
             );
             // Bundle damage + crit + classification into the skillAnim
             // payload. View routes the animation:
-            //   • targetsEnemy → enemy slot (damage hit OR enemy debuff)
-            //   • !targetsEnemy → player avatar (pure self/party buff)
+            //   - targetsEnemy -> enemy slot (damage hit OR enemy debuff)
+            //   - !targetsEnemy -> player avatar (pure self/party buff)
             useCombatStore.getState().emitCombatEvent({
                 type: 'skillAnim',
                 data: {
@@ -2016,7 +2016,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
     }
 };
 
-// ── Monster attack tick ─────────────────────────────────────────────────────
+// -- Monster attack tick -----------------------------------------------------
 
 /**
  * Resolve a single wave-monster attack against its per-monster aggro target.
@@ -2054,11 +2054,11 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
     useCombatStore.getState().setWaveMonsterAggro(waveIdx, targetId);
 
     // 2026-05-11 spec ("kogo potwor uderzyl"): aggro target is a remote
-    // party human → leader resolves damage on their end and broadcasts
+    // party human -> leader resolves damage on their end and broadcasts
     // a `member-hit` to that specific member. The member applies it
     // to their own character.hp (and emits a playerHit-style event so
     // their TopHeader / ally card flashes). All other clients see the
-    // updated aggroTarget via the state broadcast → red border on the
+    // updated aggroTarget via the state broadcast -> red border on the
     // targeted member's card.
     if (typeof targetId === 'string' && targetId.startsWith('human_')) {
         const memberId = targetId.slice('human_'.length);
@@ -2136,11 +2136,11 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
             timestamp: Date.now(),
         });
 
-        const botIcon = BOT_CLASS_ICONS_LOCAL[bot.class] ?? '🤖';
+        const botIcon = BOT_CLASS_ICONS_LOCAL[bot.class] ?? 'robot';
         s.addLog(`${monster.name_pl} atakuje ${botIcon} ${bot.name} za ${dmg} dmg`, 'monster');
 
         if (newHp <= 0) {
-            s.addLog(`💀 ${botIcon} ${bot.name} ginie w walce!`, 'system');
+            s.addLog(`:skull: ${botIcon} ${bot.name} ginie w walce!`, 'system');
             // Force immediate per-monster aggro re-roll so next tick picks a new target
             waveAggroState.delete(waveIdx);
         }
@@ -2165,7 +2165,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
     // isImmortal:true — same render path as Knight Absolutne Cięcie).
     if (useBuffStore.getState().getBuffCharges('skill_charge_block_next_party') > 0) {
         useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
-        s.addLog(`🛡️ Boska Tarcza! Blok ${monster.name_pl}!`, 'system');
+        s.addLog(`:shield: Boska Tarcza! Blok ${monster.name_pl}!`, 'system');
         useCombatStore.getState().emitCombatEvent({
             type: 'playerHit',
             data: { damage: 0, isCrit: false, isBlocked: false, hpDamage: 0, mpDamage: 0, isImmortal: true },
@@ -2176,12 +2176,12 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
     // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000) — N% chance
     // to dodge each incoming basic during the buff window. Was wired
     // in skillEffectsV2.resolveBasicHit (Arena only); Hunt/Boss/etc.
-    // never read it. Roll on incoming hit; success → no damage +
+    // never read it. Roll on incoming hit; success -> no damage +
     // playerDodge event so the view can flash an UNIK float.
     const huntPlayerStatus = ensureStatus(huntEffects, HUNT_PLAYER_FX_ID);
     if (huntPlayerStatus.dodgeBuffMs > 0 && huntPlayerStatus.dodgeBuffPct > 0) {
         if (Math.random() * 100 < huntPlayerStatus.dodgeBuffPct) {
-            s.addLog(`💨 Bomba Dymna! Unikasz ataku ${monster.name_pl} (${huntPlayerStatus.dodgeBuffPct}%)`, 'dodge');
+            s.addLog(`:dashing-away: Bomba Dymna! Unikasz ataku ${monster.name_pl} (${huntPlayerStatus.dodgeBuffPct}%)`, 'dodge');
             useCombatStore.getState().emitCombatEvent({ type: 'playerDodge', timestamp: Date.now() });
             return false;
         }
@@ -2240,7 +2240,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
         hpDamage = manaShieldSplit.hpDmg;
         if (manaShieldSplit.mpDmg > 0) {
             s.spendPlayerMp(manaShieldSplit.mpDmg);
-            s.addLog(`🛡️ Tarcza Many pochłania ${manaShieldSplit.mpDmg} MP`, 'block');
+            s.addLog(`:shield: Tarcza Many pochłania ${manaShieldSplit.mpDmg} MP`, 'block');
             // 2026-05 v6: emit a dedicated event so the view pushes a
             // blue MP-loss float on the player slot (so the player can
             // SEE the shield eating the swing).
@@ -2251,7 +2251,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
             });
         }
     }
-    // Utamo Vita (Magic Shield): 50% dmg → MP (operates on whatever's
+    // Utamo Vita (Magic Shield): 50% dmg -> MP (operates on whatever's
     // left after Tarcza Many, so the two stack instead of conflicting).
     const hasUtamo = useBuffStore.getState().hasBuff('utamo_vita');
     if (hasUtamo && s.playerCurrentMp > 0 && hpDamage > 0) {
@@ -2267,7 +2267,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
         s.spendPlayerMp(actualMp);
         if (s.playerCurrentMp - actualMp <= 0) {
             useBuffStore.getState().removeBuffByEffect('utamo_vita');
-            s.addLog('🔵 Utamo Vita peka! Brak many.', 'system');
+            s.addLog(':blue-circle: Utamo Vita peka! Brak many.', 'system');
         }
     }
 
@@ -2289,12 +2289,12 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
     if (hpDamage > 0) useCombatStore.getState().dealToPlayer(hpDamage);
 
     if (r.isBlocked) {
-        s.addLog(`${monster.name_pl} atakuje za ${r.finalDamage} dmg 🛡️ ZABLOKOWANE! (${r.damage} → ${r.finalDamage})`, 'block');
+        s.addLog(`${monster.name_pl} atakuje za ${r.finalDamage} dmg :shield: ZABLOKOWANE! (${r.damage} -> ${r.finalDamage})`, 'block');
         useSkillStore.getState().addShieldingXpOnBlock();
     } else {
-        const utamoSuffix = hasUtamo && mpDamage > 0 ? ` 🔵 (${hpDamage} HP / ${mpDamage} MP)` : '';
+        const utamoSuffix = hasUtamo && mpDamage > 0 ? ` :blue-circle: (${hpDamage} HP / ${mpDamage} MP)` : '';
         let text = `${monster.name_pl} atakuje cię za ${r.finalDamage} dmg`;
-        if (r.isCrit) text += ' ⚡KRYTYK!';
+        if (r.isCrit) text += ' :high-voltage:KRYTYK!';
         if (utamoSuffix) text += utamoSuffix;
         s.addLog(text, r.isCrit ? 'crit' : 'monster');
     }
@@ -2371,7 +2371,7 @@ export const doMonsterAttackTick = (): void => {
     }
 };
 
-// ── Bot attack tick ─────────────────────────────────────────────────────────
+// -- Bot attack tick ---------------------------------------------------------
 // Runs on a separate interval in useBackgroundCombat. All alive bots attack
 // the active wave target together. Simpler than per-bot intervals and still
 // visually readable: bots fire roughly as often as the player does.
@@ -2389,7 +2389,7 @@ export const doBotAttackTick = (): void => {
 
         // 2026-05 v6: read this bot's v2 status so party_attack_up /
         // party_crit_up actually scales bot damage. Bots are entered into
-        // allyIds during cast → engine writes atkBuffPct/partyCritPct to
+        // allyIds during cast -> engine writes atkBuffPct/partyCritPct to
         // their per-bot status — now we honor those numbers here.
         const botStatus = huntEffects.statuses.get(bot.id);
         const botAtkBuffMult = (botStatus && botStatus.atkBuffMs > 0 && botStatus.atkBuffPct > 0)
@@ -2417,16 +2417,16 @@ export const doBotAttackTick = (): void => {
 
         live.dealToMonster(dealt);
 
-        const botIcon = BOT_CLASS_ICONS_LOCAL[bot.class] ?? '🤖';
-        const critSuffix = isCrit ? ' ⚡KRYTYK!' : '';
+        const botIcon = BOT_CLASS_ICONS_LOCAL[bot.class] ?? 'robot';
+        const critSuffix = isCrit ? ' :high-voltage:KRYTYK!' : '';
         live.addLog(
             `${botIcon} ${bot.name} atakuje ${live.monster.name_pl} za ${dealt} dmg${critSuffix}`,
             isCrit ? 'crit' : 'player',
         );
 
         // Per-monster ally-attack event so the combat view can:
-        //  • flash the monster card (re-uses the same `monsterHit` style),
-        //  • push an ally-basic floating damage number on it (cyan, vs. the
+        //  - flash the monster card (re-uses the same `monsterHit` style),
+        //  - push an ally-basic floating damage number on it (cyan, vs. the
         //    player's white) so the player can see *which* attacker hit
         //    *which* monster and *for how much* — including ally crits.
         useCombatStore.getState().emitCombatEvent({
@@ -2450,11 +2450,11 @@ export const doBotAttackTick = (): void => {
 // Local copy of class icons (mirrors botSystem BOT_CLASS_ICONS) — kept here
 // to avoid a circular import at module load time.
 const BOT_CLASS_ICONS_LOCAL: Record<string, string> = {
-    Knight: '⚔️', Mage: '🔮', Cleric: '✨',
-    Archer: '🏹', Rogue: '🗡️', Necromancer: '💀', Bard: '🎵',
+    Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles',
+    Archer: 'bow-and-arrow', Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
-// ── SKIP mode: instant resolution ───────────────────────────────────────────
+// -- SKIP mode: instant resolution -------------------------------------------
 
 export const resolveInstantFight = (m: IMonster, startHp: number, startMp: number, rarity: TMonsterRarity): void => {
     const char = getEffectiveChar(useCharacterStore.getState().character);
@@ -2583,7 +2583,7 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
     }
 };
 
-// ── Start new fight ─────────────────────────────────────────────────────────
+// -- Start new fight ---------------------------------------------------------
 
 export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): void => {
     // Fresh effect session — clears any leftover DOT/stun/marks from
@@ -2593,7 +2593,7 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
     if (!char) return;
     // Block while offline hunt is running — mutual exclusion.
     if (useOfflineHuntStore.getState().isActive) {
-        useCombatStore.getState().addLog('🚫 Nie mozesz walczyc podczas Offline Hunt. Odbierz lub zakoncz polowanie.', 'system');
+        useCombatStore.getState().addLog(':prohibited: Nie mozesz walczyc podczas Offline Hunt. Odbierz lub zakoncz polowanie.', 'system');
         return;
     }
     if (!bypassLevelCheck && baseMonster.level > char.level) {
@@ -2610,7 +2610,7 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
         const masteriesState = useMasteryStore.getState().masteries;
         const unlock = getMonsterUnlockStatus(baseMonster, monsters, char.level, masteriesState);
         if (!unlock.unlocked && unlock.lockKind === 'mastery') {
-            useCombatStore.getState().addLog(`🔒 ${unlock.reason}`, 'system');
+            useCombatStore.getState().addLog(`:locked: ${unlock.reason}`, 'system');
             return;
         }
     }
@@ -2645,7 +2645,7 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
 
     // Log rarity info
     if (rarity !== 'normal') {
-        useCombatStore.getState().addLog(`⚠️ ${MONSTER_RARITY_LABELS[rarity]} ${baseMonster.name_pl} (Poziom ${baseMonster.level}) – wzmocniony potwór!`, 'system');
+        useCombatStore.getState().addLog(`:warning: ${MONSTER_RARITY_LABELS[rarity]} ${baseMonster.name_pl} (Poziom ${baseMonster.level}) – wzmocniony potwór!`, 'system');
     } else {
         useCombatStore.getState().addLog(`Walka z ${baseMonster.name_pl} (Poziom ${baseMonster.level}) rozpoczęta!`, 'system');
     }
@@ -2658,7 +2658,7 @@ export const startNewFight = (baseMonster: IMonster, bypassLevelCheck = false): 
             const extraScaled = applyRarityToMonster(baseMonster, extraRarity);
             useCombatStore.getState().addWaveMonster(extraScaled, extraRarity);
         }
-        useCombatStore.getState().addLog(`🐾 Fala ${plannedCount} potworów!`, 'system');
+        useCombatStore.getState().addLog(`:paw-prints: Fala ${plannedCount} potworów!`, 'system');
     }
 
     // Auto-potion at fight start.
@@ -2742,7 +2742,7 @@ export const addMonsterToWave = (): boolean => {
 
     const label = rarity !== 'normal' ? `${MONSTER_RARITY_LABELS[rarity]} ` : '';
     useCombatStore.getState().addLog(
-        `➕ Pojawia się kolejny ${label}${base.name_pl}! (${useCombatStore.getState().waveMonsters.length}/4) — kolejne fale będą tej samej wielkości`,
+        `:plus: Pojawia się kolejny ${label}${base.name_pl}! (${useCombatStore.getState().waveMonsters.length}/4) — kolejne fale będą tej samej wielkości`,
         'system',
     );
     return true;
@@ -2835,7 +2835,7 @@ export const stopCombat = (): void => {
 /** Get the list of all monsters (sorted by level) */
 export const getAllMonsters = (): IMonster[] => [...monsters].sort((a, b) => a.level - b.level);
 
-// ── Offline Combat Simulation ──────────────────────────────────────────────
+// -- Offline Combat Simulation ----------------------------------------------
 // When the computer sleeps or browser tab is suspended, JS timers stop.
 // On resume, this function calculates how many fights would have happened
 // during the offline period and applies the results.

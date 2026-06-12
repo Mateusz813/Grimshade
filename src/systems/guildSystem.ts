@@ -6,7 +6,7 @@
  * trudniejszy", so each level multiplies the prior threshold rather
  * than adding a flat delta. Member cap rises by +1 per level on top
  * of the level-1 baseline of 20, which dovetails with the weekly
- * boss tier increase (kill the boss → +1 tier next week → harder
+ * boss tier increase (kill the boss -> +1 tier next week -> harder
  * fight, better rewards).
  */
 
@@ -56,7 +56,7 @@ export const GUILD_BOSS_HEROIC_MAX_CHANCE = 0.01;
 export const GUILD_BOSS_BLOCK_PCT = 0.10;
 
 /**
- * XP required to advance from `level` → `level + 1`. Spec 2026-05-18
+ * XP required to advance from `level` -> `level + 1`. Spec 2026-05-18
  * v12 ("zabicie bossa za 1 LVL dal maksymalnie 1 poziom gildi a nie
  * 20, tak samo kolejne poziomy maja byc jeszcze trudniejsze do
  * wbicia, czyli trzeba wtedy zabic 2x bossa na 2 LVL i kolejny 3x
@@ -64,12 +64,12 @@ export const GUILD_BOSS_BLOCK_PCT = 0.10;
  * **N kills of a tier-N boss**, where N = current guild level. Since
  * "1 HP dealt = 1 guild XP", the formula is literally
  * `level × getGuildBossMaxHp(level)`. So:
- *   L1 → L2:  1 × 15M           = 15M XP   (one tier-1 kill)
- *   L2 → L3:  2 × 23.25M         = 46.5M XP (two tier-2 kills)
- *   L3 → L4:  3 × 36M            = 108M XP (three tier-3 kills)
- *   L4 → L5:  4 × 55.8M          = 223M XP (four tier-4 kills)
- *   L10 → L11:10 × ~1.1B         = ~11B  XP (ten tier-10 kills)
- *   L20 → L21:20 × ~1.1B (tier capped at 10) ≈ ~22B XP
+ *   L1 -> L2:  1 × 15M           = 15M XP   (one tier-1 kill)
+ *   L2 -> L3:  2 × 23.25M         = 46.5M XP (two tier-2 kills)
+ *   L3 -> L4:  3 × 36M            = 108M XP (three tier-3 kills)
+ *   L4 -> L5:  4 × 55.8M          = 223M XP (four tier-4 kills)
+ *   L10 -> L11:10 × ~1.1B         = ~11B  XP (ten tier-10 kills)
+ *   L20 -> L21:20 × ~1.1B (tier capped at 10) ≈ ~22B XP
  * No upper bound — once a guild grinds past tier 10, the boss tier
  * stays clamped but the level cost keeps climbing linearly.
  */
@@ -140,8 +140,8 @@ export const applyGuildXp = (
  *
  * 2026-05-18 v10 spec ("Mam wrazenie ze bossy sa troche za slabe bo
  * 400 LVL bez przedmiotow bez problemu zabil sam bossa na 1 LVL"):
- * tier 1 HP bumped 6M → 15M (×2.5) and the per-tier multiplier
- * stepped from 1.45 → 1.55 so the curve climbs faster — tier 10 is
+ * tier 1 HP bumped 6M -> 15M (×2.5) and the per-tier multiplier
+ * stepped from 1.45 -> 1.55 so the curve climbs faster — tier 10 is
  * now ~ 15M × 1.55^9 ≈ 1.9B HP (was ~ 240M).
  */
 export const getGuildBossMaxHp = (tier: number): number => {
@@ -159,7 +159,7 @@ export const getGuildBossMaxHp = (tier: number): number => {
  *  2026-05-18 v10 spec ("400 LVL bez przedmiotow bez problemu zabil
  *  sam bossa"): level-scaling softened from `1 + level/50` (9× at
  *  level 400) to `1 + level/120` (≈4.3× at level 400), and the
- *  per-hit hard cap dropped from 15% → 5% of boss max HP so even a
+ *  per-hit hard cap dropped from 15% -> 5% of boss max HP so even a
  *  level-1000 veteran needs 20+ swings to take a tier-1 boss down. */
 export const computeGuildBossDamage = (
     characterAttack: number,
@@ -226,7 +226,7 @@ export const getTodayIso = (now: Date = new Date()): string => {
  * doing 60 %, 80 % or 100 % all got the same loot — that hid the
  * "more damage = more reward" link the spec asks for. New curve
  * `0.1 + share × 1.9` (floor 0.05) keeps every percentage point
- * meaningful: 10 % share → 0.29×, 50 % → 1.05×, 100 % → 2.00×.
+ * meaningful: 10 % share -> 0.29×, 50 % -> 1.05×, 100 % -> 2.00×.
  */
 export const contributionMultiplier = (
     damageDealt: number,

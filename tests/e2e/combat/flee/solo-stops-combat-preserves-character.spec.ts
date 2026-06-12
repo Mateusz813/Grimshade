@@ -4,15 +4,15 @@
  *
  * Spec (BACKLOG 13.24): "Ucieczka (flee): działa solo + party". The hunt
  * "flee" is the SOFT exit path the player triggers via the in-combat
- * `HuntExitDialog` → "Zakończ polowanie" button (Combat.tsx line 2884-2920).
+ * `HuntExitDialog` -> "Zakończ polowanie" button (Combat.tsx line 2884-2920).
  * It collapses to `stopCombat()` (combatEngine.ts line 2775) +
  * `combatStore.clearCombatSession()`.
  *
  * Two distinct "flee" paths exist in the codebase and they have OPPOSITE
  * contracts — atomic test must pin which one we're covering:
- *   • HUNT flee (`stopCombat()`): no XP loss, no item loss, character HP/MP
+ *   - HUNT flee (`stopCombat()`): no XP loss, no item loss, character HP/MP
  *     preserved from combat state. Soft "I'm done hunting" exit.
- *   • DUNGEON / BOSS / RAID / TRANSFORM flee
+ *   - DUNGEON / BOSS / RAID / TRANSFORM flee
  *     (`applyCombatLeaveDeath()` in `combatLeavePenalty.ts`): heavy death
  *     penalty — level drop, XP reset, item loss, deaths-feed row with
  *     `result='fled'`. URL-leave / mid-combat-abandon cheat-guard.
@@ -20,9 +20,9 @@
  * This test covers the HUNT branch (the only path that's reachable through
  * the `/combat` view's "Uciekaj"-style exit). The dungeon/boss/raid leave
  * penalty branch is already covered by:
- *   • `combat/flee/feed-shows-seeded-flee.spec.ts` (feed verb render)
- *   • `combat/death/eq-loss-after-real-death.spec.ts` (item-loss path)
- *   • `combat/death/real-death-applies-xp-penalty.spec.ts` (XP-loss path)
+ *   - `combat/flee/feed-shows-seeded-flee.spec.ts` (feed verb render)
+ *   - `combat/death/eq-loss-after-real-death.spec.ts` (item-loss path)
+ *   - `combat/death/real-death-applies-xp-penalty.spec.ts` (XP-loss path)
  *
  * ## Test strategy — engine-driven, no UI taps required
  *
@@ -50,12 +50,12 @@
  *
  * Bug surfaces this test catches:
  *   - Someone wires `applyCombatLeaveDeath` into the hunt-flee path by
- *     mistake → level + items + XP would all wipe.
+ *     mistake -> level + items + XP would all wipe.
  *   - `stopCombat()` skips the `updateCharacter({ hp, mp })` write when
- *     `phase === 'fighting'` (regression on line 2790 if-condition) →
+ *     `phase === 'fighting'` (regression on line 2790 if-condition) ->
  *     character HP stays at pre-combat value, masking damage taken.
  *   - `resetCombat()` accidentally retains `monster` or `phase: 'fighting'`
- *     → next /combat view mount would stale-render the previous fight.
+ *     -> next /combat view mount would stale-render the previous fight.
  *
  * ## Why no party path here
  *
@@ -76,7 +76,7 @@ import { loginViaUI } from '../../fixtures/login';
 import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures/createCharacter';
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 
-/** Pick character → land in Town. Mirrors pattern from sibling combat-sim tests. */
+/** Pick character -> land in Town. Mirrors pattern from sibling combat-sim tests. */
 const pickCharacterAndEnterTown = async (page: Page, nick: string): Promise<void> => {
     await page.goto('/character-select');
     const card = page.locator('.char-select__card', {
@@ -164,7 +164,7 @@ test.describe('Combat › Flee', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + pick character → Town.
+            // 2. Login + pick character -> Town.
             await loginViaUI(page, testUsers.primary);
             await pickCharacterAndEnterTown(page, nick);
 
@@ -174,7 +174,7 @@ test.describe('Combat › Flee', { tag: '@combat' }, () => {
             //    itemId + rarity + bonuses + itemLevel + optional upgradeLevel.
             //    Item ids are stable entries from `src/data/items.json`.
             //    Direct `addItem` is the same call site loot drops use
-            //    (combatEngine.ts → dropLootToInventory → addItem).
+            //    (combatEngine.ts -> dropLootToInventory -> addItem).
             //    Important: items must NOT be 'common'-with-auto-sell-on —
             //    fresh char defaults to autoSell.common=false so this is safe.
             await page.evaluate(async () => {
@@ -237,12 +237,12 @@ test.describe('Combat › Flee', { tag: '@combat' }, () => {
             expect(preSnapshot.bagSize).toBe(3);
             // characterHp may still be the seed value (120) — combatStore's
             // playerCurrentHp tracks the FIGHT pool, character.hp persists
-            // pre-fight. stopCombat() is what writes combatStore→character.
+            // pre-fight. stopCombat() is what writes combatStore->character.
 
             // 6. ACTION — call `stopCombat()` directly. This is the EXACT
             //    function the HuntExitDialog "Zakończ polowanie" handler
             //    runs (Combat.tsx line 2889). Solo character (no party),
-            //    so the `isMemberInPartyCombat` branch is FALSE → the
+            //    so the `isMemberInPartyCombat` branch is FALSE -> the
             //    line 2790 `updateCharacter({ hp, mp })` branch fires.
             await page.evaluate(async () => {
                 // @ts-expect-error — Vite URL
@@ -261,7 +261,7 @@ test.describe('Combat › Flee', { tag: '@combat' }, () => {
             // 7c. Wave cleared.
             expect(postSnapshot.waveMonstersCount).toBe(0);
             // 7d. Character HP saved from combat state — proves the
-            //     line 2790-2795 branch wrote `playerCurrentHp → character.hp`.
+            //     line 2790-2795 branch wrote `playerCurrentHp -> character.hp`.
             //     If someone broke the branch, characterHp would stay at
             //     the pre-fight 120 instead of 40.
             expect(postSnapshot.characterHp).toBe(40);
@@ -276,7 +276,7 @@ test.describe('Combat › Flee', { tag: '@combat' }, () => {
             expect(postSnapshot.characterXp).toBe(0);
             // 7h. BAG UNCHANGED — no item loss. If `applyDeathItemLoss(false)`
             //     ran by accident, bag would be ≤2 (5% × 3 floor = 0,
-            //     Math.max(1, 0) = 1 lost → bag = 2).
+            //     Math.max(1, 0) = 1 lost -> bag = 2).
             expect(postSnapshot.bagSize).toBe(3);
         } finally {
             if (createdId) {

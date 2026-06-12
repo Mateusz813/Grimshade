@@ -13,8 +13,8 @@
  *
  * What we test:
  *   1. Per-skill cooldown contract (every tier-1 active spell across all 7
- *      classes) — cast → cooldown installed in `useCooldownStore`; tick by
- *      `cooldown_ms - 1` → still > 0; tick remaining ms → cleared to 0.
+ *      classes) — cast -> cooldown installed in `useCooldownStore`; tick by
+ *      `cooldown_ms - 1` -> still > 0; tick remaining ms -> cleared to 0.
  *   2. Multi-skill independence — casting skill A doesn't disturb skill B's
  *      cooldown timer.
  *   3. `advanceSkillCooldowns` behavior — drains internal engine state by
@@ -26,7 +26,7 @@
  *      view's `Object.keys(skillCooldowns)` reflects only blocked skills.
  *
  * Sources of truth read here:
- *   • `src/data/skills.json` activeSkills.*[].cooldown — the per-skill ms
+ *   - `src/data/skills.json` activeSkills.*[].cooldown — the per-skill ms
  *     the engine wants enforced (NOTE: the engine currently uses a flat
  *     SKILL_COOLDOWN_MS=8000 for the auto-cast path regardless of the
  *     declared cooldown; the cooldown field IS authoritative for the
@@ -65,7 +65,7 @@ const TIER_1: Record<ClassKey, IActiveSkillRow> = CLASS_KEYS.reduce((acc, cls) =
     return acc;
 }, {} as Record<ClassKey, IActiveSkillRow>);
 
-// ── Per-class tier-1: cast → cooldown installed → tick → cleared ────────────
+// -- Per-class tier-1: cast -> cooldown installed -> tick -> cleared ------------
 
 describe('Skill cooldown contract (per-class tier-1 active skill)', () => {
     beforeEach(() => {
@@ -106,7 +106,7 @@ describe('Skill cooldown contract (per-class tier-1 active skill)', () => {
     }
 });
 
-// ── Multi-skill independence ────────────────────────────────────────────────
+// -- Multi-skill independence ------------------------------------------------
 
 describe('Skill cooldown multi-skill independence', () => {
     beforeEach(() => {
@@ -148,7 +148,7 @@ describe('Skill cooldown multi-skill independence', () => {
     });
 });
 
-// ── Engine-side advanceSkillCooldowns ───────────────────────────────────────
+// -- Engine-side advanceSkillCooldowns ---------------------------------------
 
 describe('advanceSkillCooldowns', () => {
     it('is a no-op for an unset map (engine never tracked anything)', () => {
@@ -171,7 +171,7 @@ describe('advanceSkillCooldowns', () => {
     });
 });
 
-// ── useCooldownStore mechanic regressions ───────────────────────────────────
+// -- useCooldownStore mechanic regressions -----------------------------------
 
 describe('useCooldownStore.tick edge cases', () => {
     beforeEach(() => {
@@ -199,7 +199,7 @@ describe('useCooldownStore.tick edge cases', () => {
     });
 });
 
-// ── setSkillCooldown clamping (input < 0 → stored as 0) ─────────────────────
+// -- setSkillCooldown clamping (input < 0 -> stored as 0) ---------------------
 
 describe('useCooldownStore.setSkillCooldown clamps negative ms to 0', () => {
     beforeEach(() => {
@@ -222,7 +222,7 @@ describe('useCooldownStore.setSkillCooldown clamps negative ms to 0', () => {
     });
 });
 
-// ── Cooldown semantics with SPEED_MULT (engine's speed-up logic) ────────────
+// -- Cooldown semantics with SPEED_MULT (engine's speed-up logic) ------------
 
 describe('SPEED_MULT × cooldown wall-clock interaction', () => {
     beforeEach(() => {
@@ -261,7 +261,7 @@ describe('SPEED_MULT × cooldown wall-clock interaction', () => {
     });
 });
 
-// ── clearAll ────────────────────────────────────────────────────────────────
+// -- clearAll ----------------------------------------------------------------
 
 describe('useCooldownStore.clearAll', () => {
     it('wipes every cooldown including HP/MP potion ones', () => {

@@ -10,7 +10,7 @@ interface ICooldownStore {
     mpPotionCooldown: number;
     pctHpCooldown: number;
     pctMpCooldown: number;
-    /** skillId → ms remaining */
+    /** skillId -> ms remaining */
     skillCooldowns: Record<string, number>;
 
     setHpPotionCooldown: (ms: number) => void;

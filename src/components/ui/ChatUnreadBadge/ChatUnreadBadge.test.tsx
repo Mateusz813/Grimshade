@@ -54,7 +54,7 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar() });
     useChatTabsStore.setState({ hasNotification: false });
     useConnectivityStore.setState({ mode: 'online' });
-    // Reset transform store to default (no completed transforms → no color).
+    // Reset transform store to default (no completed transforms -> no color).
     useTransformStore.setState({ completedTransforms: [] });
 });
 

@@ -14,7 +14,7 @@
   background: transparent;
   color: $color-text;
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // -- Header -----------------------------------------------------------------
   &__header {
     background: $color-bg-secondary;
     border-bottom: 1px solid $color-border;
@@ -85,7 +85,7 @@
     border-radius: 50%;
   }
 
-  // ── Language switcher ──────────────────────────────────────────────────────
+  // -- Language switcher ------------------------------------------------------
   &__lang-switch {
     display: flex;
     border: 1px solid $color-border;
@@ -111,7 +111,7 @@
     }
   }
 
-  // ── Sync bar ───────────────────────────────────────────────────────────────
+  // -- Sync bar ---------------------------------------------------------------
   &__sync-bar {
     display: flex;
     align-items: center;
@@ -151,7 +151,7 @@
     &:disabled { opacity: 0.4; cursor: not-allowed; }
   }
 
-  // ── Character card ─────────────────────────────────────────────────────────
+  // -- Character card ---------------------------------------------------------
   &__character-card {
     // 20px breathing room below the fixed TopHeader; horizontal margins match
     // the party-strip / nav so all sections share the same 16px gutter.
@@ -174,7 +174,7 @@
     overflow: hidden;
     box-shadow: 0 2px 12px rgba(var(--class-color-rgb, 233,69,96), 0.1);
 
-    // ── Single bar chasing border + pulsing glow (transform tier 1+) ─────
+    // -- Single bar chasing border + pulsing glow (transform tier 1+) -----
     // Renders an inline <svg> whose <rect> has exactly one short dash and a
     // huge gap in stroke-dasharray — so only a single ~20px bar is visible
     // at any moment, travelling clockwise around the whole border. The card
@@ -208,7 +208,7 @@
     }
   }
 
-  // ── SVG trace layer ────────────────────────────────────────────────────
+  // -- SVG trace layer ----------------------------------------------------
   // Fills the character card, no viewBox — SVG coordinates map 1:1 to CSS
   // pixels so the rounded corners line up with the card's border-radius.
   &__card-trace {
@@ -316,7 +316,7 @@
     color: $color-legendary;
   }
 
-  // ── Stat bars ──────────────────────────────────────────────────────────────
+  // -- Stat bars --------------------------------------------------------------
   &__bar-wrap {
     display: flex;
     align-items: center;
@@ -405,8 +405,8 @@
     50% { box-shadow: 0 0 8px 2px rgba(#ffc107, 0.3); }
   }
 
-  // ── Live combat widget ───────────────────────────────────────────────────
-  // ── Compact combat strip (next to avatar area) ─────────────────────────────
+  // -- Live combat widget ---------------------------------------------------
+  // -- Compact combat strip (next to avatar area) -----------------------------
   &__combat-strip {
     // 10px gap above so the strip never sits flush against the character
     // card (which would visually fuse the two boxes into one), matching
@@ -501,7 +501,7 @@
 
     &--stop {
       background: rgba(#ef5350, 0.15);
-      color: #ef5350;
+      color: #fff;
       border: 1px solid rgba(#ef5350, 0.3);
     }
   }
@@ -511,7 +511,7 @@
     50% { box-shadow: 0 0 8px 0 rgba(255, 255, 255, 0.06); }
   }
 
-  // ── Party expand widget ──────────────────────────────────────────────────
+  // -- Party expand widget --------------------------------------------------
   &__party-strip {
     // 10px from the box above (character card / combat strip), 0 below — the
     // gap to the first tile is owned by `&__nav--seven`'s top padding so we
@@ -861,14 +861,14 @@
     }
   }
 
-  // ── Blocked nav buttons during combat ─────────────────────────────────────
+  // -- Blocked nav buttons during combat -------------------------------------
   &__nav-btn--blocked {
     opacity: 0.4;
     pointer-events: none;
     position: relative;
   }
 
-  // ── Offline-locked tiles ──────────────────────────────────────────────────
+  // -- Offline-locked tiles --------------------------------------------------
   // 2026-05-20 spec ("Miejsca w ktore nie moge wejsc offline powinny zostac
   // zablokowane nie mozliwe do klikniecia wyszarzone"): visually distinct
   // from --blocked so the player sees this is a MODE restriction, not a
@@ -882,11 +882,13 @@
     position: relative;
 
     &::after {
-      content: '🔒';
+      content: '';
       position: absolute;
       top: 6px;
       right: 8px;
-      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      background: url('../../assets/icons/locked.svg') center / contain no-repeat;
       filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
       z-index: 3;
     }
@@ -899,7 +901,7 @@
     font-size: 0.6rem;
   }
 
-  // ── Navigation grid ────────────────────────────────────────────────────────
+  // -- Navigation grid --------------------------------------------------------
   &__nav {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1132,7 +1134,7 @@
     filter: drop-shadow(0 0 4px rgba(#4caf50, 0.8));
   }
 
-  // ── Task indicator on nav button ──────────────────────────────────────────
+  // -- Task indicator on nav button ------------------------------------------
   &__nav-btn--task-active {
     border-color: rgba(#ffc107, 0.5);
     background: linear-gradient(135deg, rgba(#ffc107, 0.08) 0%, $color-bg-secondary 60%);
@@ -1201,7 +1203,7 @@
     transition: width 0.5s ease-out;
   }
 
-  // ── Rest / Heal Button ──────────────────────────────────────────────────────
+  // -- Rest / Heal Button ------------------------------------------------------
   &__nav-btn--rest {
     border-color: rgba(#4caf50, 0.5);
     background: linear-gradient(135deg, rgba(#4caf50, 0.08) 0%, $color-bg-secondary 60%);
@@ -1236,7 +1238,7 @@
     50% { box-shadow: 0 0 20px rgba(#ffc107, 0.5); }
   }
 
-  // ── Nav tile unique backgrounds ──────────────────────────────────────────
+  // -- Nav tile unique backgrounds ------------------------------------------
   // Every tile gets an epic gradient + the label in a frosted-glass bar
   // at the bottom. The icon stays centered and large.
   &__nav-tile {
@@ -1287,7 +1289,7 @@
     z-index: 4;
   }
 
-  // ── Tile backgrounds (uniform transform-tier color) ──────────────────────
+  // -- Tile backgrounds (uniform transform-tier color) ----------------------
   // Every tile uses the same base gradient derived from the player's current
   // transform color (--tile-accent set on .town__nav). Particles are STATIC
   // by default — they only animate when the tile is hovered. On hover the
@@ -1339,19 +1341,19 @@
 
   // Each tile keeps its unique emoji pair. Colors/border come from
   // --tile-accent-rgb (set on .town__nav from the active transform).
-  &__nav-tile--combat      { @include tile-particles('⚔️', '🩸'); }
-  &__nav-tile--inventory   { @include tile-particles('🎒', '💎'); }
+  &__nav-tile--combat      { @include tile-particles('crossed-swords', 'drop-of-blood'); }
+  &__nav-tile--inventory   { @include tile-particles('backpack', 'gem-stone'); }
   &__nav-tile--character   { /* handled by avatar bg — no particles */ }
-  &__nav-tile--skills      { @include tile-particles('✨', '🌀'); }
-  &__nav-tile--shop        { @include tile-particles('💰', '🛒'); }
-  &__nav-tile--deposit     { @include tile-particles('🏦', '💎'); }
-  &__nav-tile--tasks       { @include tile-particles('📋', '✅'); }
-  &__nav-tile--quests      { @include tile-particles('📜', '🗝️'); }
-  &__nav-tile--transform   { @include tile-particles('🔥', '⚡'); }
-  &__nav-tile--dungeon     { @include tile-particles('🏰', '🗝️'); }
-  &__nav-tile--boss        { @include tile-particles('👹', '💀'); }
-  &__nav-tile--monsters    { @include tile-particles('🐉', '🗺️'); }
-  &__nav-tile--market      { @include tile-particles('🛍️', '💱'); }
+  &__nav-tile--skills      { @include tile-particles('sparkles', 'cyclone'); }
+  &__nav-tile--shop        { @include tile-particles('money-bag', 'shopping-cart'); }
+  &__nav-tile--deposit     { @include tile-particles('bank', 'gem-stone'); }
+  &__nav-tile--tasks       { @include tile-particles('clipboard', 'check-mark-button'); }
+  &__nav-tile--quests      { @include tile-particles('scroll', 'old-key'); }
+  &__nav-tile--transform   { @include tile-particles('fire', 'high-voltage'); }
+  &__nav-tile--dungeon     { @include tile-particles('castle', 'old-key'); }
+  &__nav-tile--boss        { @include tile-particles('ogre', 'skull'); }
+  &__nav-tile--monsters    { @include tile-particles('dragon', ''); }
+  &__nav-tile--market      { @include tile-particles('', ''); }
 
   // 2026-05-08: Market tile gets an attention-getting glow + corner badge
   // when the seller has unseen sale notifications (someone bought one
@@ -1385,17 +1387,17 @@
     z-index: 4;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   }
-  &__nav-tile--offline     { @include tile-particles('🎯', '⏳'); }
-  &__nav-tile--rest        { @include tile-particles('🏕️', '🌙'); }
-  &__nav-tile--party       { @include tile-particles('🤝', '👥'); }
-  &__nav-tile--guild       { @include tile-particles('🏛️', '⚜️'); }
-  &__nav-tile--arena       { @include tile-particles('🏟️', '⚡'); opacity: 0.7; }
-  &__nav-tile--chat        { @include tile-particles('💬', '📨'); }
-  &__nav-tile--friends     { @include tile-particles('👥', '💜'); }
-  &__nav-tile--leaderboard { @include tile-particles('🏆', '🥇'); }
-  &__nav-tile--deaths      { @include tile-particles('💀', '☠️'); }
+  &__nav-tile--offline     { @include tile-particles('bullseye', 'hourglass-not-done'); }
+  &__nav-tile--rest        { @include tile-particles('camping', 'crescent-moon'); }
+  &__nav-tile--party       { @include tile-particles('handshake', 'busts-in-silhouette'); }
+  &__nav-tile--guild       { @include tile-particles('classical-building', ''); }
+  &__nav-tile--arena       { @include tile-particles('stadium', 'high-voltage'); opacity: 0.7; }
+  &__nav-tile--chat        { @include tile-particles('speech-balloon', ''); }
+  &__nav-tile--friends     { @include tile-particles('busts-in-silhouette', 'purple-heart'); }
+  &__nav-tile--leaderboard { @include tile-particles('trophy', '1st-place-medal'); }
+  &__nav-tile--deaths      { @include tile-particles('skull', 'skull-and-crossbones'); }
 
-  // ── Rest Overlay (fullscreen epic animation) ──────────────────────────────
+  // -- Rest Overlay (fullscreen epic animation) ------------------------------
   &__rest-overlay {
     position: fixed;
     inset: 0;
@@ -1417,7 +1419,7 @@
     to   { opacity: 1; }
   }
 
-  // ── Floating particles ─────────────────────────────────────────────────────
+  // -- Floating particles -----------------------------------------------------
   &__rest-particles {
     position: absolute;
     inset: 0;
@@ -1451,7 +1453,7 @@
     }
   }
 
-  // ── Expanding rings ────────────────────────────────────────────────────────
+  // -- Expanding rings --------------------------------------------------------
   &__rest-rings {
     position: absolute;
     top: 50%;
@@ -1493,7 +1495,7 @@
     }
   }
 
-  // ── Center content ─────────────────────────────────────────────────────────
+  // -- Center content ---------------------------------------------------------
   &__rest-center {
     position: relative;
     z-index: 1;
@@ -1565,7 +1567,7 @@
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
 
-  // ── Progress bar (loading) ─────────────────────────────────────────────────
+  // -- Progress bar (loading) -------------------------------------------------
   &__rest-progress {
     width: 200px;
     height: 6px;
@@ -1593,7 +1595,7 @@
     100% { background-position: -200% 0; }
   }
 
-  // ── 7-tile responsive grid (mobile-first refactor) ─────────────────────────
+  // -- 7-tile responsive grid (mobile-first refactor) -------------------------
   // Per user spec the Miasto tiles are reduced to exactly 7 (Offline trening,
   // Depozyt, Market, Potwory, Odpoczynek, Rankingi, Smierci) and the layout
   // must be stacked on mobile and horizontal on desktop. We override the
@@ -1609,13 +1611,16 @@
     // ~576, etc. The 720-px @media swap then bumps the track to 180-px
     // so desktop fits 4-7 of the larger tiles.
     display: grid;
-    grid-template-columns: repeat(auto-fill, 130px);
+    // auto-FIT (not auto-fill): empty repeated tracks collapse to 0 so the
+    // populated tiles actually centre via `justify-content: center` on wide
+    // screens. auto-fill would keep the empty tracks and pack tiles left.
+    grid-template-columns: repeat(auto-fit, 130px);
     justify-content: center;
     gap: $spacing-sm;
     padding: 10px $spacing-md $spacing-md;
 
     @media (min-width: 720px) {
-      grid-template-columns: repeat(auto-fill, 180px);
+      grid-template-columns: repeat(auto-fit, 180px);
       gap: $spacing-md;
       padding: 10px $spacing-lg $spacing-lg;
     }
@@ -1632,7 +1637,7 @@
     }
   }
 
-  // ── Periodic auto-pulse (every 30s) ────────────────────────────────────────
+  // -- Periodic auto-pulse (every 30s) ----------------------------------------
   // The `town__nav--pulse` class is toggled on by Town.tsx for ~900ms every
   // 30 seconds. While present, every child tile plays a one-shot glow + scale
   // pop so the navigation gently signals it's interactive even when the

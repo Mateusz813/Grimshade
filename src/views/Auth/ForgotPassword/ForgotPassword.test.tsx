@@ -8,11 +8,11 @@ import { MemoryRouter } from 'react-router-dom';
  * message; on error the message renders inline.
  *
  * Coverage:
- *   • Smoke render: root + email field + submit + back-to-login link.
- *   • Submit calls supabase.auth.resetPasswordForEmail with the email.
- *   • Successful send swaps the form for the success copy.
- *   • Server error renders inline.
- *   • Bad email flagged by zod before the API is even called.
+ *   - Smoke render: root + email field + submit + back-to-login link.
+ *   - Submit calls supabase.auth.resetPasswordForEmail with the email.
+ *   - Successful send swaps the form for the success copy.
+ *   - Server error renders inline.
+ *   - Bad email flagged by zod before the API is even called.
  */
 
 import ForgotPassword from './ForgotPassword';

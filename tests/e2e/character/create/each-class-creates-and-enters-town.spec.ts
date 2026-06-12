@@ -32,7 +32,7 @@
  * UWAGA do parallelism: 7 tests × 2 mobile profile = 14 runs. Wszystkie
  * używają tego samego konta primary. Worker count = 4 (default lokalny),
  * więc maksymalnie 4 testy jednocześnie tworzą postać na primary.
- * Wszystkie żyją krótko (~5-10s) i każdy ma własny unique nick →
+ * Wszystkie żyją krótko (~5-10s) i każdy ma własny unique nick ->
  * brak race conditions na DB.
  */
 
@@ -52,24 +52,24 @@ interface IClassUnderTest {
 }
 
 const CLASSES: ReadonlyArray<IClassUnderTest> = [
-    { id: 'Knight',      namePl: 'Rycerz',     icon: '⚔️' },
-    { id: 'Mage',        namePl: 'Mag',        icon: '🔮' },
-    { id: 'Cleric',      namePl: 'Kleryk',     icon: '✨' },
-    { id: 'Archer',      namePl: 'Łucznik',    icon: '🏹' },
-    { id: 'Rogue',       namePl: 'Łotr',       icon: '🗡️' },
-    { id: 'Necromancer', namePl: 'Nekromanta', icon: '💀' },
-    { id: 'Bard',        namePl: 'Bard',       icon: '🎵' },
+    { id: 'Knight',      namePl: 'Rycerz',     icon: 'crossed-swords' },
+    { id: 'Mage',        namePl: 'Mag',        icon: 'crystal-ball' },
+    { id: 'Cleric',      namePl: 'Kleryk',     icon: 'sparkles' },
+    { id: 'Archer',      namePl: 'Łucznik',    icon: 'bow-and-arrow' },
+    { id: 'Rogue',       namePl: 'Łotr',       icon: 'dagger' },
+    { id: 'Necromancer', namePl: 'Nekromanta', icon: 'skull' },
+    { id: 'Bard',        namePl: 'Bard',       icon: 'musical-note' },
 ];
 
-// Każdy test character/create wykonuje pełen flow login → goto → tap → tap → fill → tap
-// → assert Town → cleanup. Default 30s bywa tight na WebKit + parallel load.
+// Każdy test character/create wykonuje pełen flow login -> goto -> tap -> tap -> fill -> tap
+// -> assert Town -> cleanup. Default 30s bywa tight na WebKit + parallel load.
 // Bump do 60s żeby finally zdążyło wykasować postać.
 test.describe('Character › Create', { tag: '@character' }, () => {
     // Serial mode: wszystkie 7 testów w tym pliku biegnie KOLEJNO na każdym profilu,
     // nie równolegle. Powód: `fullyParallel: true` w config-u rozkłada testy
     // wewnątrz pliku po wielu worker-ach — 7 jednoczesnych tworzeń postaci
     // na tym samym koncie testowym hituje 7-character-per-user limit.
-    // Serial = 1 char create at a time → nigdy więcej niż 1 w trakcie.
+    // Serial = 1 char create at a time -> nigdy więcej niż 1 w trakcie.
     test.describe.configure({ timeout: 60_000, mode: 'serial' });
 
     for (const cls of CLASSES) {
@@ -77,7 +77,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
             const nick = generateTestCharacterName();
 
             try {
-                // 1. Login → /character-select (świeże konto bez postaci) LUB / (z postacią z poprzedniego testu który źle posprzątał)
+                // 1. Login -> /character-select (świeże konto bez postaci) LUB / (z postacią z poprzedniego testu który źle posprzątał)
                 await loginViaUI(page, testUsers.primary);
 
                 // Jeśli ląduje na / (czyli ma już jakąś postać aktywną), idź do /character-select przez "Zmień postać" w avatar menu lub direct nav

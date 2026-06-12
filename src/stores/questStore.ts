@@ -4,7 +4,7 @@ import monstersData from '../data/monsters.json';
 import { useMasteryStore, MASTERY_MAX_LEVEL } from './masteryStore';
 import { useCharacterStore } from './characterStore';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export type QuestGoalType = 'kill' | 'dungeon' | 'level' | 'boss' | 'kill_rarity'
   | 'complete_dungeons_any' | 'kill_bosses_any' | 'drop_rarity'
@@ -77,7 +77,7 @@ interface IQuestStore {
   isActive: (questId: string) => boolean;
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// -- Helper --------------------------------------------------------------------
 
 const isQuestGoalDone = (goal: IQuestGoal): boolean =>
   (goal.progress ?? 0) >= goal.count;
@@ -127,7 +127,7 @@ export const getActiveQuestKillProgress = (
             });
     });
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// -- Store ---------------------------------------------------------------------
 
 export const useQuestStore = create<IQuestStore>()(
     (set, get) => ({

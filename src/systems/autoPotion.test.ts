@@ -7,15 +7,15 @@
  * decision logic the engine runs every combat tick.
  *
  * Decision matrix tested (per HP/MP, per slot kind flat/pct):
- *   1. enabled flag OFF              → never fires
- *   2. threshold = 0                 → never fires
- *   3. current >= max                → never fires (safety: don't waste a potion)
- *   4. current% > threshold          → never fires
- *   5. on cooldown                   → never fires
- *   6. no potions owned              → never fires
- *   7. heal amount > missing         → never fires (anti-waste guard:
+ *   1. enabled flag OFF              -> never fires
+ *   2. threshold = 0                 -> never fires
+ *   3. current >= max                -> never fires (safety: don't waste a potion)
+ *   4. current% > threshold          -> never fires
+ *   5. on cooldown                   -> never fires
+ *   6. no potions owned              -> never fires
+ *   7. heal amount > missing         -> never fires (anti-waste guard:
  *      "lost 1 HP, burned a 50 HP potion" — see comment in `useAutoPotionSlot`)
- *   8. healthy fire path             → fires, decrements consumable, installs CD
+ *   8. healthy fire path             -> fires, decrements consumable, installs CD
  *
  * Why unit/integration: the matrix is enabled × threshold × current × cooldown
  * × potion-stock × slot-kind = thousands of states. Pure-function vitest tests
@@ -42,7 +42,7 @@ import { useCharacterStore } from '../stores/characterStore';
 import { useDailyQuestStore } from '../stores/dailyQuestStore';
 import type { IMonster } from '../stores/combatStore';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const DEFAULT_SETTINGS = {
     autoPotionHpEnabled: false,
@@ -63,7 +63,7 @@ const makeMonster = (): IMonster => ({
     id: 'rat',
     name_pl: 'Szczur',
     name_en: 'Rat',
-    icon: '🐀',
+    icon: 'rat',
     level: 1,
     hp: 27,
     attack: 4,
@@ -103,7 +103,7 @@ const setupStores = (settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}): 
     useDailyQuestStore.setState({ lastRefreshDate: null, activeQuests: [], todayQuestDefs: [] });
 };
 
-// ── Disabled / threshold-zero / threshold-respected (no-fire branches) ──────
+// -- Disabled / threshold-zero / threshold-respected (no-fire branches) ------
 
 describe('tryAutoPotion: no-fire when slot disabled', () => {
     beforeEach(() => setupStores());
@@ -161,7 +161,7 @@ describe('tryAutoPotion: no-fire when current% > threshold', () => {
     });
 
     it('does NOT fire HP slot at HP% exactly equal to threshold + 1', () => {
-        // 51 / 100 = 51% > 50% threshold → no fire.
+        // 51 / 100 = 51% > 50% threshold -> no fire.
         useInventoryStore.setState({
             ...useInventoryStore.getState(),
             consumables: { hp_potion_sm: 5 },
@@ -192,7 +192,7 @@ describe('tryAutoPotion: no-fire when no potions owned', () => {
             autoPotionHpThreshold: 90,
         });
 
-        // Resolver returns null → useAutoPotionSlot short-circuits.
+        // Resolver returns null -> useAutoPotionSlot short-circuits.
         expect(() => tryAutoPotion(0, 100, 50, 50)).not.toThrow();
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(0);
     });
@@ -258,9 +258,9 @@ describe('tryAutoPotion: no-fire when on cooldown', () => {
     });
 });
 
-// ── Heal-anti-waste guard (missing < healAmount → don't fire) ───────────────
+// -- Heal-anti-waste guard (missing < healAmount -> don't fire) ---------------
 
-describe('tryAutoPotion: anti-waste guard (heal > missing → no fire)', () => {
+describe('tryAutoPotion: anti-waste guard (heal > missing -> no fire)', () => {
     beforeEach(() => setupStores());
 
     it('does NOT fire hp_potion_sm (50 HP heal) when only 10 HP is missing', () => {
@@ -276,7 +276,7 @@ describe('tryAutoPotion: anti-waste guard (heal > missing → no fire)', () => {
             autoPotionHpThreshold: 100, // 100% — threshold won't block
         });
 
-        tryAutoPotion(90, 100, 50, 50); // 10 HP missing, 50 HP heal → no fire
+        tryAutoPotion(90, 100, 50, 50); // 10 HP missing, 50 HP heal -> no fire
 
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(5);
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(0);
@@ -293,7 +293,7 @@ describe('tryAutoPotion: anti-waste guard (heal > missing → no fire)', () => {
             autoPotionHpThreshold: 100,
         });
 
-        tryAutoPotion(50, 100, 50, 50); // 50 missing, 50 heal → fires.
+        tryAutoPotion(50, 100, 50, 50); // 50 missing, 50 heal -> fires.
 
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(FLAT_POTION_COOLDOWN_MS);
@@ -310,13 +310,13 @@ describe('tryAutoPotion: anti-waste guard (heal > missing → no fire)', () => {
             autoPotionHpThreshold: 100,
         });
 
-        tryAutoPotion(40, 100, 50, 50); // 60 missing, 50 heal → fires.
+        tryAutoPotion(40, 100, 50, 50); // 60 missing, 50 heal -> fires.
 
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
     });
 });
 
-// ── Healthy fire-path (decrement consumable + install CD + heal) ────────────
+// -- Healthy fire-path (decrement consumable + install CD + heal) ------------
 
 describe('tryAutoPotion: full fire path on threshold breach', () => {
     beforeEach(() => setupStores());
@@ -391,7 +391,7 @@ describe('tryAutoPotion: full fire path on threshold breach', () => {
     });
 });
 
-// ── Multiple slot interaction (flat + pct should both trigger if applicable) ─
+// -- Multiple slot interaction (flat + pct should both trigger if applicable) -
 
 describe('tryAutoPotion: independent flat + pct slot triggering', () => {
     beforeEach(() => setupStores());
@@ -447,7 +447,7 @@ describe('tryAutoPotion: independent flat + pct slot triggering', () => {
     });
 });
 
-// ── resolveAutoPotionElixir contract (re-verified with engine-flow context) ─
+// -- resolveAutoPotionElixir contract (re-verified with engine-flow context) -
 
 describe('resolveAutoPotionElixir contract under engine flow', () => {
     it('returns the preferred id when consumable count > 0', () => {
@@ -470,7 +470,7 @@ describe('resolveAutoPotionElixir contract under engine flow', () => {
     it('respects slotKind partition — pct request cannot pick a flat potion', () => {
         const inv = { hp_potion_sm: 5 }; // only flat owned
         const e = resolveAutoPotionElixir(undefined, 'hp', 'pct', inv);
-        // Pct pool empty → null even though flat HP is in stock.
+        // Pct pool empty -> null even though flat HP is in stock.
         expect(e).toBeNull();
     });
 

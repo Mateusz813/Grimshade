@@ -6,14 +6,14 @@
  * — Market Items Sold tab.
  *
  * Tab definition (Leaderboard.tsx linia 166):
- *   { key: 'market_items_sold', label: 'Sprzedaż', icon: '💰',
+ *   { key: 'market_items_sold', label: 'Sprzedaż', icon: 'money-bag',
  *     source: 'characters', characterColumn: 'market_items_sold',
  *     order: 'desc', valueLabel: 'Sprzedane' }
  *
  * **Custom fetch branch** (Leaderboard.tsx linia 211-243): "Sprzedaż"
  * + "Zakupy" mają osobną ścieżkę bo sortują PRIMARY po
  * `market_gold_earned` (BIGINT, "kto NAJWIĘCEJ zarobił"), nie po
- * count. Po sort GOLD DESC → COUNT DESC → LEVEL DESC → CREATED_AT ASC.
+ * count. Po sort GOLD DESC -> COUNT DESC -> LEVEL DESC -> CREATED_AT ASC.
  *
  * Display via `formatGoldShort` (`src/systems/goldFormat.ts`):
  *   `{count.toLocaleString('pl-PL')} · {formatGoldShort(gold)}`
@@ -73,7 +73,7 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
 
             // valueOverride: `{count.toLocaleString('pl-PL')} · {formatGoldShort(gold)}`.
             // 999 toLocaleString w pl-PL = "999"; gold 99999999 przez
-            // formatGoldShort → suffixed (gp/k/M itp.). Combined regex matches
+            // formatGoldShort -> suffixed (gp/k/M itp.). Combined regex matches
             // the 999 count token AND the " · " separator. The re-fetch poll
             // helper absorbs full-suite DB contention (REST cache / eventual
             // consistency stale first read), replacing the manual re-tap block.

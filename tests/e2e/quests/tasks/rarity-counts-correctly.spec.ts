@@ -3,7 +3,7 @@
  * multiplier (BACKLOG 7.2).
  *
  * Spec coverage:
- *  • 7.2 → "Task: rarity-based count w walce". Tasks in `src/data/tasks.json`
+ *  - 7.2 -> "Task: rarity-based count w walce". Tasks in `src/data/tasks.json`
  *    are keyed to a single `monsterId` (e.g. `rat_10` requires 10 rat
  *    kills). The contract has two parts:
  *      1. Kills of OTHER monsters MUST NOT advance the task — `taskStore.addKill`
@@ -38,15 +38,15 @@
  *
  * Phase B — matching monster + rarity multiplier:
  *  Same task, same character (continues in the same test for clarity).
- *  Call `killMonsterViaEngine(page, 'rat', 'normal')` → expect
+ *  Call `killMonsterViaEngine(page, 'rat', 'normal')` -> expect
  *  `progress === 1` (normal = ×1).
- *  Then call `killMonsterViaEngine(page, 'rat', 'strong')` → expect
+ *  Then call `killMonsterViaEngine(page, 'rat', 'strong')` -> expect
  *  `progress === 4` (1 + strong×3 = 4).
- *  Then call `killMonsterViaEngine(page, 'rat', 'epic')` → expect
+ *  Then call `killMonsterViaEngine(page, 'rat', 'epic')` -> expect
  *  `progress === 14` (4 + epic×10 = 14).
  *
  *  Three different rarities prove the multiplier table is consulted per
- *  kill, not a fixed +1 regardless of rarity. The math (1→4→14) is
+ *  kill, not a fixed +1 regardless of rarity. The math (1->4->14) is
  *  unambiguous: any other multiplier set produces a different sequence,
  *  so the assertion has only one passing path.
  *
@@ -138,7 +138,7 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             expect(initial.count).toBe(1);
             expect(initial.ratTaskProgress).toBe(0);
 
-            // ── Phase A: wrong-monster kill must NOT advance the rat task ──
+            // -- Phase A: wrong-monster kill must NOT advance the rat task --
             //
             // Kill a cave_spider (a different monster) with normal rarity.
             // The reward flow runs (gold, XP, mastery progress, etc.) but
@@ -158,11 +158,11 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             });
             expect(afterSpider).toBe(0);
 
-            // ── Phase B: matching monster, normal rarity → +1 ──
+            // -- Phase B: matching monster, normal rarity -> +1 --
             //
             // MONSTER_RARITY_TASK_KILLS.normal = 1 (lootSystem.ts line 49).
             // `handleMonsterDeath` (combatEngine.ts line 1138) passes
-            // `taskKills = 1` to `addKill` → progress goes 0 → 1.
+            // `taskKills = 1` to `addKill` -> progress goes 0 -> 1.
             await killMonsterViaEngine(page, 'rat', 'normal');
 
             const afterRatNormal = await page.evaluate(async () => {
@@ -175,9 +175,9 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             });
             expect(afterRatNormal).toBe(1);
 
-            // ── Phase C: matching monster, strong rarity → +3 ──
+            // -- Phase C: matching monster, strong rarity -> +3 --
             //
-            // MONSTER_RARITY_TASK_KILLS.strong = 3 → progress 1 → 4.
+            // MONSTER_RARITY_TASK_KILLS.strong = 3 -> progress 1 -> 4.
             await killMonsterViaEngine(page, 'rat', 'strong');
 
             const afterRatStrong = await page.evaluate(async () => {
@@ -190,10 +190,10 @@ test.describe('Quests › Tasks', { tag: '@progression' }, () => {
             });
             expect(afterRatStrong).toBe(4);
 
-            // ── Phase D: matching monster, epic rarity → +10 ──
+            // -- Phase D: matching monster, epic rarity -> +10 --
             //
-            // MONSTER_RARITY_TASK_KILLS.epic = 10 → progress 4 → 14.
-            // Task killCount=10, so progress is now >= killCount → claimable.
+            // MONSTER_RARITY_TASK_KILLS.epic = 10 -> progress 4 -> 14.
+            // Task killCount=10, so progress is now >= killCount -> claimable.
             // (We don't assert the claimable state here — that's covered by
             // 7.10 / 7.12. The math is the load-bearing assertion.)
             await killMonsterViaEngine(page, 'rat', 'epic');

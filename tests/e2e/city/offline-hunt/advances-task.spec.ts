@@ -1,7 +1,7 @@
 /**
  * Atomic E2E — claim offline hunt advances active task progress.
  *
- * Spec (BACKLOG.md 5.14): "Offline trening + task active → task progress".
+ * Spec (BACKLOG.md 5.14): "Offline trening + task active -> task progress".
  *
  * Contract: `claimOfflineHunt` (offlineHuntSystem.ts line 356) calls
  *   useTaskStore.getState().addKill(monster.id, monster.level, weightedTaskKills);
@@ -48,7 +48,7 @@
  *
  * ## Flow + assertions
  *
- *  1. Login → pick character → Town.
+ *  1. Login -> pick character -> Town.
  *  2. page.evaluate: sanity — taskStore.activeTasks[0].progress === 0.
  *  3. page.evaluate: start hunt against rat + backdate startedAt 12h.
  *  4. page.evaluate: call claimOfflineHunt, return snapshot.
@@ -61,7 +61,7 @@
  *
  * ## Cleanup
  *
- * try/finally → cleanupCharacterById (wipes game_saves blob including
+ * try/finally -> cleanupCharacterById (wipes game_saves blob including
  * tasks slice + offlineHunt slice).
  */
 
@@ -107,7 +107,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
                 }],
             });
 
-            // 3. Login → pick character → Town.
+            // 3. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -119,7 +119,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
 
             // 3b. Hydration barrier — block until App.tsx restore() fully
             //     settled (cloud loadGame + applyBlobToStores + the
-            //     restoring→AppRouter transition). Without this the
+            //     restoring->AppRouter transition). Without this the
             //     page.evaluate store-pokes below race a late applyBlobToStores
             //     that overwrites our startHunt AND the React re-render the
             //     claim triggers, surfacing as "Execution context was
@@ -140,8 +140,8 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
 
             // 5+6. Start hunt + backdate + claim + snapshot — ALL in ONE
             //      evaluate. Imports are awaited up-front (single Promise.all);
-            //      every store mutation (startHunt → backdate → claimOfflineHunt
-            //      → read task) then runs SYNCHRONOUSLY with no `await` between
+            //      every store mutation (startHunt -> backdate -> claimOfflineHunt
+            //      -> read task) then runs SYNCHRONOUSLY with no `await` between
             //      them. React batches renders to the next tick, so it never
             //      flushes a re-render + HuntGuard/route change mid-sequence —
             //      which is what previously destroyed the execution context
@@ -162,7 +162,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
                     const monsters = (monsterMod.default ?? monsterMod) as Array<{ id: string; level: number; }>;
                     const rat = monsters.find((m) => m.id === 'rat');
                     if (!rat) throw new Error('[test 5.14] rat not found in monsters.json');
-                    // --- synchronous mutation block (no await → no mid-render nav) ---
+                    // --- synchronous mutation block (no await -> no mid-render nav) ---
                     ohMod.useOfflineHuntStore.getState().startHunt(rat as Parameters<typeof ohMod.useOfflineHuntStore.getState.prototype.startHunt>[0] extends infer T ? T : never, 'sword_fighting');
                     const TWELVE_H_MS = 12 * 60 * 60 * 1000;
                     ohMod.useOfflineHuntStore.setState({
@@ -189,7 +189,7 @@ test.describe('City › Offline Hunt', { tag: '@city' }, () => {
             //    (c) Task progress advanced. taskStore.addKill (taskStore.ts
             //        line 85-100) does a RAW additive increment — no cap
             //        at killCount. UI separately reads `progress >= killCount`
-            //        to decide claim-ready state. At 12h cap →
+            //        to decide claim-ready state. At 12h cap ->
             //        weightedTaskKills is in the 10k+ range (4320 normal
             //        kills × 1 + per-rarity boss/legendary weighting),
             //        which trivially exceeds 10. Assert progress is

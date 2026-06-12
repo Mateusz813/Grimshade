@@ -18,7 +18,7 @@ import {
 
 const blankStatus = newStatusState;
 
-// ── Rogue Naznaczony na Śmierć (`mark_heal_to_dmg:6000`) ──────────────────
+// -- Rogue Naznaczony na Śmierć (`mark_heal_to_dmg:6000`) ------------------
 // Marks the target so any incoming heal during the buff window flips into
 // damage of equal magnitude. The mechanic shares the v2 `markNoHealMs`
 // status field with `mark_no_heal` (semantic alias). User explicitly
@@ -100,7 +100,7 @@ describe('mark_heal_to_dmg (Rogue Naznaczony na Śmierć)', () => {
     });
 
     it('Arena scenario: opponent (Cleric) casts heal on themselves while marked', () => {
-        // Arena Cleric AI fires heal → applyIncomingHeal(caster.status,
+        // Arena Cleric AI fires heal -> applyIncomingHeal(caster.status,
         // heal). caster.hp += hr.hpDelta. With mark, hpDelta is
         // negative so caster.hp decreases.
         const { target: opponent } = setupMarked();
@@ -126,7 +126,7 @@ describe('mark_heal_to_dmg (Rogue Naznaczony na Śmierć)', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — parseEffects edge cases ─────────────────────
+// -- Coverage push 2026-05-26 — parseEffects edge cases ---------------------
 
 describe('parseEffects', () => {
     it('returns [] for null / undefined / empty input', () => {
@@ -198,7 +198,7 @@ describe('isStunned', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — applyIncomingDamage / mana shield ───────────
+// -- Coverage push 2026-05-26 — applyIncomingDamage / mana shield -----------
 
 describe('applyIncomingDamage', () => {
     it('absorbs damage when immortal is active', () => {
@@ -282,7 +282,7 @@ describe('applyManaShieldRedirect', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — applyIncomingHeal edge cases ─────────────────
+// -- Coverage push 2026-05-26 — applyIncomingHeal edge cases -----------------
 
 describe('applyIncomingHeal extra cases', () => {
     it('returns 0 hpDelta when enemyNoHealMs is active', () => {
@@ -299,7 +299,7 @@ describe('applyIncomingHeal extra cases', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — skillTargetsEnemy classifier ────────────────
+// -- Coverage push 2026-05-26 — skillTargetsEnemy classifier ----------------
 
 describe('skillTargetsEnemy', () => {
     it('returns false for null/empty', () => {
@@ -324,13 +324,13 @@ describe('skillTargetsEnemy', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — tickStatus DOTs + dark ritual ──────────────
+// -- Coverage push 2026-05-26 — tickStatus DOTs + dark ritual --------------
 
 describe('tickStatus DOTs', () => {
     it('applies a DOT each tick and removes it when exhausted', () => {
         const s = newStatusState();
         s.dots = [{ remainingMs: 1000, pctPerSec: 10 }];
-        // 1 second tick on maxHp=100 → 10% = 10 damage; remaining 0 → cleared.
+        // 1 second tick on maxHp=100 -> 10% = 10 damage; remaining 0 -> cleared.
         const r1 = tickStatus(s, 1000, 100);
         expect(r1.dotDamage).toBe(10);
         expect(s.dots.length).toBe(0);
@@ -388,7 +388,7 @@ describe('tickStatus DOTs', () => {
     });
 });
 
-// ── Coverage push 2026-05-26 — resolveBasicHit / consumeCasterBasicHitMods ─
+// -- Coverage push 2026-05-26 — resolveBasicHit / consumeCasterBasicHitMods -
 
 describe('resolveBasicHit', () => {
     it('returns base damage when no buffs active', () => {

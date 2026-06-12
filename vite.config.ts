@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import svgr from 'vite-plugin-svgr';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
 
@@ -14,6 +15,13 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  build: {
+    // Keep the bundled emoji icons (src/assets/icons/*.svg) as SEPARATE
+    // content-hashed files rather than inlining 217 small SVGs as base64 into
+    // the JS bundle (~550 KB bloat). Everything else keeps the default.
+    assetsInlineLimit: (filePath: string) =>
+      filePath.includes('/assets/icons/') ? false : undefined,
+  },
   server: {
     port: 5170,
     strictPort: true,
@@ -23,6 +31,11 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [
+    // SVG icons imported as inline React components via `?react`
+    // (e.g. `import.meta.glob('…/icons/*.svg', { query: '?react' })`).
+    // `icon: true` -> each <svg> is sized 1em so it scales with font-size,
+    // and `currentColor` strokes/fills tint with the surrounding text.
+    svgr({ svgrOptions: { icon: true } }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

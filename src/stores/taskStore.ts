@@ -6,7 +6,7 @@ import { computeTaskRewards, type IMonsterRewardSource } from '../systems/taskRe
 
 const monstersList = monstersData as unknown as (IMonsterRewardSource & { id: string })[];
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface ITask {
   id: string;
@@ -52,7 +52,7 @@ interface ITaskStore {
   getTaskForMonster: (monsterId: string) => IActiveTask | undefined;
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// -- Store ---------------------------------------------------------------------
 
 export const useTaskStore = create<ITaskStore>()(
     (set, get) => ({

@@ -4,32 +4,32 @@
  * Spec (BACKLOG.md punkt 6.4): "Masowa sprzedaż".
  *
  * Test sprawdza pełen flow bulk sell:
- *  1. Tap "💰 Sprzedaj" toggle na header-ze plecaka → wchodzi w bulk
+ *  1. Tap ":money-bag: Sprzedaj" toggle na header-ze plecaka -> wchodzi w bulk
  *     mode (sell), tile-y dostają checkbox-y.
- *  2. Tap "Zaznacz wszystkie" → wszystkie 3 seeded items są oznaczone.
- *  3. Tap przycisku w stopce "💰 Sprzedaj (3 szt. za ...)" → wszystkie
+ *  2. Tap "Zaznacz wszystkie" -> wszystkie 3 seeded items są oznaczone.
+ *  3. Tap przycisku w stopce ":money-bag: Sprzedaj (3 szt. za ...)" -> wszystkie
  *     items znikają + gold counter rośnie o sumę cen sprzedaży.
  *
  * Setup: postać Knight, gold=0, +3 seeded items w bagu:
- *   • iron_mace    (common, lvl 1) — basePrice=80, sell = floor(80*0.20) = 16g
- *   • iron_sword   (common, lvl 1) — basePrice=80, sell = floor(80*0.20) = 16g
- *   • iron_helmet  (common, lvl 1) — basePrice=120, sell = floor(120*0.20) = 24g
+ *   - iron_mace    (common, lvl 1) — basePrice=80, sell = floor(80*0.20) = 16g
+ *   - iron_sword   (common, lvl 1) — basePrice=80, sell = floor(80*0.20) = 16g
+ *   - iron_helmet  (common, lvl 1) — basePrice=120, sell = floor(120*0.20) = 24g
  *  Sumarycznie po sprzedaży gold = 0 + (16 + 16 + 24) = 56g.
  *
  * Sell math (z `itemSystem.ts` getSellPrice + RARITY_SELL_MULTIPLIER):
- *  • Common rarity → mult 0.20
- *  • basePrice > 0 → priceFromBase = floor(basePrice * mult)
- *  • upgradeLevel = 0 → enhanceRefund.gold = 0
- *  • Razem: floor(basePrice * 0.20)
+ *  - Common rarity -> mult 0.20
+ *  - basePrice > 0 -> priceFromBase = floor(basePrice * mult)
+ *  - upgradeLevel = 0 -> enhanceRefund.gold = 0
+ *  - Razem: floor(basePrice * 0.20)
  *
  * Asercje:
- *  • Przed: 3 bag tiles, gold "0 gp"
- *  • Po tap "💰 Sprzedaj" toggle → bulkMode active (przycisk "✕ Anuluj"
- *    widoczny), bulk-mode-label "💰 Tryb sprzedazy" widoczna
- *  • Po tap "Zaznacz wszystkie" → 3 tile-y mają klasę
+ *  - Przed: 3 bag tiles, gold "0 gp"
+ *  - Po tap ":money-bag: Sprzedaj" toggle -> bulkMode active (przycisk "x Anuluj"
+ *    widoczny), bulk-mode-label ":money-bag: Tryb sprzedazy" widoczna
+ *  - Po tap "Zaznacz wszystkie" -> 3 tile-y mają klasę
  *    `inventory__bag-tile--selected`
- *  • Po tap stopki "💰 Sprzedaj (3 szt. ...)" → 0 bag tiles + gold "56 gp"
- *  • Bulk-mode-label znika (handleMultiSell ustawia bulkMode='none')
+ *  - Po tap stopki ":money-bag: Sprzedaj (3 szt. ...)" -> 0 bag tiles + gold "56 gp"
+ *  - Bulk-mode-label znika (handleMultiSell ustawia bulkMode='none')
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -44,7 +44,7 @@ import { seedInventoryItem } from '../../fixtures/seedInventory';
 test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('bulk mode → select all → "Sprzedaj" footer → all items removed + gold = sum of sell prices', async ({ page }) => {
+    test('bulk mode -> select all -> "Sprzedaj" footer -> all items removed + gold = sum of sell prices', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -60,9 +60,9 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
 
             // 2. Seed 3 common-rarity items. Each goes through getSellPrice:
             //    basePrice * 0.20 (RARITY_SELL_MULTIPLIER.common) + 0 (no upgrade refund).
-            //    iron_mace   basePrice=80   → 16g
-            //    iron_sword  basePrice=80   → 16g
-            //    iron_helmet basePrice=120  → 24g
+            //    iron_mace   basePrice=80   -> 16g
+            //    iron_sword  basePrice=80   -> 16g
+            //    iron_helmet basePrice=120  -> 24g
             //    Total: 56g.
             await seedInventoryItem({
                 characterId: created.id,
@@ -102,7 +102,7 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
             //      `.top-header__gold-value` text pochodzi z `displayGold` —
             //      stanu lokalnego TopHeader.tsx który ANIMOWANY (count-up
             //      przez rAF, ~600ms) gdy gold rośnie. Headless browser
-            //      czasem throttluje rAF (focus lost) → displayGold zamarza
+            //      czasem throttluje rAF (focus lost) -> displayGold zamarza
             //      na wartości mid-animacji.
             //      ROZWIĄZANIE: czytamy `aria-label` z `.top-header__gold-btn`
             //      (linia 329 TopHeader.tsx) który używa SUROWEJ `gold`
@@ -114,16 +114,16 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
             const goldBtn = page.locator('.top-header__gold-btn');
             await expect(goldBtn).toHaveAttribute('aria-label', 'Złoto: 0');
 
-            // 5. Tap toggle "💰 Sprzedaj" (multi-sell-toggle--sell) — wchodzi w
+            // 5. Tap toggle ":money-bag: Sprzedaj" (multi-sell-toggle--sell) — wchodzi w
             //    bulkMode='sell'. Inventory.tsx linia 4291-4296.
             //    UWAGA: explicit toBeVisible PRZED tap-em — czasem button
-            //    re-renderuje się tuż po hydration (auto-save subscribers) →
+            //    re-renderuje się tuż po hydration (auto-save subscribers) ->
             //    "element was detached from DOM" flake.
             const sellToggle = page.locator('.inventory__multi-sell-toggle--sell');
             await expect(sellToggle).toBeVisible();
             await sellToggle.tap();
 
-            // 6. Bulk mode UI pojawia się: label "💰 Tryb sprzedazy" + multi-controls
+            // 6. Bulk mode UI pojawia się: label ":money-bag: Tryb sprzedazy" + multi-controls
             //    z przyciskami "Zaznacz wszystkie" itd.
             const bulkLabel = page.locator('.inventory__bulk-mode-label');
             await expect(bulkLabel).toBeVisible({ timeout: 5_000 });
@@ -131,14 +131,14 @@ test.describe('Inventory › Sell', { tag: '@inventory' }, () => {
 
             // 7. Tap "Zaznacz wszystkie" — przycisk inventory__multi-btn--tx z
             //    tekstem "Zaznacz wszystkie" (Inventory.tsx linia 4396).
-            //    Po tap: wszystkie 3 tiles mają isChecked=true → klasa
+            //    Po tap: wszystkie 3 tiles mają isChecked=true -> klasa
             //    `inventory__bag-tile--selected`.
             await page.locator('.inventory__multi-btn--tx', { hasText: 'Zaznacz wszystkie' }).tap();
 
             // 8. Wszystkie 3 tiles mają klasę --selected.
             await expect(page.locator('.inventory__bag-tile--selected')).toHaveCount(3, { timeout: 5_000 });
 
-            // 9. Stopka footer pokazuje "💰 Sprzedaj (3 szt. za 56g)" —
+            // 9. Stopka footer pokazuje ":money-bag: Sprzedaj (3 szt. za 56g)" —
             //    Inventory.tsx linia 4742: tekst zawiera "(3 szt." i kwota
             //    formatowana przez formatGoldShort(56) = "56 gp".
             const sellFooterBtn = page.locator('.inventory__multi-sell-btn');

@@ -15,17 +15,17 @@
  *    odpalamy. ProtectedRoute przejdzie bo session jest aktywny.
  *
  * **Co NIE testujemy** (defer do osobnych speców):
- *  - Faktyczny cast skilla na dummy → damage delta.
+ *  - Faktyczny cast skilla na dummy -> damage delta.
  *  - Sandbox toggles (trainerAttacks / noCooldowns / dummy HP slider).
- *  - Aggro target picker → killAlly picker → kill/revive flow.
+ *  - Aggro target picker -> killAlly picker -> kill/revive flow.
  *  - Best window damage tracker math.
  *
  * **App-bug note (2026-05-25)**: Trainer.tsx miał Rules of Hooks violation
  * podobnie jak Boss/Transform/Dungeon — early return `if (!character)`
  * na linii 2948 byl PRZED `useEffect` hook (linia 2958). Pierwszy render
  * z character==null pomijał subsequent hook; drugi render z character
- * hydrated registers it → React Rules of Hooks detector crashował
- * <Trainer> subtree → `.trainer` root nigdy nie mountuje się.
+ * hydrated registers it -> React Rules of Hooks detector crashował
+ * <Trainer> subtree -> `.trainer` root nigdy nie mountuje się.
  * Fix: przesunięto early return POD wszystkie hooks (analogicznie do
  * Boss.tsx). Komentarz "// Trainer render guard (after-hooks)" dla
  * przyszłych eyes.
@@ -58,7 +58,7 @@ test.describe('Combat › Trainer', { tag: '@combat' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login → wybierz postać → Town
+            // 2. Login -> wybierz postać -> Town
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

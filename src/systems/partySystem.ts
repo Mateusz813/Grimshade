@@ -1,10 +1,10 @@
 import type { CharacterClass } from '../api/v1/characterApi';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// -- Constants -----------------------------------------------------------------
 
 export const MAX_PARTY_SIZE = 4;
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface IPartyMember {
   id: string;
@@ -38,7 +38,7 @@ export interface IPartyInfo {
   minJoinLevel?: number;
 }
 
-// ── Multipliers ──────────────────────────────────────────────────────────────
+// -- Multipliers --------------------------------------------------------------
 // 2026-05-09 spec ("nie wiele wiekszy 0.5% za kazdego czlonka i 6.5% XP za
 // kazdego czlonka party"): the bonus per extra ally is small but real.
 
@@ -60,7 +60,7 @@ export const calculateDifficultyMultiplier = (partySize: number): number => {
   return 1 + (size - 1) * 0.2;
 };
 
-// ── Capacity helpers ──────────────────────────────────────────────────────────
+// -- Capacity helpers ----------------------------------------------------------
 
 export const canJoinParty = (currentSize: number): boolean =>
   currentSize < MAX_PARTY_SIZE;
@@ -78,12 +78,12 @@ export const getBotCount = (members: IPartyMember[]): number =>
 export const shouldSuggestBot = (members: IPartyMember[]): boolean =>
   getHumanCount(members) < 2;
 
-// ── Bot helper factory ────────────────────────────────────────────────────────
+// -- Bot helper factory --------------------------------------------------------
 
 const BOT_NAMES = ['Bot Pancerny', 'Bot Lecznik', 'Bot Łucznik', 'Bot Mag'];
 
 const BOT_SPRITES: Record<string, string> = {
-  Knight: '🤖⚔️', Cleric: '🤖✝️', Archer: '🤖🏹', Mage: '🤖🔮',
+  Knight: ':robot::crossed-swords:', Cleric: ':robot::latin-cross:', Archer: ':robot::bow-and-arrow:', Mage: ':robot::crystal-ball:',
 };
 
 /** Creates a bot helper tuned to fill the party's weakest role. */
@@ -109,7 +109,7 @@ export const createBotHelper = (partyMembers: IPartyMember[]): IPartyMember => {
 
   return {
     id: `bot_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    name: `${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]} ${BOT_SPRITES[botClass] ?? '🤖'}`,
+    name: `${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]} ${BOT_SPRITES[botClass] ?? 'robot'}`,
     class: botClass,
     level: avgLevel,
     hp,
@@ -119,7 +119,7 @@ export const createBotHelper = (partyMembers: IPartyMember[]): IPartyMember => {
   };
 };
 
-// ── XP / loot sharing ─────────────────────────────────────────────────────────
+// -- XP / loot sharing ---------------------------------------------------------
 
 /** XP each member receives when split equally. */
 export const getXpShare = (totalXp: number, partySize: number): number =>
@@ -129,7 +129,7 @@ export const getXpShare = (totalXp: number, partySize: number): number =>
 export const getGoldShare = (totalGold: number, partySize: number): number =>
   Math.floor(totalGold / Math.max(1, partySize));
 
-// ── Party stats summary ───────────────────────────────────────────────────────
+// -- Party stats summary -------------------------------------------------------
 
 export interface IPartySummary {
   totalMembers: number;
@@ -156,12 +156,12 @@ export const getPartySummary = (members: IPartyMember[]): IPartySummary => {
   };
 };
 
-// ── Party ID generator ─────────────────────────────────────────────────────────
+// -- Party ID generator ---------------------------------------------------------
 
 export const generatePartyId = (): string =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
 
-// ── Party combat & buffs ─────────────────────────────────────────────────────
+// -- Party combat & buffs -----------------------------------------------------
 
 import type { IPartyBuff } from '../types/party';
 
@@ -234,7 +234,7 @@ export const getCompositionBonus = (memberClasses: string[]): number => {
   return 1.0;
 };
 
-// ── Level gating ──────────────────────────────────────────────────────────────
+// -- Level gating --------------------------------------------------------------
 
 /**
  * Effective party level for content gating (dungeons / bosses / monsters).
@@ -299,7 +299,7 @@ export const getPartyMaxUnlockedMonsterLevel = (
   return cap;
 };
 
-// ── Aggro class weights ───────────────────────────────────────────────────────
+// -- Aggro class weights -------------------------------------------------------
 // Higher weight = more likely to be picked as the monster's target.
 // Knights tank most aggro; Cleric/Bard are the "backline" and rarely get hit.
 

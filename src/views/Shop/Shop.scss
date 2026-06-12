@@ -31,7 +31,7 @@
     color: $color-text-muted;
   }
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // -- Header ----------------------------------------------------------------
   &__header {
     display: flex;
     align-items: center;
@@ -67,7 +67,7 @@
     border-radius: $radius-sm;
   }
 
-  // ── Tabs (2026-05-08 spec: icon-only, full-width, transform accent) ─
+  // -- Tabs (2026-05-08 spec: icon-only, full-width, transform accent) -
   // The whole row spans 100% of the parent strip; each button shares
   // equal width via `flex: 1` so the icons stay centred regardless of
   // viewport. Active tab uses `var(--nav-accent)` which is published
@@ -131,7 +131,7 @@
     }
   }
 
-  // ── Panel ─────────────────────────────────────────────────────────────────
+  // -- Panel -----------------------------------------------------------------
   &__panel {
     padding: $spacing-md;
     display: flex;
@@ -139,7 +139,7 @@
     gap: $spacing-sm;
   }
 
-  // ── Item card ──────────────────────────────────────────────────────────────
+  // -- Item card --------------------------------------------------------------
   &__item {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -215,7 +215,7 @@
     }
   }
 
-  // ── Elixir card ────────────────────────────────────────────────────────────
+  // -- Elixir card ------------------------------------------------------------
   &__elixir {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -320,7 +320,7 @@
     -moz-appearance: textfield;
   }
 
-  // ── Settings ──────────────────────────────────────────────────────────────
+  // -- Settings --------------------------------------------------------------
   &__section {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -404,7 +404,7 @@
     }
   }
 
-  // ── Market redirect ────────────────────────────────────────────────────────
+  // -- Market redirect --------------------------------------------------------
   &__market-redirect {
     display: flex;
     flex-direction: column;
@@ -432,7 +432,7 @@
     }
   }
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
+  // -- Toast -----------------------------------------------------------------
   &__toast {
     position: fixed;
     bottom: $spacing-lg;
@@ -470,9 +470,9 @@
   }
 }
 
-// ─── 2026-05-08: backpack-style item grid + buy-pulse keyframe ────────────────
+// --- 2026-05-08: backpack-style item grid + buy-pulse keyframe ----------------
 //
-// `.shop__panel--grid` lays cards out left→right in a responsive grid that
+// `.shop__panel--grid` lays cards out leftright in a responsive grid that
 // mirrors the Inventory page (so items look "the same" whether they're in
 // the player's bag or on the shop shelf). Each card has a rarity-tinted
 // border, a square icon tile with a Lv badge + ATK/DEF mini-stat chip, a
@@ -480,7 +480,7 @@
 //
 // The buy animation is driven by a keyed `data-pulse` increment in the
 // React component — every successful purchase bumps the counter, which
-// re-mounts the `.shop__card-spark` ✨ overlay and re-runs the green
+// re-mounts the `.shop__card-spark` sparkles overlay and re-runs the green
 // "bought" pulse on the card border. Subtle + fast (≈0.6s).
 
 .shop__panel--grid {
@@ -725,7 +725,7 @@
     }
 }
 
-// ─── 2026-05-08: spec-driven shop refinements ──────────────────────────────
+// --- 2026-05-08: spec-driven shop refinements ------------------------------
 //
 // - Black bg (set on .shop above).
 // - Min 2 columns always: clamp the minmax track size to 48vw at narrow
@@ -733,7 +733,7 @@
 // - Gold chip in header flashes red when the balance drops, plus a
 //   floating "−Nk" label that fades upward.
 // - Buy animation = glow (replaces the green pulse).
-// - Card stat list with ▲/▼ vs equipped.
+// - Card stat list with ^/v vs equipped.
 
 // 2026-05-08 spec: shop--dark padding/gap only — column count is now
 // fully owned by the base `.shop__panel--grid` rule above so we never
@@ -809,7 +809,7 @@
     100% { box-shadow: 0 0 0 rgba(255, 200, 60, 0); }
 }
 
-// Card stat list — flat rows, mono font for numbers, ▲/▼ delta arrows.
+// Card stat list — flat rows, mono font for numbers, ^/v delta arrows.
 // 2026-05-08 v3: per spec, the shop card now only shows BASE stats —
 // the random-pool list and its `--pool` modifier rules were removed
 // alongside the JSX section.
@@ -897,7 +897,7 @@
 
 // 2026-05-08 v3 spec ("eliksiry maja taki sam border wszedzie"):
 // utility-elixir cards (Shop's Eliksiry tab + arena elixir items) get
-// the same gold→purple gradient border used by the market sell tile,
+// the same goldpurple gradient border used by the market sell tile,
 // market listing row + bag elixir tile so the family reads as one
 // cohort across every screen. Two-background trick keeps border-radius.
 .shop__card--elixir {

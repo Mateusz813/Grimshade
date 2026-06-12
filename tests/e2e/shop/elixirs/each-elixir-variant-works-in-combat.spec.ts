@@ -23,7 +23,7 @@
  *     Distinct from the damage-side multipliers above — proves the
  *     reward chain reads the elixir buff at fight resolution.
  *
- * Each test seeds character + ONE buff → SKIP combat against rat →
+ * Each test seeds character + ONE buff -> SKIP combat against rat ->
  * asserts the fight resolved + the multiplier helper returns the
  * expected value mid-fight. Numeric damage / XP values are NOT
  * asserted (RNG-bound, pinned by `combatElixirs.test.ts` unit suite
@@ -34,10 +34,10 @@
  *
  * The brief listed `crit_chance_boost` as a variant to cover, but this
  * effect does NOT exist in the codebase:
- *   • No entry in BUFF_CONFIG (Inventory.tsx line 2580-2620 — all the
+ *   - No entry in BUFF_CONFIG (Inventory.tsx line 2580-2620 — all the
  *     defined elixir effects).
- *   • No reader in combatElixirs.ts (no `getCritChanceMultiplier` helper).
- *   • No buff in buffStore.ts effect lookup table.
+ *   - No reader in combatElixirs.ts (no `getCritChanceMultiplier` helper).
+ *   - No buff in buffStore.ts effect lookup table.
  *
  * Documenting the gap rather than testing a non-existent buff. If
  * crit_chance elixir is added later, copy the atk_dmg_50 case and swap
@@ -51,10 +51,10 @@
  * keeps duplication out.
  *
  * Per CLAUDE.md TESTING + E2E hard rules:
- *   • try/finally + cleanupCharacterById per-variant (each variant
+ *   - try/finally + cleanupCharacterById per-variant (each variant
  *     creates its own character — atomic per-test cleanup).
- *   • SECONDARY account per task brief (primary hosts other agents).
- *   • Mobile-only `.tap()` (no `.click()`).
+ *   - SECONDARY account per task brief (primary hosts other agents).
+ *   - Mobile-only `.tap()` (no `.click()`).
  *
  * Cleanup: each variant creates + cleans its own character.
  */
@@ -101,7 +101,7 @@ const VARIANTS: IElixirVariant[] = [
         buffId: 'atk_dmg_50',
         effect: 'atk_dmg_50',
         name: 'ATK DMG +50%',
-        icon: '⚔️',
+        icon: 'crossed-swords',
         klass: 'Knight',
         expectedMultiplier: 1.5,
         helperImport: { module: '/src/systems/combatElixirs.ts', export: 'getAtkDamageMultiplier' },
@@ -111,7 +111,7 @@ const VARIANTS: IElixirVariant[] = [
         buffId: 'hp_pct_25',
         effect: 'hp_pct_25',
         name: 'Max HP +25%',
-        icon: '❤️‍🔥',
+        icon: 'heart-on-fire',
         klass: 'Knight',
         expectedMultiplier: 1.25,
         helperImport: { module: '/src/systems/combatElixirs.ts', export: 'getElixirHpPctMultiplier' },
@@ -121,7 +121,7 @@ const VARIANTS: IElixirVariant[] = [
         buffId: 'mp_pct_25',
         effect: 'mp_pct_25',
         name: 'Max MP +25%',
-        icon: '💠',
+        icon: 'diamond-with-a-dot',
         klass: 'Mage',
         expectedMultiplier: 1.25,
         helperImport: { module: '/src/systems/combatElixirs.ts', export: 'getElixirMpPctMultiplier' },
@@ -133,7 +133,7 @@ const VARIANTS: IElixirVariant[] = [
         buffId: 'xp_boost',
         effect: 'xp_boost',
         name: 'XP +50%',
-        icon: '⭐',
+        icon: 'star',
         klass: 'Knight',
         expectedMultiplier: 1.5,
         helperImport: { module: '/src/stores/buffStore.ts', export: 'useBuffStore' },
@@ -145,7 +145,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
     test.describe.configure({ timeout: 120_000 });
 
     for (const variant of VARIANTS) {
-        test(`${variant.buffId} buff active → SKIP fight against rat resolves to victory + multiplier helper confirms ${variant.expectedMultiplier}× — ${variant.description}`, async ({ page }) => {
+        test(`${variant.buffId} buff active -> SKIP fight against rat resolves to victory + multiplier helper confirms ${variant.expectedMultiplier}× — ${variant.description}`, async ({ page }) => {
             const nick = generateTestCharacterName();
             let createdId: string | null = null;
 

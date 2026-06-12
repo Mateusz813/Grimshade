@@ -102,7 +102,7 @@ describe('useOfflineTrainingResume', () => {
             skillXp: { sword_fighting: 0 },
         });
         const { result } = renderHook(() => useOfflineTrainingResume());
-        // SKILL_NAMES_PL maps sword_fighting → 'Walka mieczem' — assert it
+        // SKILL_NAMES_PL maps sword_fighting -> 'Walka mieczem' — assert it
         // resolved to SOMETHING other than the raw id at minimum.
         expect(result.current.reward).not.toBeNull();
         expect(typeof result.current.reward!.skillName).toBe('string');

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IArenaInstance, IArenaCompetitor } from '../types/arena';
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
+// -- Hoisted mocks ------------------------------------------------------------
 // arenaStore.finalizeMatch fires fire-and-forget Supabase RPCs through
 // characterApi. We mock the whole module path so unit tests don't depend on
 // network / RLS / the dynamic import resolving in real time.
@@ -24,7 +24,7 @@ import { useArenaStore } from './arenaStore';
 import { useInventoryStore } from './inventoryStore';
 import { useCharacterStore } from './characterStore';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeCompetitor = (overrides?: Partial<IArenaCompetitor>): IArenaCompetitor => ({
     id: 'player_char-1',
@@ -72,7 +72,7 @@ beforeEach(() => {
     bumpArenaKillRpcMock.mockClear();
 });
 
-// ── consumeAttempt / attemptsRemaining ───────────────────────────────────────
+// -- consumeAttempt / attemptsRemaining ---------------------------------------
 
 describe('consumeAttempt', () => {
     it('grants the first attempt of the day and counts it', () => {
@@ -159,7 +159,7 @@ describe('attemptsRemaining', () => {
     });
 });
 
-// ── finalizeMatch ────────────────────────────────────────────────────────────
+// -- finalizeMatch ------------------------------------------------------------
 
 describe('finalizeMatch', () => {
     it('returns zero rewards immediately when no currentArena is set', () => {
@@ -199,7 +199,7 @@ describe('finalizeMatch', () => {
             opponentLevel: 10,
         });
         const me = useArenaStore.getState().currentArena!.competitors.find((c) => c.id === 'player_char-1')!;
-        // attackerIsHigher=false + won → 100 AP / 1 LP (see getMatchReward).
+        // attackerIsHigher=false + won -> 100 AP / 1 LP (see getMatchReward).
         expect(me.seasonArenaPoints).toBe(100);
         expect(me.leaguePoints).toBe(1);
     });
@@ -348,12 +348,12 @@ describe('finalizeMatch', () => {
             opponentLevel: 10,
         });
         const me = useArenaStore.getState().currentArena!.competitors.find((c) => c.id === 'player_char-1')!;
-        // Loss → no LP gained → timestamp stays pinned to the original.
+        // Loss -> no LP gained -> timestamp stays pinned to the original.
         expect(me.leaguePointsAchievedAt).toBe(oldTs);
     });
 });
 
-// ── submitDefenseSnapshot ────────────────────────────────────────────────────
+// -- submitDefenseSnapshot ----------------------------------------------------
 
 describe('submitDefenseSnapshot', () => {
     it('is a no-op when no character is loaded', () => {
@@ -414,7 +414,7 @@ describe('submitDefenseSnapshot', () => {
 // fully-mocked inventoryStore test would assert every adder fires with the
 // correct count. Skipped because the inventoryStore add* methods are
 // already covered by inventoryStore.test.ts (sibling file) and the bucket
-// → multiplier math lives in arenaSystem.test.ts.
+// -> multiplier math lives in arenaSystem.test.ts.
 //
 // TODO: injectOtherPlayers reads alts' transform progress from
 // localStorage by key (`dungeon_rpg_save_char_<id>`). A direct unit test

@@ -1,5 +1,8 @@
 import type { ICombatAlly } from './types';
 import { isImageUrl } from '../../../systems/spriteAssets';
+import GameIcon from '../../atoms/Twemoji/GameIcon';
+import EmojiText from '../../atoms/Twemoji/EmojiText';
+import TinyIcon from '../../ui/TinyIcon/TinyIcon';
 
 interface IProps {
     ally: ICombatAlly | null;
@@ -8,10 +11,10 @@ interface IProps {
 /**
  * One slot in the 4-slot allies column. Mirrors EnemyCard's layout so the
  * whole arena reads as a clean 4×2 grid:
- *   • avatar (with transform-tier border, lvl badge top-left)
- *   • thin HP bar
- *   • thin MP bar
- *   • name + aggro badge (X mobs targeting me)
+ *   - avatar (with transform-tier border, lvl badge top-left)
+ *   - thin HP bar
+ *   - thin MP bar
+ *   - name + aggro badge (X mobs targeting me)
  *
  * Bars sit BELOW the avatar so the portrait is never visually shoved down by
  * the bars rounding/padding. Empty slots render as transparent placeholders
@@ -30,7 +33,7 @@ const AllyCard = ({ ally }: IProps) => {
     // (`combat-ui-ally-shake-a` / `…-b`) but the keyframes are identical.
     // This is the well-known "dual-keyframe parity trick" for restarting
     // a CSS animation without unmounting the element: when the class flips
-    // from `--shake-a` → `--shake-b`, the browser sees a NEW animation name
+    // from `--shake-a` -> `--shake-b`, the browser sees a NEW animation name
     // and starts it from frame 0. So each individual hit replays the shake
     // even when the previous hasn't finished yet (e.g. 4 monsters hitting
     // the same ally back-to-back). When `hitPulse` is undefined / 0 we
@@ -71,14 +74,14 @@ const AllyCard = ({ ally }: IProps) => {
             )}
             {ally.aggroCount > 0 && (
                 <span className="combat-ui__ally-aggro" title={`${ally.aggroCount}× aggro`}>
-                    🎯<strong>×{ally.aggroCount}</strong>
+                    <GameIcon name="bullseye" /><strong>×{ally.aggroCount}</strong>
                 </span>
             )}
 
             <div className="combat-ui__ally-avatar">
                 <img src={ally.avatarUrl} alt="" draggable={false} />
                 {ally.isDead && (
-                    <span className="combat-ui__ally-skull" aria-hidden="true">💀</span>
+                    <span className="combat-ui__ally-skull" aria-hidden="true"><GameIcon name="skull" /></span>
                 )}
                 {/* 2026-05 v7: Necromancer summon-spawn overlay. Each type
                     plays its own 2s keyframe animation when the caster
@@ -92,15 +95,15 @@ const AllyCard = ({ ally }: IProps) => {
                         aria-hidden="true"
                     >
                         <span className="combat-ui__summon-spawn-glyph">
-                            {ally.summonSpawn.type === 'skeleton' && '💀'}
-                            {ally.summonSpawn.type === 'ghost' && '👻'}
-                            {ally.summonSpawn.type === 'demon' && '😈'}
-                            {ally.summonSpawn.type === 'lich' && '👑'}
+                            {ally.summonSpawn.type === 'skeleton' && <GameIcon name="skull" />}
+                            {ally.summonSpawn.type === 'ghost' && <GameIcon name="ghost" />}
+                            {ally.summonSpawn.type === 'demon' && <GameIcon name="smiling-face-with-horns" />}
+                            {ally.summonSpawn.type === 'lich' && <GameIcon name="crown" />}
                         </span>
                         <span className="combat-ui__summon-spawn-aura" />
                     </div>
                 )}
-                {/* 2026-05 v7: per-type summon badges (💀×N 👻×M 😈×K 👑×L)
+                {/* 2026-05 v7: per-type summon badges (:skull:×N :ghost:×M :smiling-face-with-horns:×K :crown:×L)
                     so the player can see the breakdown at a glance instead of
                     one combined ×N count. Each badge is clickable (when
                     `onSummonClick` is provided — i.e. on the player's own
@@ -116,10 +119,10 @@ const AllyCard = ({ ally }: IProps) => {
                     const t = ally.summonsByType!;
                     const onClick = ally.onSummonClick;
                     const items: Array<{ key: 'skeleton' | 'ghost' | 'demon' | 'lich'; icon: string; count: number; label: string }> = [];
-                    if (t.skeleton) items.push({ key: 'skeleton', icon: '💀', count: t.skeleton, label: 'Szkielet' });
-                    if (t.ghost) items.push({ key: 'ghost', icon: '👻', count: t.ghost, label: 'Duch' });
-                    if (t.demon) items.push({ key: 'demon', icon: '😈', count: t.demon, label: 'Demon' });
-                    if (t.lich) items.push({ key: 'lich', icon: '👑', count: t.lich, label: 'Lisz' });
+                    if (t.skeleton) items.push({ key: 'skeleton', icon: 'skull', count: t.skeleton, label: 'Szkielet' });
+                    if (t.ghost) items.push({ key: 'ghost', icon: 'ghost', count: t.ghost, label: 'Duch' });
+                    if (t.demon) items.push({ key: 'demon', icon: 'smiling-face-with-horns', count: t.demon, label: 'Demon' });
+                    if (t.lich) items.push({ key: 'lich', icon: 'crown', count: t.lich, label: 'Lisz' });
                     return (
                         <span className="combat-ui__ally-summon-stack">
                             {items.map((it) => (
@@ -134,7 +137,7 @@ const AllyCard = ({ ally }: IProps) => {
                                     disabled={!onClick}
                                     aria-label={`${it.label} ×${it.count}`}
                                 >
-                                    {it.icon}×{it.count}
+                                    <GameIcon name={it.icon} />×{it.count}
                                 </button>
                             ))}
                         </span>
@@ -152,7 +155,7 @@ const AllyCard = ({ ally }: IProps) => {
             </div>
 
             <div className="combat-ui__ally-foot">
-                <span className="combat-ui__ally-name">{ally.name}</span>
+                <span className="combat-ui__ally-name"><EmojiText>{ally.name}</EmojiText></span>
             </div>
 
             {/* Per-attack hit pulse — keyed by `hitPulse` so each distinct
@@ -183,7 +186,7 @@ const AllyCard = ({ ally }: IProps) => {
                     {isImageUrl(ally.skillAnim.emoji) ? (
                         <img className="skill-anim-emoji skill-anim-emoji--img" src={ally.skillAnim.emoji} alt="" draggable={false} />
                     ) : (
-                        <span className="skill-anim-emoji">{ally.skillAnim.emoji}</span>
+                        <span className="skill-anim-emoji"><TinyIcon icon={ally.skillAnim.emoji} /></span>
                     )}
                 </span>
             )}
@@ -203,7 +206,7 @@ const AllyCard = ({ ally }: IProps) => {
                         >
                             {f.icon && (isImageUrl(f.icon)
                                 ? <img className="combat-ui__float-icon combat-ui__float-icon--img" src={f.icon} alt="" draggable={false} />
-                                : <span className="combat-ui__float-icon">{f.icon}</span>
+                                : <span className="combat-ui__float-icon"><TinyIcon icon={f.icon} /></span>
                             )}
                             <span className="combat-ui__float-value">
                                 {f.label ?? `${f.kind === 'heal' ? '+' : ''}${Math.max(0, Math.round(f.value))}`}

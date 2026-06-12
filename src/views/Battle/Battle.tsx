@@ -40,7 +40,7 @@ interface IBattleTile {
 }
 
 /**
- * Battle hub. Reached from BottomNav → Walka. Six vertically-stacked tiles
+ * Battle hub. Reached from BottomNav -> Walka. Six vertically-stacked tiles
  * (one per battle mode) presented as banner-style buttons with a custom
  * background image and a border tinted by the player's current transform.
  *

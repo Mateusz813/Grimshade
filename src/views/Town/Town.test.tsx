@@ -9,15 +9,15 @@ import { MemoryRouter } from 'react-router-dom';
  * tile auto-pulse interval.
  *
  * Coverage:
- *   • Smoke: root mounts with character.
- *   • Character card mounts when character exists, hides otherwise.
- *   • 7 nav tiles render in fixed order.
- *   • Offline mode locks Market / Rankingi / Śmierci (disabled + classes).
- *   • Online mode keeps those tiles enabled.
- *   • Tile click navigates (Depozyt → /deposit etc.).
- *   • Rest tile disabled when HP + MP already full.
- *   • Combat indicator strip appears when phase === 'fighting'.
- *   • Party strip — empty solo + with party variants.
+ *   - Smoke: root mounts with character.
+ *   - Character card mounts when character exists, hides otherwise.
+ *   - 7 nav tiles render in fixed order.
+ *   - Offline mode locks Market / Rankingi / Śmierci (disabled + classes).
+ *   - Online mode keeps those tiles enabled.
+ *   - Tile click navigates (Depozyt -> /deposit etc.).
+ *   - Rest tile disabled when HP + MP already full.
+ *   - Combat indicator strip appears when phase === 'fighting'.
+ *   - Party strip — empty solo + with party variants.
  *
  * Mocks: framer-motion not needed here (no AnimatePresence on Town). The
  * combat engine's `stopCombat` is called from the combat strip — stub it.
@@ -235,7 +235,7 @@ describe('Town — tile navigation', () => {
 
 describe('Town — rest tile', () => {
     it('is enabled when player has missing HP or MP', () => {
-        // makeChar default has hp 80/100, mp 20/30 → needs rest.
+        // makeChar default has hp 80/100, mp 20/30 -> needs rest.
         const { container } = renderTown();
         const rest = container.querySelector('.town__nav-tile--rest') as HTMLButtonElement;
         expect(rest.disabled).toBe(false);
@@ -262,7 +262,7 @@ describe('Town — combat indicator strip', () => {
     it('renders the strip when phase === "fighting" with a monster', () => {
         useCombatStore.setState({
             phase: 'fighting',
-            monster: { id: 'm', name_pl: 'Goblin', level: 3, sprite: '👾' } as never,
+            monster: { id: 'm', name_pl: 'Goblin', level: 3, sprite: 'alien-monster' } as never,
             monsterRarity: 'normal',
             sessionKills: { goblin: 5 },
             sessionXpPerHour: 1200,
@@ -329,8 +329,11 @@ describe('Town — class variants', () => {
         const { container } = renderTown();
         expect(container.querySelector('.town')).not.toBeNull();
         // Class is rendered as an emoji icon, not the class name text — the
-        // Mage glyph is 🔮 (see CLASS_ICONS in Town.tsx).
-        expect(container.querySelector('.town__char-class')?.textContent).toBe('🔮');
+        // Mage glyph is :crystal-ball: (see CLASS_ICONS in Town.tsx). It now renders via
+        // <GameIcon> as an inline <svg>, so query the svg by its data-icon attribute.
+        expect(
+            container.querySelector('.town__char-class svg.game-icon')?.getAttribute('data-icon'),
+        ).toBe('crystal-ball');
     });
 
     it('renders for Necromancer class', () => {

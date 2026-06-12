@@ -5,15 +5,15 @@
  * One action:   wypełnij formularz (email + 2x password) + tap submit.
  * One outcome:  URL === `/character-select` (po `signUp` Supabase od
  *               razu zwraca session bo email-confirm jest WYŁĄCZONE
- *               w tym projekcie → router widzi session+brak character-a
- *               → redirect na character-select, tak samo jak po loginie).
+ *               w tym projekcie -> router widzi session+brak character-a
+ *               -> redirect na character-select, tak samo jak po loginie).
  *
  * Cleanup:      afterEach hard-deletuje świeżo utworzonego user-a
  *               z `auth.users` przez service_role admin SDK. Pattern
  *               z `tests/e2e/README.md` sekcja "Konta ulotne".
  *               Safety net: cleanup ABSOLUTNIE odmawia kasowania
  *               emailа który nie matchuje `@grimshade-test.local`
- *               (whitelist guard w `cleanup.ts` → rzuca Error).
+ *               (whitelist guard w `cleanup.ts` -> rzuca Error).
  *
  * Co weryfikuje:
  *  - formularz przyjmuje dane i nie blokuje submit przez walidację
@@ -27,7 +27,7 @@ import { test, expect } from '@playwright/test';
 import { generateTestEmail, cleanupTestUserByEmail } from '../../fixtures/cleanup';
 
 test.describe('Auth › Register', { tag: '@auth' }, () => {
-    test('happy path: valid signup → account exists → /character-select', async ({ page }) => {
+    test('happy path: valid signup -> account exists -> /character-select', async ({ page }) => {
         const email = generateTestEmail();
         const password = 'Test123456!!';
 
@@ -35,7 +35,7 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
         // `fullyParallel: true` może odpalić wiele tests z tego pliku
         // równocześnie, a moduł-level array tworzy race condition
         // (jeden test by skasował emaila drugiego). Per-test scope = atomic.
-        // Finally leci nawet gdy assertion failuje → zero sierot w bazie.
+        // Finally leci nawet gdy assertion failuje -> zero sierot w bazie.
         try {
             await page.goto('/register');
 
@@ -52,7 +52,7 @@ test.describe('Auth › Register', { tag: '@auth' }, () => {
 
             await page.getByRole('button', { name: /zarejestruj/i }).tap();
 
-            // Po `signUp` → `navigate('/')` → router redirect → `/character-select`.
+            // Po `signUp` -> `navigate('/')` -> router redirect -> `/character-select`.
             // 20s timeout — `signUp` na Supabase czasem jest wolniejszy niż signIn
             // (musi utworzyć row, wysłać email-confirm jeśli włączony, etc).
             await expect(page).toHaveURL(/\/character-select$/, { timeout: 20_000 });

@@ -15,13 +15,13 @@
  * klasy slot-u `inventory__doll-slot--helmet`.
  *
  * Dlaczego seed bezpośrednio do `equipment` zamiast pójść przez UI
- * (seed do bag → tap → tap "Załóż"):
- *  • Atomicity — ten test ma weryfikować RENDERING paperdoll-u, nie
- *    flow equip. Equip flow (bag → DetailPanel → "Załóż" button) jest
+ * (seed do bag -> tap -> tap "Załóż"):
+ *  - Atomicity — ten test ma weryfikować RENDERING paperdoll-u, nie
+ *    flow equip. Equip flow (bag -> DetailPanel -> "Załóż" button) jest
  *    osobny scenariusz (testowany przez `inventory/equip/equips-from-bag`,
  *    którego jeszcze nie ma w BACKLOG-u — kandydat na kolejną sesję).
- *  • Speed — pomijamy 3 dodatkowe taps i animacje DetailPanel-u.
- *  • Stable — equip flow ma side effects (HP/MP delta dla itemów z
+ *  - Speed — pomijamy 3 dodatkowe taps i animacje DetailPanel-u.
+ *  - Stable — equip flow ma side effects (HP/MP delta dla itemów z
  *    bonusami; my dajemy item bez bonusów żeby nie mieszać).
  *
  * Cleanup: try/finally + `cleanupCharacterById(createdId)`. Postać
@@ -71,7 +71,7 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
                 itemLevel: 5,
             });
 
-            // 3. Login → wybierz postać → wejdź do /inventory
+            // 3. Login -> wybierz postać -> wejdź do /inventory
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {

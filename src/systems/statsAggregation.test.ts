@@ -15,11 +15,11 @@
  * regression that prompted the 2026-05-21 fix in `inventoryStore.ts`).
  *
  * Contract tested per source:
- *   base char only                       → returns base verbatim (floored)
- *   + equipment hp/mp/attack/defense     → ADDITIVE sum
- *   + training (skillLevels[max_hp]×5)   → ADDITIVE sum
- *   crit_chance capped at 0.5 (50%)      → hard cap regardless of inputs
- *   no equipment / no training           → matches base char stats (identity)
+ *   base char only                       -> returns base verbatim (floored)
+ *   + equipment hp/mp/attack/defense     -> ADDITIVE sum
+ *   + training (skillLevels[max_hp]×5)   -> ADDITIVE sum
+ *   crit_chance capped at 0.5 (50%)      -> hard cap regardless of inputs
+ *   no equipment / no training           -> matches base char stats (identity)
  *
  * Why unit/integration rather than E2E: aggregation is pure math over multiple
  * Zustand slices. E2E in BACKLOG 8.1 already covers the UI rendering of one
@@ -47,7 +47,7 @@ import type { ICharacter } from '../api/v1/characterApi';
 
 const ALL_ITEMS: IBaseItem[] = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -95,7 +95,7 @@ const resetStores = (): void => {
     useBuffStore.setState({ allBuffs: [] });
 };
 
-// ── Base identity: no equipment, no skills, no buffs → returns base char ─────
+// -- Base identity: no equipment, no skills, no buffs -> returns base char -----
 
 describe('getEffectiveChar — identity (no modifiers)', () => {
     beforeEach(() => resetStores());
@@ -136,7 +136,7 @@ describe('getEffectiveChar — identity (no modifiers)', () => {
     });
 });
 
-// ── Equipment as a stat source — additive contribution ─────────────────────
+// -- Equipment as a stat source — additive contribution ---------------------
 
 describe('getEffectiveChar — equipment source (additive)', () => {
     beforeEach(() => resetStores());
@@ -194,7 +194,7 @@ describe('getEffectiveChar — equipment source (additive)', () => {
         expect(eff?.defense).toBe(20);
     });
 
-    it('multi-slot stacking: helmet +20 HP + armor +30 HP → +50 HP total', () => {
+    it('multi-slot stacking: helmet +20 HP + armor +30 HP -> +50 HP total', () => {
         const ch = makeCharacter({ max_hp: 100 });
         const helmet: IInventoryItem = {
             uuid: 'h-1', itemId: 'unknown_helmet_id', rarity: 'common',
@@ -214,7 +214,7 @@ describe('getEffectiveChar — equipment source (additive)', () => {
     });
 });
 
-// ── Training as a stat source — skillLevels[max_hp] × 5 ─────────────────────
+// -- Training as a stat source — skillLevels[max_hp] × 5 ---------------------
 
 describe('getEffectiveChar — training source (additive)', () => {
     beforeEach(() => resetStores());
@@ -263,7 +263,7 @@ describe('getEffectiveChar — training source (additive)', () => {
     });
 });
 
-// ── Combined sources: equipment + training stack additively ─────────────────
+// -- Combined sources: equipment + training stack additively -----------------
 
 describe('getEffectiveChar — equipment + training combined', () => {
     beforeEach(() => resetStores());
@@ -311,7 +311,7 @@ describe('getEffectiveChar — equipment + training combined', () => {
     });
 });
 
-// ── Crit chance hard cap (CLAUDE.md: max 50%) ───────────────────────────────
+// -- Crit chance hard cap (CLAUDE.md: max 50%) -------------------------------
 
 describe('getEffectiveChar — crit_chance cap @ 0.5 (50%)', () => {
     beforeEach(() => resetStores());
@@ -339,12 +339,12 @@ describe('getEffectiveChar — crit_chance cap @ 0.5 (50%)', () => {
             skillLevels: { crit_chance: 10 },
         });
         const eff = getEffectiveChar(ch);
-        // 0.49 + 0 (eq) + 0.05 (10×0.005 training) = 0.54 → capped at 0.5.
+        // 0.49 + 0 (eq) + 0.05 (10×0.005 training) = 0.54 -> capped at 0.5.
         expect(eff?.crit_chance).toBe(0.5);
     });
 });
 
-// ── getTotalEquipmentStats — pure helper additivity ─────────────────────────
+// -- getTotalEquipmentStats — pure helper additivity -------------------------
 
 describe('getTotalEquipmentStats — additivity invariants', () => {
     it('returns all-zeroes for empty equipment', () => {
@@ -383,7 +383,7 @@ describe('getTotalEquipmentStats — additivity invariants', () => {
     });
 });
 
-// ── getTrainingBonuses — pure helper, contracts vs spec ─────────────────────
+// -- getTrainingBonuses — pure helper, contracts vs spec ---------------------
 
 describe('getTrainingBonuses — bonus formula per stat', () => {
     it('max_hp: skillLevel × 5', () => {
@@ -454,7 +454,7 @@ describe('getTrainingBonuses — bonus formula per stat', () => {
     });
 });
 
-// ── NaN hardening — undefined inputs default to 0 (CLAUDE.md regression guard) ──
+// -- NaN hardening — undefined inputs default to 0 (CLAUDE.md regression guard) --
 
 /**
  * 2026-05-25 fix — `getEffectiveChar` previously propagated NaN when any of
@@ -464,7 +464,7 @@ describe('getTrainingBonuses — bonus formula per stat', () => {
  * base field at the top of `getEffectiveChar`. Per CLAUDE.md:
  *
  *     "NaN w combat = krytyczny bug — waliduj WSZYSTKIE wartości przed
- *      obliczeniami, undefined/null → 0"
+ *      obliczeniami, undefined/null -> 0"
  *
  * This block is the regression guard: for EVERY single base numeric field, AND
  * for every combination thereof, the returned effective char must contain only
@@ -475,42 +475,42 @@ describe('getTrainingBonuses — bonus formula per stat', () => {
 describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)', () => {
     beforeEach(() => resetStores());
 
-    it('undefined attack → effective attack = 0 (NOT NaN)', () => {
+    it('undefined attack -> effective attack = 0 (NOT NaN)', () => {
         const ch = makeCharacter({ attack: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
         expect(eff?.attack).toBe(0);
         expect(Number.isFinite(eff?.attack)).toBe(true);
     });
 
-    it('undefined defense → effective defense = 0', () => {
+    it('undefined defense -> effective defense = 0', () => {
         const ch = makeCharacter({ defense: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
         expect(eff?.defense).toBe(0);
         expect(Number.isFinite(eff?.defense)).toBe(true);
     });
 
-    it('undefined max_hp → effective max_hp = 0', () => {
+    it('undefined max_hp -> effective max_hp = 0', () => {
         const ch = makeCharacter({ max_hp: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
         expect(eff?.max_hp).toBe(0);
         expect(Number.isFinite(eff?.max_hp)).toBe(true);
     });
 
-    it('undefined max_mp → effective max_mp = 0', () => {
+    it('undefined max_mp -> effective max_mp = 0', () => {
         const ch = makeCharacter({ max_mp: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
         expect(eff?.max_mp).toBe(0);
         expect(Number.isFinite(eff?.max_mp)).toBe(true);
     });
 
-    it('undefined attack_speed → effective attack_speed = 0', () => {
+    it('undefined attack_speed -> effective attack_speed = 0', () => {
         const ch = makeCharacter({ attack_speed: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
         expect(eff?.attack_speed).toBe(0);
         expect(Number.isFinite(eff?.attack_speed)).toBe(true);
     });
 
-    it('undefined crit_chance → effective crit_chance = 0', () => {
+    it('undefined crit_chance -> effective crit_chance = 0', () => {
         const ch = makeCharacter({ crit_chance: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
         expect(eff?.crit_chance).toBe(0);
@@ -537,7 +537,7 @@ describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)',
         expect(eff?.mp_regen).not.toBeNaN();
     });
 
-    it('ALL numeric fields undefined → no NaN anywhere in output', () => {
+    it('ALL numeric fields undefined -> no NaN anywhere in output', () => {
         // Worst-case scenario: a partially-hydrated character right after
         // login or during a save-sync. Every numeric field stripped — the
         // engine must still return all-zeros, never NaN.
@@ -592,7 +592,7 @@ describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)',
     });
 });
 
-// ── Floor invariant — all returned numeric fields integer-floor ─────────────
+// -- Floor invariant — all returned numeric fields integer-floor -------------
 
 describe('getEffectiveChar — floor invariant on derived stats', () => {
     beforeEach(() => resetStores());

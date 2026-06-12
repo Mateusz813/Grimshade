@@ -7,22 +7,22 @@
  * Test sprawdza globalny TaskBadge (`src/components/layout/TopHeader/
  * TaskBadge.tsx`) — pasek w headerze pokazujący wszystkie aktywne
  * task-i + quest-y. Gdy choć jeden ma progress >= goal:
- *   • Button dostaje modifier class `top-header__tasks-btn--claimable`.
- *   • Ikona zmienia się z 📋 (przy 0 claim) na 🎁 (line 169 TaskBadge.tsx).
- *   • Pojawia się "status dot" `.top-header__tasks-status-dot--claim`.
- *   • Aria-label kończy się "X do odebrania" (line 150).
+ *   - Button dostaje modifier class `top-header__tasks-btn--claimable`.
+ *   - Ikona zmienia się z :clipboard: (przy 0 claim) na :wrapped-gift: (line 169 TaskBadge.tsx).
+ *   - Pojawia się "status dot" `.top-header__tasks-status-dot--claim`.
+ *   - Aria-label kończy się "X do odebrania" (line 150).
  *
  * Liczba `claimableCount` w props TaskBadge jest obliczana w TopHeader
  * — sumuje tasks claimable + quests claimable + daily claimable.
  *
  * Setup: postać Knight + 1 active task z progress >= killCount
- * (rat_10 z progress=10 → done). Hydration uruchamia TaskBadge
+ * (rat_10 z progress=10 -> done). Hydration uruchamia TaskBadge
  * render — sprawdzamy modifier class + ikonę po wejściu do dowolnego
  * widoku (TopHeader siedzi we wszystkich routes per AppRouter).
  *
  * Pre-condition assertion: bez claimable task, TaskBadge button też
  * istnieje (rows.length > 0 = at least 1 active task), ale BEZ klasy
- * --claimable. Test seeduje claimable → asercja na obecność klasy.
+ * --claimable. Test seeduje claimable -> asercja na obecność klasy.
  *
  * Cleanup: try/finally + cleanupCharacterById.
  */
@@ -53,7 +53,7 @@ test.describe('Quests › Notifications', { tag: '@progression' }, () => {
             });
             createdId = created.id;
 
-            // 2. Seed active task `rat_10` z progress=killCount=10 → claimable.
+            // 2. Seed active task `rat_10` z progress=killCount=10 -> claimable.
             //    Wartości z `src/data/tasks.json`.
             await seedQuestState({
                 characterId: created.id,
@@ -66,13 +66,13 @@ test.describe('Quests › Notifications', { tag: '@progression' }, () => {
                         killCount: 10,
                         rewardGold: 50,
                         rewardXp: 100,
-                        // progress === killCount → claimable=true.
+                        // progress === killCount -> claimable=true.
                         progress: 10,
                     },
                 ],
             });
 
-            // 3. Login → wybór postaci → wejście do Town view (TopHeader
+            // 3. Login -> wybór postaci -> wejście do Town view (TopHeader
             //    jest mounted od momentu wybrania postaci).
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
@@ -86,7 +86,7 @@ test.describe('Quests › Notifications', { tag: '@progression' }, () => {
             // 4. TopHeader na Town view musi być widoczny.
             await expect(page.locator('.top-header')).toBeVisible({ timeout: 10_000 });
 
-            // 5. TaskBadge button istnieje (rows.length > 0 → component
+            // 5. TaskBadge button istnieje (rows.length > 0 -> component
             //    render-uje się; przy 0 rows render-uje null per line 138).
             const taskBadgeBtn = page.locator('.top-header__tasks-btn');
             await expect(taskBadgeBtn).toBeVisible({ timeout: 10_000 });
@@ -97,10 +97,12 @@ test.describe('Quests › Notifications', { tag: '@progression' }, () => {
             //    parent TopHeader który sumuje task + quest + daily claims.
             await expect(taskBadgeBtn).toHaveClass(/top-header__tasks-btn--claimable/);
 
-            // 7. Ikona zmienia się na 🎁 (gift) przy claim mode
-            //    (TaskBadge.tsx line 169). Sprawdzamy text content
-            //    bezpośrednio w span ikony.
-            await expect(taskBadgeBtn.locator('.top-header__tasks-icon')).toHaveText('🎁');
+            // 7. Ikona zmienia się na :wrapped-gift: (gift) przy claim mode
+            //    (TaskBadge.tsx line 169). :wrapped-gift: renderuje się jako Twemoji
+            //    <img> (alt zachowany), więc sprawdzamy alt ikony.
+            await expect(
+                taskBadgeBtn.locator('.top-header__tasks-icon svg.game-icon'),
+            ).toHaveAttribute('data-icon', 'wrapped-gift');
 
             // 8. Status dot z modifier --claim (purple pulse) widoczny.
             await expect(

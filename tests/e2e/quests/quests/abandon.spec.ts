@@ -5,12 +5,12 @@
  *
  * Test sprawdza pełny user flow:
  *   1. Seed character + 1 active quest in `quests.activeQuests`.
- *   2. Open /quests/quests → active quest visible (Aktywne filter
+ *   2. Open /quests/quests -> active quest visible (Aktywne filter
  *      shows it; the card carries `quests__card--active` class).
- *   3. Tap "✖ Porzuć" button on the active card → confirm modal opens.
- *   4. Tap "✖ Porzuć" confirm button inside the modal.
+ *   3. Tap ":multiply: Porzuć" button on the active card -> confirm modal opens.
+ *   4. Tap ":multiply: Porzuć" confirm button inside the modal.
  *   5. ASSERT: card no longer has `quests__card--active`, and the
- *      "Aktywne (N)" counter dropped from 1 → 0.
+ *      "Aktywne (N)" counter dropped from 1 -> 0.
  *
  * Setup choice: seed `quest_first_steps` (minLevel=10) AT a character
  * level >= 10 so the quest is "valid" (otherwise the level guard in
@@ -67,7 +67,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
                 ],
             });
 
-            // 3. Login → select → navigate to /quests/quests sub-view.
+            // 3. Login -> select -> navigate to /quests/quests sub-view.
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -93,7 +93,7 @@ test.describe('Quests › Quests', { tag: '@progression' }, () => {
             await expect(questCard).toBeVisible({ timeout: 10_000 });
             await expect(questCard).toHaveClass(/quests__card--active/);
 
-            // 5. Tap "✖ Porzuć" on the active card → confirm modal opens.
+            // 5. Tap ":multiply: Porzuć" on the active card -> confirm modal opens.
             //    Selector: `.quests__action-btn--abandon` inside that
             //    specific card (Quests.tsx line 1508).
             await questCard.locator('.quests__action-btn--abandon').tap();

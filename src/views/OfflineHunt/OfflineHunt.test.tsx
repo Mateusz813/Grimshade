@@ -6,17 +6,17 @@ import { MemoryRouter } from 'react-router-dom';
  * OfflineHunt view — passive kill grinder setup + claim flow. Steps:
  *   1. Pick a trainable skill (class-gated).
  *   2. Pick an unlocked monster (level + mastery-gated).
- *   3. Start hunt → captures startedAt in offlineHuntStore.
- *   4. Claim → reward modal mounts with XP + drops.
+ *   3. Start hunt -> captures startedAt in offlineHuntStore.
+ *   4. Claim -> reward modal mounts with XP + drops.
  *
  * Coverage:
- *   • Smoke: setup card mounts when no hunt is active.
- *   • Char-less branch renders the "Brak aktywnej postaci" empty state.
- *   • Step 1 lists trainable skills for the player's class.
- *   • Step 2 lists at least one unlocked monster (level 1 default).
- *   • Sort buttons mount + toggle the active modifier.
- *   • Start button disabled until both skill + monster picked.
- *   • Active hunt card mounts when isActive flips true.
+ *   - Smoke: setup card mounts when no hunt is active.
+ *   - Char-less branch renders the "Brak aktywnej postaci" empty state.
+ *   - Step 1 lists trainable skills for the player's class.
+ *   - Step 2 lists at least one unlocked monster (level 1 default).
+ *   - Sort buttons mount + toggle the active modifier.
+ *   - Start button disabled until both skill + monster picked.
+ *   - Active hunt card mounts when isActive flips true.
  */
 
 vi.mock('framer-motion', async () => {
@@ -170,7 +170,7 @@ describe('OfflineHunt — active hunt card', () => {
             isActive: true,
             startedAt: new Date().toISOString(),
             targetMonster: {
-                id: 'goblin', name_pl: 'Goblin', level: 3, sprite: '👾',
+                id: 'goblin', name_pl: 'Goblin', level: 3, sprite: 'alien-monster',
                 hp: 50, defense: 1, speed: 1, attack: 5, xp: 10,
                 gold: [1, 2], magical: false,
             } as never,
@@ -189,7 +189,7 @@ describe('OfflineHunt — active hunt card', () => {
             isActive: true,
             startedAt: new Date().toISOString(),
             targetMonster: {
-                id: 'goblin', name_pl: 'Goblin', level: 3, sprite: '👾',
+                id: 'goblin', name_pl: 'Goblin', level: 3, sprite: 'alien-monster',
                 hp: 50, defense: 1, speed: 1, attack: 5, xp: 10,
                 gold: [1, 2], magical: false,
             } as never,
@@ -209,8 +209,8 @@ describe('OfflineHunt — class variants', () => {
     });
 });
 
-// TODO: Cover the start-hunt happy path end-to-end (pick skill + monster → click
-//       Start → store flips isActive=true → claim renders modal). The store
+// TODO: Cover the start-hunt happy path end-to-end (pick skill + monster -> click
+//       Start -> store flips isActive=true -> claim renders modal). The store
 //       action `startHunt` mutates skillStore/combatStore — easier to assert
 //       via the offlineHuntStore unit tests rather than driving the chain
 //       through React + happy-dom.

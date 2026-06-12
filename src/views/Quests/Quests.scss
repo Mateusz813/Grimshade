@@ -18,7 +18,7 @@
   background: transparent;
   color: $color-text;
 
-  // ── Hub picker (3 image tiles — Taski / Questy / Dzienne) ──────────
+  // -- Hub picker (3 image tiles — Taski / Questy / Dzienne) ----------
   // 1:1 visual copy of the Battle hub. Vertically-stacked banner tiles
   // with their own PNG background, a dark gradient veil for legibility,
   // a transform-accent border, and the same hover wave + glow + press
@@ -56,7 +56,7 @@
     }
   }
 
-  // ── Tile shell ────────────────────────────────────────────────────────
+  // -- Tile shell --------------------------------------------------------
   // Banner button — bg image lives on a child layer so the dark gradient
   // sits on top for legibility without dimming the border. Title pinned
   // at the top, horizontally centered, like the Battle hub.
@@ -202,7 +202,7 @@
     @include desktop { font-size: 1.25rem; }
   }
 
-  // Section back button — top-left "← Wróć" that returns the player to
+  // Section back button — top-left " Wróć" that returns the player to
   // the hub picker. Matches the global page-back-btn shape.
   &__section-back {
     background: rgba(255, 255, 255, 0.05);
@@ -222,10 +222,10 @@
   // into one wall of chrome.
   //
   // Layout per the 2026-05 spec:
-  //   • mobile (<720px): meta counter ("X aktywne · Y potworów") drops
+  //   - mobile (<720px): meta counter ("X aktywne · Y potworów") drops
   //     to its own row beneath the filter chips so it doesn't fight
   //     them for horizontal space.
-  //   • desktop (≥720px): meta counter sits to the RIGHT of the chips
+  //   - desktop (≥720px): meta counter sits to the RIGHT of the chips
   //     via `margin-left: auto`.
   &__sub-controls {
     display: flex;
@@ -287,7 +287,7 @@
     letter-spacing: 0.5px;
   }
 
-  // Pagination row — `← prev`  Strona X / Y  `next →`. Extra bottom
+  // Pagination row — ` prev`  Strona X / Y  `next `. Extra bottom
   // padding so the pager never collides with the global BottomNav on
   // tall viewports where the list ends well above the fold (the
   // pager would otherwise sit on the very bottom edge and visually
@@ -366,7 +366,7 @@
     text-align: center;
   }
 
-  // ── Task-history modal ───────────────────────────────────────────────
+  // -- Task-history modal -----------------------------------------------
   // Replaces the inline bottom history strip. Each row carries a green
   // outline (the player's "win" colour), 30-px monster thumbnail, name,
   // task descriptor, rewards, and the completion date on the right.
@@ -809,7 +809,7 @@
     &:hover { opacity: 0.85; }
   }
 
-  // ── Bulk action buttons ──
+  // -- Bulk action buttons --
 
   &__bulk-actions {
     display: flex;
@@ -942,7 +942,7 @@
     padding: $spacing-xl;
   }
 
-  // ── Quest card — outer wrapper ─────────────────────────────────────
+  // -- Quest card — outer wrapper -------------------------------------
   // Transparent shell that holds two children: the pergamin scroll
   // (with all the quest content on it) and an action row beneath. The
   // wrapper itself is just layout glue — no background, no border —
@@ -1213,7 +1213,7 @@
     line-height: 1;
 
     // 2026-05-08 v3 spec ("eliksiry maja taki sam border wszedzie")
-    // — utility-elixir reward chips get the gold→purple gradient
+    // — utility-elixir reward chips get the goldpurple gradient
     // border to match the Shop card / Market sell tile / Bag tile.
     // The two-background trick keeps the pill's 999px corner radius.
     &--elixir {
@@ -1337,7 +1337,7 @@
     font-size: $font-xs;
     // Pulls from the live transform-tier accent set on the card via
     // `--card-accent`, so a Mythic-tier player sees their own colour
-    // on every "✓ Ukończono" tag instead of the legacy rare blue.
+    // on every "v Ukończono" tag instead of the legacy rare blue.
     color: var(--card-accent, #{$color-rare});
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     font-weight: 700;
@@ -1348,7 +1348,7 @@
     color: $color-text-muted;
   }
 
-  // ── Claim summary modal ──
+  // -- Claim summary modal --
 
   &__overlay {
     position: fixed;
@@ -1439,7 +1439,7 @@
     &:hover { opacity: 0.85; }
   }
 
-  // ── Abandon confirmation modal ──
+  // -- Abandon confirmation modal --
 
   &__abandon-modal {
     background: $color-bg-secondary;
@@ -1566,7 +1566,7 @@
   50%      { opacity: 0.45; transform: scale(0.85); }
 }
 
-// ── Tasks sub-view: transform-accent overrides + monster thumbnail ─────
+// -- Tasks sub-view: transform-accent overrides + monster thumbnail -----
 // The standalone Tasks.scss uses the hard-coded `$color-accent` (red) for
 // active-task chrome. Inside the Quests inline view we override those
 // rules to read `--task-accent` (set inline by Quests.tsx on each
@@ -1621,7 +1621,7 @@
   }
 
   // Mastery bar at MAX (25/25) — purple-themed pill, no progress bar,
-  // no kill counter, just the centered "👑 Mastery 25/25" copy. The
+  // no kill counter, just the centered "crown Mastery 25/25" copy. The
   // adjacent monster card border also flips purple via the existing
   // Tasks.scss `--max + ` selector — that part already worked in the
   // standalone view; we leave it untouched.
@@ -1677,7 +1677,7 @@
     font-weight: 800;
   }
 
-  // ── Active-tasks box ───────────────────────────────────────────────
+  // -- Active-tasks box -----------------------------------------------
   // Labeled wrapper that holds every active task. Phones cap the
   // visible scroll area at 5 rows; desktops show 8. The transform
   // accent paints the title underline so the box reads as the
@@ -1735,7 +1735,7 @@
   &__active-row {
     display: grid;
     // 3 columns: [name+thumb (intrinsic)] [bar+count wrapper (fills)]
-    // [cancel ✕]. Name column uses `auto` so it sizes to its content;
+    // [cancel x]. Name column uses `auto` so it sizes to its content;
     // the progress wrapper takes ALL remaining horizontal space via
     // `1fr` so the bar stretches to fill the row on wide screens
     // instead of leaving a big empty gap next to the count text.

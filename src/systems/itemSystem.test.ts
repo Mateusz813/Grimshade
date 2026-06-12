@@ -37,7 +37,7 @@ import {
 } from './itemSystem';
 import type { IBaseItem, IInventoryItem, IEquipment } from './itemSystem';
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// -- Fixtures ------------------------------------------------------------------
 
 const baseSword: IBaseItem = {
   id: 'iron_sword',
@@ -72,7 +72,7 @@ const makeItem = (overrides?: Partial<IInventoryItem>): IInventoryItem => ({
   ...overrides,
 });
 
-// ── buildItem ─────────────────────────────────────────────────────────────────
+// -- buildItem -----------------------------------------------------------------
 
 describe('buildItem', () => {
   it('should generate unique UUIDs for each call', () => {
@@ -91,7 +91,7 @@ describe('buildItem', () => {
   });
 });
 
-// ── getItemStats ──────────────────────────────────────────────────────────────
+// -- getItemStats --------------------------------------------------------------
 
 describe('getItemStats', () => {
   it('should return base attack when no bonuses', () => {
@@ -116,7 +116,7 @@ describe('getItemStats', () => {
   });
 });
 
-// ── getTotalEquipmentStats ────────────────────────────────────────────────────
+// -- getTotalEquipmentStats ----------------------------------------------------
 
 describe('getTotalEquipmentStats', () => {
   it('should return zeros for empty equipment', () => {
@@ -143,7 +143,7 @@ describe('getTotalEquipmentStats', () => {
   });
 });
 
-// ── getSellPrice ──────────────────────────────────────────────────────────────
+// -- getSellPrice --------------------------------------------------------------
 
 describe('getSellPrice', () => {
   it('should be less than base price', () => {
@@ -166,7 +166,7 @@ describe('getSellPrice', () => {
   });
 });
 
-// ── canEquip ──────────────────────────────────────────────────────────────────
+// -- canEquip ------------------------------------------------------------------
 
 describe('canEquip', () => {
   it('should allow equip at exact required level', () => {
@@ -186,7 +186,7 @@ describe('canEquip', () => {
   });
 });
 
-// ── RARITY_COLORS ─────────────────────────────────────────────────────────────
+// -- RARITY_COLORS -------------------------------------------------------------
 
 describe('RARITY_COLORS', () => {
   it('should have correct hex for common', () => {
@@ -210,7 +210,7 @@ describe('RARITY_COLORS', () => {
   });
 });
 
-// ── flattenItemsData ──────────────────────────────────────────────────────────
+// -- flattenItemsData ----------------------------------------------------------
 
 describe('flattenItemsData', () => {
   it('should combine all item categories into one array', () => {
@@ -230,7 +230,7 @@ describe('flattenItemsData', () => {
   });
 });
 
-// ── Coverage push 2026-05-26 — enhancement system ─────────────────────────────
+// -- Coverage push 2026-05-26 — enhancement system -----------------------------
 
 describe('getRequiredStoneType', () => {
   it('maps every rarity to its matching stone tier', () => {
@@ -301,7 +301,7 @@ describe('getUpgradedBaseStat / getEnhancedBaseStats alias', () => {
   });
 
   it('guarantees at least +N per upgrade level (flat floor) for tiny base stats', () => {
-    // base 2, +5 → multiplied would round to 2*2.01=4; flat floor = 7. Floor wins.
+    // base 2, +5 -> multiplied would round to 2*2.01=4; flat floor = 7. Floor wins.
     expect(getUpgradedBaseStat(2, 5)).toBe(7);
   });
 
@@ -367,7 +367,7 @@ describe('getEnhancementRefund', () => {
   });
 });
 
-// ── Coverage push 2026-05-26 — slot resolution & class equip ────────────────
+// -- Coverage push 2026-05-26 — slot resolution & class equip ----------------
 
 describe('findBaseItem / getItemSlot / getItemSlotSafe', () => {
   it('findBaseItem locates by id', () => {
@@ -500,7 +500,7 @@ describe('canEquip with class restriction', () => {
   });
 });
 
-// ── Coverage push 2026-05-26 — slot routing for rings / Rogue daggers ───────
+// -- Coverage push 2026-05-26 — slot routing for rings / Rogue daggers -------
 
 describe('getEquipTargetSlot', () => {
   const emptyEq: IEquipment = { ...EMPTY_EQUIPMENT };
@@ -527,7 +527,7 @@ describe('getEquipTargetSlot', () => {
     expect(getEquipTargetSlot('mainHand', 'rusty_dagger', 'Rogue', eq, [daggerBase])).toBe('offHand');
   });
 
-  it('Rogue dagger from offHand → mainHand when offHand occupied and mainHand empty', () => {
+  it('Rogue dagger from offHand -> mainHand when offHand occupied and mainHand empty', () => {
     const daggerBase: IBaseItem = { id: 'rusty_dagger', name_pl: 'd', name_en: 'd', slot: 'mainHand', minLevel: 1, basePrice: 1, rarity: 'common', type: 'dagger' };
     const eq = { ...emptyEq, offHand: daggerItem };
     expect(getEquipTargetSlot('offHand', 'rusty_dagger', 'Rogue', eq, [daggerBase])).toBe('mainHand');
@@ -548,12 +548,12 @@ describe('isSlotCompatible', () => {
     expect(isSlotCompatible('helmet', 'helmet', 'iron_helmet', 'Knight', allItems)).toBe(true);
   });
 
-  it('allows ring1 ↔ ring2 transposition', () => {
+  it('allows ring1 <-> ring2 transposition', () => {
     expect(isSlotCompatible('ring1', 'ring2', 'gold_ring', 'Knight', [])).toBe(true);
     expect(isSlotCompatible('ring2', 'ring1', 'gold_ring', 'Knight', [])).toBe(true);
   });
 
-  it('allows Rogue dagger across mainHand ↔ offHand', () => {
+  it('allows Rogue dagger across mainHand <-> offHand', () => {
     const daggerBase: IBaseItem = { id: 'rusty_dagger', name_pl: 'd', name_en: 'd', slot: 'mainHand', minLevel: 1, basePrice: 1, rarity: 'common', type: 'dagger' };
     expect(isSlotCompatible('mainHand', 'offHand', 'rusty_dagger', 'Rogue', [daggerBase])).toBe(true);
   });
@@ -563,12 +563,12 @@ describe('isSlotCompatible', () => {
     expect(isSlotCompatible('mainHand', 'offHand', 'rusty_dagger', 'Knight', [daggerBase])).toBe(false);
   });
 
-  it('rejects helmet → boots (incompatible)', () => {
+  it('rejects helmet -> boots (incompatible)', () => {
     expect(isSlotCompatible('helmet', 'boots', 'iron_helmet', 'Knight', allItems)).toBe(false);
   });
 });
 
-// ── Coverage push 2026-05-26 — class skill bonus ────────────────────────────
+// -- Coverage push 2026-05-26 — class skill bonus ----------------------------
 
 describe('getClassSkillBonus', () => {
   it('Knight scales by sword_fighting level × 0.5', () => {
@@ -611,7 +611,7 @@ describe('getClassSkillBonus', () => {
   });
 });
 
-// ── Coverage push 2026-05-26 — getItemType / getItemIcon legacy paths ───────
+// -- Coverage push 2026-05-26 — getItemType / getItemIcon legacy paths -------
 
 describe('getItemType (legacy id fallback)', () => {
   it('detects sword family by name', () => {
@@ -667,36 +667,36 @@ describe('getItemType (legacy id fallback)', () => {
 
 describe('getItemIcon', () => {
   it('returns potion emoji for hp_potion ids without art', () => {
-    expect(getItemIcon('hp_potion_sm', '', [])).toBe('❤️');
-    expect(getItemIcon('mp_potion_mega', '', [])).toBe('💧');
+    expect(getItemIcon('hp_potion_sm', '', [])).toBe('red-heart');
+    expect(getItemIcon('mp_potion_mega', '', [])).toBe('droplet');
   });
 
   it('returns elixir emoji for boost ids', () => {
-    expect(getItemIcon('xp_elixir', '', [])).toBe('⚗️');
-    expect(getItemIcon('skill_boost_potion', '', [])).toBe('⚗️');
+    expect(getItemIcon('xp_elixir', '', [])).toBe('alembic');
+    expect(getItemIcon('skill_boost_potion', '', [])).toBe('alembic');
   });
 
   it('returns icon string (emoji or asset URL) for weapon name fallbacks', () => {
     // getItemImage may return a real PNG URL for known item shapes; we accept either path
-    // but the icon must never be empty or '📦'.
+    // but the icon must never be empty or 'package'.
     const swordIcon = getItemIcon('runic_blade', '', []);
     expect(swordIcon.length).toBeGreaterThan(0);
-    expect(swordIcon).not.toBe('📦');
+    expect(swordIcon).not.toBe('package');
     const wandIcon = getItemIcon('crystal_wand', '', []);
     expect(wandIcon.length).toBeGreaterThan(0);
-    expect(wandIcon).not.toBe('📦');
+    expect(wandIcon).not.toBe('package');
   });
 
   it('falls back to slot icon when type, art and name detection all miss', () => {
-    expect(getItemIcon('mystery_gear', 'helmet', [])).toBe('⛑️');
+    expect(getItemIcon('mystery_gear', 'helmet', [])).toBe('rescue-worker-s-helmet');
   });
 
-  it('returns 📦 for fully unknown slot', () => {
-    expect(getItemIcon('mystery_thing', 'unknown_slot', [])).toBe('📦');
+  it('returns :package: for fully unknown slot', () => {
+    expect(getItemIcon('mystery_thing', 'unknown_slot', [])).toBe('package');
   });
 });
 
-// ── Coverage push 2026-05-26 — formatItemName + constants ──────────────────
+// -- Coverage push 2026-05-26 — formatItemName + constants ------------------
 
 describe('formatItemName', () => {
   it('converts snake_case to Title Case', () => {
@@ -737,7 +737,7 @@ describe('CLASS_* maps and RARITY_BONUS_SLOTS exports', () => {
   it('RARITY_BONUS_SLOTS increases with rarity (with heroic being top at 5)', () => {
     expect(RARITY_BONUS_SLOTS.common).toBe(0);
     expect(RARITY_BONUS_SLOTS.heroic).toBe(5);
-    // strict monotonic from common forward (rare → epic stays equal, legendary > epic, mythic > legendary)
+    // strict monotonic from common forward (rare -> epic stays equal, legendary > epic, mythic > legendary)
     expect(RARITY_BONUS_SLOTS.legendary).toBeGreaterThan(RARITY_BONUS_SLOTS.epic);
     expect(RARITY_BONUS_SLOTS.mythic).toBeGreaterThan(RARITY_BONUS_SLOTS.legendary);
     expect(RARITY_BONUS_SLOTS.heroic).toBeGreaterThan(RARITY_BONUS_SLOTS.mythic);
@@ -749,7 +749,7 @@ describe('CLASS_* maps and RARITY_BONUS_SLOTS exports', () => {
   });
 });
 
-// ── Coverage push 2026-05-26 — clearGenInfoCache + getGeneratedItemInfo via getItemSlotSafe ─
+// -- Coverage push 2026-05-26 — clearGenInfoCache + getGeneratedItemInfo via getItemSlotSafe -
 
 describe('clearGenInfoCache', () => {
   it('does not throw and can be invoked repeatedly', () => {

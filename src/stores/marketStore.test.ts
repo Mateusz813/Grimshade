@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IMarketListing } from '../systems/marketSystem';
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
+// -- Hoisted mocks ------------------------------------------------------------
 // marketStore wraps `marketApi` 1:1. Each method is a `vi.fn` we configure per
 // test, so no network round-trip and no `setTimeout(8000)` race for the
 // fetchListings timeout path.
@@ -51,7 +51,7 @@ vi.mock('../api/v1/marketApi', () => ({
 import { useMarketStore } from './marketStore';
 import { useCharacterStore } from './characterStore';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeListing = (overrides: Partial<IMarketListing> = {}): IMarketListing => ({
     id: 'ml_1',
@@ -98,7 +98,7 @@ beforeEach(() => {
     buyListingMock.mockReset();
 });
 
-// ── Initial state ────────────────────────────────────────────────────────────
+// -- Initial state ------------------------------------------------------------
 
 describe('marketStore — initial state', () => {
     it('starts with empty listings + flags', () => {
@@ -111,7 +111,7 @@ describe('marketStore — initial state', () => {
     });
 });
 
-// ── fetchListings ────────────────────────────────────────────────────────────
+// -- fetchListings ------------------------------------------------------------
 
 describe('fetchListings', () => {
     it('populates the listings array on success', async () => {
@@ -125,7 +125,7 @@ describe('fetchListings', () => {
     });
 
     it('keeps isLoading false during the initial silent populate', async () => {
-        // listings.length === 0 → don't flip the global spinner.
+        // listings.length === 0 -> don't flip the global spinner.
         getListingsMock.mockImplementation(async () => {
             // Snapshot state mid-flight.
             expect(useMarketStore.getState().isLoading).toBe(false);
@@ -155,7 +155,7 @@ describe('fetchListings', () => {
     });
 });
 
-// ── fetchMyListings ──────────────────────────────────────────────────────────
+// -- fetchMyListings ----------------------------------------------------------
 
 describe('fetchMyListings', () => {
     it('populates myListings on success', async () => {
@@ -174,7 +174,7 @@ describe('fetchMyListings', () => {
     });
 });
 
-// ── fetchSaleNotifications ───────────────────────────────────────────────────
+// -- fetchSaleNotifications ---------------------------------------------------
 
 describe('fetchSaleNotifications', () => {
     it('populates saleNotifications on success', async () => {
@@ -192,7 +192,7 @@ describe('fetchSaleNotifications', () => {
     });
 });
 
-// ── listItem ─────────────────────────────────────────────────────────────────
+// -- listItem -----------------------------------------------------------------
 
 describe('listItem', () => {
     const payload: Omit<IMarketListing, 'id' | 'listedAt'> = {
@@ -250,7 +250,7 @@ describe('listItem', () => {
     });
 });
 
-// ── editListing ──────────────────────────────────────────────────────────────
+// -- editListing --------------------------------------------------------------
 
 describe('editListing', () => {
     it('returns null when the listing is not in myListings', async () => {
@@ -302,7 +302,7 @@ describe('editListing', () => {
     });
 });
 
-// ── cancelListing ────────────────────────────────────────────────────────────
+// -- cancelListing ------------------------------------------------------------
 
 describe('cancelListing', () => {
     it('returns null when listing is not in myListings', async () => {
@@ -330,7 +330,7 @@ describe('cancelListing', () => {
     });
 });
 
-// ── buyListing ───────────────────────────────────────────────────────────────
+// -- buyListing ---------------------------------------------------------------
 //
 // Tests target the 2026-05-25 v3 contract: `marketStore.buyListing` calls
 // the SECURITY DEFINER `marketApi.buyListing(listingId, buyerCharacterId)`
@@ -441,7 +441,7 @@ describe('buyListing', () => {
     });
 
     it('reports out_of_stock when RPC rejects a qty larger than available', async () => {
-        // qty=5 requested but listing only has 2 left → server returns
+        // qty=5 requested but listing only has 2 left -> server returns
         // out_of_stock atomically (no partial buys at the RPC layer —
         // either we get all qty units or nothing).
         const listing = makeListing({ id: 'ml_1', quantity: 2, kind: 'potion', price: 50 });
@@ -461,7 +461,7 @@ describe('buyListing', () => {
     });
 });
 
-// ── dismissNotification ──────────────────────────────────────────────────────
+// -- dismissNotification ------------------------------------------------------
 
 describe('dismissNotification', () => {
     it('removes the notification from the store and calls the API', async () => {
@@ -477,7 +477,7 @@ describe('dismissNotification', () => {
     });
 });
 
-// ── clearError ───────────────────────────────────────────────────────────────
+// -- clearError ---------------------------------------------------------------
 
 describe('clearError', () => {
     it('resets error to null', () => {

@@ -3,7 +3,7 @@ import { useCombatStore, MAX_WAVE_MONSTERS, type IMonster } from './combatStore'
 import type { TMonsterRarity } from '../systems/lootSystem';
 import type { IDropDisplay, ICombatEvent } from '../systems/combatEngine';
 
-// ── Fixtures ────────────────────────────────────────────────────────────────
+// -- Fixtures ----------------------------------------------------------------
 
 const makeMonster = (overrides: Partial<IMonster> = {}): IMonster => ({
     id: 'rat',
@@ -17,24 +17,24 @@ const makeMonster = (overrides: Partial<IMonster> = {}): IMonster => ({
     xp: 3,
     gold: [1, 1],
     dropTable: [],
-    sprite: '🐀',
+    sprite: 'rat',
     ...overrides,
 });
 
 const makeDrop = (overrides: Partial<IDropDisplay> = {}): IDropDisplay => ({
-    icon: '⚔️',
+    icon: 'crossed-swords',
     name: 'Sword',
     rarity: 'common',
     ...overrides,
 });
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// -- Helpers -----------------------------------------------------------------
 
 const resetStore = (): void => {
     useCombatStore.getState().resetCombat();
 };
 
-// ── Tests ───────────────────────────────────────────────────────────────────
+// -- Tests -------------------------------------------------------------------
 
 describe('combatStore — initial state', () => {
     beforeEach(resetStore);
@@ -404,7 +404,7 @@ describe('combatStore — wave actions', () => {
     });
 
     it('addWaveMonster refuses if phase is not "fighting"', () => {
-        // No initCombat → phase stays idle
+        // No initCombat -> phase stays idle
         const ok = useCombatStore.getState().addWaveMonster(makeMonster(), 'normal');
         expect(ok).toBe(false);
     });

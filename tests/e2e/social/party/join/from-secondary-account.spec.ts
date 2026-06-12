@@ -9,7 +9,7 @@
  *
  * Multi-context flow:
  *   1. Open 2 browser contexts (iPhone 13 profile), parallel login.
- *   2. Both contexts seed a character + pick it → Town.
+ *   2. Both contexts seed a character + pick it -> Town.
  *   3. Primary navigates to /party, creates a PUBLIC (no-password)
  *      party with a unique name.
  *   4. Secondary navigates to /party, refreshes the browser, finds the
@@ -21,15 +21,15 @@
  *      d. Primary's character has crown (leader); secondary's doesn't.
  *
  * Realtime timing notes:
- *   • Primary creates party → server INSERT → Realtime broadcast →
+ *   - Primary creates party -> server INSERT -> Realtime broadcast ->
  *     primary's `subscribeToActiveParty` populates `party` in store.
- *   • Secondary's `subscribePublicFeed` receives the INSERT event on
- *     `parties` → re-fetches public feed → new party appears as
+ *   - Secondary's `subscribePublicFeed` receives the INSERT event on
+ *     `parties` -> re-fetches public feed -> new party appears as
  *     `.party__card` in the browser. If Realtime is slow, the test
- *     uses an explicit refresh tap (🔄 button) as a deterministic
+ *     uses an explicit refresh tap (:counterclockwise-arrows-button: button) as a deterministic
  *     fallback rather than waiting for the auto-push.
- *   • When secondary joins → server INSERT on `party_members` →
- *     Realtime broadcasts to both contexts → primary's roster updates,
+ *   - When secondary joins -> server INSERT on `party_members` ->
+ *     Realtime broadcasts to both contexts -> primary's roster updates,
  *     secondary's view switches from browser to roster.
  *
  * Cleanup: deletes both characters via the multi-context fixture +
@@ -49,10 +49,10 @@ import { openMultiContext } from '../../../fixtures/multiContext';
 import type { Page } from '@playwright/test';
 
 test.describe('Social › Party', { tag: '@party' }, () => {
-    // Multi-context = 2× everything → bumped to 120 s per README convention.
+    // Multi-context = 2× everything -> bumped to 120 s per README convention.
     test.describe.configure({ timeout: 120_000 });
 
-    test('multi-context: primary creates public party → secondary joins → both rosters show 2 members', async ({ browser }) => {
+    test('multi-context: primary creates public party -> secondary joins -> both rosters show 2 members', async ({ browser }) => {
         const primaryNick = generateTestCharacterName();
         const secondaryNick = generateTestCharacterName();
         const partyName = `MC ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;

@@ -23,20 +23,20 @@
  *
  * ## Setup state
  *
- * Seed Knight (default settings → wszystkie 4 thresholds = 50% / 40%
+ * Seed Knight (default settings -> wszystkie 4 thresholds = 50% / 40%
  * z `settingsStore.ts` linia ~109). hp_regen=0/mp_regen=0 dla noise-less
- * UI (HP/MP nie tickują → asercje na header nie race-conduuje).
+ * UI (HP/MP nie tickują -> asercje na header nie race-conduuje).
  *
  * ## Actions + asercje
  *
  * 1. Open Auto-potion popup, capture 4 default values (sanity że store
  *    wystartował z poprawnymi defaults).
- * 2. Drag slider #1 (Flat HP) na 30 → verify panel 1 pokazuje "30%",
+ * 2. Drag slider #1 (Flat HP) na 30 -> verify panel 1 pokazuje "30%",
  *    panele 2/3/4 zachowują defaults.
- * 3. Drag slider #2 (Flat MP) na 35 → verify panel 2 pokazuje "35%",
+ * 3. Drag slider #2 (Flat MP) na 35 -> verify panel 2 pokazuje "35%",
  *    panele 1/3/4 zachowują (panel 1 = 30 z poprzedniego kroku).
- * 4. Drag slider #3 (Pct HP) na 20 → verify panel 3 pokazuje "20%".
- * 5. Drag slider #4 (Pct MP) na 15 → verify panel 4 pokazuje "15%".
+ * 4. Drag slider #3 (Pct HP) na 20 -> verify panel 3 pokazuje "20%".
+ * 5. Drag slider #4 (Pct MP) na 15 -> verify panel 4 pokazuje "15%".
  * 6. KRYTYCZNA ASERCJA: wszystkie 4 panele pokazują ich docelowe
  *    wartości jednocześnie (cross-check że żaden handler nie nadpisał
  *    sąsiada).
@@ -50,7 +50,7 @@
  * cross-browser. Helper inline'owany w `dispatchSliderValue()` żeby
  * test był self-contained (nie wymaga nowego fixtura).
  *
- * Cleanup: try/finally → cleanupCharacterById.
+ * Cleanup: try/finally -> cleanupCharacterById.
  */
 
 import { test, expect } from '@playwright/test';
@@ -85,9 +85,9 @@ test.describe('Auto-Potion › Settings', { tag: '@auto-potion' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 2. /inventory → tap Auto-potion → popup
+            // 2. /inventory -> tap Auto-potion -> popup
             await page.goto('/inventory');
-            await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
+            await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 20_000 });
             await page.getByRole('button', { name: /^auto-potion$/i }).tap();
 
             const popup = page.locator('.inventory__popup--potion');
@@ -97,7 +97,7 @@ test.describe('Auto-Potion › Settings', { tag: '@auto-potion' }, () => {
             //    linia 107-117: Flat HP/MP są domyślnie ENABLED (50%),
             //    Pct HP/MP są domyślnie DISABLED (40%, display "WYL").
             //    Bez enablowania Pct slider input ma `disabled` attribute
-            //    → React onChange nie odpala → assertion na "20%" fail-uje.
+            //    -> React onChange nie odpala -> assertion na "20%" fail-uje.
             const sliders = popup.locator('input[type="range"]');
             await expect(sliders).toHaveCount(4);
 

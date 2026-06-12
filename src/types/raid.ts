@@ -63,7 +63,7 @@ export interface IRaidDropLine {
 }
 
 export interface IRaidAttemptRecord {
-    /** Map raidId → ISO date string (YYYY-MM-DD) → count used that day */
+    /** Map raidId -> ISO date string (YYYY-MM-DD) -> count used that day */
     [raidId: string]: { day: string; count: number };
 }
 

@@ -10,18 +10,18 @@
  *  - `character_deaths` row wstawiony bezpośrednio przez service_role
  *    pojawia się w globalnym feed-zie po nawigacji na `/deaths`.
  *
- * Reszta źródeł śmierci (E×8) → zostaje do osobnej sesji która zaimplementuje
+ * Reszta źródeł śmierci (E×8) -> zostaje do osobnej sesji która zaimplementuje
  * dla każdego combat type-u (combat/death/*.spec.ts).
  *
  * Co testujemy:
  *  - Seed postać Knight przez API + insert 1 row do `character_deaths`
  *    z unique source_name (matching test character) — żeby selektor był
  *    deterministyczny w gloałnym feed-zie z setkami innych deaths.
- *  - Login + nawigacja na `/deaths` → lista się ładuje.
+ *  - Login + nawigacja na `/deaths` -> lista się ładuje.
  *  - Filtr "Wszystkie" jest aktywny domyślnie (counter > 0).
- *  - Item z naszym character_name jest widoczny w `.deaths__list` →
+ *  - Item z naszym character_name jest widoczny w `.deaths__list` ->
  *    znajdujemy `.deaths__victim-name` zawierający nasz nick.
- *  - Zawiera "💀 zabił" verb (result='killed') + naszą klasę + level.
+ *  - Zawiera ":skull: zabił" verb (result='killed') + naszą klasę + level.
  *
  * Deterministycznie znajdujemy nasz death-row przez unique character_name
  * (E2E{rand6} format z `generateTestCharacterName()`) — nawet jeśli
@@ -66,7 +66,7 @@ test.describe('City › Deaths', { tag: '@city' }, () => {
             //    jeszcze tej kolumny (deaths_migration.sql nie odpalony).
             //    `inferResult` w Deaths.tsx (linia 73) wraca 'killed' gdy
             //    column undefined + source_name nie kończy się "(uciekłeś
-            //    z gry)" → verb = "zabił" wyrenderowany bez problemu.
+            //    z gry)" -> verb = "zabił" wyrenderowany bez problemu.
             await seedDeath({
                 characterId: created.id,
                 characterName: nick,
@@ -83,7 +83,7 @@ test.describe('City › Deaths', { tag: '@city' }, () => {
             await loginViaUI(page, testUsers.primary);
             await page.goto('/deaths');
 
-            // 4. Spinner znika → feed widoczny. `.deaths__list` jest <ul>
+            // 4. Spinner znika -> feed widoczny. `.deaths__list` jest <ul>
             //    z `.deaths__item` per row. Czekamy na pierwszy item (jakikolwiek).
             //    Pamiętaj: globalny feed = inne postacie też tam są.
             //    NIE asertujemy że list.first to nasz row — szukamy po nicku.
@@ -104,7 +104,7 @@ test.describe('City › Deaths', { tag: '@city' }, () => {
             await expect(ourDeathRow.locator('.deaths__monster-lvl')).toContainText('Lvl 1');
             //    b) Victim level "Lvl 7" (charcter_level w payload)
             await expect(ourDeathRow.locator('.deaths__victim-lvl')).toContainText('Lvl 7');
-            //    c) Verb "zabił" (result='killed' → deaths__verb--killed)
+            //    c) Verb "zabił" (result='killed' -> deaths__verb--killed)
             await expect(ourDeathRow.locator('.deaths__verb--killed')).toBeVisible();
             await expect(ourDeathRow.locator('.deaths__verb-text')).toContainText('zabił');
         } finally {

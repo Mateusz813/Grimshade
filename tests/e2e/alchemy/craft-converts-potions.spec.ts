@@ -3,13 +3,13 @@
  *
  * Spec (BACKLOG.md 10.2 full): "Alchemy crafts actual item". Smoke
  * variant (10.2) already covers grid rendering with 14 recipe rows. This
- * test exercises the FULL craft contract: tap "🧪 Przetworz" on a
+ * test exercises the FULL craft contract: tap ":test-tube: Przetworz" on a
  * specific recipe, watch input count decrement by `inputCount`, output
  * count increment by 1, and a toast appear.
  *
  * Source path (production):
  *   Inventory.tsx ~line 3826 — POTION_CONVERSIONS.map renders rows.
- *   Each row's "🧪 Przetworz" button fires `handlePotionConvert(
+ *   Each row's ":test-tube: Przetworz" button fires `handlePotionConvert(
  *     conv.inputId, conv.outputId, conv.outputName, conv.inputCount,
  *     amount)` (line 3887).
  *   handlePotionConvert (Inventory.tsx ~line 2871) calls:
@@ -17,7 +17,7 @@
  *     inv.addConsumable(outputId, batches);
  *     setAlchemyToast(`Przetworzono: +${batches} ${outputName}`);
  *
- * ## Recipe choice: HP tier 1 (5× sm → 1× md)
+ * ## Recipe choice: HP tier 1 (5× sm -> 1× md)
  *
  * The lowest tier is the easiest setup: 5× hp_potion_sm + 1 batch =
  * minimum-cost test setup. Requires character level ≥ 20 (per
@@ -26,7 +26,7 @@
  *
  * Why HP not MP: HP family is the first row in the grid (visual
  * positioning is deterministic) AND HP tier 1 requires the lowest
- * `outputMinLevel` (20). MP tier 1 (mp_sm → mp_md) also requires
+ * `outputMinLevel` (20). MP tier 1 (mp_sm -> mp_md) also requires
  * outputMinLevel=20 but HP being first row is a tiny convenience for
  * humans reading the test.
  *
@@ -43,13 +43,13 @@
  *
  * ## Flow
  *
- *  1. Login → /inventory → tap "auto-potion" button → popup opens.
- *  2. Tap "🧪 Alchemia" tab → switches potionTab.
+ *  1. Login -> /inventory -> tap "auto-potion" button -> popup opens.
+ *  2. Tap ":test-tube: Alchemia" tab -> switches potionTab.
  *  3. Locate the first HP-family row (`.inventory__alchemy-row--hp` first
  *     match).
  *  4. Assert pre-state: input "Posiadasz: 10", output "Masz: 0", button
  *     enabled (canConvert=true because 10 ≥ 5).
- *  5. Tap "🧪 Przetworz" button.
+ *  5. Tap ":test-tube: Przetworz" button.
  *  6. Assert post-state: input "Posiadasz: 5" (10 - 5 = 5), output
  *     "Masz: 1" (0 + 1 = 1), toast `.inventory__alchemy-toast` visible
  *     with text matching /Przetworzono.*1.*HP/i (toast template per
@@ -88,7 +88,7 @@ test.describe('Alchemy › Craft', { tag: '@alchemy' }, () => {
                 counts: { hp_potion_sm: 10 },
             });
 
-            // 3. Login → pick character → Town.
+            // 3. Login -> pick character -> Town.
             await loginViaUI(page, testUsers.secondary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -98,7 +98,7 @@ test.describe('Alchemy › Craft', { tag: '@alchemy' }, () => {
             await card.getByRole('button', { name: /Wybierz/i }).tap();
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-            // 4. /inventory → tap auto-potion → popup with 2 tabs opens.
+            // 4. /inventory -> tap auto-potion -> popup with 2 tabs opens.
             await page.goto('/inventory');
             await expect(page.locator('.inventory__paperdoll-actions')).toBeVisible({ timeout: 10_000 });
             await page.getByRole('button', { name: /^auto-potion$/i }).tap();
@@ -113,7 +113,7 @@ test.describe('Alchemy › Craft', { tag: '@alchemy' }, () => {
             // 6. Locate HP tier 1 row — the FIRST `.inventory__alchemy-row--hp`
             //    in source order. POTION_CONVERSIONS first entry is HP
             //    tier 1 (potionConversion.ts line 50-56) so first hp row
-            //    in DOM = HP tier 1 (5× sm → 1× md).
+            //    in DOM = HP tier 1 (5× sm -> 1× md).
             const grid = popup.locator('.inventory__alchemy-grid');
             await expect(grid).toBeVisible();
             const hpTier1Row = grid.locator('.inventory__alchemy-row--hp').first();

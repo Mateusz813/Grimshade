@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
+// -- Mocks --------------------------------------------------------------------
 // `handlePlayerDeath` fires two best-effort, network-touching side effects:
-//   • `deathsApi.logDeath(...)`           — writes a death row (axios → Supabase)
-//   • `saveCurrentCharacterStoresForce()` — force-flush to Supabase / game_saves
+//   - `deathsApi.logDeath(...)`           — writes a death row (axios -> Supabase)
+//   - `saveCurrentCharacterStoresForce()` — force-flush to Supabase / game_saves
 // Both are `void`-prefixed fire-and-forget. We stub them so the integration
 // test never attempts real HTTP and stays deterministic + silent. Everything
 // else (combat / character / skill / inventory / party / death stores) runs
@@ -34,7 +34,7 @@ import type { IMonster } from '../types/monster';
 import type { IInventoryItem } from './itemSystem';
 import type { IPartyInfo, IPartyMember } from '../types/party';
 
-// ── Fixtures ─────────────────────────────────────────────────────────────────
+// -- Fixtures -----------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -68,7 +68,7 @@ const makeMonster = (overrides: Partial<IMonster> = {}): IMonster => ({
     id: 'rat',
     name_pl: 'Szczur',
     name_en: 'Rat',
-    icon: '🐀',
+    icon: 'rat',
     level: 100,
     hp: 270,
     attack: 40,
@@ -154,7 +154,7 @@ const resetStores = (): void => {
     useDeathStore.setState({ ...useDeathStore.getState(), event: null });
 };
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 //
 // GAP #12 — A resurrected ally keeps XP / skill XP / EQ (no death penalty).
 //
@@ -163,11 +163,11 @@ const resetStores = (): void => {
 // that function. The "wait for an ally Cleric to revive me" path is implemented
 // as an EARLY RETURN near the top:
 //
-//   • A NON-LEADER member of a multi-human party (combatEngine.ts ~1349):
-//     member death is leader-authoritative → local death is a no-op + a
+//   - A NON-LEADER member of a multi-human party (combatEngine.ts ~1349):
+//     member death is leader-authoritative -> local death is a no-op + a
 //     defensive heal. The member is later revived by the Cleric; no penalty.
 //
-//   • The LEADER of a multi-human party with `forceConfirm=false`
+//   - The LEADER of a multi-human party with `forceConfirm=false`
 //     (combatEngine.ts ~1370): the engine bails so Combat.tsx can show the
 //     PartyDeathChoice popup. If the player picks "Czekaj na wskrzeszenie",
 //     the Cleric's Aura Wskrzeszenia heals them to 50% HP and the penalty is
@@ -182,7 +182,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         resetStores();
     });
 
-    it('NON-leader party member at HP 0 → no level / xp / skill / item loss (awaits revive)', () => {
+    it('NON-leader party member at HP 0 -> no level / xp / skill / item loss (awaits revive)', () => {
         const char = makeCharacter({ id: 'char-1', level: 100, xp: 5000, hp: 0 });
         useCharacterStore.setState({ character: char });
         seedTrainedSkill();
@@ -192,7 +192,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
             equipment: { ...EMPTY_EQUIPMENT, mainHand: makeBagItem({ uuid: 'eq-1' }) },
         });
         // Party: leader is SOMEONE ELSE (a human), so `char-1` is a non-leader
-        // member → its local death must be a no-op (leader-authoritative).
+        // member -> its local death must be a no-op (leader-authoritative).
         usePartyStore.setState({
             party: makeParty({
                 leaderId: 'leader-human',
@@ -229,7 +229,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         expect(c.hp).toBeGreaterThan(0);
     });
 
-    it('LEADER in a multi-human party at HP 0 with forceConfirm=false → no penalty (death popup gate)', () => {
+    it('LEADER in a multi-human party at HP 0 with forceConfirm=false -> no penalty (death popup gate)', () => {
         const char = makeCharacter({ id: 'char-1', level: 100, xp: 5000, hp: 0 });
         useCharacterStore.setState({ character: char });
         seedTrainedSkill();
@@ -237,7 +237,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
             ...useInventoryStore.getState(),
             bag: [makeBagItem({ uuid: 'a' }), makeBagItem({ uuid: 'b' })],
         });
-        // `char-1` IS the leader, but there is another HUMAN member → the
+        // `char-1` IS the leader, but there is another HUMAN member -> the
         // engine defers to the PartyDeathChoice popup instead of auto-dying.
         usePartyStore.setState({
             party: makeParty({
@@ -277,14 +277,14 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         handlePlayerDeath(true);
 
         const c = useCharacterStore.getState().character!;
-        // Level dropped: lvl 100 loses floor(100 * 0.02) = 2 levels → 98.
+        // Level dropped: lvl 100 loses floor(100 * 0.02) = 2 levels -> 98.
         expect(c.level).toBe(98);
         expect(c.level).toBeLessThan(100);
         // Skill XP was reduced by the death penalty (−50% of banked XP),
         // so the in-progress XP pointer is strictly lower than before.
         const skillXpAfter = useSkillStore.getState().skillXp.sword_fighting;
         const skillLvlAfter = useSkillStore.getState().skillLevels.sword_fighting;
-        // Banked total halved → either the level dropped or the current-xp
+        // Banked total halved -> either the level dropped or the current-xp
         // pointer dropped (or both). It can never be MORE than before.
         const totalDropped = skillLvlAfter < 5 || skillXpAfter < skillXpBefore;
         expect(totalDropped).toBe(true);
@@ -296,7 +296,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
     });
 
     it('CONTRAST: a SOLO player passing forceConfirm=false still dies + is penalized (no party to wait on)', () => {
-        // No party member to revive → the early-return gates don't apply and
+        // No party member to revive -> the early-return gates don't apply and
         // the penalty runs even without forceConfirm. Proves the no-penalty
         // path is specifically the party-revive case, not a blanket skip.
         const char = makeCharacter({ id: 'char-1', level: 50, xp: 200, hp: 0 });
@@ -308,7 +308,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         handlePlayerDeath(false);
 
         const c = useCharacterStore.getState().character!;
-        // lvl 50 loses floor(50 * 0.02) = 1 level → 49.
+        // lvl 50 loses floor(50 * 0.02) = 1 level -> 49.
         expect(c.level).toBe(49);
         expect(useDeathStore.getState().event).not.toBeNull();
     });
