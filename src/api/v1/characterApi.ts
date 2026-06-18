@@ -248,6 +248,20 @@ class CharacterApi extends BaseApi {
     };
 
     deleteCharacter = async (id: string): Promise<void> => {
+        // Membership tables aren't FK-cascaded in the DB, so a deleted character
+        // would otherwise linger in its guild / party roster. Clean them here.
+        //
+        // Intentionally KEPT: chat `messages` (history stays per spec) + historical
+        // guild logs. Needs nothing here: arena rankings read straight from
+        // `characters` (gone with the row) and friends/blocked are local
+        // name-lists filtered on display. Best-effort per table — a row the
+        // session can't touch (RLS) just no-ops; the character delete still runs.
+        const memberships = ['guild_members', 'party_members', 'guild_join_requests'] as const;
+        await Promise.all(
+            memberships.map((table) =>
+                this.delete({ url: `/rest/v1/${table}?character_id=eq.${id}` }).catch(() => undefined),
+            ),
+        );
         await this.delete({
             url: `/rest/v1/characters?id=eq.${id}`,
         });

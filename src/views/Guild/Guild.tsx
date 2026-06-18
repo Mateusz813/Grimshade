@@ -629,6 +629,7 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
     const isLeader = guild.leader_id === character?.id;
     const [confirmKick, setConfirmKick] = useState<IGuildMemberRow | null>(null);
     const [confirmLeave, setConfirmLeave] = useState(false);
+    const [confirmDisband, setConfirmDisband] = useState(false);
 
     // 2026-05-18 spec ("Przed ikonkami akcji kazdej postaci napisz ile
     // XP dla gildii dodali poprzez atak bossa"): pull this week's
@@ -692,6 +693,15 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
         useGuildStore.getState().clear();
         await useGuildStore.getState().hydrateForCharacter(character.id);
         setConfirmLeave(false);
+    };
+
+    // Leader-only: blow the whole guild away (all members + the guild row).
+    const handleDisbandConfirm = async () => {
+        if (!character) return;
+        await guildApi.disbandGuild(guild.id);
+        useGuildStore.getState().clear();
+        await useGuildStore.getState().hydrateForCharacter(character.id);
+        setConfirmDisband(false);
     };
 
     const xpToNext = guildXpToNextLevel(guild.level);
@@ -778,6 +788,7 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                         bossContribution={contribMap[m.character_id] ?? 0}
                         onKick={() => setConfirmKick(m)}
                         onLeave={() => setConfirmLeave(true)}
+                        onDisband={() => setConfirmDisband(true)}
                     />
                 ))}
             </ul>
@@ -831,6 +842,18 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                     </div>
                 </Modal>
             )}
+            {confirmDisband && (
+                <Modal onClose={() => setConfirmDisband(false)} title="Rozwiąż gildię">
+                    <p>
+                        Czy na pewno chcesz <strong>rozwiązać</strong> gildię <strong>{guild.name}</strong>?
+                        Wszyscy członkowie ({members.length}) zostaną usunięci, a gildii nie da się odzyskać.
+                    </p>
+                    <div className="guild__modal-actions">
+                        <button onClick={() => setConfirmDisband(false)}>Anuluj</button>
+                        <button className="guild__btn-danger" onClick={handleDisbandConfirm}>Rozwiąż gildię</button>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 };
@@ -843,9 +866,10 @@ interface IMemberRowProps {
     bossContribution: number;
     onKick: () => void;
     onLeave: () => void;
+    onDisband: () => void;
 }
 
-const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick, onLeave }: IMemberRowProps) => {
+const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick, onLeave, onDisband }: IMemberRowProps) => {
     // 2026-05-18 spec ("avatary powinny byc aktualnych transformow
     // tych postaci"): every member ships their `character_transform_tier`
     // in the row, so we feed that single tier into getCharacterAvatar
@@ -923,6 +947,11 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
                 {isMe && (
                     <button className="guild__member-leave" onClick={onLeave} title="Opuść gildię">
                         <GameIcon name="door" />
+                    </button>
+                )}
+                {isMe && isLeader && (
+                    <button className="guild__member-leave guild__btn-danger" onClick={onDisband} title="Rozwiąż gildię">
+                        <GameIcon name="wastebasket" />
                     </button>
                 )}
             </div>

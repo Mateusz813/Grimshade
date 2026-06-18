@@ -34,6 +34,12 @@ vi.mock('../../api/v1/characterApi', () => ({
     },
 }));
 
+vi.mock('../../api/v1/authApi', () => ({
+    authApi: {
+        verifyCurrentPassword: vi.fn(),
+    },
+}));
+
 vi.mock('../../stores/characterScope', () => ({
     switchToCharacter: vi.fn(async () => undefined),
     deleteCharacterData: vi.fn(async () => undefined),
@@ -43,6 +49,7 @@ vi.mock('../../stores/characterScope', () => ({
 
 import CharacterSelect from './CharacterSelect';
 import { characterApi } from '../../api/v1/characterApi';
+import { authApi } from '../../api/v1/authApi';
 import { switchToCharacter, deleteCharacterData } from '../../stores/characterScope';
 import { supabase } from '../../lib/supabase';
 import type { ICharacter } from '../../api/v1/characterApi';
@@ -75,6 +82,8 @@ beforeEach(() => {
     navigateMock.mockClear();
     vi.mocked(characterApi.getCharacters).mockReset();
     vi.mocked(characterApi.deleteCharacter).mockReset();
+    vi.mocked(authApi.verifyCurrentPassword).mockReset();
+    vi.mocked(authApi.verifyCurrentPassword).mockResolvedValue(true);
     vi.mocked(switchToCharacter).mockClear();
     vi.mocked(deleteCharacterData).mockClear();
     vi.mocked(supabase.auth.getSession).mockReset();
@@ -161,34 +170,63 @@ describe('CharacterSelect — actions', () => {
         });
     });
 
-    it('opens the delete-confirm flow on trash click and commits on Usuń', async () => {
+    it('opens the password modal on trash click and commits after the CORRECT password', async () => {
         const char = makeChar({ id: 'a', name: 'Alpha' });
         vi.mocked(characterApi.getCharacters).mockResolvedValue([char]);
         vi.mocked(characterApi.deleteCharacter).mockResolvedValue(undefined as never);
+        vi.mocked(authApi.verifyCurrentPassword).mockResolvedValue(true);
 
         const { container } = renderCharacterSelect();
         await waitFor(() => {
             expect(container.querySelector('.char-select__delete-btn')).not.toBeNull();
         });
 
-        const trash = container.querySelector('.char-select__delete-btn') as HTMLButtonElement;
-        fireEvent.click(trash);
-        // Confirm wrap surfaces.
-        expect(container.querySelector('.char-select__confirm-wrap')).not.toBeNull();
-        expect(container.textContent).toContain('Na pewno?');
+        // Trash click opens the password modal (not an inline confirm).
+        fireEvent.click(container.querySelector('.char-select__delete-btn') as HTMLButtonElement);
+        expect(container.querySelector('.char-select__modal')).not.toBeNull();
+        // Nothing deleted yet — password not entered.
+        expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
 
-        // Hit the confirm Usuń button.
-        const confirmBtn = container.querySelector('.char-select__delete-confirm-btn') as HTMLButtonElement;
-        fireEvent.click(confirmBtn);
+        // Type the current password + confirm.
+        const input = container.querySelector('.char-select__modal-input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: 'hunter2' } });
+        fireEvent.click(container.querySelector('.char-select__modal-delete') as HTMLButtonElement);
 
         await waitFor(() => {
+            expect(authApi.verifyCurrentPassword).toHaveBeenCalledWith('hunter2');
             expect(characterApi.deleteCharacter).toHaveBeenCalledWith('a');
             expect(deleteCharacterData).toHaveBeenCalledWith('a');
         });
-        // After delete the card disappears from the list.
+        // After delete the card + modal disappear.
         await waitFor(() => {
             expect(container.querySelectorAll('.char-select__card').length).toBe(0);
+            expect(container.querySelector('.char-select__modal')).toBeNull();
         });
+    });
+
+    it('does NOT delete + shows an error when the password is WRONG', async () => {
+        const char = makeChar({ id: 'a', name: 'Alpha' });
+        vi.mocked(characterApi.getCharacters).mockResolvedValue([char]);
+        vi.mocked(authApi.verifyCurrentPassword).mockResolvedValue(false);
+
+        const { container } = renderCharacterSelect();
+        await waitFor(() => {
+            expect(container.querySelector('.char-select__delete-btn')).not.toBeNull();
+        });
+
+        fireEvent.click(container.querySelector('.char-select__delete-btn') as HTMLButtonElement);
+        const input = container.querySelector('.char-select__modal-input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: 'wrong-password' } });
+        fireEvent.click(container.querySelector('.char-select__modal-delete') as HTMLButtonElement);
+
+        await waitFor(() => {
+            expect(authApi.verifyCurrentPassword).toHaveBeenCalledWith('wrong-password');
+            expect(container.querySelector('.char-select__modal-error')).not.toBeNull();
+        });
+        // Character NOT deleted, modal still open, card still present.
+        expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
+        expect(deleteCharacterData).not.toHaveBeenCalled();
+        expect(container.querySelectorAll('.char-select__card').length).toBe(1);
     });
 
     it('cancels the delete confirm when Anuluj is clicked', async () => {
@@ -201,10 +239,13 @@ describe('CharacterSelect — actions', () => {
         });
 
         fireEvent.click(container.querySelector('.char-select__delete-btn') as HTMLButtonElement);
-        const cancelBtn = container.querySelector('.char-select__cancel-btn') as HTMLButtonElement;
+        expect(container.querySelector('.char-select__modal')).not.toBeNull();
+        const cancelBtn = container.querySelector('.char-select__modal-cancel') as HTMLButtonElement;
         fireEvent.click(cancelBtn);
 
-        expect(container.querySelector('.char-select__confirm-wrap')).toBeNull();
+        // Modal closes, nothing verified or deleted.
+        expect(container.querySelector('.char-select__modal')).toBeNull();
+        expect(authApi.verifyCurrentPassword).not.toHaveBeenCalled();
         expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
     });
 });

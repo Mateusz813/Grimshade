@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useCharacterStore } from '../../stores/characterStore';
 import { characterApi, type ICharacter } from '../../api/v1/characterApi';
+import { authApi } from '../../api/v1/authApi';
 import { switchToCharacter, deleteCharacterData, saveCurrentCharacterStores, peekCharacterStore } from '../../stores/characterScope';
 import { getTotalEquipmentStats, flattenItemsData, EMPTY_EQUIPMENT, type EquipmentSlot, type IInventoryItem } from '../../systems/itemSystem';
 import { getTrainingBonuses } from '../../systems/skillSystem';
@@ -184,6 +185,10 @@ const CharacterSelect = () => {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Delete is password-gated: the modal requires the account's CURRENT password
+  // (verified via authApi.verifyCurrentPassword) before a character is removed.
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -234,17 +239,37 @@ const CharacterSelect = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const closeDeleteModal = () => {
+    setConfirmDeleteId(null);
+    setDeletePassword('');
+    setDeleteError(null);
+    setDeletingId(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    const id = confirmDeleteId;
+    if (!id) return;
+    if (!deletePassword) {
+      setDeleteError('Podaj obecne hasło.');
+      return;
+    }
     setDeletingId(id);
+    setDeleteError(null);
     try {
+      // Security gate: never delete without re-verifying the account password.
+      const ok = await authApi.verifyCurrentPassword(deletePassword);
+      if (!ok) {
+        setDeleteError('Nieprawidłowe hasło.');
+        setDeletingId(null);
+        return;
+      }
       await characterApi.deleteCharacter(id);
       await deleteCharacterData(id);
       setCharacters((prev) => prev.filter((c) => c.id !== id));
+      closeDeleteModal();
     } catch {
       setError('Nie można usunąć postaci.');
-    } finally {
       setDeletingId(null);
-      setConfirmDeleteId(null);
     }
   };
 
@@ -280,7 +305,6 @@ const CharacterSelect = () => {
           const curMp = Math.max(0, Math.min(char.mp ?? 0, effMaxMp));
           const hpPct = effMaxHp > 0 ? Math.min(100, (curHp / effMaxHp) * 100) : 0;
           const mpPct = effMaxMp > 0 ? Math.min(100, (curMp / effMaxMp) * 100) : 0;
-          const isConfirming = confirmDeleteId === char.id;
 
           const accent = getCardAccent(char.id, char.class);
           return (
@@ -331,32 +355,13 @@ const CharacterSelect = () => {
                   {isSelecting ? <Spinner size="sm" silent /> : 'Wybierz'}
                 </button>
 
-                {isConfirming ? (
-                  <div className="char-select__confirm-wrap">
-                    <span className="char-select__confirm-label">Na pewno?</span>
-                    <button
-                      className="char-select__delete-confirm-btn"
-                      onClick={() => void handleDelete(char.id)}
-                      disabled={deletingId === char.id}
-                    >
-                      {deletingId === char.id ? '…' : 'Usuń'}
-                    </button>
-                    <button
-                      className="char-select__cancel-btn"
-                      onClick={() => setConfirmDeleteId(null)}
-                    >
-                      Anuluj
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className="char-select__delete-btn"
-                    onClick={() => setConfirmDeleteId(char.id)}
-                    title="Usuń postać"
-                  >
-                    <GameIcon name="wastebasket" />
-                  </button>
-                )}
+                <button
+                  className="char-select__delete-btn"
+                  onClick={() => setConfirmDeleteId(char.id)}
+                  title="Usuń postać"
+                >
+                  <GameIcon name="wastebasket" />
+                </button>
               </div>
             </div>
           );
@@ -386,6 +391,55 @@ const CharacterSelect = () => {
       >
         Wyloguj
       </button>
+
+      {confirmDeleteId && (() => {
+        const char = characters.find((c) => c.id === confirmDeleteId);
+        if (!char) return null;
+        return (
+          <div className="char-select__modal-bg" onClick={closeDeleteModal}>
+            <div
+              className="char-select__modal"
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="char-select__modal-title">
+                Usuń postać <strong>{char.name}</strong>?
+              </h2>
+              <p className="char-select__modal-text">
+                Tej operacji nie można cofnąć. Wpisz <strong>obecne hasło</strong>, aby potwierdzić.
+              </p>
+              <input
+                type="password"
+                className="char-select__modal-input"
+                placeholder="Obecne hasło"
+                value={deletePassword}
+                onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleConfirmDelete(); }}
+                autoFocus
+              />
+              {deleteError && <p className="char-select__modal-error">{deleteError}</p>}
+              <div className="char-select__modal-actions">
+                <button
+                  type="button"
+                  className="char-select__modal-cancel"
+                  onClick={closeDeleteModal}
+                >
+                  Anuluj
+                </button>
+                <button
+                  type="button"
+                  className="char-select__modal-delete"
+                  onClick={() => void handleConfirmDelete()}
+                  disabled={deletingId === confirmDeleteId || !deletePassword}
+                >
+                  {deletingId === confirmDeleteId ? '…' : 'Usuń postać'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

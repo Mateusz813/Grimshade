@@ -78,13 +78,16 @@ const Friends = () => {
     // -- Load character info for all friends on mount / friends change ---------
 
     const refreshFriendsInfo = useCallback(async () => {
-        if (!friends.length) {
+        // Look up BOTH friends + blocked so we can hide names whose character
+        // no longer exists (deleted) from either list.
+        const names = [...new Set([...friends, ...blocked])];
+        if (!names.length) {
             setInfoByName({});
             return;
         }
         setLoadingInfo(true);
         try {
-            const rows = await friendsApi.findManyByName(friends);
+            const rows = await friendsApi.findManyByName(names);
             const next: Record<string, IFriendCharacterInfo> = {};
             for (const row of rows) next[row.name] = row;
             setInfoByName(next);
@@ -93,7 +96,7 @@ const Friends = () => {
         } finally {
             setLoadingInfo(false);
         }
-    }, [friends]);
+    }, [friends, blocked]);
 
     useEffect(() => {
         void refreshFriendsInfo();
@@ -163,17 +166,44 @@ const Friends = () => {
         navigate('/chat');
     };
 
+    // Case-insensitive view over infoByName: local friend/blocked names are
+    // stored as typed, but the API echoes the character's canonical casing, so
+    // a direct `infoByName[n]` lookup would miss (and wrongly hide) a LIVE
+    // friend added with different capitalisation. Look up by lowercase key.
+    const infoIndex = useMemo(() => {
+        const idx: Record<string, IFriendCharacterInfo> = {};
+        for (const key of Object.keys(infoByName)) idx[key.toLowerCase()] = infoByName[key];
+        return idx;
+    }, [infoByName]);
+    const infoFor = useCallback(
+        (name: string): IFriendCharacterInfo | undefined => infoByName[name] ?? infoIndex[name.toLowerCase()],
+        [infoByName, infoIndex],
+    );
+
+    // After a successful lookup, hide names whose character no longer exists
+    // (deleted -> not returned by findManyByName). Guarded: while loading OR if
+    // the lookup returned nothing (offline / fetch error) we show everything,
+    // so a network blip never hides live friends.
+    const lookupReady = !loadingInfo && Object.keys(infoByName).length > 0;
+
     const sortedFriends = useMemo(() => {
-        return [...friends].sort((a, b) => {
+        const base = lookupReady ? friends.filter((n) => infoFor(n)) : friends;
+        return [...base].sort((a, b) => {
             const aFav = favorites.includes(a) ? 0 : 1;
             const bFav = favorites.includes(b) ? 0 : 1;
             if (aFav !== bFav) return aFav - bFav;
-            const aOnline = infoByName[a]?.online ? 0 : 1;
-            const bOnline = infoByName[b]?.online ? 0 : 1;
+            const aOnline = infoFor(a)?.online ? 0 : 1;
+            const bOnline = infoFor(b)?.online ? 0 : 1;
             if (aOnline !== bOnline) return aOnline - bOnline;
             return a.localeCompare(b);
         });
-    }, [friends, favorites, infoByName]);
+    }, [friends, favorites, infoFor, lookupReady]);
+
+    // Same deleted-character pruning for the blocked tab.
+    const visibleBlocked = useMemo(
+        () => (lookupReady ? blocked.filter((n) => infoFor(n)) : blocked),
+        [blocked, infoFor, lookupReady],
+    );
 
     if (!character) {
         return (
@@ -304,7 +334,7 @@ const Friends = () => {
                             </div>
                         )}
                         {sortedFriends.map((name) => {
-                            const info = infoByName[name];
+                            const info = infoFor(name);
                             const fav = isFavorite(name);
                             // 2026-05-19 spec ("Jak mam kogoś w liście znajomych
                             // i zablokuje to jest na obu listach naraz"):
@@ -399,7 +429,7 @@ const Friends = () => {
             {tab === 'blocked' && (
                 <section className="friends__list">
                     <h2 className="friends__section-title">Zablokowani gracze</h2>
-                    {blocked.length === 0 && (
+                    {visibleBlocked.length === 0 && (
                         <div className="friends__empty-list">
                             <div className="friends__empty-list-title">Lista jest pusta</div>
                             <div className="friends__empty-list-hint">
@@ -407,7 +437,7 @@ const Friends = () => {
                             </div>
                         </div>
                     )}
-                    {blocked.map((name) => {
+                    {visibleBlocked.map((name) => {
                         const alsoFriend = isFriend(name);
                         return (
                             <div key={name} className="friends__row friends__row--blocked">

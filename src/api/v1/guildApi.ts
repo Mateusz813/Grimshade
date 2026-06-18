@@ -262,36 +262,74 @@ class GuildApi extends BaseApi {
     };
 
     /** Remove a character from their guild. If the character is the
-     *  leader, transfer to the longest-serving remaining member; if
+     *  leader, hand leadership to a RANDOM remaining (live) member; if
      *  no one else is left, delete the guild outright. */
     leaveGuild = async (params: { guildId: string; characterId: string }): Promise<{ disbanded: boolean }> => {
         const guild = await this.findGuildById(params.guildId);
         if (!guild) return { disbanded: false };
-        await supabase
+        const isLeader = guild.leader_id === params.characterId;
+
+        // For a leader leaving, decide the successor BEFORE removing them, using
+        // a FRESH authoritative existence check (NOT listMembers — its read-safety
+        // fallbacks can return ghosts). This guarantees leadership never lands on
+        // a deleted character, and computing first shrinks the window in which a
+        // later failed write could leave the guild leaderless.
+        let nextLeaderId: string | null = null;
+        if (isLeader) {
+            const { data: others } = await supabase
+                .from('guild_members')
+                .select('character_id')
+                .eq('guild_id', params.guildId);
+            const candidateIds = (others ?? [])
+                .map((o: { character_id: string }) => o.character_id)
+                .filter((id: string) => id !== params.characterId);
+            if (candidateIds.length > 0) {
+                const live = await this
+                    .get<Array<{ id: string }>>({ url: `/rest/v1/characters?id=in.(${candidateIds.join(',')})&select=id` })
+                    .catch(() => [] as Array<{ id: string }>);
+                const liveIds = live.map((c) => c.id);
+                if (liveIds.length > 0) {
+                    nextLeaderId = liveIds[Math.floor(Math.random() * liveIds.length)];
+                }
+            }
+        }
+
+        // Remove the leaver — surface failures instead of silently no-oping.
+        const { error: delErr } = await supabase
             .from('guild_members')
             .delete()
             .eq('guild_id', params.guildId)
             .eq('character_id', params.characterId);
-        if (guild.leader_id === params.characterId) {
-            const { data: rest } = await supabase
-                .from('guild_members')
-                .select('character_id,joined_at')
-                .eq('guild_id', params.guildId)
-                .order('joined_at', { ascending: true })
-                .limit(1);
-            if (rest && rest.length > 0) {
-                await supabase
-                    .from('guilds')
-                    .update({ leader_id: rest[0].character_id })
-                    .eq('id', params.guildId);
-                return { disbanded: false };
-            }
-            // No one left -> drop the guild row. Cascades clean up
-            // join requests, treasury, boss state, etc.
-            await supabase.from('guilds').delete().eq('id', params.guildId);
-            return { disbanded: true };
+        if (delErr) throw delErr;
+
+        if (!isLeader) return { disbanded: false };
+
+        if (nextLeaderId) {
+            const { error: upErr } = await supabase
+                .from('guilds')
+                .update({ leader_id: nextLeaderId })
+                .eq('id', params.guildId);
+            if (upErr) throw upErr;
+            return { disbanded: false };
         }
-        return { disbanded: false };
+
+        // No LIVE successor -> disband. Purge any leftover (ghost) member rows
+        // first so nothing dangles, then drop the guild row (cascades clean
+        // join requests / treasury / boss state).
+        await supabase.from('guild_members').delete().eq('guild_id', params.guildId);
+        const { error: gErr } = await supabase.from('guilds').delete().eq('id', params.guildId);
+        if (gErr) throw gErr;
+        return { disbanded: true };
+    };
+
+    /** Leader-only (UI-gated): disband the whole guild — delete every member
+     *  row then the guild itself (FK cascades clean join requests / treasury /
+     *  boss state). Lets a leader remove the guild without first leaving. */
+    disbandGuild = async (guildId: string): Promise<void> => {
+        const { error: mErr } = await supabase.from('guild_members').delete().eq('guild_id', guildId);
+        if (mErr) throw mErr;
+        const { error: gErr } = await supabase.from('guilds').delete().eq('id', guildId);
+        if (gErr) throw gErr;
     };
 
     /** Leader-only: kick a member from the guild. */
@@ -304,9 +342,37 @@ class GuildApi extends BaseApi {
     };
 
     listMembers = async (guildId: string): Promise<IGuildMemberRow[]> => {
-        return this.get<IGuildMemberRow[]>({
+        const rows = await this.get<IGuildMemberRow[]>({
             url: `/rest/v1/guild_members?guild_id=eq.${encodeURIComponent(guildId)}&select=*&order=joined_at.asc`,
         });
+        if (rows.length === 0) return rows;
+
+        // `guild_members` is a denormalised snapshot and isn't FK-cascaded, so a
+        // member whose character was deleted lingers as a "ghost" row. We HIDE
+        // such ghosts from the roster (read-only — we never delete here; that
+        // caused a data-loss incident. Orphan rows are cleaned at delete time by
+        // characterApi.deleteCharacter, and the disband-if-empty flow handles
+        // truly empty guilds).
+        const ids = [...new Set(rows.map((r) => r.character_id))];
+        // UUIDs go UNQUOTED in PostgREST `in.()` — quoting them silently matches
+        // nothing, which would hide the ENTIRE roster.
+        const idList = ids.join(',');
+        let existing: Set<string>;
+        try {
+            const chars = await this.get<Array<{ id: string }>>({
+                url: `/rest/v1/characters?id=in.(${idList})&select=id`,
+            });
+            existing = new Set(chars.map((c) => c.id));
+        } catch {
+            return rows; // check failed -> show everyone, never hide live members
+        }
+
+        // Guard: if the existence check came back empty, treat it as unreliable
+        // (or a genuinely empty-of-live-chars guild) and show the raw roster
+        // rather than blanking it — never hide every member at once.
+        if (existing.size === 0) return rows;
+
+        return rows.filter((r) => existing.has(r.character_id));
     };
 
     /** Push character's freshest stats so the guild roster shows

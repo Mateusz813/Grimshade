@@ -104,13 +104,21 @@ describe('characterApi.updateCharacter', () => {
 });
 
 describe('characterApi.deleteCharacter', () => {
-    it('issues DELETE filtered by id', async () => {
-        mockApi.delete.mockResolvedValueOnce(mkRes(undefined));
+    it('cascades membership cleanup (guild/party) then DELETEs the character, leaving chat alone', async () => {
+        mockApi.delete.mockResolvedValue(mkRes(undefined));
         await characterApi.deleteCharacter('to-yeet');
-        expect(mockApi.delete).toHaveBeenCalledWith(
-            '/rest/v1/characters?id=eq.to-yeet',
-            expect.any(Object),
-        );
+
+        // Membership tables (not FK-cascaded) get cleaned so the deleted
+        // character vanishes from its guild / party roster.
+        expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/guild_members?character_id=eq.to-yeet', expect.any(Object));
+        expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/party_members?character_id=eq.to-yeet', expect.any(Object));
+        expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/guild_join_requests?character_id=eq.to-yeet', expect.any(Object));
+        // The character row itself.
+        expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/characters?id=eq.to-yeet', expect.any(Object));
+
+        // Chat history is intentionally PRESERVED — messages must NOT be deleted.
+        const deletedUrls = mockApi.delete.mock.calls.map((c: unknown[]) => String(c[0]));
+        expect(deletedUrls.some((u: string) => u.includes('/messages'))).toBe(false);
     });
 });
 

@@ -223,39 +223,95 @@
     }
   }
 
-  &__confirm-wrap {
+  // -- Password-gated delete modal -------------------------------------------
+  &__modal-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
   }
 
-  &__confirm-label {
-    font-size: 0.75rem;
+  &__modal {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: $color-bg-card;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  &__modal-title {
+    margin: 0;
+    font-size: 1.1rem;
+    color: $color-text;
+
+    strong { color: $color-mythic; }
+  }
+
+  &__modal-text {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: $color-text-muted;
+  }
+
+  &__modal-input {
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+    color: $color-text;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+
+    &:focus {
+      outline: none;
+      border-color: $color-accent;
+    }
+  }
+
+  &__modal-error {
+    margin: 0;
+    font-size: 0.8rem;
     color: $color-mythic;
   }
 
-  &__delete-confirm-btn {
-    background: $color-mythic;
-    color: #fff;
-    border: none;
-    border-radius: $radius-sm;
-    padding: 0.25rem 0.75rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-    font-weight: 600;
-
-    &:disabled { opacity: 0.6; }
+  &__modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
   }
 
-  &__cancel-btn {
+  &__modal-cancel {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    color: $color-text-muted;
     background: transparent;
     border: 1px solid $color-border;
     border-radius: $radius-sm;
-    padding: 0.2rem 0.5rem;
-    font-size: 0.8rem;
-    color: $color-text-muted;
     cursor: pointer;
+  }
+
+  &__modal-delete {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: $color-mythic;
+    border: none;
+    border-radius: $radius-sm;
+    cursor: pointer;
+
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 
   &__create-btn {
