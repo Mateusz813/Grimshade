@@ -6,6 +6,8 @@ import { getItemImage, getStoneImage } from './spriteAssets';
 interface IGenItemInfo {
     type: string;
     slot: EquipmentSlot;
+    /** Parsed item level from the "_lvlN_" part of the id; undefined for starters / no level part. */
+    itemLevel?: number;
 }
 
 const _genInfoCache = new Map<string, IGenItemInfo | null>();
@@ -28,6 +30,9 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     // Starter weapons: "starter_sword" (no _lvl part)
     const isStarter = itemId.startsWith('starter_') && parts.length < 2;
     const typePart = isStarter ? itemId.replace('starter_', '') : (parts.length >= 2 ? parts[0] : null);
+    // Level lives in the "_lvlN_rarity" tail (parts[1] === "N_rarity").
+    const parsedLevel = parts.length >= 2 ? parseInt(parts[1], 10) : NaN;
+    const itemLevel = Number.isFinite(parsedLevel) && parsedLevel > 0 ? parsedLevel : undefined;
 
     if (!typePart) {
         _genInfoCache.set(itemId, null);
@@ -37,7 +42,7 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     // Weapons
     for (const w of (itemTemplates.weapons as { type: string; slot: string }[])) {
         if (w.type === typePart) {
-            const info: IGenItemInfo = { type: w.type, slot: w.slot as EquipmentSlot };
+            const info: IGenItemInfo = { type: w.type, slot: w.slot as EquipmentSlot, itemLevel };
             _genInfoCache.set(itemId, info);
             return info;
         }
@@ -46,7 +51,7 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     // Offhands
     for (const o of (itemTemplates.offhands as { type: string; slot: string }[])) {
         if (o.type === typePart) {
-            const info: IGenItemInfo = { type: o.type, slot: o.slot as EquipmentSlot };
+            const info: IGenItemInfo = { type: o.type, slot: o.slot as EquipmentSlot, itemLevel };
             _genInfoCache.set(itemId, info);
             return info;
         }
@@ -57,7 +62,7 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
         for (const piece of category.pieces) {
             const armorType = `${prefix}_${piece.slot}`;
             if (typePart === armorType) {
-                const info: IGenItemInfo = { type: armorType, slot: piece.slot as EquipmentSlot };
+                const info: IGenItemInfo = { type: armorType, slot: piece.slot as EquipmentSlot, itemLevel };
                 _genInfoCache.set(itemId, info);
                 return info;
             }
@@ -67,7 +72,7 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     // Accessories
     for (const a of (itemTemplates.accessories as { type: string; slot: string }[])) {
         if (a.type === typePart) {
-            const info: IGenItemInfo = { type: a.type, slot: a.slot as EquipmentSlot };
+            const info: IGenItemInfo = { type: a.type, slot: a.slot as EquipmentSlot, itemLevel };
             _genInfoCache.set(itemId, info);
             return info;
         }
@@ -449,17 +454,15 @@ export const getEnhancementCost = (targetLevel: number, itemRarity: Rarity = 'co
 
 /**
  * Enhancement multiplier curve.
- * Designed so upgrades feel meaningful:
- *   +1  -> 1.15x    +2  -> 1.32x    +3  -> 1.52x    +4  -> 1.75x    +5  -> 2.01x
- *   +6  -> 2.31x    +7  -> 2.66x    +8  -> 3.06x    +9  -> 3.52x    +10 -> 4.05x
- *   +15 -> ~5.94x   +20 -> ~8.74x
- *
- * Levels 1-10 use 1.15^level; levels 11+ continue from that base at 1.08^(level-10).
+ * 2026-06-20 balance pass (kill-rate spec): each +1 upgrade ≈ +10% effective
+ * power → ≈ +10% kills, per design ("z każdym ulepszeniem +1 ≈ +10% potworów").
+ * Linear: +U → ×(1 + 0.10·U).  +3 = 1.30, +5 = 1.50, +7 = 1.70, +30 = 4.0.
+ * Combined with rarity (heroic 2.05), heroic+30 ≈ 8.2× a common+0 — strong
+ * investment payoff by design (rzadszy/mocniejszy gear = znacznie więcej zabić).
  */
 export const getEnhancementMultiplier = (upgradeLevel: number): number => {
     if (upgradeLevel <= 0) return 1;
-    if (upgradeLevel <= 10) return Math.pow(1.15, upgradeLevel);
-    return Math.pow(1.15, 10) * Math.pow(1.08, upgradeLevel - 10);
+    return 1 + upgradeLevel * 0.10;
 };
 
 // Enhancement boosts base stats along the curve above AND guarantees at least +1 per level
@@ -670,6 +673,23 @@ export const getTotalEquipmentStats = (
         }
     }
     return total;
+};
+
+/** Average level of equipped GENERATED items (parsed from "type_lvlN_rarity" via getGeneratedItemInfo). Fresh/empty → 1. */
+export const getEquippedGearLevel = (equipment: Partial<IEquipment>): number => {
+    const lv: number[] = [];
+    for (const item of Object.values(equipment)) {
+        if (!item) continue;
+        const info = getGeneratedItemInfo(item.itemId);
+        if (info?.itemLevel) lv.push(info.itemLevel);
+    }
+    return lv.length ? Math.round(lv.reduce((a, b) => a + b, 0) / lv.length) : 1;
+};
+
+/** Outgoing-damage multiplier when under-geared for the content level. dmg × (gearLvl/contentLvl)², floor 0.05. */
+export const getGearGapMultiplier = (gearLevel: number, contentLevel: number): number => {
+    if (contentLevel <= 0 || gearLevel >= contentLevel) return 1;
+    return Math.max(0.05, Math.pow(gearLevel / contentLevel, 2));
 };
 
 /**

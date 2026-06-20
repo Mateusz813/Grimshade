@@ -2402,6 +2402,14 @@ const Trainer = () => {
         // its def_pen modifier.
         const defPenPct = apply.defPenPct ?? 0;
         let dmg = isDamageHit ? Math.floor(myAttack * def.damage * (1 + defPenPct / 100)) : 0;
+        // instant_kill_chance success → finite execute burst. Trainer dummies
+        // are invincible, so we use the same pseudo-maxHp the DOT path uses
+        // (max(100, atk*4)) so the displayed burst is a meaningful number
+        // instead of a one-shot. 12% of that, or the normal hit if bigger.
+        if (isDamageHit && (apply.executeBurstPct ?? 0) > 0) {
+            const trainerPseudoMaxHp = Math.max(100, myAttack * 4);
+            dmg = Math.max(dmg, Math.floor(trainerPseudoMaxHp * (apply.executeBurstPct ?? 0) / 100));
+        }
         // Necromancer Klątwa Śmierci (mark_amp) — first damage hit
         // (basic OR spell) on the marked target consumes the charge
         // and bumps damage by mult ×6 (= 500% more). Buff-only casts
@@ -2506,11 +2514,17 @@ const Trainer = () => {
                     // Per-target IK roll dla AOE+IK skilli.
                     const splashDmgT = Math.max(1, Math.floor(dmg * 0.75));
                     const splashIkPctT = apply.instantKillPct ?? 0;
+                    const trainerPseudoMaxHpSplash = Math.max(100, myAttack * 4);
                     for (let i = 1; i < trainerCount; i++) {
                         const splashIk = splashIkPctT > 0 && Math.random() * 100 < splashIkPctT;
                         fx.triggerEnemySkillAnim(i, def.id);
                         if (splashIk) {
-                            fx.pushEnemyFloat(i, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                            // AOE re-roll of instant_kill_chance → finite
+                            // execute burst (12% of pseudo-maxHp), not a kill.
+                            const splashBurst = Math.max(splashDmgT, Math.floor(trainerPseudoMaxHpSplash * 12 / 100));
+                            fx.pushEnemyFloat(i, splashBurst, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                            pushDamage(splashBurst);
+                            totalDmgDealtThisCast += splashBurst;
                         } else {
                             // 2026-05 v7: each splash dummy consumes its
                             // own markAmp / markAmpAll so AOE Kraina hits

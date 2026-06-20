@@ -57,6 +57,18 @@ export interface IPartyMemberSnapshot {
      *  queue summon avatar + per-type badge counts on the necro's
      *  ally card. Undefined for non-necros / pre-v16 clients. */
     summons?: Array<{ type: 'skeleton' | 'ghost' | 'demon' | 'lich'; hp: number; maxHp: number; mp: number; maxMp: number }>;
+    /** 2026-06-19 spec ("party damage ignoruje ekwipunek sojusznikow"):
+     *  the member's REAL effective combat stats from `getEffectiveChar`
+     *  (base + equipment + upgrades + training + elixirs + transform).
+     *  The leader's Boss/Raid combat represents each human party-mate as
+     *  an AI bot scaled to the LEADER's level with NO gear — so a fully
+     *  geared friend dealt only bot-tier damage. Broadcasting the real
+     *  `attack`/`defense` lets the leader override the bot slot so the
+     *  friend hits with their actual power. Undefined on snapshots from
+     *  older clients — the leader falls back to the bot formula (safe
+     *  degrade, nothing breaks). */
+    attack?: number;
+    defense?: number;
     /** Local timestamp the snapshot was last received. Stale entries
      *  (>30 s old) are auto-cleared by the GC tick. */
     receivedAt: number;

@@ -208,11 +208,11 @@
     ],
     "rarityMultipliers": {
         "common":    { "statMultiplier": 1.0, "priceMultiplier": 1.0 },
-        "rare":      { "statMultiplier": 1.3, "priceMultiplier": 2.5 },
-        "epic":      { "statMultiplier": 1.7, "priceMultiplier": 5.0 },
-        "legendary": { "statMultiplier": 2.2, "priceMultiplier": 10.0 },
-        "mythic":    { "statMultiplier": 3.0, "priceMultiplier": 25.0 },
-        "heroic":    { "statMultiplier": 4.0, "priceMultiplier": 50.0 }
+        "rare":      { "statMultiplier": 1.15, "priceMultiplier": 2.5 },
+        "epic":      { "statMultiplier": 1.30, "priceMultiplier": 5.0 },
+        "legendary": { "statMultiplier": 1.45, "priceMultiplier": 10.0 },
+        "mythic":    { "statMultiplier": 1.60, "priceMultiplier": 25.0 },
+        "heroic":    { "statMultiplier": 2.05, "priceMultiplier": 50.0 }
     },
     "starterWeapons": {
         "Knight":      { "type": "sword",      "name_pl": "Miecz Poczatku",     "name_en": "Sword of Beginnings",   "baseAtk": 11 },

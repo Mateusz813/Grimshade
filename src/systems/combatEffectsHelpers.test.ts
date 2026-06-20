@@ -184,6 +184,7 @@ describe('castSkill', () => {
         expect(out.aoe).toBe(false);
         expect(out.castDmgMult).toBe(1);
         expect(out.instantKill).toBe(false);
+        expect(out.executeBurstPct).toBe(0);
         expect(out.multistrike).toBe(0);
     });
 

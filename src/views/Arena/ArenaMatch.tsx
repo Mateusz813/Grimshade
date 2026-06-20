@@ -267,9 +267,15 @@ const ArenaMatch = () => {
                     } else {
                         const effDef = target.defense * (1 - apply.defPenPct / 100);
                         const baseDmg = caster.attack * chosen.damage;
-                        const finalDmg = Math.max(1, Math.floor(
+                        let finalDmg = Math.max(1, Math.floor(
                             baseDmg * ARENA_DAMAGE_MULTIPLIER * apply.castDmgMult - effDef * 0.3,
                         ));
+                        // instant_kill_chance success → finite execute burst
+                        // (12% of target max HP, or the normal hit if bigger),
+                        // NOT a one-shot.
+                        if ((apply.executeBurstPct ?? 0) > 0) {
+                            finalDmg = Math.max(finalDmg, Math.floor(target.maxHp * (apply.executeBurstPct ?? 0) / 100));
+                        }
                         dealt = dealDamage(target, finalDmg);
                     }
                 }
@@ -312,10 +318,15 @@ const ArenaMatch = () => {
                 const hit = resolveBasicHit(caster.status, caster.class, baseDmg, target.status);
                 if (hit.dodged) return 0;
                 const effDef = target.defense * (1 - caster.status.defPenPct / 100);
-                const finalDmg = Math.max(1, Math.floor(hit.damage * ARENA_DAMAGE_MULTIPLIER - effDef * 0.5));
+                let finalDmg = Math.max(1, Math.floor(hit.damage * ARENA_DAMAGE_MULTIPLIER - effDef * 0.5));
                 if (hit.instantKill) {
                     target.hp = 0;
                     return target.maxHp;
+                }
+                // Party instant-kill buff roll → finite execute burst (12% of
+                // target max HP, or the normal hit if bigger), NOT a one-shot.
+                if ((hit.executeBurstPct ?? 0) > 0) {
+                    finalDmg = Math.max(finalDmg, Math.floor(target.maxHp * (hit.executeBurstPct ?? 0) / 100));
                 }
                 const dealt = dealDamage(target, finalDmg);
                 if (hit.casterHeal > 0) {

@@ -208,9 +208,10 @@ describe('castSkill: shield_bash (stun:3000) lands on every combat type', () => 
             // 5. No accidental damage multiplier from a stun-only skill.
             expect(result.castDmgMult).toBeGreaterThanOrEqual(1);
             expect(result.castDmgMult).toBeLessThanOrEqual(1.01);
-            // 6. No accidental summons / instant-kill / heal flags.
+            // 6. No accidental summons / instant-kill / execute-burst / heal flags.
             expect(result.summons).toEqual([]);
             expect(result.instantKill).toBe(false);
+            expect(result.executeBurstPct).toBe(0);
             expect(result.healCasterPctOfMaxHp).toBe(0);
         });
     }

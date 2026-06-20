@@ -90,17 +90,17 @@ describe('clampGuildBossTier', () => {
 // -- getGuildBossMaxHp --------------------------------------------------------
 
 describe('getGuildBossMaxHp', () => {
-    it('tier 1 = 15M HP', () => {
-        expect(getGuildBossMaxHp(1)).toBe(15_000_000);
+    it('tier 1 = 2M HP', () => {
+        expect(getGuildBossMaxHp(1)).toBe(2_000_000);
     });
 
     it('treats tier <= 0 as tier 1', () => {
-        expect(getGuildBossMaxHp(0)).toBe(15_000_000);
-        expect(getGuildBossMaxHp(-3)).toBe(15_000_000);
+        expect(getGuildBossMaxHp(0)).toBe(2_000_000);
+        expect(getGuildBossMaxHp(-3)).toBe(2_000_000);
     });
 
-    it('tier 2 = 15M × 1.55 = 23.25M', () => {
-        expect(getGuildBossMaxHp(2)).toBe(Math.floor(15_000_000 * 1.55));
+    it('tier 2 = 2M × 1.25 = 2.5M', () => {
+        expect(getGuildBossMaxHp(2)).toBe(Math.floor(2_000_000 * 1.25));
     });
 
     it('is strictly increasing with tier', () => {
@@ -109,9 +109,9 @@ describe('getGuildBossMaxHp', () => {
         }
     });
 
-    it('follows the 1.55^(tier-1) growth curve', () => {
-        // Tier 5 = 15M × 1.55^4.
-        const expected = Math.floor(15_000_000 * Math.pow(1.55, 4));
+    it('follows the 1.25^(tier-1) growth curve', () => {
+        // Tier 5 = 2M × 1.25^4.
+        const expected = Math.floor(2_000_000 * Math.pow(1.25, 4));
         expect(getGuildBossMaxHp(5)).toBe(expected);
     });
 });
@@ -124,8 +124,8 @@ describe('guildXpToNextLevel', () => {
         expect(guildXpToNextLevel(-5)).toBe(0);
     });
 
-    it('level 1 -> 2 needs 1 × tier-1 boss HP = 15M XP', () => {
-        expect(guildXpToNextLevel(1)).toBe(15_000_000);
+    it('level 1 -> 2 needs 1 × tier-1 boss HP = 2M XP', () => {
+        expect(guildXpToNextLevel(1)).toBe(2_000_000);
     });
 
     it('level 2 -> 3 needs 2 × tier-2 boss HP', () => {
@@ -277,10 +277,12 @@ describe('computeGuildBossDamage', () => {
         expect(dmg).toBeLessThanOrEqual(cap);
     });
 
-    it('higher tiers absorb damage better (lower per-hit dmg)', () => {
+    it('per-swing damage scales UP with tier (2026-06-18 balance: was DOWN)', () => {
+        // New curve: damage grows +5%/tier instead of shrinking ÷1.15^tier, so
+        // high tiers stay finite/clearable instead of needing millions of swings.
         const tier1 = computeGuildBossDamage(100, 100, 1);
         const tier10 = computeGuildBossDamage(100, 100, 10);
-        expect(tier1).toBeGreaterThanOrEqual(tier10);
+        expect(tier10).toBeGreaterThan(tier1);
     });
 
     it('treats tier <= 0 as tier 1', () => {
@@ -288,6 +290,13 @@ describe('computeGuildBossDamage', () => {
         const tier0 = computeGuildBossDamage(50, 50, 0);
         const tier1 = computeGuildBossDamage(50, 50, 1);
         expect(tier0).toBe(tier1);
+    });
+
+    it('high tier stays CLEARABLE (regression: old ÷1.15^tier curve diverged → trillions of swings)', () => {
+        // Tier 50, a geared veteran: swings-to-clear must be bounded, not astronomical.
+        const hp = getGuildBossMaxHp(50);
+        const dmg = computeGuildBossDamage(50_000_000, 1000, 50);
+        expect(hp / dmg).toBeLessThan(1000); // was ~10^12+ under the old curve
     });
 });
 

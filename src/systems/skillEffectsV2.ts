@@ -23,7 +23,7 @@
  *     stun_chance:<percent>:<durationMs>          % chance to stun target
  *     paralyze:<durationMs>                       target cannot act (alt visual)
  *     dot:<durationMs>:<percent_max_hp_per_sec>   damage-over-time on target
- *     instant_kill_chance:<percent>               % chance the cast oneshot kills
+ *     instant_kill_chance:<percent>               % chance the cast deals a finite execute burst (12% of target max HP, not a oneshot)
  *     execute_below:<percent_hp>                  oneshot if target HP% ≤ N
  *     mark_amp:<mult>:<count>:<durationMs>        next N ally hits on target ×mult
  *     mark_amp_all:<mult>:<durationMs>            all hits on target ×mult for N ms
@@ -379,7 +379,9 @@ export interface IApplyResult {
     castDmgMult: number;
     /** % of target defence to ignore on this cast. */
     defPenPct: number;
-    /** True -> cast oneshot kills target regardless of HP. */
+    /** True -> cast oneshot kills target regardless of HP. Only ever set by
+     *  `execute_below` (the low-HP finisher). The `instant_kill_chance` CHANCE
+     *  roll no longer sets this — it now produces a finite `executeBurstPct`. */
     instantKill: boolean;
     /**
      * Original `instant_kill_chance:N` percent — preserved so AOE callers
@@ -388,6 +390,15 @@ export interface IApplyResult {
      * 15% IK roll, not just the primary target). 0 when no IK atom.
      */
     instantKillPct: number;
+    /**
+     * Finite execute-burst on a SUCCESSFUL `instant_kill_chance` roll. When
+     * > 0 the cast deals `max(normalDmg, floor(targetMaxHp * pct / 100))`
+     * instead of the target's full HP — i.e. a guaranteed big hit, NOT a
+     * one-shot. 12 on a passed roll, 0 otherwise. This replaces the old
+     * `instantKill = true` behavior for the CHANCE proc so a lucky roll can
+     * no longer delete a full-HP boss.
+     */
+    executeBurstPct: number;
     /** % of damage dealt that should heal caster (post-hit). */
     healCasterPctOfDmg: number;
     /** Direct heal amount (% of caster max HP). */
@@ -476,6 +487,7 @@ const blank = (): IApplyResult => ({
     defPenPct: 0,
     instantKill: false,
     instantKillPct: 0,
+    executeBurstPct: 0,
     healCasterPctOfDmg: 0,
     healCasterPctOfMaxHp: 0,
     healLowestAllyPct: 0,
@@ -645,9 +657,12 @@ export const applyEffects = (
             }
             case 'instant_kill_chance':
                 // Track the percent so AOE callers can re-roll per
-                // splash target. Primary roll happens here.
+                // splash target. Primary roll happens here. On success we no
+                // longer one-shot — instead the cast deals a finite execute
+                // burst (12% of target max HP, or the normal hit if bigger)
+                // so a lucky roll can't delete a full-HP boss.
                 r.instantKillPct = Math.max(r.instantKillPct, e.a ?? 0);
-                if (Math.random() * 100 < (e.a ?? 0)) r.instantKill = true;
+                if (Math.random() * 100 < (e.a ?? 0)) r.executeBurstPct = 12;
                 break;
             case 'execute_below':
                 if (targetHpPct <= (e.a ?? 0)) r.instantKill = true;
@@ -891,7 +906,11 @@ export const applyEffects = (
                 //     for free with the same cast.
                 r.deathApocalypse = true;
                 r.deathApocalypseSelfHpFloor = 0.20; // drop to 20% normally; 3% when below 20% (handled by view)
-                r.deathApocalypseTargetMaxHpPct = 50;
+                // 2026-06-18 balance: 50% → 12% of target max HP per cast. At 50%
+                // a Necromancer could delete ANY boss (incl. level-1000) in 2 casts
+                // regardless of its HP — a guaranteed boss-melter. 12% keeps it a
+                // strong execute-style nuke (~8-9 casts) without trivializing bosses.
+                r.deathApocalypseTargetMaxHpPct = 12;
                 break;
             }
             default:
@@ -921,8 +940,18 @@ export interface IBasicHitResolution {
     critMult: number;
     /** Damage that goes back to the attacker as heal (lifesteal queue). */
     casterHeal: number;
-    /** This hit also instant-kills (party-wide instant-kill buff fired). */
+    /** This hit also instant-kills. No longer set by the party-wide
+     *  instant-kill CHANCE buff — that now produces a finite
+     *  `executeBurstPct` instead. Reserved for future true-kill basic hits. */
     instantKill: boolean;
+    /**
+     * Finite execute-burst on a SUCCESSFUL party-wide instant-kill buff roll
+     * (`party_instant_kill_chance_next` → bard universe song). When > 0 the
+     * caller deals `max(normalDmg, floor(targetMaxHp * pct / 100))` instead
+     * of a one-shot. 12 on a passed roll, 0 otherwise. Mirrors the cast-side
+     * `instant_kill_chance` split so a buffed basic hit can't delete a boss.
+     */
+    executeBurstPct: number;
     /** Heal target produced by `next_ally_heal`. % of caster's max HP. */
     healLowestAllyPct: number;
 }
@@ -942,6 +971,7 @@ export const resolveBasicHit = (
         critMult: 1,
         casterHeal: 0,
         instantKill: false,
+        executeBurstPct: 0,
         healLowestAllyPct: 0,
     };
     // Dodge — `dodgeNext` queue first (ordered consumes), then dodge buff %.
@@ -1019,10 +1049,12 @@ export const resolveBasicHit = (
         top.count -= 1;
         if (top.count <= 0) attackerStatus.nextAllyHeal.shift();
     }
-    // Instant-kill chance from party buff (bard universe song).
+    // Instant-kill chance from party buff (bard universe song). On a passed
+    // roll we now deal a finite execute burst (12% of target max HP) instead
+    // of a one-shot, mirroring the cast-side `instant_kill_chance` split.
     if (attackerStatus.nextAllyInstantKillPct.length > 0) {
         const top = attackerStatus.nextAllyInstantKillPct[0];
-        if (Math.random() * 100 < top.pct) out.instantKill = true;
+        if (Math.random() * 100 < top.pct) out.executeBurstPct = 12;
         top.count -= 1;
         if (top.count <= 0) attackerStatus.nextAllyInstantKillPct.shift();
     }

@@ -209,6 +209,7 @@ describe('huntApplySkillEffectV2: damage + stun skill (shield_bash)', () => {
         expect(result).not.toBeNull();
         expect(result!.summons).toEqual([]);
         expect(result!.instantKill).toBe(false);
+        expect(result!.executeBurstPct).toBe(0);
         expect(result!.defPenPct).toBe(0);
         expect(result!.aoeStunIdxs).toEqual([]);
     });

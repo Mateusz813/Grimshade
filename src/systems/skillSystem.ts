@@ -387,6 +387,23 @@ export const getSkillUpgradeBonus = (upgradeLevel: number): number => {
     return mult - 1;
 };
 
+/**
+ * Combat-side skill-upgrade damage multiplier — MODEST & CAPPED.
+ *
+ * The big `getSkillUpgradeBonus` curve (used in the Inventory preview) was
+ * never wired into the actual fight, so skill upgrades did nothing in combat.
+ * That full curve (+10 -> +305%) is far too strong to apply directly on top of
+ * the rebalanced combat numbers. This helper is the value that actually scales
+ * the SKILL DAMAGE in the four combat views + the hunt engine:
+ *   +1 -> +2%   +5 -> +10%   +10 -> +20%   +20 -> +30%   +30 -> +40%
+ * First 10 levels give +2% each, levels 11+ give +1% each. Returns a
+ * multiplier (1.0 = no bonus) applied ONCE to the final skill damage.
+ */
+export const getCombatSkillUpgradeMultiplier = (upgradeLevel: number): number =>
+    upgradeLevel <= 0
+        ? 1
+        : 1 + Math.min(upgradeLevel, 10) * 0.02 + Math.max(0, upgradeLevel - 10) * 0.01;
+
 // -- Spell Chest System ------------------------------------------------------
 // Spell chests are consumable items required to unlock and upgrade active skills.
 // They drop from monsters level 5+ and stack in inventory.

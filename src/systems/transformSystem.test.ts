@@ -330,7 +330,7 @@ describe('transformSystem', () => {
   });
 
   describe('applyTransformBossStats', () => {
-    it('should multiply HP, ATK, DEF by 8', () => {
+    it('should multiply HP by 5, ATK & DEF by 3 (2026-06-20: boss is the tankiest slot)', () => {
       const monster: IMonster = {
         id: 'test',
         name_pl: 'Test',
@@ -347,9 +347,9 @@ describe('transformSystem', () => {
       };
 
       const boss = applyTransformBossStats(monster);
-      expect(boss.hp).toBe(800);
-      expect(boss.attack).toBe(160);
-      expect(boss.defense).toBe(80);
+      expect(boss.hp).toBe(500);
+      expect(boss.attack).toBe(60);
+      expect(boss.defense).toBe(30);
       // Other stats unchanged
       expect(boss.speed).toBe(5);
       expect(boss.xp).toBe(50);
@@ -380,10 +380,10 @@ describe('transformSystem', () => {
   });
 
   describe('TRANSFORM_BOSS_MULTIPLIER', () => {
-    it('should be x8 for all stats', () => {
-      expect(TRANSFORM_BOSS_MULTIPLIER.hp).toBe(8.0);
-      expect(TRANSFORM_BOSS_MULTIPLIER.atk).toBe(8.0);
-      expect(TRANSFORM_BOSS_MULTIPLIER.def).toBe(8.0);
+    it('should be HP x5, ATK x3, DEF x3', () => {
+      expect(TRANSFORM_BOSS_MULTIPLIER.hp).toBe(5.0);
+      expect(TRANSFORM_BOSS_MULTIPLIER.atk).toBe(3.0);
+      expect(TRANSFORM_BOSS_MULTIPLIER.def).toBe(3.0);
     });
   });
 

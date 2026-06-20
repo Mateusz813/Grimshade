@@ -11,12 +11,12 @@ import {
     getSpellChestDropInfo,
     getPotionDropInfo,
 } from '../../systems/lootSystem';
-import { getTotalEquipmentStats, flattenItemsData, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
+import { getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import Icon from '../../components/atoms/Icon/Icon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import EmojiText from '../../components/atoms/Twemoji/EmojiText';
-import { getTrainingBonuses } from '../../systems/skillSystem';
+import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
@@ -1036,12 +1036,19 @@ const Combat = () => {
             // float on the targeted slot when Strzała Śmierci /
             // Skrytobójstwo / execute_below proc'd.
             const instantKillEvt = !!(data as { instantKill?: boolean })?.instantKill;
+            // instant_kill_chance finite execute burst from the auto-cast
+            // engine path — show DEATH ATTACK with the actual burst damage.
+            const executeBurstDmgEvt = (data as { executeBurstDmg?: number })?.executeBurstDmg ?? 0;
             if (skillId) {
                 if (!targetsEnemyEvt) {
                     fx.triggerAllySkillAnim(0, skillId);
                 } else {
                     fx.triggerEnemySkillAnim(idx, skillId);
-                    if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: getSkillIcon(skillId), isCrit });
+                    if (executeBurstDmgEvt > 0) {
+                        fx.pushEnemyFloat(idx, executeBurstDmgEvt, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                    } else if (dmg > 0) {
+                        fx.pushEnemyFloat(idx, dmg, 'spell', { icon: getSkillIcon(skillId), isCrit });
+                    }
                     if (stunLabelEvt) {
                         fx.pushEnemyFloat(idx, 0, 'spell', {
                             icon: stunLabelEvt === 'PARAL' ? 'locked' : 'dizzy',
@@ -1158,6 +1165,13 @@ const Combat = () => {
         const char    = useCharacterStore.getState().character;
         if (!skillId || !char || s.phase !== 'fighting' || !s.monster) return;
 
+        // Gear-gap penalty: under-geared players deal proportionally less skill
+        // damage so low-level gear can't carry a far-higher-level monster. Same
+        // multiplier the engine's basic/auto-skill path applies in
+        // doPlayerAttackTick (dmg × (gearLvl/monsterLvl)², floor 0.05).
+        const skillGearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), s.monster.level ?? 0);
+        const skillAtk = char.attack * skillGearGapMult;
+
         const manualMpCost = getSkillMpCost(skillId);
         if (s.playerCurrentMp < manualMpCost) {
             s.addLog('Za mało MP!', 'system');
@@ -1201,15 +1215,22 @@ const Combat = () => {
         const defPenFrac = Math.max(0, Math.min(1, (effApply?.defPenPct ?? 0) / 100));
         const effectiveEnemyDef = Math.max(0, Math.floor(s.monster.defense * (1 - defPenFrac)));
 
+        // Skill-upgrade combat bonus — hunt is solo, this is the local player's
+        // own manual cast. Modest & capped; folded into the skill's damage
+        // multiplier so it scales primary + AOE splash uniformly (matches the
+        // auto path in combatEngine.ts).
+        const skillUpgradeMult = getCombatSkillUpgradeMultiplier(
+            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+        );
         const r = calculateDamage({
-            baseAtk: char.attack, weaponAtk: rollWeaponDamage(),
-            skillBonus: Math.floor(char.attack * 0.5),
+            baseAtk: skillAtk, weaponAtk: rollWeaponDamage(),
+            skillBonus: Math.floor(skillAtk * 0.5),
             classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
             enemyDefense: effectiveEnemyDef,
             critChance: 0.20,
             maxCritChance: maxCrit,
             damageMultiplier: isDamageHit
-                ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillDmgMult
+                ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillDmgMult * skillUpgradeMult
                 : 0,
         });
 
@@ -1239,14 +1260,26 @@ const Combat = () => {
                 fx.pushEnemyFloat(s.activeTargetIdx, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                 s.addLog(`:skull: ${formatSkillName(skillId)}: DEATH ATTACK! Natychmiastowe zabicie!`, 'crit');
             } else {
-                s.dealToMonster(r.finalDamage);
-                totalDmgDealtThisCast += r.finalDamage;
+                // instant_kill_chance success → finite execute burst (12% of
+                // target max HP, or the normal hit if bigger), NOT a one-shot.
+                let primaryDmg = r.finalDamage;
+                if ((effApply?.executeBurstPct ?? 0) > 0) {
+                    const wm = useCombatStore.getState().waveMonsters[s.activeTargetIdx];
+                    const burst = Math.floor((wm?.maxHp ?? 0) * (effApply!.executeBurstPct) / 100);
+                    primaryDmg = Math.max(primaryDmg, burst);
+                    fx.pushEnemyFloat(s.activeTargetIdx, primaryDmg, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                    s.addLog(`:skull: ${formatSkillName(skillId)}: DEATH ATTACK! ${primaryDmg} dmg!`, 'crit');
+                }
+                s.dealToMonster(primaryDmg);
+                totalDmgDealtThisCast += primaryDmg;
                 if (effApply?.aoe) {
-                    const splashDmg = Math.max(1, Math.floor(r.finalDamage * 0.75));
+                    const splashDmg = Math.max(1, Math.floor(primaryDmg * 0.75));
                     // 2026-05 v6: per-target IK roll for AOE skills
                     // (Strzała Wszechświata `aoe;instant_kill_chance:15`
                     // gives each splash monster its own 15% IK chance,
-                    // not just the primary).
+                    // not just the primary). On success the splash now deals a
+                    // finite execute burst (12% of splash target max HP), not
+                    // a one-shot.
                     const splashIkPct = effApply?.instantKillPct ?? 0;
                     const wave = useCombatStore.getState().waveMonsters;
                     for (let ii = 0; ii < wave.length; ii++) {
@@ -1254,11 +1287,11 @@ const Combat = () => {
                         if (wave[ii].isDead) continue;
                         const splashIk = splashIkPct > 0 && Math.random() * 100 < splashIkPct;
                         if (splashIk) {
-                            const ikDmg = wave[ii].currentHp;
+                            const ikDmg = Math.max(splashDmg, Math.floor(wave[ii].maxHp * 12 / 100));
                             useCombatStore.getState().damageWaveMonster(ii, ikDmg);
                             totalDmgDealtThisCast += ikDmg;
                             fx.triggerEnemySkillAnim(ii, skillId);
-                            fx.pushEnemyFloat(ii, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                            fx.pushEnemyFloat(ii, ikDmg, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
                             // 2026-05 v7: each splash target consumes
                             // its own markAmp / markAmpAll so AOE Kraina
@@ -1454,8 +1487,8 @@ const Combat = () => {
                     const wm = fresh.waveMonsters[fresh.activeTargetIdx];
                     if (!wm || wm.isDead) return;
                     const followup = calculateDamage({
-                        baseAtk: char.attack, weaponAtk: rollWeaponDamage(),
-                        skillBonus: Math.floor(char.attack * 0.5),
+                        baseAtk: skillAtk, weaponAtk: rollWeaponDamage(),
+                        skillBonus: Math.floor(skillAtk * 0.5),
                         classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                         enemyDefense: effectiveEnemyDef,
                         critChance: (char.crit_chance ?? 0.05),

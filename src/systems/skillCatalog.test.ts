@@ -226,9 +226,9 @@ describe('every active skill: effect string parses and applies without throwing'
 describe('Knight skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.knight.find((s) => s.id === id)!;
 
-    it('shield_bash: stun:3000 stuns the target for 3000 ms (damage = 1.5× weapon)', () => {
+    it('shield_bash: stun:3000 stuns the target for 3000 ms (damage = 5.4× weapon)', () => {
         const s = find('shield_bash');
-        expect(s.damage).toBe(1.5);
+        expect(s.damage).toBe(5.4);
         expect(s.effect).toBe('stun:3000');
         const h = applySkill(s.effect);
         expect(h.target.stunMs).toBe(3000);
@@ -294,6 +294,8 @@ describe('Knight skills: each skill matches its declared effect', () => {
         expect(below.result.instantKill).toBe(true);
         // executeBelowPct in result preserved for view UI.
         expect(at.result.executeBelowPct).toBe(25);
+        // execute_below is a TRUE kill — never sets the finite execute-burst.
+        expect(at.result.executeBurstPct).toBe(0);
     });
 
     it('war_cry: party_attack_up:30:15000 buffs party ATK +30% for 15s', () => {
@@ -358,25 +360,25 @@ describe('Knight skills: each skill matches its declared effect', () => {
 describe('Mage skills: each skill matches its declared effect', () => {
     const find = (id: string) => ACTIVE.mage.find((s) => s.id === id)!;
 
-    it('fireball: effect null + damage 4.0× weapon (pure damage spell)', () => {
+    it('fireball: effect null + damage 6.6× weapon (pure damage spell)', () => {
         const s = find('fireball');
         expect(s.effect).toBeNull();
-        expect(s.damage).toBe(4.0);
+        expect(s.damage).toBe(6.6);
         const h = applySkill(s.effect);
         expect(h.parsed).toEqual([]);
         expect(h.result.aoe).toBe(false);
     });
 
-    it('ice_lance: effect null + damage 5.0× weapon', () => {
+    it('ice_lance: effect null + damage 6.6× weapon', () => {
         const s = find('ice_lance');
         expect(s.effect).toBeNull();
-        expect(s.damage).toBe(5.0);
+        expect(s.damage).toBe(6.6);
     });
 
-    it('thunder_strike: aoe + damage 6.5× weapon', () => {
+    it('thunder_strike: aoe + damage 6.6× weapon', () => {
         const s = find('thunder_strike');
         expect(s.effect).toBe('aoe');
-        expect(s.damage).toBe(6.5);
+        expect(s.damage).toBe(6.6);
         const h = applySkill(s.effect);
         expect(h.result.aoe).toBe(true);
     });
@@ -393,10 +395,10 @@ describe('Mage skills: each skill matches its declared effect', () => {
         expect(h.caster.dmgAmpNext[0]).toMatchObject({ mult: 3, count: 1 });
     });
 
-    it('blizzard: aoe + damage 11.0× weapon (per row in skills.json)', () => {
+    it('blizzard: aoe + damage 6.6× weapon (per row in skills.json)', () => {
         const s = find('blizzard');
         expect(s.effect).toBe('aoe');
-        expect(s.damage).toBe(11.0);
+        expect(s.damage).toBe(6.6);
     });
 
     it('meteor: aoe;stun:3000 — AOE flag + every enemy stunned for 3000 ms', () => {
@@ -419,10 +421,10 @@ describe('Mage skills: each skill matches its declared effect', () => {
         }
     });
 
-    it('arcane_explosion: aoe + damage 24.0', () => {
+    it('arcane_explosion: aoe + damage 11.0', () => {
         const s = find('arcane_explosion');
         expect(s.effect).toBe('aoe');
-        expect(s.damage).toBe(24.0);
+        expect(s.damage).toBe(11.0);
     });
 
     it('apocalypse_spell: aoe;immortal:5000 — AOE + 5s caster immortality', () => {
@@ -563,11 +565,11 @@ describe('Cleric skills: each skill matches its declared effect', () => {
         }
     });
 
-    it('holy_judgment: aoe;def_pen:80 — AOE + 80% defence-pen', () => {
+    it('holy_judgment: aoe;def_pen:60 — AOE + 60% defence-pen', () => {
         const s = find('holy_judgment');
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
-        expect(h.result.defPenPct).toBe(80);
+        expect(h.result.defPenPct).toBe(60);
     });
 
     it('divine_wrath (Boski Filar): party_lifesteal_next:100:5 — every ally gets 5 charges at 100%', () => {
@@ -585,11 +587,11 @@ describe('Cleric skills: each skill matches its declared effect', () => {
         expect(h.result.healPartyPctInstant).toBe(60);
     });
 
-    it('apocalypse_prayer: aoe;def_pen:80;heal_party_pct:30 — three atoms combined', () => {
+    it('apocalypse_prayer: aoe;def_pen:60;heal_party_pct:30 — three atoms combined', () => {
         const s = find('apocalypse_prayer');
         const h = applySkill(s.effect, { party: 4, enemies: 3 });
         expect(h.result.aoe).toBe(true);
-        expect(h.result.defPenPct).toBe(80);
+        expect(h.result.defPenPct).toBe(60);
         expect(h.result.healPartyPctInstant).toBe(30);
     });
 
@@ -645,9 +647,9 @@ describe('Archer skills: each skill matches its declared effect', () => {
         expect(h.caster.critBuffMs).toBe(10000);
     });
 
-    it('rain_of_arrows: aoe + damage 4.5× weapon', () => {
+    it('rain_of_arrows: aoe + damage 6.0× weapon', () => {
         const s = find('rain_of_arrows');
-        expect(s.damage).toBe(4.5);
+        expect(s.damage).toBe(6.0);
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
     });
@@ -671,10 +673,10 @@ describe('Archer skills: each skill matches its declared effect', () => {
         expect(h.result.stunApplied).toBe(true);
     });
 
-    it('sniper_shot: def_pen:100 — ignore 100% of target defence', () => {
+    it('sniper_shot: def_pen:60 — ignore 60% of target defence', () => {
         const s = find('sniper_shot');
         const h = applySkill(s.effect);
-        expect(h.result.defPenPct).toBe(100);
+        expect(h.result.defPenPct).toBe(60);
     });
 
     it('shadow_step: dodge_next:3:non_magic — queues 3 non_magic dodges on caster', () => {
@@ -684,15 +686,23 @@ describe('Archer skills: each skill matches its declared effect', () => {
         expect(h.caster.dodgeNext[0]).toMatchObject({ count: 3, scope: 'non_magic' });
     });
 
-    it('death_arrow: instant_kill_chance:5 — instantKillPct = 5', () => {
+    it('death_arrow: instant_kill_chance:3 — instantKillPct = 3, success → finite executeBurstPct = 12 (NOT a true instantKill)', () => {
         const s = find('death_arrow');
-        const h = applySkill(s.effect);
-        expect(h.result.instantKillPct).toBe(5);
+        const orig = Math.random;
+        Math.random = () => 0; // pass IK roll
+        try {
+            const h = applySkill(s.effect);
+            expect(h.result.instantKillPct).toBe(3);
+            expect(h.result.executeBurstPct).toBe(12);
+            expect(h.result.instantKill).toBe(false);
+        } finally {
+            Math.random = orig;
+        }
     });
 
-    it('celestial_arrow: aoe + damage 30.0× weapon', () => {
+    it('celestial_arrow: aoe + damage 10.0× weapon', () => {
         const s = find('celestial_arrow');
-        expect(s.damage).toBe(30.0);
+        expect(s.damage).toBe(10.0);
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
     });
@@ -710,17 +720,33 @@ describe('Archer skills: each skill matches its declared effect', () => {
         expect(h.caster.dmgAmpNext[0]).toMatchObject({ mult: 2, count: 8 });
     });
 
-    it('destiny_shot: instant_kill_chance:10 — instantKillPct = 10', () => {
+    it('destiny_shot: instant_kill_chance:4 — instantKillPct = 4, success → finite executeBurstPct = 12 (NOT a true instantKill)', () => {
         const s = find('destiny_shot');
-        const h = applySkill(s.effect);
-        expect(h.result.instantKillPct).toBe(10);
+        const orig = Math.random;
+        Math.random = () => 0; // pass IK roll
+        try {
+            const h = applySkill(s.effect);
+            expect(h.result.instantKillPct).toBe(4);
+            expect(h.result.executeBurstPct).toBe(12);
+            expect(h.result.instantKill).toBe(false);
+        } finally {
+            Math.random = orig;
+        }
     });
 
-    it('universe_arrow: aoe;instant_kill_chance:15 — AOE + 15% IK per target', () => {
+    it('universe_arrow: aoe;instant_kill_chance:5 — AOE + 5% IK per target, success → finite executeBurstPct = 12 (NOT a true instantKill)', () => {
         const s = find('universe_arrow');
-        const h = applySkill(s.effect, { enemies: 3 });
-        expect(h.result.aoe).toBe(true);
-        expect(h.result.instantKillPct).toBe(15);
+        const orig = Math.random;
+        Math.random = () => 0; // pass IK roll
+        try {
+            const h = applySkill(s.effect, { enemies: 3 });
+            expect(h.result.aoe).toBe(true);
+            expect(h.result.instantKillPct).toBe(5);
+            expect(h.result.executeBurstPct).toBe(12);
+            expect(h.result.instantKill).toBe(false);
+        } finally {
+            Math.random = orig;
+        }
     });
 });
 
@@ -786,8 +812,11 @@ describe('Rogue skills: each skill matches its declared effect', () => {
     it('assassinate: execute_below:20 — oneshot when target HP%<=20', () => {
         const s = find('assassinate');
         expect(applySkill(s.effect, { targetHpPct: 25 }).result.instantKill).toBe(false);
-        expect(applySkill(s.effect, { targetHpPct: 20 }).result.instantKill).toBe(true);
+        const at = applySkill(s.effect, { targetHpPct: 20 });
+        expect(at.result.instantKill).toBe(true);
         expect(applySkill(s.effect, { targetHpPct: 5 }).result.instantKill).toBe(true);
+        // execute_below is a TRUE kill — never sets the finite execute-burst.
+        expect(at.result.executeBurstPct).toBe(0);
     });
 
     it('hemorrhage: dot:8000:4 — 8s DOT at 4% max HP/s', () => {
@@ -808,10 +837,18 @@ describe('Rogue skills: each skill matches its declared effect', () => {
         expect(h.target.markNoHealMs).toBe(6000);
     });
 
-    it('instant_kill: instant_kill_chance:5 — instantKillPct = 5', () => {
+    it('instant_kill: instant_kill_chance:3 — instantKillPct = 3, success → finite executeBurstPct = 12 (NOT a true instantKill)', () => {
         const s = find('instant_kill');
-        const h = applySkill(s.effect);
-        expect(h.result.instantKillPct).toBe(5);
+        const orig = Math.random;
+        Math.random = () => 0; // pass IK roll
+        try {
+            const h = applySkill(s.effect);
+            expect(h.result.instantKillPct).toBe(3);
+            expect(h.result.executeBurstPct).toBe(12);
+            expect(h.result.instantKill).toBe(false);
+        } finally {
+            Math.random = orig;
+        }
     });
 
     it('shadow_death: pure aoe', () => {
@@ -821,32 +858,42 @@ describe('Rogue skills: each skill matches its declared effect', () => {
         expect(h.result.aoe).toBe(true);
     });
 
-    it('void_strike: def_pen:100 — ignore all defence on this cast', () => {
+    it('void_strike: def_pen:60 — ignore 60% of defence on this cast', () => {
         const s = find('void_strike');
         const h = applySkill(s.effect);
-        expect(h.result.defPenPct).toBe(100);
+        expect(h.result.defPenPct).toBe(60);
     });
 
-    it('death_touch: instant_kill_chance:10 — instantKillPct = 10', () => {
+    it('death_touch: instant_kill_chance:5 — instantKillPct = 5, success → finite executeBurstPct = 12 (NOT a true instantKill)', () => {
         const s = find('death_touch');
-        const h = applySkill(s.effect);
-        expect(h.result.instantKillPct).toBe(10);
+        const orig = Math.random;
+        Math.random = () => 0; // pass IK roll
+        try {
+            const h = applySkill(s.effect);
+            expect(h.result.instantKillPct).toBe(5);
+            expect(h.result.executeBurstPct).toBe(12);
+            expect(h.result.instantKill).toBe(false);
+        } finally {
+            Math.random = orig;
+        }
     });
 
-    it('god_assassin: aoe;def_pen:100 — AOE + ignore all defence', () => {
+    it('god_assassin: aoe;def_pen:60 — AOE + 60% def-pen', () => {
         const s = find('god_assassin');
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
-        expect(h.result.defPenPct).toBe(100);
+        expect(h.result.defPenPct).toBe(60);
     });
 
-    it('absolute_death: instant_kill_chance:50;dodge_next:1:non_magic — 50% IK + 1 dodge queued', () => {
+    it('absolute_death: instant_kill_chance:8;dodge_next:1:non_magic — 8% IK (success → finite executeBurstPct = 12, NOT a true instantKill) + 1 dodge queued', () => {
         const s = find('absolute_death');
         const orig = Math.random;
         Math.random = () => 0; // pass IK roll
         try {
             const h = applySkill(s.effect);
-            expect(h.result.instantKillPct).toBe(50);
+            expect(h.result.instantKillPct).toBe(8);
+            expect(h.result.executeBurstPct).toBe(12);
+            expect(h.result.instantKill).toBe(false);
             expect(h.caster.dodgeNext[0]).toMatchObject({ count: 1, scope: 'non_magic' });
         } finally {
             Math.random = orig;
@@ -880,9 +927,9 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         expect(h.target.markAmp[0]).toEqual({ mult: 6, count: 1, remainingMs: 15000 });
     });
 
-    it('bone_spear: aoe + damage 4.0× weapon', () => {
+    it('bone_spear: aoe + damage 5.7× weapon', () => {
         const s = find('bone_spear');
-        expect(s.damage).toBe(4.0);
+        expect(s.damage).toBe(5.7);
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
     });
@@ -977,8 +1024,8 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         expect(h.result.deathApocalypse).toBe(true);
         // Per skillEffectsV2.ts: caster drops to 20% of max HP normally.
         expect(h.result.deathApocalypseSelfHpFloor).toBe(0.20);
-        // Target damage = 50% of target max HP.
-        expect(h.result.deathApocalypseTargetMaxHpPct).toBe(50);
+        // Target damage = 12% of target max HP (2026-06-18 balance: was 50%).
+        expect(h.result.deathApocalypseTargetMaxHpPct).toBe(12);
         // Skeleton summon is part of the same effect string.
         expect(h.result.summons).toEqual([{ type: 'skeleton', count: 1 }]);
     });
@@ -1049,9 +1096,9 @@ describe('Bard skills: each skill matches its declared effect', () => {
         }
     });
 
-    it('requiem: pure aoe + damage 4.5', () => {
+    it('requiem: pure aoe + damage 5.0', () => {
         const s = find('requiem');
-        expect(s.damage).toBe(4.5);
+        expect(s.damage).toBe(5.0);
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
     });
@@ -1122,12 +1169,12 @@ describe('Bard skills: each skill matches its declared effect', () => {
 
     it('universe_song: 4-atom mega-buff fires every component (IK + immortal + ATK + AS)', () => {
         const s = find('universe_song');
-        // party_instant_kill_chance_next:5:5;party_immortal:3000;party_attack_up:100:30000;party_as_up:2.2:10000
+        // party_instant_kill_chance_next:3:5;party_immortal:3000;party_attack_up:100:30000;party_as_up:2.2:10000
         const h = applySkill(s.effect, { party: 4 });
         for (const p of h.party) {
-            // IK queue: 5% chance for next 5 attacks.
+            // IK queue: 3% chance for next 5 attacks.
             expect(p.nextAllyInstantKillPct).toHaveLength(1);
-            expect(p.nextAllyInstantKillPct[0]).toMatchObject({ pct: 5, count: 5 });
+            expect(p.nextAllyInstantKillPct[0]).toMatchObject({ pct: 3, count: 5 });
             // Party immortal: 3000 ms.
             expect(p.immortalMs).toBe(3000);
             // ATK +100% for 30s.
@@ -1347,7 +1394,7 @@ describe('castSkill (combatEffectsHelpers): session-level integration', () => {
             enemyIds: ['boss'],
         });
         expect(r.deathApocalypse).toBe(true);
-        expect(r.deathApocalypseTargetMaxHpPct).toBe(50);
+        expect(r.deathApocalypseTargetMaxHpPct).toBe(12); // 2026-06-18 balance: was 50%
         expect(r.deathApocalypseSelfHpFloor).toBe(0.20);
         expect(r.summons).toEqual([{ type: 'skeleton', count: 1 }]);
     });
@@ -1372,7 +1419,7 @@ describe('castSkill (combatEffectsHelpers): session-level integration', () => {
             expect(st?.asMult).toBe(2.2);
             expect(st?.asMultMs).toBe(10000);
             expect(st?.nextAllyInstantKillPct).toHaveLength(1);
-            expect(st?.nextAllyInstantKillPct[0]).toMatchObject({ pct: 5, count: 5 });
+            expect(st?.nextAllyInstantKillPct[0]).toMatchObject({ pct: 3, count: 5 });
         }
     });
 });

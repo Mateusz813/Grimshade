@@ -27,8 +27,8 @@ import {
     MONSTER_RARITY_TASK_KILLS,
     type TMonsterRarity,
 } from './lootSystem';
-import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, flattenItemsData, STONE_ICONS, type IBaseItem } from './itemSystem';
-import { getTrainingBonuses } from './skillSystem';
+import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, type IBaseItem } from './itemSystem';
+import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from './skillSystem';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
@@ -773,7 +773,17 @@ const rollOffHandDamage = (): number => {
     return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
 };
 
-export const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getState>['character']) => {
+/**
+ * @param contentLevel  Level of the content being fought (the monster's level).
+ *   When > 0 and the player is under-geared for it, a gear-gap penalty scales
+ *   down the effective attack (dmg × (gearLvl/contentLvl)², floor 0.05) so
+ *   low-level gear can't practically clear far-higher-level monsters. 0 (the
+ *   default) = no penalty — used by every HP/MP-clamp / sync / Raid caller.
+ */
+export const getEffectiveChar = (
+    char: ReturnType<typeof useCharacterStore.getState>['character'],
+    contentLevel = 0,
+) => {
     if (!char) return null;
     const { equipment } = useInventoryStore.getState();
     const eq = getTotalEquipmentStats(equipment, ALL_ITEMS);
@@ -803,7 +813,8 @@ export const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getSt
     // Point N5: raw attack pool = base + equip + elixir + flat-transform, then
     // multiplied by the transform % bonus (Archer gets +7% per transform tier,
     // scaling with future gear/level).
-    const rawAttack = baseAttack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack();
+    const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), contentLevel);
+    const rawAttack = (baseAttack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack()) * gearGapMult;
     return {
         ...char,
         attack: Math.floor(rawAttack * getTransformAtkPctMultiplier()),
@@ -1460,7 +1471,10 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
 
 export const doPlayerAttackTick = (autoSkillOnly = false): void => {
     const s = useCombatStore.getState();
-    const char = getEffectiveChar(useCharacterStore.getState().character);
+    // Gear-gap penalty: pass the hunted monster's level so an under-geared
+    // player deals proportionally less damage (basic + skills + summons all
+    // derive from this `char.attack`). Only the human player is penalized here.
+    const char = getEffectiveChar(useCharacterStore.getState().character, s.monster?.level ?? 0);
     const skillSettings = useSettingsStore.getState();
     if (s.phase !== 'fighting' || !s.monster || !char) return;
     // Stun gate — paralysed players can't swing or auto-cast.
@@ -1741,6 +1755,12 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             if (effApply === null) continue;
             const autoDefPenFrac = Math.max(0, Math.min(1, (effApply?.defPenPct ?? 0) / 100));
             const autoEffectiveDef = Math.max(0, Math.floor(s.monster.defense * (1 - autoDefPenFrac)));
+            // Skill-upgrade combat bonus — hunt is solo, so this is always the
+            // local player's own cast. Modest & capped; folded into the skill's
+            // damage multiplier so it scales primary + AOE splash uniformly.
+            const skillUpgradeMult = getCombatSkillUpgradeMultiplier(
+                useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+            );
             const sr = calculateDamage({
                 baseAtk: char.attack, weaponAtk: rollWeaponDamage(),
                 skillBonus: Math.floor(char.attack * 0.5),
@@ -1749,7 +1769,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                 critChance: 0.20,
                 maxCritChance: maxCrit,
                 damageMultiplier: isDamageHit
-                    ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillMult
+                    ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillMult * skillUpgradeMult
                     : 0,
             });
             // Track every slot the AOE actually splashed onto so we can
@@ -1762,6 +1782,10 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             // splash that landed). Drives Żniwa Dusz heal_self_pct_dmg
             // so AOE casts heal on the SUM, not just the primary.
             let totalDmgDealtThisCast = 0;
+            // instant_kill_chance execute-burst on the PRIMARY target (finite
+            // ~12%-of-max-HP hit). Shipped in the skillAnim event so the view
+            // renders a DEATH ATTACK float with the actual burst damage.
+            let primaryExecuteBurstDmg = 0;
             if (isDamageHit) {
                 if (effApply?.instantKill) {
                     const wm = useCombatStore.getState().waveMonsters[s.activeTargetIdx];
@@ -1774,7 +1798,16 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     // gets Kraina ×N. Manual cast in Combat.tsx already
                     // does this via consumeHuntMonsterMarkAmp(744); auto
                     // path stayed at base damage until now.
+                    // instant_kill_chance success → finite execute burst
+                    // (12% of target max HP, or the normal hit if bigger),
+                    // NOT a one-shot.
                     let primaryDmg = sr.finalDamage;
+                    if ((effApply?.executeBurstPct ?? 0) > 0) {
+                        const wm = useCombatStore.getState().waveMonsters[s.activeTargetIdx];
+                        const burst = Math.floor((wm?.maxHp ?? 0) * (effApply!.executeBurstPct) / 100);
+                        primaryDmg = Math.max(primaryDmg, burst);
+                        primaryExecuteBurstDmg = primaryDmg;
+                    }
                     const ampPrimary = consumeHuntMonsterMarkAmp(s.activeTargetIdx, s.monster.id);
                     if (ampPrimary.mult !== 1) {
                         primaryDmg = Math.max(1, Math.floor(primaryDmg * ampPrimary.mult));
@@ -1795,7 +1828,10 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                             if (wave[ii].isDead) continue;
                             const splashIk = splashIkPct > 0 && Math.random() * 100 < splashIkPct;
                             if (splashIk) {
-                                const ikDmg = wave[ii].currentHp;
+                                // AOE re-roll of instant_kill_chance → finite
+                                // execute burst (12% of splash target max HP,
+                                // or the normal splash if bigger), not a kill.
+                                const ikDmg = Math.max(splashDmg, Math.floor(wave[ii].maxHp * 12 / 100));
                                 useCombatStore.getState().damageWaveMonster(ii, ikDmg);
                                 totalDmgDealtThisCast += ikDmg;
                             } else {
@@ -1976,10 +2012,14 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     aoeTargets: aoeTargetIdxs,
                     targetsEnemy,
                     stunLabel,
-                    // 2026-05 v6: instant-kill marker — Strzała Śmierci /
-                    // Skrytobójstwo / execute_below proc'd. View renders a
-                    // "DEATH ATTACK" float on the targeted slot.
+                    // 2026-05 v6: instant-kill marker — Skrytobójstwo /
+                    // execute_below proc'd. View renders a "DEATH ATTACK"
+                    // float on the targeted slot.
                     instantKill: !!effApply?.instantKill,
+                    // instant_kill_chance success → finite execute burst on
+                    // the primary target. View renders a DEATH ATTACK float
+                    // showing this damage (0 when the roll failed).
+                    executeBurstDmg: primaryExecuteBurstDmg,
                 },
                 timestamp: Date.now(),
             });
@@ -2457,7 +2497,9 @@ const BOT_CLASS_ICONS_LOCAL: Record<string, string> = {
 // -- SKIP mode: instant resolution -------------------------------------------
 
 export const resolveInstantFight = (m: IMonster, startHp: number, startMp: number, rarity: TMonsterRarity): void => {
-    const char = getEffectiveChar(useCharacterStore.getState().character);
+    // Gear-gap penalty: SKIP resolution must scale the player's attack the same
+    // way the live tick does, so under-geared SKIP wins are gated identically.
+    const char = getEffectiveChar(useCharacterStore.getState().character, m.level ?? 0);
     if (!char) return;
 
     const classConfig = getClassConfig(char.class);

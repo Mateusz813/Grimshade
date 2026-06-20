@@ -54,9 +54,9 @@ import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
-import { STONE_GENERIC_ICON, STONE_ICONS } from '../../systems/itemSystem';
+import { STONE_GENERIC_ICON, STONE_ICONS, getEquippedGearLevel, getGearGapMultiplier } from '../../systems/itemSystem';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
-import { SPELL_CHEST_LEVELS } from '../../systems/skillSystem';
+import { SPELL_CHEST_LEVELS, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
 import dungeonsData from '../../data/dungeons.json';
 import { getSkillIcon } from '../../data/skillIcons';
 import { useCombatFx } from '../../hooks/useCombatFx';
@@ -502,6 +502,23 @@ const Raid = () => {
     const effectsRef = useRef<ICombatEffectsSession>(newCombatEffectsSession());
     const allyFxId = (memberId: string) => `ally_${memberId}`;
 
+    // 2026-06-19: Cleric `heal_party_dot` (Błogosławieństwo) — raid has no
+    // buffStore wiring (unlike Boss.tsx which leans on
+    // getPartyHealDotPctPerSec), so the party-wide heal-over-time lives as a
+    // shared spec here: how many GAME-ms of regen remain + how much %max HP
+    // to heal each alive member per second. The status/DOT tick drains
+    // `remainingMs` at speed-scaled rate and applies the per-tick slice,
+    // accumulating fractional ms in `accumMs` so a 250ms tick at x1 heals
+    // 1/4 of the per-second amount per pass. Reset on raid start; refreshed
+    // (max-tier wins) when a member casts the skill. The casting member id +
+    // skill id drive the heal-pulse anim/log so it reads like Boss's DOT.
+    const partyHealDotRef = useRef<{
+        remainingMs: number;
+        pctPerSec: number;
+        accumMs: number;
+        skillId: string | null;
+    }>({ remainingMs: 0, pctPerSec: 0, accumMs: 0, skillId: null });
+
     useEffect(() => { bossesRef.current = bosses; }, [bosses]);
     useEffect(() => { membersRef.current = members; }, [members]);
 
@@ -589,7 +606,12 @@ const Raid = () => {
                 ],
                 TICK_MS * speedMult,
             );
-            if (dotResults.length === 0) return;
+            // 2026-06-19: the party heal-over-time (Cleric Błogosławieństwo)
+            // also ticks here even when there are NO damage DOTs active, so we
+            // can't early-return on empty dotResults anymore.
+            const healDot = partyHealDotRef.current;
+            const healDotActive = healDot.remainingMs > 0 && healDot.pctPerSec > 0;
+            if (dotResults.length === 0 && !healDotActive) return;
             const nextBosses = bossesRef.current.map((b) => ({ ...b }));
             const nextMembers = membersRef.current.map((m) => ({ ...m }));
             let bossesDirty = false;
@@ -692,6 +714,49 @@ const Raid = () => {
                             });
                         }).catch(() => { /* offline */ });
                     }
+                }
+            }
+            // 2026-06-19: Cleric `heal_party_dot` (Błogosławieństwo) tick.
+            // Drain `remainingMs` at speed-scaled rate (same cadence the DOT
+            // damage uses). Accumulate elapsed game-ms and, every whole
+            // game-second, heal each ALIVE member pctPerSec/100 × THEIR max HP,
+            // clamped to maxHp. Float lands on the local player's slot only;
+            // bots/remote bars top up next render (matching the DOT-damage +
+            // cast heal handlers, which avoid AOE-rate ally float spam).
+            if (healDotActive) {
+                const elapsed = TICK_MS * speedMult;
+                // Only credit the accumulator with ms that fall WITHIN the
+                // regen window so the final partial tick doesn't over-heal
+                // past expiry; then drain the timer.
+                const covered = Math.min(elapsed, healDot.remainingMs);
+                healDot.remainingMs = Math.max(0, healDot.remainingMs - elapsed);
+                healDot.accumMs += covered;
+                const pct = healDot.pctPerSec;
+                const liveSlots = nextMembers.filter((m) => !m.hasEscaped);
+                while (healDot.accumMs >= 1000) {
+                    healDot.accumMs -= 1000;
+                    for (const m of nextMembers) {
+                        if (m.isDead || m.hasEscaped) continue;
+                        if (m.hp >= m.maxHp) continue;
+                        const heal = Math.max(1, Math.floor(m.maxHp * (pct / 100)));
+                        const before = m.hp;
+                        m.hp = Math.min(m.maxHp, m.hp + heal);
+                        const actual = m.hp - before;
+                        if (actual <= 0) continue;
+                        membersDirty = true;
+                        if (m.id === character?.id) {
+                            const slot = liveSlots.findIndex((lm) => lm.id === m.id);
+                            const cappedTag = actual < heal ? ' (MAX)' : '';
+                            fx.pushAllyFloat(slot >= 0 ? slot : 0, heal, 'heal', {
+                                icon: 'green-heart',
+                                label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+                            });
+                            if (healDot.skillId) fx.triggerAllySkillAnim(slot >= 0 ? slot : 0, healDot.skillId);
+                        }
+                    }
+                }
+                if (healDot.remainingMs <= 0) {
+                    partyHealDotRef.current = { remainingMs: 0, pctPerSec: 0, accumMs: 0, skillId: null };
                 }
             }
             if (bossesDirty) {
@@ -956,6 +1021,17 @@ const Raid = () => {
                 // `getEffectiveChar` so the raid honours equipment,
                 // training, elixir & transform bonuses.
                 const eff = getEffectiveChar(character) ?? character;
+                // Gear-gap penalty (leader only): under-geared players deal
+                // proportionally less damage so low-level gear can't carry a
+                // far-higher-level raid. dmg × (gearLvl/raidLvl)², floor 0.05.
+                // Bots / non-leader humans are untouched (their attack comes
+                // from presence / the bot-tier formula below).
+                const raidLevel = selectedRaidRef.current?.level ?? 0;
+                const leaderGearGapMult = getGearGapMultiplier(
+                    getEquippedGearLevel(useInventoryStore.getState().equipment),
+                    raidLevel,
+                );
+                const leaderAttack = Math.floor(eff.attack * leaderGearGapMult);
                 const stayDead = (character.hp ?? 0) <= 0;
                 // Clamp current pool to the live max — equipment
                 // changes between raids could lower max_hp below the
@@ -974,7 +1050,7 @@ const Raid = () => {
                     hp: startHp,
                     maxMp: eff.max_mp,
                     mp: startMp,
-                    attack: eff.attack,
+                    attack: leaderAttack,
                     defense: eff.defense,
                     isDead: stayDead,
                     isBot: false,
@@ -1034,8 +1110,17 @@ const Raid = () => {
                 hp: startHpOther,
                 maxMp: mpMax,
                 mp: startMpOther,
-                attack: 5 + m.level * 3,
-                defense: 2 + m.level * 1,
+                // 2026-06-19 spec ("party damage ignoruje ekwipunek
+                // sojusznikow"): for a HUMAN party-mate use their REAL
+                // effective attack/defense broadcast via presence (base +
+                // gear + upgrades + training + elixirs + transform) so a
+                // geared friend contributes their actual power instead of
+                // the `5 + level*3` bot-tier approximation. Falls back to
+                // the formula when no snapshot has arrived yet, when the
+                // slot is an AI bot, or when the snapshot comes from an
+                // older client without these fields (safe degrade).
+                attack: presenceSnap?.attack ?? (5 + m.level * 3),
+                defense: presenceSnap?.defense ?? (2 + m.level * 1),
                 isDead: stayDeadOther,
                 isBot: !!m.isBot,
                 hasEscaped: false,
@@ -1165,6 +1250,9 @@ const Raid = () => {
         // Fresh effect session — clear all timers / DOTs / queues from prior
         // raids so a leftover stun doesn't carry over into the next run.
         effectsRef.current = newCombatEffectsSession();
+        // Reset any leftover Cleric party heal-over-time so a Błogosławieństwo
+        // cast at the end of the previous raid doesn't bleed into this one.
+        partyHealDotRef.current = { remainingMs: 0, pctPerSec: 0, accumMs: 0, skillId: null };
         // Drop every member's necro summons — fresh raid, fresh undead.
         useNecroSummonStore.getState().clearAll();
         setPhase('fighting');
@@ -2099,7 +2187,16 @@ const Raid = () => {
                         const targets = aoe
                             ? nextBosses.map((b, i) => (b.isDead ? -1 : i)).filter((i) => i >= 0)
                             : (firstAliveIdx >= 0 ? [firstAliveIdx] : []);
-                        const baseDmg = Math.floor(mem.attack * chosen.damage * apply.castDmgMult);
+                        // Skill-upgrade combat bonus — ONLY the local player's
+                        // own casts (their slot upgrades live in this client's
+                        // skillStore). Bots / remote members have no accessible
+                        // upgrade level here, so they get the neutral 1.0.
+                        const skillUpgradeMult = isPlayer
+                            ? getCombatSkillUpgradeMultiplier(
+                                useSkillStore.getState().skillUpgradeLevels[chosen.id] ?? 0,
+                            )
+                            : 1;
+                        const baseDmg = Math.floor(mem.attack * chosen.damage * apply.castDmgMult * skillUpgradeMult);
                         // Suppress unused-binding lint while heal/multistrike
                         // wait for view-side wiring.
                         void apply.multistrike;
@@ -2222,14 +2319,19 @@ const Raid = () => {
                         for (const ti of enemyTargets) {
                             const t = nextBosses[ti];
                             if (!t || t.isDead) continue;
+                            const normalDmgRaid = Math.max(1, baseDmg - Math.floor(t.defense * 0.3));
                             let dmg = apply.instantKill
                                 ? Math.max(1, t.currentHp)
-                                : Math.max(1, baseDmg - Math.floor(t.defense * 0.3));
+                                : ((apply.executeBurstPct ?? 0) > 0
+                                    ? Math.max(normalDmgRaid, Math.floor(t.maxHp * (apply.executeBurstPct ?? 0) / 100))
+                                    : normalDmgRaid);
                             // 2026-05 v7: spell hits consume Klątwa AND
                             // get Kraina ×N — same as basics. Each AOE
                             // target rolls its own consume so a 4-target
                             // AOE drains 4 charges (one per boss) but
-                            // each gets the duration mark passively.
+                            // each gets the duration mark passively. Both the
+                            // normal and execute-burst paths still take the
+                            // mark-amp consume (only the true one-shot skips).
                             if (!apply.instantKill) {
                                 const tStAmp = ensureStatus(effectsRef.current, t.id);
                                 const ampSp = consumeTargetMarkAmp(tStAmp);
@@ -2383,6 +2485,56 @@ const Raid = () => {
                                         addLog(`:sparkles: ${chosen.id}: +${heal} HP${cappedTag}`);
                                     }
                                 }
+                            }
+                        }
+                        // 2026-06-19: Cleric `heal_party_pct` (Niebiańskie
+                        // Leczenie / Modlitwa) — instantly heal EVERY alive
+                        // raid member (leader + bots + remote) by N% of their
+                        // OWN max HP, clamped to maxHp. Float lands on the
+                        // local player's slot only; bots/remote bars simply
+                        // top up next render (matching the DOT-tick + heal
+                        // handlers above, which avoid AOE-rate float spam on
+                        // ally cards). Use the escaped-filtered roster for the
+                        // local player's rendered slot index.
+                        if (apply.healPartyPctInstant > 0) {
+                            const liveSlots = nextMembers.filter((m) => !m.hasEscaped);
+                            for (const m of nextMembers) {
+                                if (m.isDead || m.hasEscaped) continue;
+                                const heal = Math.floor(m.maxHp * (apply.healPartyPctInstant / 100));
+                                if (heal <= 0) continue;
+                                const before = m.hp;
+                                m.hp = Math.min(m.maxHp, m.hp + heal);
+                                const actual = m.hp - before;
+                                if (m.id === character?.id && actual > 0) {
+                                    const slot = liveSlots.findIndex((lm) => lm.id === m.id);
+                                    const cappedTag = actual < heal ? ' (MAX)' : '';
+                                    fx.pushAllyFloat(slot >= 0 ? slot : 0, heal, 'heal', {
+                                        icon: 'sparkles',
+                                        label: cappedTag ? `+${heal}${cappedTag}` : undefined,
+                                    });
+                                    fx.triggerAllySkillAnim(slot >= 0 ? slot : 0, chosen.id);
+                                    addLog(`:sparkles: ${chosen.id}: +${heal} HP${cappedTag}`);
+                                }
+                            }
+                        }
+                        // 2026-06-19: Cleric `heal_party_dot` (Błogosławieństwo)
+                        // — register the party-wide heal-over-time on the shared
+                        // ref. The status/DOT tick drains `remainingMs` at
+                        // speed-scaled rate and heals each alive member
+                        // pctPerSec/100 × maxHp per game-second. Refresh
+                        // semantics: take the strongest tier (max pctPerSec)
+                        // and the longest remaining duration so re-casting /
+                        // a second Cleric can't shorten an active regen.
+                        if (apply.healPartyDotMs > 0 && apply.healPartyDotPctPerSec > 0) {
+                            const cur = partyHealDotRef.current;
+                            partyHealDotRef.current = {
+                                remainingMs: Math.max(cur.remainingMs, apply.healPartyDotMs),
+                                pctPerSec: Math.max(cur.pctPerSec, apply.healPartyDotPctPerSec),
+                                accumMs: cur.accumMs,
+                                skillId: apply.healPartyDotPctPerSec >= cur.pctPerSec ? chosen.id : cur.skillId,
+                            };
+                            if (mem.id === character?.id) {
+                                addLog(`:sparkles: ${chosen.id}: regeneracja drużyny (${apply.healPartyDotPctPerSec}%/s)`);
                             }
                         }
                         fxQueue.push({

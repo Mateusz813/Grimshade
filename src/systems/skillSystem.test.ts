@@ -18,6 +18,7 @@ import {
     MAX_OFFLINE_TRAINING_SECONDS,
     getSkillUpgradeCost,
     getSkillUpgradeBonus,
+    getCombatSkillUpgradeMultiplier,
     rollSkillUpgrade,
 } from './skillSystem';
 
@@ -324,6 +325,33 @@ describe('getSkillUpgradeBonus', () => {
         const base = Math.pow(1.15, 10);
         expect(getSkillUpgradeBonus(15)).toBeCloseTo(base * Math.pow(1.08, 5) - 1, 2);
         expect(getSkillUpgradeBonus(20)).toBeCloseTo(base * Math.pow(1.08, 10) - 1, 2);
+    });
+});
+
+describe('getCombatSkillUpgradeMultiplier', () => {
+    it('returns 1 (no bonus) at upgrade level 0 or below', () => {
+        expect(getCombatSkillUpgradeMultiplier(0)).toBe(1);
+        expect(getCombatSkillUpgradeMultiplier(-5)).toBe(1);
+    });
+
+    it('matches the modest capped sample points', () => {
+        expect(getCombatSkillUpgradeMultiplier(1)).toBeCloseTo(1.02, 6);
+        expect(getCombatSkillUpgradeMultiplier(5)).toBeCloseTo(1.10, 6);
+        expect(getCombatSkillUpgradeMultiplier(10)).toBeCloseTo(1.20, 6);
+        expect(getCombatSkillUpgradeMultiplier(20)).toBeCloseTo(1.30, 6);
+        expect(getCombatSkillUpgradeMultiplier(30)).toBeCloseTo(1.40, 6);
+    });
+
+    it('is monotonically non-decreasing across levels 0..40', () => {
+        for (let lvl = 1; lvl <= 40; lvl++) {
+            expect(getCombatSkillUpgradeMultiplier(lvl))
+                .toBeGreaterThanOrEqual(getCombatSkillUpgradeMultiplier(lvl - 1));
+        }
+    });
+
+    it('stays modest — far below the Inventory-preview getSkillUpgradeBonus curve', () => {
+        // +10 combat = +20%, while the preview bonus is +305% at +10.
+        expect(getCombatSkillUpgradeMultiplier(10) - 1).toBeLessThan(getSkillUpgradeBonus(10));
     });
 });
 

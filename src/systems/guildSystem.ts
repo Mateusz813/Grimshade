@@ -144,9 +144,14 @@ export const applyGuildXp = (
  * stepped from 1.45 -> 1.55 so the curve climbs faster — tier 10 is
  * now ~ 15M × 1.55^9 ≈ 1.9B HP (was ~ 240M).
  */
+// 2026-06-18 balance pass: the old curve (15M × 1.55^tier for HP while per-swing
+// damage SHRANK ×1.15^tier) diverged — tier 20+ needed tens of millions of swings
+// and was mathematically unkillable. New curve: gentler HP growth (×1.25/tier from
+// a 2M base) PLUS per-swing damage that scales UP with tier (see computeGuildBossDamage),
+// so every tier stays a week-long-but-achievable fight for a real guild.
 export const getGuildBossMaxHp = (tier: number): number => {
     const tBoss = Math.max(1, tier);
-    return Math.floor(15_000_000 * Math.pow(1.55, tBoss - 1));
+    return Math.floor(2_000_000 * Math.pow(1.25, tBoss - 1));
 };
 
 /** Boss's incoming damage per character attack. Scales with the
@@ -171,12 +176,14 @@ export const computeGuildBossDamage = (
     // so very high level characters still hit a meaningful number, but
     // don't soar past mid-tier players by an order of magnitude.
     const base = Math.max(1, characterAttack) * (1 + characterLevel / 120);
-    // Tier scaling — boss takes proportionally less from each hit at
-    // higher tiers so the fight stays week-long.
-    const scaled = base / Math.pow(1.15, tBoss - 1);
-    // Hard cap each attack at 5 % of boss max HP (down from 15%) so
-    // even high-attack veterans need a dozen-plus hits per engagement
-    // and a guild always has to share the kill.
+    // 2026-06-18 balance pass: per-swing damage now scales UP with tier
+    // (+5%/tier) instead of DOWN (÷1.15^tier). Combined with the gentler HP
+    // curve this keeps every tier finite — a real guild clears a
+    // tier-appropriate boss over a week of attempts instead of needing
+    // millions of swings at high tiers.
+    const scaled = base * (1 + (tBoss - 1) * 0.05);
+    // Hard cap each attack at 5 % of boss max HP so a single veteran can't
+    // solo it and the guild always shares the kill (≥20 swings minimum).
     const cap = Math.floor(getGuildBossMaxHp(tier) * 0.05);
     return Math.max(1, Math.min(cap, Math.floor(scaled)));
 };

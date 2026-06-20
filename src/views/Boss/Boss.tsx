@@ -100,13 +100,13 @@ import {
     tickCombatElixirs,
 } from '../../systems/combatElixirs';
 import { getTransformDmgMultiplier } from '../../systems/transformBonuses';
-import { flattenItemsData, getTotalEquipmentStats, formatItemName, STONE_GENERIC_ICON, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
+import { flattenItemsData, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, formatItemName, STONE_GENERIC_ICON, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
 import { getItemDisplayInfo, generateRandomItemForClass } from '../../systems/itemGenerator';
 import { getPotionDropInfo, rollPotionDrop, rollSpellChestDrop, getSpellChestIcon, getSpellChestEmoji, getSpellChestDisplayName, getSpellChestDropInfo } from '../../systems/lootSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
-import { getTrainingBonuses } from '../../systems/skillSystem';
+import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
 import { useTaskStore } from '../../stores/taskStore';
 import { useQuestStore } from '../../stores/questStore';
 import { useDailyQuestStore } from '../../stores/dailyQuestStore';
@@ -629,6 +629,32 @@ const Boss = () => {
     const PLAYER_FX_ID = 'player';
     const BOSS_FX_ID = 'boss';
 
+    // 2026-06: party-buff leak fix — `party_attack_up` / `party_as_up`
+    // (cast by Bard/Cleric) write to EVERY ally's status incl. the
+    // leader's own `PLAYER_FX_ID` (it's in `allyIds`). The ally bots
+    // already consume these via their own status, but the LEADER's own
+    // single-wield basics + skill damage never read `atkBuffPct`, and
+    // `charSpeed` never folded in `asMult` — so the support felt useless
+    // for the party leader. These live readers pull the CURRENT active
+    // party buff off the player's status (decayed by `tickStatus`, so a
+    // 0 means "not active right now"). Note: the player's status field is
+    // shared with the self-cast `attack_up` / self `as_up` window, but
+    // those self-buffs already reach the leader through the normal
+    // damage path (basic via `consumeCasterBasicHitMods`, etc.), so for
+    // the missing paths below reading the merged value is the correct
+    // total buff to apply — `Math.max` in `applyEffects` means we never
+    // stack self + party, just take the strongest window.
+    const getActivePartyAtkPct = (): number => {
+        const ps = effectsRef.current.statuses.get(PLAYER_FX_ID);
+        if (!ps) return 0;
+        return ps.atkBuffMs > 0 ? ps.atkBuffPct : 0;
+    };
+    const getActivePartyAsMult = (): number => {
+        const ps = effectsRef.current.statuses.get(PLAYER_FX_ID);
+        if (!ps) return 1;
+        return ps.asMultMs > 0 ? Math.max(1, ps.asMult) : 1;
+    };
+
     // Level-up HP/MP refill — characterStore.addXp refills hp/mp to max on
     // every level-up, but Boss keeps a LOCAL playerHp/playerMp useState that
     // doesn't see the store-side refill. Without this hook, leveling up
@@ -692,7 +718,10 @@ const Boss = () => {
     // that case — the post-hooks guard renders the spinner instead).
     const eqStats   = getTotalEquipmentStats(equipment, allItems);
     const tb        = getTrainingBonuses(skillLevels, character?.class ?? 'Knight');
-    const charAtk   = (character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus();
+    // Gear-gap penalty: under-geared players deal proportionally less damage so
+    // low-level gear can't practically clear far-higher-level bosses.
+    const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), activeBoss?.level ?? 0);
+    const charAtk   = ((character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult;
     const charDef   = (character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus();
     // Use the transform-aware effective max HP/MP so active transforms raise
     // the cap used by auto-potion / heal-clamp logic. Fallback to the raw
@@ -1128,6 +1157,17 @@ const Boss = () => {
                     maxHp: pres.maxHp,
                     mp: pres.mp,
                     maxMp: pres.maxMp,
+                    // 2026-06-19 spec ("party damage ignoruje ekwipunek
+                    // sojusznikow"): a human mate's bot slot was scaled to
+                    // the LEADER's level with NO gear, so a fully-geared
+                    // friend hit for bot-tier damage. Override the slot's
+                    // attack/defense with the mate's REAL effective stats
+                    // broadcast via presence so they contribute their actual
+                    // power. Falls back to the bot-formula value when the
+                    // broadcast hasn't arrived yet OR comes from an older
+                    // client that doesn't send these fields (safe degrade).
+                    attack: pres.attack ?? b.attack,
+                    defense: pres.defense ?? b.defense,
                     alive: pres.hp > 0,
                 };
             });
@@ -1841,12 +1881,27 @@ const Boss = () => {
         // 0.15×ATK regardless of which one.
         // def_pen:N drops the boss's defense to 0 (or N%) for this hit.
         const defPenFracBoss = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
+        // Skill-upgrade combat bonus — local player's own cast only (this path
+        // returns early for non-leader members above). Modest & capped.
+        const skillUpgradeMultBoss = getCombatSkillUpgradeMultiplier(
+            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+        );
+        // 2026-06: party-buff leak fix — manual skill damage never folded
+        // in the leader's own `party_attack_up`. Skill damage doesn't pass
+        // through `consumeCasterBasicHitMods`, so read the active party
+        // ATK% live off the player's status and scale the cast.
+        const partyAtkMultManual = 1 + getActivePartyAtkPct() / 100;
         const baseDmg = isDamageHit ? Math.max(
             1,
-            Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracBoss)),
+            Math.floor(charAtk * 0.15 * skillBaseMult * partyAtkMultManual * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracBoss) * skillUpgradeMultBoss),
         ) : 0;
+        const normalSkillDmgBoss = Math.floor(baseDmg * apply.castDmgMult);
         let skillDmg = isDamageHit
-            ? (apply.instantKill ? bossHpRef.current : Math.floor(baseDmg * apply.castDmgMult))
+            ? (apply.instantKill
+                ? bossHpRef.current
+                : ((apply.executeBurstPct ?? 0) > 0
+                    ? Math.max(normalSkillDmgBoss, Math.floor(scaledBossMaxHp * (apply.executeBurstPct ?? 0) / 100))
+                    : normalSkillDmgBoss))
             : 0;
         // Necromancer Klątwa Śmierci — first damage (basic OR spell)
         // on the marked boss consumes the charge and gets ×N.
@@ -2164,7 +2219,14 @@ const Boss = () => {
             const baseDmg = Math.max(1, charAtk - sDef);
             const variance = Math.floor(baseDmg * 0.2);
             const rolledDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
-            const finalDmg = Math.max(1, Math.floor(rolledDmg * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
+            // 2026-06: party-buff leak fix — single-wield basics never went
+            // through `consumeCasterBasicHitMods` (only the dual-wield
+            // `doSingleHit` path does, line ~2106), so `party_attack_up` on
+            // the leader was dropped. Fold the active party ATK% in here.
+            // Dual-wield is handled separately and MUST NOT also use this,
+            // or it would double-apply.
+            const partyAtkMult = 1 + getActivePartyAtkPct() / 100;
+            const finalDmg = Math.max(1, Math.floor(rolledDmg * partyAtkMult * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
 
             const newBossHp = Math.max(0, bossHpRef.current - finalDmg);
             bossHpRef.current = newBossHp;
@@ -2317,7 +2379,16 @@ const Boss = () => {
                     allyIds: [PLAYER_FX_ID],
                     enemyIds: [BOSS_FX_ID],
                 });
-                let skillDmg = isPureBuff ? 0 : Math.max(1, Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
+                // Skill-upgrade combat bonus — local player's own auto-cast
+                // (this loop reads the local player's slots). Modest & capped.
+                const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
+                    useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+                );
+                // 2026-06: party-buff leak fix — auto-cast skill damage
+                // also folds in the leader's own `party_attack_up` (live
+                // read off the player's status, same as the manual path).
+                const partyAtkMultAuto = 1 + getActivePartyAtkPct() / 100;
+                let skillDmg = isPureBuff ? 0 : Math.max(1, Math.floor(charAtk * 0.15 * skillBaseMult * partyAtkMultAuto * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillUpgradeMultAuto));
                 // Necromancer Klątwa Śmierci — first hit on the marked
                 // boss consumes the charge and gets ×N damage.
                 if (!isPureBuff && skillDmg > 0) {
@@ -3293,6 +3364,13 @@ const Boss = () => {
     useEffect(() => { playerAtkRef.current = doPlayerAttack; });
     useEffect(() => { bossAtkRef.current   = doBossAttack; });
     useEffect(() => { botAtkRef.current    = doBotAttacks; });
+    // 2026-06: party-buff leak fix — the player attack loop reads the
+    // LATEST base charSpeed live each tick (charSpeed is recomputed every
+    // render but the self-rescheduling timeout closure below would
+    // otherwise capture a stale value), then multiplies by the active
+    // `party_as_up` mult so the leader swings faster while it's up.
+    const charSpeedRef = useRef(charSpeed);
+    charSpeedRef.current = charSpeed;
 
     // -- Party-shared boss combat (2026-05-13) --------------------------------
     // Leader-side: publish authoritative boss-state on every meaningful
@@ -4000,15 +4078,36 @@ const Boss = () => {
     }, [phase, addLog, clearBots, navigate]);
 
     // -- Attack intervals (scaled by speedMult) -------------------------------
+    // 2026-06: party-buff leak fix — the leader's own attack speed must
+    // honour an active `party_as_up` (Bard/Cleric haste). `charSpeed` is
+    // computed inline at render and never folds in `asMult` (a mutable
+    // status field, not React state), so a plain `setInterval` keyed on
+    // `charSpeed` would never speed up when the buff lands. Use a
+    // self-rescheduling timeout loop that, each swing, reads the LIVE base
+    // charSpeed + the active party haste mult and recomputes the delay —
+    // so the leader swings faster while the buff is up and slows back when
+    // it expires, with no dependency on the buff in React state.
     useEffect(() => {
         if (phase !== 'fighting' || !activeBoss) return;
         // 2026-05-13: non-leader members mirror the leader's authoritative
         // boss-state via the subscriber above; their own tick must NOT run
         // or we'd get parallel copies of the fight again.
         if (isNonLeaderMember) return;
-        const interval = Math.max(200, getAttackMs(charSpeed) / speedMult);
-        const id = setInterval(() => playerAtkRef.current(), interval);
-        return () => clearInterval(id);
+        let timeoutId: ReturnType<typeof setTimeout>;
+        let cancelled = false;
+        const scheduleNext = () => {
+            if (cancelled) return;
+            // Effective speed = base charSpeed × active party haste mult.
+            const effSpeed = charSpeedRef.current * getActivePartyAsMult();
+            const interval = Math.max(200, getAttackMs(effSpeed) / speedMult);
+            timeoutId = setTimeout(() => {
+                if (cancelled) return;
+                playerAtkRef.current();
+                scheduleNext();
+            }, interval);
+        };
+        scheduleNext();
+        return () => { cancelled = true; clearTimeout(timeoutId); };
     }, [phase, activeBoss?.id, charSpeed, speedMult, isNonLeaderMember]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {

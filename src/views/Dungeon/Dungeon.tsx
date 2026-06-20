@@ -39,9 +39,9 @@ import {
     tickCombatElixirs,
 } from '../../systems/combatElixirs';
 import { getTransformDmgMultiplier } from '../../systems/transformBonuses';
-import { buildItem, flattenItemsData, getTotalEquipmentStats, formatItemName, STONE_GENERIC_ICON, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
+import { buildItem, flattenItemsData, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, formatItemName, STONE_GENERIC_ICON, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
-import { getTrainingBonuses } from '../../systems/skillSystem';
+import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
 import { getPotionDropInfo, rollPotionDrop, rollSpellChestDrop, getSpellChestIcon, getSpellChestEmoji, getSpellChestDisplayName, getSpellChestDropInfo, type IGeneratedItem, type TMonsterRarity } from '../../systems/lootSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
@@ -515,7 +515,10 @@ const Dungeon = () => {
     // that case — the post-hooks guard renders the spinner instead).
     const eqStats   = getTotalEquipmentStats(equipment, allItems);
     const tb        = getTrainingBonuses(skillLevels, character?.class ?? 'Knight');
-    const charAtk   = (character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus();
+    // Gear-gap penalty: under-geared players deal proportionally less damage so
+    // low-level gear can't practically clear far-higher-level dungeons.
+    const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), activeDungeon?.level ?? 0);
+    const charAtk   = ((character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult;
     const charDef   = (character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus();
     // Include active transform in max HP/MP so auto-potion thresholds use the
     // true cap.
@@ -1463,14 +1466,22 @@ const Dungeon = () => {
         });
         // def_pen drops monster def for this hit (Strzał Snajpera, etc.).
         const defPenFracDng = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
+        // Skill-upgrade combat bonus — local player's own cast (Dungeon is
+        // solo). Modest & capped.
+        const skillUpgradeMultDng = getCombatSkillUpgradeMultiplier(
+            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+        );
         const baseDmg = isDamageHit ? Math.max(
             1,
-            Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracDng)),
+            Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracDng) * skillUpgradeMultDng),
         ) : 0;
+        const normalSkillDmgDng = Math.floor(baseDmg * apply.castDmgMult);
         let skillDmg = isDamageHit
             ? (apply.instantKill
                 ? Math.max(1, targetSlotData?.currentHp ?? 1)
-                : Math.floor(baseDmg * apply.castDmgMult))
+                : ((apply.executeBurstPct ?? 0) > 0
+                    ? Math.max(normalSkillDmgDng, Math.floor(targetMaxHp * (apply.executeBurstPct ?? 0) / 100))
+                    : normalSkillDmgDng))
             : 0;
         // 2026-05 v7: spell hits also consume Klątwa Śmierci (count
         // mark) AND get Kraina Śmierci (duration ×N). Without this,
@@ -1595,8 +1606,13 @@ const Dungeon = () => {
                 if (i === targetSlot) continue;
                 const slotMon = currentMonstersRef.current[i];
                 if (!slotMon || slotMon.currentHp <= 0) continue;
+                // AOE re-roll of instant_kill_chance — on success deals a
+                // finite execute burst (12% of splash target max HP, or the
+                // normal splash if bigger), NOT a full-HP one-shot.
                 const splashIk = splashIkPctManual > 0 && Math.random() * 100 < splashIkPctManual;
-                let splashApplied = splashIk ? slotMon.currentHp : splashDmgManual;
+                let splashApplied = splashIk
+                    ? Math.max(splashDmgManual, Math.floor(slotMon.maxHp * 12 / 100))
+                    : splashDmgManual;
                 // 2026-05 v7: each splash slot consumes its own markAmp /
                 // markAmpAll — Kraina marks every AOE'd enemy and the
                 // splash on each one should ×2 too.
@@ -1611,7 +1627,7 @@ const Dungeon = () => {
                 totalDmgDealtThisCast += splashApplied;
                 fx.triggerEnemySkillAnim(i, skillId);
                 if (splashIk) {
-                    fx.pushEnemyFloat(i, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                    fx.pushEnemyFloat(i, splashApplied, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                 } else {
                     fx.pushEnemyFloat(i, splashApplied, 'spell', { icon: getSkillIcon(skillId) });
                 }
@@ -1869,11 +1885,18 @@ const Dungeon = () => {
                 const isDamageHitAuto = skillBaseMult > 0;
                 const targetsEnemyAuto = isDamageHitAuto || skillTargetsEnemy(sDef?.effect ?? null);
                 const defPenFracAuto = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-                const baseDmg = isDamageHitAuto ? Math.max(1, Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracAuto))) : 0;
+                // Skill-upgrade combat bonus — local player's own auto-cast.
+                const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
+                    useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+                );
+                const baseDmg = isDamageHitAuto ? Math.max(1, Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracAuto) * skillUpgradeMultAuto)) : 0;
+                const normalSkillDmgAuto = Math.floor(baseDmg * apply.castDmgMult);
                 let skillDmg = isDamageHitAuto
                     ? (apply.instantKill
                         ? Math.max(1, tgtSlotData?.currentHp ?? 1)
-                        : Math.floor(baseDmg * apply.castDmgMult))
+                        : ((apply.executeBurstPct ?? 0) > 0
+                            ? Math.max(normalSkillDmgAuto, Math.floor(tgtMaxHp * (apply.executeBurstPct ?? 0) / 100))
+                            : normalSkillDmgAuto))
                     : 0;
                 // 2026-05 v7: auto-skill spells also consume Klątwa AND
                 // get Kraina ×N — same as manual cast / basic attack.
@@ -1946,8 +1969,12 @@ const Dungeon = () => {
                         if (j === tgt) continue;
                         const slotMon = currentMonstersRef.current[j];
                         if (!slotMon || slotMon.currentHp <= 0) continue;
+                        // AOE re-roll of instant_kill_chance — finite execute
+                        // burst (12% of splash target max HP) on success.
                         const splashIk = splashIkPctAuto > 0 && Math.random() * 100 < splashIkPctAuto;
-                        let splashApplied = splashIk ? slotMon.currentHp : splashDmgAuto;
+                        let splashApplied = splashIk
+                            ? Math.max(splashDmgAuto, Math.floor(slotMon.maxHp * 12 / 100))
+                            : splashDmgAuto;
                         // 2026-05 v7: each splash consumes its own markAmp.
                         if (!splashIk) {
                             const splashStAuto = ensureStatus(effectsRef.current, monsterFxId(currentWaveRef.current, j));
@@ -1960,7 +1987,7 @@ const Dungeon = () => {
                         totalDmgAuto += splashApplied;
                         fx.triggerEnemySkillAnim(j, skillId);
                         if (splashIk) {
-                            fx.pushEnemyFloat(j, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
+                            fx.pushEnemyFloat(j, splashApplied, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
                             fx.pushEnemyFloat(j, splashApplied, 'spell', { icon: getSkillIcon(skillId) });
                         }

@@ -177,6 +177,35 @@ describe('publish', () => {
         expect(entry.summons![0].type).toBe('skeleton');
         unsub();
     });
+
+    it('preserves real effective combat stats (attack, defense) on the local mirror', () => {
+        // 2026-06-19: the leader's Boss/Raid engine reads these to let a
+        // geared human party-mate's bot slot hit with their real power
+        // instead of a bot-tier approximation. They must round-trip through
+        // the broadcast payload exactly as published.
+        const unsub = usePartyPresenceStore.getState().subscribe('party-1');
+        usePartyPresenceStore.getState().publish(makeSnapshot({
+            id: 'char-geared',
+            attack: 4200,
+            defense: 1800,
+        }));
+        const entry = usePartyPresenceStore.getState().byMember['char-geared'];
+        expect(entry.attack).toBe(4200);
+        expect(entry.defense).toBe(1800);
+        unsub();
+    });
+
+    it('leaves attack/defense undefined for older-client snapshots (leader falls back to bot formula)', () => {
+        // The default makeSnapshot omits attack/defense — simulating a
+        // pre-2026-06-19 client. The leader's override is `pres.attack ??
+        // botStat.attack`, so undefined here must NOT become 0/NaN.
+        const unsub = usePartyPresenceStore.getState().subscribe('party-1');
+        usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-old' }));
+        const entry = usePartyPresenceStore.getState().byMember['char-old'];
+        expect(entry.attack).toBeUndefined();
+        expect(entry.defense).toBeUndefined();
+        unsub();
+    });
 });
 
 // -- clear --------------------------------------------------------------------

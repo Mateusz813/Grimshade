@@ -302,10 +302,15 @@ const CLASS_WEAPON_TYPE: Record<TCharacterClass, string> = {
 
 // -- Boss multiplier for transform quest monsters ------------------------------
 
+// 2026-06-20 balance pass (kill-rate spec): boss HP ×5 (tankiest slot, above the
+// Epic escort's ×4) so it's the real gate, but atk/def ×3 (kept modest so it
+// never one-shots — potions handle survival). Tuned with scaleMonsterStats so a
+// transform is solo-clearable at the intended gear (L50 ≈ legendary+5 / mythic+2,
+// final L1000 ≈ mythic+7 very hard).
 export const TRANSFORM_BOSS_MULTIPLIER = {
-  hp: 8.0,
-  atk: 8.0,
-  def: 8.0,
+  hp: 5.0,
+  atk: 3.0,
+  def: 3.0,
 };
 
 // -- Per-tier multipliers for the 4-slot transform wave lineup ----------------
@@ -376,12 +381,19 @@ const findClosestMonster = (level: number): IMonster => {
 const scaleMonsterStats = (
   level: number,
 ): { hp: number; attack: number; attack_min: number; attack_max: number; defense: number; xp: number } => {
-  const hp = Math.floor(15 + level * 12 + Math.pow(level, 1.4) * 3);
-  const dmgBase = 2 + level * 1.8 + Math.pow(level, 1.2) * 0.5;
+  // 2026-06-20 balance pass (kill-rate spec): recalibrated to the new player
+  // power so a transform is solo-clearable (with potions) at the intended gear
+  // threshold — L50 ≈ legendary+5 / mythic+2, the final (L1000) ≈ mythic+7
+  // (very hard). Boss-slot HP = scaleMonsterStats.hp × TRANSFORM_BOSS_MULTIPLIER.hp(5).
+  // CAPSTONE: the final transform (T11, levels 901-1000) gets a ×3.5 HP spike so
+  // it genuinely requires ~mythic+7 and is the hardest fight in the game.
+  const capstone = level >= 901 ? 3.5 : 1;
+  const hp = Math.floor((95 * Math.pow(level, 1.1) + 30) * capstone);
+  const dmgBase = 8 + level * 1.0; // boss-slot atk ×3 stays well below player maxHp (no one-shot; potions handle survival)
   const attack = Math.floor(dmgBase);
   const attack_min = Math.max(1, Math.floor(dmgBase * 0.8));
   const attack_max = Math.max(attack_min, Math.floor(dmgBase * 1.2));
-  const defense = Math.floor(level * 1.2);
+  const defense = Math.floor(level * 0.4);
   const xp = Math.floor(level * 15 + Math.pow(level, 1.5) * 2);
   return { hp, attack, attack_min, attack_max, defense, xp };
 };

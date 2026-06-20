@@ -489,6 +489,41 @@ describe('resolveBasicHit', () => {
         expect(r.damage).toBe(400);
         expect(a.dmgAmpNext.length).toBe(0);
     });
+
+    it('party instant-kill buff (nextAllyInstantKillPct) success → finite executeBurstPct=12, NOT a true instantKill', () => {
+        const a = newStatusState();
+        a.nextAllyInstantKillPct = [{ pct: 100, count: 1 }];
+        const t = newStatusState();
+        const orig = Math.random;
+        Math.random = () => 0; // pass the roll
+        try {
+            const r = resolveBasicHit(a, 'Knight', 100, t);
+            // No longer a one-shot — produces a finite execute burst instead.
+            expect(r.executeBurstPct).toBe(12);
+            expect(r.instantKill).toBe(false);
+            // Charge consumed on the roll.
+            expect(a.nextAllyInstantKillPct.length).toBe(0);
+        } finally {
+            Math.random = orig;
+        }
+    });
+
+    it('party instant-kill buff roll failure → no executeBurst, no instantKill', () => {
+        const a = newStatusState();
+        a.nextAllyInstantKillPct = [{ pct: 10, count: 1 }];
+        const t = newStatusState();
+        const orig = Math.random;
+        Math.random = () => 0.99; // fail the roll
+        try {
+            const r = resolveBasicHit(a, 'Knight', 100, t);
+            expect(r.executeBurstPct).toBe(0);
+            expect(r.instantKill).toBe(false);
+            // Charge still consumed (count decrements regardless of roll).
+            expect(a.nextAllyInstantKillPct.length).toBe(0);
+        } finally {
+            Math.random = orig;
+        }
+    });
 });
 
 describe('consumeTargetMarkAmp', () => {

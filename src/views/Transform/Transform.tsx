@@ -62,10 +62,12 @@ import {
 import {
   getClassSkillBonus,
   getTotalEquipmentStats,
+  getEquippedGearLevel,
+  getGearGapMultiplier,
   flattenItemsData,
 } from '../../systems/itemSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
-import { getTrainingBonuses } from '../../systems/skillSystem';
+import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
 import {
   getAtkDamageMultiplier,
   getSpellDamageMultiplier,
@@ -380,7 +382,17 @@ const rollOffHandDamage = (): number => {
   return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
 };
 
-const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getState>['character']) => {
+/**
+ * @param contentLevel  Level of the content being fought (the monster's level).
+ *   When > 0 and the player is under-geared for it, a gear-gap penalty scales
+ *   down the effective attack (dmg × (gearLvl/contentLvl)², floor 0.05) so
+ *   low-level gear can't practically clear far-higher-level transforms. 0 (the
+ *   default) = no penalty, used by max-HP/MP-only callers.
+ */
+const getEffectiveChar = (
+  char: ReturnType<typeof useCharacterStore.getState>['character'],
+  contentLevel = 0,
+) => {
   if (!char) return null;
   const { equipment } = useInventoryStore.getState();
   const eq = getTotalEquipmentStats(equipment, ALL_ITEMS);
@@ -392,7 +404,8 @@ const getEffectiveChar = (char: ReturnType<typeof useCharacterStore.getState>['c
   const rawMaxHp = char.max_hp + eq.hp + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
   const rawMaxMp = char.max_mp + eq.mp + tb.max_mp + getElixirMpBonus() + getTransformFlatMp();
   const rawDefense = char.defense + eq.defense + tb.defense + getElixirDefBonus() + getTransformFlatDefense();
-  const rawAttack = char.attack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack();
+  const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), contentLevel);
+  const rawAttack = (char.attack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack()) * gearGapMult;
   return {
     ...char,
     attack: Math.floor(rawAttack * getTransformAtkPctMultiplier()),
@@ -1295,7 +1308,7 @@ const Transform = () => {
       const latestChar = useCharacterStore.getState().character;
       if (!latestChar) return;
 
-      const eff = getEffectiveChar(latestChar);
+      const eff = getEffectiveChar(latestChar, currentMonsterRef.current?.level ?? 0);
       if (!eff) return;
 
       const weaponDmg = rollWeaponDamage();
@@ -1435,10 +1448,20 @@ const Transform = () => {
             allyIds: [PLAYER_FX_ID],
             enemyIds: [OPPONENT_FX_ID],
           });
-          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
+          // Skill-upgrade combat bonus — local player's own auto-cast
+          // (Transform is solo). Modest & capped.
+          const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
+            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+          );
+          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillUpgradeMultAuto));
+          const normalSkillDmgTf = Math.floor(baseDmg * apply.castDmgMult);
           let skillDmg = isPureBuff
             ? 0
-            : (apply.instantKill ? Math.max(1, newHp) : Math.floor(baseDmg * apply.castDmgMult));
+            : (apply.instantKill
+                ? Math.max(1, newHp)
+                : ((apply.executeBurstPct ?? 0) > 0
+                    ? Math.max(normalSkillDmgTf, Math.floor(targetMaxHp * (apply.executeBurstPct ?? 0) / 100))
+                    : normalSkillDmgTf));
           // 2026-05 v7: auto-skill spell consumes Klątwa AND gets Kraina ×N.
           if (!isPureBuff && skillDmg > 0) {
             const oppStAuto = ensureStatus(effectsRef.current, OPPONENT_FX_ID);
@@ -2215,7 +2238,7 @@ const Transform = () => {
     if (isCombatantStunned(effectsRef.current, PLAYER_FX_ID)) return;
     const latestChar = useCharacterStore.getState().character;
     if (!latestChar) return;
-    const eff = getEffectiveChar(latestChar);
+    const eff = getEffectiveChar(latestChar, currentMonsterRef.current?.level ?? 0);
     if (!eff) return;
     const slots = useSkillStore.getState().activeSkillSlots;
     const skillId = slots[slotIdx];
@@ -2291,13 +2314,22 @@ const Transform = () => {
       allyIds: [PLAYER_FX_ID],
       enemyIds: [OPPONENT_FX_ID],
     });
+    // Skill-upgrade combat bonus — local player's own manual cast. Modest & capped.
+    const skillUpgradeMultManual = getCombatSkillUpgradeMultiplier(
+      useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
+    );
     const baseDmg = isPureBuff ? 0 : Math.max(
       1,
-      Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
+      Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillUpgradeMultManual),
     );
+    const normalSkillDmgTfManual = Math.floor(baseDmg * apply.castDmgMult);
     let skillDmg = isPureBuff
       ? 0
-      : (apply.instantKill ? Math.max(1, prevTargetHp) : Math.floor(baseDmg * apply.castDmgMult));
+      : (apply.instantKill
+          ? Math.max(1, prevTargetHp)
+          : ((apply.executeBurstPct ?? 0) > 0
+              ? Math.max(normalSkillDmgTfManual, Math.floor(targetMaxHp * (apply.executeBurstPct ?? 0) / 100))
+              : normalSkillDmgTfManual));
     // 2026-05 v7: manual spell cast consumes Klątwa Śmierci (count) AND
     // benefits from Kraina Śmierci (duration ×N) — same as basics.
     if (!isPureBuff && skillDmg > 0) {

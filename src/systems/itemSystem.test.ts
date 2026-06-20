@@ -3,6 +3,8 @@ import {
   buildItem,
   getItemStats,
   getTotalEquipmentStats,
+  getEquippedGearLevel,
+  getGearGapMultiplier,
   getSellPrice,
   canEquip,
   RARITY_COLORS,
@@ -280,16 +282,27 @@ describe('getEnhancementMultiplier', () => {
     expect(getEnhancementMultiplier(-5)).toBe(1);
   });
 
-  it('grows 1.15^n for levels 1-10', () => {
-    expect(getEnhancementMultiplier(1)).toBeCloseTo(1.15, 4);
-    expect(getEnhancementMultiplier(10)).toBeCloseTo(Math.pow(1.15, 10), 4);
+  it('grows +0.10 per level (linear) — 2026-06-20 kill-rate spec: +1 upgrade ≈ +10% kills', () => {
+    expect(getEnhancementMultiplier(1)).toBeCloseTo(1.10, 4);
+    expect(getEnhancementMultiplier(5)).toBeCloseTo(1.50, 4);
+    expect(getEnhancementMultiplier(10)).toBeCloseTo(2.00, 4);
+    // Monotonic increasing across the 1-10 band.
+    for (let u = 1; u <= 10; u += 1) {
+      expect(getEnhancementMultiplier(u)).toBeGreaterThan(getEnhancementMultiplier(u - 1));
+    }
   });
 
-  it('uses 1.08 factor beyond 10', () => {
+  it('stays linear +0.10 per level beyond 10', () => {
     const at10 = getEnhancementMultiplier(10);
     const at15 = getEnhancementMultiplier(15);
-    expect(at15).toBeGreaterThan(at10);
-    expect(at15).toBeCloseTo(Math.pow(1.15, 10) * Math.pow(1.08, 5), 4);
+    const at20 = getEnhancementMultiplier(20);
+    const at30 = getEnhancementMultiplier(30);
+    expect(at10).toBeCloseTo(2.00, 4);
+    expect(at15).toBeCloseTo(2.50, 4);
+    expect(at20).toBeCloseTo(3.00, 4);
+    expect(at30).toBeCloseTo(4.00, 4);
+    // Constant slope 0.10/level across the whole curve.
+    expect((at30 - at20) / 10).toBeCloseTo(0.10, 4);
   });
 });
 
@@ -755,5 +768,74 @@ describe('clearGenInfoCache', () => {
   it('does not throw and can be invoked repeatedly', () => {
     expect(() => clearGenInfoCache()).not.toThrow();
     expect(() => clearGenInfoCache()).not.toThrow();
+  });
+});
+
+// -- Gear-gap penalty (2026-06-20) --------------------------------------------
+
+describe('getGearGapMultiplier', () => {
+  it('returns 1 when gear level >= content level (fully geared)', () => {
+    expect(getGearGapMultiplier(100, 100)).toBe(1);
+    expect(getGearGapMultiplier(120, 100)).toBe(1);
+  });
+
+  it('returns (gear/content)^2 = 0.25 when gear is half the content level', () => {
+    expect(getGearGapMultiplier(50, 100)).toBeCloseTo(0.25, 10);
+  });
+
+  it('floors at 0.05 when gear is far below content (gear = content x0.1)', () => {
+    // (10/100)^2 = 0.01 -> clamped up to the 0.05 floor.
+    expect(getGearGapMultiplier(10, 100)).toBe(0.05);
+  });
+
+  it('returns 1 (no penalty) when content level is 0 or negative', () => {
+    expect(getGearGapMultiplier(1, 0)).toBe(1);
+    expect(getGearGapMultiplier(50, -5)).toBe(1);
+  });
+});
+
+describe('getEquippedGearLevel', () => {
+  // Generated item ids follow `<type>_lvl<N>_<rarity>`; getGeneratedItemInfo
+  // parses the level out of the `_lvlN_` segment.
+  const genItem = (itemId: string, itemLevel: number): IInventoryItem => ({
+    uuid: `u-${itemId}`,
+    itemId,
+    rarity: 'common',
+    bonuses: {},
+    itemLevel,
+  });
+
+  it('averages the parsed item levels of equipped generated items (rounded)', () => {
+    const equipment: Partial<IEquipment> = {
+      mainHand: genItem('sword_lvl10_rare', 10),
+      helmet: genItem('heavy_helmet_lvl20_epic', 20),
+    };
+    // avg(10, 20) = 15
+    expect(getEquippedGearLevel(equipment)).toBe(15);
+  });
+
+  it('rounds the average to the nearest integer', () => {
+    const equipment: Partial<IEquipment> = {
+      mainHand: genItem('sword_lvl10_rare', 10),
+      offHand: genItem('shield_lvl11_rare', 11),
+    };
+    // avg(10, 11) = 10.5 -> round -> 11
+    expect(getEquippedGearLevel(equipment)).toBe(11);
+  });
+
+  it('returns 1 for empty equipment', () => {
+    expect(getEquippedGearLevel({})).toBe(1);
+    expect(getEquippedGearLevel(EMPTY_EQUIPMENT)).toBe(1);
+  });
+
+  it('ignores null slots and non-generated (legacy) item ids', () => {
+    const equipment: Partial<IEquipment> = {
+      mainHand: genItem('sword_lvl30_legendary', 30),
+      // Legacy / starter ids have no parseable _lvlN_ level -> skipped.
+      offHand: genItem('iron_sword', 5),
+      helmet: null,
+    };
+    // Only the generated sword (level 30) contributes.
+    expect(getEquippedGearLevel(equipment)).toBe(30);
   });
 });

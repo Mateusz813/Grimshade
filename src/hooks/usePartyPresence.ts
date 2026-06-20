@@ -130,6 +130,12 @@ export const usePartyPresence = (): void => {
                 maxMp: effMaxMp,
                 transformTier: tier,
                 maxUnlockedMonsterLevel: computeMaxUnlockedMonsterLevel(c.level),
+                // 2026-06-19: broadcast our REAL effective attack/defense
+                // (base + gear + upgrades + training + elixirs + transform)
+                // so the leader's Boss/Raid engine can let our bot slot hit
+                // with our actual power instead of a bot-tier approximation.
+                attack: eff?.attack,
+                defense: eff?.defense,
                 // 2026-05-14 spec ("w party kazdy sojusznik moze sam
                 // decydowac czy uzywa auto spelli"): broadcast our
                 // local skillMode so the leader's combat engine knows
@@ -199,6 +205,9 @@ export const usePartyPresence = (): void => {
             maxMp: effMaxMp,
             transformTier: tier,
             maxUnlockedMonsterLevel: computeMaxUnlockedMonsterLevel(character.level),
+            // 2026-06-19: real effective combat stats — see sendNow comment.
+            attack: eff?.attack,
+            defense: eff?.defense,
             // 2026-05-14: see sendNow comment.
             skillMode: useSettingsStore.getState().skillMode,
             currentRoute,
@@ -239,6 +248,9 @@ export const usePartyPresence = (): void => {
             maxMp: effMaxMp,
             transformTier: tier,
             maxUnlockedMonsterLevel: computeMaxUnlockedMonsterLevel(character.level),
+            // 2026-06-19: real effective combat stats — see sendNow comment.
+            attack: eff?.attack,
+            defense: eff?.defense,
             skillMode,
             currentRoute,
             summons: buildSnapshotSummons(character),
@@ -273,6 +285,9 @@ export const usePartyPresence = (): void => {
                 maxMp: effMaxMp,
                 transformTier: tier,
                 maxUnlockedMonsterLevel: computeMaxUnlockedMonsterLevel(ch.level),
+                // 2026-06-19: real effective combat stats — see sendNow comment.
+                attack: eff?.attack,
+                defense: eff?.defense,
                 currentRoute: window.location.pathname,
                 summons: buildSnapshotSummons(ch),
             });
@@ -309,6 +324,9 @@ export const usePartyPresence = (): void => {
                 maxMp: effMaxMp,
                 transformTier: tier,
                 maxUnlockedMonsterLevel: computeMaxUnlockedMonsterLevel(ch.level),
+                // 2026-06-19: real effective combat stats — see sendNow comment.
+                attack: eff?.attack,
+                defense: eff?.defense,
                 skillMode: useSettingsStore.getState().skillMode,
                 currentRoute: window.location.pathname,
                 summons: buildSnapshotSummons(ch),
