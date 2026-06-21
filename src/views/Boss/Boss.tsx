@@ -118,6 +118,7 @@ import {
     calculateAoeDamage,
     isBossAoeTurn,
     BOT_CLASS_ICONS,
+    getBotLogIcon,
 } from '../../systems/botSystem';
 
 /** Boss aggro re-rolls every 10 seconds (wall-clock), using class-weighted pick. */
@@ -2620,7 +2621,7 @@ const Boss = () => {
         if (botIdx >= 0) {
             fx.pushAllyFloat(botIdx + 1, damage, kind, { icon });
         }
-        const iconLabel = BOT_CLASS_ICONS[bot.class] ?? '?';
+        const iconLabel = getBotLogIcon(bot.class);
         if (newHp <= 0) {
             killBot(botId);
             addLog(`${bossName} zabija ${iconLabel} ${bot.name}! (-${damage} dmg)`, 'monster');
@@ -2859,7 +2860,7 @@ const Boss = () => {
                         });
                     }).catch(() => { /* offline */ });
                 }
-                const icon = BOT_CLASS_ICONS[bot.class] ?? '?';
+                const icon = getBotLogIcon(bot.class);
                 if (newBotHp <= 0) {
                     killBot(bot.id);
                     addLog(`  ${icon} ${bot.name}: POLEGŁ! (-${aoeDmgBot} dmg)`, 'monster');
@@ -2955,7 +2956,7 @@ const Boss = () => {
                                 });
                             }).catch(() => { /* offline */ });
                         }
-                        const icon = BOT_CLASS_ICONS[bot.class] ?? '?';
+                        const icon = getBotLogIcon(bot.class);
                         if (newBotHp <= 0) {
                             killBot(target);
                             addLog(`${boss.name_pl} rzuca ${spell.icon} ${spell.name} na ${icon} ${bot.name}: ${spellDmg} dmg! POLEGŁ!`, 'boss-spell');
@@ -3175,7 +3176,7 @@ const Boss = () => {
                 ? botForAction.mp >= botForAction.skillMpCost
                 : canUseSkill;
             const action = calculateBotAction(botForAction, bossForCalc, canUseSkillFinal);
-            const icon = BOT_CLASS_ICONS[bot.class] ?? '?';
+            const icon = getBotLogIcon(bot.class);
 
             const newBossHp = Math.max(0, bossHpRef.current - action.damage);
             bossHpRef.current = newBossHp;
@@ -4897,6 +4898,9 @@ const Boss = () => {
                             maxMp: bot.maxMp,
                             isDead: !bot.alive,
                             isPlayer: false,
+                            // Only a TRUE AI bot gets the robot badge — a card
+                            // backed by `humanMate` is a real party member.
+                            isBot: !humanMate,
                             level: humanMate?.level ?? bot.level,
                             aggroCount: aggroTargetRef.current === bot.id ? 1 : 0,
                             // Per-bot pulse — bumped inside `dealDamageToBot`

@@ -397,7 +397,12 @@ describe('claimOfflineHunt', () => {
 
     it('grants XP and gold proportional to kills (with zero-randomness drops)', () => {
         stubAllRandomness();
-        const character = makeCharacter({ level: 100, xp: 0, gold: 0 });
+        // highest_level must match level (100) — production setCharacter
+        // normalizes this; the raw setState below bypasses it. Without it,
+        // addXp would think the char just crossed every milestone 20→100 and
+        // (correctly, since 2026-06-21) credit that gold to inventory, polluting
+        // the hunt-gold assertion below.
+        const character = makeCharacter({ level: 100, xp: 0, gold: 0, highest_level: 100 });
         useCharacterStore.setState({ character });
         const monster = makeMonster({ id: 'rat', level: 5, xp: 20, gold: [10, 20] });
         const startMs = 1_700_000_000_000;

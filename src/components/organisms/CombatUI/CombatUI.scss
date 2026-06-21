@@ -1035,6 +1035,21 @@
         white-space: nowrap;
     }
 
+    // Small robot badge for AI bot helpers — distinguishes bots from human
+    // party members now that the bot's name is plain text (no embedded icon).
+    &__ally-bot-badge {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 3px;
+        vertical-align: -1px;
+        opacity: 0.85;
+
+        .game-icon {
+            width: 0.9em;
+            height: 0.9em;
+        }
+    }
+
     // Aggro indicator — pinned to the top-right of the WHOLE card so the
     // mob-target counter (X mobs targeting me) doesn't fight the avatar
     // for vertical space the way it did when it lived inside `&__ally-foot`.

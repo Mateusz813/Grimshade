@@ -80,10 +80,19 @@ export const shouldSuggestBot = (members: IPartyMember[]): boolean =>
 
 // -- Bot helper factory --------------------------------------------------------
 
-const BOT_NAMES = ['Bot Pancerny', 'Bot Lecznik', 'Bot Łucznik', 'Bot Mag'];
-
-const BOT_SPRITES: Record<string, string> = {
-  Knight: ':robot::crossed-swords:', Cleric: ':robot::latin-cross:', Archer: ':robot::bow-and-arrow:', Mage: ':robot::crystal-ball:',
+// Bot display names — matched to the bot's class (createBotHelper only ever
+// picks Knight/Cleric/Mage/Archer). 2026-06-21: names are PLAIN TEXT — they no
+// longer embed `:robot::class-icon:` emoji shortcodes. Baking presentation into
+// a data string meant the shortcodes leaked as literal text ("Bot Lecznik
+// :robot::latin-cross:") anywhere the name rendered without <EmojiText> (combat
+// logs, presence, chat). Icons are now a UI concern: the in-combat AllyCard
+// shows a robot badge for `isBot` members and combat logs prefix a
+// `:robot::class:` shortcode (see getBotLogIcon in botSystem.ts).
+const BOT_NAMES: Partial<Record<CharacterClass, string>> = {
+  Knight: 'Bot Pancerny',
+  Cleric: 'Bot Lecznik',
+  Archer: 'Bot Łucznik',
+  Mage: 'Bot Mag',
 };
 
 /** Creates a bot helper tuned to fill the party's weakest role. */
@@ -109,7 +118,7 @@ export const createBotHelper = (partyMembers: IPartyMember[]): IPartyMember => {
 
   return {
     id: `bot_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    name: `${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]} ${BOT_SPRITES[botClass] ?? 'robot'}`,
+    name: BOT_NAMES[botClass] ?? `Bot ${botClass}`,
     class: botClass,
     level: avgLevel,
     hp,

@@ -3107,9 +3107,11 @@ const Raid = () => {
             if (character && mem.id === character.id) {
                 useCharacterStore.getState().addXp(result.xp);
                 const inv = useInventoryStore.getState();
-                useCharacterStore.getState().updateCharacter({
-                    gold: (character.gold ?? 0) + result.gold,
-                });
+                // 2026-06-21 fix: raid gold must land in the spendable/displayed
+                // inventory pool (same as hunting/dungeon/boss/task rewards), not
+                // the invisible `characters.gold` column — otherwise the reward
+                // tally shows gold the player never actually receives.
+                inv.addGold(result.gold);
                 for (const it of result.items) inv.addItem(it);
                 for (const drop of result.drops) {
                     if (drop.kind === 'spell_chest' && drop.amount) {
@@ -4286,6 +4288,7 @@ const Raid = () => {
             maxMp: memberMaxMp,
             isDead: m.isDead || m.hasEscaped,
             isPlayer: m.id === character?.id,
+            isBot: !!m.isBot,
             level: m.level,
             summonCount: summonList.length,
             summonsByType,

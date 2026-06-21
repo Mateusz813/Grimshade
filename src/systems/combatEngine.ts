@@ -2176,7 +2176,9 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
             timestamp: Date.now(),
         });
 
-        const botIcon = BOT_CLASS_ICONS_LOCAL[bot.class] ?? 'robot';
+        // Shortcode form (`:robot::class:`) so <EmojiText> in the log renderer
+        // turns it into icons — a bare name would print as literal text.
+        const botIcon = `:robot::${BOT_CLASS_ICONS_LOCAL[bot.class] ?? 'robot'}:`;
         s.addLog(`${monster.name_pl} atakuje ${botIcon} ${bot.name} za ${dmg} dmg`, 'monster');
 
         if (newHp <= 0) {
@@ -2457,7 +2459,9 @@ export const doBotAttackTick = (): void => {
 
         live.dealToMonster(dealt);
 
-        const botIcon = BOT_CLASS_ICONS_LOCAL[bot.class] ?? 'robot';
+        // Shortcode form (`:robot::class:`) so <EmojiText> in the log renderer
+        // turns it into icons — a bare name would print as literal text.
+        const botIcon = `:robot::${BOT_CLASS_ICONS_LOCAL[bot.class] ?? 'robot'}:`;
         const critSuffix = isCrit ? ' :high-voltage:KRYTYK!' : '';
         live.addLog(
             `${botIcon} ${bot.name} atakuje ${live.monster.name_pl} za ${dealt} dmg${critSuffix}`,

@@ -335,18 +335,52 @@ describe('addXp', () => {
         expect(event?.levelsGained).toBe(1);
     });
 
-    it('grants gold milestone reward when crossing level 10', () => {
+    it('grants gold milestone reward when crossing level 10 — into the SPENDABLE inventory pool', () => {
         useCharacterStore.getState().setCharacter(makeChar({
             level: 9,
             xp: 0,
             gold: 0,
             highest_level: 9,
         }));
+        useInventoryStore.setState({ gold: 0 });
         useCharacterStore.getState().addXp(xpToNextLevel(9));
         const c = useCharacterStore.getState().character!;
         expect(c.level).toBe(10);
-        // Milestone reward at lvl 10 = 10 × 10000 = 100000.
-        expect(c.gold).toBe(100000);
+        // 2026-06-21 regression: milestone reward at lvl 10 = 10 × 10000 = 100000
+        // (= 1cc). It MUST land in inventoryStore.gold (what TopHeader shows and
+        // the shop spends) — NOT the vestigial characters.gold column, which was
+        // the bug ("+1cc announced but never received").
+        expect(useInventoryStore.getState().gold).toBe(100000);
+        // character.gold (DB column) is intentionally left untouched.
+        expect(c.gold).toBe(0);
+    });
+
+    it('does NOT credit inventory gold on a non-milestone level-up (8 -> 9)', () => {
+        useCharacterStore.getState().setCharacter(makeChar({
+            level: 8,
+            xp: 0,
+            gold: 0,
+            highest_level: 8,
+        }));
+        useInventoryStore.setState({ gold: 0 });
+        useCharacterStore.getState().addXp(xpToNextLevel(8)); // 8 -> 9, no milestone
+        expect(useCharacterStore.getState().character!.level).toBe(9);
+        expect(useInventoryStore.getState().gold).toBe(0);
+    });
+
+    it('does NOT re-award milestone gold when re-leveling after death (gated on highest_level)', () => {
+        // Already reached lvl 10 (highest_level 10), died back to lvl 9.
+        useCharacterStore.getState().setCharacter(makeChar({
+            level: 9,
+            xp: 0,
+            gold: 0,
+            highest_level: 10,
+        }));
+        useInventoryStore.setState({ gold: 0 });
+        useCharacterStore.getState().addXp(xpToNextLevel(9)); // re-cross lvl 10
+        expect(useCharacterStore.getState().character!.level).toBe(10);
+        // No new milestone — highest_level already 10.
+        expect(useInventoryStore.getState().gold).toBe(0);
     });
 });
 

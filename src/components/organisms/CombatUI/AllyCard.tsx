@@ -155,7 +155,14 @@ const AllyCard = ({ ally }: IProps) => {
             </div>
 
             <div className="combat-ui__ally-foot">
-                <span className="combat-ui__ally-name"><EmojiText>{ally.name}</EmojiText></span>
+                <span className="combat-ui__ally-name">
+                    {ally.isBot && (
+                        <span className="combat-ui__ally-bot-badge" aria-label="Bot">
+                            <GameIcon name="robot" />
+                        </span>
+                    )}
+                    <EmojiText>{ally.name}</EmojiText>
+                </span>
             </div>
 
             {/* Per-attack hit pulse — keyed by `hitPulse` so each distinct

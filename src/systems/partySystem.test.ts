@@ -170,6 +170,29 @@ describe('createBotHelper', () => {
     const bot = createBotHelper(members);
     expect(bot.level).toBe(25); // avg of 20 and 30
   });
+
+  // 2026-06-21 regression: the bot name used to embed `:robot::class-icon:`
+  // emoji shortcodes (e.g. "Bot Lecznik :robot::latin-cross:"). Those leaked
+  // as literal text wherever the name rendered without <EmojiText>. The name
+  // must now be PLAIN TEXT with no shortcode colons.
+  it('produces a plain-text name with NO emoji shortcodes', () => {
+    for (let i = 0; i < 10; i++) {
+      const bot = createBotHelper([makeHuman('1'), makeHuman('2', 'Mage')]);
+      expect(bot.name).not.toContain(':');
+      expect(bot.name).not.toMatch(/robot|latin-cross|bow-and-arrow|crossed-swords|crystal-ball/);
+    }
+  });
+
+  it('names the bot to match its chosen class', () => {
+    // No Cleric in party -> bot is a Cleric -> "Bot Lecznik".
+    const cleric = createBotHelper([makeHuman('1', 'Knight'), makeHuman('2', 'Archer')]);
+    expect(cleric.class).toBe('Cleric');
+    expect(cleric.name).toBe('Bot Lecznik');
+    // No Knight -> bot is a Knight -> "Bot Pancerny".
+    const knight = createBotHelper([makeHuman('1', 'Cleric'), makeHuman('2', 'Mage')]);
+    expect(knight.class).toBe('Knight');
+    expect(knight.name).toBe('Bot Pancerny');
+  });
 });
 
 // -- getXpShare / getGoldShare -------------------------------------------------

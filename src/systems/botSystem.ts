@@ -50,6 +50,22 @@ export const BOT_CLASS_ICONS: Record<TCharacterClass, string> = {
     Bard: 'musical-note',
 };
 
+/**
+ * Shortcode form of a bot's icon for use INSIDE combat-log strings.
+ *
+ * Combat logs are rendered through <EmojiText>, which only turns `:name:`
+ * shortcodes into <GameIcon>s — a bare icon name like `bow-and-arrow` would
+ * show up as literal text. So anywhere a bot icon is interpolated into a log
+ * line we must emit the colon-wrapped form. We prefix `:robot:` so bots stay
+ * visually distinct from human party members in the log.
+ *
+ *   getBotLogIcon('Archer')  ->  ':robot::bow-and-arrow:'
+ *
+ * (For JSX, keep using the bare `BOT_CLASS_ICONS[cls]` with <GameIcon name=…>.)
+ */
+export const getBotLogIcon = (cls: TCharacterClass): string =>
+    `:robot::${BOT_CLASS_ICONS[cls] ?? 'robot'}:`;
+
 // -- First available skill per class ------------------------------------------
 
 interface ISkillInfo {

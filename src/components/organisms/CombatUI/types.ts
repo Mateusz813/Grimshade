@@ -146,6 +146,10 @@ export interface ICombatAlly {
     isDead: boolean;
     /** True for the local player so we can mark it visually (:star:). */
     isPlayer: boolean;
+    /** True for AI bot helpers — AllyCard shows a small robot badge so bots
+     *  stay distinguishable from human party members (the bot's `name` is now
+     *  plain text, no embedded icon). */
+    isBot?: boolean;
     /** Character level — shown as a small badge on the avatar (top-left). */
     level?: number;
     /** Number of enemies currently aggro'd onto this ally (1-4). 0 hides badge. */

@@ -222,7 +222,16 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const newMaxMp = char.max_mp + mpGain + milestoneMp;
     const newAttack = (char.attack ?? 0) + milestoneAtk;
     const newDefense = (char.defense ?? 0) + milestoneDef;
-    const newGold = (char.gold ?? 0) + milestoneGoldGain;
+    // 2026-06-21 fix: the milestone gold reward used to be added to
+    // `character.gold` (the `characters` table column), but the gold the
+    // player actually sees / spends lives in `inventoryStore.gold` (the
+    // game_saves blob — what TopHeader renders, what the shop spends, what
+    // task rewards credit via `addGold`). Writing only to `character.gold`
+    // meant the "+1cc" level-up announcement fired but the balance never
+    // moved. We now credit the inventory pool (below, after the set) so the
+    // reward lands where every other gold reward does. `character.gold` is
+    // left untouched — consistent with task/hunting/shop gold, which never
+    // touch it either.
     const { hpBonus, mpBonus } = getEffectiveMaxBonuses();
     const effectiveMaxHp = newMaxHp + hpBonus;
     const effectiveMaxMp = newMaxMp + mpBonus;
@@ -249,9 +258,16 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
         defense: newDefense,
         hp: newHp,
         mp: newMp,
-        gold: newGold,
+        gold: char.gold ?? 0,
       },
     });
+
+    // Credit the milestone gold to the SPENDABLE/displayed pool (inventory),
+    // not the vestigial `characters.gold` column. Guarded so non-milestone
+    // level-ups don't churn the inventory store.
+    if (milestoneGoldGain > 0) {
+      useInventoryStore.getState().addGold(milestoneGoldGain);
+    }
 
     // Fire global level-up notification (deferred to next microtask so React
     // picks it up as a separate render – prevents the notification from being

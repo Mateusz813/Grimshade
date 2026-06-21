@@ -2620,6 +2620,7 @@ const Combat = () => {
                             maxMp: bot.maxMp,
                             isDead: !bot.alive,
                             isPlayer: false,
+                            isBot: true,
                             level: bot.level,
                             aggroCount: waveMonsters.filter(
                                 (w) => !w.isDead && w.aggroTarget === bot.id,

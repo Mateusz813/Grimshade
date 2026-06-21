@@ -7,6 +7,8 @@ import {
     calculateAoeDamage,
     isBossAoeTurn,
     getAggroSwitchInterval,
+    getBotLogIcon,
+    BOT_CLASS_ICONS,
 } from './botSystem';
 import type { IBoss } from './bossSystem';
 
@@ -171,5 +173,27 @@ describe('getAggroSwitchInterval', () => {
             expect(interval).toBeGreaterThanOrEqual(3);
             expect(interval).toBeLessThanOrEqual(5);
         }
+    });
+});
+
+describe('getBotLogIcon', () => {
+    // 2026-06-21 regression: combat logs render via <EmojiText>, which only
+    // converts `:name:` SHORTCODES into icons. A bare icon name like
+    // `bow-and-arrow` printed as literal text in the log — exactly what the
+    // player reported. getBotLogIcon must emit the colon-wrapped form.
+    it('wraps the class icon in a :robot::class: shortcode (EmojiText-renderable)', () => {
+        expect(getBotLogIcon('Archer')).toBe(':robot::bow-and-arrow:');
+        expect(getBotLogIcon('Cleric')).toBe(':robot::sparkles:');
+        expect(getBotLogIcon('Knight')).toBe(':robot::crossed-swords:');
+    });
+
+    it('never returns a bare (colon-less) icon name', () => {
+        (Object.keys(BOT_CLASS_ICONS) as Array<keyof typeof BOT_CLASS_ICONS>).forEach((cls) => {
+            const out = getBotLogIcon(cls);
+            // Must be a shortcode pair, e.g. :robot::dagger:
+            expect(out).toMatch(/^:robot::[a-z0-9-]+:$/);
+            // The bare name must NOT appear unwrapped (would render as text).
+            expect(out.startsWith(BOT_CLASS_ICONS[cls])).toBe(false);
+        });
     });
 });

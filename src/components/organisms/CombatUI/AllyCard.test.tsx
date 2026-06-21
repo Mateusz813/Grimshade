@@ -233,3 +233,24 @@ describe('AllyCard — floats & skill animations', () => {
         expect(container.querySelector('.combat-ui__summon-spawn--demon')).toBeTruthy();
     });
 });
+
+describe('AllyCard — bot badge', () => {
+    // 2026-06-21: bots no longer carry an icon shortcode in their name; the
+    // robot badge is the UI marker that distinguishes an AI bot helper.
+    it('renders a robot badge for an AI bot ally', () => {
+        const { container } = render(
+            <AllyCard ally={makeAlly({ isBot: true, isPlayer: false, name: 'Bot Lecznik' })} />,
+        );
+        const badge = container.querySelector('.combat-ui__ally-bot-badge svg.game-icon[data-icon="robot"]');
+        expect(badge).toBeTruthy();
+        // The name renders as plain text (no leftover shortcodes).
+        expect(screen.getByText('Bot Lecznik')).toBeTruthy();
+    });
+
+    it('does NOT render a robot badge for a human ally', () => {
+        const { container } = render(
+            <AllyCard ally={makeAlly({ isBot: false, isPlayer: false, name: 'Krasek' })} />,
+        );
+        expect(container.querySelector('.combat-ui__ally-bot-badge')).toBeNull();
+    });
+});

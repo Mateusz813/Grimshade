@@ -3231,6 +3231,7 @@ const Trainer = () => {
             maxMp: 100,
             isDead: sandboxDead || sandboxHpRemote <= 0,
             isPlayer: false,
+            isBot: !!m.isBot,
             level: m.level,
             aggroCount: aggroTargetId === m.id && trainerAttacks ? 1 : 0,
             // 2026-05-15 v15: per-ally attacking-class map — when the
