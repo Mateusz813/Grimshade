@@ -135,11 +135,15 @@ test.describe('Social › Guild', { tag: '@guild' }, () => {
             // Crown (:crown:) confirms we're the leader.
             await expect(myMember.locator('.guild__member-crown')).toBeVisible();
 
-            // 10. DISBAND flow: tap the :door: leave button -> confirmation modal.
-            //     Since we're the sole member, the modal carries the
-            //     "Jesteś ostatnim członkiem — gildia zostanie rozwiązana"
-            //     warning copy (Guild.tsx ~819).
-            await myMember.locator('.guild__member-leave').tap();
+            // 10. DISBAND flow: tap the :door: LEAVE button -> confirmation modal.
+            //     2026-06 delete-hardening added a SECOND member-row button for
+            //     the leader (the :wastebasket: "Rozwiąż gildię" disband, also
+            //     class `guild__member-leave`), so target the leave/door one by
+            //     its title to avoid a strict-mode multi-match.
+            //     Since we're the sole member, leaving auto-disbands; the modal
+            //     carries the "Jesteś ostatnim członkiem — gildia zostanie
+            //     rozwiązana" warning copy (Guild.tsx ~826).
+            await myMember.locator('.guild__member-leave[title="Opuść gildię"]').tap();
             await expect(page.locator('.guild__modal-title', { hasText: /Opuść gildię/i }))
                 .toBeVisible({ timeout: 5_000 });
             await expect(page.locator('.guild__home-warning'))

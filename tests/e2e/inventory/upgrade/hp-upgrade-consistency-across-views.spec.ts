@@ -6,8 +6,9 @@
  *
  * Komplementarny do punktu 6.12 (`hp-equip-consistency-across-views`)
  * — różnica: ten test ustawia `upgradeLevel: 3` żeby zweryfikować że
- * `getUpgradedBaseStat` multiplier (`getEnhancementMultiplier(3) = 1.15^3
- * ≈ 1.521`) jest aplikowany SPÓJNIE na wszystkich 3 widokach.
+ * `getUpgradedBaseStat` multiplier (2026-06-20 kill-rate rebalance:
+ * `getEnhancementMultiplier(3) = 1 + 3·0.10 = 1.30`) jest aplikowany
+ * SPÓJNIE na wszystkich 3 widokach.
  *
  * Pragmatic scoping (per session brief 2026-05-25):
  * Sprawdzamy 3 reprezentatywne widoki:
@@ -18,7 +19,7 @@
  * Wszystkie 3 czytają equipment przez `getTotalEquipmentStats`, ktore
  * dla generated items (linia 662-670 itemSystem.ts) sprawdza
  * `isBaseStatKey(slot, key)`. Dla `slot='helmet'` + `key='hp'` -> true ->
- * stosuje `getUpgradedBaseStat(20, 3) = 30`.
+ * stosuje `getUpgradedBaseStat(20, 3) = 26`.
  *
  * Test guard przeciw regresji typu "upgrade multiplier działa w Town ale
  * w CharacterSelect helper nie jest aktualizowany". Bez tej spójności
@@ -37,20 +38,20 @@
  *   flatFloor = baseValue + upgradeLevel
  *   return max(multiplied, flatFloor)
  *
- * `getEnhancementMultiplier(upgradeLevel)`:
- *   upgradeLevel ≤ 10: pow(1.15, upgradeLevel)
+ * `getEnhancementMultiplier(upgradeLevel)` (2026-06-20: linear +10%/level):
+ *   = 1 + upgradeLevel × 0.10
  *
  * Dla baseValue=20, upgradeLevel=3:
- *   getEnhancementMultiplier(3) = 1.15^3 = 1.520875
- *   multiplied = round(20 × 1.520875) = round(30.4175) = 30
+ *   getEnhancementMultiplier(3) = 1 + 3×0.10 = 1.30
+ *   multiplied = round(20 × 1.30) = round(26) = 26
  *   flatFloor = 20 + 3 = 23
- *   return max(30, 23) = 30
+ *   return max(26, 23) = 26
  *
- * Knight base max_hp = 120 + 30 (upgraded helmet hp) = 150.
- *   raw = 120 + 30 + 0 + 0 + 0 = 150
- *   eff = floor(150 × 1.0 × 1.0) = 150
+ * Knight base max_hp = 120 + 26 (upgraded helmet hp) = 146.
+ *   raw = 120 + 26 + 0 + 0 + 0 = 146
+ *   eff = floor(146 × 1.0 × 1.0) = 146
  *
- * Wszystkie 3 widoki muszą pokazać `40/150`.
+ * Wszystkie 3 widoki muszą pokazać `40/146`.
  *
  * ## Warm flow
  *
@@ -112,13 +113,13 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
             await expect(page.locator('.town__char-name')).toHaveText(nick);
 
             // 5. Read HP value from Town bar.
-            //    Knight base 120 + 30 (upgraded helmet) = 150.
-            //    HP=40 -> expect `40/150`.
+            //    Knight base 120 + 26 (upgraded helmet) = 146.
+            //    HP=40 -> expect `40/146`.
             const townHp = await page
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--hp') })
                 .locator('.town__bar-value')
                 .textContent();
-            expect(townHp?.trim()).toBe('40/150');
+            expect(townHp?.trim()).toBe('40/146');
 
             // 6. Open TopHeader pulse popover, read HP from popover row.
             const pulseBtn = page.locator('.top-header__pulse').first();
@@ -128,11 +129,11 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
                 .locator('.top-header__pulse-popover-row--hp .top-header__pulse-popover-val')
                 .first()
                 .textContent();
-            expect(popoverHp?.trim()).toBe('40/150');
+            expect(popoverHp?.trim()).toBe('40/146');
 
             // 7. Wróć do /character-select. `getEffectiveMaxStats` w
             //    CharacterSelect ma TĄ SAMĄ ścieżkę `getTotalEquipmentStats`
-            //    -> applies `getUpgradedBaseStat(20, 3) = 30`. Effective 150.
+            //    -> applies `getUpgradedBaseStat(20, 3) = 26`. Effective 146.
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
             const reloadedCard = page.locator('.char-select__card', {
@@ -142,7 +143,7 @@ test.describe('Inventory › Upgrade', { tag: '@inventory' }, () => {
                 .locator('.char-select__bar-wrap', { has: page.locator('.char-select__bar--hp') })
                 .locator('.char-select__bar-value')
                 .textContent();
-            expect(selectHpText?.trim()).toBe('40/150');
+            expect(selectHpText?.trim()).toBe('40/146');
 
             // 8. KRYTYCZNA ASERCJA: wszystkie 3 widoki ten sam string.
             expect(townHp?.trim()).toBe(popoverHp?.trim());
