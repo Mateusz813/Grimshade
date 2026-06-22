@@ -277,8 +277,8 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         handlePlayerDeath(true);
 
         const c = useCharacterStore.getState().character!;
-        // Level dropped: lvl 100 loses floor(100 * 0.02) = 2 levels -> 98.
-        expect(c.level).toBe(98);
+        // Level dropped: lvl 100 loses max(0.20, 100/100) = 1 level -> 99.
+        expect(c.level).toBe(99);
         expect(c.level).toBeLessThan(100);
         // Skill XP was reduced by the death penalty (−50% of banked XP),
         // so the in-progress XP pointer is strictly lower than before.
@@ -290,7 +290,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         expect(totalDropped).toBe(true);
         // Death overlay fired.
         expect(useDeathStore.getState().event).not.toBeNull();
-        expect(useDeathStore.getState().event?.newLevel).toBe(98);
+        expect(useDeathStore.getState().event?.newLevel).toBe(99);
         // highest_level preserved (re-leveling exploit guard) — bonuses gated.
         expect(c.highest_level).toBe(100);
     });
@@ -335,7 +335,7 @@ describe('handlePlayerDeath — GAP #12 resurrected ally keeps progress (no pena
         handlePlayerDeath(false);
 
         const c = useCharacterStore.getState().character!;
-        expect(c.level).toBe(98); // penalty applied — bots don't gate the death
+        expect(c.level).toBe(99); // penalty applied (1 level at lvl 100) — bots don't gate the death
         expect(useDeathStore.getState().event).not.toBeNull();
     });
 });

@@ -44,6 +44,8 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
 
   const language = useSettingsStore((s) => s.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const keepScreenAwake = useSettingsStore((s) => s.keepScreenAwake);
+  const setKeepScreenAwake = useSettingsStore((s) => s.setKeepScreenAwake);
   const isOnline = useSyncStore((s) => s.isOnline);
   const isSyncing = useSyncStore((s) => s.isSyncing);
   const lastSynced = useSyncStore((s) => s.lastSynced);
@@ -223,6 +225,31 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
             title="Tylko solo: polowanie, bossy, lochy, transformy, taski, questy, trener"
           >
             Offline
+          </button>
+        </div>
+      </div>
+
+      {/* 2026-06-21: keep the screen awake while playing (Wake Lock) so the
+          phone doesn't auto-lock during auto-combat. Default ON. */}
+      <div className="avatar-menu__item avatar-menu__item--row">
+        <span className="avatar-menu__item-icon"><GameIcon name="sun" /></span>
+        <span className="avatar-menu__item-label">Nie wygaszaj ekranu</span>
+        <div className="avatar-menu__lang-toggle">
+          <button
+            type="button"
+            className={`avatar-menu__lang-btn${keepScreenAwake ? ' avatar-menu__lang-btn--active' : ''}`}
+            onClick={() => setKeepScreenAwake(true)}
+            title="Ekran nie gaśnie podczas gry (zużywa więcej baterii)"
+          >
+            Wł
+          </button>
+          <button
+            type="button"
+            className={`avatar-menu__lang-btn${!keepScreenAwake ? ' avatar-menu__lang-btn--active' : ''}`}
+            onClick={() => setKeepScreenAwake(false)}
+            title="Ekran gaśnie normalnie (oszczędza baterię)"
+          >
+            Wył
           </button>
         </div>
       </div>

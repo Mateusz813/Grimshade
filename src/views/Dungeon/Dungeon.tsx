@@ -26,7 +26,7 @@ import {
     type DungeonMonsterType,
 } from '../../systems/dungeonSystem';
 // Dungeon combat uses simplified damage calculation (no skills/crits)
-import { rollMonsterDamage } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
@@ -47,6 +47,7 @@ import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
+import { consumeDeathProtection } from '../../systems/deathProtection';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { useCombatStore } from '../../stores/combatStore';
 import {
@@ -1294,9 +1295,10 @@ const Dungeon = () => {
                 source_level: dungeon.level,
             });
 
-            // Death Protection: saves level/XP. AoL: saves items. Both consumed independently.
-            const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-            const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+            // Unified protection (2026-06-21): ONE item (death_protection elixir
+            // first, else amulet_of_loss) shields EVERYTHING — no level, no xp,
+            // no skill xp, no item loss — on both death and flee.
+            const prot = consumeDeathProtection();
 
             useCharacterStore.getState().fullHealEffective();
 
@@ -1306,8 +1308,12 @@ const Dungeon = () => {
             let xpPercent = 100;
             let skillXpLossPercent = 0;
 
-            if (usedDeathProtection) {
-                addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!', 'system');
+            if (prot.isProtected) {
+                // ZERO loss: keep level/xp/skill xp/items intact, only full-heal.
+                const savedByTxt = prot.consumedId === 'death_protection'
+                    ? 'Eliksir Ochrony'
+                    : 'Amulet of Loss';
+                addLog(`:shield: ${savedByTxt} uchronił Cię od jakiejkolwiek straty!`, 'system');
             } else {
                 const penalty = applyDeathPenalty(char.level, char.xp);
                 newLevel = penalty.newLevel;
@@ -1330,15 +1336,14 @@ const Dungeon = () => {
                 } else {
                     addLog(`:skull: Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony. ${skillPctTxt}`, 'system');
                 }
+
+                // Item loss happens on UNPROTECTED DEATH ONLY.
+                const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+                if (itemsLost > 0) {
+                    addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+                }
             }
 
-            // Item loss with optional Amulet of Loss protection
-            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-            if (usedAol) {
-                addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
-            } else if (itemsLost > 0) {
-                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
-            }
             void saveCurrentCharacterStores();
 
             // Trigger epic death overlay (auto-navigates to town)
@@ -1350,7 +1355,7 @@ const Dungeon = () => {
                 levelsLost,
                 xpPercent,
                 skillXpLossPercent,
-                protectionUsed: usedDeathProtection,
+                protectionUsed: prot.isProtected,
                 source: 'dungeon',
             });
         } else {
@@ -1415,7 +1420,8 @@ const Dungeon = () => {
         if (!skillId) return;
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-        if (now - lastUsed < SKILL_COOLDOWN_MS) return;
+        // 2026-06-21: recast window scales with combat speed (see auto-cast note).
+        if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
@@ -1842,7 +1848,9 @@ const Dungeon = () => {
                 const skillId = slots[i];
                 if (!skillId) continue;
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-                if (now - lastUsed < SKILL_COOLDOWN_MS) continue;
+                // 2026-06-21: scale recast window by combat speed (x2 → 2.5s,
+                // x4 → 1.25s) to match the speed-scaled cooldown bar.
+                if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 const tgt = getFirstAliveSlot();
                 if (tgt < 0) break;
@@ -3012,38 +3020,62 @@ const Dungeon = () => {
                                                         source_level: dungeonForLog?.level ?? ch.level,
                                                         result: 'fled',
                                                     });
-                                                    const pen = applyFleePenalty(ch.level, ch.xp);
-                                                    useCharacterStore.getState().updateCharacter({
-                                                        xp: pen.newXp,
-                                                        level: pen.newLevel,
-                                                    });
-                                                    useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
-                                                    if (pen.levelsLost > 0) {
-                                                        useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
-                                                    }
-                                                    const lvlTxt = pen.levelsLost > 0
-                                                        ? ` · -${pen.levelsLost} lvl`
-                                                        : '';
-                                                    addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
-                                                    // 2026-05-14 spec ("Jezeli sojusznik
-                                                    // ucieknie z bossa lub dungeona ...
-                                                    // powinien wyskoczyc mu popup ze
-                                                    // udalo Ci sie uciec"): flee overlay
-                                                    // (kind: 'flee') with the penalty —
-                                                    // same pattern boss + raid use now.
+                                                    // Unified protection (2026-06-21): ONE
+                                                    // protection item shields the flee penalty
+                                                    // entirely (no level, no xp, no skill xp).
+                                                    // Flee NEVER loses items either way.
+                                                    const fleeProt = consumeDeathProtection();
                                                     const dungeonForFlee = activeDungeonRef.current;
-                                                    useDeathStore.getState().triggerDeath({
-                                                        kind: 'flee',
-                                                        killedBy: dungeonForFlee?.name_pl ?? 'Loch',
-                                                        sourceLevel: dungeonForFlee?.level ?? ch.level,
-                                                        oldLevel: ch.level,
-                                                        newLevel: pen.newLevel,
-                                                        levelsLost: pen.levelsLost,
-                                                        xpPercent: pen.xpPercent,
-                                                        skillXpLossPercent: pen.skillXpLossPercent,
-                                                        protectionUsed: false,
-                                                        source: 'flee',
-                                                    });
+                                                    if (fleeProt.isProtected) {
+                                                        const savedByTxt = fleeProt.consumedId === 'death_protection'
+                                                            ? 'Eliksir Ochrony'
+                                                            : 'Amulet of Loss';
+                                                        addLog(`:shield: ${savedByTxt} uchronił Cię od jakiejkolwiek straty przy ucieczce!`, 'system');
+                                                        useDeathStore.getState().triggerDeath({
+                                                            kind: 'flee',
+                                                            killedBy: dungeonForFlee?.name_pl ?? 'Loch',
+                                                            sourceLevel: dungeonForFlee?.level ?? ch.level,
+                                                            oldLevel: ch.level,
+                                                            newLevel: ch.level,
+                                                            levelsLost: 0,
+                                                            xpPercent: 100,
+                                                            skillXpLossPercent: 0,
+                                                            protectionUsed: true,
+                                                            source: 'flee',
+                                                        });
+                                                    } else {
+                                                        const pen = applyFleePenalty(ch.level, ch.xp);
+                                                        useCharacterStore.getState().updateCharacter({
+                                                            xp: pen.newXp,
+                                                            level: pen.newLevel,
+                                                        });
+                                                        useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
+                                                        if (pen.levelsLost > 0) {
+                                                            useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+                                                        }
+                                                        const lvlTxt = pen.levelsLost > 0
+                                                            ? ` · -${pen.levelsLost} lvl`
+                                                            : '';
+                                                        addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
+                                                        // 2026-05-14 spec ("Jezeli sojusznik
+                                                        // ucieknie z bossa lub dungeona ...
+                                                        // powinien wyskoczyc mu popup ze
+                                                        // udalo Ci sie uciec"): flee overlay
+                                                        // (kind: 'flee') with the penalty —
+                                                        // same pattern boss + raid use now.
+                                                        useDeathStore.getState().triggerDeath({
+                                                            kind: 'flee',
+                                                            killedBy: dungeonForFlee?.name_pl ?? 'Loch',
+                                                            sourceLevel: dungeonForFlee?.level ?? ch.level,
+                                                            oldLevel: ch.level,
+                                                            newLevel: pen.newLevel,
+                                                            levelsLost: pen.levelsLost,
+                                                            xpPercent: pen.xpPercent,
+                                                            skillXpLossPercent: pen.skillXpLossPercent,
+                                                            protectionUsed: false,
+                                                            source: 'flee',
+                                                        });
+                                                    }
                                                 }
                                                 useCombatStore.getState().clearCombatSession();
                                                 // Persist current HP/MP — fleeing keeps your wounds

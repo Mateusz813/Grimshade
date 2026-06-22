@@ -153,10 +153,10 @@ describe('applyCombatLeaveDeath – store effects', () => {
             sourceLevel: 100,
         });
         const ch = useCharacterStore.getState().character;
-        // Per applyDeathPenalty: floor(100 * 0.02) = 2 levels lost.
-        expect(ch?.level).toBe(98);
-        // XP pointer zeroed on level strip.
-        expect(ch?.xp).toBe(0);
+        // New spec (2026-06-21): death loss = max(0.20, level/100) = 1.0 level at lvl 100.
+        expect(ch?.level).toBe(99);
+        // XP reduced continuously by 1 level's worth, landing partway into lvl 99.
+        expect(ch?.xp).toBe(4925);
     });
 
     it('preserves highest_level as the max of the previous highest and level-at-leave', () => {
@@ -210,10 +210,10 @@ describe('applyCombatLeaveDeath – store effects', () => {
         expect(ev?.sourceLevel).toBe(50);
         expect(ev?.source).toBe('transform');
         expect(ev?.protectionUsed).toBe(false);
-        // oldLevel pre-penalty (100), newLevel post-penalty (98).
+        // oldLevel pre-penalty (100), newLevel post-penalty (99 — 1 level lost).
         expect(ev?.oldLevel).toBe(100);
-        expect(ev?.newLevel).toBe(98);
-        expect(ev?.levelsLost).toBe(2);
+        expect(ev?.newLevel).toBe(99);
+        expect(ev?.levelsLost).toBe(1);
     });
 
     it('clears the active combat session after applying the penalty', () => {
@@ -263,7 +263,7 @@ describe('applyCombatLeaveDeath – store effects', () => {
 // -- applyCombatLeaveDeath: level-1 corner case ------------------------------
 
 describe('applyCombatLeaveDeath – level 1 corner case', () => {
-    it('keeps level 1 at level 1 (no level to strip)', () => {
+    it('keeps level 1 at level 1 but drains its XP (clamped at the floor)', () => {
         useCharacterStore.setState({ character: makeCharacter({ level: 1, xp: 50, highest_level: 1 }) });
         applyCombatLeaveDeath({
             source: 'monster',
@@ -272,8 +272,9 @@ describe('applyCombatLeaveDeath – level 1 corner case', () => {
         });
         const ch = useCharacterStore.getState().character;
         expect(ch?.level).toBe(1);
-        // XP preserved at level 1 per applyDeathPenalty contract.
-        expect(ch?.xp).toBe(50);
+        // New spec: death takes ~20% of a level. 50 XP is below that slice, and
+        // the position clamps at level 1.0, so the lvl-1 XP is wiped to 0.
+        expect(ch?.xp).toBe(0);
     });
 
     it('records levelsLost=0 in the death overlay at level 1', () => {
@@ -309,7 +310,7 @@ describe('applyCombatLeaveDeath – source coverage', () => {
 // -- applyCombatLeaveDeath: high-level penalty math ---------------------------
 
 describe('applyCombatLeaveDeath – penalty math anchors', () => {
-    it('lvl 1000 loses 20 levels (the spec anchor)', () => {
+    it('lvl 1000 loses 10 levels (the spec anchor: level/100)', () => {
         useCharacterStore.setState({ character: makeCharacter({ level: 1000, xp: 0, highest_level: 1000 }) });
         applyCombatLeaveDeath({
             source: 'monster',
@@ -317,12 +318,12 @@ describe('applyCombatLeaveDeath – penalty math anchors', () => {
             sourceLevel: 1000,
         });
         const ch = useCharacterStore.getState().character;
-        expect(ch?.level).toBe(980);
+        expect(ch?.level).toBe(990);
         const ev = useDeathStore.getState().event;
-        expect(ev?.levelsLost).toBe(20);
+        expect(ev?.levelsLost).toBe(10);
     });
 
-    it('lvl 49 loses 0 levels (2% rounds down)', () => {
+    it('lvl 49 loses 1 level (max(0.20, 0.49) = 0.49 of a level)', () => {
         useCharacterStore.setState({ character: makeCharacter({ level: 49, xp: 1000, highest_level: 49 }) });
         applyCombatLeaveDeath({
             source: 'monster',
@@ -330,7 +331,7 @@ describe('applyCombatLeaveDeath – penalty math anchors', () => {
             sourceLevel: 49,
         });
         const ch = useCharacterStore.getState().character;
-        expect(ch?.level).toBe(49);
+        expect(ch?.level).toBe(48);
     });
 
     it('lvl 50 loses exactly 1 level', () => {
@@ -357,15 +358,15 @@ describe('applyCombatLeaveDeath – callers must guard idempotency', () => {
             sourceName: 'X',
             sourceLevel: 100,
         });
-        expect(useCharacterStore.getState().character?.level).toBe(98);
+        expect(useCharacterStore.getState().character?.level).toBe(99);
 
-        // Second call drops another 2% of 98 = 1 level.
+        // Second call drops another ~1 level (max(0.20, 0.99) = 0.99 at lvl 99).
         applyCombatLeaveDeath({
             source: 'monster',
             sourceName: 'X',
             sourceLevel: 100,
         });
-        expect(useCharacterStore.getState().character?.level).toBe(97);
+        expect(useCharacterStore.getState().character?.level).toBe(98);
         expect(logDeathSpy).toHaveBeenCalledTimes(2);
     });
 });

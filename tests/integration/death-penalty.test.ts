@@ -97,13 +97,13 @@ afterEach(() => {
 // -- Tests --------------------------------------------------------------------
 
 describe('death penalty cascade: character level + XP', () => {
-    it('strips Math.floor(level * 0.02) = 2 levels at lvl 100', () => {
+    it('strips max(0.20, level/100) = 1 level at lvl 100', () => {
         useCharacterStore.getState().setCharacter(makeChar({ level: 100, xp: 5000 }));
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'Boss', sourceLevel: 100 });
 
         const ch = useCharacterStore.getState().character!;
-        expect(ch.level).toBe(98); // 100 - floor(100*0.02)
-        expect(ch.xp).toBe(0);     // pointer zeroed on level strip
+        expect(ch.level).toBe(99);  // 100 - 1.0 level (continuous)
+        expect(ch.xp).toBe(4925);   // XP reduced by 1 level's worth, lands in lvl 99
     });
 
     it('preserves highest_level when it exceeds the post-penalty level', () => {
@@ -215,8 +215,8 @@ describe('death penalty cascade: combat session + death overlay', () => {
         expect(ev?.killedBy).toBe('Raid Lord');
         expect(ev?.sourceLevel).toBe(200);
         expect(ev?.oldLevel).toBe(100);
-        expect(ev?.newLevel).toBe(98);
-        expect(ev?.levelsLost).toBe(2);
+        expect(ev?.newLevel).toBe(99);
+        expect(ev?.levelsLost).toBe(1);
         expect(ev?.skillXpLossPercent).toBe(50);
         expect(ev?.protectionUsed).toBe(false);
         expect(ev?.source).toBe('raid');
@@ -284,7 +284,7 @@ describe('death penalty cascade: inventory item loss runs but is bounded', () =>
 });
 
 describe('death penalty cascade: level-1 corner case (no level to strip)', () => {
-    it('keeps level 1 at level 1 with XP preserved + skill loss still applied', () => {
+    it('keeps level 1 at level 1, drains its XP (clamped), skill loss still applied', () => {
         useCharacterStore.getState().setCharacter(makeChar({
             level: 1, xp: 50, highest_level: 1,
         }));
@@ -301,7 +301,8 @@ describe('death penalty cascade: level-1 corner case (no level to strip)', () =>
 
         const ch = useCharacterStore.getState().character!;
         expect(ch.level).toBe(1);
-        expect(ch.xp).toBe(50);
+        // New spec: ~20% of a level is taken; 50 XP is below that and clamps to 0.
+        expect(ch.xp).toBe(0);
         // Skill XP loss still hits even at level 1 — 50% of banked XP shaved.
         expect(useSkillStore.getState().skillLevels.sword_fighting).toBeLessThan(5);
     });

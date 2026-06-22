@@ -45,6 +45,7 @@ import {
 import { getCharacterAvatar } from '../../data/classAvatars';
 import { getTransformColor } from '../../systems/transformSystem';
 import { getEffectiveChar } from '../../systems/combatEngine';
+import { getSpeedScaledCooldownMs } from '../../systems/combat';
 import Chat from '../../components/ui/Chat/Chat';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
@@ -1333,9 +1334,10 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             const eff = getEffectiveChar(character);
             const charAtk = eff?.attack ?? character.attack ?? 100;
             const now = Date.now();
-            // Min 1.2s between consecutive spell casts (independent
-            // of speedMult) so chained spells stay readable.
-            if (now - lastSkillCastRef.current < 1200) return;
+            // 2026-06-21: min gap between consecutive spell casts now SCALES with
+            // combat speed (1.2s @x1 → 0.6s @x2 → 0.3s @x4) so skills actually
+            // fire faster on x2/x4 instead of staying throttled to the x1 cadence.
+            if (now - lastSkillCastRef.current < getSpeedScaledCooldownMs(1200, speedMult)) return;
             const slots = useSkillStore.getState().activeSkillSlots;
             const skills = getGuildPlayerSkills(character.class);
             const slottedIds = slots.filter((id): id is string => !!id);
@@ -1352,7 +1354,9 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 const cappedDmg = Math.min(skillDmg, liveBossHpRef.current);
                 playerMpRef.current = Math.max(0, playerMpRef.current - def.mpCost);
                 setPlayerMp(playerMpRef.current);
-                skillCooldownsRef.current[def.id] = now + def.cooldown;
+                // 2026-06-21: per-skill cooldown window scales with combat speed
+                // so the recast gate matches the speed-scaled cooldown display.
+                skillCooldownsRef.current[def.id] = now + getSpeedScaledCooldownMs(def.cooldown, speedMult);
                 lastSkillCastRef.current = now;
                 // 2026-05-18 v10: clamp at boss_max_hp (see basic-tick
                 // note above for the refresh-race rationale).

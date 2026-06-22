@@ -381,3 +381,22 @@ export const applyMonsterRarity = (
         goldMax:    Math.floor(safeN(baseStats.gold[1]) * mult.gold),
     };
 };
+
+// -- Combat-speed cooldown scaling -------------------------------------------
+
+/**
+ * Scale a base cooldown (ms) by the combat-speed multiplier so an auto/manual
+ * skill becomes recastable as soon as its SPEED-SCALED cooldown bar empties.
+ *
+ * 2026-06-21 bug fix: several views (Transform / Boss / Dungeon / Guild boss)
+ * gated the recast on a FIXED wall-clock window (`now - lastUsed < cooldownMs`)
+ * even though the cooldown bar drained at the speed-scaled rate — so on x2/x4
+ * the bar showed ready but the skill only fired every full base-cooldown
+ * (~5s). The gate must use this scaled value: x1 → full, x2 → half, x4 → quarter.
+ *
+ * The hunt engine (combatEngine.ts) achieves the same by multiplying elapsed by
+ * speedMult; this is the equivalent "shrink the window" form used by the view
+ * loops. `speedMult` is clamped to ≥1 so a bad value never lengthens the CD.
+ */
+export const getSpeedScaledCooldownMs = (cooldownMs: number, speedMult: number): number =>
+    Math.floor(Math.max(0, cooldownMs) / Math.max(1, speedMult));

@@ -72,6 +72,7 @@ import {
 } from '../../systems/combatEffectsHelpers';
 import { consumeTargetMarkAmp, skillTargetsEnemy } from '../../systems/skillEffectsV2';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
+import { consumeDeathProtection } from '../../systems/deathProtection';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { deathsApi } from '../../api/v1/deathsApi';
 import { getEffectiveChar } from '../../systems/combatEngine';
@@ -2845,8 +2846,11 @@ const Raid = () => {
             source_level: raidForLog?.level ?? char.level,
             result: 'killed',
         });
-        const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-        const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+        // 2026-06-21 spec: a SINGLE shared helper governs death + flee
+        // protection. Consumes ONE protection item (death_protection elixir
+        // first, then amulet_of_loss); when protected the player loses NOTHING
+        // (no level, no xp, no skill xp, no items).
+        const prot = consumeDeathProtection();
         const oldLevel = char.level;
         let newLevel = char.level;
         let levelsLost = 0;
@@ -2858,9 +2862,15 @@ const Raid = () => {
         const refillFullEffective = () => {
             useCharacterStore.getState().fullHealEffective();
         };
-        if (usedDeathProtection) {
+        if (prot.isProtected) {
+            // ZERO loss: no penalty, no skill-xp drain, no slot purge, no item
+            // loss. Still full-heal the player and log the save.
             refillFullEffective();
-            addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!');
+            addLog(
+                prot.consumedId === 'death_protection'
+                    ? ':shield: Eliksir Ochrony uchronił Cię od jakichkolwiek strat!'
+                    : ':trident-emblem: Amulet of Loss uchronił Cię od jakichkolwiek strat!',
+            );
         } else {
             const p = applyDeathPenalty(char.level, char.xp);
             useCharacterStore.getState().updateCharacter({
@@ -2878,12 +2888,11 @@ const Raid = () => {
             xpPercent = p.xpPercent;
             skillXpLossPercent = p.skillXpLossPercent;
             addLog(`:skull: Wipe! Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
-        }
-        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-        if (usedAol) {
-            addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!');
-        } else if (itemsLost > 0) {
-            addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy wipe!`);
+            // Item loss happens on UNPROTECTED DEATH ONLY.
+            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+            if (itemsLost > 0) {
+                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy wipe!`);
+            }
         }
         // Wipe ends the session — clear so the next combat view starts clean.
         useCombatStore.getState().clearCombatSession();
@@ -2908,7 +2917,7 @@ const Raid = () => {
             levelsLost,
             xpPercent,
             skillXpLossPercent,
-            protectionUsed: usedDeathProtection,
+            protectionUsed: prot.isProtected,
             source: 'raid',
         });
     }, [addLog]);
@@ -3013,8 +3022,9 @@ const Raid = () => {
                 } catch { /* best effort */ }
             })();
         }
-        const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-        const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+        // 2026-06-21 spec: shared death/flee protection helper. Consumes ONE
+        // protection item; when protected the player loses NOTHING.
+        const prot = consumeDeathProtection();
         const oldLevel = char.level;
         let newLevel = char.level;
         let levelsLost = 0;
@@ -3033,9 +3043,15 @@ const Raid = () => {
                 mp: eff?.max_mp ?? live.max_mp,
             });
         };
-        if (usedDeathProtection) {
+        if (prot.isProtected) {
+            // ZERO loss: no penalty, no skill-xp drain, no slot purge, no item
+            // loss. Still full-heal the player and log the save.
             refillFullEffective();
-            addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!');
+            addLog(
+                prot.consumedId === 'death_protection'
+                    ? ':shield: Eliksir Ochrony uchronił Cię od jakichkolwiek strat!'
+                    : ':trident-emblem: Amulet of Loss uchronił Cię od jakichkolwiek strat!',
+            );
         } else {
             const p = applyDeathPenalty(char.level, char.xp);
             useCharacterStore.getState().updateCharacter({
@@ -3053,12 +3069,11 @@ const Raid = () => {
             xpPercent = p.xpPercent;
             skillXpLossPercent = p.skillXpLossPercent;
             addLog(`:skull: Wracasz do miasta. Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
-        }
-        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-        if (usedAol) {
-            addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!');
-        } else if (itemsLost > 0) {
-            addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow)!`);
+            // Item loss happens on UNPROTECTED DEATH ONLY.
+            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+            if (itemsLost > 0) {
+                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow)!`);
+            }
         }
         useCombatStore.getState().clearCombatSession();
         const raid = selectedRaidRef.current;
@@ -3070,7 +3085,7 @@ const Raid = () => {
             levelsLost,
             xpPercent,
             skillXpLossPercent,
-            protectionUsed: usedDeathProtection,
+            protectionUsed: prot.isProtected,
             source: 'raid',
         });
     }, [addLog, navigate]);
@@ -3210,27 +3225,54 @@ const Raid = () => {
                 source_level: raidForFlee?.level ?? character.level,
                 result: 'fled',
             });
-            const p = applyFleePenalty(character.level, character.xp);
-            useCharacterStore.getState().updateCharacter({
-                level: p.newLevel,
-                xp: p.newXp,
-            });
-            useSkillStore.getState().applyDeathPenalty(character.class, p.skillXpLossPercent);
-            if (p.levelsLost > 0) {
-                useSkillStore.getState().purgeLockedSkillSlots(character.class, p.newLevel);
+            // 2026-06-21 spec: shared death/flee protection helper now gates
+            // the flee penalty too — a single protection item (elixir first,
+            // then amulet) cancels ALL loss on flee. Flee NEVER loses items
+            // (no applyDeathItemLoss here, protected or not).
+            const prot = consumeDeathProtection();
+            if (prot.isProtected) {
+                // ZERO loss: no level/xp drop, no skill-xp drain, no slot
+                // purge. Overlay reports the run as fully protected.
+                addLog(
+                    prot.consumedId === 'death_protection'
+                        ? ':shield: Eliksir Ochrony uchronił Cię od jakichkolwiek strat przy ucieczce!'
+                        : ':trident-emblem: Amulet of Loss uchronił Cię od jakichkolwiek strat przy ucieczce!',
+                );
+                useDeathStore.getState().triggerDeath({
+                    kind: 'flee',
+                    killedBy: raidForFlee?.name_pl ?? 'Rajd',
+                    sourceLevel: raidForFlee?.level ?? character.level,
+                    oldLevel: character.level,
+                    newLevel: character.level,
+                    levelsLost: 0,
+                    xpPercent: 100,
+                    skillXpLossPercent: 0,
+                    protectionUsed: true,
+                    source: 'flee',
+                });
+            } else {
+                const p = applyFleePenalty(character.level, character.xp);
+                useCharacterStore.getState().updateCharacter({
+                    level: p.newLevel,
+                    xp: p.newXp,
+                });
+                useSkillStore.getState().applyDeathPenalty(character.class, p.skillXpLossPercent);
+                if (p.levelsLost > 0) {
+                    useSkillStore.getState().purgeLockedSkillSlots(character.class, p.newLevel);
+                }
+                useDeathStore.getState().triggerDeath({
+                    kind: 'flee',
+                    killedBy: raidForFlee?.name_pl ?? 'Rajd',
+                    sourceLevel: raidForFlee?.level ?? character.level,
+                    oldLevel: character.level,
+                    newLevel: p.newLevel,
+                    levelsLost: p.levelsLost,
+                    xpPercent: p.xpPercent,
+                    skillXpLossPercent: p.skillXpLossPercent,
+                    protectionUsed: false,
+                    source: 'flee',
+                });
             }
-            useDeathStore.getState().triggerDeath({
-                kind: 'flee',
-                killedBy: raidForFlee?.name_pl ?? 'Rajd',
-                sourceLevel: raidForFlee?.level ?? character.level,
-                oldLevel: character.level,
-                newLevel: p.newLevel,
-                levelsLost: p.levelsLost,
-                xpPercent: p.xpPercent,
-                skillXpLossPercent: p.skillXpLossPercent,
-                protectionUsed: false,
-                source: 'flee',
-            });
         }
         // Clear shared session so the next combat view starts fresh.
         useCombatStore.getState().clearCombatSession();
@@ -3296,15 +3338,25 @@ const Raid = () => {
         }
         const oldLevel = ch.level;
         if (oldLevel > 1) {
+            // 2026-06-21 spec: shared death/flee protection helper. Consumes
+            // ONE protection item; when protected the player loses NOTHING
+            // (no level, no xp, no skill xp). This dead-not-resurrected path
+            // never applies item loss (matching prior behaviour).
+            const prot = consumeDeathProtection();
             const p = applyDeathPenalty(ch.level, ch.xp);
-            const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-            const newLevel = usedDeathProtection ? oldLevel : p.newLevel;
-            const newXp = usedDeathProtection ? ch.xp : p.newXp;
-            const xpPercent = usedDeathProtection ? 0 : p.xpPercent;
-            const skillXpLossPercent = usedDeathProtection ? 0 : p.skillXpLossPercent;
-            const levelsLost = usedDeathProtection ? 0 : p.levelsLost;
-            useCharacterStore.getState().updateCharacter({ level: newLevel, xp: newXp });
-            if (!usedDeathProtection) {
+            const newLevel = prot.isProtected ? oldLevel : p.newLevel;
+            const newXp = prot.isProtected ? ch.xp : p.newXp;
+            const xpPercent = prot.isProtected ? 100 : p.xpPercent;
+            const skillXpLossPercent = prot.isProtected ? 0 : p.skillXpLossPercent;
+            const levelsLost = prot.isProtected ? 0 : p.levelsLost;
+            if (prot.isProtected) {
+                addLog(
+                    prot.consumedId === 'death_protection'
+                        ? ':shield: Eliksir Ochrony uchronił Cię od jakichkolwiek strat!'
+                        : ':trident-emblem: Amulet of Loss uchronił Cię od jakichkolwiek strat!',
+                );
+            } else {
+                useCharacterStore.getState().updateCharacter({ level: newLevel, xp: newXp });
                 useSkillStore.getState().applyDeathPenalty(ch.class, p.skillXpLossPercent);
                 if (p.levelsLost > 0) {
                     useSkillStore.getState().purgeLockedSkillSlots(ch.class, p.newLevel);
@@ -3319,7 +3371,7 @@ const Raid = () => {
                 levelsLost,
                 xpPercent,
                 skillXpLossPercent,
-                protectionUsed: usedDeathProtection,
+                protectionUsed: prot.isProtected,
                 source: 'raid',
             });
         }

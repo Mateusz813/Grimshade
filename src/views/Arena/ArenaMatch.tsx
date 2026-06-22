@@ -21,7 +21,7 @@ import { getSkillIcon } from '../../data/skillIcons';
 import { getCharacterAvatar } from '../../data/classAvatars';
 import skillsData from '../../data/skills.json';
 import { getEffectiveChar } from '../../systems/combatEngine';
-import { ARENA_DAMAGE_MULTIPLIER } from '../../systems/arenaSystem';
+import { ARENA_DAMAGE_MULTIPLIER, getArenaCastableSkills } from '../../systems/arenaSystem';
 import {
     parseEffects,
     applyEffects,
@@ -238,8 +238,10 @@ const ArenaMatch = () => {
             // animation overlay on the target card.
             const tryCast = (caster: ICombatant, target: ICombatant): { dealt: number; aoe: boolean; skillId: string | null } => {
                 if (isStunned(caster.status)) return { dealt: 0, aoe: false, skillId: null };
-                const skills = getClassActiveSkills(caster.class)
-                    .filter((s) => s.unlockLevel <= caster.level && (s.damage > 0 || !!s.effect));
+                // 2026-06-21 fix: cast ONLY equipped skills (caster.skillSlots),
+                // not every class skill the level allows. A new character with
+                // empty slots casts nothing → basic attacks only.
+                const skills = getArenaCastableSkills(caster.class, caster.skillSlots, caster.level);
                 const cd = caster.cooldowns;
                 const chosen = skills
                     .filter((s) => caster.mp >= s.mpCost && (cd[s.id] ?? 0) <= tick)

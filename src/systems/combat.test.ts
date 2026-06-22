@@ -11,6 +11,7 @@ import {
     applyDeathPenalty,
     applyMonsterRarity,
     getSpeedMultiplier,
+    getSpeedScaledCooldownMs,
 } from './combat';
 
 // -- calculateDamage ----------------------------------------------------------
@@ -324,5 +325,38 @@ describe('getSpeedMultiplier', () => {
 
     it('should return Infinity for SKIP', () => {
         expect(getSpeedMultiplier('SKIP')).toBe(Infinity);
+    });
+});
+
+// -- getSpeedScaledCooldownMs (2026-06-21 auto-skill cadence fix) -------------
+
+describe('getSpeedScaledCooldownMs', () => {
+    // The recast gate in Transform/Boss/Dungeon/Guild-boss must shrink the
+    // cooldown window with combat speed so skills fire as soon as the
+    // (speed-scaled) bar empties — the reported bug was a fixed 5s window.
+    it('returns the full cooldown at x1', () => {
+        expect(getSpeedScaledCooldownMs(5000, 1)).toBe(5000);
+    });
+
+    it('halves the cooldown at x2 and quarters it at x4', () => {
+        expect(getSpeedScaledCooldownMs(5000, 2)).toBe(2500);
+        expect(getSpeedScaledCooldownMs(5000, 4)).toBe(1250);
+    });
+
+    it('scales other base cooldowns too (8s engine CD, 1.2s guild throttle)', () => {
+        expect(getSpeedScaledCooldownMs(8000, 2)).toBe(4000);
+        expect(getSpeedScaledCooldownMs(8000, 4)).toBe(2000);
+        expect(getSpeedScaledCooldownMs(1200, 2)).toBe(600);
+        expect(getSpeedScaledCooldownMs(1200, 4)).toBe(300);
+    });
+
+    it('clamps the multiplier to ≥1 so a bad value never LENGTHENS the cooldown', () => {
+        expect(getSpeedScaledCooldownMs(5000, 0)).toBe(5000);
+        expect(getSpeedScaledCooldownMs(5000, -3)).toBe(5000);
+        expect(getSpeedScaledCooldownMs(5000, 0.5)).toBe(5000);
+    });
+
+    it('floors fractional results', () => {
+        expect(getSpeedScaledCooldownMs(5000, 3)).toBe(1666); // 1666.67 → 1666
     });
 });

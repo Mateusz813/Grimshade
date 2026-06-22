@@ -11,6 +11,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { saveCurrentCharacterStores } from '../../stores/characterScope';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
+import { consumeDeathProtection } from '../../systems/deathProtection';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { useCombatStore } from '../../stores/combatStore';
 import { useDeathStore } from '../../stores/deathStore';
@@ -59,6 +60,7 @@ import {
   calculateBlockChance,
   calculateDodgeChance,
   rollMonsterDamage,
+  getSpeedScaledCooldownMs,
 } from '../../systems/combat';
 import {
   getClassSkillBonus,
@@ -1412,7 +1414,10 @@ const Transform = () => {
           const skillId = slots[i];
           if (!skillId) continue;
           const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-          if (now - lastUsed < SKILL_COOLDOWN_MS) continue;
+          // 2026-06-21: scale the recast window by combat speed so skills fire
+          // as soon as the (speed-scaled) cooldown bar empties — x2 → 2.5s,
+          // x4 → 1.25s — instead of a fixed 5s wall-clock window.
+          if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMultRef.current)) continue;
           if (playerMpRef.current < SKILL_MP_COST) continue;
           // 2026-05 v7: Apokalipsa Śmierci synchronous self-cost.
           {
@@ -1852,9 +1857,11 @@ const Transform = () => {
           source_level: transformLvl,
         });
 
-        // Death Protection: saves level/XP. AoL: saves items. Both consumed independently.
-        const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-        const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+        // Unified death/flee protection (2026-06-21): a single helper consumes
+        // ONE protection item (death-protection elixir first, then amulet of
+        // loss). When protected the player loses NOTHING — no level, no XP, no
+        // skill XP, no items — on both death and flee.
+        const prot = consumeDeathProtection();
 
         // Capture the penalty figures so we can feed the unified DeathNotification
         // popup below — same shape as Boss/Dungeon use, so the player sees the
@@ -1865,9 +1872,15 @@ const Transform = () => {
         let xpPercentForPopup = 100;
         let skillXpLossPercentForPopup = 0;
 
-        if (usedDeathProtection) {
+        if (prot.isProtected) {
+          // ZERO loss — no penalty math, no item loss. Just full-heal and log.
           useCharacterStore.getState().fullHealEffective();
-          addLog('Eliksir Ochrony uchronil Cie od utraty poziomu!', 'system');
+          addLog(
+            prot.consumedId === 'amulet_of_loss'
+              ? 'Amulet of Loss roztrzaskal sie i ochronil Cie od wszelkich strat!'
+              : 'Eliksir Ochrony uchronil Cie od wszelkich strat!',
+            'system',
+          );
         } else {
           const penalty = applyDeathPenalty(char.level, char.xp);
           const currentHighest = char.highest_level ?? char.level;
@@ -1899,14 +1912,12 @@ const Transform = () => {
           levelsLostForPopup = penalty.levelsLost;
           xpPercentForPopup = penalty.xpPercent;
           skillXpLossPercentForPopup = penalty.skillXpLossPercent;
-        }
 
-        // Item loss with optional Amulet of Loss protection
-        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-        if (usedAol) {
-          addLog('Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
-        } else if (itemsLost > 0) {
-          addLog(`Stracileś ${itemsLost} przedmiot(ow) przy smierci!`, 'system');
+          // Item loss happens on UNPROTECTED DEATH ONLY.
+          const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+          if (itemsLost > 0) {
+            addLog(`Stracileś ${itemsLost} przedmiot(ow) przy smierci!`, 'system');
+          }
         }
 
         // Unified epic death overlay — same popup the Boss/Dungeon/Combat
@@ -1924,7 +1935,7 @@ const Transform = () => {
           levelsLost: levelsLostForPopup,
           xpPercent: xpPercentForPopup,
           skillXpLossPercent: skillXpLossPercentForPopup,
-          protectionUsed: usedDeathProtection,
+          protectionUsed: prot.isProtected,
           source: 'transform',
         });
       }
@@ -1988,14 +1999,27 @@ const Transform = () => {
         result: 'fled',
       });
 
-      const pen = applyFleePenalty(ch.level, ch.xp);
-      useCharacterStore.getState().updateCharacter({
-        xp: pen.newXp,
-        level: pen.newLevel,
-      });
-      useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
-      if (pen.levelsLost > 0) {
-        useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+      // Unified death/flee protection (2026-06-21): consume ONE protection
+      // item and, when protected, skip the flee penalty entirely — zero loss
+      // (no level, no XP, no skill XP). Flee NEVER loses items regardless.
+      const prot = consumeDeathProtection();
+      if (prot.isProtected) {
+        addLog(
+          prot.consumedId === 'amulet_of_loss'
+            ? 'Amulet of Loss roztrzaskal sie i ochronil Cie od kary za ucieczke!'
+            : 'Eliksir Ochrony uchronil Cie od kary za ucieczke!',
+          'system',
+        );
+      } else {
+        const pen = applyFleePenalty(ch.level, ch.xp);
+        useCharacterStore.getState().updateCharacter({
+          xp: pen.newXp,
+          level: pen.newLevel,
+        });
+        useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
+        if (pen.levelsLost > 0) {
+          useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+        }
       }
     }
     // Persist current HP/MP so fleeing keeps your wounds (combat outcomes
@@ -2020,7 +2044,7 @@ const Transform = () => {
     setCurrentMonster(null);
     setCombatLog([]);
     navigate('/');
-  }, [clearTimers, navigate, activeTransformId, currentMonster]);
+  }, [clearTimers, navigate, activeTransformId, currentMonster, addLog]);
 
   // Point N6: explicit claim button handler — transitions to 'allDefeated'.
   const handleClaimVictory = useCallback(() => {
@@ -2252,7 +2276,8 @@ const Transform = () => {
     if (!skillId) return;
     const now = Date.now();
     const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-    if (now - lastUsed < SKILL_COOLDOWN_MS) return;
+    // 2026-06-21: recast window scales with combat speed (see auto-cast note).
+    if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMultRef.current)) return;
     if (playerMpRef.current < SKILL_MP_COST) {
       addLog('Za mało MP!', 'system');
       return;

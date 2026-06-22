@@ -17,6 +17,8 @@ import {
     getSeasonEnd,
     getSeasonMsRemaining,
     formatSeasonRemaining,
+    getArenaCastableSkills,
+    getDefaultBotSkillSlots,
 } from './arenaSystem';
 import {
     ARENA_LEAGUES,
@@ -702,5 +704,63 @@ describe('arenaSystem with mocked Math.random', () => {
         generateBotsForArena('bronze', 5, 12345, 10);
         const after = randomSpy.mock.calls.length;
         expect(after).toBe(before);
+    });
+});
+
+// -- getArenaCastableSkills (2026-06-21 bug fix) -----------------------------
+
+describe('getArenaCastableSkills', () => {
+    const EMPTY: Array<string | null> = [null, null, null, null];
+
+    it('returns NOTHING for a new character with empty skill slots', () => {
+        // The reported bug: a skill-less new char still cast skills. With empty
+        // slots they must cast nothing (basic attacks only).
+        expect(getArenaCastableSkills('Knight', EMPTY, 1)).toEqual([]);
+        expect(getArenaCastableSkills('Mage', EMPTY, 50)).toEqual([]); // even at high level
+    });
+
+    it('returns ONLY the equipped skill, not every class skill', () => {
+        // Knight has shield_bash (lvl 5), battle_cry (lvl 10), whirlwind (lvl 20)…
+        // Equip ONLY shield_bash — the others must NOT be castable.
+        const slots = ['shield_bash', null, null, null];
+        const out = getArenaCastableSkills('Knight', slots, 30);
+        const ids = out.map((s) => s.id);
+        expect(ids).toContain('shield_bash');
+        expect(ids).not.toContain('battle_cry');
+        expect(ids).not.toContain('whirlwind');
+        expect(out.length).toBe(1);
+    });
+
+    it('excludes an equipped skill the character has not yet level-unlocked', () => {
+        // shield_bash unlocks at lvl 5 — at lvl 1 it is not castable even if the
+        // slot somehow holds it.
+        expect(getArenaCastableSkills('Knight', ['shield_bash', null, null, null], 1)).toEqual([]);
+        // …and becomes castable once the level is reached.
+        expect(getArenaCastableSkills('Knight', ['shield_bash', null, null, null], 5).map((s) => s.id))
+            .toEqual(['shield_bash']);
+    });
+
+    it('ignores slot ids that are not real class skills (defensive)', () => {
+        expect(getArenaCastableSkills('Knight', ['not_a_real_skill', null, null, null], 50)).toEqual([]);
+    });
+});
+
+describe('getDefaultBotSkillSlots', () => {
+    it('always returns exactly 4 slots', () => {
+        expect(getDefaultBotSkillSlots('Knight', 1)).toHaveLength(4);
+        expect(getDefaultBotSkillSlots('Knight', 100)).toHaveLength(4);
+    });
+
+    it('gives a level-1 Knight bot no skills (first skill unlocks at lvl 5)', () => {
+        expect(getDefaultBotSkillSlots('Knight', 1)).toEqual([null, null, null, null]);
+    });
+
+    it('equips a high-level bot with real, level-unlocked class skills', () => {
+        const slots = getDefaultBotSkillSlots('Knight', 60);
+        const ids = slots.filter((s): s is string => s !== null);
+        expect(ids.length).toBeGreaterThan(0);
+        // Every equipped id is a real Knight skill that this loadout can cast.
+        const castable = getArenaCastableSkills('Knight', slots, 60).map((s) => s.id);
+        expect(castable.sort()).toEqual([...ids].sort());
     });
 });

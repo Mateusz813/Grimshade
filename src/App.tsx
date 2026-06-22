@@ -8,6 +8,8 @@ import { useMpRegen } from './hooks/useMpRegen';
 import { useBackgroundCombat } from './hooks/useBackgroundCombat';
 import { useChatUnreadSubscription } from './hooks/useChatUnreadSubscription';
 import { useLeaderboardStatSync } from './hooks/useLeaderboardStatSync';
+import { useWakeLock } from './hooks/useWakeLock';
+import { useSettingsStore } from './stores/settingsStore';
 import {
     saveCurrentCharacterStoresSync,
     getActiveCharacterIdForRestore,
@@ -45,6 +47,10 @@ const App = () => {
     useBackgroundCombat();
     useChatUnreadSubscription();
     useLeaderboardStatSync();
+    // Keep the screen awake while logged in (idle/auto-combat PWA) — gated on
+    // the player's setting (default ON). No-op on browsers without Wake Lock.
+    const keepScreenAwake = useSettingsStore((s) => s.keepScreenAwake);
+    useWakeLock(!!session && keepScreenAwake);
 
     // Auto-save character stores when closing/refreshing the page
     useEffect(() => {

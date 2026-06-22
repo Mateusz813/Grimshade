@@ -13,6 +13,7 @@ import {
   DISCONNECT_ARENA_ROUTES,
 } from '../../../systems/disconnectPolicy';
 import { useDeathStore } from '../../../stores/deathStore';
+import { consumeDeathProtection } from '../../../systems/deathProtection';
 import { useSyncStore } from '../../../stores/syncStore';
 import { useConnectivityStore } from '../../../stores/connectivityStore';
 import { usePartyPresence } from '../../../hooks/usePartyPresence';
@@ -196,40 +197,72 @@ const AppShell = ({ children }: IAppShellProps) => {
       if (useDeathStore.getState().event !== null) return;
       const ch = useCharacterStore.getState().character;
       if (ch && ch.level > 1) {
-        const pen = applyFleePenalty(ch.level, ch.xp);
-        useCharacterStore.getState().updateCharacter({
-          xp: pen.newXp,
-          level: pen.newLevel,
-        });
-        useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
-        if (pen.levelsLost > 0) {
-          useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
-        }
-        // 2026-05-14 spec ("Jezeli sojusznik ucieknie z bossa lub
-        // dungeona ... powinien wyskoczyc mu popup ze udalo Ci sie
-        // uciec"): mirror the flee overlay that the in-view "Ucieknij"
-        // button shows — when the leader dissolves the party mid-fight
-        // and we're shipped home, the player still loses XP / Skill XP
-        // and deserves a visible "UCIEKŁEŚ" panel with the penalty
-        // numbers instead of a silent stat drop.
-        if (useDeathStore.getState().event !== null) return;
         const routeName = location.pathname === '/boss'
           ? 'Boss'
           : location.pathname === '/raid'
             ? 'Rajd'
             : 'Trener';
-        useDeathStore.getState().triggerDeath({
-          kind: 'flee',
-          killedBy: routeName,
-          sourceLevel: ch.level,
-          oldLevel: ch.level,
-          newLevel: pen.newLevel,
-          levelsLost: pen.levelsLost,
-          xpPercent: pen.xpPercent,
-          skillXpLossPercent: pen.skillXpLossPercent,
-          protectionUsed: false,
-          source: 'flee',
-        });
+        // 2026-06-21 unified protection: a single shared helper consumes
+        // ONE protection item (Eliksir Ochrony first, then Amulet of
+        // Loss). When protected the player loses NOTHING on a flee — no
+        // level, no XP, no Skill XP. Flee never loses items anyway, so
+        // the only difference vs. an unprotected flee is that the penalty
+        // math is skipped entirely.
+        const prot = consumeDeathProtection();
+        if (prot.isProtected) {
+          // ZERO loss: skip applyFleePenalty, updateCharacter, the skill
+          // XP penalty and any skill-slot purge. Still surface the flee
+          // overlay so the player sees they got away — but with all
+          // penalty numbers pinned to "nothing lost".
+          if (useDeathStore.getState().event !== null) return;
+          const protectionLabel = prot.consumedId === 'death_protection'
+            ? 'Eliksir Ochrony'
+            : 'Amulet of Loss';
+          // eslint-disable-next-line no-console
+          console.info(`[protection] ${protectionLabel} saved everything on flee from ${routeName}.`);
+          useDeathStore.getState().triggerDeath({
+            kind: 'flee',
+            killedBy: routeName,
+            sourceLevel: ch.level,
+            oldLevel: ch.level,
+            newLevel: ch.level,
+            levelsLost: 0,
+            xpPercent: 100,
+            skillXpLossPercent: 0,
+            protectionUsed: true,
+            source: 'flee',
+          });
+        } else {
+          const pen = applyFleePenalty(ch.level, ch.xp);
+          useCharacterStore.getState().updateCharacter({
+            xp: pen.newXp,
+            level: pen.newLevel,
+          });
+          useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
+          if (pen.levelsLost > 0) {
+            useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+          }
+          // 2026-05-14 spec ("Jezeli sojusznik ucieknie z bossa lub
+          // dungeona ... powinien wyskoczyc mu popup ze udalo Ci sie
+          // uciec"): mirror the flee overlay that the in-view "Ucieknij"
+          // button shows — when the leader dissolves the party mid-fight
+          // and we're shipped home, the player still loses XP / Skill XP
+          // and deserves a visible "UCIEKŁEŚ" panel with the penalty
+          // numbers instead of a silent stat drop. Flee NEVER loses items.
+          if (useDeathStore.getState().event !== null) return;
+          useDeathStore.getState().triggerDeath({
+            kind: 'flee',
+            killedBy: routeName,
+            sourceLevel: ch.level,
+            oldLevel: ch.level,
+            newLevel: pen.newLevel,
+            levelsLost: pen.levelsLost,
+            xpPercent: pen.xpPercent,
+            skillXpLossPercent: pen.skillXpLossPercent,
+            protectionUsed: false,
+            source: 'flee',
+          });
+        }
       }
     })();
     // Bail home so the empty arena doesn't stay stuck.

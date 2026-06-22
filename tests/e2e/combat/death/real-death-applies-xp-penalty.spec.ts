@@ -63,7 +63,7 @@ import { triggerPlayerDeath, getCharacterSnapshot } from '../../fixtures/combatS
 test.describe('Combat › Death', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('Knight lvl 50 dies without protection -> level drops to 49, xp resets to 0', async ({ page }) => {
+    test('Knight lvl 50 dies without protection -> level drops to 49, xp lands ~half into lvl 49', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -122,12 +122,13 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             const after = await getCharacterSnapshot(page);
             expect(after).not.toBeNull();
 
-            // 6. Level dropped to 49. floor(50 * 0.02) = 1 lost level.
+            // 6. Level dropped to 49. New spec: death loss = max(0.20, 50/100)
+            //    = 0.5 of a level, applied continuously -> 50.0 - 0.5 = 49.5.
             expect(after!.level).toBe(49);
 
-            // 7. XP pointer reset to 0 (penalty.newXp = 0 in
-            //    levelSystem.ts line 193).
-            expect(after!.xp).toBe(0);
+            // 7. XP lands at the new continuous position (~50% into lvl 49).
+            //    From a clean lvl-50/0% start: round(0.5 * xpToNextLevel(49)).
+            expect(after!.xp).toBe(51450);
 
             // 8. fullHealEffective ran (combatEngine.ts line 1405) ->
             //    HP = max. Knight base max_hp = 120. After death revival,

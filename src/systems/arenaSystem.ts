@@ -13,6 +13,7 @@ import {
     type IArenaRewardBucket,
 } from '../types/arena';
 import type { TCharacterClass } from '../types/character';
+import skillsData from '../data/skills.json';
 
 // -- League promotion / relegation thresholds --------------------------------
 //
@@ -112,6 +113,68 @@ export const getMatchReward = (won: boolean, attackerIsHigher: boolean): {
  *  duels finish in 2-3 swings; 0.2 stretches even the fastest match into
  *  ~10+ exchanges so the player gets to see the per-round visuals. */
 export const ARENA_DAMAGE_MULTIPLIER = 0.2;
+
+// -- Castable skills (equipped loadout only) --------------------------------
+
+export interface IArenaSkill {
+    id: string;
+    unlockLevel: number;
+    mpCost: number;
+    cooldown: number;
+    damage: number;
+    effect?: string;
+}
+
+/**
+ * The active skills a combatant may cast in an arena match.
+ *
+ * 2026-06-21 bug fix: a combatant casts ONLY the skills currently EQUIPPED in
+ * their skill slots — NOT every class skill they happen to be high enough level
+ * to use. A brand-new character with empty slots has nothing to cast, so they
+ * fall back to basic attacks (player report: "atakując kogoś uderzam go
+ * skillami których nawet nie mam odblokowanych").
+ *
+ * Filters: equipped (id ∈ skillSlots) ∩ class-active catalog ∩ level-unlocked ∩
+ * actually does something (damage or effect). MP / cooldown gating is applied
+ * later per-tick by the caller.
+ */
+export const getArenaCastableSkills = (
+    characterClass: string,
+    skillSlots: ReadonlyArray<string | null>,
+    level: number,
+): IArenaSkill[] => {
+    const equipped = new Set(skillSlots.filter((s): s is string => !!s));
+    if (equipped.size === 0) return [];
+    const key = characterClass.toLowerCase() as keyof typeof skillsData.activeSkills;
+    const classSkills = (skillsData.activeSkills[key] ?? []) as IArenaSkill[];
+    return classSkills.filter(
+        (s) => equipped.has(s.id) && s.unlockLevel <= level && (s.damage > 0 || !!s.effect),
+    );
+};
+
+/**
+ * A sensible default equipped loadout for a generated arena BOT: up to 4 of its
+ * class's active skills that are unlocked at the bot's level (strongest/highest-
+ * tier first), padded to 4 slots. Because the arena now only casts EQUIPPED
+ * skills (getArenaCastableSkills), bots need an actual loadout or they'd throw
+ * nothing but basic attacks. A level-1 bot has no unlocked skills → empty slots
+ * → basics only, exactly like a fresh human at that level.
+ */
+export const getDefaultBotSkillSlots = (
+    characterClass: string,
+    level: number,
+): Array<string | null> => {
+    const key = characterClass.toLowerCase() as keyof typeof skillsData.activeSkills;
+    const classSkills = (skillsData.activeSkills[key] ?? []) as IArenaSkill[];
+    const ids = classSkills
+        .filter((s) => s.unlockLevel <= level && (s.damage > 0 || !!s.effect))
+        .sort((a, b) => b.unlockLevel - a.unlockLevel)
+        .slice(0, 4)
+        .map((s) => s.id);
+    const slots: Array<string | null> = [...ids];
+    while (slots.length < 4) slots.push(null);
+    return slots;
+};
 
 // -- Position computation ---------------------------------------------------
 
@@ -360,7 +423,11 @@ export const generateBotsForArena = (
                 maxMp: mp,
                 attack: atk,
                 defense: def,
-                skillSlots: [null, null, null, null],
+                // 2026-06-21: give bots a real equipped loadout (their class's
+                // unlocked skills for their level) — the arena only casts
+                // EQUIPPED skills now, so empty slots would make bots throw only
+                // basic attacks.
+                skillSlots: getDefaultBotSkillSlots(cls, lvl),
                 snapshotAt: new Date().toISOString(),
             },
         });

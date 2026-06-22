@@ -23,6 +23,9 @@ interface ISettingsState {
   autoPotionPctHpId: string;
   autoPotionPctMpId: string;
   showCombatXpBar: boolean;
+  /** Hold a screen wake lock while playing so the phone doesn't auto-lock
+   *  mid-fight. Global (not per-character). Default ON. */
+  keepScreenAwake: boolean;
   autoSellCommon: boolean;
   autoSellRare: boolean;
   autoSellEpic: boolean;
@@ -75,6 +78,7 @@ interface ISettingsState {
   setBossFilterSortDesc: (val: boolean) => void;
 
   setShowCombatXpBar: (val: boolean) => void;
+  setKeepScreenAwake: (val: boolean) => void;
   setLanguage: (lang: Language) => void;
   setCombatSpeed: (speed: CombatSpeed) => void;
   setSkillMode: (mode: SkillMode) => void;
@@ -120,6 +124,8 @@ export const useSettingsStore = create<ISettingsState>()(
       autoPotionPctMpId: 'mp_potion_great',
 
       showCombatXpBar: localStorage.getItem('showCombatXpBar') !== 'false',
+      // Default ON — only off if the player explicitly disabled it.
+      keepScreenAwake: localStorage.getItem('keepScreenAwake') !== 'false',
       autoSellCommon: false,
       autoSellRare: false,
       autoSellEpic: false,
@@ -176,6 +182,10 @@ export const useSettingsStore = create<ISettingsState>()(
       setShowCombatXpBar: (showCombatXpBar) => {
         localStorage.setItem('showCombatXpBar', String(showCombatXpBar));
         set({ showCombatXpBar });
+      },
+      setKeepScreenAwake: (keepScreenAwake) => {
+        localStorage.setItem('keepScreenAwake', String(keepScreenAwake));
+        set({ keepScreenAwake });
       },
       setLanguage: (language) => { void i18n.changeLanguage(language); set({ language }); },
       setCombatSpeed: (combatSpeed) => set({ combatSpeed }),

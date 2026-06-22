@@ -61,7 +61,7 @@ import { triggerPlayerDeath, getCharacterSnapshot } from '../../fixtures/combatS
 test.describe('Combat › Death', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
 
-    test('Knight lvl 50 with 3× AOL + 3 bag items dies -> items preserved, AOL count 3 -> 2, level still drops', async ({ page }) => {
+    test('Knight lvl 50 with 3× AOL + 3 bag items dies -> items preserved, AOL count 3 -> 2, level NOT lost (AOL shields everything)', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -152,18 +152,19 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
 
             // 6. Trigger death. Engine consumes 1× AOL + sets usedAol=true ->
             //    applyDeathItemLoss(true) early-returns 0 (line 527) -> bag
-            //    untouched. Level penalty STILL fires because AOL doesn't
-            //    block the XP/level branch.
+            //    untouched. 2026-06-21 spec: AOL now shields EVERYTHING —
+            //    level/xp are NOT lost either (consumeDeathProtection ->
+            //    isProtected -> the whole penalty branch is skipped).
             await triggerPlayerDeath(page, 'rat');
 
-            // 7. Post-snapshot — XP/level branch did fire (no DP seeded).
+            // 7. Post-snapshot — protected branch fired (AOL present).
             const after = await getCharacterSnapshot(page);
             expect(after).not.toBeNull();
-            // 50 -> 49 (floor(50 * 0.02) = 1 lost level) — confirms the
-            // death actually went through. If `triggerPlayerDeath` was a
-            // no-op, level would still be 50.
-            expect(after!.level).toBe(49);
-            // fullHealEffective ran (line 1419) post-penalty.
+            // Level UNCHANGED — AOL shields the level/xp penalty too now.
+            // Proof that death actually went through is the AOL consume
+            // (3 -> 2) asserted below, plus the full-heal.
+            expect(after!.level).toBe(50);
+            // fullHealEffective ran post-death.
             expect(after!.hp).toBe(after!.max_hp);
 
             // 8. KRYTYCZNE: bag preserved (all 3 items still present with

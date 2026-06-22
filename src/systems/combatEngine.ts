@@ -11,6 +11,7 @@ import {
     rollMonsterDamage,
 } from './combat';
 import { applyDeathPenalty } from './levelSystem';
+import { consumeDeathProtection } from './deathProtection';
 import { applySkillBuff, getSkillDef } from './skillBuffs';
 import {
     calculateGoldDrop,
@@ -1403,8 +1404,9 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
         });
     }
 
-    const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-    const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+    // 2026-06-21: either protection item (death_protection elixir OR amulet of
+    // loss) shields EVERYTHING — no level/xp/skill/item loss — and consumes ONE.
+    const prot = consumeDeathProtection();
 
     useCharacterStore.getState().fullHealEffective();
 
@@ -1413,8 +1415,9 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
     let levelsLost = 0;
     let xpPercent = 100;
 
-    if (usedDeathProtection) {
-        s.addLog(':shield: Eliksir Ochrony uchronil Cie od utraty poziomu!', 'system');
+    if (prot.isProtected) {
+        const label = prot.consumedId === 'death_protection' ? 'Eliksir Ochrony' : 'Amulet of Loss';
+        s.addLog(`:shield: ${label} uchronił Cię od wszystkich strat (poziom, XP, przedmioty)!`, 'system');
     } else {
         const penalty = applyDeathPenalty(char.level, char.xp);
         newLevel = penalty.newLevel;
@@ -1436,13 +1439,11 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
         } else {
             s.addLog(`Giniesz… ${skillPctTxt}`, 'system');
         }
-    }
-
-    const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-    if (usedAol) {
-        s.addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
-    } else if (itemsLost > 0) {
-        s.addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+        // Items are lost on UNPROTECTED death only.
+        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+        if (itemsLost > 0) {
+            s.addLog(`:skull: Straciłeś ${itemsLost} przedmiot(ów) przy śmierci!`, 'system');
+        }
     }
 
     // Force-save: death is a once-in-a-while event, not part of the
@@ -1463,7 +1464,7 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
         newLevel,
         levelsLost,
         xpPercent,
-        protectionUsed: usedDeathProtection,
+        protectionUsed: prot.isProtected,
         source: 'monster',
     });
 };

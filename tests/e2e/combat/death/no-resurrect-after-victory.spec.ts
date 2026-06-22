@@ -138,8 +138,8 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             // 5. Post-death snapshot — penalty applied.
             const afterDeath = await getCharacterSnapshot(page);
             expect(afterDeath).not.toBeNull();
-            expect(afterDeath!.level).toBe(49); // dropped by 1
-            expect(afterDeath!.xp).toBe(0);     // reset
+            expect(afterDeath!.level).toBe(49); // dropped by 1 (0.5 level continuous)
+            expect(afterDeath!.xp).toBe(51450); // ~50% into lvl 49
             expect(afterDeath!.hp).toBe(afterDeath!.max_hp); // healed by fullHealEffective
 
             // 6. ACTION: force victory phase — same transition the engine
@@ -179,13 +179,13 @@ test.describe('Combat › Death', { tag: '@combat' }, () => {
             //       jump back to 50.
             expect(afterVictory!.level).toBe(49);
 
-            //    b) XP is STILL 0 (penalty reset stuck). If victory
-            //       awarded XP that drifted us past 0, this would be > 0
+            //    b) XP is STILL the post-death value (penalty stuck). If
+            //       victory awarded XP that drifted us, this would differ
             //       — but earnedXp from a fight-with-dead-player should
             //       not flow into character.xp via the victory transition
             //       itself (only via `handleMonsterDeath` -> addXp, which
             //       fires DURING the kill, not at phase-set time).
-            expect(afterVictory!.xp).toBe(0);
+            expect(afterVictory!.xp).toBe(51450);
 
             //    c) HP is STILL at max — no extra revive bumps via
             //       victory. (fullHealEffective inside handlePlayerDeath

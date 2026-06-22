@@ -151,100 +151,71 @@ export interface IDeathPenaltyResult {
     skillXpLossPercent: number;
 }
 
-/**
- * Calculate how many levels are lost on death.
- *   formula: floor(level * 0.02)
- *   - lvl 1   -> 0
- *   - lvl 50  -> 1
- *   - lvl 100 -> 2
- *   - lvl 500 -> 10
- *   - lvl 1000 -> 20
- */
-const calculateLevelsLost = (level: number): number => {
-    if (level <= 1) return 0;
-    return Math.max(0, Math.floor(level * 0.02));
-};
-
 /** Death always takes 50% of every trained skill's banked XP. */
 const DEATH_SKILL_XP_LOSS_PCT = 50;
+/** Flee takes a sliver of skill XP (0.1%). */
+const FLEE_SKILL_XP_LOSS_PCT = 0.1;
+
+/**
+ * 2026-06-21 spec — death penalty in "levels' worth of XP", applied as a
+ * CONTINUOUS reduction (so it can drop you below your current level even at
+ * 0% XP). Floor of 0.20 levels keeps low-level deaths stinging.
+ *   - lvl 1   -> 0.20  (≈20% of current-level XP)
+ *   - lvl 41  -> 0.41  (a lvl-41/0% death drops to lvl 40)
+ *   - lvl 100 -> 1     (1 level)
+ *   - lvl 200 -> 2 · lvl 1000 -> 10
+ */
+export const getDeathLossLevels = (level: number): number =>
+    Math.max(0.20, level / 100);
+
+/** Flee penalty = 10% of the death penalty (lvl 1000 → 1 level). Never loses items. */
+export const getFleeLossLevels = (level: number): number =>
+    getDeathLossLevels(level) * 0.10;
+
+/**
+ * Apply a fractional `lossLevels` reduction to a (level, xp) position and
+ * recompute the resulting level + remaining XP. Works on the continuous
+ * "exact position" axis = level + (xp / xpToNextLevel(level)).
+ */
+const applyLevelLoss = (
+    currentLevel: number,
+    currentXp: number,
+    lossLevels: number,
+    skillXpLossPercent: number,
+): IDeathPenaltyResult => {
+    const denom = Math.max(1, xpToNextLevel(currentLevel));
+    const frac = Math.max(0, Math.min(1, (currentXp ?? 0) / denom));
+    const exactPos = currentLevel + frac;
+    const newExactPos = Math.max(1, exactPos - Math.max(0, lossLevels));
+    const newLevel = Math.max(1, Math.floor(newExactPos));
+    const newFrac = Math.max(0, newExactPos - newLevel);
+    const newXp = Math.max(0, Math.round(newFrac * Math.max(1, xpToNextLevel(newLevel))));
+    return {
+        newLevel,
+        newXp,
+        xpPercent: Math.round(newFrac * 100),
+        levelsLost: currentLevel - newLevel,
+        skillXpLossPercent,
+    };
+};
 
 export const applyDeathPenalty = (
     currentLevel: number,
     currentXp: number,
-): IDeathPenaltyResult => {
-    // Lvl 1 — no level to strip. Keep the current XP pointer; the
-    // skill-XP penalty still applies.
-    if (currentLevel <= 1) {
-        return {
-            newLevel: 1,
-            newXp: currentXp,
-            xpPercent: Math.round((currentXp / Math.max(1, xpToNextLevel(1))) * 100),
-            levelsLost: 0,
-            skillXpLossPercent: DEATH_SKILL_XP_LOSS_PCT,
-        };
-    }
-
-    const levelsLost = calculateLevelsLost(currentLevel);
-    const newLevel = Math.max(1, currentLevel - levelsLost);
-
-    // After a level strip, drop the XP pointer to the FRESH base of the
-    // new lower level (player has to re-earn the levels they lost).
-    return {
-        newLevel,
-        newXp: 0,
-        xpPercent: 0,
-        levelsLost,
-        skillXpLossPercent: DEATH_SKILL_XP_LOSS_PCT,
-    };
-};
+): IDeathPenaltyResult =>
+    applyLevelLoss(currentLevel, currentXp, getDeathLossLevels(currentLevel), DEATH_SKILL_XP_LOSS_PCT);
 
 /**
- * Flee penalty — applied when the player presses "Ucieknij" mid-fight in
- * non-hunting combat (Boss / Dungeon / Transform / Raid). Equipment is
- * never lost. Per 2026-05 spec:
- *   - level loss: floor(level * 0.003)  -> 3 at lvl 1000, 0 below ~333
- *   - skill XP:   0.1% of every trained skill's banked XP
- *
- * Returns the SAME shape as `applyDeathPenalty` so the UI overlay can
- * render a unified "you lost X" panel for both flows — only the copy
- * ("Uciekłeś" vs "Zginąłeś") and the visual intensity differ.
+ * Flee penalty — pressing "Ucieknij" mid-fight (Boss / Dungeon / Transform /
+ * Raid). 10% of the death penalty; equipment is NEVER lost on flee (the caller
+ * enforces that). Returns the same shape as applyDeathPenalty so the overlay
+ * can render a unified panel.
  */
-const FLEE_SKILL_XP_LOSS_PCT = 0.1;
-
 export const applyFleePenalty = (
     currentLevel: number,
     currentXp: number,
-): IDeathPenaltyResult => {
-    // Lvl 1 — nothing to lose; keep XP and skip skill-XP drain too.
-    if (currentLevel <= 1) {
-        return { newLevel: 1, newXp: currentXp, xpPercent: 100, levelsLost: 0, skillXpLossPercent: 0 };
-    }
-
-    const levelsLost = Math.max(0, Math.floor(currentLevel * 0.003));
-    const newLevel = Math.max(1, currentLevel - levelsLost);
-
-    if (levelsLost === 0) {
-        // No level lost (lvl < ~333) — keep the XP pointer; only skill-XP
-        // hits.
-        return {
-            newLevel,
-            newXp: currentXp,
-            xpPercent: Math.round((currentXp / Math.max(1, xpToNextLevel(currentLevel))) * 100),
-            levelsLost: 0,
-            skillXpLossPercent: FLEE_SKILL_XP_LOSS_PCT,
-        };
-    }
-
-    // Level was stripped — drop XP pointer to fresh start of the new
-    // lower level (consistent with applyDeathPenalty).
-    return {
-        newLevel,
-        newXp: 0,
-        xpPercent: 0,
-        levelsLost,
-        skillXpLossPercent: FLEE_SKILL_XP_LOSS_PCT,
-    };
-};
+): IDeathPenaltyResult =>
+    applyLevelLoss(currentLevel, currentXp, getFleeLossLevels(currentLevel), FLEE_SKILL_XP_LOSS_PCT);
 
 // -- Legacy death penalty (kept for backwards compat) -------------------------
 export const applyDeathXpPenalty = (

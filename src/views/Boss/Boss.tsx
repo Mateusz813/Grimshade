@@ -17,6 +17,7 @@ import { ELIXIRS } from '../../stores/shopStore';
 import { resolveAutoPotionElixir } from '../../systems/potionSystem';
 import { canUsePotionAtLevel } from '../../systems/potionGating';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
+import { consumeDeathProtection } from '../../systems/deathProtection';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { useCombatStore } from '../../stores/combatStore';
 import { usePartyCombatSyncStore } from '../../stores/partyCombatSyncStore';
@@ -88,7 +89,7 @@ import {
     type IBossResult,
     type IBossUniqueItem,
 } from '../../systems/bossSystem';
-import { rollMonsterDamage } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
@@ -1715,9 +1716,9 @@ const Boss = () => {
                 source_level: boss.level,
             });
 
-            // Death Protection: saves level/XP. AoL: saves items. Both consumed independently.
-            const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-            const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+            // Unified death/flee protection: ONE item (elixir first, then AoL)
+            // shields EVERYTHING — no level, xp, skill xp or item loss.
+            const prot = consumeDeathProtection();
 
             useCharacterStore.getState().fullHealEffective();
 
@@ -1727,8 +1728,9 @@ const Boss = () => {
             let xpPercent = 100;
             let skillXpLossPercent = 0;
 
-            if (usedDeathProtection) {
-                addLog(':shield: Eliksir Ochrony uchronił Cię od utraty poziomu!', 'system');
+            if (prot.isProtected) {
+                const protName = prot.consumedId === 'amulet_of_loss' ? 'Amulet of Loss' : 'Eliksir Ochrony';
+                addLog(`:shield: ${protName} uchronił Cię przed wszelkimi stratami!`, 'system');
             } else {
                 const penalty = applyDeathPenalty(char.level, char.xp);
                 newLevel = penalty.newLevel;
@@ -1754,14 +1756,12 @@ const Boss = () => {
                 } else {
                     addLog(`:skull: Zginąłeś w walce z ${boss.name_pl}! ${skillPctTxt}`, 'system');
                 }
-            }
 
-            // Item loss with optional Amulet of Loss protection
-            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-            if (usedAol) {
-                addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
-            } else if (itemsLost > 0) {
-                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+                // Item loss happens on UNPROTECTED DEATH ONLY.
+                const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+                if (itemsLost > 0) {
+                    addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+                }
             }
             void saveCurrentCharacterStores();
 
@@ -1774,7 +1774,7 @@ const Boss = () => {
                 levelsLost,
                 xpPercent,
                 skillXpLossPercent,
-                protectionUsed: usedDeathProtection,
+                protectionUsed: prot.isProtected,
                 source: 'boss',
             });
         } else {
@@ -1833,7 +1833,8 @@ const Boss = () => {
         }
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-        if (now - lastUsed < SKILL_COOLDOWN_MS) return;
+        // 2026-06-21: recast window scales with combat speed (see auto-cast note).
+        if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
@@ -2328,7 +2329,9 @@ const Boss = () => {
                 const skillId = slots[i];
                 if (!skillId) continue;
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-                if (now - lastUsed < SKILL_COOLDOWN_MS) continue;
+                // 2026-06-21: scale recast window by combat speed (x2 → 2.5s,
+                // x4 → 1.25s) to match the speed-scaled cooldown bar.
+                if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 // 2026-05-14 spec ("jezeli stracilem poziom i nie moge
                 // uzywac danego spella a wlaczone mam auto spelle to
@@ -4023,15 +4026,17 @@ const Boss = () => {
         resultDeathAppliedRef.current = true;
         leavePenaltyAppliedRef.current = true;
         const boss = activeBossRef.current;
-        const usedDeathProtection = useInventoryStore.getState().useConsumable('death_protection');
-        const usedAol = useInventoryStore.getState().useConsumable('amulet_of_loss');
+        const prot = consumeDeathProtection();
         useCharacterStore.getState().fullHealEffective();
         const oldLevel = ch.level;
         let newLevel = ch.level;
         let levelsLost = 0;
         let xpPercent = 100;
         let skillXpLossPercent = 0;
-        if (!usedDeathProtection) {
+        if (prot.isProtected) {
+            const protName = prot.consumedId === 'amulet_of_loss' ? 'Amulet of Loss' : 'Eliksir Ochrony';
+            addLog(`:shield: ${protName} uchronił Cię przed wszelkimi stratami!`, 'system');
+        } else {
             const penalty = applyDeathPenalty(ch.level, ch.xp);
             newLevel = penalty.newLevel;
             levelsLost = penalty.levelsLost;
@@ -4047,12 +4052,11 @@ const Boss = () => {
             useCharacterStore.getState().fullHealEffective();
             useSkillStore.getState().applyDeathPenalty(ch.class, penalty.skillXpLossPercent);
             useSkillStore.getState().purgeLockedSkillSlots(ch.class, penalty.newLevel);
-        }
-        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(usedAol);
-        if (usedAol) {
-            addLog(':trident-emblem: Amulet of Loss roztrzaskal sie i ochronil Twoje przedmioty!', 'system');
-        } else if (itemsLost > 0) {
-            addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+            // Item loss happens on UNPROTECTED DEATH ONLY.
+            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+            if (itemsLost > 0) {
+                addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
+            }
         }
         addLog(':skull: Nikt Cię nie wskrzesił — ginieesz.', 'system');
         useDeathStore.getState().triggerDeath({
@@ -4063,7 +4067,7 @@ const Boss = () => {
             levelsLost,
             xpPercent,
             skillXpLossPercent,
-            protectionUsed: usedDeathProtection,
+            protectionUsed: prot.isProtected,
             source: 'boss',
         });
         // 2026-05-17 v2 spec ("jezeli lider party kliknie ponow lub
@@ -5073,31 +5077,52 @@ const Boss = () => {
                                                         source_level: activeBoss?.level ?? ch.level,
                                                         result: 'fled',
                                                     });
-                                                    const pen = applyFleePenalty(ch.level, ch.xp);
-                                                    useCharacterStore.getState().updateCharacter({
-                                                        xp: pen.newXp,
-                                                        level: pen.newLevel,
-                                                    });
-                                                    useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
-                                                    if (pen.levelsLost > 0) {
-                                                        useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+                                                    // Unified protection: ONE item shields the
+                                                    // flee penalty too — zero level/xp/skill-xp
+                                                    // loss. Flee NEVER loses items either way.
+                                                    const prot = consumeDeathProtection();
+                                                    if (prot.isProtected) {
+                                                        const protName = prot.consumedId === 'amulet_of_loss' ? 'Amulet of Loss' : 'Eliksir Ochrony';
+                                                        addLog(`:shield: ${protName} uchronił Cię przed stratami przy ucieczce!`, 'system');
+                                                        useDeathStore.getState().triggerDeath({
+                                                            kind: 'flee',
+                                                            killedBy: activeBoss?.name_pl ?? 'Boss',
+                                                            sourceLevel: activeBoss?.level ?? ch.level,
+                                                            oldLevel: ch.level,
+                                                            newLevel: ch.level,
+                                                            levelsLost: 0,
+                                                            xpPercent: 100,
+                                                            skillXpLossPercent: 0,
+                                                            protectionUsed: true,
+                                                            source: 'flee',
+                                                        });
+                                                    } else {
+                                                        const pen = applyFleePenalty(ch.level, ch.xp);
+                                                        useCharacterStore.getState().updateCharacter({
+                                                            xp: pen.newXp,
+                                                            level: pen.newLevel,
+                                                        });
+                                                        useSkillStore.getState().applyDeathPenalty(ch.class, pen.skillXpLossPercent);
+                                                        if (pen.levelsLost > 0) {
+                                                            useSkillStore.getState().purgeLockedSkillSlots(ch.class, pen.newLevel);
+                                                        }
+                                                        const lvlTxt = pen.levelsLost > 0
+                                                            ? ` · -${pen.levelsLost} lvl`
+                                                            : '';
+                                                        addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
+                                                        useDeathStore.getState().triggerDeath({
+                                                            kind: 'flee',
+                                                            killedBy: activeBoss?.name_pl ?? 'Boss',
+                                                            sourceLevel: activeBoss?.level ?? ch.level,
+                                                            oldLevel: ch.level,
+                                                            newLevel: pen.newLevel,
+                                                            levelsLost: pen.levelsLost,
+                                                            xpPercent: pen.xpPercent,
+                                                            skillXpLossPercent: pen.skillXpLossPercent,
+                                                            protectionUsed: false,
+                                                            source: 'flee',
+                                                        });
                                                     }
-                                                    const lvlTxt = pen.levelsLost > 0
-                                                        ? ` · -${pen.levelsLost} lvl`
-                                                        : '';
-                                                    addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
-                                                    useDeathStore.getState().triggerDeath({
-                                                        kind: 'flee',
-                                                        killedBy: activeBoss?.name_pl ?? 'Boss',
-                                                        sourceLevel: activeBoss?.level ?? ch.level,
-                                                        oldLevel: ch.level,
-                                                        newLevel: pen.newLevel,
-                                                        levelsLost: pen.levelsLost,
-                                                        xpPercent: pen.xpPercent,
-                                                        skillXpLossPercent: pen.skillXpLossPercent,
-                                                        protectionUsed: false,
-                                                        source: 'flee',
-                                                    });
                                                 }
                                                 // Persist current HP/MP — fleeing keeps your wounds
                                                 // (combat outcomes never silently top you off).
