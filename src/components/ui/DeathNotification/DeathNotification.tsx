@@ -125,7 +125,7 @@ const DeathNotification = () => {
                 </span>
               )}
               <span className="death__penalty death__penalty--skill">
-                <GameIcon name="crossed-swords" /> -{(event.skillXpLossPercent ?? 0.1).toFixed(1)}% Skill XP
+                <GameIcon name="crossed-swords" /> -{(event.skillXpLossPercent ?? 2.5).toFixed(1)}% Skill XP
               </span>
             </>
           ) : (
@@ -136,7 +136,7 @@ const DeathNotification = () => {
                 </span>
               ) : null}
               <span className="death__penalty death__penalty--skill">
-                <GameIcon name="crossed-swords" /> -{(event.skillXpLossPercent ?? 50).toFixed(0)}% Skill XP
+                <GameIcon name="crossed-swords" /> -{(event.skillXpLossPercent ?? 25).toFixed(0)}% Skill XP
               </span>
             </>
           )}

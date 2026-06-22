@@ -72,11 +72,10 @@ interface ISkillStore extends ISkillState {
      *
      * lossPct is the % of TOTAL banked XP to remove. The result is
      * re-normalized back into (level, currentXp) — so a level-50 skill
-     * with half-XP toward 51, hit by lossPct=50, lands somewhere around
-     * level 25.
+     * with half-XP toward 51, hit by lossPct=25, lands a bit lower.
      *
-     * Defaults to 50 (the death penalty) so old callers keep working.
-     * Pass 0.1 for the flee penalty.
+     * Defaults to 25 (the death penalty) so old callers keep working.
+     * Pass 2.5 for the flee penalty.
      */
     applyDeathPenalty: (cls: CharacterClass, lossPct?: number) => void;
     /** Set active skill in a slot (0-3); pass null to clear the slot */
@@ -188,7 +187,7 @@ export const useSkillStore = create<ISkillStore>()(
                 return result.levelsGained;
             },
 
-            applyDeathPenalty: (cls, lossPct = 50) => {
+            applyDeathPenalty: (cls, lossPct = 25) => {
                 const skillIds = getClassWeaponSkills(cls);
                 // Apply to weapon skills + magic_level + ALL general trainable stats
                 const allIds = [...new Set([...skillIds, 'magic_level', ...GENERAL_TRAINABLE_STATS])];

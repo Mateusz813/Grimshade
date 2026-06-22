@@ -163,9 +163,9 @@ describe('applyDeathPenalty', () => {
         expect(r.levelsLost).toBe(0);
     });
 
-    it('always reports 50% skill XP loss', () => {
-        expect(applyDeathPenalty(50, 0).skillXpLossPercent).toBe(50);
-        expect(applyDeathPenalty(1000, 0).skillXpLossPercent).toBe(50);
+    it('always reports 25% skill XP loss (flat, level-independent)', () => {
+        expect(applyDeathPenalty(50, 0).skillXpLossPercent).toBe(25);
+        expect(applyDeathPenalty(1000, 0).skillXpLossPercent).toBe(25);
     });
 });
 
@@ -185,9 +185,9 @@ describe('applyFleePenalty', () => {
         expect(r.xpPercent).toBeCloseTo(40, 0); // lost 0.1 level = 10%
     });
 
-    it('reports 0.1% skill XP loss above lvl 1', () => {
-        expect(applyFleePenalty(500, 0).skillXpLossPercent).toBe(0.1);
-        expect(applyFleePenalty(1000, 0).skillXpLossPercent).toBe(0.1);
+    it('reports 2.5% skill XP loss above lvl 1 (10% of death’s 25%)', () => {
+        expect(applyFleePenalty(500, 0).skillXpLossPercent).toBe(2.5);
+        expect(applyFleePenalty(1000, 0).skillXpLossPercent).toBe(2.5);
     });
 });
 

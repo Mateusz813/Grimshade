@@ -151,10 +151,10 @@ export interface IDeathPenaltyResult {
     skillXpLossPercent: number;
 }
 
-/** Death always takes 50% of every trained skill's banked XP. */
-const DEATH_SKILL_XP_LOSS_PCT = 50;
-/** Flee takes a sliver of skill XP (0.1%). */
-const FLEE_SKILL_XP_LOSS_PCT = 0.1;
+/** Death takes 25% of every trained skill's banked XP (flat, level-independent). */
+const DEATH_SKILL_XP_LOSS_PCT = 25;
+/** Flee takes 2.5% of every trained skill's banked XP (10% of the death cut). */
+const FLEE_SKILL_XP_LOSS_PCT = 2.5;
 
 /**
  * 2026-06-21 spec — death penalty in "levels' worth of XP", applied as a

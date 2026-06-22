@@ -128,7 +128,7 @@ describe('death penalty cascade: character level + XP', () => {
 });
 
 describe('death penalty cascade: skill XP loss across every trained skill', () => {
-    it('shaves 50% of banked XP from every trained skill', () => {
+    it('shaves 25% of banked XP from every trained skill', () => {
         useCharacterStore.getState().setCharacter(makeChar({ level: 100 }));
         // Seed three skills with non-zero levels.
         useSkillStore.setState({
@@ -143,13 +143,13 @@ describe('death penalty cascade: skill XP loss across every trained skill', () =
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'X', sourceLevel: 100 });
 
         const sk = useSkillStore.getState();
-        // 50% banked-XP loss reduces every trained skill's level.
+        // 25% banked-XP loss reduces every trained skill's level.
         // Exact value depends on skill XP curve, but it MUST drop
-        // strictly below the original.
+        // strictly below the original (20→18, 10→9, 8→7).
         expect(sk.skillLevels.sword_fighting).toBeLessThan(20);
         expect(sk.skillLevels.magic_level).toBeLessThan(10);
         expect(sk.skillLevels.shielding).toBeLessThan(8);
-        // None should be wiped to zero either — half the bank still
+        // None should be wiped to zero either — most of the bank still
         // leaves a meaningful level.
         expect(sk.skillLevels.sword_fighting).toBeGreaterThan(0);
     });
@@ -217,7 +217,7 @@ describe('death penalty cascade: combat session + death overlay', () => {
         expect(ev?.oldLevel).toBe(100);
         expect(ev?.newLevel).toBe(99);
         expect(ev?.levelsLost).toBe(1);
-        expect(ev?.skillXpLossPercent).toBe(50);
+        expect(ev?.skillXpLossPercent).toBe(25);
         expect(ev?.protectionUsed).toBe(false);
         expect(ev?.source).toBe('raid');
     });

@@ -109,7 +109,7 @@ describe('addSkillXp', () => {
 // -- applyDeathPenalty --------------------------------------------------------
 
 describe('applyDeathPenalty', () => {
-    it('halves total banked XP across all trainable skills (50% default)', () => {
+    it('removes 25% of total banked XP across all trainable skills (25% default)', () => {
         // Knight skills + general stats start at lvl 5 each.
         useSkillStore.setState({
             skillLevels: {
@@ -126,9 +126,9 @@ describe('applyDeathPenalty', () => {
             },
         });
         useSkillStore.getState().applyDeathPenalty('Knight');
-        // After losing 50% of banked XP, levels should be roughly halved.
+        // After losing 25% of banked XP (default), levels drop a bit.
         // Exact level depends on the cumulative XP curve — just verify each
-        // skill dropped below its starting level.
+        // skill dropped below its starting level (5 → 4 each).
         const s = useSkillStore.getState();
         expect(s.skillLevels['sword_fighting']).toBeLessThan(5);
         expect(s.skillLevels['shielding']).toBeLessThan(5);
@@ -136,14 +136,14 @@ describe('applyDeathPenalty', () => {
         expect(s.skillLevels['max_hp']).toBeLessThan(5);
     });
 
-    it('applies the requested loss percentage (e.g. 0.1 for flee)', () => {
-        // Big skill so 0.1% loss is observable
+    it('applies the requested loss percentage (e.g. 2.5 for flee)', () => {
+        // Big skill so the small flee % is observable
         useSkillStore.setState({
             skillLevels: { sword_fighting: 50 },
             skillXp: { sword_fighting: 0 },
         });
-        useSkillStore.getState().applyDeathPenalty('Knight', 0.1);
-        // 0.1% off a level-50 skill should leave it still at 50 or 49.
+        useSkillStore.getState().applyDeathPenalty('Knight', 2.5);
+        // 2.5% off a level-50 skill should leave it still at 50 or 49.
         const level = useSkillStore.getState().skillLevels['sword_fighting'];
         expect(level).toBeGreaterThanOrEqual(49);
         expect(level).toBeLessThanOrEqual(50);

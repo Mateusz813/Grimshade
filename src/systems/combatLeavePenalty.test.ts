@@ -235,7 +235,7 @@ describe('applyCombatLeaveDeath – store effects', () => {
         expect(cs.sessionDrops.length).toBe(0);
     });
 
-    it('reports skillXpLossPercent in the death overlay (50% for death penalty)', () => {
+    it('reports skillXpLossPercent in the death overlay (25% for death penalty)', () => {
         useCharacterStore.setState({ character: makeCharacter({ level: 100, xp: 5000 }) });
         applyCombatLeaveDeath({
             source: 'boss',
@@ -243,7 +243,7 @@ describe('applyCombatLeaveDeath – store effects', () => {
             sourceLevel: 100,
         });
         const ev = useDeathStore.getState().event;
-        expect(ev?.skillXpLossPercent).toBe(50);
+        expect(ev?.skillXpLossPercent).toBe(25);
     });
 
     it('passes the source name verbatim (no "(uciekłeś z gry)" suffix per 2026-05-19 spec)', () => {
