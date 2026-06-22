@@ -3127,12 +3127,24 @@ const Inventory = () => {
   // 'potions'/'chests'/'stones' shows only that type, any other slot
   // filter hides them entirely (the player narrowed to gear-only).
   const filteredStackTiles = useMemo<IStackTile[]>(() => {
-    if (rarityFilter !== 'all') return []; // rarity filter hides stacks
+    // 2026-06-21 fix: when the player EXPLICITLY selects a stack slot filter
+    // (Potiony / Spell Chesty / Kamienie), show those stacks even if a rarity
+    // filter happens to be active — narrow them BY rarity instead of hiding
+    // them. Previously any active rarity filter blanket-hid all stacks, so
+    // tapping "Spell Chesty" while a rarity pill was selected showed nothing
+    // ("mam spell chesty a jak odfiltruje to nie widze nic"). Stack tiles carry
+    // a rarity (chests by tier, potions by tier, stones by tier) so this is
+    // meaningful.
+    const byRarity = (tiles: IStackTile[]): IStackTile[] =>
+      rarityFilter === 'all' ? tiles : tiles.filter((t) => t.rarity === rarityFilter);
+    if (slotFilter === 'potions') return byRarity(stackTiles.filter((t) => t.type === 'potion'));
+    if (slotFilter === 'chests') return byRarity(stackTiles.filter((t) => t.type === 'chest'));
+    if (slotFilter === 'stones') return byRarity(stackTiles.filter((t) => t.type === 'stone'));
+    // 'all' slot: stacks mix in with gear, so a rarity filter (a gear-focused
+    // action) still hides them — unchanged behavior.
+    if (rarityFilter !== 'all') return [];
     if (slotFilter === 'all') return stackTiles;
-    if (slotFilter === 'potions') return stackTiles.filter((t) => t.type === 'potion');
-    if (slotFilter === 'chests') return stackTiles.filter((t) => t.type === 'chest');
-    if (slotFilter === 'stones') return stackTiles.filter((t) => t.type === 'stone');
-    return [];
+    return []; // a gear slot filter (helmet, weapons, …) → no stacks
   }, [stackTiles, slotFilter, rarityFilter]);
 
   // -- Pagination -------------------------------------------------------------
