@@ -440,13 +440,41 @@ describe('buyArenaItem', () => {
         expect(invState.arenaPoints).toBe(50);
     });
 
-    it('adds a consumable for kind=potion / elixir', () => {
+    it('adds a consumable for kind=potion / elixir (at/above the payload unlock level)', () => {
         invState.arenaPoints = 1000;
         buyArenaItem(
+            // arena_hp_25 pays out hp_potion_great (unlock lvl 200) — buy at 200.
             { id: 'arena_hp_25', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 300, kind: 'potion', payloadId: 'hp_potion_great' },
-            10,
+            200,
         );
         expect(addConsumableMock).toHaveBeenCalledWith('hp_potion_great', 1);
+    });
+
+    // 2026-06-21: arena HP/MP potions are level-gated by their payload potion.
+    it('rejects an arena potion below the payload potion unlock level (no AP spent)', () => {
+        invState.arenaPoints = 100_000;
+        const r = buyArenaItem(
+            { id: 'arena_hp_25', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 300, kind: 'potion', payloadId: 'hp_potion_great' },
+            14, // hp_potion_great needs lvl 200
+        );
+        expect(r).toBe('level_too_low');
+        expect(addConsumableMock).not.toHaveBeenCalled();
+        expect(spendArenaPointsMock).not.toHaveBeenCalled(); // AP NOT spent
+    });
+
+    it('rejects arena_hp_100 (divine, lvl 700) below 700 but allows at 700', () => {
+        invState.arenaPoints = 100_000;
+        const locked = buyArenaItem(
+            { id: 'arena_hp_100', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 2000, kind: 'potion', payloadId: 'hp_potion_divine' },
+            699,
+        );
+        expect(locked).toBe('level_too_low');
+        const ok = buyArenaItem(
+            { id: 'arena_hp_100', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 2000, kind: 'potion', payloadId: 'hp_potion_divine' },
+            700,
+        );
+        expect(ok).toBe('ok');
+        expect(addConsumableMock).toHaveBeenCalledWith('hp_potion_divine', 1);
     });
 
     it('scales price with level for mythic weapons', () => {

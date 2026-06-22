@@ -939,7 +939,8 @@ const useAutoPotionSlot = (
     const valPct = maxVal > 0 ? (currentVal / maxVal) * 100 : 100;
     if (valPct > threshold) return;
     const inv = useInventoryStore.getState();
-    const elixir = resolveAutoPotionElixir(potionId, hpOrMp, slotKind, inv.consumables);
+    const autoLevel = useCharacterStore.getState().character?.level ?? 1;
+    const elixir = resolveAutoPotionElixir(potionId, hpOrMp, slotKind, inv.consumables, autoLevel);
     if (!elixir) return;
     // Compute the would-be heal amount and skip if it would be mostly wasted.
     // This is the real guard against the "lost 1 HP, burned a 50 HP potion"

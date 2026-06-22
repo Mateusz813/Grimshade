@@ -1691,10 +1691,10 @@ const Combat = () => {
     // -- Derived ---------------------------------------------------------------
     const sortedMonsters = [...monsters].sort((a, b) => a.level - b.level);
 
-    const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables);
-    const bestMpPotion = getBestPotionUtil(FLAT_MP_POTIONS, consumables);
-    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables);
-    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables);
+    const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestMpPotion = getBestPotionUtil(FLAT_MP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
 
     if (!character) return null;
 

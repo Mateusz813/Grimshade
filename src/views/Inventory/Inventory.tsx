@@ -69,6 +69,7 @@ import itemsRaw from '../../data/items.json';
 import { getItemDisplayInfo, rerollItemBonuses } from '../../systems/itemGenerator';
 import { ELIXIRS } from '../../stores/shopStore';
 import { POTION_CONVERSIONS, checkConversionAvailability } from '../../systems/potionConversion';
+import { getPotionMinLevel } from '../../systems/potionGating';
 import {
   FLAT_HP_POTIONS,
   FLAT_MP_POTIONS,
@@ -2880,6 +2881,15 @@ const Inventory = () => {
 
   const handlePotionConvert = useCallback((inputId: string, outputId: string, outputName: string, inputCount: number, batches: number) => {
       if (batches <= 0) return;
+      // 2026-06-21 defense-in-depth: never craft UP into a potion tier the
+      // character can't use yet, even if the disabled button is bypassed.
+      const lvl = useCharacterStore.getState().character?.level ?? 1;
+      const reqLvl = getPotionMinLevel(outputId);
+      if (lvl < reqLvl) {
+          setAlchemyToast(`Wymagany lvl ${reqLvl}`);
+          setTimeout(() => setAlchemyToast(null), 2200);
+          return;
+      }
       const inv = useInventoryStore.getState();
       const owned = inv.consumables[inputId] ?? 0;
       const totalNeeded = inputCount * batches;
@@ -3826,8 +3836,12 @@ const Inventory = () => {
                                       const key = getAlchemyKey(conv);
                                       const owned = consumables[conv.inputId] ?? 0;
                                       const outputOwned = consumables[conv.outputId] ?? 0;
-                                      const { canConvert, maxBatches } = checkConversionAvailability(conv, owned);
-                                      const levelTooLow = !!(character && conv.outputMinLevel && character.level < conv.outputMinLevel);
+                                      // 2026-06-21: level gate is authoritative via potionGating
+                                      // (matches shop buy + drink gates). conv.outputMinLevel is
+                                      // legacy/display-only — `requiredLevel` is the source of truth.
+                                      const { canConvert, maxBatches, levelLocked, requiredLevel } =
+                                        checkConversionAvailability(conv, owned, character?.level ?? 1);
+                                      const levelTooLow = levelLocked;
                                       const selectedAmount = alchemyAmounts[key] ?? 1;
                                       const amount = Math.min(selectedAmount, maxBatches);
                                       const totalInput = conv.inputCount * amount;
@@ -3875,7 +3889,7 @@ const Inventory = () => {
                                               >MAX</button>
                                             </div>
                                             <span className="inventory__alchemy-summary">
-                                              {levelTooLow ? `Wymagany lvl ${conv.outputMinLevel}` : canConvert ? `${totalInput} -> ${amount}` : 'Za malo'}
+                                              {levelTooLow ? `Wymagany lvl ${requiredLevel}` : canConvert ? `${totalInput} -> ${amount}` : 'Za malo'}
                                             </span>
                                           </div>
                                           <button

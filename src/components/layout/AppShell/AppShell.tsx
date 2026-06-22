@@ -52,6 +52,17 @@ const CHARACTERLESS_ROUTES = new Set<string>([
  * chrome flipped — we simply toggle a `--bare` modifier that drops the inner
  * padding.
  */
+// Routes whose view owns the in-combat HUD (renders its own CombatHudHost +
+// CombatActionBar). On these routes AppShell must NOT force-reset the HUD flag
+// on navigation — the view's CombatHudHost decides based on its live phase.
+// Resetting here would clobber that set in the same commit (child effect runs
+// before this parent effect), which left the global BottomNav showing during an
+// active background fight re-entered from Town. Non-combat routes still get the
+// defensive reset below.
+const COMBAT_HUD_ROUTES: ReadonlySet<string> = new Set([
+  '/combat', '/dungeon', '/boss', '/raid', '/transform', '/trainer', '/arena', '/arena/match',
+]);
+
 const AppShell = ({ children }: IAppShellProps) => {
   const location = useLocation();
   const character = useCharacterStore((s) => s.character);
@@ -386,10 +397,19 @@ const AppShell = ({ children }: IAppShellProps) => {
   }, [isCharacterless]);
 
   // Defensive: if a combat view forgot to clear the HUD flag on unmount, the
-  // global nav would stay hidden forever. Clearing on every route change
-  // gives a safe baseline — the next view that wants the combat HUD has to
-  // re-set it (which all of them do in their own `useEffect`).
+  // global nav would stay hidden forever. Clearing on navigation to a
+  // NON-combat route gives a safe baseline.
+  //
+  // 2026-06-21 fix: we must SKIP this reset when navigating TO a combat-HUD
+  // route. Otherwise, re-entering an active background fight (e.g. tapping a
+  // monster in Town while a hunt is still running) races the combat view's own
+  // CombatHudHost mount-set: the child effect sets active=true, then this parent
+  // effect set active=false in the same commit and won — so the player saw the
+  // normal Walka/Questy/Miasto nav instead of the spells + exit bar. Combat
+  // routes now own their HUD flag entirely (CombatHudHost sets it from phase and
+  // clears it on unmount), so no clobber.
   useEffect(() => {
+    if (COMBAT_HUD_ROUTES.has(location.pathname)) return;
     setCombatHudActive(false);
     setCombatHudCompact(false);
   }, [location.pathname, setCombatHudActive, setCombatHudCompact]);

@@ -15,6 +15,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useBuffStore } from '../../stores/buffStore';
 import { ELIXIRS } from '../../stores/shopStore';
 import { resolveAutoPotionElixir } from '../../systems/potionSystem';
+import { canUsePotionAtLevel } from '../../systems/potionGating';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { useCombatStore } from '../../stores/combatStore';
@@ -277,9 +278,15 @@ const formatSkillName = (id: string | null): string => {
 const getBestPotion = (
     potions: typeof ELIXIRS,
     consumables: Record<string, number>,
+    characterLevel: number = Number.POSITIVE_INFINITY,
 ) => {
     const reversed = [...potions].reverse();
-    return reversed.find((e) => (consumables[e.id] ?? 0) > 0) ?? reversed[0] ?? null;
+    // 2026-06-21: only pick a potion the character is high enough level to drink.
+    return (
+        reversed.find((e) => (consumables[e.id] ?? 0) > 0 && canUsePotionAtLevel(e.id, characterLevel))
+        ?? reversed.find((e) => canUsePotionAtLevel(e.id, characterLevel))
+        ?? null
+    );
 };
 
 // -- Combat log entry type ----------------------------------------------------
@@ -735,10 +742,10 @@ const Boss = () => {
     const charSpeed = ((character?.attack_speed ?? 1) + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
 
     // Best potions the player owns
-    const bestHpPotion = getBestPotion(hpPotions, consumables);
-    const bestMpPotion = getBestPotion(mpPotions, consumables);
-    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables);
-    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables);
+    const bestHpPotion = getBestPotion(hpPotions, consumables, character?.level ?? 1);
+    const bestMpPotion = getBestPotion(mpPotions, consumables, character?.level ?? 1);
+    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables, character?.level ?? 1);
+    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables, character?.level ?? 1);
 
     // Keep refs in sync
     phaseRef.current = phase;
@@ -939,7 +946,7 @@ const Boss = () => {
         // restore — otherwise we'd waste a +50 HP flask healing 1 HP. This is
         // the hard guard against "lost 1 HP, burned a potion".
         const resolveAmount = (elixirIdOrNull: string | null, kind: 'flat' | 'pct', hm: 'hp' | 'mp', maxVal: number): { id: string; name: string; amount: number } | null => {
-            const elixir = resolveAutoPotionElixir(elixirIdOrNull ?? undefined, hm, kind, inv.consumables);
+            const elixir = resolveAutoPotionElixir(elixirIdOrNull ?? undefined, hm, kind, inv.consumables, character?.level ?? 1);
             if (!elixir) return null;
             const flatRe = hm === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/;
             const pctRe = hm === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/;

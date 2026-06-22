@@ -218,6 +218,21 @@ describe('getBestPotion', () => {
     it('returns null when the pool is empty', () => {
         expect(getBestPotion([], {})).toBeNull();
     });
+
+    // 2026-06-21: level gate — never pick a potion the character is too low
+    // level to drink (it would no-op at useConsumable, and could get the player
+    // killed via a wasted auto-potion tick).
+    it('skips an owned potion above the character level, picks the best USABLE one', () => {
+        const consumables = { hp_potion_sm: 5, hp_potion_md: 5 }; // md needs lvl 20
+        const best = getBestPotion(FLAT_HP_POTIONS, consumables, 14);
+        expect(best?.id).toBe('hp_potion_sm'); // sm (lvl 1) — md is gated out
+    });
+
+    it('includes the higher potion once the character is high enough', () => {
+        const consumables = { hp_potion_sm: 5, hp_potion_md: 5 };
+        const best = getBestPotion(FLAT_HP_POTIONS, consumables, 20);
+        expect(best?.id).toBe('hp_potion_md');
+    });
 });
 
 // -- resolveAutoPotionElixir -------------------------------------------------
@@ -255,6 +270,22 @@ describe('resolveAutoPotionElixir', () => {
     it('returns null when preferredId is unknown AND nothing is owned', () => {
         const e = resolveAutoPotionElixir('does_not_exist', 'mp', 'pct', {});
         expect(e).toBeNull();
+    });
+
+    // 2026-06-21: auto-potion must skip a potion the character can't drink yet.
+    it('skips an above-level preferred potion and the above-level fallback', () => {
+        // Owns a high-tier flat potion (md, req lvl 20) at level 14: gated out.
+        const consumables = { hp_potion_md: 5 };
+        expect(resolveAutoPotionElixir('hp_potion_md', 'hp', 'flat', consumables, 14)).toBeNull();
+        // Add the tier-1 (lvl 1) — now auto-potion falls back to it.
+        const e = resolveAutoPotionElixir('hp_potion_md', 'hp', 'flat', { ...consumables, hp_potion_sm: 3 }, 14);
+        expect(e?.id).toBe('hp_potion_sm');
+    });
+
+    it('refuses a pct potion below its high unlock level', () => {
+        // hp_potion_great needs lvl 200.
+        expect(resolveAutoPotionElixir(undefined, 'hp', 'pct', { hp_potion_great: 5 }, 100)).toBeNull();
+        expect(resolveAutoPotionElixir(undefined, 'hp', 'pct', { hp_potion_great: 5 }, 200)?.id).toBe('hp_potion_great');
     });
 });
 

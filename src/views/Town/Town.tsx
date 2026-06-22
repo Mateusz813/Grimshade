@@ -454,7 +454,7 @@ const Town = () => {
                     style={avatarStyle}
                   >
                     <span className="town__party-avatar-icon">
-                      {m.isBot ? <GameIcon name="robot" /> : (CLASS_ICONS[m.class] ?? '?')}
+                      <GameIcon name={m.isBot ? 'robot' : (CLASS_ICONS[m.class] ?? 'bust-in-silhouette')} />
                     </span>
                     <span className="town__party-avatar-hp">
                       <span
@@ -500,7 +500,7 @@ const Town = () => {
                 return (
                   <div key={m.id} className={`town__party-row${isMe ? ' town__party-row--me' : ''}${m.isBot ? ' town__party-row--bot' : ''}`}>
                     <span className="town__party-row-icon">
-                      {m.isBot ? <GameIcon name="robot" /> : (CLASS_ICONS[m.class] ?? '?')}
+                      <GameIcon name={m.isBot ? 'robot' : (CLASS_ICONS[m.class] ?? 'bust-in-silhouette')} />
                     </span>
                     <div className="town__party-row-info">
                       <div className="town__party-row-name">

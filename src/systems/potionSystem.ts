@@ -1,4 +1,5 @@
 import { ELIXIRS, type IElixir } from '../stores/shopStore';
+import { canUsePotionAtLevel } from './potionGating';
 
 // -- Potion categorization ----------------------------------------------------
 
@@ -87,13 +88,20 @@ export const getPotionLabel = (effect: string): string => {
   return effect;
 };
 
-/** Find the strongest potion the player owns from a given list. */
+/** Find the strongest potion the player owns from a given list (level-gated). */
 export const getBestPotion = (
   potions: IElixir[],
   consumables: Record<string, number>,
+  characterLevel: number = Number.POSITIVE_INFINITY,
 ): IElixir | null => {
   const reversed = [...potions].reverse();
-  return reversed.find((e) => (consumables[e.id] ?? 0) > 0) ?? reversed[0] ?? null;
+  // Strongest OWNED potion the character is high enough level to drink; falls
+  // back to the strongest level-appropriate potion for display when none owned.
+  return (
+    reversed.find((e) => (consumables[e.id] ?? 0) > 0 && canUsePotionAtLevel(e.id, characterLevel))
+    ?? reversed.find((e) => canUsePotionAtLevel(e.id, characterLevel))
+    ?? null
+  );
 };
 
 /**
@@ -106,16 +114,24 @@ export const resolveAutoPotionElixir = (
   hpOrMp: 'hp' | 'mp',
   slotKind: 'flat' | 'pct',
   consumables: Record<string, number>,
+  characterLevel: number = Number.POSITIVE_INFINITY,
 ): IElixir | null => {
+  // 2026-06-21: never auto-pick a potion the character is too low-level to
+  // drink — `useConsumable` would reject it and the slot would silently no-op
+  // (and could get the player killed). Skip straight to the strongest USABLE one.
   if (preferredId) {
     const preferred = ELIXIRS.find((e) => e.id === preferredId);
-    if (preferred && (consumables[preferred.id] ?? 0) > 0) return preferred;
+    if (preferred && (consumables[preferred.id] ?? 0) > 0 && canUsePotionAtLevel(preferred.id, characterLevel)) {
+      return preferred;
+    }
   }
   const pool =
     hpOrMp === 'hp'
       ? (slotKind === 'pct' ? PCT_HP_POTIONS : FLAT_HP_POTIONS)
       : (slotKind === 'pct' ? PCT_MP_POTIONS : FLAT_MP_POTIONS);
-  const fallback = [...pool].reverse().find((e) => (consumables[e.id] ?? 0) > 0);
+  const fallback = [...pool].reverse().find(
+    (e) => (consumables[e.id] ?? 0) > 0 && canUsePotionAtLevel(e.id, characterLevel),
+  );
   return fallback ?? null;
 };
 

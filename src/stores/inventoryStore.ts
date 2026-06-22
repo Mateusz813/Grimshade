@@ -15,6 +15,18 @@ import {
 } from '../systems/itemSystem';
 import itemsRaw from '../data/items.json';
 import { useSettingsStore } from './settingsStore';
+import { isHpMpPotionId, getPotionMinLevel } from '../systems/potionGating';
+
+// 2026-06-21: live character-level getter used by `useConsumable` to
+// level-gate HP/MP potions. `characterStore` imports `inventoryStore` (NOT the
+// reverse), so to read the current level synchronously without a circular
+// import, characterStore registers a closure here at module init. Defaults to
+// 1 until registered (app bootstrap), which is safe — it only ever under-reports
+// the level for the brief window before characterStore loads.
+let getCurrentCharacterLevel: () => number = () => 1;
+export const registerCharacterLevelGetter = (fn: () => number): void => {
+  getCurrentCharacterLevel = fn;
+};
 
 // 2026-05-21: items.json baseline cache used by `equipItem` /
 // `unequipItem` to compute the HP/MP delta a gear change produces. The
@@ -399,6 +411,14 @@ export const useInventoryStore = create<IInventoryStore>()(
         })),
 
       useConsumable: (id) => {
+        // 2026-06-21 level gate: HP/MP potions cannot be drunk below their
+        // unlock level (the hard guarantee behind "nie mozna ich wczesniej
+        // uzyc"). Covers EVERY drink path — manual dock, auto-potion engine,
+        // bag use — because they all funnel through here. Returns false WITHOUT
+        // consuming, exactly like an empty stack.
+        if (isHpMpPotionId(id) && getCurrentCharacterLevel() < getPotionMinLevel(id)) {
+          return false;
+        }
         const count = get().consumables[id] ?? 0;
         if (count <= 0) return false;
         set((s) => ({

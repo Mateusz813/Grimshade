@@ -89,11 +89,16 @@ const setupStores = (settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}): 
     useCharacterStore.setState({
         character: {
             id: 'char-1', user_id: 'u-1', name: 'T', class: 'Knight',
-            level: 10, xp: 0, hp: 100, max_hp: 100, mp: 50, max_mp: 50,
+            // 2026-06-21: level 700 so the auto-potion gate (potionGating) lets
+            // EVERY tier fire — these tests exercise the auto-potion MECHANISM,
+            // not the level gate (covered in potionGating.test.ts). At a low
+            // level the % potions (great/super/ultimate/divine, req 200+) would
+            // be correctly skipped and the firing assertions would fail.
+            level: 700, xp: 0, hp: 100, max_hp: 100, mp: 50, max_mp: 50,
             attack: 20, defense: 10, attack_speed: 2,
             crit_chance: 0.05, crit_damage: 2.0, magic_level: 0,
             hp_regen: 0, mp_regen: 0, gold: 0, stat_points: 0,
-            highest_level: 10, equipment: {},
+            highest_level: 700, equipment: {},
             created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,

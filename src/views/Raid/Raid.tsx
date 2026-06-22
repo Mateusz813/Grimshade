@@ -298,10 +298,10 @@ const Raid = () => {
 
     // Best potions (best = highest-tier the player owns) for each of the
     // four dock slots.
-    const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables);
-    const bestMpPotion = getBestPotionUtil(FLAT_MP_POTIONS, consumables);
-    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables);
-    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables);
+    const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestMpPotion = getBestPotionUtil(FLAT_MP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
 
     // Cooldown timers (ms remaining). Tick down every 100 ms while phase==='fighting'.
     // We keep BOTH state (for UI re-render) and refs (for sync reads inside

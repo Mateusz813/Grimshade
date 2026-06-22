@@ -151,11 +151,13 @@ describe('AppShell — chrome gating', () => {
 });
 
 describe('AppShell — combat HUD interaction', () => {
-    // AppShell's own useEffect zeroes the combat-HUD on every route change so
-    // a stale flag from another view can't strand the user without the global
-    // BottomNav. That means flipping the store BEFORE render gets wiped on
-    // the post-mount effect. We trigger the flag AFTER mount via act() so it
-    // races AppShell's mount-reset and lands while the user is on the route.
+    // AppShell's route-change effect zeroes the combat-HUD ONLY when navigating
+    // to a NON-combat route, so a stale flag can't strand the user without the
+    // global BottomNav. On combat-HUD routes (/combat, /boss, …) it deliberately
+    // SKIPS the reset so the view's own CombatHudHost owns the flag (2026-06-21
+    // fix for the re-entry bug). These first tests set the flag AFTER mount via
+    // act() — valid on any route; the re-entry regression tests below set it
+    // BEFORE mount to prove the combat-route skip.
 
     it('hides BottomNav (but keeps TopHeader) when combat HUD is active', async () => {
         renderAt('/combat');
@@ -190,6 +192,25 @@ describe('AppShell — combat HUD interaction', () => {
         });
         const shell = container.querySelector('.app-shell');
         expect(shell?.className).toContain('app-shell--combat-hud-compact');
+    });
+
+    // 2026-06-21 regression (combat-nav re-entry bug): a fight left running in
+    // the background keeps combatHudActive=true. Re-entering the combat route
+    // from Town must NOT reset it — otherwise the player sees the normal
+    // Walka/Questy/Miasto nav instead of the spells + exit bar.
+    it('keeps an already-active combat HUD when (re)entering a combat route', () => {
+        // Simulate the background fight's HUD flag set BEFORE the view mounts.
+        useCombatHudStore.setState({ active: true, compact: false });
+        renderAt('/combat'); // re-enter — route effect must SKIP the reset here
+        expect(useCombatHudStore.getState().active).toBe(true);
+        expect(screen.queryByTestId('bottom-nav-stub')).toBeNull(); // HUD bar, not nav
+    });
+
+    it('STILL resets a stale combat HUD when entering a NON-combat route (Town)', () => {
+        useCombatHudStore.setState({ active: true, compact: false });
+        renderAt('/'); // Town — non-combat route keeps the defensive reset
+        expect(useCombatHudStore.getState().active).toBe(false);
+        expect(screen.getByTestId('bottom-nav-stub')).toBeTruthy(); // nav restored
     });
 });
 

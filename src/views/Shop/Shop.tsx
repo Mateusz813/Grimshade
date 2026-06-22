@@ -27,6 +27,7 @@ import {
   type IInventoryItem,
 } from '../../systems/itemSystem';
 import { formatGoldShort } from '../../systems/goldFormat';
+import { getPotionMinLevel } from '../../systems/potionGating';
 import {
   getItemImage,
   getPotionImage,
@@ -176,6 +177,12 @@ const Shop = () => {
 
   const handleBuyPotion = (elixir: IElixir, qty: number) => {
     const charLvl = character?.level ?? 1;
+    // Defense-in-depth: never sell a level-locked potion even if the disabled
+    // button is somehow bypassed.
+    if (elixir.minLevel && charLvl < elixir.minLevel) {
+      showToast(`Wymaga poziomu ${elixir.minLevel}`);
+      return;
+    }
     const unitPrice = getElixirPrice(elixir, charLvl);
     const totalPrice = unitPrice * qty;
     const inv = useInventoryStore.getState();
@@ -213,17 +220,23 @@ const Shop = () => {
     flashBuy(item.id);
   };
 
-  if (!character) {
-    return <div className="shop"><Spinner size="lg" /></div>;
-  }
-
+  // 2026-06-21 Rules-of-Hooks fix: ALL hooks must run before any early return.
+  // The `if (!character) return <Spinner>` guard used to sit ABOVE these
+  // useMemos — so when the character hydrated after mount the re-render ran
+  // MORE hooks than the first ("Rendered more hooks than during the previous
+  // render" crash, same class as the Boss/Transform/Dungeon/Trainer fixes).
+  // useMemos are now null-safe and the guard moved below them.
   const availableItems = useMemo(
-    () => generateShopItems(character.class, character.level),
-    [character.class, character.level],
+    () => (character ? generateShopItems(character.class, character.level) : []),
+    [character?.class, character?.level],
   );
 
   const potionElixirs = useMemo(() => ELIXIRS.filter((e) => isPotionElixir(e.id)), []);
   const utilityElixirs = useMemo(() => ELIXIRS.filter((e) => !isPotionElixir(e.id)), []);
+
+  if (!character) {
+    return <div className="shop"><Spinner size="lg" /></div>;
+  }
 
   return (
     <div className="shop shop--dark">
@@ -406,13 +419,17 @@ const Shop = () => {
               const qty = getPotionQty(elixir.id);
               const unitPrice = getElixirPrice(elixir, character?.level ?? 1);
               const totalPrice = unitPrice * qty;
-              const canBuy = gold >= totalPrice;
+              // 2026-06-21: HP/MP potions are level-gated (50→lvl1, 150→20,
+              // 400→50, 1000→100, 20%→200, 35%→350, 50%→500, 100%→700). Block
+              // the buy below the unlock level — mirrors the elixirs tab.
+              const levelLocked = !!(elixir.minLevel && (character?.level ?? 1) < elixir.minLevel);
+              const canBuy = !levelLocked && gold >= totalPrice;
               const pulseKey = buyPulse[elixir.id] ?? 0;
               const img = getPotionImage(elixir.id);
               return (
                 <div
                   key={elixir.id}
-                  className={`shop__card${pulseKey ? ' shop__card--bought' : ''}`}
+                  className={`shop__card${levelLocked ? ' shop__card--locked' : ''}${pulseKey ? ' shop__card--bought' : ''}`}
                   data-pulse={pulseKey}
                 >
                   <div className="shop__card-icon">
@@ -423,6 +440,9 @@ const Shop = () => {
                   </div>
                   <div className="shop__card-name">{elixir.name_pl}</div>
                   <div className="shop__card-meta">{elixir.description_pl}</div>
+                  {levelLocked && (
+                    <div className="shop__card-lock"><GameIcon name="locked" /> Lv {elixir.minLevel}</div>
+                  )}
                   <div className="shop__card-qty-row">
                     <input
                       type="number"
@@ -456,7 +476,7 @@ const Shop = () => {
                       disabled={!canBuy}
                       onClick={() => handleBuyPotion(elixir, qty)}
                     >
-                      Kup{qty > 1 ? ` (${qty})` : ''}
+                      {levelLocked ? `Lv ${elixir.minLevel}` : `Kup${qty > 1 ? ` (${qty})` : ''}`}
                     </button>
                   </div>
                 </div>
@@ -567,7 +587,13 @@ const Shop = () => {
                 const classOffType = CLASS_OFFHAND_TYPES[character.class]?.[0] ?? 'shield';
                 return catalog.map((item) => {
                   const price = item.perLevel ? item.apPrice * lvl : item.apPrice;
-                  const canBuy = arenaPoints >= price;
+                  // 2026-06-21: arena HP/MP potions are level-gated by the real
+                  // potion they pay out (payloadId → getPotionMinLevel).
+                  const potionReqLevel = item.kind === 'potion' && item.payloadId
+                    ? getPotionMinLevel(item.payloadId)
+                    : 0;
+                  const levelLocked = potionReqLevel > 0 && character.level < potionReqLevel;
+                  const canBuy = !levelLocked && arenaPoints >= price;
                   const pulseKey = buyPulse[item.id] ?? 0;
                   // Resolve the right PNG per kind. Mythic weapons
                   // pull the class-specific art, stones show their
@@ -589,7 +615,7 @@ const Shop = () => {
                       // Arena elixirs get the gold->purple gradient border
                       // for consistency with the rest of the app. Stones,
                       // potions and mythic weapons keep their default chrome.
-                      className={`shop__card${item.kind === 'elixir' ? ' shop__card--elixir' : ''}${pulseKey ? ' shop__card--bought' : ''}`}
+                      className={`shop__card${item.kind === 'elixir' ? ' shop__card--elixir' : ''}${levelLocked ? ' shop__card--locked' : ''}${pulseKey ? ' shop__card--bought' : ''}`}
                       data-pulse={pulseKey}
                     >
                       <div className="shop__card-icon">
@@ -606,6 +632,9 @@ const Shop = () => {
                           Lv {lvl} · {price.toLocaleString('pl-PL')} AP
                         </div>
                       )}
+                      {levelLocked && (
+                        <div className="shop__card-lock"><GameIcon name="locked" /> Lv {potionReqLevel}</div>
+                      )}
                       <div className="shop__card-footer">
                         <span className="shop__card-price">{price.toLocaleString('pl-PL')} AP</span>
                         <button
@@ -613,7 +642,7 @@ const Shop = () => {
                           disabled={!canBuy}
                           onClick={() => handleBuyArena(item)}
                         >
-                          Kup
+                          {levelLocked ? `Lv ${potionReqLevel}` : 'Kup'}
                         </button>
                       </div>
                     </div>

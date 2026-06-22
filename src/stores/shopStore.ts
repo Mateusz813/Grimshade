@@ -5,6 +5,7 @@ import { generateWeapon, generateOffhand, generateArmor, generateAccessory } fro
 import type { Rarity, EquipmentSlot } from '../systems/itemSystem';
 import { CLASS_WEAPON_TYPES, CLASS_OFFHAND_TYPES, CLASS_ARMOR_TYPES, RARITY_LABELS } from '../systems/itemSystem';
 import { getPotionImage, getElixirImage } from '../systems/spriteAssets';
+import { getPotionMinLevel } from '../systems/potionGating';
 import { getTodayKey } from '../systems/dailyQuestSystem';
 import { useInventoryStore } from './inventoryStore';
 import type { ICharacter } from './characterStore';
@@ -46,19 +47,19 @@ export const ELIXIRS: IElixir[] = [
   { id: 'hp_potion_md',       name_pl: 'Eliksir HP',              name_en: 'Health Potion',           description_pl: 'Przywraca 150 HP.',         price: 150,     effect: 'heal_hp_150',       icon: POTION_ICON('hp_potion_md',       'red-heart'), minLevel: 20 },
   { id: 'hp_potion_lg',       name_pl: 'Silny Eliksir HP',        name_en: 'Strong Health Potion',    description_pl: 'Przywraca 400 HP.',         price: 600,     effect: 'heal_hp_400',       icon: POTION_ICON('hp_potion_lg',       'red-heart'), minLevel: 50 },
   { id: 'hp_potion_mega',     name_pl: 'Mega Eliksir HP',         name_en: 'Mega Health Elixir',      description_pl: 'Przywraca 1000 HP.',        price: 15000,   effect: 'heal_hp_1000',      icon: POTION_ICON('hp_potion_mega',     'heart-on-fire'), minLevel: 100 },
-  { id: 'hp_potion_great',    name_pl: 'Wielki Eliksir HP',       name_en: 'Great Health Potion',     description_pl: 'Przywraca 20% maks. HP.',   price: 200000,  effect: 'heal_hp_pct_20',    icon: POTION_ICON('hp_potion_great',    'red-heart'), minLevel: 1 },
-  { id: 'hp_potion_super',    name_pl: 'Super Eliksir HP',        name_en: 'Super Health Potion',     description_pl: 'Przywraca 35% maks. HP.',   price: 350000,  effect: 'heal_hp_pct_35',    icon: POTION_ICON('hp_potion_super',    'red-heart'), minLevel: 1 },
-  { id: 'hp_potion_ultimate', name_pl: 'Ultimatywny Eliksir HP',  name_en: 'Ultimate Health Potion',  description_pl: 'Przywraca 50% maks. HP.',   price: 500000,  effect: 'heal_hp_pct_50',    icon: POTION_ICON('hp_potion_ultimate', 'red-heart'), minLevel: 1 },
-  { id: 'hp_potion_divine',   name_pl: 'Boski Eliksir HP',        name_en: 'Divine Health Potion',    description_pl: 'Przywraca 100% maks. HP.',  price: 1000000, effect: 'heal_hp_pct_100',   icon: POTION_ICON('hp_potion_divine',   'red-heart'), minLevel: 1 },
+  { id: 'hp_potion_great',    name_pl: 'Wielki Eliksir HP',       name_en: 'Great Health Potion',     description_pl: 'Przywraca 20% maks. HP.',   price: 200000,  effect: 'heal_hp_pct_20',    icon: POTION_ICON('hp_potion_great',    'red-heart'), minLevel: 200 },
+  { id: 'hp_potion_super',    name_pl: 'Super Eliksir HP',        name_en: 'Super Health Potion',     description_pl: 'Przywraca 35% maks. HP.',   price: 350000,  effect: 'heal_hp_pct_35',    icon: POTION_ICON('hp_potion_super',    'red-heart'), minLevel: 350 },
+  { id: 'hp_potion_ultimate', name_pl: 'Ultimatywny Eliksir HP',  name_en: 'Ultimate Health Potion',  description_pl: 'Przywraca 50% maks. HP.',   price: 500000,  effect: 'heal_hp_pct_50',    icon: POTION_ICON('hp_potion_ultimate', 'red-heart'), minLevel: 500 },
+  { id: 'hp_potion_divine',   name_pl: 'Boski Eliksir HP',        name_en: 'Divine Health Potion',    description_pl: 'Przywraca 100% maks. HP.',  price: 1000000, effect: 'heal_hp_pct_100',   icon: POTION_ICON('hp_potion_divine',   'red-heart'), minLevel: 700 },
   // --- MP POTIONS ----------------------------------------------------
   { id: 'mp_potion_sm',       name_pl: 'Mały Eliksir MP',         name_en: 'Small Mana Potion',       description_pl: 'Przywraca 30 MP.',          price: 30,      effect: 'heal_mp_30',        icon: POTION_ICON('mp_potion_sm',       'droplet'), minLevel: 1 },
   { id: 'mp_potion_md',       name_pl: 'Eliksir MP',              name_en: 'Mana Potion',             description_pl: 'Przywraca 100 MP.',         price: 150,     effect: 'heal_mp_100',       icon: POTION_ICON('mp_potion_md',       'droplet'), minLevel: 20 },
   { id: 'mp_potion_lg',       name_pl: 'Silny Eliksir MP',        name_en: 'Strong Mana Potion',      description_pl: 'Przywraca 300 MP.',         price: 600,     effect: 'heal_mp_300',       icon: POTION_ICON('mp_potion_lg',       'droplet'), minLevel: 50 },
   { id: 'mp_potion_mega',     name_pl: 'Mega Eliksir MP',         name_en: 'Mega Mana Elixir',        description_pl: 'Przywraca 1000 MP.',        price: 15000,   effect: 'heal_mp_1000',      icon: POTION_ICON('mp_potion_mega',     'gem-stone'), minLevel: 100 },
-  { id: 'mp_potion_great',    name_pl: 'Wielki Eliksir MP',       name_en: 'Great Mana Potion',       description_pl: 'Przywraca 20% maks. MP.',   price: 200000,  effect: 'heal_mp_pct_20',    icon: POTION_ICON('mp_potion_great',    'droplet'), minLevel: 1 },
-  { id: 'mp_potion_super',    name_pl: 'Super Eliksir MP',        name_en: 'Super Mana Potion',       description_pl: 'Przywraca 35% maks. MP.',   price: 350000,  effect: 'heal_mp_pct_35',    icon: POTION_ICON('mp_potion_super',    'droplet'), minLevel: 1 },
-  { id: 'mp_potion_ultimate', name_pl: 'Ultimatywny Eliksir MP',  name_en: 'Ultimate Mana Potion',    description_pl: 'Przywraca 50% maks. MP.',   price: 500000,  effect: 'heal_mp_pct_50',    icon: POTION_ICON('mp_potion_ultimate', 'droplet'), minLevel: 1 },
-  { id: 'mp_potion_divine',   name_pl: 'Boski Eliksir MP',        name_en: 'Divine Mana Potion',      description_pl: 'Przywraca 100% maks. MP.',  price: 1000000, effect: 'heal_mp_pct_100',   icon: POTION_ICON('mp_potion_divine',   'droplet'), minLevel: 1 },
+  { id: 'mp_potion_great',    name_pl: 'Wielki Eliksir MP',       name_en: 'Great Mana Potion',       description_pl: 'Przywraca 20% maks. MP.',   price: 200000,  effect: 'heal_mp_pct_20',    icon: POTION_ICON('mp_potion_great',    'droplet'), minLevel: 200 },
+  { id: 'mp_potion_super',    name_pl: 'Super Eliksir MP',        name_en: 'Super Mana Potion',       description_pl: 'Przywraca 35% maks. MP.',   price: 350000,  effect: 'heal_mp_pct_35',    icon: POTION_ICON('mp_potion_super',    'droplet'), minLevel: 350 },
+  { id: 'mp_potion_ultimate', name_pl: 'Ultimatywny Eliksir MP',  name_en: 'Ultimate Mana Potion',    description_pl: 'Przywraca 50% maks. MP.',   price: 500000,  effect: 'heal_mp_pct_50',    icon: POTION_ICON('mp_potion_ultimate', 'droplet'), minLevel: 500 },
+  { id: 'mp_potion_divine',   name_pl: 'Boski Eliksir MP',        name_en: 'Divine Mana Potion',      description_pl: 'Przywraca 100% maks. MP.',  price: 1000000, effect: 'heal_mp_pct_100',   icon: POTION_ICON('mp_potion_divine',   'droplet'), minLevel: 700 },
 
   // --- XP BOOSTS — Hunt-only -----------------------------------------
   // Per spec: only fire on monster-kill XP in hunt. Tasks/quests/dungeons/
@@ -585,6 +586,14 @@ export const buyArenaItem = (
   // Mythic weapons price scales with level — cap at 1000 per spec.
   const lvl = Math.min(1000, Math.max(1, characterLevel));
   const price = item.perLevel ? item.apPrice * lvl : item.apPrice;
+  // 2026-06-21: arena HP/MP potions are level-gated by the REAL potion they
+  // pay out (payloadId). e.g. arena_hp_25 → hp_potion_great (unlock lvl 200),
+  // arena_hp_50 → hp_potion_ultimate (500), arena_hp_100 → hp_potion_divine
+  // (700). Block the purchase below that level BEFORE spending AP. (Drinking is
+  // already gated in inventoryStore.useConsumable via the payload id.)
+  if (item.kind === 'potion' && item.payloadId && characterLevel < getPotionMinLevel(item.payloadId)) {
+    return 'level_too_low';
+  }
   if (!inv.spendArenaPoints(price)) return 'no_gold';
 
   if (item.kind === 'stone') {

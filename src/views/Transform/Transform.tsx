@@ -50,6 +50,7 @@ import { useSkillAnim } from '../../hooks/useSkillAnim';
 import { useCombatFx } from '../../hooks/useCombatFx';
 import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
 import { resolveAutoPotionElixir } from '../../systems/potionSystem';
+import { canUsePotionAtLevel } from '../../systems/potionGating';
 import { CLASS_COLORS } from '../../systems/itemSystem';
 import { deathsApi } from '../../api/v1/deathsApi';
 import {
@@ -268,9 +269,15 @@ const formatSkillName = (id: string | null): string => {
 const getBestPotion = (
   potions: typeof ELIXIRS,
   consumables: Record<string, number>,
+  characterLevel: number = Number.POSITIVE_INFINITY,
 ) => {
   const reversed = [...potions].reverse();
-  return reversed.find((e) => (consumables[e.id] ?? 0) > 0) ?? reversed[0] ?? null;
+  // 2026-06-21: only pick a potion the character is high enough level to drink.
+  return (
+    reversed.find((e) => (consumables[e.id] ?? 0) > 0 && canUsePotionAtLevel(e.id, characterLevel))
+    ?? reversed.find((e) => canUsePotionAtLevel(e.id, characterLevel))
+    ?? null
+  );
 };
 
 // getPotionLabel removed — the unified CombatActionBar / CombatSubControls
@@ -872,7 +879,7 @@ const Transform = () => {
       hm: 'hp' | 'mp',
       maxVal: number,
     ) => {
-      const elixir = resolveAutoPotionElixir(elixirIdOrNull ?? undefined, hm, kind, inv.consumables);
+      const elixir = resolveAutoPotionElixir(elixirIdOrNull ?? undefined, hm, kind, inv.consumables, character?.level ?? 1);
       if (!elixir) return null;
       const flatRe = hm === 'hp' ? /^heal_hp_(\d+)$/ : /^heal_mp_(\d+)$/;
       const pctRe = hm === 'hp' ? /^heal_hp_pct_(\d+)$/ : /^heal_mp_pct_(\d+)$/;
@@ -2678,10 +2685,10 @@ const Transform = () => {
       });
 
     // -- Potion slots ------------------------------------------------------
-    const bestHpPotion    = getBestPotion(hpPotions,    consumables);
-    const bestMpPotion    = getBestPotion(mpPotions,    consumables);
-    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables);
-    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables);
+    const bestHpPotion    = getBestPotion(hpPotions,    consumables, character?.level ?? 1);
+    const bestMpPotion    = getBestPotion(mpPotions,    consumables, character?.level ?? 1);
+    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables, character?.level ?? 1);
+    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables, character?.level ?? 1);
 
     const buildPotion = (
       potion: typeof bestPctHpPotion,

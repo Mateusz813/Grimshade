@@ -154,9 +154,30 @@ describe('checkConversionAvailability', () => {
     });
 
     it('returns canConvert=false with maxBatches=0 for empty inventory', () => {
-        expect(checkConversionAvailability(conv, 0)).toEqual({
+        // 2026-06-21: the availability shape gained levelLocked/requiredLevel.
+        // With no level passed (default Infinity) it is not level-locked.
+        expect(checkConversionAvailability(conv, 0)).toMatchObject({
             canConvert: false,
             maxBatches: 0,
+            levelLocked: false,
         });
+    });
+
+    // 2026-06-21: alchemy is now level-gated — crafting UP into a tier above
+    // the character's level is blocked (spec: "nie mozna ... przetworzyc w
+    // alchemii z mniejszego na wiekszy jezeli nie mamy tego poziomu").
+    it('blocks the conversion when character level is below the output unlock level', () => {
+        const a = checkConversionAvailability(conv, 100, conv.outputMinLevel - 1);
+        expect(a.levelLocked).toBe(true);
+        expect(a.canConvert).toBe(false);     // owns plenty of input, but too low level
+        expect(a.maxBatches).toBeGreaterThan(0);
+        expect(a.requiredLevel).toBeGreaterThan(0);
+    });
+
+    it('allows the conversion at/above the output unlock level (given inputs)', () => {
+        const req = checkConversionAvailability(conv, conv.inputCount).requiredLevel;
+        const ok = checkConversionAvailability(conv, conv.inputCount, req);
+        expect(ok.levelLocked).toBe(false);
+        expect(ok.canConvert).toBe(true);
     });
 });

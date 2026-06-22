@@ -1,4 +1,5 @@
 import { getPotionImage } from './spriteAssets';
+import { getPotionMinLevel } from './potionGating';
 
 // Tiny helper — resolve a potion ID's PNG art with an emoji fallback.
 const PI = (id: string, fallback: string): string => getPotionImage(id) ?? fallback;
@@ -163,12 +164,31 @@ export const getMaxConversions = (
 export interface IConversionAvailability {
     canConvert: boolean;
     maxBatches: number;
+    /** True when the character's level is below the output potion's unlock level. */
+    levelLocked: boolean;
+    /** The character level required to craft the output (single source: potionGating). */
+    requiredLevel: number;
 }
 
+/**
+ * 2026-06-21: alchemy is now level-gated — you cannot craft UP into a potion
+ * tier you cannot use yet (spec: "nie mozna ich ... przetworzyc w alchemii z
+ * mniejszego na wiekszy jezeli nie mamy tego poziomu"). The required level is
+ * read from `potionGating` (the same source the shop buy gate + the
+ * `useConsumable` drink gate use), so `conv.outputMinLevel` is no longer
+ * authoritative — this helper is.
+ *
+ * `characterLevel` defaults to Infinity so older callers that don't pass it
+ * keep their owned-input-only behaviour, but the Inventory alchemy UI always
+ * passes the real level.
+ */
 export const checkConversionAvailability = (
     conv: IPotionConversion,
     ownedInput: number,
+    characterLevel: number = Number.POSITIVE_INFINITY,
 ): IConversionAvailability => {
     const maxBatches = getMaxConversions(conv, ownedInput);
-    return { canConvert: maxBatches > 0, maxBatches };
+    const requiredLevel = getPotionMinLevel(conv.outputId);
+    const levelLocked = characterLevel < requiredLevel;
+    return { canConvert: !levelLocked && maxBatches > 0, maxBatches, levelLocked, requiredLevel };
 };

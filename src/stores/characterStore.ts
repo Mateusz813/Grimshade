@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { CharacterClass, ICharacter as IApiCharacter } from '../api/v1/characterApi';
 import { processXpGain, statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../systems/levelSystem';
-import { useInventoryStore } from './inventoryStore';
+import { useInventoryStore, registerCharacterLevelGetter } from './inventoryStore';
 import { useSkillStore } from './skillStore';
 import { useLevelUpStore } from './levelUpStore';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
@@ -379,3 +379,7 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     set({ character: null });
   },
 }));
+
+// Let inventoryStore's potion level-gate read the LIVE character level without
+// a circular import (characterStore -> inventoryStore is the only static edge).
+registerCharacterLevelGetter(() => useCharacterStore.getState().character?.level ?? 1);

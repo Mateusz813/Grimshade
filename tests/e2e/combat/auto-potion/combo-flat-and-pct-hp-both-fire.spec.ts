@@ -78,8 +78,11 @@ test.describe('Combat › Auto-Potion', { tag: '@combat' }, () => {
                 name: nick,
                 class: 'Knight',
                 overrides: {
-                    level: 5,
-                    highest_level: 5,
+                    // 2026-06-21: level 200 so the pct potion (hp_potion_great,
+                    // unlock lvl 200) passes the auto-potion level gate. max_hp
+                    // is overridden to 120 below, so the 20% pct heal is still 24.
+                    level: 200,
+                    highest_level: 200,
                     hp_regen: 0,
                     mp_regen: 0,
                 },

@@ -396,6 +396,45 @@ describe('addConsumable / useConsumable', () => {
         useInventoryStore.getState().addConsumable('mana_potion');
         expect(useInventoryStore.getState().consumables['mana_potion']).toBe(1);
     });
+
+    // 2026-06-21 hard level gate: HP/MP potions cannot be drunk below their
+    // unlock level. This is the single chokepoint every drink path funnels
+    // through (manual dock, auto-potion engine, bag use) — the guarantee behind
+    // "nie mozna ich wczesniej uzyc".
+    const setLevel = (level: number) =>
+        useCharacterStore.setState({ character: { level } as ICharacter });
+
+    it('blocks drinking an above-level potion (no consume, returns false)', () => {
+        setLevel(14);
+        useInventoryStore.getState().addConsumable('hp_potion_md', 3); // 150 HP, req lvl 20
+        const used = useInventoryStore.getState().useConsumable('hp_potion_md');
+        expect(used).toBe(false);
+        expect(useInventoryStore.getState().consumables['hp_potion_md']).toBe(3); // untouched
+    });
+
+    it('allows drinking once the character reaches the unlock level', () => {
+        setLevel(20);
+        useInventoryStore.getState().addConsumable('hp_potion_md', 3);
+        const used = useInventoryStore.getState().useConsumable('hp_potion_md');
+        expect(used).toBe(true);
+        expect(useInventoryStore.getState().consumables['hp_potion_md']).toBe(2);
+    });
+
+    it('always allows the tier-1 (50 HP/MP) potion from level 1', () => {
+        setLevel(1);
+        useInventoryStore.getState().addConsumable('hp_potion_sm', 2);
+        useInventoryStore.getState().addConsumable('mp_potion_sm', 2);
+        expect(useInventoryStore.getState().useConsumable('hp_potion_sm')).toBe(true);
+        expect(useInventoryStore.getState().useConsumable('mp_potion_sm')).toBe(true);
+    });
+
+    it('does NOT level-gate non-potion consumables (death_protection etc.)', () => {
+        setLevel(1);
+        useInventoryStore.getState().addConsumable('death_protection', 2);
+        const used = useInventoryStore.getState().useConsumable('death_protection');
+        expect(used).toBe(true);
+        expect(useInventoryStore.getState().consumables['death_protection']).toBe(1);
+    });
 });
 
 describe('addSpellChest / useSpellChests / getSpellChestCount', () => {
