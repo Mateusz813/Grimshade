@@ -76,6 +76,13 @@ export default defineConfig({
     // wystarczył dla ~50% flake-ów, retry=2 catches ~99%. Tylko reproductible
     // failure-y zostają jako prawdziwy fail.
     retries: 2,
+    // 2026-06-23: fail-fast on CI. When the Supabase GoTrue admin API rate-limits
+    // ("listUsers failed: {}" under load) EVERY test fails in fixture setup.
+    // Without a cap the run grinds through all ~350 specs × retries and hits the
+    // 2h job timeout — that's what silently blocked the gated production deploy.
+    // maxFailures aborts after a dozen failures (minutes, not hours) so the
+    // signal is fast. Locally 0 = no cap (full debug runs).
+    maxFailures: isCI ? 12 : 0,
     // 2026-05-25 (incident): workers: 1 globalnie. Wcześniej 2 (1 per profile)
     // ale w połączeniu z agresywnym spawnowaniem agentów + listUsers per cleanup
     // wybiło DB Supabase NANO compute z 10% do 82% CPU -> unhealthy state.

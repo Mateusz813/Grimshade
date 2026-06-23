@@ -59,7 +59,10 @@ jobs:
     # develop pushes/PRs run Typecheck + Vitest only (fast feedback); the full
     # ~40-min Playwright suite is reserved for production (master).
     if: github.ref == 'refs/heads/master' || github.base_ref == 'master'
-    timeout-minutes: 120
+    # Healthy suite is ~40 min. 60 = comfortable margin + hard backstop so a
+    # rate-limited backend can't burn 2h again (playwright maxFailures should
+    # abort far sooner — this is just the ceiling).
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
