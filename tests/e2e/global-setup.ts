@@ -16,8 +16,10 @@
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createClient } from '@supabase/supabase-js';
+import { supabaseAuthStorageKey, writeSavedAuth, type TAuthLabel } from './fixtures/authState';
 
 // ESM-safe project root — Playwright invokes globalSetup z working dir
 // = project root, więc process.cwd() jest deterministyczny + nie cierpi
@@ -41,10 +43,72 @@ const isBuildFresh = (): boolean => {
     }
 };
 
-const globalSetup = async (): Promise<void> => {
-    if (isBuildFresh()) {
+// -- Pre-authentication (2026-06-23, "Step 2") -------------------------------
+// Sign in each test account ONCE here and cache the Supabase session, so
+// `loginViaUI` can inject it instead of hitting GoTrue per test (~315 logins
+// -> 3). Kills the auth rate-limit that was timing out the E2E job.
+
+/**
+ * Fill process.env from a dotenv file WITHOUT overriding values already set
+ * (CI passes secrets directly; locally Playwright already loaded `.env.test`
+ * but the anon key lives in `.env.local`). Mirrors playwright.config's loader.
+ */
+const loadEnvInto = (path: string): void => {
+    const full = resolve(PROJECT_ROOT, path);
+    if (!existsSync(full)) return;
+    for (const raw of readFileSync(full, 'utf8').split('\n')) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq === -1) continue;
+        const key = line.slice(0, eq).trim();
+        if (process.env[key]) continue;
+        process.env[key] = line.slice(eq + 1).trim().replace(/^["'](.*)["']$/, '$1');
+    }
+};
+
+const preauthenticate = async (): Promise<void> => {
+    loadEnvInto('.env.test');
+    loadEnvInto('.env.local');
+    loadEnvInto('.env');
+
+    const url = process.env.VITE_SUPABASE_URL;
+    const anon = process.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !anon) {
+        // eslint-disable-next-line no-console
+        console.warn('[globalSetup] no Supabase URL/anon key — skipping pre-auth; tests fall back to real login');
         return;
     }
+
+    const accounts: Array<[TAuthLabel, string | undefined, string | undefined]> = [
+        ['primary', process.env.E2E_USER_EMAIL, process.env.E2E_USER_PASSWORD],
+        ['secondary', process.env.E2E_USER2_EMAIL, process.env.E2E_USER2_PASSWORD],
+        ['admin', process.env.E2E_ADMIN_EMAIL, process.env.E2E_ADMIN_PASSWORD],
+    ];
+    const storageKey = supabaseAuthStorageKey(url);
+
+    for (const [label, email, password] of accounts) {
+        if (!email || !password) continue;
+        try {
+            const client = createClient(url, anon, {
+                auth: { persistSession: false, autoRefreshToken: false },
+            });
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+            if (error || !data.session) {
+                // eslint-disable-next-line no-console
+                console.warn(`[globalSetup] pre-auth ${label} failed (${error?.message ?? 'no session'}) — real login fallback`);
+                continue;
+            }
+            writeSavedAuth(label, { name: storageKey, value: JSON.stringify(data.session) });
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn(`[globalSetup] pre-auth ${label} threw: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+};
+
+const ensureBuild = (): void => {
+    if (isBuildFresh()) return;
     // eslint-disable-next-line no-console
     console.log('[globalSetup] dist/ stale — running npm run build before suite');
     try {
@@ -61,6 +125,13 @@ const globalSetup = async (): Promise<void> => {
             `[globalSetup] build failed — PWA test will skip with reason: ${err instanceof Error ? err.message : String(err)}`,
         );
     }
+};
+
+const globalSetup = async (): Promise<void> => {
+    // Pre-auth ALWAYS runs (even when the build is fresh) so the session cache
+    // is regenerated every run.
+    await preauthenticate();
+    ensureBuild();
 };
 
 export default globalSetup;

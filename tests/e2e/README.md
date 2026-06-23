@@ -194,9 +194,19 @@ test('party member sees leader combat', async ({ browser }) => {
 Atomic testy NIE klikają sobie przez UI do żądanego state (np. "zaloguj
 się, stwórz postać, idź do walki, atakuj") — to wolne i kruche. Wzorce:
 
-1. **Login raz, reuse session** — Playwright `storageState` cache-uje
-   cookie + localStorage po pierwszym loginie, reszta testów startuje
-   "już zalogowana" (helper TODO w `fixtures/`).
+1. **Login raz, reuse session** ✅ DONE (2026-06-23). `global-setup.ts`
+   loguje się RAZ na każde konto (primary/secondary/admin) i zapisuje sesję
+   Supabase do `playwright/.auth/<label>.json` (gitignored). `loginViaUI`
+   (`fixtures/login.ts`) **wstrzykuje** tę sesję do localStorage zamiast
+   robić realny login GoTrue — ~315 loginów/run → 3. To usunęło rate-limit
+   GoTrue (`listUsers failed: {}`), który zabijał job E2E timeoutem.
+   - Wszystkie 157 spec files wołają `loginViaUI(page, user)` BEZ ZMIAN —
+     zmienił się tylko mechanizm.
+   - `loginViaUIReal` = stary realny flow (escape hatch + auto-fallback gdy
+     brak cache'a lub sesja odrzucona jako stale → self-healing).
+   - Wstrzyknięcie jest JEDNORAZOWE (goto `/login` → setItem → goto
+     `/character-select`), NIE `addInitScript` — dzięki temu testy logout /
+     session-expiry (które celowo czyszczą sesję) działają bez zmian.
 2. **Direct API seed** — Supabase REST/RPC do dosypania character +
    state ZANIM test odpali browser (helper TODO w `fixtures/`).
 3. **localStorage / sessionStorage injection** — `page.addInitScript`
