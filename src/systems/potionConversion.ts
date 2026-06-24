@@ -48,7 +48,9 @@ export interface IPotionConversion {
     outputMinLevel: number;
 }
 
-export const POTION_CONVERSIONS: IPotionConversion[] = [
+// Raw recipes. The `outputMinLevel` literals below are IGNORED — see the
+// derived export beneath the array. They're kept only for readability/diffing.
+const RAW_POTION_CONVERSIONS: IPotionConversion[] = [
     // -- HP Potions --
     {
         tier: 1, family: 'hp',
@@ -152,6 +154,18 @@ export const POTION_CONVERSIONS: IPotionConversion[] = [
         outputMinLevel: 100,
     },
 ];
+
+/**
+ * 2026-06-24: alchemy crafting levels are now DERIVED from `getPotionMinLevel`
+ * (the same single source the shop buy-gate + drink-gate use), so a player can
+ * only ever craft a potion at the exact level they could buy/drink it — no more
+ * stale hardcoded alchemy levels drifting from the shop (great 200 / super 350 /
+ * ultimate 500 / divine 700 / mega 100, etc.).
+ */
+export const POTION_CONVERSIONS: IPotionConversion[] = RAW_POTION_CONVERSIONS.map((c) => ({
+    ...c,
+    outputMinLevel: getPotionMinLevel(c.outputId),
+}));
 
 /**
  * How many times can this conversion be performed given current inventory?

@@ -14,6 +14,18 @@ import {
     checkConversionAvailability,
     type IPotionConversion,
 } from './potionConversion';
+import { getPotionMinLevel } from './potionGating';
+
+// 2026-06-24: alchemy craft level MUST equal the shop/drink gate for every
+// recipe — they're all derived from getPotionMinLevel now, so this guards
+// against the old stale-hardcoded-level drift ever coming back.
+describe('alchemy levels match the shop/drink gate (potionGating)', () => {
+    for (const conv of POTION_CONVERSIONS) {
+        it(`${conv.outputId}: outputMinLevel === getPotionMinLevel`, () => {
+            expect(conv.outputMinLevel).toBe(getPotionMinLevel(conv.outputId));
+        });
+    }
+});
 
 const findConv = (
     family: 'hp' | 'mp',
@@ -88,8 +100,10 @@ describe('POTION_CONVERSIONS table', () => {
         }
     });
 
-    it('matches the canonical level gates: 20 / 50 / 100 / 200 / 400 / 600', () => {
-        const expected = [20, 50, 100, 200, 400, 600];
+    it('matches the canonical shop level gates: 20 / 50 / 200 / 350 / 500 / 700', () => {
+        // 2026-06-24: md/lg/great/super/ultimate/divine — derived from potionGating
+        // (same as the shop buy + drink gates). Old stale 100/200/400/600 removed.
+        const expected = [20, 50, 200, 350, 500, 700];
         const hpMain = POTION_CONVERSIONS.filter((c) => c.family === 'hp' && c.tier <= 6)
             .sort((a, b) => a.tier - b.tier)
             .map((c) => c.outputMinLevel);
