@@ -39,21 +39,20 @@
  *     `peekCharacterStore(charId, 'transforms')` reading from localStorage.
  *     Same calculation pipeline as engine: `(base+flat) × pctMul`.
  *
- * ## CRITICAL — legacy migration bypass
+ * ## Legacy migration bypass (updated 2026-06-24)
  *
- * `characterScope.ts` line 436-446 checks
- * `localStorage['tibia_transform_migration_v1_<charId>']`. Without the
- * marker the hydrator force-sets `bakedBonusesApplied: true` and runs
- * `migrateLegacyBakedBonuses` (which would MUTATE character.max_hp by
- * the seeded transform bonus, double-baking it into the stats).
+ * `characterScope.ts` runs the legacy unbake only when
+ * `completedTransforms.length > 0 && transformMigrationVersion === 0`
+ * (a PERSISTED store field, no longer a `localStorage` marker — the marker
+ * got wiped on mobile and let the lossy unbake run multiple times).
  *
- * Solution: `page.addInitScript` sets the marker BEFORE the first
- * character pick, so the bakedBonusesApplied=false (seeded) survives
- * and `getLiveTransformBreakdown` returns active=true -> transform flat
- * + % bonuses apply LIVE in every helper.
+ * The `seedGameSave` fixture defaults `transformMigrationVersion: 1`, so the
+ * unbake does NOT run and the seeded `bakedBonusesApplied: false` survives ->
+ * `getLiveTransformBreakdown` returns active=true -> transform flat + % bonuses
+ * apply LIVE in every helper. No `addInitScript` marker needed anymore.
  *
- * Same caveat as the 8.1 expansion test
- * (`stats/popup-aggregates-with-transform.spec.ts` line 81-87).
+ * Same mechanism as the 8.1 expansion test
+ * (`stats/popup-aggregates-with-transform.spec.ts`).
  *
  * ## Why Knight tier 1 (not e.g. Mage tier 5)
  *
@@ -73,9 +72,9 @@
  *   1. Seed Knight lvl 5 on SECONDARY (suite on primary per task brief).
  *      hp=40, hp_regen=0, mp_regen=0 (CLAUDE.md TESTING — race-free).
  *   2. Seed game_saves with `transforms: { completedTransforms: [1],
- *      bakedBonusesApplied: false }` (see seedGameSave fixture line 375-383).
- *   3. `page.addInitScript` to set localStorage marker BEFORE character
- *      pick, bypassing legacy migration.
+ *      bakedBonusesApplied: false }` (see seedGameSave fixture). The fixture
+ *      default `transformMigrationVersion: 1` bypasses the legacy unbake, so
+ *      no localStorage marker / addInitScript is required.
  *
  * ## Visit order — same as elixir consistency tests (3.5/3.6)
  *
@@ -128,19 +127,11 @@ test.describe('Shop › Transforms', { tag: '@shop' }, () => {
                 },
             });
 
-            // 3. CRITICAL: set legacy-migration marker BEFORE any character
-            //    pick. Without this, characterScope.ts line 436-446 forces
-            //    bakedBonusesApplied=true + runs migrateLegacyBakedBonuses
-            //    (which MUTATES character.max_hp by the seeded transform
-            //    bonus, double-baking it into stats and breaking the math).
-            //    `page.addInitScript` runs before every navigation's bundle
-            //    initialization, so the marker is in place when characterScope
-            //    inspects localStorage.
-            await page.addInitScript((charId) => {
-                try {
-                    localStorage.setItem(`tibia_transform_migration_v1_${charId}`, '1');
-                } catch { /* private mode / quota */ }
-            }, createdId);
+            // 3. Legacy unbake is bypassed by the seeded
+            //    `transformMigrationVersion: 1` (seedGameSave default). The
+            //    migration now gates on that PERSISTED field instead of a
+            //    localStorage marker (2026-06-24 fix), so no addInitScript is
+            //    needed — the seeded `bakedBonusesApplied: false` survives load.
 
             // 4. Login -> /character-select.
             await loginViaUI(page, testUsers.secondary);

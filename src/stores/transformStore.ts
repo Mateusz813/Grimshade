@@ -22,7 +22,7 @@ import {
   type ITransformColor,
 } from '../systems/transformSystem';
 import { getTransformColor } from '../systems/transformSystem';
-import { useCharacterStore } from './characterStore';
+import { useCharacterStore, computeBaseStatFloor } from './characterStore';
 
 // -- Types ---------------------------------------------------------------------
 
@@ -70,6 +70,19 @@ interface ITransformStore {
    * migrated via `migrateLegacyBakedBonuses()` on first boot.
    */
   bakedBonusesApplied: boolean;
+  /**
+   * Player-data fix (2026-06-24): persisted one-shot migration guard for the
+   * legacy baked-bonus unbake. Lives IN the store (saved in the game_saves blob)
+   * rather than in a localStorage marker, so it survives a localStorage wipe —
+   * which on mobile re-armed the lossy geometric-inverse unbake and let it run
+   * MULTIPLE times, collapsing base max_hp/max_mp toward 0.
+   *
+   * Semantics: 0 = unbake migration has NEVER run for this character;
+   * 1 = it has run (or was skipped because the base was already corrupted).
+   * characterScope.ts runs the migration AT MOST ONCE EVER per character, gated
+   * on this field === 0, and bumps it to 1 afterwards.
+   */
+  transformMigrationVersion: number;
   /**
    * Bug 1 (2026-04): Transform ID of an unclaimed reward, or null.
    *
@@ -180,6 +193,7 @@ export const useTransformStore = create<ITransformStore>()(
     // field so loading a legacy save (without the key) falls back to `true`
     // via the migration path below.
     bakedBonusesApplied: false,
+    transformMigrationVersion: 0,
     pendingClaimTransformId: null,
 
     // -- Actions ------------------------------------------------------------
@@ -395,6 +409,27 @@ export const useTransformStore = create<ITransformStore>()(
       if (!character) return false;
       const cls = character.class as TCharacterClass;
 
+      // Player-data safety guard (2026-06-24): the geometric-inverse unbake is
+      // LOSSY and only safe to run on a base that still carries the baked
+      // deltas. If the base has ALREADY been corrupted (e.g. the mobile
+      // double-run drove max_mp toward 0), running it again would push the
+      // stats even lower. Detect that via the deterministic class+level floor:
+      // if either base stat is already BELOW the floor, the bake has clearly
+      // already been (partially) removed / corrupted — DO NOT unbake again.
+      // Just flip the flag so live bonuses apply, and let healCorruptedBaseStats
+      // (PART C) raise the base back up to the floor.
+      const floor = computeBaseStatFloor(cls, character.highest_level ?? character.level);
+      if (character.max_mp < floor.max_mp || character.max_hp < floor.max_hp) {
+        set({ bakedBonusesApplied: false });
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[transformStore] Skipped legacy unbake for ${cls} — base already below ` +
+          `floor (HP ${character.max_hp}/${floor.max_hp}, MP ${character.max_mp}/${floor.max_mp}). ` +
+          `Bonuses now apply live; healCorruptedBaseStats will repair the base.`,
+        );
+        return true;
+      }
+
       // Forward-iterate in completion order, mirroring the old
       // handleCompleteTransform formula exactly, to compute the total delta
       // each completed transform added at claim time. We start from the
@@ -422,19 +457,22 @@ export const useTransformStore = create<ITransformStore>()(
         const mpPctMul  = 1 + per.mpPercent / 100;
         const defPctMul = 1 + per.defPercent / 100;
 
-        curMaxHp   = Math.round((curMaxHp  - per.flatHp) / hpPctMul);
-        curMaxMp   = Math.round((curMaxMp  - per.flatMp) / mpPctMul);
+        // Clamp each intermediate value at the floor so a single weird
+        // (pre-rebalance) bonus can never drive an in-progress unbake below
+        // the deterministic class+level minimum.
+        curMaxHp   = Math.max(floor.max_hp, Math.round((curMaxHp  - per.flatHp) / hpPctMul));
+        curMaxMp   = Math.max(floor.max_mp, Math.round((curMaxMp  - per.flatMp) / mpPctMul));
         curDefense = Math.round((curDefense - per.defense) / defPctMul);
         curAttack  = curAttack - per.attack;
         curHpRegen = curHpRegen - per.hpRegenFlat;
         curMpRegen = curMpRegen - per.mpRegenFlat;
       }
 
-      // Clamp so we never go below 1 in anything — if the baked values were
-      // weird (e.g. old pre-rebalance bonuses) we'd rather lose a bit of
-      // power than break the character.
-      const newMaxHp   = Math.max(1, curMaxHp);
-      const newMaxMp   = Math.max(0, curMaxMp);
+      // Clamp so we never go below the floor (HP/MP) or below 1/0 (the rest) —
+      // if the baked values were weird (e.g. old pre-rebalance bonuses) we'd
+      // rather lose a bit of power than break the character.
+      const newMaxHp   = Math.max(floor.max_hp, curMaxHp);
+      const newMaxMp   = Math.max(floor.max_mp, curMaxMp);
       const newAttack  = Math.max(1, curAttack);
       const newDefense = Math.max(0, curDefense);
       const newHpRegen = Math.max(0, curHpRegen);

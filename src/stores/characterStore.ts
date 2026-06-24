@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { CharacterClass, ICharacter as IApiCharacter } from '../api/v1/characterApi';
 import { processXpGain, statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../systems/levelSystem';
+import classesData from '../data/classes.json';
 import { useInventoryStore, registerCharacterLevelGetter } from './inventoryStore';
 import { useSkillStore } from './skillStore';
 import { useLevelUpStore } from './levelUpStore';
@@ -125,6 +126,45 @@ const countMilestonesCrossed = (prevHighest: number, newHighest: number): number
 };
 
 /**
+ * Deterministic LOWER BOUND for a character's base max_hp / max_mp, derived
+ * purely from class + highest level — the EXACT same constants the level-up
+ * path uses (classes.json baseStats + BASE_HP/MP_PER_LEVEL + MILESTONE_BONUSES).
+ *
+ * This is the floor a healthy, never-corrupted character's base stats can NEVER
+ * legitimately be below: at level L a character has earned
+ *   base.hp + perLevelHp·(L-1) + floor(L/10)·milestone.hp
+ * worth of HP from leveling alone (manual stat-point spends only ADD on top, so
+ * the real value is ≥ this). The 2026-06-24 player-data fix uses this floor to:
+ *   1) detect already-corrupted bases (max_mp collapsed toward 0 on mobile by the
+ *      double-run unbake bug) and heal them back up (healCorruptedBaseStats), and
+ *   2) refuse to run the lossy geometric unbake on a base that's already below
+ *      the floor (transformStore.migrateLegacyBakedBonuses).
+ *
+ * NOTE: this is a FLOOR, not the exact base — it intentionally ignores manual
+ * stat-point allocation (which can only raise the real value), so healing to the
+ * floor never lowers a character that legitimately spent points into HP/MP.
+ */
+export const computeBaseStatFloor = (
+    characterClass: CharacterClass,
+    highestLevel: number,
+): { max_hp: number; max_mp: number } => {
+    const level = Math.max(1, Math.floor(highestLevel ?? 1));
+    const classEntry = (classesData as Array<{ id: string; baseStats: { hp: number; mp: number } }>)
+        .find((c) => c.id === characterClass);
+    const baseStats = classEntry?.baseStats ?? { hp: 0, mp: 0 };
+    const perLevelHp = BASE_HP_PER_LEVEL[characterClass] ?? 0;
+    const perLevelMp = BASE_MP_PER_LEVEL[characterClass] ?? 0;
+    const milestones = Math.floor(level / MILESTONE_INTERVAL);
+    const milestoneBonus = MILESTONE_BONUSES[characterClass] ?? { hp: 0, mp: 0, attack: 0, defense: 0 };
+    const milestoneHp = milestones * milestoneBonus.hp;
+    const milestoneMp = milestones * milestoneBonus.mp;
+    return {
+        max_hp: baseStats.hp + perLevelHp * (level - 1) + milestoneHp,
+        max_mp: baseStats.mp + perLevelMp * (level - 1) + milestoneMp,
+    };
+};
+
+/**
  * Gold milestone schedule: levels 10, 20, 30, 40, 50, then 100, 150, 200, …
  * (every 50 from 100 onward, forever). Reward: 10000 × level.
  *
@@ -161,6 +201,16 @@ interface ICharacterState {
    */
   spendAllStatPoints: (stat: StatPointStat) => void;
   fullHealEffective: () => void;
+  /**
+   * Player-data repair (2026-06-24): raise base max_hp / max_mp back up to the
+   * deterministic class+level FLOOR (computeBaseStatFloor) when a corrupted save
+   * has collapsed them (the mobile double-run transform-unbake bug drove base
+   * MP toward 0). Only ever RAISES a deficient stat to the floor — a healthy
+   * stat (already ≥ floor) is left untouched, so a character who legitimately
+   * spent stat-points into HP/MP is never lowered. Idempotent: a no-op (returns
+   * false) once both stats are at or above the floor. Returns true if it healed.
+   */
+  healCorruptedBaseStats: () => boolean;
   clearCharacter: () => void;
 }
 
@@ -354,6 +404,50 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
         mp: maxMp,
       },
     });
+  },
+  healCorruptedBaseStats: (): boolean => {
+    const char = get().character;
+    if (!char) return false;
+
+    const floor = computeBaseStatFloor(
+        char.class,
+        char.highest_level ?? char.level,
+    );
+
+    const hpLow = (char.max_hp ?? 0) < floor.max_hp;
+    const mpLow = (char.max_mp ?? 0) < floor.max_mp;
+    if (!hpLow && !mpLow) return false;
+
+    const updates: Partial<ICharacter> = {};
+    if (hpLow) {
+        updates.max_hp = floor.max_hp;
+        // Never strand current hp above the (possibly previously-broken) max;
+        // bump it up to the new floor only if it was sitting below it.
+        if ((char.hp ?? 0) > floor.max_hp) {
+            updates.hp = floor.max_hp;
+        } else {
+            updates.hp = Math.max(char.hp ?? 0, floor.max_hp);
+        }
+    }
+    if (mpLow) {
+        updates.max_mp = floor.max_mp;
+        if ((char.mp ?? 0) > floor.max_mp) {
+            updates.mp = floor.max_mp;
+        } else {
+            updates.mp = Math.max(char.mp ?? 0, floor.max_mp);
+        }
+    }
+
+    // eslint-disable-next-line no-console
+    console.warn(
+        `[characterStore] Healed corrupted base stats for ${char.class} ` +
+        `(lvl ${char.level}, highest ${char.highest_level ?? char.level}): ` +
+        (hpLow ? `HP ${char.max_hp}->${floor.max_hp} ` : '') +
+        (mpLow ? `MP ${char.max_mp}->${floor.max_mp}` : ''),
+    );
+
+    set({ character: { ...char, ...updates } });
+    return true;
   },
   clearCharacter: () => {
     // 2026-05-13 spec ("Kiedy wychodze do wyboru postaci to moje party

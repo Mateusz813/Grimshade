@@ -308,9 +308,14 @@ const STORE_ENTRIES: IStoreEntry[] = [
       completedTransforms: [],
       currentTransformQuest: null,
       bakedBonusesApplied: false,
+      // Player-data fix (2026-06-24): persisted unbake-migration guard. New
+      // characters start at 1 (already "migrated" — they never baked anything,
+      // so the unbake never needs to run). Legacy saves predate this key and
+      // load with `undefined`, which the migration block treats as 0.
+      transformMigrationVersion: 1,
       pendingClaimTransformId: null,
     }),
-    stateKeys: ['completedTransforms', 'currentTransformQuest', 'bakedBonusesApplied', 'pendingClaimTransformId'],
+    stateKeys: ['completedTransforms', 'currentTransformQuest', 'bakedBonusesApplied', 'transformMigrationVersion', 'pendingClaimTransformId'],
   },
   {
     baseKey: 'combat',
@@ -424,30 +429,50 @@ const applyBlobToStores = (blob: Record<string, unknown>, expectedCharId: string
 
   // 4) Point 7 legacy migration: any save that completed a transform before
   //    the April-2026 live-bonus rewrite has its hp/mp/attack/defense/regen
-  //    stats still inflated by the baked deltas. We flag completion with a
-  //    per-character localStorage marker so migration runs exactly once,
-  //    even if an earlier in-progress build already persisted
-  //    `bakedBonusesApplied: false` to the blob without actually migrating.
+  //    stats still inflated by the baked deltas.
+  //
+  //    Player-data fix (2026-06-24): the old gate was a per-character
+  //    localStorage marker (`tibia_transform_migration_v1_<id>`). On mobile
+  //    that marker gets wiped, which re-armed the LOSSY geometric-inverse
+  //    unbake and let it run MULTIPLE times — each pass divided base max_mp /
+  //    max_hp again, collapsing them toward 0 (player "Krasek" lvl 109:
+  //    350 MP -> 0). We now gate on a PERSISTED store field
+  //    (`transformMigrationVersion`) that lives in the game_saves blob, so the
+  //    unbake runs AT MOST ONCE EVER per character regardless of localStorage.
   try {
     const transformSlice = blob.transforms as Record<string, unknown> | undefined;
     const completed = Array.isArray(transformSlice?.completedTransforms)
       ? (transformSlice!.completedTransforms as unknown[])
       : [];
-    if (completed.length > 0) {
-      const markerKey = `tibia_transform_migration_v1_${expectedCharId}`;
-      const alreadyMigrated = localStorage.getItem(markerKey) === '1';
-      if (!alreadyMigrated) {
-        // Force the store into legacy state so the migrator knows to unbake.
-        useTransformStore.setState({ bakedBonusesApplied: true });
-        const ran = useTransformStore.getState().migrateLegacyBakedBonuses();
-        if (ran) {
-          try { localStorage.setItem(markerKey, '1'); } catch { /* storage full */ }
-        }
-      }
+    const migrationVersion =
+      typeof transformSlice?.transformMigrationVersion === 'number'
+        ? (transformSlice!.transformMigrationVersion as number)
+        : 0;
+    if (completed.length > 0 && migrationVersion === 0) {
+      // Force the store into legacy state so the migrator knows to unbake.
+      useTransformStore.setState({ bakedBonusesApplied: true });
+      useTransformStore.getState().migrateLegacyBakedBonuses();
+      // Stamp the persisted guard regardless of whether the unbake actually
+      // mutated stats — the point is "this character has now been processed,
+      // never run the lossy unbake again".
+      useTransformStore.setState({ transformMigrationVersion: 1 });
     }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[characterScope] transform legacy migration failed', err);
+  }
+
+  // 5) Player-data repair (2026-06-24): heal any base stats that an earlier
+  //    double-run unbake already collapsed below the deterministic class+level
+  //    floor. Runs on EVERY load (idempotent no-op once stats >= floor) so a
+  //    corrupted character is repaired even on saves that loaded BEFORE this
+  //    fix shipped. Must run AFTER the migration block above so a just-skipped
+  //    unbake gets its base raised right away.
+  try {
+    useCharacterStore.getState().healCorruptedBaseStats();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[characterScope] base-stat heal failed', err);
   }
 
   return true;

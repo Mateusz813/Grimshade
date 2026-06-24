@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
-import { useCharacterStore } from './stores/characterStore';
+import { useCharacterStore, computeBaseStatFloor } from './stores/characterStore';
 import { useSkillStore } from './stores/skillStore';
 import { useSync } from './hooks/useSync';
 import { useMpRegen } from './hooks/useMpRegen';
@@ -97,7 +97,20 @@ const App = () => {
                 // can land. Skipped in OFFLINE mode (offline progress is synced
                 // deliberately via `transitionToOnline`, not piecemeal).
                 if (useConnectivityStore.getState().mode === 'online') {
-                    void saveCurrentCharacterStoresForce().catch(() => { /* offline / RLS — local flush already done */ });
+                    // 2026-06-24 #3 guard: NEVER push implausibly-low (corrupted)
+                    // base stats to the cloud — that's how the MP-collapse bug
+                    // propagated across devices. If a char's max_hp/max_mp is
+                    // below the deterministic class-level floor, skip the cloud
+                    // push; the on-load heal repairs it instead.
+                    const ch = useCharacterStore.getState().character;
+                    const floor = ch ? computeBaseStatFloor(ch.class, ch.highest_level ?? ch.level) : null;
+                    const corrupted = !!ch && !!floor && (ch.max_hp < floor.max_hp || ch.max_mp < floor.max_mp);
+                    if (ch && !corrupted) {
+                        void saveCurrentCharacterStoresForce().catch(() => { /* offline / RLS — local flush already done */ });
+                    } else if (corrupted) {
+                        // eslint-disable-next-line no-console
+                        console.warn('[App] Skipped cloud save — base stats below floor (corrupted), avoiding propagation', { max_hp: ch?.max_hp, max_mp: ch?.max_mp });
+                    }
                 }
             }
         };

@@ -74,15 +74,14 @@
  *
  * -> 6 lines pojawia się w UI: Baza/Eq/Trening/Eliksir/TF flat/TF %.
  *
- * ## CRITICAL — legacy migration bypass
+ * ## Legacy migration bypass (updated 2026-06-24)
  *
- * `characterScope.ts` linia 436-446 sprawdza
- * `localStorage['tibia_transform_migration_v1_<charId>']`. Brak markera
- * -> wymusza `bakedBonusesApplied: true` + odpala migrację (MUTUJE
- * character stats!). Test używa `page.addInitScript` żeby ustawić marker
- * BEFORE pierwszej hydration, więc blok migracyjny jest pomijany i
- * `bakedBonusesApplied: false` z seeded blob-a zostaje aktywne ->
- * `getLiveTransformBreakdown` zwraca `active: true`.
+ * `characterScope.ts` runs the legacy unbake only when
+ * `completedTransforms.length > 0 && transformMigrationVersion === 0`
+ * (a PERSISTED store field, no longer a `localStorage` marker). The
+ * `seedGameSave` fixture defaults `transformMigrationVersion: 1`, so the
+ * unbake is skipped and the seeded `bakedBonusesApplied: false` survives ->
+ * `getLiveTransformBreakdown` zwraca `active: true`. No addInitScript needed.
  *
  * Cleanup: try/finally -> cleanupCharacterById.
  */
@@ -149,16 +148,11 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
                 upgradeLevel: 0,
             });
 
-            // 4. **CRITICAL**: ustaw localStorage marker `tibia_transform_migration_v1_<charId>=1`
-            //    PRZED pierwszą nawigacją, żeby `characterScope` linia 438 widziała
-            //    `alreadyMigrated=true` i SKIP-nął forced `bakedBonusesApplied=true`
-            //    + `migrateLegacyBakedBonuses`. Bez tego transform bonusy będą zbaked
-            //    w `character.max_hp` i NIE pojawią się w breakdown (active=false).
-            await page.addInitScript((charId) => {
-                try {
-                    localStorage.setItem(`tibia_transform_migration_v1_${charId}`, '1');
-                } catch { /* private mode / quota */ }
-            }, created.id);
+            // 4. Legacy unbake bypass: the seeded `transformMigrationVersion: 1`
+            //    (seedGameSave default) gates out the migration, so the seeded
+            //    `bakedBonusesApplied: false` survives load and transform bonuses
+            //    show LIVE in the breakdown (active=true). No localStorage marker
+            //    / addInitScript needed anymore (2026-06-24 fix).
 
             // 5. Login -> wybierz -> Town.
             await loginViaUI(page, testUsers.secondary);

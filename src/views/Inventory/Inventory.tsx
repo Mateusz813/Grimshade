@@ -2676,6 +2676,7 @@ const isBuffEffect = (effect: string): boolean => (
     || effect.startsWith('mp_boost_')
     || effect.startsWith('atk_boost_')
     || effect.startsWith('def_boost_')
+    || effect === 'atk_def_boost_50_15m' // 2026-06-24 #1: Eliksir Siły (handler at applyElixirDose ~2804)
     || effect.startsWith('hp_pct_')
     || effect.startsWith('mp_pct_')
 );
@@ -4516,6 +4517,7 @@ const Inventory = () => {
             || effect.startsWith('mp_boost_')
             || effect.startsWith('atk_boost_')
             || effect.startsWith('def_boost_')
+            || effect === 'atk_def_boost_50_15m' // 2026-06-24 #1: Eliksir Siły
             || effect.startsWith('hp_pct_')
             || effect.startsWith('mp_pct_')
         );

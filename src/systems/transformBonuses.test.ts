@@ -16,7 +16,11 @@ import {
 } from './transformBonuses';
 import { useCharacterStore } from '../stores/characterStore';
 import { useTransformStore } from '../stores/transformStore';
+import { useInventoryStore } from '../stores/inventoryStore';
+import { useSkillStore } from '../stores/skillStore';
 import { getClassTransformBonuses, getCumulativeTransformBonuses } from './transformSystem';
+import { getEffectiveChar } from './combatEngine';
+import { EMPTY_EQUIPMENT } from './itemSystem';
 import type { ICharacter, TCharacterClass } from '../api/v1/characterApi';
 
 // -- Helpers ------------------------------------------------------------------
@@ -467,5 +471,83 @@ describe('Bug 8 – no double-count regression (net effective stat)', () => {
 
         expect(net).toBe(expected);
         expect(net).toBeGreaterThan(baseAtk); // Archer atkPercent=7/tier -> grows
+    });
+});
+
+// -- PART D (player-data fix 2026-06-24): bonuses apply LIVE in getEffectiveChar
+// A migrated character ends up with bakedBonusesApplied=false. Confirm that the
+// REAL getEffectiveChar orchestrator (not a mirror) actually folds the transform
+// flat + pct rewards into max_hp/max_mp/attack/defense once gear/training are
+// neutral. This is the end-to-end proof that "shown in UI but not real" is fixed.
+
+describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () => {
+    beforeEach(() => {
+        // Neutralise equipment + training so the only contribution beyond the
+        // character's base stats is the transform reward.
+        useInventoryStore.setState({
+            bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [], gold: 0,
+            consumables: {}, stones: {},
+        });
+        useSkillStore.setState({ skillLevels: {}, skillXp: {} } as never);
+    });
+
+    it('max_mp = base + transform flat/pct when completed + bakedBonusesApplied=false', () => {
+        const baseMaxMp = 1314; // Mage lvl-109 healed floor
+        useCharacterStore.setState({
+            character: makeChar('Mage', { max_mp: baseMaxMp, max_hp: 524 }),
+        });
+        useTransformStore.setState({ bakedBonusesApplied: false });
+        setCompleted([1, 2]);
+
+        const cum = getCumulativeTransformBonuses([1, 2], 'Mage');
+        const eff = getEffectiveChar(useCharacterStore.getState().character)!;
+
+        const expectedMaxMp = Math.floor((baseMaxMp + cum.flatMp) * (1 + cum.mpPercent / 100));
+        expect(eff.max_mp).toBe(expectedMaxMp);
+        // The bonus is REAL, not cosmetic — effective MP exceeds the base pool.
+        expect(eff.max_mp).toBeGreaterThan(baseMaxMp);
+    });
+
+    it('LEGACY baked (bakedBonusesApplied=true) does NOT add the bonus again', () => {
+        const baseMaxMp = 1314;
+        useCharacterStore.setState({
+            character: makeChar('Mage', { max_mp: baseMaxMp, max_hp: 524 }),
+        });
+        useTransformStore.setState({ bakedBonusesApplied: true });
+        setCompleted([1, 2]);
+
+        // baked guard in transformBonuses.ts -> live getters return 0/1.0, so
+        // getEffectiveChar leaves max_mp at base (no double count for baked chars).
+        const eff = getEffectiveChar(useCharacterStore.getState().character)!;
+        expect(eff.max_mp).toBe(baseMaxMp);
+    });
+
+    // The player's explicit ask (2026-06-24): "normalna postać przed transformem
+    // vs po transformie — czy bije mocniej, dostaje mniej obrażeń (więcej DEF),
+    // ma większy HP/MP regen, więcej HP i MP". Full before/after across EVERY
+    // stat getEffectiveChar folds the transform into.
+    it('BEFORE vs AFTER transform: ATK/DEF/HP/MP/HPregen/MPregen ALL increase', () => {
+        useCharacterStore.setState({
+            character: makeChar('Knight', {
+                max_hp: 1000, max_mp: 300, attack: 200, defense: 150,
+                hp_regen: 5, mp_regen: 2,
+            }),
+        });
+        useTransformStore.setState({ bakedBonusesApplied: false });
+
+        // BEFORE — no completed transforms.
+        setCompleted([]);
+        const before = getEffectiveChar(useCharacterStore.getState().character)!;
+
+        // AFTER — several transforms completed.
+        setCompleted([1, 2, 3]);
+        const after = getEffectiveChar(useCharacterStore.getState().character)!;
+
+        expect(after.attack).toBeGreaterThan(before.attack);     // bije mocniej
+        expect(after.defense).toBeGreaterThan(before.defense);   // dostaje mniej obrażeń
+        expect(after.max_hp).toBeGreaterThan(before.max_hp);     // więcej HP
+        expect(after.max_mp).toBeGreaterThan(before.max_mp);     // więcej MP
+        expect(after.hp_regen).toBeGreaterThan(before.hp_regen); // większy HP regen
+        expect(after.mp_regen).toBeGreaterThan(before.mp_regen); // większy MP regen
     });
 });

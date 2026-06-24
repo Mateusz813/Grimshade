@@ -184,24 +184,24 @@ export interface ISeedGameSaveArgs {
     /**
      * Transforms slice — pre-populates `completedTransforms` + flags.
      * Persists into `state.transforms` per `STORE_ENTRIES['transforms']`
-     * (characterScope.ts linia 300-314), `stateKeys` allow-lists
+     * (characterScope.ts), `stateKeys` allow-lists
      * `['completedTransforms', 'currentTransformQuest', 'bakedBonusesApplied',
-     * 'pendingClaimTransformId']`.
+     * 'transformMigrationVersion', 'pendingClaimTransformId']`.
      *
      * Use case: BACKLOG 8.1 — Stats popup pełna agregacja włącznie z
      * transform contribution. Seed `completedTransforms: [1]` +
      * `bakedBonusesApplied: false` żeby `getLiveTransformBreakdown`
-     * (`src/systems/transformBonuses.ts` linia 191) zwracało `active: true`
+     * (`src/systems/transformBonuses.ts`) zwracało `active: true`
      * + per-class bonuses (Knight tier 1: flatHp=420, hpPercent=4).
      *
-     * **CRITICAL caveat — legacy migration**: characterScope.ts linia 436-446
-     * checks `localStorage['tibia_transform_migration_v1_<charId>']` po
-     * hydration. Brak markera -> wymusza `bakedBonusesApplied: true` i
-     * odpala `migrateLegacyBakedBonuses` (MUTUJE character.max_hp etc.).
-     * Test MUSI ustawić marker via `page.addInitScript` ZANIM character
-     * jest pickany, inaczej (a) bonusy są zbaked w stats (active=false),
-     * (b) max_hp i defense są zmienione. Seedem `bakedBonusesApplied=false`
-     * pomaga TYLKO gdy marker już jest — bez markera blok wymusza true.
+     * **CRITICAL caveat — legacy migration (updated 2026-06-24)**:
+     * characterScope.ts no longer uses a `localStorage` marker. The legacy
+     * unbake now runs only when `completedTransforms.length > 0 &&
+     * transformMigrationVersion === 0`. The fixture defaults
+     * `transformMigrationVersion: 1` so a seeded `bakedBonusesApplied: false`
+     * is NOT clobbered by the migration (no marker / addInitScript needed).
+     * To intentionally exercise the legacy unbake, pass
+     * `transformMigrationVersion: 0` together with `bakedBonusesApplied: true`.
      */
     transforms?: {
         completedTransforms?: number[];
@@ -211,6 +211,12 @@ export interface ISeedGameSaveArgs {
          * zbaked w stats; `getLiveTransformBreakdown.active=false`).
          */
         bakedBonusesApplied?: boolean;
+        /**
+         * Default `1` (already-migrated — the unbake will NOT run, so seeded
+         * `bakedBonusesApplied` survives). Set `0` to let the legacy unbake run
+         * once on load (only meaningful with `bakedBonusesApplied: true`).
+         */
+        transformMigrationVersion?: number;
         pendingClaimTransformId?: number | null;
     };
 }
@@ -367,17 +373,18 @@ export const seedGameSave = async (args: ISeedGameSaveArgs): Promise<void> => {
         };
     }
 
-    // Transforms slice — `completedTransforms` array + 3 flag keys per
+    // Transforms slice — `completedTransforms` array + 4 flag keys per
     // `STORE_ENTRIES['transforms']` allow-list. Only added when caller
-    // passes `args.transforms`. See ISeedGameSaveArgs.transforms for the
-    // critical localStorage marker caveat (legacy migration WILL force
-    // bakedBonusesApplied=true if marker missing).
+    // passes `args.transforms`. `transformMigrationVersion` defaults to 1 so
+    // the legacy unbake does NOT run (seeded `bakedBonusesApplied` survives);
+    // see ISeedGameSaveArgs.transforms for the migration caveat (2026-06-24).
     if (args.transforms) {
         state.transforms = {
             _entryOwner: args.characterId,
             completedTransforms: args.transforms.completedTransforms ?? [],
             currentTransformQuest: args.transforms.currentTransformQuest ?? null,
             bakedBonusesApplied: args.transforms.bakedBonusesApplied ?? false,
+            transformMigrationVersion: args.transforms.transformMigrationVersion ?? 1,
             pendingClaimTransformId: args.transforms.pendingClaimTransformId ?? null,
         };
     }

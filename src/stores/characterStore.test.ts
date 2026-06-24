@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useCharacterStore, type ICharacter } from './characterStore';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { useCharacterStore, computeBaseStatFloor, type ICharacter } from './characterStore';
 import { useInventoryStore } from './inventoryStore';
 import { useSkillStore } from './skillStore';
 import { useLevelUpStore } from './levelUpStore';
@@ -512,5 +512,94 @@ describe('clearCharacter', () => {
         // settle without leaking into the next test.
         await Promise.resolve();
         await Promise.resolve();
+    });
+});
+
+// -- computeBaseStatFloor (player-data fix 2026-06-24) ------------------------
+
+describe('computeBaseStatFloor', () => {
+    it('Knight lvl 1 = pure base stats (no per-level / milestone yet)', () => {
+        // Knight baseStats hp 200 / mp 50, perLevel +8 hp / +2 mp, milestone +30/+5.
+        // L1: 200 + 8*0 + 0 milestones = 200 ; 50 + 2*0 + 0 = 50.
+        expect(computeBaseStatFloor('Knight', 1)).toEqual({ max_hp: 200, max_mp: 50 });
+    });
+
+    it('Knight lvl 30 = base + 29 levels + 3 milestones', () => {
+        // max_hp = 200 + 8*29 + 3*30 = 200 + 232 + 90 = 522
+        // max_mp = 50  + 2*29 + 3*5  = 50  + 58  + 15 = 123
+        expect(computeBaseStatFloor('Knight', 30)).toEqual({ max_hp: 522, max_mp: 123 });
+    });
+
+    it('Mage lvl 109 = base + 108 levels + 10 milestones (Krasek case)', () => {
+        // max_hp = 100 + 3*108 + 10*10 = 100 + 324 + 100 = 524
+        // max_mp = 200 + 8*108 + 10*25 = 200 + 864 + 250 = 1314
+        expect(computeBaseStatFloor('Mage', 109)).toEqual({ max_hp: 524, max_mp: 1314 });
+    });
+
+    it('clamps a sub-1 / missing level up to 1 (defensive)', () => {
+        expect(computeBaseStatFloor('Knight', 0)).toEqual({ max_hp: 200, max_mp: 50 });
+    });
+});
+
+// -- healCorruptedBaseStats (player-data fix 2026-06-24) ----------------------
+
+describe('healCorruptedBaseStats', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('raises a corrupted (max_mp=0) high-level char up to the floor', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        // Mage lvl 109 with collapsed MP (the exact Krasek failure mode).
+        useCharacterStore.getState().setCharacter(
+            makeChar({ class: 'Mage', level: 109, highest_level: 109, max_mp: 0, mp: 0, max_hp: 524, hp: 524 }),
+        );
+        const healed = useCharacterStore.getState().healCorruptedBaseStats();
+        expect(healed).toBe(true);
+        const c = useCharacterStore.getState().character!;
+        expect(c.max_mp).toBe(1314); // floor for Mage lvl 109
+        expect(c.mp).toBe(1314);     // current bumped up to the new floor
+        // HP was already healthy (524 == floor) so it is left untouched.
+        expect(c.max_hp).toBe(524);
+    });
+
+    it('also collapses-and-heals HP when both stats are below the floor', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        useCharacterStore.getState().setCharacter(
+            makeChar({ class: 'Mage', level: 109, highest_level: 109, max_hp: 5, hp: 5, max_mp: 0, mp: 0 }),
+        );
+        expect(useCharacterStore.getState().healCorruptedBaseStats()).toBe(true);
+        const c = useCharacterStore.getState().character!;
+        expect(c.max_hp).toBe(524);
+        expect(c.max_mp).toBe(1314);
+    });
+
+    it('leaves a healthy char untouched (returns false, no mutation)', () => {
+        // max_mp WAY above the floor (e.g. player legitimately spent stat-points
+        // into MP). Must never be lowered.
+        useCharacterStore.getState().setCharacter(
+            makeChar({ class: 'Mage', level: 109, highest_level: 109, max_hp: 900, hp: 900, max_mp: 5000, mp: 5000 }),
+        );
+        const healed = useCharacterStore.getState().healCorruptedBaseStats();
+        expect(healed).toBe(false);
+        const c = useCharacterStore.getState().character!;
+        expect(c.max_mp).toBe(5000); // untouched
+        expect(c.max_hp).toBe(900);  // untouched
+    });
+
+    it('returns false when no character is loaded', () => {
+        useCharacterStore.setState({ character: null });
+        expect(useCharacterStore.getState().healCorruptedBaseStats()).toBe(false);
+    });
+
+    it('uses highest_level (not current level) so a death-deranked char keeps its floor', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        // Current level 50 (after death) but highest 109 — the floor must be
+        // computed from highest so we don't under-heal a deranked character.
+        useCharacterStore.getState().setCharacter(
+            makeChar({ class: 'Mage', level: 50, highest_level: 109, max_mp: 0, mp: 0, max_hp: 524, hp: 524 }),
+        );
+        expect(useCharacterStore.getState().healCorruptedBaseStats()).toBe(true);
+        expect(useCharacterStore.getState().character!.max_mp).toBe(1314);
     });
 });
