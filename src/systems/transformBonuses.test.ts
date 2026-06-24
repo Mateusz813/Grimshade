@@ -119,10 +119,12 @@ describe('getTransformFlatHp', () => {
         expect(getTransformFlatHp()).toBe(0);
     });
 
-    it('returns 0 when bonuses are still baked (legacy mode)', () => {
+    it('2026-06-24: STILL applies flatHp even when bakedBonusesApplied=true (always live)', () => {
         setBaked(true);
         setCompleted([1, 2, 3]);
-        expect(getTransformFlatHp()).toBe(0);
+        // The old contract returned 0 here (baked suppression) — that HID a real
+        // bonus from the player. Base is the pure floor, so transform always applies.
+        expect(getTransformFlatHp()).toBeGreaterThan(0);
     });
 
     it('returns 0 when character is null', () => {
@@ -224,10 +226,10 @@ describe('getTransformHpPctMultiplier', () => {
         expect(getTransformHpPctMultiplier()).toBe(1.0);
     });
 
-    it('returns 1.0 in legacy baked mode', () => {
+    it('2026-06-24: STILL returns the multiplier when bakedBonusesApplied=true (always live)', () => {
         setBaked(true);
         setCompleted([1, 2]);
-        expect(getTransformHpPctMultiplier()).toBe(1.0);
+        expect(getTransformHpPctMultiplier()).toBeGreaterThan(1.0);
     });
 
     it('returns 1 + Σ hpPercent / 100 for one transform', () => {
@@ -292,16 +294,14 @@ describe('getLiveTransformBreakdown', () => {
         expect(b.hpPercent).toBe(0);
     });
 
-    it('returns inactive (but baked-flagged) breakdown when bonuses are baked', () => {
+    it('2026-06-24: returns ACTIVE breakdown with real values even when baked=true', () => {
         setBaked(true);
         setCompleted([1, 2]);
         const b = getLiveTransformBreakdown();
-        // active=false -> caller must NOT add to the live pipeline (already in base).
-        expect(b.active).toBe(false);
-        // baked=true -> caller can drive a display-only attribution instead.
-        expect(b.baked).toBe(true);
-        expect(b.dmgPercent).toBe(0);
-        expect(b.flatHp).toBe(0);
+        // New contract: transform always applies live, so the breakdown is ACTIVE
+        // and carries the real values regardless of the legacy `baked` flag.
+        expect(b.active).toBe(true);
+        expect(b.flatHp).toBeGreaterThan(0);
     });
 
     it('returns inactive breakdown with no completed transforms', () => {
@@ -398,11 +398,11 @@ describe('getDisplayTransformBreakdown', () => {
         expect(b.hpPercent).toBe(cum.hpPercent);
         expect(b.flatAttack).toBe(cum.attack);
         expect(b.dmgPercent).toBe(cum.dmgPercent);
-        // The LIVE breakdown stays zero for baked saves (no double-count).
+        // 2026-06-24: the LIVE breakdown is now ALSO active (transform always
+        // applies live); base is the pure floor so this does NOT double-count.
         const live = getLiveTransformBreakdown();
-        expect(live.active).toBe(false);
-        expect(live.baked).toBe(true);
-        expect(live.flatHp).toBe(0);
+        expect(live.active).toBe(true);
+        expect(live.flatHp).toBe(cum.flatHp);
     });
 
     it('reflects class-specific tables (Archer atkPercent stacks, flat attack=0)', () => {
@@ -445,18 +445,18 @@ describe('Bug 8 – no double-count regression (net effective stat)', () => {
         expect(computeLiveMaxHp(computeLiveMaxHp(baseMaxHp))).not.toBe(computeLiveMaxHp(baseMaxHp));
     });
 
-    it('(3) LEGACY BAKED: live multipliers are neutral so base is NOT inflated again', () => {
+    it('(3) 2026-06-24: base is PURE, so transform applies live exactly ONCE even when baked=true', () => {
         setBaked(true);
         setCompleted([1, 2]);
-        const baseMaxHp = 1234; // pretend the bonus is ALREADY inside this value
+        const baseMaxHp = 1234; // PURE base — transform is NOT inside it
         useCharacterStore.setState({ character: makeChar('Knight', { max_hp: baseMaxHp }) });
 
-        // Live getters return neutral (0 / 1.0) for baked saves, so the panel's
-        // headline stat equals base exactly — the baked bonus is shown via the
-        // display breakdown only, never re-added.
-        expect(getTransformFlatHp()).toBe(0);
-        expect(getTransformHpPctMultiplier()).toBe(1.0);
-        expect(computeLiveMaxHp(baseMaxHp)).toBe(baseMaxHp);
+        // New contract: transform always applies live (legacy `baked` flag ignored);
+        // base is the pure floor, so net = base + transform applied EXACTLY ONCE.
+        expect(getTransformFlatHp()).toBeGreaterThan(0);
+        expect(getTransformHpPctMultiplier()).toBeGreaterThan(1.0);
+        const cum = getCumulativeTransformBonuses([1, 2], 'Knight');
+        expect(computeLiveMaxHp(baseMaxHp)).toBe(Math.floor((baseMaxHp + cum.flatHp) * (1 + cum.hpPercent / 100)));
     });
 
     it('LIVE attack: net = floor((base + flatAtk) * atkPctMul) once (Archer)', () => {
@@ -508,18 +508,20 @@ describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () 
         expect(eff.max_mp).toBeGreaterThan(baseMaxMp);
     });
 
-    it('LEGACY baked (bakedBonusesApplied=true) does NOT add the bonus again', () => {
-        const baseMaxMp = 1314;
+    it('2026-06-24: applies the bonus even when bakedBonusesApplied=true (base is pure → no double)', () => {
+        const baseMaxMp = 1314; // PURE base
         useCharacterStore.setState({
             character: makeChar('Mage', { max_mp: baseMaxMp, max_hp: 524 }),
         });
         useTransformStore.setState({ bakedBonusesApplied: true });
         setCompleted([1, 2]);
 
-        // baked guard in transformBonuses.ts -> live getters return 0/1.0, so
-        // getEffectiveChar leaves max_mp at base (no double count for baked chars).
+        // New contract: the legacy `baked` flag no longer suppresses the live
+        // bonus — getEffectiveChar adds the transform on top of the PURE base.
+        const cum = getCumulativeTransformBonuses([1, 2], 'Mage');
         const eff = getEffectiveChar(useCharacterStore.getState().character)!;
-        expect(eff.max_mp).toBe(baseMaxMp);
+        expect(eff.max_mp).toBe(Math.floor((baseMaxMp + cum.flatMp) * (1 + cum.mpPercent / 100)));
+        expect(eff.max_mp).toBeGreaterThan(baseMaxMp);
     });
 
     // The player's explicit ask (2026-06-24): "normalna postać przed transformem

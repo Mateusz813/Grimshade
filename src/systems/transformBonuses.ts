@@ -53,8 +53,13 @@ const sumCompletedBonuses = (): ITransformPermanentBonuses => {
         const char = useCharacterStore.getState().character;
         if (!char) return { ...ZERO_BONUS };
         const store = useTransformStore.getState();
-        // Legacy save: bonuses still baked into char stats — skip live apply.
-        if (store.bakedBonusesApplied) return { ...ZERO_BONUS };
+        // 2026-06-24: transform bonuses ALWAYS apply live from completedTransforms.
+        // The old `bakedBonusesApplied` guard suppressed them on the assumption the
+        // bonuses were baked into base stats — but in practice base stays the pure
+        // level floor (verified: Archer lvl-109 base = exact floor, no transform in
+        // it), so the guard just HID a real bonus the player never received. Base is
+        // kept pure by computeBaseStatFloor / healCorruptedBaseStats, so applying
+        // live here does NOT double-count.
         const completed = store.completedTransforms;
         if (!completed || completed.length === 0) return { ...ZERO_BONUS };
         const cls = char.class as TCharacterClass;
@@ -240,12 +245,10 @@ export const getLiveTransformBreakdown = (): ILiveTransformBreakdown => {
         if (!char || store.completedTransforms.length === 0) {
             return zeroBreakdown(false);
         }
-        if (store.bakedBonusesApplied) {
-            // Legacy save: bonuses live in base stats already -> contribute 0 to
-            // the live pipeline, but flag `baked:true` so the UI can still show
-            // a display-only attribution via getDisplayTransformBreakdown().
-            return zeroBreakdown(true);
-        }
+        // 2026-06-24: transform bonuses ALWAYS apply live now (base is the pure
+        // floor — never baked), so the breakdown is ALWAYS active. The old
+        // `bakedBonusesApplied` short-circuit is gone; the stats panel shows a
+        // real "Transform" attribution that matches what getEffectiveChar adds.
         return mapBreakdown(sumCompletedBonuses(), true, false);
     } catch {
         return zeroBreakdown(false);

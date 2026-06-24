@@ -1616,7 +1616,11 @@ const StatsPopupBody = memo(() => {
   // — no unbake, no double-count, zero corruption risk (Approach B). Live
   // saves keep `bakedView` inactive and use the tf* values above for the math.
   const dBreakdown = getDisplayTransformBreakdown();
-  const bakedView = dBreakdown.active && dBreakdown.baked;
+  // 2026-06-24: transform bonuses now ALWAYS apply LIVE (see transformBonuses.ts),
+  // so the LIVE breakdown (tf* above) is the real, applied "Transform" line. The
+  // legacy "Transform (w bazie)" attribution is obsolete and disabled — showing it
+  // alongside the live line would double the displayed contribution.
+  const bakedView = false && dBreakdown.active && dBreakdown.baked;
   const bfFlatHp  = bakedView ? dBreakdown.flatHp      : 0;
   const bfFlatMp  = bakedView ? dBreakdown.flatMp      : 0;
   const bfFlatAtk = bakedView ? dBreakdown.flatAttack  : 0;
