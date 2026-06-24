@@ -153,6 +153,26 @@ describe('useMpRegen — out of combat', () => {
         expect(last.mp).toBe(11);
     });
 
+    it('2026-06-24 regression: applies TRANSFORM regen even when base char.mp_regen/hp_regen is 0', () => {
+        // The bug: the panel showed "MP regen 3/s" (from a transform) but MP
+        // never moved, because the hook read char.mp_regen (0) instead of the
+        // effective char's mp_regen. Now the hook uses getEffectiveChar, which
+        // folds in the transform bonus — so regen actually applies.
+        (getEffectiveChar as ReturnType<typeof vi.fn>).mockImplementation((c) => ({
+            ...c, hp_regen: 4, mp_regen: 3, max_hp: 1000, max_mp: 1000,
+        }));
+        useCharacterStore.setState({
+            character: makeChar({ hp_regen: 0, mp_regen: 0, hp: 50, mp: 10, max_hp: 1000, max_mp: 1000 }),
+        });
+        renderHook(() => useMpRegen());
+        act(() => { vi.advanceTimersByTime(1100); });
+        expect(updateCharacterSpy).toHaveBeenCalled();
+        const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
+        // cap = 5% of 1000 = 50/s, so the full 4 HP + 3 MP apply this tick.
+        expect(last.hp).toBe(54);
+        expect(last.mp).toBe(13);
+    });
+
     it('clamps HP / MP at the effective max', () => {
         useCharacterStore.setState({
             character: makeChar({ hp_regen: 50, mp_regen: 50, hp: 99, mp: 29, max_hp: 100, max_mp: 30 }),

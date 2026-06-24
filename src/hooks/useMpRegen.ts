@@ -25,12 +25,13 @@ let mpRegenAccumulator = 0;
 /**
  * Passively regenerates HP and MP every second.
  *
- * Regen is PURELY flat-based:
- *   total = character.hp_regen (base, starts at 0) + training bonus + equipment bonus
+ * Regen is PURELY flat-based and sourced from the SAME effective char the
+ * stats panel displays (getEffectiveChar):
+ *   total = character.hp_regen (base, starts at 0) + training bonus + transform bonus
  *
  * There is NO percentage-based baseline. If the stat shows 0.0/s, regeneration
- * is truly zero. Players must train hp_regen / mp_regen or equip items to gain
- * any passive healing.
+ * is truly zero. Players must train hp_regen / mp_regen or complete transforms
+ * that grant regen to gain any passive healing.
  *
  * - In combat  -> writes to `combatStore.playerCurrentHp/Mp` via heal helpers.
  * - Out of combat -> writes directly to `character.hp/mp` via `updateCharacter`.
@@ -74,9 +75,15 @@ export const useMpRegen = (): void => {
             engineEff?.max_mp ?? (char.max_mp + eqMp + tb.max_mp),
         );
 
-        // Flat regen from base stat + training + equipment
-        const hpRegenFlat = (char.hp_regen ?? 0) + (tb.hp_regen ?? 0);
-        const mpRegenFlat = (char.mp_regen ?? 0) + (tb.mp_regen ?? 0);
+        // 2026-06-24: apply EXACTLY the regen the stats panel displays. The
+        // engine's effective char already folds in base + training + TRANSFORM
+        // regen (getEffectiveChar.hp_regen/mp_regen). Previously this hook used
+        // only `char.X_regen + tb.X_regen` and dropped the transform term, so a
+        // player whose entire regen came from a transform (e.g. MP regen 3/s)
+        // saw the number but MP never moved. Fall back to base+training if the
+        // engine can't resolve an effective char.
+        const hpRegenFlat = engineEff?.hp_regen ?? ((char.hp_regen ?? 0) + (tb.hp_regen ?? 0));
+        const mpRegenFlat = engineEff?.mp_regen ?? ((char.mp_regen ?? 0) + (tb.mp_regen ?? 0));
 
         // Cap at MAX_REGEN_PCT of effective max
         const hpRegenCapped = Math.min(effectiveMaxHp * MAX_REGEN_PCT, hpRegenFlat);

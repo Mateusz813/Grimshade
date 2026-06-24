@@ -826,7 +826,10 @@ export const getEffectiveChar = (
         crit_chance: Math.min(0.5, baseCritChance + eq.critChance * 0.01 + tb.crit_chance),
         crit_damage: (char.crit_damage ?? 2.0) + eq.critDmg * 0.01 + tb.crit_dmg,
         hp_regen: (char.hp_regen ?? 0) + tb.hp_regen + getTransformHpRegenFlat(),
-        mp_regen: (char.mp_regen ?? 0) + getTransformMpRegenFlat(),
+        // 2026-06-24: mp_regen was missing `tb.mp_regen` (training) — asymmetric
+        // with hp_regen above. Now both include base + training + transform so the
+        // displayed regen exactly matches what the useMpRegen hook applies.
+        mp_regen: (char.mp_regen ?? 0) + tb.mp_regen + getTransformMpRegenFlat(),
     };
 };
 

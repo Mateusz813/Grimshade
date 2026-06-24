@@ -552,4 +552,18 @@ describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () 
         expect(after.hp_regen).toBeGreaterThan(before.hp_regen); // większy HP regen
         expect(after.mp_regen).toBeGreaterThan(before.mp_regen); // większy MP regen
     });
+
+    it('2026-06-24: getEffectiveChar.mp_regen includes TRAINING (symmetric with hp_regen)', () => {
+        // Regression for the asymmetry where mp_regen dropped the training term
+        // (hp_regen kept it). Both must fold in trained regen levels.
+        setCompleted([]); // isolate training — no transform contribution
+        useTransformStore.setState({ bakedBonusesApplied: false });
+        useSkillStore.setState({ skillLevels: { hp_regen: 100, mp_regen: 100 }, skillXp: {} } as never);
+        useCharacterStore.setState({
+            character: makeChar('Mage', { hp_regen: 1, mp_regen: 1 }),
+        });
+        const eff = getEffectiveChar(useCharacterStore.getState().character)!;
+        expect(eff.hp_regen).toBeGreaterThan(1);
+        expect(eff.mp_regen).toBeGreaterThan(1);
+    });
 });
