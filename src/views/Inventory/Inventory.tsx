@@ -1629,19 +1629,29 @@ const StatsPopupBody = memo(() => {
   const bfMpRegen = bakedView ? dBreakdown.mpRegenFlat : 0;
   const bfDmgPct  = bakedView ? dBreakdown.dmgPercent  : 0;
 
+  // raw* lines below are kept ONLY for the per-source breakdown display.
   const rawAtk = character.attack + eqStats.attack + tfFlatAtk;
-  const effAtk = Math.floor(rawAtk * (1 + tfAtkPct / 100));
   const rawDef = character.defense + eqStats.defense + tb.defense + tfFlatDef;
-  const effDef = Math.floor(rawDef * (1 + tfDefPct / 100));
   const rawHp  = character.max_hp + eqStats.hp + tb.max_hp + getElixirHpBonus() + tfFlatHp;
   const rawMp  = character.max_mp + eqStats.mp + tb.max_mp + getElixirMpBonus() + tfFlatMp;
-  const effMaxHp = Math.floor(rawHp * (1 + tfHpPct / 100));
-  const effMaxMp = Math.floor(rawMp * (1 + tfMpPct / 100));
-  const effAS = (character.attack_speed ?? 10) + eqStats.speed * 0.01 + tb.attack_speed;
-  const effCrit = Math.min(50, Math.round((character.crit_chance ?? 0.05) * 100) + eqStats.critChance + tb.crit_chance * 100);
-  const effCritDmg = (character.crit_damage ?? 2.0) + eqStats.critDmg * 0.01 + tb.crit_dmg;
-  const effHpRegen = (character.hp_regen ?? 0) + tb.hp_regen + tfHpRegen;
-  const effMpRegen = (character.mp_regen ?? 0) + tb.mp_regen + tfMpRegen;
+  // 2026-06-24: the DISPLAYED TOTALS now come straight from getEffectiveChar —
+  // the SAME single source of truth combat uses — so the Postać panel ALWAYS
+  // matches: base + EQ + transform (flat + %) + ALL elixir buffs (flat + %).
+  // Previously these were re-derived here and silently dropped the elixir %
+  // multipliers / elixir flat ATK·DEF / elixir attack-speed mult, so the panel
+  // showed less than the player actually had.
+  const eff = engineGetEffectiveChar(character);
+  const effAtk = eff ? eff.attack : Math.floor(rawAtk * (1 + tfAtkPct / 100));
+  const effDef = eff ? eff.defense : Math.floor(rawDef * (1 + tfDefPct / 100));
+  const effMaxHp = eff ? eff.max_hp : Math.floor(rawHp * (1 + tfHpPct / 100));
+  const effMaxMp = eff ? eff.max_mp : Math.floor(rawMp * (1 + tfMpPct / 100));
+  const effAS = eff ? eff.attack_speed : ((character.attack_speed ?? 10) + eqStats.speed * 0.01 + tb.attack_speed);
+  const effCrit = eff
+    ? Math.min(50, Math.round(eff.crit_chance * 100))
+    : Math.min(50, Math.round((character.crit_chance ?? 0.05) * 100) + eqStats.critChance + tb.crit_chance * 100);
+  const effCritDmg = eff ? eff.crit_damage : ((character.crit_damage ?? 2.0) + eqStats.critDmg * 0.01 + tb.crit_dmg);
+  const effHpRegen = eff ? eff.hp_regen : ((character.hp_regen ?? 0) + tb.hp_regen + tfHpRegen);
+  const effMpRegen = eff ? eff.mp_regen : ((character.mp_regen ?? 0) + tb.mp_regen + tfMpRegen);
 
   const mainSkillId = CLASS_MAIN_SKILL_INV[character.class] ?? 'sword_fighting';
   const weaponSkillLevel = skillLevels[mainSkillId] ?? 0;
