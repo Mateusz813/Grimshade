@@ -13,6 +13,9 @@ import { useEffect, useRef } from 'react';
  *  - The OS auto-RELEASES the sentinel whenever the page is hidden (tab switch,
  *    manual lock). We listen for `visibilitychange` and re-acquire when the page
  *    becomes visible again, so returning to the app re-arms the lock.
+ *  - On mobile, `visibilitychange` doesn't fire reliably after the OS lock
+ *    screen, so the lock stays released and the screen auto-locks again. We also
+ *    listen for the window `focus` event and re-acquire when the doc is visible.
  *  - `request()` can reject (e.g. low battery, not user-focused) — swallowed.
  *  - Released on unmount or when `enabled` flips to false.
  *
@@ -73,11 +76,17 @@ export const useWakeLock = (enabled: boolean): void => {
         if (typeof document !== 'undefined') {
             document.addEventListener('visibilitychange', onVisibility);
         }
+        if (typeof window !== 'undefined') {
+            window.addEventListener('focus', onVisibility);
+        }
 
         return () => {
             cancelled = true;
             if (typeof document !== 'undefined') {
                 document.removeEventListener('visibilitychange', onVisibility);
+            }
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('focus', onVisibility);
             }
             const held = sentinelRef.current;
             sentinelRef.current = null;

@@ -512,6 +512,13 @@ const Dungeon = () => {
     const setDungeonFilterMinLevel      = useSettingsStore((s) => s.setDungeonFilterMinLevel);
     const setDungeonFilterSortDesc      = useSettingsStore((s) => s.setDungeonFilterSortDesc);
 
+    // Configured auto-potion ids — drive the potion-dock display so the UI
+    // shows the SPECIFIC potion the player selected (not the strongest owned).
+    const autoPotionHpId    = useSettingsStore((s) => s.autoPotionHpId);
+    const autoPotionMpId    = useSettingsStore((s) => s.autoPotionMpId);
+    const autoPotionPctHpId = useSettingsStore((s) => s.autoPotionPctHpId);
+    const autoPotionPctMpId = useSettingsStore((s) => s.autoPotionPctMpId);
+
     // NOTE: `if (!character) return …` early-return was moved DOWN past every
     // hook in this component (search for "// Dungeon render guard (after-hooks)").
     // The original early return here violated Rules of Hooks — first render
@@ -574,11 +581,23 @@ const Dungeon = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fx, charMaxHp]);
 
-    // Best potions the player owns
-    const bestHpPotion = getBestPotion(hpPotions, consumables, character?.level ?? 1);
-    const bestMpPotion = getBestPotion(mpPotions, consumables, character?.level ?? 1);
-    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
-    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
+    // Potions shown in the dock — respect the player's auto-potion CONFIG
+    // (resolveAutoPotionElixir picks the SPECIFIC configured potion) so the
+    // UI matches what auto-drink actually uses. Falls back to the best owned
+    // potion when the configured one isn't held, so the slot never goes empty.
+    const dockLevel = character?.level ?? 1;
+    const bestHpPotion =
+        resolveAutoPotionElixir(autoPotionHpId, 'hp', 'flat', consumables, dockLevel)
+        ?? getBestPotion(hpPotions, consumables, dockLevel);
+    const bestMpPotion =
+        resolveAutoPotionElixir(autoPotionMpId, 'mp', 'flat', consumables, dockLevel)
+        ?? getBestPotion(mpPotions, consumables, dockLevel);
+    const bestPctHpPotion =
+        resolveAutoPotionElixir(autoPotionPctHpId, 'hp', 'pct', consumables, dockLevel)
+        ?? getBestPotionUtil(PCT_HP_POTIONS, consumables, dockLevel);
+    const bestPctMpPotion =
+        resolveAutoPotionElixir(autoPotionPctMpId, 'mp', 'pct', consumables, dockLevel)
+        ?? getBestPotionUtil(PCT_MP_POTIONS, consumables, dockLevel);
 
     // Keep refs in sync
     phaseRef.current = phase;

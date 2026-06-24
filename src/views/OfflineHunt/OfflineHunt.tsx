@@ -101,7 +101,7 @@ interface IRewardModalProps {
     onClose: () => void;
 }
 
-const RewardModal = ({ result, onClose }: IRewardModalProps) => {
+export const RewardModal = ({ result, onClose }: IRewardModalProps) => {
     const rarityOrder: TMonsterRarity[] = ['normal', 'strong', 'epic', 'legendary', 'boss'];
     const totalPotions = Object.values(result.potionDrops).reduce((a, b) => a + b, 0);
     const totalChests  = Object.values(result.spellChestDrops).reduce((a, b) => a + b, 0);
@@ -130,6 +130,13 @@ const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                 <div className="oh-modal__header">
                     <span className="oh-modal__trophy"><GameIcon name="trophy" /></span>
                     <span className="oh-modal__title">Nagrody odebrane!</span>
+                    <button
+                        className="oh-modal__close"
+                        onClick={onClose}
+                        aria-label="Zamknij"
+                    >
+                        <Icon name="x" />
+                    </button>
                 </div>
 
                 {/* Quick stats row */}

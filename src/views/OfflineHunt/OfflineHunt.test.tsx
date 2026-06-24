@@ -17,6 +17,8 @@ import { MemoryRouter } from 'react-router-dom';
  *   - Sort buttons mount + toggle the active modifier.
  *   - Start button disabled until both skill + monster picked.
  *   - Active hunt card mounts when isActive flips true.
+ *   - Reward modal exposes a tappable top-right close (X) button (BUG #3
+ *     mobile fix) wired to the same onClose handler as the OK button.
  */
 
 vi.mock('framer-motion', async () => {
@@ -33,7 +35,8 @@ vi.mock('framer-motion', async () => {
     };
 });
 
-import OfflineHunt from './OfflineHunt';
+import OfflineHunt, { RewardModal } from './OfflineHunt';
+import type { IOfflineHuntClaimResult } from '../../systems/offlineHuntSystem';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useMasteryStore } from '../../stores/masteryStore';
@@ -197,6 +200,62 @@ describe('OfflineHunt — active hunt card', () => {
         });
         const { container } = renderOfflineHunt();
         expect(container.querySelector('.oh__setup')).toBeNull();
+    });
+});
+
+describe('OfflineHunt — reward modal close button (BUG #3)', () => {
+    const makeResult = (): IOfflineHuntClaimResult => ({
+        elapsedSeconds: 60,
+        cappedSeconds: 60,
+        kills: 5,
+        xpGained: 100,
+        goldGained: 50,
+        skillXpGained: 20,
+        skillId: 'sword_fighting',
+        monster: {
+            id: 'goblin', name_pl: 'Goblin', level: 3, sprite: 'alien-monster',
+            hp: 50, defense: 1, speed: 1, attack: 5, xp: 10,
+            gold: [1, 2], magical: false,
+        } as never,
+        speedMultiplier: 1,
+        levelBefore: 5,
+        levelAfter: 5,
+        levelsGained: 0,
+        xpPctOfLevel: 12.5,
+        xpProgressAfter: 100,
+        xpNeededAfter: 800,
+        skillLevelBefore: 0,
+        skillLevelAfter: 0,
+        skillLevelsGained: 0,
+        skillXpPctOfLevel: 5,
+        killsByRarity: { normal: 5, strong: 0, epic: 0, legendary: 0, boss: 0 },
+        itemDrops: [],
+        potionDrops: {},
+        spellChestDrops: {},
+        stoneDrops: {},
+    });
+
+    it('renders a top-right close (X) button in the modal header', () => {
+        const { container } = render(<RewardModal result={makeResult()} onClose={() => {}} />);
+        const closeBtn = container.querySelector('.oh-modal__close');
+        expect(closeBtn).not.toBeNull();
+        expect(closeBtn?.getAttribute('aria-label')).toBe('Zamknij');
+    });
+
+    it('calls onClose when the close (X) button is clicked', () => {
+        const onClose = vi.fn();
+        const { container } = render(<RewardModal result={makeResult()} onClose={onClose} />);
+        const closeBtn = container.querySelector('.oh-modal__close') as HTMLButtonElement;
+        fireEvent.click(closeBtn);
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls onClose when the OK button is clicked', () => {
+        const onClose = vi.fn();
+        const { container } = render(<RewardModal result={makeResult()} onClose={onClose} />);
+        const okBtn = container.querySelector('.oh-modal__ok-btn') as HTMLButtonElement;
+        fireEvent.click(okBtn);
+        expect(onClose).toHaveBeenCalledTimes(1);
     });
 });
 

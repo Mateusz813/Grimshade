@@ -104,6 +104,7 @@ import {
   applyTransformBossStats,
   calculateTransformRewards,
   getTransformWaveLineup,
+  resolveActiveOpponentSlot,
   type ITransformData,
   type ITransformRewards,
 } from '../../systems/transformSystem';
@@ -447,7 +448,16 @@ const Transform = () => {
   const necroSummons = useNecroSummonStore((s) => s.summons);
   const consumables = useInventoryStore((s) => s.consumables);
   const { activeSkillSlots } = useSkillStore();
-  const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore();
+  const {
+    skillMode,
+    setSkillMode,
+    autoPotionHpEnabled,
+    autoPotionMpEnabled,
+    autoPotionHpId,
+    autoPotionMpId,
+    autoPotionPctHpId,
+    autoPotionPctMpId,
+  } = useSettingsStore();
   // Bug 2: subscribe to buff changes so render-time effective stats (max HP/MP) refresh when elixirs apply/expire
   const _activeBuffs = useBuffStore((s) => s.allBuffs);
   void _activeBuffs;
@@ -954,11 +964,36 @@ const Transform = () => {
       const charLatest = useCharacterStore.getState().character;
       const effChar = charLatest ? getEffectiveChar(charLatest) : null;
       const charMaxHp = effChar?.max_hp ?? 1;
+      // 2026-06-23 BUGFIX: the aggregated OPPONENT_FX_ID DOT must hit the
+      // CURRENT active enemy (first alive escort, else boss), NOT always the
+      // boss. The old code drained `monsterHpRef` every tick, so a DOT applied
+      // while the player was clearing escorts made the boss "leak HP by itself"
+      // — its bar emptied without the player ever attacking it.
+      const oppSlot = resolveActiveOpponentSlot(escortSlotsRef.current);
+      const readOppHp = (): number =>
+        oppSlot === 3 ? monsterHpRef.current : (escortSlotsRef.current[oppSlot]?.currentHp ?? 0);
+      const writeOppHp = (next: number): void => {
+        if (oppSlot === 3) {
+          monsterHpRef.current = next;
+          setMonsterHp(next);
+          return;
+        }
+        const cur = escortSlotsRef.current.slice();
+        const e = cur[oppSlot];
+        if (!e) return;
+        cur[oppSlot] = { ...e, currentHp: next };
+        escortSlotsRef.current = cur;
+        setEscortSlots(cur);
+      };
+      const oppMaxHp = oppSlot === 3
+        ? (monsterMaxHp || 1)
+        : (escortSlotsRef.current[oppSlot]?.maxHp ?? 1);
+
       const dotResults = effectsTickAll(
         effectsRef.current,
         [
           { id: PLAYER_FX_ID, maxHp: charMaxHp },
-          { id: OPPONENT_FX_ID, maxHp: monsterMaxHp || 1 },
+          { id: OPPONENT_FX_ID, maxHp: oppMaxHp },
         ],
         TICK_MS * speedMultRef.current,
       );
@@ -970,22 +1005,23 @@ const Transform = () => {
         }
         if (r.id === OPPONENT_FX_ID) {
           if (r.dotDamage > 0) {
-            const apply = effectsRouteDamage(effectsRef.current, OPPONENT_FX_ID, monsterHpRef.current, r.dotDamage);
-            monsterHpRef.current = Math.max(0, monsterHpRef.current - apply.appliedDmg);
-            setMonsterHp(monsterHpRef.current);
-            // 2026-05 v6: per-tick DOT visual on the opponent card.
+            const curHp = readOppHp();
+            const apply = effectsRouteDamage(effectsRef.current, OPPONENT_FX_ID, curHp, r.dotDamage);
+            // 2026-05 v6: per-tick DOT visual on the actually-targeted card.
             if (apply.appliedDmg > 0) {
-              fxRef.current.pushEnemyFloat(0, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
+              writeOppHp(Math.max(0, curHp - apply.appliedDmg));
+              fxRef.current.pushEnemyFloat(oppSlot, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
             }
           }
-          // 2026-05 v7: Mroczny Rytuał detonation. % of opponent max
-          // HP, no DEF mit. Re-read monsterHpRef in case the DOT path
-          // already shifted it this tick.
-          if (r.darkRitualTriggered && r.darkRitualDamage > 0 && monsterHpRef.current > 0) {
-            const ritualDmg = Math.min(monsterHpRef.current, r.darkRitualDamage);
-            monsterHpRef.current = Math.max(0, monsterHpRef.current - ritualDmg);
-            setMonsterHp(monsterHpRef.current);
-            fxRef.current.pushEnemyFloat(0, ritualDmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
+          // 2026-05 v7: Mroczny Rytuał detonation. % of opponent max HP, no
+          // DEF mit. Re-read live HP in case the DOT path already shifted it.
+          if (r.darkRitualTriggered && r.darkRitualDamage > 0) {
+            const curHp = readOppHp();
+            if (curHp > 0) {
+              const ritualDmg = Math.min(curHp, r.darkRitualDamage);
+              writeOppHp(Math.max(0, curHp - ritualDmg));
+              fxRef.current.pushEnemyFloat(oppSlot, ritualDmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
+            }
           }
         }
       }
@@ -2710,10 +2746,10 @@ const Transform = () => {
       });
 
     // -- Potion slots ------------------------------------------------------
-    const bestHpPotion    = getBestPotion(hpPotions,    consumables, character?.level ?? 1);
-    const bestMpPotion    = getBestPotion(mpPotions,    consumables, character?.level ?? 1);
-    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables, character?.level ?? 1);
-    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables, character?.level ?? 1);
+    const bestHpPotion    = resolveAutoPotionElixir(autoPotionHpId,    'hp', 'flat', consumables, character?.level ?? 1) ?? getBestPotion(hpPotions,    consumables, character?.level ?? 1);
+    const bestMpPotion    = resolveAutoPotionElixir(autoPotionMpId,    'mp', 'flat', consumables, character?.level ?? 1) ?? getBestPotion(mpPotions,    consumables, character?.level ?? 1);
+    const bestPctHpPotion = resolveAutoPotionElixir(autoPotionPctHpId, 'hp', 'pct',  consumables, character?.level ?? 1) ?? getBestPotion(pctHpPotions, consumables, character?.level ?? 1);
+    const bestPctMpPotion = resolveAutoPotionElixir(autoPotionPctMpId, 'mp', 'pct',  consumables, character?.level ?? 1) ?? getBestPotion(pctMpPotions, consumables, character?.level ?? 1);
 
     const buildPotion = (
       potion: typeof bestPctHpPotion,

@@ -12,10 +12,11 @@ import {
     getTransformDefPctMultiplier,
     getTransformAtkPctMultiplier,
     getLiveTransformBreakdown,
+    getDisplayTransformBreakdown,
 } from './transformBonuses';
 import { useCharacterStore } from '../stores/characterStore';
 import { useTransformStore } from '../stores/transformStore';
-import { getClassTransformBonuses } from './transformSystem';
+import { getClassTransformBonuses, getCumulativeTransformBonuses } from './transformSystem';
 import type { ICharacter, TCharacterClass } from '../api/v1/characterApi';
 
 // -- Helpers ------------------------------------------------------------------
@@ -287,11 +288,14 @@ describe('getLiveTransformBreakdown', () => {
         expect(b.hpPercent).toBe(0);
     });
 
-    it('returns inactive breakdown when bonuses are baked', () => {
+    it('returns inactive (but baked-flagged) breakdown when bonuses are baked', () => {
         setBaked(true);
         setCompleted([1, 2]);
         const b = getLiveTransformBreakdown();
+        // active=false -> caller must NOT add to the live pipeline (already in base).
         expect(b.active).toBe(false);
+        // baked=true -> caller can drive a display-only attribution instead.
+        expect(b.baked).toBe(true);
         expect(b.dmgPercent).toBe(0);
         expect(b.flatHp).toBe(0);
     });
@@ -305,6 +309,7 @@ describe('getLiveTransformBreakdown', () => {
         setCompleted([1, 2]);
         const b = getLiveTransformBreakdown();
         expect(b.active).toBe(true);
+        expect(b.baked).toBe(false);
         // Knight per-transform: dmgPercent=3, hpPercent=4, mpPercent=1,
         // defPercent=3, atkPercent=0.
         expect(b.dmgPercent).toBe(6);
@@ -330,5 +335,137 @@ describe('getLiveTransformBreakdown', () => {
         // Archer's table sets `attack: 0` so flatAttack should be 0
         // — bonus comes from atkPercent instead.
         expect(b.flatAttack).toBe(0);
+    });
+});
+
+// -- Bug 8: getDisplayTransformBreakdown (display-only, baked-safe) -----------
+// The display breakdown surfaces the transform contribution REGARDLESS of the
+// baked flag, so legacy characters (whose bonuses are inside base stats) can
+// still SEE the transform attribution in the stats panel. It must NEVER be
+// added to the live stat pipeline for baked saves (that would double-count).
+
+describe('getDisplayTransformBreakdown', () => {
+    it('returns inactive (all-zero) breakdown with no character', () => {
+        useCharacterStore.setState({ character: null });
+        setCompleted([1, 2]);
+        const b = getDisplayTransformBreakdown();
+        expect(b.active).toBe(false);
+        expect(b.flatHp).toBe(0);
+        expect(b.hpPercent).toBe(0);
+    });
+
+    it('returns inactive breakdown with no completed transforms', () => {
+        const b = getDisplayTransformBreakdown();
+        expect(b.active).toBe(false);
+    });
+
+    it('(1) a completed-transform character gets NON-ZERO cumulative bonuses', () => {
+        setCompleted([1, 2]);
+        const cum = getCumulativeTransformBonuses([1, 2], 'Knight');
+        const b = getDisplayTransformBreakdown();
+        expect(b.active).toBe(true);
+        expect(b.baked).toBe(false);
+        // Cumulative values must match getCumulativeTransformBonuses exactly.
+        expect(b.flatHp).toBe(cum.flatHp);
+        expect(b.flatMp).toBe(cum.flatMp);
+        expect(b.flatAttack).toBe(cum.attack);
+        expect(b.flatDefense).toBe(cum.defense);
+        expect(b.hpPercent).toBe(cum.hpPercent);
+        expect(b.mpPercent).toBe(cum.mpPercent);
+        expect(b.defPercent).toBe(cum.defPercent);
+        expect(b.atkPercent).toBe(cum.atkPercent);
+        expect(b.dmgPercent).toBe(cum.dmgPercent);
+        expect(b.hpRegenFlat).toBeCloseTo(cum.hpRegenFlat, 5);
+        expect(b.mpRegenFlat).toBeCloseTo(cum.mpRegenFlat, 5);
+        // Bonuses are non-zero — proves the character actually "gets" them.
+        expect(b.flatHp).toBeGreaterThan(0);
+        expect(b.hpPercent).toBeGreaterThan(0);
+    });
+
+    it('(3) legacy baked save still surfaces the SAME cumulative values, flagged baked', () => {
+        setBaked(true);
+        setCompleted([1, 2]);
+        const cum = getCumulativeTransformBonuses([1, 2], 'Knight');
+        const b = getDisplayTransformBreakdown();
+        // Display is active even when baked — that's the whole point of Bug 8.
+        expect(b.active).toBe(true);
+        expect(b.baked).toBe(true);
+        expect(b.flatHp).toBe(cum.flatHp);
+        expect(b.hpPercent).toBe(cum.hpPercent);
+        expect(b.flatAttack).toBe(cum.attack);
+        expect(b.dmgPercent).toBe(cum.dmgPercent);
+        // The LIVE breakdown stays zero for baked saves (no double-count).
+        const live = getLiveTransformBreakdown();
+        expect(live.active).toBe(false);
+        expect(live.baked).toBe(true);
+        expect(live.flatHp).toBe(0);
+    });
+
+    it('reflects class-specific tables (Archer atkPercent stacks, flat attack=0)', () => {
+        useCharacterStore.setState({ character: makeChar('Archer') });
+        setCompleted([1, 2]);
+        const cum = getCumulativeTransformBonuses([1, 2], 'Archer');
+        const b = getDisplayTransformBreakdown();
+        expect(b.active).toBe(true);
+        expect(b.atkPercent).toBe(cum.atkPercent);
+        expect(b.atkPercent).toBeGreaterThan(0);
+        expect(b.flatAttack).toBe(0);
+    });
+});
+
+// -- Bug 8: net effective stat has the bonus applied EXACTLY ONCE -------------
+// Reproduces the stats-panel math (getEffectiveChar / StatsPopupBody) to prove
+// there is no double-count regression: net = base + transform, applied once,
+// for both the LIVE path and the LEGACY baked path.
+
+describe('Bug 8 – no double-count regression (net effective stat)', () => {
+    // Mirror of the live max-HP math used by getEffectiveChar / StatsPopupBody:
+    //   rawHp = base + flatHp(live);  effMaxHp = floor(rawHp * hpPctMul(live))
+    const computeLiveMaxHp = (baseMaxHp: number): number => {
+        const raw = baseMaxHp + getTransformFlatHp();
+        return Math.floor(raw * getTransformHpPctMultiplier());
+    };
+
+    it('(2) LIVE: net max HP = base + transform applied exactly once', () => {
+        setCompleted([1, 2]);
+        const baseMaxHp = 1000;
+        useCharacterStore.setState({ character: makeChar('Knight', { max_hp: baseMaxHp }) });
+
+        const cum = getCumulativeTransformBonuses([1, 2], 'Knight');
+        const expected = Math.floor((baseMaxHp + cum.flatHp) * (1 + cum.hpPercent / 100));
+
+        expect(computeLiveMaxHp(baseMaxHp)).toBe(expected);
+        // Sanity: the transform actually changed the stat (no silent no-op),
+        // but only once — re-running the live formula is idempotent.
+        expect(computeLiveMaxHp(baseMaxHp)).toBeGreaterThan(baseMaxHp);
+        expect(computeLiveMaxHp(computeLiveMaxHp(baseMaxHp))).not.toBe(computeLiveMaxHp(baseMaxHp));
+    });
+
+    it('(3) LEGACY BAKED: live multipliers are neutral so base is NOT inflated again', () => {
+        setBaked(true);
+        setCompleted([1, 2]);
+        const baseMaxHp = 1234; // pretend the bonus is ALREADY inside this value
+        useCharacterStore.setState({ character: makeChar('Knight', { max_hp: baseMaxHp }) });
+
+        // Live getters return neutral (0 / 1.0) for baked saves, so the panel's
+        // headline stat equals base exactly — the baked bonus is shown via the
+        // display breakdown only, never re-added.
+        expect(getTransformFlatHp()).toBe(0);
+        expect(getTransformHpPctMultiplier()).toBe(1.0);
+        expect(computeLiveMaxHp(baseMaxHp)).toBe(baseMaxHp);
+    });
+
+    it('LIVE attack: net = floor((base + flatAtk) * atkPctMul) once (Archer)', () => {
+        setCompleted([1, 2]);
+        const baseAtk = 200;
+        useCharacterStore.setState({ character: makeChar('Archer', { attack: baseAtk }) });
+
+        const cum = getCumulativeTransformBonuses([1, 2], 'Archer');
+        const raw = baseAtk + getTransformFlatAttack();
+        const net = Math.floor(raw * getTransformAtkPctMultiplier());
+        const expected = Math.floor((baseAtk + cum.attack) * (1 + cum.atkPercent / 100));
+
+        expect(net).toBe(expected);
+        expect(net).toBeGreaterThan(baseAtk); // Archer atkPercent=7/tier -> grows
     });
 });

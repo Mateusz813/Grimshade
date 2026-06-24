@@ -20,6 +20,7 @@ import {
   TRANSFORM_BOSS_MULTIPLIER,
   TRANSFORM_TIER_MULTIPLIERS,
   TRANSFORM_SLOT_TIERS,
+  resolveActiveOpponentSlot,
 } from './transformSystem';
 import type { IMonster } from '../types/monster';
 
@@ -510,5 +511,37 @@ describe('transformSystem', () => {
       const wave = getTransformWaveLineup(bossMonster, 30);
       expect(wave[3].spriteImageUrl).toBeNull();
     });
+  });
+});
+
+// -- resolveActiveOpponentSlot (2026-06-23 Transform boss-leak bugfix) ---------
+
+describe('resolveActiveOpponentSlot', () => {
+  const e = (currentHp: number) => ({ currentHp });
+
+  it('targets the first alive escort (slot 0) when all escorts live', () => {
+    expect(resolveActiveOpponentSlot([e(100), e(100), e(100)])).toBe(0);
+  });
+
+  it('advances to slot 1 once slot 0 is dead', () => {
+    expect(resolveActiveOpponentSlot([e(0), e(100), e(100)])).toBe(1);
+  });
+
+  it('advances to slot 2 once slots 0 and 1 are dead', () => {
+    expect(resolveActiveOpponentSlot([e(0), e(0), e(100)])).toBe(2);
+  });
+
+  it('REGRESSION: returns an escort (NOT the boss=3) while any escort is alive — DOT must not leak onto the boss', () => {
+    expect(resolveActiveOpponentSlot([e(0), e(0), e(5)])).not.toBe(3);
+    expect(resolveActiveOpponentSlot([e(0), e(0), e(5)])).toBe(2);
+  });
+
+  it('falls through to the boss (slot 3) only when every escort is dead', () => {
+    expect(resolveActiveOpponentSlot([e(0), e(0), e(0)])).toBe(3);
+  });
+
+  it('skips null (already-cleared) escort slots', () => {
+    expect(resolveActiveOpponentSlot([null, e(100), null])).toBe(1);
+    expect(resolveActiveOpponentSlot([null, null, null])).toBe(3);
   });
 });

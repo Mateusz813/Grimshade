@@ -7,7 +7,7 @@ import { useSyncStore } from '../../../stores/syncStore';
 import { useConnectivityStore } from '../../../stores/connectivityStore';
 import { usePartyStore } from '../../../stores/partyStore';
 import { useSync } from '../../../hooks/useSync';
-import { saveCurrentCharacterStores } from '../../../stores/characterScope';
+import { saveCurrentCharacterStoresForce } from '../../../stores/characterScope';
 import { formatLastSynced } from '../../../systems/syncSystem';
 import AdminPanel, { isAdminEmail } from '../../ui/AdminPanel/AdminPanel';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
@@ -151,7 +151,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
         await usePartyStore.getState().leaveParty(ch.id);
       }
     } catch { /* best effort — char-switch must still proceed */ }
-    await saveCurrentCharacterStores();
+    await saveCurrentCharacterStoresForce(); // 2026-06-23 #10: force a FULL save (bypass 4s throttle) before logout/switch
     useCharacterStore.getState().clearCharacter();
     navigate('/character-select');
   };
@@ -163,7 +163,7 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
 
   const handleLogout = async () => {
     onClose();
-    await saveCurrentCharacterStores();
+    await saveCurrentCharacterStoresForce(); // 2026-06-23 #10: force a FULL save (bypass 4s throttle) before logout/switch
     await supabase.auth.signOut();
     useCharacterStore.getState().clearCharacter();
     navigate('/login');

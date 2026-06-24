@@ -286,7 +286,11 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
           }
         } catch { /* ignore parse failures */ }
         // Server says we're in a party — hydrate the local store.
-        set({ party: adaptToPartyInfo(fresh) });
+        // Preserve any local-only bot helpers already in the members array
+        // (bots are local-only, never on the server) — mirror subscribeToActiveParty.
+        const localBots = get().party?.members.filter((m) => m.isBot) ?? [];
+        const adapted = adaptToPartyInfo(fresh);
+        set({ party: { ...adapted, members: [...adapted.members, ...localBots] } });
         return;
       }
       // Server says no membership. If our local store also has no

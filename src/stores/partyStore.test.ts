@@ -402,6 +402,28 @@ describe('hydrateActiveParty', () => {
         expect(deleteMyStaleMembershipsApi).toHaveBeenCalledWith('char-1');
     });
 
+    it('preserves local-only bot helpers when the server returns a party without bots', async () => {
+        usePartyStore.setState({
+            party: {
+                id: 'party-1',
+                leaderId: 'char-1',
+                members: [
+                    { id: 'char-1', name: 'Tester', class: 'Knight', level: 10, hp: 200, maxHp: 200 },
+                    { id: 'bot-1',  name: 'Bot',    class: 'Cleric', level: 10, hp: 200, maxHp: 200, isBot: true },
+                ],
+                createdAt: 'x',
+            },
+            loading: false,
+            error: null,
+            publicParties: [],
+        });
+        getMyActivePartyApi.mockResolvedValueOnce(makeServerParty({ id: 'party-1' }));
+        await usePartyStore.getState().hydrateActiveParty('char-1');
+        const members = usePartyStore.getState().party!.members;
+        expect(members.some((m) => m.isBot && m.id === 'bot-1')).toBe(true);
+        expect(members.filter((m) => m.isBot)).toHaveLength(1);
+    });
+
     it('does not clobber a locally-loaded party when API throws', async () => {
         usePartyStore.setState({
             party: { id: 'local-party', leaderId: 'char-1', members: [], createdAt: 'x' },

@@ -98,6 +98,7 @@ import { useCooldownStore } from '../../stores/cooldownStore';
 import { useBotStore } from '../../stores/botStore';
 import {
     getBestPotion as getBestPotionUtil,
+    resolveAutoPotionElixir,
     FLAT_HP_POTIONS,
     FLAT_MP_POTIONS,
     PCT_HP_POTIONS,
@@ -274,6 +275,7 @@ const Combat = () => {
         showCombatXpBar, setShowCombatXpBar,
         huntFilterAvailableOnly, huntFilterTaskedOnly, huntFilterMinLevel, huntFilterSortDesc,
         setHuntFilterAvailableOnly, setHuntFilterTaskedOnly, setHuntFilterMinLevel, setHuntFilterSortDesc,
+        autoPotionHpId, autoPotionMpId, autoPotionPctHpId, autoPotionPctMpId,
     } = useSettingsStore();
     const { activeSkillSlots } = useSkillStore();
     const consumables = useInventoryStore((s) => s.consumables);
@@ -1691,10 +1693,21 @@ const Combat = () => {
     // -- Derived ---------------------------------------------------------------
     const sortedMonsters = [...monsters].sort((a, b) => a.level - b.level);
 
-    const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
-    const bestMpPotion = getBestPotionUtil(FLAT_MP_POTIONS, consumables, character?.level ?? 1);
-    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
-    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
+    // Dock shows the CONFIGURED auto-potion (matching what tryAutoPotion will
+    // actually drink), falling back to the strongest usable potion when the
+    // configured one isn't owned — so the UI never disagrees with the settings.
+    const bestHpPotion =
+        resolveAutoPotionElixir(autoPotionHpId, 'hp', 'flat', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestMpPotion =
+        resolveAutoPotionElixir(autoPotionMpId, 'mp', 'flat', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(FLAT_MP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctHpPotion =
+        resolveAutoPotionElixir(autoPotionPctHpId, 'hp', 'pct', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctMpPotion =
+        resolveAutoPotionElixir(autoPotionPctMpId, 'mp', 'pct', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
 
     if (!character) return null;
 

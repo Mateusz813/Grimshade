@@ -103,6 +103,7 @@ import {
 } from '../../components/organisms/CombatUI';
 import {
     getBestPotion as getBestPotionUtil,
+    resolveAutoPotionElixir,
     FLAT_HP_POTIONS,
     FLAT_MP_POTIONS,
     PCT_HP_POTIONS,
@@ -284,6 +285,13 @@ const Raid = () => {
     const autoPotionMpEnabled = useSettingsStore((s) => s.autoPotionMpEnabled);
     const setAutoPotionHpEnabled = useSettingsStore((s) => s.setAutoPotionHpEnabled);
     const setAutoPotionMpEnabled = useSettingsStore((s) => s.setAutoPotionMpEnabled);
+    // Configured auto-potion ids — the dock must reflect what the PLAYER picked,
+    // not just the strongest owned potion. Read reactively so changing the pick
+    // in settings re-renders the dock immediately.
+    const autoPotionHpId = useSettingsStore((s) => s.autoPotionHpId);
+    const autoPotionMpId = useSettingsStore((s) => s.autoPotionMpId);
+    const autoPotionPctHpId = useSettingsStore((s) => s.autoPotionPctHpId);
+    const autoPotionPctMpId = useSettingsStore((s) => s.autoPotionPctMpId);
     const autoPotionOn = autoPotionHpEnabled || autoPotionMpEnabled;
     const toggleAutoPotion = () => {
         const next = !autoPotionOn;
@@ -297,12 +305,24 @@ const Raid = () => {
     const consumables = useInventoryStore((s) => s.consumables);
     const activeSkillSlots = useSkillStore((s) => s.activeSkillSlots);
 
-    // Best potions (best = highest-tier the player owns) for each of the
-    // four dock slots.
-    const bestHpPotion = getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
-    const bestMpPotion = getBestPotionUtil(FLAT_MP_POTIONS, consumables, character?.level ?? 1);
-    const bestPctHpPotion = getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
-    const bestPctMpPotion = getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
+    // Dock potions — show the CONFIGURED auto-potion for each slot so the UI
+    // matches what actually gets drunk (BUG #9: dock used to show the strongest
+    // owned potion via getBestPotion, making it look like the game ignored the
+    // player's picks even though the real auto-drink already respects config).
+    // Fall back to the strongest owned potion when the configured one isn't
+    // owned / usable, so the dock shows the best available instead of empty.
+    const bestHpPotion =
+        resolveAutoPotionElixir(autoPotionHpId, 'hp', 'flat', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestMpPotion =
+        resolveAutoPotionElixir(autoPotionMpId, 'mp', 'flat', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(FLAT_MP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctHpPotion =
+        resolveAutoPotionElixir(autoPotionPctHpId, 'hp', 'pct', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(PCT_HP_POTIONS, consumables, character?.level ?? 1);
+    const bestPctMpPotion =
+        resolveAutoPotionElixir(autoPotionPctMpId, 'mp', 'pct', consumables, character?.level ?? 1)
+        ?? getBestPotionUtil(PCT_MP_POTIONS, consumables, character?.level ?? 1);
 
     // Cooldown timers (ms remaining). Tick down every 100 ms while phase==='fighting'.
     // We keep BOTH state (for UI re-render) and refs (for sync reads inside

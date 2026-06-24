@@ -355,6 +355,14 @@ const Boss = () => {
     // transform tier (and re-render when a member transforms mid-fight).
     const presenceByMember = usePartyPresenceStore((s) => s.byMember);
     const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore();
+    // Configured auto-potion ids — the dock must show the SAME potion the
+    // auto-drink logic (tryAutoPotion via resolveAutoPotionElixir) will use,
+    // not just the strongest one owned. Falls back to best-owned when the
+    // configured potion isn't held (so the dock never shows an empty slot).
+    const autoPotionHpId    = useSettingsStore((s) => s.autoPotionHpId);
+    const autoPotionMpId    = useSettingsStore((s) => s.autoPotionMpId);
+    const autoPotionPctHpId = useSettingsStore((s) => s.autoPotionPctHpId);
+    const autoPotionPctMpId = useSettingsStore((s) => s.autoPotionPctMpId);
 
     // 2026-05-13 spec ("sojusznik widzi to samo co lider w walce z bossem"):
     // derive party-combat role. ANY member with another human in the
@@ -742,11 +750,17 @@ const Boss = () => {
     const charMaxMp = effChar?.max_mp ?? baseMaxMp;
     const charSpeed = ((character?.attack_speed ?? 1) + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
 
-    // Best potions the player owns
-    const bestHpPotion = getBestPotion(hpPotions, consumables, character?.level ?? 1);
-    const bestMpPotion = getBestPotion(mpPotions, consumables, character?.level ?? 1);
-    const bestPctHpPotion = getBestPotion(pctHpPotions, consumables, character?.level ?? 1);
-    const bestPctMpPotion = getBestPotion(pctMpPotions, consumables, character?.level ?? 1);
+    // Potions shown in the dock — show the CONFIGURED auto-potion (matching
+    // what tryAutoPotion will actually drink), falling back to the strongest
+    // owned potion when the configured one isn't held so the slot is never empty.
+    const bestHpPotion = resolveAutoPotionElixir(autoPotionHpId, 'hp', 'flat', consumables, character?.level ?? 1)
+        ?? getBestPotion(hpPotions, consumables, character?.level ?? 1);
+    const bestMpPotion = resolveAutoPotionElixir(autoPotionMpId, 'mp', 'flat', consumables, character?.level ?? 1)
+        ?? getBestPotion(mpPotions, consumables, character?.level ?? 1);
+    const bestPctHpPotion = resolveAutoPotionElixir(autoPotionPctHpId, 'hp', 'pct', consumables, character?.level ?? 1)
+        ?? getBestPotion(pctHpPotions, consumables, character?.level ?? 1);
+    const bestPctMpPotion = resolveAutoPotionElixir(autoPotionPctMpId, 'mp', 'pct', consumables, character?.level ?? 1)
+        ?? getBestPotion(pctMpPotions, consumables, character?.level ?? 1);
 
     // Keep refs in sync
     phaseRef.current = phase;

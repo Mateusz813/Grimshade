@@ -97,6 +97,31 @@ describe('useWakeLock', () => {
         expect(requestSpy).toHaveBeenCalledTimes(2);
     });
 
+    it('re-acquires on window focus when the page is visible', async () => {
+        renderHook(() => useWakeLock(true));
+        await flush();
+        expect(requestSpy).toHaveBeenCalledTimes(1);
+
+        // OS releases the sentinel, then the user returns and the window regains focus.
+        sentinels[0]._fireRelease();
+        setVisibility('visible');
+        window.dispatchEvent(new Event('focus'));
+        await flush();
+
+        expect(requestSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does NOT acquire on window focus while the document is hidden', async () => {
+        setVisibility('hidden');
+        renderHook(() => useWakeLock(true));
+        await flush();
+        expect(requestSpy).not.toHaveBeenCalled();
+
+        window.dispatchEvent(new Event('focus'));
+        await flush();
+        expect(requestSpy).not.toHaveBeenCalled();
+    });
+
     it('does not request while the document is hidden', async () => {
         setVisibility('hidden');
         renderHook(() => useWakeLock(true));

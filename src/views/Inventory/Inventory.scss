@@ -405,7 +405,10 @@
     border-radius: $radius-lg;
     bottom: auto;
     left: 50%;
+    max-height: calc(100dvh - 48px); // keep popup on-screen on mobile (dynamic viewport)
     max-width: 380px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: $spacing-lg;
     position: fixed;
     top: 50%;

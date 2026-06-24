@@ -54,7 +54,7 @@ import {
   offlineXpRateForStat,
 } from '../../systems/skillSystem';
 import { getElixirHpBonus, getElixirMpBonus } from '../../systems/combatElixirs';
-import { getLiveTransformBreakdown } from '../../systems/transformBonuses';
+import { getDisplayTransformBreakdown, getLiveTransformBreakdown } from '../../systems/transformBonuses';
 import { getSkillIcon } from '../../data/skillIcons';
 import { isUpgradeMilestone } from '../../systems/systemChatMessages';
 import skillsRaw from '../../data/skills.json';
@@ -1593,6 +1593,9 @@ const StatsPopupBody = memo(() => {
 
   const eqStats = getTotalEquipmentStats(equipment, ALL_ITEMS);
   const tb = getTrainingBonuses(skillLevels, character.class);
+  // LIVE breakdown drives the math (values added on top of base+equip). For
+  // legacy baked saves this is intentionally all-zero (`active:false`) so the
+  // headline stat is NEVER double-counted — the bonus is already in base.
   const tBreakdown = getLiveTransformBreakdown();
   const tfActive = tBreakdown.active;
   const tfFlatHp  = tfActive ? tBreakdown.flatHp      : 0;
@@ -1606,6 +1609,25 @@ const StatsPopupBody = memo(() => {
   const tfHpRegen = tfActive ? tBreakdown.hpRegenFlat : 0;
   const tfMpRegen = tfActive ? tBreakdown.mpRegenFlat : 0;
   const tfDmgPct  = tfActive ? tBreakdown.dmgPercent  : 0;
+
+  // Bug 8 (2026-06-23): DISPLAY-ONLY attribution for LEGACY BAKED saves. The
+  // bonuses are already inside base stats, so we add an informational
+  // "Transform (zapieczone)" line per stat WITHOUT touching any headline value
+  // — no unbake, no double-count, zero corruption risk (Approach B). Live
+  // saves keep `bakedView` inactive and use the tf* values above for the math.
+  const dBreakdown = getDisplayTransformBreakdown();
+  const bakedView = dBreakdown.active && dBreakdown.baked;
+  const bfFlatHp  = bakedView ? dBreakdown.flatHp      : 0;
+  const bfFlatMp  = bakedView ? dBreakdown.flatMp      : 0;
+  const bfFlatAtk = bakedView ? dBreakdown.flatAttack  : 0;
+  const bfFlatDef = bakedView ? dBreakdown.flatDefense : 0;
+  const bfHpPct   = bakedView ? dBreakdown.hpPercent   : 0;
+  const bfMpPct   = bakedView ? dBreakdown.mpPercent   : 0;
+  const bfDefPct  = bakedView ? dBreakdown.defPercent  : 0;
+  const bfAtkPct  = bakedView ? dBreakdown.atkPercent  : 0;
+  const bfHpRegen = bakedView ? dBreakdown.hpRegenFlat : 0;
+  const bfMpRegen = bakedView ? dBreakdown.mpRegenFlat : 0;
+  const bfDmgPct  = bakedView ? dBreakdown.dmgPercent  : 0;
 
   const rawAtk = character.attack + eqStats.attack + tfFlatAtk;
   const effAtk = Math.floor(rawAtk * (1 + tfAtkPct / 100));
@@ -1673,12 +1695,20 @@ const StatsPopupBody = memo(() => {
             val === 0 ? null : { label, value: fmt ? fmt(val) : (val > 0 ? `+${val}` : `${val}`) };
           const buildLines = (...lines: (IStatBreakdownLine | null)[]): IStatBreakdownLine[] =>
             lines.filter((l): l is IStatBreakdownLine => l !== null);
+          // Bug 8: informational "baked" Transform line — already inside Baza,
+          // shown so the player can see the contribution. NOT added to value.
+          const bakedLine = (val: number): IStatBreakdownLine | null =>
+            val === 0 ? null : { label: 'Transform (w bazie)', value: `~+${val}` };
+          const bakedPctLine = (pct: number): IStatBreakdownLine | null =>
+            pct === 0 ? null : { label: 'Transform (w bazie)', value: `~+${pct}%` };
           // Atak: base + eq + tf flat + tf %
           const atkLines = buildLines(
             { label: 'Baza', value: `${character.attack}` },
             line('Eq', eqStats.attack),
             line('TF flat', tfFlatAtk),
             tfAtkPct > 0 ? { label: 'TF %', value: `+${tfAtkPct}% (${effAtk - rawAtk})` } : null,
+            bakedLine(bfFlatAtk),
+            bakedPctLine(bfAtkPct),
           );
           // Obrona: base + eq + train + tf flat + tf %
           const defLines = buildLines(
@@ -1687,6 +1717,8 @@ const StatsPopupBody = memo(() => {
             line('Trening', tb.defense),
             line('TF flat', tfFlatDef),
             tfDefPct > 0 ? { label: 'TF %', value: `+${tfDefPct}% (${effDef - rawDef})` } : null,
+            bakedLine(bfFlatDef),
+            bakedPctLine(bfDefPct),
           );
           // Attack speed
           const asBase = character.attack_speed ?? 10;
@@ -1703,6 +1735,8 @@ const StatsPopupBody = memo(() => {
             line('Eliksir', elixirHp),
             line('TF flat', tfFlatHp),
             tfHpPct > 0 ? { label: 'TF %', value: `+${tfHpPct}% (${effMaxHp - rawHp})` } : null,
+            bakedLine(bfFlatHp),
+            bakedPctLine(bfHpPct),
           );
           // Max MP
           const mpLines = buildLines(
@@ -1712,6 +1746,8 @@ const StatsPopupBody = memo(() => {
             line('Eliksir', elixirMp),
             line('TF flat', tfFlatMp),
             tfMpPct > 0 ? { label: 'TF %', value: `+${tfMpPct}% (${effMaxMp - rawMp})` } : null,
+            bakedLine(bfFlatMp),
+            bakedPctLine(bfMpPct),
           );
           // Crit %
           const baseCritPct = Math.round((character.crit_chance ?? 0.05) * 100);
@@ -1732,11 +1768,13 @@ const StatsPopupBody = memo(() => {
             { label: 'Baza', value: `${(character.hp_regen ?? 0).toFixed(1)}/s` },
             tb.hp_regen > 0 ? { label: 'Trening', value: `+${tb.hp_regen.toFixed(1)}/s` } : null,
             tfHpRegen > 0 ? { label: 'Transform', value: `+${tfHpRegen.toFixed(1)}/s` } : null,
+            bfHpRegen > 0 ? { label: 'Transform (w bazie)', value: `~+${bfHpRegen.toFixed(1)}/s` } : null,
           );
           const mpRegenLines = buildLines(
             { label: 'Baza', value: `${(character.mp_regen ?? 0).toFixed(1)}/s` },
             tb.mp_regen > 0 ? { label: 'Trening', value: `+${tb.mp_regen.toFixed(1)}/s` } : null,
             tfMpRegen > 0 ? { label: 'Transform', value: `+${tfMpRegen.toFixed(1)}/s` } : null,
+            bfMpRegen > 0 ? { label: 'Transform (w bazie)', value: `~+${bfMpRegen.toFixed(1)}/s` } : null,
           );
           return (
             <div className="inventory__stats-grid">
@@ -1749,8 +1787,11 @@ const StatsPopupBody = memo(() => {
               <StatBox label="Kryty DMG"      value={`x${effCritDmg.toFixed(1)}`} breakdown={critDmgLines} />
               <StatBox label="HP Regen"       value={`${effHpRegen.toFixed(1)}/s`} breakdown={hpRegenLines} />
               <StatBox label="MP Regen"       value={`${effMpRegen.toFixed(1)}/s`} breakdown={mpRegenLines} />
-              {tfDmgPct > 0 && (
-                <StatBox label="DMG Transform" value={`+${tfDmgPct}%`} breakdown={[
+              {/* dmgPercent was never baked into stats (combat applies it live
+                  regardless of bakedBonusesApplied), so show it for both live
+                  and legacy baked saves using whichever breakdown is active. */}
+              {(tfDmgPct > 0 || bfDmgPct > 0) && (
+                <StatBox label="DMG Transform" value={`+${tfDmgPct > 0 ? tfDmgPct : bfDmgPct}%`} breakdown={[
                   { label: 'Mnoznik', value: 'Caly DMG' },
                 ]} />
               )}

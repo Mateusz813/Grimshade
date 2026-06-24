@@ -31,7 +31,7 @@
 
 import { useCharacterStore } from '../stores/characterStore';
 import { useTransformStore } from '../stores/transformStore';
-import { getClassTransformBonuses, getTransformById } from './transformSystem';
+import { getClassTransformBonuses, getCumulativeTransformBonuses, getTransformById } from './transformSystem';
 import type { TCharacterClass } from '../api/v1/characterApi';
 import type { ITransformPermanentBonuses } from './transformSystem';
 
@@ -185,40 +185,106 @@ export interface ILiveTransformBreakdown {
     flatDefense: number;
     hpRegenFlat: number;
     mpRegenFlat: number;
-    active: boolean;         // false for legacy (baked) saves -> hide in UI
+    /**
+     * `true`  -> bonuses apply LIVE (NOT in base stats). The breakdown values
+     *            must be ADDED to base+equip pools by the caller.
+     * `false` -> either no transforms / no character (everything is 0), OR the
+     *            character is a legacy "baked" save (`baked === true`), in which
+     *            case the values are still 0 here to preserve the historical
+     *            contract that `active === false` means "do not add to the live
+     *            pipeline" (see `getDisplayTransformBreakdown` for baked chars).
+     */
+    active: boolean;
+    /**
+     * Bug 8 (2026-06-23): legacy baked save flag. When `true`, the transform
+     * bonuses are ALREADY inside character.max_hp / attack / etc. (baked at
+     * claim time, pre-April-2026). Callers must NOT add `active`-path values on
+     * top — those are 0 here precisely to avoid double-counting. Use this flag
+     * to drive a DISPLAY-ONLY "Transform (zapieczone)" attribution from
+     * `getDisplayTransformBreakdown()` instead.
+     */
+    baked: boolean;
 }
 
+const zeroBreakdown = (baked: boolean): ILiveTransformBreakdown => ({
+    dmgPercent: 0, hpPercent: 0, mpPercent: 0, defPercent: 0, atkPercent: 0,
+    flatHp: 0, flatMp: 0, flatAttack: 0, flatDefense: 0,
+    hpRegenFlat: 0, mpRegenFlat: 0, active: false, baked,
+});
+
+const mapBreakdown = (b: ITransformPermanentBonuses, active: boolean, baked: boolean): ILiveTransformBreakdown => ({
+    dmgPercent: b.dmgPercent,
+    hpPercent: b.hpPercent,
+    mpPercent: b.mpPercent,
+    defPercent: b.defPercent,
+    atkPercent: b.atkPercent,
+    flatHp: b.flatHp,
+    flatMp: b.flatMp,
+    flatAttack: b.attack,
+    flatDefense: b.defense,
+    hpRegenFlat: b.hpRegenFlat,
+    mpRegenFlat: b.mpRegenFlat,
+    active,
+    baked,
+});
+
+/**
+ * LIVE breakdown for the stats panel — values that the caller must ADD on top
+ * of base+equip pools. Returns an all-zero, `active:false` record for legacy
+ * baked saves so the existing live-add math is never double-counted.
+ */
 export const getLiveTransformBreakdown = (): ILiveTransformBreakdown => {
     try {
         const store = useTransformStore.getState();
         const char = useCharacterStore.getState().character;
-        if (!char || store.bakedBonusesApplied || store.completedTransforms.length === 0) {
-            return {
-                dmgPercent: 0, hpPercent: 0, mpPercent: 0, defPercent: 0, atkPercent: 0,
-                flatHp: 0, flatMp: 0, flatAttack: 0, flatDefense: 0,
-                hpRegenFlat: 0, mpRegenFlat: 0, active: false,
-            };
+        if (!char || store.completedTransforms.length === 0) {
+            return zeroBreakdown(false);
         }
-        const b = sumCompletedBonuses();
-        return {
-            dmgPercent: b.dmgPercent,
-            hpPercent: b.hpPercent,
-            mpPercent: b.mpPercent,
-            defPercent: b.defPercent,
-            atkPercent: b.atkPercent,
-            flatHp: b.flatHp,
-            flatMp: b.flatMp,
-            flatAttack: b.attack,
-            flatDefense: b.defense,
-            hpRegenFlat: b.hpRegenFlat,
-            mpRegenFlat: b.mpRegenFlat,
-            active: true,
-        };
+        if (store.bakedBonusesApplied) {
+            // Legacy save: bonuses live in base stats already -> contribute 0 to
+            // the live pipeline, but flag `baked:true` so the UI can still show
+            // a display-only attribution via getDisplayTransformBreakdown().
+            return zeroBreakdown(true);
+        }
+        return mapBreakdown(sumCompletedBonuses(), true, false);
     } catch {
-        return {
-            dmgPercent: 0, hpPercent: 0, mpPercent: 0, defPercent: 0, atkPercent: 0,
-            flatHp: 0, flatMp: 0, flatAttack: 0, flatDefense: 0,
-            hpRegenFlat: 0, mpRegenFlat: 0, active: false,
-        };
+        return zeroBreakdown(false);
+    }
+};
+
+/**
+ * Bug 8 (2026-06-23): DISPLAY-ONLY breakdown of the transform contribution,
+ * regardless of baked state. Computes the cumulative per-tier bonuses for every
+ * completed transform of the character's class.
+ *
+ * SAFETY — this must ONLY be used to ATTRIBUTE existing power in the stats
+ * panel, never to add stats:
+ *   - For a LIVE character (`baked:false`) the live pipeline already adds these
+ *     values (getEffectiveChar), so the panel uses `getLiveTransformBreakdown`
+ *     for the math and this helper is redundant.
+ *   - For a LEGACY baked character (`baked:true`) the values are already inside
+ *     character.max_hp / attack / etc. We surface them here as an informational
+ *     line so the player can SEE the transform contribution, WITHOUT touching
+ *     any stat (no unbake, no double-count, zero corruption risk). This is the
+ *     "Approach B" fix: safest possible, never mutates persisted stats.
+ *
+ * Returns `active:false` (all-zero) only when there's no character or no
+ * completed transforms; otherwise `active:true` with the cumulative values and
+ * the `baked` flag passed through so the UI can label the line correctly.
+ */
+export const getDisplayTransformBreakdown = (): ILiveTransformBreakdown => {
+    try {
+        const store = useTransformStore.getState();
+        const char = useCharacterStore.getState().character;
+        if (!char || store.completedTransforms.length === 0) {
+            return zeroBreakdown(store.bakedBonusesApplied);
+        }
+        const cls = char.class as TCharacterClass;
+        const b = getCumulativeTransformBonuses(store.completedTransforms, cls);
+        // ICumulativeTransformBonuses is a structural superset of
+        // ITransformPermanentBonuses for the fields mapBreakdown reads.
+        return mapBreakdown(b as ITransformPermanentBonuses, true, store.bakedBonusesApplied);
+    } catch {
+        return zeroBreakdown(false);
     }
 };

@@ -335,6 +335,27 @@ export const TRANSFORM_TIER_MULTIPLIERS: Record<TTransformTier, { hp: number; at
 /** Slot index -> tier. Stable across waves — UI can rely on these positions. */
 export const TRANSFORM_SLOT_TIERS: readonly TTransformTier[] = ['Normal', 'Strong', 'Epic', 'Boss'];
 
+/**
+ * Transform wave targeting: escorts (slots 0-2) are cleared before the boss
+ * (slot 3). Returns the slot of the first ALIVE escort, or 3 (boss) when every
+ * escort is dead.
+ *
+ * Used by BOTH the basic-attack resolver and the DOT tick so damage-over-time
+ * lands on whatever the player is currently fighting. Before 2026-06-23 the DOT
+ * tick always drained the boss slot, which made the boss "leak HP by itself"
+ * while escorts were still alive (the reported Transform bug). A nullable slot
+ * (already-cleared escort) is skipped.
+ */
+export const resolveActiveOpponentSlot = (
+  escorts: ReadonlyArray<{ currentHp: number } | null>,
+): 0 | 1 | 2 | 3 => {
+  for (let s = 0; s < 3; s++) {
+    const e = escorts[s];
+    if (e && e.currentHp > 0) return s as 0 | 1 | 2;
+  }
+  return 3;
+};
+
 // -- Data access helpers -------------------------------------------------------
 
 const allTransforms: ITransformData[] = transformsData as ITransformData[];

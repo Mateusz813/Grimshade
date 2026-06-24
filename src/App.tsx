@@ -12,10 +12,12 @@ import { useWakeLock } from './hooks/useWakeLock';
 import { useSettingsStore } from './stores/settingsStore';
 import {
     saveCurrentCharacterStoresSync,
+    saveCurrentCharacterStoresForce,
     getActiveCharacterIdForRestore,
     switchToCharacter,
     restoreFromLocalStorageSync,
 } from './stores/characterScope';
+import { useConnectivityStore } from './stores/connectivityStore';
 import { characterApi } from './api/v1/characterApi';
 import { markAppReady, markAppRestoring } from './lib/appReady';
 import AppRouter from './routes/AppRouter';
@@ -85,7 +87,18 @@ const App = () => {
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
+                // Immediate local flush (survives a kill).
                 saveCurrentCharacterStoresSync();
+                // 2026-06-23 #10: when ONLINE, also push a full cloud save on
+                // background/lock so the canonical row is current before the
+                // player might open the game on another device — shrinks the
+                // "double rewards across devices" window. The page stays alive
+                // on a mobile lock (unlike `beforeunload`), so the async save
+                // can land. Skipped in OFFLINE mode (offline progress is synced
+                // deliberately via `transitionToOnline`, not piecemeal).
+                if (useConnectivityStore.getState().mode === 'online') {
+                    void saveCurrentCharacterStoresForce().catch(() => { /* offline / RLS — local flush already done */ });
+                }
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);

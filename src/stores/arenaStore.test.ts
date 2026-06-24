@@ -23,6 +23,7 @@ vi.mock('../api/v1/characterApi', () => ({
 import { useArenaStore } from './arenaStore';
 import { useInventoryStore } from './inventoryStore';
 import { useCharacterStore } from './characterStore';
+import { getSeasonStart } from '../systems/arenaSystem';
 
 // -- Fixtures -----------------------------------------------------------------
 
@@ -420,3 +421,82 @@ describe('submitDefenseSnapshot', () => {
 // localStorage by key (`dungeon_rpg_save_char_<id>`). A direct unit test
 // would seed the storage + invoke the action; left out because the
 // behaviour is exercised by the live Arena page integration test.
+
+// -- BUG #1 (2026-06-23): weekly reset timing — preserve AP/LP until claim -----
+
+describe('refreshIfNeeded — season boundary preserves AP/LP (BUG #1)', () => {
+    it('does NOT rebuild/zero the arena at the season boundary — keeps AP/LP + sets pendingRewards', () => {
+        useArenaStore.setState({
+            currentArena: makeArena({
+                id: 'bronze_42',
+                competitors: [
+                    makeCompetitor({ id: 'player_char-1', seasonArenaPoints: 2000, leaguePoints: 50 }),
+                    makeCompetitor({ id: 'bot_1', name: 'Bot', isBot: true, leaguePoints: 5 }),
+                ],
+            }),
+            seasonStartIso: '2020-01-01T00:00:00.000Z', // old week -> seasonChanged
+            pendingRewards: null,
+        });
+
+        useArenaStore.getState().refreshIfNeeded(10);
+
+        const s = useArenaStore.getState();
+        const me = s.currentArena?.competitors.find((c) => !c.isBot);
+        // Arena NOT rebuilt — player keeps their accumulated AP + LP.
+        expect(me?.seasonArenaPoints).toBe(2000);
+        expect(me?.leaguePoints).toBe(50);
+        expect(s.currentArena?.id).toBe('bronze_42');
+        // Final standing captured; season NOT advanced (awaiting claim).
+        expect(s.pendingRewards).not.toBeNull();
+        expect(s.seasonStartIso).toBe('2020-01-01T00:00:00.000Z');
+    });
+
+    it('does nothing when the season has not changed', () => {
+        useArenaStore.setState({
+            currentArena: makeArena(),
+            seasonStartIso: getSeasonStart().toISOString(),
+            pendingRewards: null,
+        });
+        useArenaStore.getState().refreshIfNeeded(10);
+        expect(useArenaStore.getState().pendingRewards).toBeNull();
+        expect(useArenaStore.getState().currentArena?.id).toBe('bronze_42');
+    });
+});
+
+describe('claimSeasonRewards — reset + promotion AFTER claim (BUG #1)', () => {
+    it('rebuilds a fresh season, advances seasonStartIso, resets stats + clears pendingRewards', () => {
+        useCharacterStore.setState({ character: null, isLoading: false });
+        useArenaStore.setState({
+            currentArena: makeArena({ id: 'bronze_42' }),
+            seasonStartIso: '2020-01-01T00:00:00.000Z',
+            pendingRewards: { league: 'bronze', finalRank: 55 }, // low rank: no bucket, but reset MUST still run
+            stats: { matchesWon: 9, matchesDefended: 3 },
+        });
+
+        const result = useArenaStore.getState().claimSeasonRewards();
+
+        const s = useArenaStore.getState();
+        expect(result).toEqual({ league: 'bronze', finalRank: 55 });
+        expect(s.pendingRewards).toBeNull();
+        expect(s.seasonStartIso).toBe(getSeasonStart().toISOString()); // advanced to current week
+        expect(s.stats).toEqual({ matchesWon: 0, matchesDefended: 0 });
+        expect(s.currentArena?.id).not.toBe('bronze_42'); // rebuilt for the new season
+        expect(s.currentArena?.league).toBe('bronze');    // rank 55 stays in bronze
+    });
+
+    it('promotes the league on claim when finalRank is in the promotion zone', () => {
+        useCharacterStore.setState({ character: null, isLoading: false });
+        useArenaStore.setState({
+            currentArena: makeArena({ id: 'bronze_42', league: 'bronze' }),
+            seasonStartIso: '2020-01-01T00:00:00.000Z',
+            pendingRewards: { league: 'bronze', finalRank: 1 }, // top -> promote (bronze promotedTop 40)
+        });
+        useArenaStore.getState().claimSeasonRewards();
+        expect(useArenaStore.getState().currentArena?.league).toBe('silver');
+    });
+
+    it('returns null + no-ops when there is no pending reward', () => {
+        useArenaStore.setState({ currentArena: makeArena(), pendingRewards: null });
+        expect(useArenaStore.getState().claimSeasonRewards()).toBeNull();
+    });
+});

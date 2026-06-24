@@ -184,39 +184,41 @@ export const useArenaStore = create<IArenaStore>()(
                     set({ dailyAttempts: { day: todayIso(), count: 0 } });
                 }
 
-                if (!seasonChanged && state.currentArena) {
+                // First-ever run — no arena yet. Build one for the current season.
+                if (!state.currentArena) {
+                    set({
+                        currentArena: buildFreshArena(STARTING_LEAGUE, playerLevel),
+                        seasonStartIso: currentSeasonStart,
+                    });
                     return;
                 }
 
-                // -- New season — settle previous standings into a pending reward --
-                let pendingRewards = state.pendingRewards;
-                if (state.currentArena) {
+                if (!seasonChanged) {
+                    return;
+                }
+
+                // -- Season rolled over (weekly) -----------------------------------
+                // 2026-06-23 FIX (BUG #1): do NOT rebuild/reset the arena here.
+                // The player KEEPS their AP / LP / stats until they CLAIM the
+                // season rewards — `claimSeasonRewards` performs the actual
+                // reset + promotion/relegation ("reset z awansem PO odbiorze
+                // nagród"). Previously the boundary rebuilt the arena and zeroed
+                // seasonArenaPoints immediately, so a player who crossed the
+                // Monday boundary before collecting saw "0 AP next day".
+                //
+                // We only SETTLE the final standing into a pending reward (once)
+                // and leave `seasonStartIso` UN-advanced so the season stays
+                // "ended, awaiting claim". `claimSeasonRewards` advances it.
+                if (!state.pendingRewards) {
                     const me = state.currentArena.competitors.find((c) => !c.isBot);
                     if (me) {
                         const ranked = rankCompetitors(state.currentArena.competitors);
                         const myEntry = ranked.find((r) => r.competitor.id === me.id);
                         if (myEntry) {
-                            pendingRewards = { league: state.currentArena.league, finalRank: myEntry.rank };
+                            set({ pendingRewards: { league: state.currentArena.league, finalRank: myEntry.rank } });
                         }
                     }
                 }
-
-                // Derive the new league: promote / relegate based on previous
-                // outcome (if we just settled), otherwise keep current league
-                // (or start at bronze on first run).
-                let newLeague: ArenaLeague = state.currentArena?.league ?? STARTING_LEAGUE;
-                if (state.currentArena && pendingRewards) {
-                    const outcome = getSeasonOutcome(state.currentArena.league, pendingRewards.finalRank);
-                    if (outcome.type === 'promote') newLeague = outcome.toLeague;
-                    else if (outcome.type === 'relegate') newLeague = outcome.toLeague;
-                }
-
-                set({
-                    currentArena: buildFreshArena(newLeague, playerLevel),
-                    seasonStartIso: currentSeasonStart,
-                    matchLog: seasonChanged ? [] : state.matchLog,
-                    pendingRewards: seasonChanged ? pendingRewards : state.pendingRewards,
-                });
             },
 
             consumeAttempt: () => {
@@ -399,26 +401,42 @@ export const useArenaStore = create<IArenaStore>()(
                 const state = get();
                 const pending = state.pendingRewards;
                 if (!pending) return null;
+                // Give the season rewards. Top ranks have a bucket; low ranks may
+                // have none — in that case we still fall through to the reset below
+                // (a low finisher must NOT get stuck unable to start a new season).
                 const bucket = findRewardBucket(pending.finalRank);
-                if (!bucket) {
-                    set({ pendingRewards: null });
-                    return pending;
+                if (bucket) {
+                    const scaled = applyLeagueMultiplier(bucket, pending.league);
+                    const inv = useInventoryStore.getState();
+                    inv.addGold(scaled.gold);
+                    inv.addArenaPoints?.(scaled.arenaPoints);
+                    if (scaled.commonStones    > 0) inv.addStones?.('common_stone',    scaled.commonStones);
+                    if (scaled.rareStones      > 0) inv.addStones?.('rare_stone',      scaled.rareStones);
+                    if (scaled.epicStones      > 0) inv.addStones?.('epic_stone',      scaled.epicStones);
+                    if (scaled.legendaryStones > 0) inv.addStones?.('legendary_stone', scaled.legendaryStones);
+                    if (scaled.mythicStones    > 0) inv.addStones?.('mythic_stone',    scaled.mythicStones);
+                    if (scaled.pctHpPotion     > 0) inv.addConsumable('hp_potion_divine', scaled.pctHpPotion);
+                    if (scaled.pctMpPotion     > 0) inv.addConsumable('mp_potion_divine', scaled.pctMpPotion);
                 }
-                const scaled = applyLeagueMultiplier(bucket, pending.league);
 
-                // Apply to inventory.
-                const inv = useInventoryStore.getState();
-                inv.addGold(scaled.gold);
-                inv.addArenaPoints?.(scaled.arenaPoints);
-                if (scaled.commonStones    > 0) inv.addStones?.('common_stone',    scaled.commonStones);
-                if (scaled.rareStones      > 0) inv.addStones?.('rare_stone',      scaled.rareStones);
-                if (scaled.epicStones      > 0) inv.addStones?.('epic_stone',      scaled.epicStones);
-                if (scaled.legendaryStones > 0) inv.addStones?.('legendary_stone', scaled.legendaryStones);
-                if (scaled.mythicStones    > 0) inv.addStones?.('mythic_stone',    scaled.mythicStones);
-                if (scaled.pctHpPotion     > 0) inv.addConsumable('hp_potion_divine', scaled.pctHpPotion);
-                if (scaled.pctMpPotion     > 0) inv.addConsumable('mp_potion_divine', scaled.pctMpPotion);
+                // 2026-06-23 FIX (BUG #1): the weekly reset + promotion/relegation
+                // happens HERE — AFTER the player collects the season rewards —
+                // not at the calendar boundary. Apply the league outcome, rebuild
+                // a fresh arena (seasonArenaPoints / LP / stats reset to 0 for the
+                // new season), and advance `seasonStartIso` to the current week.
+                const outcome = getSeasonOutcome(pending.league, pending.finalRank);
+                let newLeague: ArenaLeague = state.currentArena?.league ?? pending.league;
+                if (outcome.type === 'promote') newLeague = outcome.toLeague;
+                else if (outcome.type === 'relegate') newLeague = outcome.toLeague;
+                const playerLevel = useCharacterStore.getState().character?.level ?? 1;
 
-                set({ pendingRewards: null });
+                set({
+                    pendingRewards: null,
+                    currentArena: buildFreshArena(newLeague, playerLevel),
+                    seasonStartIso: getSeasonStart().toISOString(),
+                    matchLog: [],
+                    stats: { matchesWon: 0, matchesDefended: 0 },
+                });
                 return pending;
             },
 

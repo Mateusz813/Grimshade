@@ -1,4 +1,5 @@
 @use '../../styles/variables' as *;
+@use '../../styles/breakpoints' as *;
 
 .arena {
     padding: 16px;
@@ -9,6 +10,15 @@
     display: flex;
     flex-direction: column;
     gap: $spacing-md;
+
+    // On phones the rigid leaderboard grid (60px 56px 1fr auto auto) plus the
+    // 16px page padding overflowed ~375px viewports and forced a horizontal
+    // scroll (BUG #7). Clip any residual overflow and trim the page padding so
+    // the rows have more room.
+    @include mobile-only {
+        padding: 10px;
+        overflow-x: hidden;
+    }
 
     // Match view drops the page constraints — the speed-bar strip and the
     // combat arena both want to span full viewport width and sit flush
@@ -305,6 +315,17 @@
                 background: rgba(76, 175, 80, 0.10);
                 border-color: rgba(76, 175, 80, 0.45);
             }
+        }
+
+        // Phone layout — the desktop grid (60px 56px 1fr auto auto) is too wide
+        // for ~375px screens. Shrink the rank + avatar columns, drop the trailing
+        // `auto` (LP folds into the name/meta block visually) and tighten gap,
+        // padding and font so the whole row fits without horizontal scroll.
+        @include mobile-only {
+            grid-template-columns: 48px 40px 1fr auto;
+            gap: 6px;
+            padding: 6px 8px;
+            font-size: $font-xs;
         }
     }
     &__row-rank {
