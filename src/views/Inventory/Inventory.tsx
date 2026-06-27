@@ -4174,17 +4174,45 @@ const Inventory = () => {
                     </>
                   )}
 
-                  {/* Buff elixirs: simple confirm */}
+                  {/* Buff elixirs: amount selector + activate N at once.
+                      2026-06-24 BUG 2: buffs only had a single "Aktywuj buff"
+                      button. Reuse the SAME amount selector + batch handler the
+                      heal potions use (useElixirN loops applyElixirDose N times).
+                      Buff durations STACK (buffStore), so N activations extend the
+                      buff by N × its base duration. */}
                   {isBuff && (
-                    <div className="inventory__use-potion-actions">
-                      <button
-                        className="inventory__use-potion-btn inventory__use-potion-btn--use"
-                        disabled={stack <= 0}
-                        onClick={() => { applyElixirDose(usePotionId); close(); }}
-                      >
-                        <GameIcon name="sparkles" /> Aktywuj buff
-                      </button>
-                    </div>
+                    <>
+                      <div className="inventory__use-potion-amount">
+                        <span className="inventory__use-potion-amount-label">Ile aktywowac?</span>
+                        <div className="inventory__use-potion-amount-row">
+                          <button
+                            className="inventory__use-potion-amt-btn"
+                            disabled={amount <= 1}
+                            onClick={() => setUsePotionAmount(Math.max(1, amount - 1))}
+                          >−</button>
+                          <span className="inventory__use-potion-amt-value">{amount}</span>
+                          <button
+                            className="inventory__use-potion-amt-btn"
+                            disabled={amount >= max}
+                            onClick={() => setUsePotionAmount(Math.min(max, amount + 1))}
+                          >+</button>
+                          <button
+                            className="inventory__use-potion-max-btn"
+                            disabled={max <= 0}
+                            onClick={() => setUsePotionAmount(max)}
+                          >MAX ({max})</button>
+                        </div>
+                      </div>
+                      <div className="inventory__use-potion-actions">
+                        <button
+                          className="inventory__use-potion-btn inventory__use-potion-btn--use"
+                          disabled={amount <= 0}
+                          onClick={() => { useElixirN(usePotionId, amount); close(); }}
+                        >
+                          <GameIcon name="sparkles" /> {amount > 1 ? `Aktywuj ×${amount}` : 'Aktywuj buff'}
+                        </button>
+                      </div>
+                    </>
                   )}
 
                   {/* Stat reset */}
@@ -4265,20 +4293,27 @@ const Inventory = () => {
           const higherColor = higherRarity ? RARITY_COLORS[higherRarity] : '#fff';
 
           return (
-            <>
-              <motion.div
-                className="inventory__overlay"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => { setStoneConvertId(null); setStoneConvertResult(null); }}
-              />
+            <motion.div
+              className="inventory__overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setStoneConvertId(null); setStoneConvertResult(null); }}
+            >
+              {/* 2026-06-24 BUG 1: the popup is now a CHILD of the flex-centered
+                  overlay (position:fixed; inset:0; flex center) instead of a
+                  sibling that self-centered via CSS transform:translate(-50%,-50%).
+                  framer-motion writes its own `transform` for the scale animation,
+                  which used to ERASE the CSS translate and push the popup
+                  off-screen on mobile. Centering is now the overlay's job, so the
+                  scale animation is harmless and the card stays 100% on-screen. */}
               <motion.div
                 className="inventory__stone-popup"
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                onClick={(e) => e.stopPropagation()}
               >
                 <button className="inventory__stone-popup-close" onClick={() => { setStoneConvertId(null); setStoneConvertResult(null); }}>
                   <Icon name="x" />
@@ -4351,7 +4386,7 @@ const Inventory = () => {
                   </>
                 )}
               </motion.div>
-            </>
+            </motion.div>
           );
         })()}
       </AnimatePresence>

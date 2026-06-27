@@ -8,25 +8,32 @@ const PI = (id: string, fallback: string): string => getPotionImage(id) ?? fallb
  * Potion conversion (Alchemy).
  *
  * Players can combine weaker potions into stronger ones for FREE (no gold).
- * Conversion ratios are based on shop prices so that the total value of
- * consumed potions roughly matches the shop price of the output:
  *
- *   5× hp_potion_sm      (5×30  = 150g)  -> 1× hp_potion_md      (shop 150g)
- *   4× hp_potion_md      (4×150 = 600g)  -> 1× hp_potion_lg      (shop 600g)
- *   4× hp_potion_lg      (4×600 = 2400g) -> 1× hp_potion_great   (shop 2000g)
- *   4× hp_potion_great   (4×2k  = 8000g) -> 1× hp_potion_super   (shop 7500g)
- *   4× hp_potion_super   (4×7.5k= 30kg)  -> 1× hp_potion_ultimate(shop 30000g)
- *   5× hp_potion_ultimate(5×30k = 150kg) -> 1× hp_potion_divine  (shop 150000g)
- *
- * Alternate flat branch (parallel to the pct branch from tier 3 onward):
- *   4× hp_potion_lg      (4×600 = 2400g) -> 1× hp_potion_mega    (Mega, +1000 flat HP)
- *
- * Same ratios for MP potions.
+ * 2026-06-24 ANTI-EXPLOIT: conversion `inputCount` MUST make crafting cost the
+ * same-or-MORE than buying the output in the shop, i.e.
+ *     inputCount = ceil( shopPrice(output) / shopPrice(input) ).
+ * Otherwise players buy the cheapest potion en masse and craft up below shop
+ * price (e.g. the old `4× lg -> 1× great` made a 200 000g potion for 2 400g).
+ * Shop prices (src/stores/shopStore.ts ELIXIRS, HP==MP):
+ *   sm 30 · md 150 · lg 600 · mega 15 000 · great 200 000 · super 350 000 ·
+ *   ultimate 500 000 · divine 1 000 000.
+ * Resulting ratios (craft cost in g vs shop price of output — always >=):
+ *   5×  sm       (150g)     -> md        (150g)
+ *   4×  md       (600g)     -> lg        (600g)
+ *   334× lg      (200 400g) -> great     (200 000g)
+ *   2×  great    (400 000g) -> super     (350 000g)
+ *   2×  super    (700 000g) -> ultimate  (500 000g)
+ *   2×  ultimate (1 000 000g)-> divine   (1 000 000g)
+ *   25× lg       (15 000g)  -> mega      (15 000g)   [alternate flat branch]
+ * The multi-step chain (sm->md->lg->great->...) is also non-exploitable end to
+ * end — every tier costs >= buying it directly. Same ratios for MP potions.
+ * The invariant is locked by a price-driven test in potionConversion.test.ts.
  * Supports mass conversion (convert N batches at once).
  */
 
 export interface IPotionConversion {
-    /** Tier index (1..6), used for UI ordering. */
+    /** Tier index (1..7). Only a deterministic tiebreak now — UI order is
+     *  family (HP before MP) then output unlock level ascending (see export). */
     tier: number;
     /** 'hp' or 'mp'. */
     family: 'hp' | 'mp';
@@ -69,28 +76,28 @@ const RAW_POTION_CONVERSIONS: IPotionConversion[] = [
     {
         tier: 3, family: 'hp',
         inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: PI('hp_potion_lg', 'red-heart'),
-        inputCount: 4,
+        inputCount: 334, // 200000/600 = 333.33 -> ceil 334 (craft >= shop buy)
         outputId: 'hp_potion_great', outputName: 'Wielki Eliksir HP', outputIcon: PI('hp_potion_great', 'red-heart'),
         outputMinLevel: 100,
     },
     {
         tier: 4, family: 'hp',
         inputId: 'hp_potion_great', inputName: 'Wielki Eliksir HP', inputIcon: PI('hp_potion_great', 'red-heart'),
-        inputCount: 4,
+        inputCount: 2, // 350000/200000 = 1.75 -> ceil 2 (craft >= shop buy)
         outputId: 'hp_potion_super', outputName: 'Super Eliksir HP', outputIcon: PI('hp_potion_super', 'red-heart'),
         outputMinLevel: 200,
     },
     {
         tier: 5, family: 'hp',
         inputId: 'hp_potion_super', inputName: 'Super Eliksir HP', inputIcon: PI('hp_potion_super', 'red-heart'),
-        inputCount: 4,
+        inputCount: 2, // 500000/350000 = 1.43 -> ceil 2 (craft >= shop buy)
         outputId: 'hp_potion_ultimate', outputName: 'Ultimatywny Eliksir HP', outputIcon: PI('hp_potion_ultimate', 'red-heart'),
         outputMinLevel: 400,
     },
     {
         tier: 6, family: 'hp',
         inputId: 'hp_potion_ultimate', inputName: 'Ultimatywny Eliksir HP', inputIcon: PI('hp_potion_ultimate', 'red-heart'),
-        inputCount: 5,
+        inputCount: 2, // 1000000/500000 = 2.0 -> ceil 2 (craft >= shop buy)
         outputId: 'hp_potion_divine', outputName: 'Boski Eliksir HP', outputIcon: PI('hp_potion_divine', 'red-heart'),
         outputMinLevel: 600,
     },
@@ -98,7 +105,7 @@ const RAW_POTION_CONVERSIONS: IPotionConversion[] = [
     {
         tier: 7, family: 'hp',
         inputId: 'hp_potion_lg', inputName: 'Silny Eliksir HP', inputIcon: PI('hp_potion_lg', 'red-heart'),
-        inputCount: 4,
+        inputCount: 25, // 15000/600 = 25.0 -> ceil 25 (craft >= shop buy)
         outputId: 'hp_potion_mega', outputName: 'Mega Eliksir HP', outputIcon: PI('hp_potion_mega', 'heart-on-fire'),
         outputMinLevel: 100,
     },
@@ -120,28 +127,28 @@ const RAW_POTION_CONVERSIONS: IPotionConversion[] = [
     {
         tier: 3, family: 'mp',
         inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: PI('mp_potion_lg', 'droplet'),
-        inputCount: 4,
+        inputCount: 334, // 200000/600 = 333.33 -> ceil 334 (craft >= shop buy)
         outputId: 'mp_potion_great', outputName: 'Wielki Eliksir MP', outputIcon: PI('mp_potion_great', 'droplet'),
         outputMinLevel: 100,
     },
     {
         tier: 4, family: 'mp',
         inputId: 'mp_potion_great', inputName: 'Wielki Eliksir MP', inputIcon: PI('mp_potion_great', 'droplet'),
-        inputCount: 4,
+        inputCount: 2, // 350000/200000 = 1.75 -> ceil 2 (craft >= shop buy)
         outputId: 'mp_potion_super', outputName: 'Super Eliksir MP', outputIcon: PI('mp_potion_super', 'droplet'),
         outputMinLevel: 200,
     },
     {
         tier: 5, family: 'mp',
         inputId: 'mp_potion_super', inputName: 'Super Eliksir MP', inputIcon: PI('mp_potion_super', 'droplet'),
-        inputCount: 4,
+        inputCount: 2, // 500000/350000 = 1.43 -> ceil 2 (craft >= shop buy)
         outputId: 'mp_potion_ultimate', outputName: 'Ultimatywny Eliksir MP', outputIcon: PI('mp_potion_ultimate', 'droplet'),
         outputMinLevel: 400,
     },
     {
         tier: 6, family: 'mp',
         inputId: 'mp_potion_ultimate', inputName: 'Ultimatywny Eliksir MP', inputIcon: PI('mp_potion_ultimate', 'droplet'),
-        inputCount: 5,
+        inputCount: 2, // 1000000/500000 = 2.0 -> ceil 2 (craft >= shop buy)
         outputId: 'mp_potion_divine', outputName: 'Boski Eliksir MP', outputIcon: PI('mp_potion_divine', 'droplet'),
         outputMinLevel: 600,
     },
@@ -149,11 +156,14 @@ const RAW_POTION_CONVERSIONS: IPotionConversion[] = [
     {
         tier: 7, family: 'mp',
         inputId: 'mp_potion_lg', inputName: 'Silny Eliksir MP', inputIcon: PI('mp_potion_lg', 'droplet'),
-        inputCount: 4,
+        inputCount: 25, // 15000/600 = 25.0 -> ceil 25 (craft >= shop buy)
         outputId: 'mp_potion_mega', outputName: 'Mega Eliksir MP', outputIcon: PI('mp_potion_mega', 'gem-stone'),
         outputMinLevel: 100,
     },
 ];
+
+/** Display/order: HP family before MP family. */
+const FAMILY_ORDER: Record<IPotionConversion['family'], number> = { hp: 0, mp: 1 };
 
 /**
  * 2026-06-24: alchemy crafting levels are now DERIVED from `getPotionMinLevel`
@@ -161,11 +171,22 @@ const RAW_POTION_CONVERSIONS: IPotionConversion[] = [
  * only ever craft a potion at the exact level they could buy/drink it — no more
  * stale hardcoded alchemy levels drifting from the shop (great 200 / super 350 /
  * ultimate 500 / divine 700 / mega 100, etc.).
+ *
+ * 2026-06-24: also SORTED for the Alchemia UI — all HP recipes first, then all
+ * MP, each ordered by the output potion's unlock level ascending (so mega, L100,
+ * now sits right after lg instead of dead-last after divine). `tier` is only a
+ * deterministic tiebreak now, not the primary order.
  */
-export const POTION_CONVERSIONS: IPotionConversion[] = RAW_POTION_CONVERSIONS.map((c) => ({
-    ...c,
-    outputMinLevel: getPotionMinLevel(c.outputId),
-}));
+export const POTION_CONVERSIONS: IPotionConversion[] = RAW_POTION_CONVERSIONS
+    .map((c) => ({
+        ...c,
+        outputMinLevel: getPotionMinLevel(c.outputId),
+    }))
+    .sort((a, b) =>
+        FAMILY_ORDER[a.family] - FAMILY_ORDER[b.family]   // HP before MP
+        || a.outputMinLevel - b.outputMinLevel             // ascending output level
+        || a.tier - b.tier,                                // stable tiebreak
+    );
 
 /**
  * How many times can this conversion be performed given current inventory?

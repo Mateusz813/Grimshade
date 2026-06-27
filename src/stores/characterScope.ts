@@ -175,8 +175,13 @@ const STORE_ENTRIES: IStoreEntry[] = [
     baseKey: 'inventory',
     getState: () => useInventoryStore.getState(),
     setState: (d) => useInventoryStore.setState(d),
-    defaults: () => ({ bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [], gold: 0, consumables: {}, stones: {} }),
-    stateKeys: ['bag', 'equipment', 'deposit', 'gold', 'consumables', 'stones'],
+    // 2026-06-24: arenaPoints MUST be in defaults() (so a character switch
+    // resets it — no bleed between characters) AND in stateKeys (so it is
+    // written to the cloud save + restored on load). It was in neither, so the
+    // spendable Arena currency reset to 0 on every full app reload / next-day
+    // reopen — the player's "arena points reset every day" bug.
+    defaults: () => ({ bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [], gold: 0, consumables: {}, stones: {}, arenaPoints: 0 }),
+    stateKeys: ['bag', 'equipment', 'deposit', 'gold', 'consumables', 'stones', 'arenaPoints'],
   },
   {
     baseKey: 'skills',

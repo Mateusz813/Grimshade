@@ -15,6 +15,11 @@ import {
     type IPotionConversion,
 } from './potionConversion';
 import { getPotionMinLevel } from './potionGating';
+import { ELIXIRS } from '../stores/shopStore';
+
+// Shop buy-price per potion id — the economic source of truth the conversion
+// counts must respect (craft cost >= buy cost).
+const SHOP_PRICE: Map<string, number> = new Map(ELIXIRS.map((e) => [e.id, e.price]));
 
 // 2026-06-24: alchemy craft level MUST equal the shop/drink gate for every
 // recipe — they're all derived from getPotionMinLevel now, so this guards
@@ -51,9 +56,10 @@ describe('POTION_CONVERSIONS table', () => {
         }
     });
 
-    it('every entry consumes 4 or 5 inputs per batch', () => {
+    it('every entry consumes a positive integer number of inputs per batch', () => {
         for (const c of POTION_CONVERSIONS) {
-            expect([4, 5]).toContain(c.inputCount);
+            expect(Number.isInteger(c.inputCount)).toBe(true);
+            expect(c.inputCount).toBeGreaterThanOrEqual(1);
         }
     });
 
@@ -64,31 +70,31 @@ describe('POTION_CONVERSIONS table', () => {
         }
     });
 
-    it('main HP chain: 5×sm->md, 4×md->lg, 4×lg->great, 4×great->super, 4×super->ultimate, 5×ultimate->divine', () => {
+    it('main HP chain (2026-06-24 anti-exploit counts): 5×sm->md, 4×md->lg, 334×lg->great, 2×great->super, 2×super->ultimate, 2×ultimate->divine', () => {
         expect(findConv('hp', 'hp_potion_sm', 'hp_potion_md')?.inputCount).toBe(5);
         expect(findConv('hp', 'hp_potion_md', 'hp_potion_lg')?.inputCount).toBe(4);
-        expect(findConv('hp', 'hp_potion_lg', 'hp_potion_great')?.inputCount).toBe(4);
-        expect(findConv('hp', 'hp_potion_great', 'hp_potion_super')?.inputCount).toBe(4);
-        expect(findConv('hp', 'hp_potion_super', 'hp_potion_ultimate')?.inputCount).toBe(4);
-        expect(findConv('hp', 'hp_potion_ultimate', 'hp_potion_divine')?.inputCount).toBe(5);
+        expect(findConv('hp', 'hp_potion_lg', 'hp_potion_great')?.inputCount).toBe(334);
+        expect(findConv('hp', 'hp_potion_great', 'hp_potion_super')?.inputCount).toBe(2);
+        expect(findConv('hp', 'hp_potion_super', 'hp_potion_ultimate')?.inputCount).toBe(2);
+        expect(findConv('hp', 'hp_potion_ultimate', 'hp_potion_divine')?.inputCount).toBe(2);
     });
 
     it('main MP chain mirrors HP chain (same ratios)', () => {
         expect(findConv('mp', 'mp_potion_sm', 'mp_potion_md')?.inputCount).toBe(5);
         expect(findConv('mp', 'mp_potion_md', 'mp_potion_lg')?.inputCount).toBe(4);
-        expect(findConv('mp', 'mp_potion_lg', 'mp_potion_great')?.inputCount).toBe(4);
-        expect(findConv('mp', 'mp_potion_great', 'mp_potion_super')?.inputCount).toBe(4);
-        expect(findConv('mp', 'mp_potion_super', 'mp_potion_ultimate')?.inputCount).toBe(4);
-        expect(findConv('mp', 'mp_potion_ultimate', 'mp_potion_divine')?.inputCount).toBe(5);
+        expect(findConv('mp', 'mp_potion_lg', 'mp_potion_great')?.inputCount).toBe(334);
+        expect(findConv('mp', 'mp_potion_great', 'mp_potion_super')?.inputCount).toBe(2);
+        expect(findConv('mp', 'mp_potion_super', 'mp_potion_ultimate')?.inputCount).toBe(2);
+        expect(findConv('mp', 'mp_potion_ultimate', 'mp_potion_divine')?.inputCount).toBe(2);
     });
 
-    it('alternate mega branch: 4×lg -> mega for both families', () => {
+    it('alternate mega branch: 25×lg -> mega for both families', () => {
         const hpMega = findConv('hp', 'hp_potion_lg', 'hp_potion_mega');
         const mpMega = findConv('mp', 'mp_potion_lg', 'mp_potion_mega');
         expect(hpMega).toBeDefined();
         expect(mpMega).toBeDefined();
-        expect(hpMega?.inputCount).toBe(4);
-        expect(mpMega?.inputCount).toBe(4);
+        expect(hpMega?.inputCount).toBe(25);
+        expect(mpMega?.inputCount).toBe(25);
         expect(hpMega?.tier).toBe(7);
         expect(mpMega?.tier).toBe(7);
     });
@@ -121,6 +127,74 @@ describe('POTION_CONVERSIONS table', () => {
             expect(c.inputIcon).toBeTruthy();
             expect(c.outputIcon).toBeTruthy();
         }
+    });
+});
+
+// -- BUG 3 (2026-06-24): anti-exploit economics ------------------------------
+// Crafting up via alchemy must cost the SAME or MORE gold than buying the
+// output in the shop, otherwise players buy the cheapest potion and convert up
+// below shop price. inputCount must equal ceil(price_out / price_in).
+describe('alchemy is not cheaper than buying (price-driven invariant)', () => {
+    it('shop prices exist for every conversion input + output', () => {
+        for (const c of POTION_CONVERSIONS) {
+            expect(SHOP_PRICE.get(c.inputId)).toBeGreaterThan(0);
+            expect(SHOP_PRICE.get(c.outputId)).toBeGreaterThan(0);
+        }
+    });
+
+    it('every recipe: craft cost (inputCount × price_in) >= shop price of output', () => {
+        for (const c of POTION_CONVERSIONS) {
+            const priceIn = SHOP_PRICE.get(c.inputId)!;
+            const priceOut = SHOP_PRICE.get(c.outputId)!;
+            expect(c.inputCount * priceIn).toBeGreaterThanOrEqual(priceOut);
+        }
+    });
+
+    it('every recipe uses the MINIMAL fair count: inputCount === ceil(price_out / price_in)', () => {
+        for (const c of POTION_CONVERSIONS) {
+            const priceIn = SHOP_PRICE.get(c.inputId)!;
+            const priceOut = SHOP_PRICE.get(c.outputId)!;
+            expect(c.inputCount).toBe(Math.ceil(priceOut / priceIn));
+        }
+    });
+
+    it('regression: the old exploitable counts are gone (lg->great no longer 4, lg->mega no longer 4)', () => {
+        expect(findConv('hp', 'hp_potion_lg', 'hp_potion_great')?.inputCount).not.toBe(4);
+        expect(findConv('hp', 'hp_potion_lg', 'hp_potion_mega')?.inputCount).not.toBe(4);
+    });
+});
+
+// -- BUG 4 (2026-06-24): Alchemia display order ------------------------------
+// HP family first, then MP; within each family ordered by output unlock level
+// ascending (so mega L100 sits after lg, not dead-last after divine L700).
+describe('alchemy display order (HP-first, output-level-ascending)', () => {
+    it('all HP recipes precede all MP recipes', () => {
+        const families = POTION_CONVERSIONS.map((c) => c.family);
+        const lastHp = families.lastIndexOf('hp');
+        const firstMp = families.indexOf('mp');
+        expect(lastHp).toBeLessThan(firstMp);
+    });
+
+    it('within each family, outputMinLevel is non-decreasing (mega is no longer last)', () => {
+        for (const fam of ['hp', 'mp'] as const) {
+            const slice = POTION_CONVERSIONS.filter((c) => c.family === fam);
+            for (let i = 1; i < slice.length; i++) {
+                expect(slice[i].outputMinLevel).toBeGreaterThanOrEqual(slice[i - 1].outputMinLevel);
+            }
+        }
+    });
+
+    it('exact HP output order: md, lg, MEGA, great, super, ultimate, divine', () => {
+        const hp = POTION_CONVERSIONS.filter((c) => c.family === 'hp').map((c) => c.outputId);
+        expect(hp).toEqual([
+            'hp_potion_md', 'hp_potion_lg', 'hp_potion_mega', 'hp_potion_great',
+            'hp_potion_super', 'hp_potion_ultimate', 'hp_potion_divine',
+        ]);
+    });
+
+    it('mega renders 3rd in the HP group (right after lg), not dead-last', () => {
+        const hp = POTION_CONVERSIONS.filter((c) => c.family === 'hp');
+        expect(hp[2].outputId).toBe('hp_potion_mega');
     });
 });
 

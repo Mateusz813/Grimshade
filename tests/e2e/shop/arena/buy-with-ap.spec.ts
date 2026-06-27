@@ -9,54 +9,19 @@
  *  3. The bought stone appears in the bag (Postać tab) as a stack tile
  *     with the rendered name "Zwykly Kamien" (STONE_NAMES.common_stone).
  *
- * ## Why we inject arenaPoints via `page.evaluate` instead of seeding
+ * ## How arenaPoints is set up
  *
- * `inventoryStore.arenaPoints` is a runtime-only field — it is NOT in
- * `STORE_ENTRIES['inventory'].stateKeys` in `src/stores/characterScope.ts`
- * (line 179). That means even if we upsert a `game_saves` blob with
- * `inventory.arenaPoints = 10000`, the `applyBlobToStores` filter (line
- * 416-420) drops the key during hydration. Seeding via `seedGameSave`
- * is therefore a no-op for AP.
+ * NOTE (2026-06-24): `arenaPoints` IS now persisted — it was added to
+ * `STORE_ENTRIES['inventory']` `stateKeys` + `defaults()` in
+ * `src/stores/characterScope.ts`, which fixed the "AP reset every day /
+ * lost after re-login" bug (the spendable Arena currency used to reset to 0
+ * on every cloud load because it was never written to the save). So seeding
+ * `inventory.arenaPoints` via `seedGameSave` would now hydrate correctly.
  *
- * Workaround: after the character is fully selected and the Town screen
- * is rendered (so `useInventoryStore` is hydrated to the character's
- * persisted slice), we open dev-tools-style and call
- * `useInventoryStore.setState({ arenaPoints: STARTING_AP })` directly.
- * The store is exposed on `window` via the standard Zustand `create()`
- * pattern — Grimshade does NOT shadow it, so the call works in any
- * build.
- *
- * Wait — actually Zustand stores are NOT auto-attached to `window`. We
- * dispatch through the same indirection the AdminPanel uses
- * (`useInventoryStore.setState`), but that requires importing the store
- * module inside the page. The cleanest cross-build approach is to
- * import it from the served bundle. To avoid coupling to Vite's
- * code-splitting layout (which can change between builds), we
- * instead expose a tiny `window.__e2eSetArenaPoints` helper via
- * `addInitScript` that hooks into the existing `useInventoryStore` once
- * it's loaded. To keep this test self-contained we use the simpler
- * pattern: bridge through a custom event that an in-app effect listens
- * to. But there's an EVEN simpler way:
- *
- * `addInitScript` runs BEFORE the app boots, so we can stash a setter
- * factory that resolves the store from the module graph lazily — but
- * the actual store import in dev is `/src/stores/inventoryStore.ts`.
- * Importing that URL works in dev (Vite serves source) but NOT in prod.
- *
- * For atomic E2E on a dev server, the pragmatic path is the in-app
- * dispatch the AdminPanel already uses: open `/admin?secret` would
- * also work but that's coupled to the owner's email and we can't
- * impersonate.
- *
- * Final approach (settled 2026-05-25): after Town renders we do
- * `page.evaluate(() => { ... import('/src/stores/inventoryStore.ts')
- * .then(m => m.useInventoryStore.setState({ arenaPoints: ... })); })`.
- * This works in `npm run dev` (the only env Playwright targets per
- * `playwright.config.ts` webServer) because Vite resolves the source
- * URL. If we ever run E2E against a built bundle, this approach will
- * stop working — at that point we extend `STORE_ENTRIES['inventory']`
- * to include `arenaPoints` (a one-line app fix that ALSO solves the
- * "AP lost after re-login" UX issue the field has today).
+ * This test keeps the original `page.evaluate` injection (after Town renders,
+ * dynamic-import the store and `setState({ arenaPoints: STARTING_AP })`) — it
+ * still works in `npm run dev` (the env Playwright targets) and avoids
+ * re-touching a green test. Either approach is valid now.
  *
  * Setup pattern:
  *   - `createCharacterViaApi` creates a fresh Knight at level 1.
@@ -79,9 +44,8 @@
  *     "Zwykly Kamien" — see `src/systems/itemSystem.ts` line 553.
  *
  * Cleanup: `cleanupCharacterById` in `finally` — wipes the seeded
- * `game_saves` row too (it's listed in `CHARACTER_CHILD_TABLES`).
- * arenaPoints isn't persisted anywhere so there's nothing extra to
- * scrub.
+ * `game_saves` row too (it's listed in `CHARACTER_CHILD_TABLES`), which
+ * now also carries the persisted `arenaPoints`, so nothing leaks.
  */
 
 import { test, expect } from '@playwright/test';

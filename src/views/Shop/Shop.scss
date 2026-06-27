@@ -485,6 +485,7 @@
 
 .shop__panel--grid {
     display: grid;
+    min-width: 0; // 2026-06-24 BUG 5: shrink rather than overflow when nested in the flex arena panel
     // 2026-05-08 spec: NEVER drop below 2 columns. The default of `repeat(2,
     // minmax(0, 1fr))` guarantees two side-by-side cards even at 320px
     // viewports; media queries widen the track count for tablets/desktop.
@@ -694,6 +695,14 @@
     flex-direction: column;
     gap: 0;
     background: #000;
+    // 2026-06-24 BUG 5: this is the ONLY shop tab that wraps the card grid in a
+    // flex column. Flex children default to `min-width: auto`, so the banner /
+    // nested grid could push past the viewport and the tab scrolled sideways on
+    // mobile. Clamp the panel to the viewport and let children shrink so there
+    // is nothing to scroll/swipe horizontally.
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .shop__arena-banner {
@@ -701,6 +710,7 @@
     align-items: baseline;
     justify-content: center;
     gap: 12px;
+    min-width: 0;          // 2026-06-24 BUG 5: allow the banner to shrink, no h-scroll
     padding: 14px 16px;
     margin: 0;
     background: linear-gradient(135deg, rgba(180, 130, 30, 0.18), rgba(80, 40, 0, 0.28));

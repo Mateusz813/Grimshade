@@ -186,6 +186,10 @@ const captureSnapshot = (swordUuid: string) => ({
     swordUuid,
     bag: useInventoryStore.getState().bag.map(i => i.uuid),
     gold: useInventoryStore.getState().gold,
+    // 2026-06-24 BUG 6: arenaPoints must round-trip — it was missing from
+    // STORE_ENTRIES stateKeys, so the spendable Arena currency reset to 0 on
+    // every reload. Capturing it here makes the snapshot test guard it.
+    arenaPoints: useInventoryStore.getState().arenaPoints,
     consumables: { ...useInventoryStore.getState().consumables },
     stones: { ...useInventoryStore.getState().stones },
     skillLevels: { ...useSkillStore.getState().skillLevels },
@@ -205,11 +209,13 @@ const captureSnapshot = (swordUuid: string) => ({
 // -- Tests --------------------------------------------------------------------
 
 describe('characterScope: save -> restore round-trip preserves state', () => {
-    it('restores inventory (bag, gold, consumables, stones)', async () => {
+    it('restores inventory (bag, gold, arena points, consumables, stones)', async () => {
         const { sword } = await fullStateRoundTrip();
         const inv = useInventoryStore.getState();
         expect(inv.bag.some(i => i.uuid === sword.uuid)).toBe(true);
         expect(inv.gold).toBe(5000);
+        // BUG 6 regression: spendable Arena points must survive the round-trip.
+        expect(inv.arenaPoints).toBe(100);
         expect(inv.consumables.hp_potion_sm).toBe(5);
         expect(inv.stones.common_stone).toBe(12);
     });
