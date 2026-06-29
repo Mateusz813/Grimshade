@@ -20,12 +20,23 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
     // svgr MUST be here too (vitest uses its own config, not vite.config.ts):
     // <GameIcon> imports icons via `?react`, so without this plugin the glob
     // returns nothing in tests and every icon renders null.
     plugins: [svgr({ svgrOptions: { icon: true } }), react()],
+    resolve: {
+        alias: {
+            // `virtual:pwa-register` is provided by vite-plugin-pwa, which the
+            // vitest config does NOT load. Alias it to a stub so `pwaUpdate.ts`
+            // resolves under vitest; tests still override it via vi.mock().
+            'virtual:pwa-register': fileURLToPath(
+                new URL('./tests/stubs/virtual-pwa-register.ts', import.meta.url),
+            ),
+        },
+    },
     // Vite `define` z głównego configu nie jest wczytywany przez vitest
     // gdy config jest dedykowany — musimy re-deklarować zmienne global-e
     // które kod używa (patrz `src/lib/appVersion.ts`).

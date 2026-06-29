@@ -39,6 +39,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // 2026-06-24: we register the SW ourselves (src/lib/pwaUpdate.ts) so we
+      // can add aggressive update checks (on app-visible / interval / reconnect)
+      // — that's what makes an installed home-screen PWA pick up new deploys
+      // without a reinstall. Disable the plugin's auto-injected registration so
+      // the SW isn't registered twice.
+      injectRegister: false,
       // 2026-05-20: bundle the brand icon set so the install prompt +
       // home-screen tile pick up the new artwork from /public/.
       includeAssets: ['apple-touch-icon.png', 'pwa.png', 'favicon.svg'],
@@ -66,6 +72,12 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // 2026-06-24: a new SW takes control immediately (skip the "waiting"
+        // state) and purges the previous build's precache, so reopening the
+        // installed PWA never serves a stale bundle.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
