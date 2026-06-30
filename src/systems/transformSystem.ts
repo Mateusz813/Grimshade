@@ -10,6 +10,7 @@ import type { IInventoryItem } from './itemSystem';
 import type { TCharacterClass } from '../api/v1/characterApi';
 import { generateWeapon } from './itemGenerator';
 import { getMonsterImage } from './spriteAssets';
+import { SPELL_CHEST_LEVELS } from './skillSystem';
 import monstersData from '../data/monsters.json';
 import transformsData from '../data/transforms.json';
 
@@ -531,12 +532,24 @@ export const calculateTransformRewards = (
     });
   }
 
-  // Spell Chest (guaranteed, level matches transform level)
+  // Spell Chest (guaranteed). 2026-06-24 fix: the configured `spellChestLevel`
+  // equals the transform's OWN level, but several transforms (200/500/700/900)
+  // sit on levels where NO spell unlocks — there is no `spell_chest_200`, the
+  // next real spell is at 300 (and 600/800/1000). Minting `spell_chest_200`
+  // produced a dead, unspendable item that also rendered as the top-tier purple
+  // chest. Snap UP to the next VALID spell-chest level so the chest always maps
+  // to a real spell (200 -> 300); suppress the drop entirely if nothing valid
+  // is at-or-above the configured level (never drop a non-existent chest).
   if (transform.rewards.spellChestCount > 0) {
-    consumables.push({
-      id: `spell_chest_${transform.rewards.spellChestLevel}`,
-      count: transform.rewards.spellChestCount,
-    });
+    const chestLevel = SPELL_CHEST_LEVELS.find(
+      (l) => l >= transform.rewards.spellChestLevel,
+    ) ?? null;
+    if (chestLevel !== null) {
+      consumables.push({
+        id: `spell_chest_${chestLevel}`,
+        count: transform.rewards.spellChestCount,
+      });
+    }
   }
 
   // Mythic Enhancement Stone

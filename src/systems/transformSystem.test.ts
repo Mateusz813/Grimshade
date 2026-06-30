@@ -22,6 +22,7 @@ import {
   TRANSFORM_SLOT_TIERS,
   resolveActiveOpponentSlot,
 } from './transformSystem';
+import { SPELL_CHEST_LEVELS } from './skillSystem';
 import type { IMonster } from '../types/monster';
 
 describe('transformSystem', () => {
@@ -139,6 +140,46 @@ describe('transformSystem', () => {
       const xpElixir = rewards.consumables.find((c) => c.id === 'premium_xp_elixir');
       expect(xpElixir).toBeDefined();
       expect(xpElixir!.count).toBe(5);
+    });
+
+    // 2026-06-24 BUG: the level-200 transform minted spell_chest_200, but no
+    // spell unlocks at 200 (next real spell is 300) — a dead, unspendable item
+    // that rendered as the top-tier purple chest. The drop must snap UP to the
+    // next valid spell-chest level.
+    describe('spell chest drop snaps to a REAL spell level', () => {
+      const spellChestOf = (transformId: number): string | undefined =>
+        calculateTransformRewards(transformId, 'Knight').consumables
+          .map((c) => c.id)
+          .find((id) => id.startsWith('spell_chest_'));
+
+      it('level-200 transform (id 5) drops spell_chest_300, NOT spell_chest_200', () => {
+        expect(spellChestOf(5)).toBe('spell_chest_300');
+      });
+
+      it('orphan transforms snap to the next valid level (500->600, 700->800, 900->1000)', () => {
+        expect(spellChestOf(7)).toBe('spell_chest_600');
+        expect(spellChestOf(8)).toBe('spell_chest_800');
+        expect(spellChestOf(10)).toBe('spell_chest_1000');
+      });
+
+      it('valid-level transforms are unchanged (30/50/100/150/300/800/1000)', () => {
+        expect(spellChestOf(1)).toBe('spell_chest_30');
+        expect(spellChestOf(2)).toBe('spell_chest_50');
+        expect(spellChestOf(3)).toBe('spell_chest_100');
+        expect(spellChestOf(4)).toBe('spell_chest_150');
+        expect(spellChestOf(6)).toBe('spell_chest_300');
+        expect(spellChestOf(9)).toBe('spell_chest_800');
+        expect(spellChestOf(11)).toBe('spell_chest_1000');
+      });
+
+      it('every transform that drops a spell chest uses a level in SPELL_CHEST_LEVELS', () => {
+        for (let id = 1; id <= TRANSFORM_COUNT; id++) {
+          const chest = spellChestOf(id);
+          if (!chest) continue; // suppressed drop is acceptable
+          const level = Number(chest.replace('spell_chest_', ''));
+          expect(SPELL_CHEST_LEVELS).toContain(level);
+        }
+      });
     });
 
     // 2026-05-21: replaces deleted test "should include permanent bonuses" — now tests current logic

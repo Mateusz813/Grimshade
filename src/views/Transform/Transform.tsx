@@ -1534,8 +1534,28 @@ const Transform = () => {
             fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
             addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
           }
-          // 1v1 setup — AOE/multistrike stay no-ops. Suppress lint.
-          void apply.aoe; void apply.multistrike;
+          // 2026-06-24 AOE FIX: area spells (Strzała Niebios etc.) must hit the
+          // WHOLE transform wave, not just the active target. The primary target
+          // gets the full skill damage (folded into extraDmg above); splash 75%
+          // to every OTHER alive slot (escorts 0-2 + boss slot 3). The reactive
+          // death effect (watches escortSlots/monsterHp) handles kills + the
+          // wave-clear, so here we only lower HP + show floats.
+          void apply.multistrike;
+          if (apply.aoe && !isPureBuff && skillDmg > 0) {
+            const splashDmg = Math.max(1, Math.floor(skillDmg * 0.75));
+            const escortsNow = escortSlotsRef.current;
+            for (let s = 0; s < 3; s++) {
+              if (s === targetSlot) continue;
+              const e = escortsNow[s];
+              if (!e || e.currentHp <= 0) continue;
+              applyDamageToSlot(s as 0 | 1 | 2, Math.max(0, e.currentHp - splashDmg));
+              fxRef.current.pushEnemyFloat(s, splashDmg, 'spell', { icon: getSkillIcon(skillId) });
+            }
+            if (targetSlot !== 3 && monsterHpRef.current > 0) {
+              applyDamageToSlot(3, Math.max(0, monsterHpRef.current - splashDmg));
+              fxRef.current.pushEnemyFloat(3, splashDmg, 'spell', { icon: getSkillIcon(skillId) });
+            }
+          }
           // 2026-05 v6: heal-on-cast (Promień Pustki, Pochłonięcie
           // Życia, Żniwa Dusz). Capture pre/post HP so the float shows
           // the COMPUTED heal value with a (MAX) tag when capped at
@@ -2416,7 +2436,34 @@ const Transform = () => {
       addLog(`:skull-and-crossbones: Apokalipsa Śmierci: ${apocDmg} dmg`, 'crit');
     }
     const newTargetHp = isPureBuff ? prevTargetHp : Math.max(0, prevTargetHp - skillDmg);
-    void apply.aoe; void apply.multistrike;
+    // 2026-06-24 AOE FIX: splash 75% of the skill damage to every OTHER alive
+    // wave slot (escorts + boss) so area spells hit the whole transform wave,
+    // not just the active target. The primary is applied below; the reactive
+    // death effect handles kills + wave-clear.
+    void apply.multistrike;
+    if (apply.aoe && !isPureBuff && skillDmg > 0) {
+      const splashDmg = Math.max(1, Math.floor(skillDmg * 0.75));
+      const cur = escortSlotsRef.current.slice();
+      let escortsTouched = false;
+      for (let s = 0; s < 3; s++) {
+        if (s === targetSlot) continue;
+        const e = cur[s];
+        if (!e || e.currentHp <= 0) continue;
+        cur[s] = { ...e, currentHp: Math.max(0, e.currentHp - splashDmg) };
+        escortsTouched = true;
+        fxRef.current.pushEnemyFloat(s, splashDmg, 'spell', { icon: getSkillIcon(skillId) });
+      }
+      if (escortsTouched) {
+        escortSlotsRef.current = cur;
+        setEscortSlots(cur);
+      }
+      if (targetSlot !== 3 && monsterHpRef.current > 0) {
+        const bossHp = Math.max(0, monsterHpRef.current - splashDmg);
+        monsterHpRef.current = bossHp;
+        setMonsterHp(bossHp);
+        fxRef.current.pushEnemyFloat(3, splashDmg, 'spell', { icon: getSkillIcon(skillId) });
+      }
+    }
     // Necro summon spawn — only when the local player is a necro. Note:
     // Transform is a "you become the phoenix" view — but the underlying
     // class can still be Necromancer, so the summon stack still applies
