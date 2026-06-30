@@ -59,6 +59,7 @@ import { getSkillIcon } from '../../data/skillIcons';
 import { isUpgradeMilestone } from '../../systems/systemChatMessages';
 import skillsRaw from '../../data/skills.json';
 import { getItemFile, getStoneImage, getSpellChestImage, getPotionImage, getElixirImage } from '../../systems/spriteAssets';
+import { resolveSkillRecastMs } from '../../systems/combat';
 import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combatEngine';
 import { useCombatStore } from '../../stores/combatStore';
 import { statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
@@ -2363,7 +2364,13 @@ const ActiveSkillsPopupBody = memo(() => {
                   </div>
                   <div className="inventory__skills-card-stats">
                     <span>MP {skill.mpCost}</span>
-                    <span>CD {(skill.cooldown / 1000).toFixed(1)}s</span>
+                    {/* 2026-06-24: show the EFFECTIVE combat recast, not the raw
+                        skills.json cooldown. In the main combat (hunt/boss/dungeon/
+                        transform) every spell recasts at the flat rate (~8s hunt);
+                        only a few utility spells keep their real cooldown (Krok
+                        Cienia 20s). Showing the raw 30-300s value misrepresented
+                        how often a spell actually fires. */}
+                    <span>CD {(resolveSkillRecastMs(skill.id, 8000) / 1000).toFixed(1)}s</span>
                     {skill.damage > 0 && <span>×{(skill.damage * (1 + currentBonus)).toFixed(2)} DMG{upgradeLevel > 0 && <span className="inventory__skills-card-bonus"> +{(currentBonus * 100).toFixed(0)}%</span>}</span>}
                   </div>
                 </div>

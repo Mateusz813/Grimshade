@@ -12,7 +12,10 @@ import {
     applyMonsterRarity,
     getSpeedMultiplier,
     getSpeedScaledCooldownMs,
+    resolveSkillRecastMs,
+    REAL_COOLDOWN_SKILL_IDS,
 } from './combat';
+import skillsData from '../data/skills.json';
 
 // -- calculateDamage ----------------------------------------------------------
 
@@ -358,5 +361,37 @@ describe('getSpeedScaledCooldownMs', () => {
 
     it('floors fractional results', () => {
         expect(getSpeedScaledCooldownMs(5000, 3)).toBe(1666); // 1666.67 → 1666
+    });
+});
+
+// 2026-06-24: Krok Cienia (shadow_step) — a 100%-dodge-next-3 buff — must keep
+// its real 20s cooldown even in the flat-cooldown views (hunt/boss/dungeon/
+// transform), instead of the uniform ~5-8s recast.
+describe('resolveSkillRecastMs (per-skill recast override)', () => {
+    it('shadow_step has a 20s (20000ms) cooldown in skills.json', () => {
+        const archer = (skillsData as { activeSkills: Record<string, Array<{ id: string; cooldown: number }>> })
+            .activeSkills.archer;
+        const shadowStep = archer.find((s) => s.id === 'shadow_step');
+        expect(shadowStep?.cooldown).toBe(20000);
+    });
+
+    it('honors shadow_step real cooldown (returns the LONGER of flat vs real)', () => {
+        // Flat is 5000 (boss/dungeon/transform) or 8000 (hunt); real is 20000.
+        expect(resolveSkillRecastMs('shadow_step', 5000)).toBe(20000);
+        expect(resolveSkillRecastMs('shadow_step', 8000)).toBe(20000);
+    });
+
+    it('never SHORTENS below the flat recast', () => {
+        // If a honored skill ever had a tiny cooldown, the flat floor wins.
+        expect(resolveSkillRecastMs('shadow_step', 25000)).toBe(25000);
+    });
+
+    it('returns the flat value unchanged for non-honored skills', () => {
+        expect(resolveSkillRecastMs('fireball', 5000)).toBe(5000);
+        expect(resolveSkillRecastMs('some_unknown_skill', 8000)).toBe(8000);
+    });
+
+    it('REAL_COOLDOWN_SKILL_IDS contains shadow_step', () => {
+        expect(REAL_COOLDOWN_SKILL_IDS.has('shadow_step')).toBe(true);
     });
 });

@@ -61,6 +61,7 @@ import {
   calculateDodgeChance,
   rollMonsterDamage,
   getSpeedScaledCooldownMs,
+  resolveSkillRecastMs,
 } from '../../systems/combat';
 import {
   getClassSkillBonus,
@@ -1453,7 +1454,7 @@ const Transform = () => {
           // 2026-06-21: scale the recast window by combat speed so skills fire
           // as soon as the (speed-scaled) cooldown bar empties — x2 → 2.5s,
           // x4 → 1.25s — instead of a fixed 5s wall-clock window.
-          if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMultRef.current)) continue;
+          if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMultRef.current)) continue;
           if (playerMpRef.current < SKILL_MP_COST) continue;
           // 2026-05 v7: Apokalipsa Śmierci synchronous self-cost.
           {
@@ -1523,7 +1524,7 @@ const Transform = () => {
           playerMpRef.current = newMp;
           setPlayerMp(newMp);
           skillCooldownRef.current.set(skillId, now);
-          setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+          setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
           if (sDef) applySkillBuff(skillId, sDef, speedMult);
           triggerSkillAnim(skillId);
           if (isPureBuff) {
@@ -2333,7 +2334,7 @@ const Transform = () => {
     const now = Date.now();
     const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
     // 2026-06-21: recast window scales with combat speed (see auto-cast note).
-    if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMultRef.current)) return;
+    if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMultRef.current)) return;
     if (playerMpRef.current < SKILL_MP_COST) {
       addLog('Za mało MP!', 'system');
       return;
@@ -2493,7 +2494,7 @@ const Transform = () => {
     playerMpRef.current = newMp;
     setPlayerMp(newMp);
     skillCooldownRef.current.set(skillId, now);
-    setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+    setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
     if (sDef) applySkillBuff(skillId, sDef, speedMult);
     triggerSkillAnim(skillId);
     if (isPureBuff) {
@@ -2785,7 +2786,7 @@ const Transform = () => {
           icon: getSkillIcon(skillId),
           name: skillId,
           mpCost: SKILL_MP_COST,
-          cooldownProgress: cdActive ? 1 - cdRemaining / SKILL_COOLDOWN_MS : 1,
+          cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
           cooldownRemainingMs: cdRemaining,
           disabled: skillMode === 'auto' || noMp || cdActive,
           onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),

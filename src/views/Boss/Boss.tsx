@@ -89,7 +89,7 @@ import {
     type IBossResult,
     type IBossUniqueItem,
 } from '../../systems/bossSystem';
-import { rollMonsterDamage, getSpeedScaledCooldownMs } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
@@ -1848,7 +1848,7 @@ const Boss = () => {
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
         // 2026-06-21: recast window scales with combat speed (see auto-cast note).
-        if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) return;
+        if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
@@ -1943,7 +1943,7 @@ const Boss = () => {
         playerMpRef.current = newMp;
         setPlayerMp(newMp);
         skillCooldownRef.current.set(skillId, now);
-        setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+        setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
         { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd, speedMult); }
         // Heal-on-cast effects (Void Ray heal_self_pct_dmg, Bossa Nova
         // heal_self_pct_dmg, Pochłonięcie Życia, Żniwa Dusz).
@@ -2345,7 +2345,7 @@ const Boss = () => {
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
                 // 2026-06-21: scale recast window by combat speed (x2 → 2.5s,
                 // x4 → 1.25s) to match the speed-scaled cooldown bar.
-                if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) continue;
+                if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 // 2026-05-14 spec ("jezeli stracilem poziom i nie moge
                 // uzywac danego spella a wlaczone mam auto spelle to
@@ -2431,7 +2431,7 @@ const Boss = () => {
                 playerMpRef.current = newMp;
                 setPlayerMp(newMp);
                 skillCooldownRef.current.set(skillId, now);
-                setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+                setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
                 if (sDef) applySkillBuff(skillId, sDef, speedMult);
                 triggerSkillAnim(skillId);
                 if (isPureBuff) {
@@ -4970,7 +4970,7 @@ const Boss = () => {
                                 icon: getSkillIcon(skillId),
                                 name: skillId,
                                 mpCost: SKILL_MP_COST,
-                                cooldownProgress: cdActive ? 1 - cdRemaining / SKILL_COOLDOWN_MS : 1,
+                                cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
                                 cooldownRemainingMs: cdRemaining,
                                 disabled: skillMode === 'auto' || noMp || cdActive,
                                 onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),

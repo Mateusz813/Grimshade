@@ -1,3 +1,5 @@
+import skillsData from '../data/skills.json';
+
 // -- Helpers -------------------------------------------------------------------
 
 /** Coerces any value to a finite number, returning `fallback` for NaN/Infinity/null/undefined. */
@@ -400,3 +402,46 @@ export const applyMonsterRarity = (
  */
 export const getSpeedScaledCooldownMs = (cooldownMs: number, speedMult: number): number =>
     Math.floor(Math.max(0, cooldownMs) / Math.max(1, speedMult));
+
+// -- Per-skill recast override -------------------------------------------------
+//
+// The flat-cooldown combat views (hunt / boss / dungeon / transform) give EVERY
+// spell a uniform fast recast (5-8s) and ignore each skill's own cooldown. A
+// few powerful utility spells should NOT be spammable, so they keep their real
+// `skills.json` cooldown even in those views. 2026-06-24: Krok Cienia
+// (`shadow_step`, 20s) — a 100%-dodge-next-3-attacks buff — was castable every
+// ~5s; the owner wants its real 20s leash to apply everywhere.
+
+/** skillId -> real cooldown (ms), read from skills.json active skills. */
+const SKILL_REAL_COOLDOWN_MS: Record<string, number> = (() => {
+    const map: Record<string, number> = {};
+    const active = (skillsData as {
+        activeSkills?: Record<string, Array<{ id?: string; cooldown?: number }>>;
+    }).activeSkills ?? {};
+    for (const list of Object.values(active)) {
+        for (const s of list) {
+            if (typeof s?.id === 'string' && typeof s.cooldown === 'number') {
+                map[s.id] = s.cooldown;
+            }
+        }
+    }
+    return map;
+})();
+
+/**
+ * Skills whose real (skills.json) cooldown is honored even in the flat-cooldown
+ * views, instead of the uniform fast recast.
+ */
+export const REAL_COOLDOWN_SKILL_IDS = new Set<string>(['shadow_step']);
+
+/**
+ * The recast (ms) a flat-cooldown view should use for `skillId`. Almost every
+ * skill returns `flatMs` (the view's uniform recast). Skills in
+ * `REAL_COOLDOWN_SKILL_IDS` return the LONGER of `flatMs` and their real
+ * skills.json cooldown, so a deliberately-long-CD utility spell keeps its leash.
+ * (Wrap in `getSpeedScaledCooldownMs` at gate sites, exactly like the flat value.)
+ */
+export const resolveSkillRecastMs = (skillId: string, flatMs: number): number =>
+    REAL_COOLDOWN_SKILL_IDS.has(skillId)
+        ? Math.max(flatMs, SKILL_REAL_COOLDOWN_MS[skillId] ?? flatMs)
+        : flatMs;

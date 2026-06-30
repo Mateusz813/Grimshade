@@ -4,6 +4,7 @@ import {
     calculateDamage,
     getMonsterAttackRange,
     MONSTER_STAT_MULTIPLIERS,
+    resolveSkillRecastMs,
 } from '../../systems/combat';
 import {
     getEffectiveRarityChances,
@@ -728,7 +729,7 @@ const Combat = () => {
         useCooldownStore.getState().setPctMpCooldown(cdMs);
     }, []);
     const startSkillCooldown = useCallback((skillId: string) => {
-        useCooldownStore.getState().setSkillCooldown(skillId, SKILL_COOLDOWN_MS);
+        useCooldownStore.getState().setSkillCooldown(skillId, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS));
     }, []);
 
     const ATTACK_ANIM_DURATION: Record<string, number> = {
@@ -2666,7 +2667,7 @@ const Combat = () => {
                             icon: getSkillIcon(skillId),
                             name: skillId,
                             mpCost: slotMpCost,
-                            cooldownProgress: cdActive ? 1 - cdRemaining / SKILL_COOLDOWN_MS : 1,
+                            cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
                             cooldownRemainingMs: cdRemaining,
                             disabled: skillMode === 'auto' || noMp || cdActive,
                             onClick: () => doUseSkill(i as 0 | 1 | 2 | 3),

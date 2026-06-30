@@ -26,7 +26,7 @@ import {
     type DungeonMonsterType,
 } from '../../systems/dungeonSystem';
 // Dungeon combat uses simplified damage calculation (no skills/crits)
-import { rollMonsterDamage, getSpeedScaledCooldownMs } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
@@ -1440,7 +1440,7 @@ const Dungeon = () => {
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
         // 2026-06-21: recast window scales with combat speed (see auto-cast note).
-        if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) return;
+        if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
@@ -1531,7 +1531,7 @@ const Dungeon = () => {
         playerMpRef.current = newMp;
         setPlayerMp(newMp);
         skillCooldownRef.current.set(skillId, now);
-        setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+        setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
         { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd, speedMult); }
         // 2026-05 v7: track total damage dealt this cast (primary +
         // splash) — Żniwa Dusz `aoe;heal_self_pct_dmg:50` heals on the
@@ -1869,7 +1869,7 @@ const Dungeon = () => {
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
                 // 2026-06-21: scale recast window by combat speed (x2 → 2.5s,
                 // x4 → 1.25s) to match the speed-scaled cooldown bar.
-                if (now - lastUsed < getSpeedScaledCooldownMs(SKILL_COOLDOWN_MS, speedMult)) continue;
+                if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 const tgt = getFirstAliveSlot();
                 if (tgt < 0) break;
@@ -1946,7 +1946,7 @@ const Dungeon = () => {
                 playerMpRef.current = newMp;
                 setPlayerMp(newMp);
                 skillCooldownRef.current.set(skillId, now);
-                setSkillCooldowns((prev) => ({ ...prev, [skillId]: SKILL_COOLDOWN_MS }));
+                setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
                 { const sd2 = getSkillDef(skillId); if (sd2) applySkillBuff(skillId, sd2, speedMult); }
                 triggerSkillAnim(skillId);
                 if (!targetsEnemyAuto) {
@@ -2894,7 +2894,7 @@ const Dungeon = () => {
                                 icon: getSkillIcon(skillId),
                                 name: skillId,
                                 mpCost: SKILL_MP_COST,
-                                cooldownProgress: cdActive ? 1 - cdRemaining / SKILL_COOLDOWN_MS : 1,
+                                cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
                                 cooldownRemainingMs: cdRemaining,
                                 disabled: skillMode === 'auto' || noMp || cdActive,
                                 onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),

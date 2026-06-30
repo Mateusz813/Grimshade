@@ -647,7 +647,7 @@
         "name_pl": "Krok Cienia",
         "name_en": "Shadow Step",
         "mpCost": 50,
-        "cooldown": 30000,
+        "cooldown": 20000,
         "damage": 0,
         "effect": "dodge_next:3:non_magic",
         "unlockLevel": 80,
