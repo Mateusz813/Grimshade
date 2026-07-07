@@ -192,6 +192,11 @@ const CharacterCreate = () => {
       useInventoryStore.getState().addItem(starterItem);
       useInventoryStore.getState().equipItem(starterItem.uuid, 'mainHand');
 
+      // 2026-06-24: starter consumables — every new character gets 30× of the
+      // smallest HP + MP potions so they have healing from the very first fight.
+      useInventoryStore.getState().addConsumable('hp_potion_sm', 30);
+      useInventoryStore.getState().addConsumable('mp_potion_sm', 30);
+
       setCharacter(character);
       navigate('/');
     } catch {

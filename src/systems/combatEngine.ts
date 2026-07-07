@@ -1442,8 +1442,11 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
         } else {
             s.addLog(`Giniesz… ${skillPctTxt}`, 'system');
         }
-        // Items are lost on UNPROTECTED death only.
-        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+        // Items are lost on UNPROTECTED death only, and only from level 51+ —
+        // the lvl 1-50 beginner grace is enforced inside applyDeathItemLoss
+        // (it returns 0 for graced levels). The level/XP/skill penalty above
+        // still applies.
+        const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
         if (itemsLost > 0) {
             s.addLog(`:skull: Straciłeś ${itemsLost} przedmiot(ów) przy śmierci!`, 'system');
         }

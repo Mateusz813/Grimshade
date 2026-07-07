@@ -123,7 +123,8 @@ export const applyCombatLeaveDeath = ({
     useCharacterStore.getState().fullHealEffective();
     useSkillStore.getState().applyDeathPenalty(char.class, penalty.skillXpLossPercent);
     useSkillStore.getState().purgeLockedSkillSlots(char.class, penalty.newLevel);
-    useInventoryStore.getState().applyDeathItemLoss(false);
+    // Item loss only from level 51+ (lvl 1-50 beginner grace) — enforced inside.
+    useInventoryStore.getState().applyDeathItemLoss(false, char.level);
     useCombatStore.getState().clearCombatSession();
 
     // Sync save BEFORE the death overlay triggers — overlay auto-navigates

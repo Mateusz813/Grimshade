@@ -576,23 +576,41 @@ describe('updateItemBonuses', () => {
 // -- Death loss ---------------------------------------------------------------
 
 describe('applyDeathItemLoss', () => {
+    // deathLevel 100 = above the lvl 1-50 beginner grace, so items are at risk.
     it('returns 0 and changes nothing when protected by AOL', () => {
         useInventoryStore.setState({ bag: [makeItem(), makeItem()] });
-        const lost = useInventoryStore.getState().applyDeathItemLoss(true);
+        const lost = useInventoryStore.getState().applyDeathItemLoss(true, 100);
         expect(lost).toBe(0);
         expect(useInventoryStore.getState().bag).toHaveLength(2);
     });
 
     it('returns 0 when nothing is in the bag or equipped', () => {
-        const lost = useInventoryStore.getState().applyDeathItemLoss(false);
+        const lost = useInventoryStore.getState().applyDeathItemLoss(false, 100);
         expect(lost).toBe(0);
     });
 
-    it('removes at least 1 item when the pool is non-empty (5%, min 1)', () => {
+    it('removes at least 1 item when the pool is non-empty (5%, min 1) at lvl 51+', () => {
         useInventoryStore.setState({ bag: [makeItem(), makeItem()] });
-        const lost = useInventoryStore.getState().applyDeathItemLoss(false);
+        const lost = useInventoryStore.getState().applyDeathItemLoss(false, 100);
         expect(lost).toBeGreaterThanOrEqual(1);
         expect(useInventoryStore.getState().bag.length).toBeLessThanOrEqual(1);
+    });
+
+    // 2026-06-24: lvl 1-50 beginner grace — no item loss even unprotected.
+    it('loses NOTHING at level <= 50 (beginner grace), even with a full bag', () => {
+        useInventoryStore.setState({ bag: [makeItem(), makeItem(), makeItem()] });
+        for (const lvl of [1, 25, 50]) {
+            const lost = useInventoryStore.getState().applyDeathItemLoss(false, lvl);
+            expect(lost).toBe(0);
+        }
+        expect(useInventoryStore.getState().bag).toHaveLength(3);
+    });
+
+    it('boundary: level 50 is protected, level 51 loses items', () => {
+        useInventoryStore.setState({ bag: [makeItem(), makeItem()] });
+        expect(useInventoryStore.getState().applyDeathItemLoss(false, 50)).toBe(0);
+        expect(useInventoryStore.getState().bag).toHaveLength(2);
+        expect(useInventoryStore.getState().applyDeathItemLoss(false, 51)).toBeGreaterThanOrEqual(1);
     });
 });
 

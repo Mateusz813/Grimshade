@@ -1357,7 +1357,7 @@ const Dungeon = () => {
                 }
 
                 // Item loss happens on UNPROTECTED DEATH ONLY.
-                const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+                const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
                 if (itemsLost > 0) {
                     addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
                 }

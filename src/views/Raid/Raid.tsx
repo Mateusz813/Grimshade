@@ -2909,7 +2909,7 @@ const Raid = () => {
             skillXpLossPercent = p.skillXpLossPercent;
             addLog(`:skull: Wipe! Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
             // Item loss happens on UNPROTECTED DEATH ONLY.
-            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
             if (itemsLost > 0) {
                 addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy wipe!`);
             }
@@ -3090,7 +3090,7 @@ const Raid = () => {
             skillXpLossPercent = p.skillXpLossPercent;
             addLog(`:skull: Wracasz do miasta. Kara: -${p.levelsLost} lvl · -${p.skillXpLossPercent}% Skill XP`);
             // Item loss happens on UNPROTECTED DEATH ONLY.
-            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
             if (itemsLost > 0) {
                 addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow)!`);
             }

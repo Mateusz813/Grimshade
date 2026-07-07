@@ -1971,7 +1971,7 @@ const Transform = () => {
           skillXpLossPercentForPopup = penalty.skillXpLossPercent;
 
           // Item loss happens on UNPROTECTED DEATH ONLY.
-          const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+          const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
           if (itemsLost > 0) {
             addLog(`Stracileś ${itemsLost} przedmiot(ow) przy smierci!`, 'system');
           }

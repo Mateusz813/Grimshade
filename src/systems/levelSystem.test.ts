@@ -8,6 +8,8 @@ import {
     applyFleePenalty,
     getDeathLossLevels,
     getFleeLossLevels,
+    losesItemsOnDeath,
+    ITEM_LOSS_GRACE_MAX_LEVEL,
     xpProgress,
 } from './levelSystem';
 
@@ -232,5 +234,24 @@ describe('xpProgress', () => {
 
     it('is clamped to 1', () => {
         expect(xpProgress(999_999, 1)).toBe(1);
+    });
+});
+
+// -- losesItemsOnDeath (2026-06-24 beginner item-loss grace) ------------------
+describe('losesItemsOnDeath', () => {
+    it('grace ceiling is level 50', () => {
+        expect(ITEM_LOSS_GRACE_MAX_LEVEL).toBe(50);
+    });
+
+    it('lvl 1-50 are protected (no item loss)', () => {
+        for (const lvl of [1, 25, 49, 50]) {
+            expect(losesItemsOnDeath(lvl)).toBe(false);
+        }
+    });
+
+    it('lvl 51+ can lose items', () => {
+        for (const lvl of [51, 100, 1000]) {
+            expect(losesItemsOnDeath(lvl)).toBe(true);
+        }
     });
 });

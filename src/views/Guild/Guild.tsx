@@ -1063,8 +1063,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     });
                 }
             }
-            setBoss(bossRow);
-            liveBossHpRef.current = bossRow.boss_current_hp;
             const [contrib, all, todayAtt, weeklyAtt] = await Promise.all([
                 guildApi.fetchContribution({
                     guildId: guild.id,
@@ -1075,6 +1073,16 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 guildApi.listAttemptsToday({ guildId: guild.id, characterId: character.id }),
                 guildApi.listWeeklyAttempts({ guildId: guild.id, weekStart: bossRow.week_start }),
             ]);
+            // 2026-06-24 EXPLOIT FIX: set boss + attemptedToday in the SAME batch,
+            // AFTER the attempts resolve. Previously setBoss ran BEFORE this await,
+            // so the boss UI (incl. the "Atakuj bossa" button) rendered while
+            // attemptedToday was still its initial `false` — canAttackToday was
+            // briefly `true`, letting a player who had ALREADY used today's attempt
+            // click through and enter combat again (up to 6×/day, dealing boss
+            // damage each time). Now the button never renders until the real
+            // daily-attempt count is known, so there is no clickable window.
+            setBoss(bossRow);
+            liveBossHpRef.current = bossRow.boss_current_hp;
             setContribution(contrib);
             setContributions(all);
             setAttempts(weeklyAtt);

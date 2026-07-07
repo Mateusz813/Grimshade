@@ -1771,8 +1771,8 @@ const Boss = () => {
                     addLog(`:skull: Zginąłeś w walce z ${boss.name_pl}! ${skillPctTxt}`, 'system');
                 }
 
-                // Item loss happens on UNPROTECTED DEATH ONLY.
-                const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+                // Item loss happens on UNPROTECTED DEATH ONLY (lvl 51+; grace inside).
+                const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
                 if (itemsLost > 0) {
                     addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
                 }
@@ -4066,8 +4066,8 @@ const Boss = () => {
             useCharacterStore.getState().fullHealEffective();
             useSkillStore.getState().applyDeathPenalty(ch.class, penalty.skillXpLossPercent);
             useSkillStore.getState().purgeLockedSkillSlots(ch.class, penalty.newLevel);
-            // Item loss happens on UNPROTECTED DEATH ONLY.
-            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false);
+            // Item loss happens on UNPROTECTED DEATH ONLY (lvl 51+; grace inside).
+            const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, ch.level);
             if (itemsLost > 0) {
                 addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
             }

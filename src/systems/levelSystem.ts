@@ -173,6 +173,18 @@ export const getFleeLossLevels = (level: number): number =>
     getDeathLossLevels(level) * 0.10;
 
 /**
+ * Item-loss grace period (2026-06-24 owner request): characters at or below this
+ * level NEVER lose items on death. The level / XP / skill-XP penalty STILL
+ * applies — only the 5% item loss is skipped — so new players (lvl 1-50) don't
+ * lose gear while learning the game.
+ */
+export const ITEM_LOSS_GRACE_MAX_LEVEL = 50;
+
+/** True if a death at `level` risks item loss (only from level 51 upward). */
+export const losesItemsOnDeath = (level: number): boolean =>
+    level > ITEM_LOSS_GRACE_MAX_LEVEL;
+
+/**
  * Apply a fractional `lossLevels` reduction to a (level, xp) position and
  * recompute the resulting level + remaining XP. Works on the continuous
  * "exact position" axis = level + (xp / xpToNextLevel(level)).

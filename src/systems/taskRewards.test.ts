@@ -7,6 +7,7 @@ import {
     type IMonsterRewardSource,
 } from './taskRewards';
 import monstersData from '../data/monsters.json';
+import tasksData from '../data/tasks.json';
 
 // -- Fixtures -----------------------------------------------------------------
 const makeMonster = (overrides?: Partial<IMonsterRewardSource>): IMonsterRewardSource => ({
@@ -171,5 +172,37 @@ describe('computeTaskRewards', () => {
         const result = computeTaskRewards(monster, 1_000_000);
         expect(result.rewardXp).toBeGreaterThan(0);
         expect(result.rewardGold).toBeGreaterThan(0);
+    });
+});
+
+// -- 100k-kill task tier (2026-06-24) ----------------------------------------
+describe('100k-kill task tier', () => {
+    const tasks = tasksData as Array<{ id: string; monsterId: string; killCount: number }>;
+
+    it('every monster with a 10k task also has a 100k task', () => {
+        const with10k = new Set(tasks.filter((t) => t.killCount === 10000).map((t) => t.monsterId));
+        const with100k = new Set(tasks.filter((t) => t.killCount === 100000).map((t) => t.monsterId));
+        expect(with100k.size).toBe(with10k.size);
+        expect(with100k.size).toBeGreaterThan(0);
+        for (const id of with10k) expect(with100k.has(id)).toBe(true);
+    });
+
+    it('100k tasks are id `<monster>_100000` with killCount 100000', () => {
+        const k = tasks.filter((t) => t.killCount === 100000);
+        for (const t of k) {
+            expect(t.id).toBe(`${t.monsterId}_100000`);
+            expect(t.killCount).toBe(100000);
+        }
+    });
+
+    it('reward is linear: the 100k task pays exactly 10x the 10k task', () => {
+        // The UI + claim both use computeTaskRewards (linear in killCount), so a
+        // 100k task is worth exactly 10x the 10k task for the same monster.
+        const monsters = monstersData as unknown as Array<IMonsterRewardSource & { id: string }>;
+        const rat = monsters.find((m) => m.id === 'rat')!;
+        const r10k = computeTaskRewards(rat, 10000);
+        const r100k = computeTaskRewards(rat, 100000);
+        expect(r100k.rewardGold).toBe(r10k.rewardGold * 10);
+        expect(r100k.rewardXp).toBe(r10k.rewardXp * 10);
     });
 });

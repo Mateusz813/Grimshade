@@ -16,6 +16,7 @@ import {
 import itemsRaw from '../data/items.json';
 import { useSettingsStore } from './settingsStore';
 import { isHpMpPotionId, getPotionMinLevel } from '../systems/potionGating';
+import { losesItemsOnDeath } from '../systems/levelSystem';
 
 // 2026-06-21: live character-level getter used by `useConsumable` to
 // level-gate HP/MP potions. `characterStore` imports `inventoryStore` (NOT the
@@ -221,10 +222,12 @@ interface IInventoryStore {
   withdrawItem: (uuid: string) => boolean;
   /**
    * Apply 5% random item loss across bag + equipped items (deposit untouched).
-   * If `protected` is true, no items are lost (caller already consumed an AOL).
-   * Returns the number of items destroyed.
+   * No items are lost when `protectedByAol` is true (caller consumed an AOL) OR
+   * when `deathLevel` is within the beginner grace period (lvl 1-50) — see
+   * `losesItemsOnDeath`. `deathLevel` must be the character's level AT DEATH
+   * (before the death penalty reduces it). Returns the number of items destroyed.
    */
-  applyDeathItemLoss: (protectedByAol: boolean) => number;
+  applyDeathItemLoss: (protectedByAol: boolean, deathLevel: number) => number;
 }
 
 export const useInventoryStore = create<IInventoryStore>()(
@@ -538,8 +541,11 @@ export const useInventoryStore = create<IInventoryStore>()(
         return true;
       },
 
-      applyDeathItemLoss: (protectedByAol) => {
-        if (protectedByAol) return 0;
+      applyDeathItemLoss: (protectedByAol, deathLevel) => {
+        // 2026-06-24: no item loss when AOL-protected OR within the lvl 1-50
+        // beginner grace period. Single enforcement point for every death path
+        // (hunt / boss / dungeon / raid / transform / combat-leave).
+        if (protectedByAol || !losesItemsOnDeath(deathLevel)) return 0;
         const { bag, equipment } = get();
 
         // Build pool of all "at risk" items (bag + equipped). Deposit excluded.
