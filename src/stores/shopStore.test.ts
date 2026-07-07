@@ -87,7 +87,7 @@ vi.mock('../systems/dailyQuestSystem', async () => {
     };
 });
 
-import { useShopStore, ELIXIRS, type IElixir, generateShopItems, buyArenaItem } from './shopStore';
+import { useShopStore, ELIXIRS, type IElixir, generateShopItems, buyArenaItem, getArenaShopCatalog } from './shopStore';
 import { getTodayKey } from '../systems/dailyQuestSystem';
 
 // -- Fixtures -----------------------------------------------------------------
@@ -438,6 +438,25 @@ describe('buyArenaItem', () => {
         expect(r).toBe('ok');
         expect(addStonesMock).toHaveBeenCalledWith('common_stone', 1);
         expect(invState.arenaPoints).toBe(50);
+    });
+
+    // 2026-06-24: mythic stone was missing from the arena shop.
+    it('grants a MYTHIC stone from the arena shop (arena_stone_mythic)', () => {
+        invState.arenaPoints = 10_000;
+        const r = buyArenaItem(
+            { id: 'arena_stone_mythic', name_pl: 'Kamień (Mythic)', description_pl: '', icon: 'gem-stone', apPrice: 6000, kind: 'stone', payloadId: 'mythic_stone' },
+            50,
+        );
+        expect(r).toBe('ok');
+        expect(addStonesMock).toHaveBeenCalledWith('mythic_stone', 1);
+        expect(invState.arenaPoints).toBe(4000);
+    });
+
+    it('arena shop catalog lists a mythic stone (kind stone, payload mythic_stone)', () => {
+        const mythic = getArenaShopCatalog().find((i) => i.payloadId === 'mythic_stone');
+        expect(mythic).toBeDefined();
+        expect(mythic?.kind).toBe('stone');
+        expect(mythic?.id).toBe('arena_stone_mythic');
     });
 
     it('adds a consumable for kind=potion / elixir (at/above the payload unlock level)', () => {

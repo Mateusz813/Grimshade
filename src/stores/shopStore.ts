@@ -522,6 +522,10 @@ const ARENA_STONES: IArenaShopItem[] = [
   { id: 'arena_stone_rare',      name_pl: 'Kamień (Rare)',      description_pl: 'Kamień ulepszenia rare.',      icon: 'blue-circle', apPrice: 200,   kind: 'stone', payloadId: 'rare_stone' },
   { id: 'arena_stone_epic',      name_pl: 'Kamień (Epic)',      description_pl: 'Kamień ulepszenia epic.',      icon: 'purple-circle', apPrice: 800,   kind: 'stone', payloadId: 'epic_stone' },
   { id: 'arena_stone_legendary', name_pl: 'Kamień (Legendary)', description_pl: 'Kamień ulepszenia legendary.', icon: 'yellow-circle', apPrice: 3000,  kind: 'stone', payloadId: 'legendary_stone' },
+  // 2026-06-24: mythic stone was missing from the arena shop. Sits between
+  // legendary and heroic in the rarity/price ladder (STONE_CONVERSION_CHAIN).
+  // Uses the mythic stone's own 'gem-stone' icon (red-circle is already heroic).
+  { id: 'arena_stone_mythic',    name_pl: 'Kamień (Mythic)',    description_pl: 'Kamień ulepszenia mythic.',    icon: 'gem-stone', apPrice: 6000,  kind: 'stone', payloadId: 'mythic_stone' },
   { id: 'arena_stone_heroic',    name_pl: 'Kamień (Heroic)',    description_pl: 'Bardzo rzadki kamień heroic.', icon: 'red-circle', apPrice: 12000, kind: 'stone', payloadId: 'heroic_stone' },
 ];
 

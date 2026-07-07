@@ -77,6 +77,19 @@ interface ISettingsState {
   setBossFilterMinLevel: (val: number) => void;
   setBossFilterSortDesc: (val: boolean) => void;
 
+  /** Quests "taski" section filters/sort — same per-character persistence
+   *  pattern as the hunt/dungeon/raid/boss list filters above. Persists the
+   *  Available-only / Inactive-only / descending-sort toggles + the "Lvl od…"
+   *  input so the player's task view preferences survive reloads. */
+  taskFilterAvailableOnly: boolean;
+  taskFilterInactiveOnly: boolean;
+  taskFilterSortDesc: boolean;
+  taskFilterLvlFrom: string;
+  setTaskFilterAvailableOnly: (val: boolean) => void;
+  setTaskFilterInactiveOnly: (val: boolean) => void;
+  setTaskFilterSortDesc: (val: boolean) => void;
+  setTaskFilterLvlFrom: (val: string) => void;
+
   setShowCombatXpBar: (val: boolean) => void;
   setKeepScreenAwake: (val: boolean) => void;
   setLanguage: (lang: Language) => void;
@@ -178,6 +191,19 @@ export const useSettingsStore = create<ISettingsState>()(
       setBossFilterMinLevel: (bossFilterMinLevel) =>
           set({ bossFilterMinLevel: Math.max(0, Math.floor(bossFilterMinLevel || 0)) }),
       setBossFilterSortDesc: (bossFilterSortDesc) => set({ bossFilterSortDesc }),
+
+      // Quests "taski" filters/sort — persisted per-character (characterScope)
+      // so the Available/Inactive/sort toggles + "Lvl od…" input survive
+      // reloads. Defaults are "show everything, ascending" so existing chars
+      // open the task list exactly as before.
+      taskFilterAvailableOnly: false,
+      taskFilterInactiveOnly: false,
+      taskFilterSortDesc: false,
+      taskFilterLvlFrom: '',
+      setTaskFilterAvailableOnly: (taskFilterAvailableOnly) => set({ taskFilterAvailableOnly }),
+      setTaskFilterInactiveOnly: (taskFilterInactiveOnly) => set({ taskFilterInactiveOnly }),
+      setTaskFilterSortDesc: (taskFilterSortDesc) => set({ taskFilterSortDesc }),
+      setTaskFilterLvlFrom: (taskFilterLvlFrom) => set({ taskFilterLvlFrom }),
 
       setShowCombatXpBar: (showCombatXpBar) => {
         localStorage.setItem('showCombatXpBar', String(showCombatXpBar));

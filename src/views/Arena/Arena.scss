@@ -156,6 +156,13 @@
         gap: $spacing-sm;
         margin-top: $spacing-sm;
         flex-wrap: wrap;
+        // 2026-06-24: on mobile the 2-3 action chips (incl. the long "Odbierz
+        // nagrody" claim) didn't fit one line and wrapped mid-text, jumbling the
+        // row ("rozjeżdżają się i przeskakują do wiersza poniżej"). Stack them
+        // full-width so they line up cleanly one per row instead.
+        @include mobile-only {
+            .arena__action-chip { flex: 1 1 100%; }
+        }
     }
     &__action-chip {
         background: rgba(255, 255, 255, 0.06);
@@ -166,6 +173,8 @@
         cursor: pointer;
         font-size: $font-xs;
         font-weight: 600;
+        white-space: nowrap;   // never wrap mid-text -> even chip heights
+        text-align: center;
         &:hover { background: rgba(255, 255, 255, 0.10); }
         &--claim {
             background: linear-gradient(135deg, #43a047, #2e7d32);

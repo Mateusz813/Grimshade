@@ -32,6 +32,7 @@ import { useSkillStore } from '../../src/stores/skillStore';
 import { useTaskStore } from '../../src/stores/taskStore';
 import { useQuestStore } from '../../src/stores/questStore';
 import { useMasteryStore } from '../../src/stores/masteryStore';
+import { useSettingsStore } from '../../src/stores/settingsStore';
 import { EMPTY_EQUIPMENT, buildItem } from '../../src/systems/itemSystem';
 
 // -- Fixtures -----------------------------------------------------------------
@@ -275,6 +276,33 @@ describe('characterScope: save -> restore round-trip preserves state', () => {
         // (i.e. somebody adding new state but forgetting to clear in beforeEach)
         // also tank the test.
         expect(after).toEqual(before);
+    });
+
+    it('persists Quests task filters/sort across save -> restore (settings slice)', async () => {
+        // 2026-06-24: the "taski" Available/Inactive/sort toggles + "Lvl od…"
+        // input now live in settingsStore and must survive a reload.
+        await switchToCharacter(CHAR_ID);
+        useCharacterStore.getState().setCharacter(makeChar());
+        useSettingsStore.setState({
+            taskFilterAvailableOnly: true,
+            taskFilterInactiveOnly: true,
+            taskFilterSortDesc: true,
+            taskFilterLvlFrom: '65',
+        });
+        saveCurrentCharacterStoresSync();
+        // Wipe the settings back to defaults (simulating a fresh boot).
+        useSettingsStore.setState({
+            taskFilterAvailableOnly: false,
+            taskFilterInactiveOnly: false,
+            taskFilterSortDesc: false,
+            taskFilterLvlFrom: '',
+        });
+        expect(restoreFromLocalStorageSync(CHAR_ID)).toBe(true);
+        const s = useSettingsStore.getState();
+        expect(s.taskFilterAvailableOnly).toBe(true);
+        expect(s.taskFilterInactiveOnly).toBe(true);
+        expect(s.taskFilterSortDesc).toBe(true);
+        expect(s.taskFilterLvlFrom).toBe('65');
     });
 
     it('returns false when no save exists for the character', () => {

@@ -97,9 +97,31 @@ textarea,
 select {
   font-family: inherit;
   /* 16px minimum — anything smaller makes iOS Safari auto-zoom the page on
-     focus, and in a PWA the user can't pinch back out. Forcing 16px on every
-     text field app-wide kills that zoom. (Do NOT lower below 16px.) */
+     focus, and in a PWA the user can't pinch back out. (Do NOT lower below 16px.) */
   font-size: 16px;
+}
+
+/* 2026-06-24 — CRITICAL iOS/touch focus-zoom killer.
+   The rule above is element-specificity (0,0,1); many per-view SCSS rules style
+   inputs by CLASS (higher specificity) or by a later-loaded `input {}` element
+   rule (later source order), silently shrinking fields back below 16px so iOS
+   Safari zooms the whole app on focus. This guard uses `!important`, which beats
+   EVERY such override regardless of specificity or load order, so NO input can
+   ever render below 16px on a touch device.
+   Scoped to `pointer: coarse` (every touch device — phones + tablets, i.e. the
+   only devices that auto-zoom on focus) OR narrow viewports (<=767px), so it
+   also covers iPad portrait and is verifiable at a mobile viewport width, while
+   a wide mouse/desktop window keeps its designed smaller field sizing.
+   Checkbox/radio/range are excluded (they never text-zoom and 16px would
+   distort their control box); [contenteditable] is included (e.g. rich inputs). */
+@media (pointer: coarse), (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select,
+  [contenteditable='true'],
+  [contenteditable=''] {
+    font-size: 16px !important;
+  }
 }
 
 img,

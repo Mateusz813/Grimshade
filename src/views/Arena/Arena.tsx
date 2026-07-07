@@ -101,7 +101,16 @@ const Arena = () => {
     // chrome visible while the player lands centred on themselves.
     useEffect(() => {
         if (!currentArena) return;
+        // 2026-06-24: center on the player's own row EXACTLY ONCE per view mount,
+        // then never again. `currentArena`'s object reference is REPLACED
+        // post-mount by submitDefenseSnapshot (sync) and the async
+        // injectOtherPlayers (after the Supabase fetch), which used to re-run
+        // this effect and yank scrollTop back to the player — making the
+        // leaderboard impossible to browse (it kept snapping back). The ref guard
+        // lets the player scroll freely after the initial auto-center.
+        if (hasCentredRef.current) return;
         const raf = requestAnimationFrame(() => {
+            if (hasCentredRef.current) return; // a concurrent rAF already centered
             const row = meRowRef.current;
             if (!row) return;
             // Walk up to the scroll container (.arena__list).
@@ -118,6 +127,10 @@ const Arena = () => {
             const offsetWithinList = rowRect.top - listRect.top + list.scrollTop;
             const target = offsetWithinList - (list.clientHeight / 2) + (rowRect.height / 2);
             list.scrollTop = Math.max(0, target);
+            // Mark centered only after a SUCCESSFUL center (row was found), so if
+            // the row isn't mounted yet on the first pass a later render still
+            // gets its one shot.
+            hasCentredRef.current = true;
         });
         return () => cancelAnimationFrame(raf);
     }, [currentArena]);
@@ -144,6 +157,9 @@ const Arena = () => {
     // an effect so the user lands centred on themselves rather than at
     // rank #1 every time they open the arena.
     const meRowRef = useRef<HTMLDivElement | null>(null);
+    // One-shot guard: true once we've auto-centered on the player's row, so
+    // later currentArena reference changes never re-yank the scroll position.
+    const hasCentredRef = useRef(false);
 
     if (!character) {
         return <div className="arena"><Spinner size="lg" /></div>;

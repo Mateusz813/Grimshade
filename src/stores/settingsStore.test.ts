@@ -47,6 +47,10 @@ const DEFAULTS = {
     bossFilterAvailableOnly: false,
     bossFilterMinLevel: 0,
     bossFilterSortDesc: false,
+    taskFilterAvailableOnly: false,
+    taskFilterInactiveOnly: false,
+    taskFilterSortDesc: false,
+    taskFilterLvlFrom: '',
 };
 
 beforeEach(() => {
@@ -236,5 +240,30 @@ describe('list filter setters', () => {
         // a stray bad number doesn't blow up the hub.
         useSettingsStore.getState().setHuntFilterMinLevel(Number.NaN);
         expect(useSettingsStore.getState().huntFilterMinLevel).toBe(0);
+    });
+});
+
+// 2026-06-24: Quests "taski" filters/sort — persisted per-character so they
+// survive reloads (registered in characterScope stateKeys alongside the other
+// *Filter* controls).
+describe('task filter/sort setters (persisted)', () => {
+    it('default to show-everything / ascending / no level floor', () => {
+        const s = useSettingsStore.getState();
+        expect(s.taskFilterAvailableOnly).toBe(false);
+        expect(s.taskFilterInactiveOnly).toBe(false);
+        expect(s.taskFilterSortDesc).toBe(false);
+        expect(s.taskFilterLvlFrom).toBe('');
+    });
+
+    it('setters update each field', () => {
+        useSettingsStore.getState().setTaskFilterAvailableOnly(true);
+        useSettingsStore.getState().setTaskFilterInactiveOnly(true);
+        useSettingsStore.getState().setTaskFilterSortDesc(true);
+        useSettingsStore.getState().setTaskFilterLvlFrom('65');
+        const s = useSettingsStore.getState();
+        expect(s.taskFilterAvailableOnly).toBe(true);
+        expect(s.taskFilterInactiveOnly).toBe(true);
+        expect(s.taskFilterSortDesc).toBe(true);
+        expect(s.taskFilterLvlFrom).toBe('65');
     });
 });

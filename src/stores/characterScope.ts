@@ -257,6 +257,9 @@ const STORE_ENTRIES: IStoreEntry[] = [
       // so the boss hub gets its own narrowing controls without leaking into
       // sibling hubs.
       bossFilterAvailableOnly: false, bossFilterMinLevel: 0, bossFilterSortDesc: false,
+      // Quests "taski" filters/sort — persisted per-character so they survive
+      // reloads (same contract as the hunt/dungeon/raid/boss filters above).
+      taskFilterAvailableOnly: false, taskFilterInactiveOnly: false, taskFilterSortDesc: false, taskFilterLvlFrom: '',
     }),
     stateKeys: [
       'language', 'combatSpeed', 'skillMode',
@@ -272,6 +275,7 @@ const STORE_ENTRIES: IStoreEntry[] = [
       'dungeonFilterAvailableOnly', 'dungeonFilterMinLevel', 'dungeonFilterSortDesc',
       'raidFilterAvailableOnly', 'raidFilterMinLevel', 'raidFilterSortDesc',
       'bossFilterAvailableOnly', 'bossFilterMinLevel', 'bossFilterSortDesc',
+      'taskFilterAvailableOnly', 'taskFilterInactiveOnly', 'taskFilterSortDesc', 'taskFilterLvlFrom',
     ],
   },
   {

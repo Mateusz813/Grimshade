@@ -9,6 +9,7 @@ import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { useTaskStore } from '../../stores/taskStore';
 import type { ITask } from '../../stores/taskStore';
 import { useMasteryStore, MASTERY_MAX_LEVEL, MASTERY_KILL_THRESHOLD } from '../../stores/masteryStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { getMonsterUnlockStatus } from '../../systems/progression';
 import { computeTaskRewards } from '../../systems/taskRewards';
 import tasksRaw from '../../data/tasks.json';
@@ -307,7 +308,11 @@ const Quests = () => {
   // to jump straight to "show me the level-65 stuff" — these two state
   // pairs back the controls below the section header.
   const [taskPage, setTaskPage] = useState(0);
-  const [taskLvlFilter, setTaskLvlFilter] = useState<string>(''); // empty = all, otherwise show level >= input
+  // 2026-06-24: task filters/sort persist per-character via settingsStore
+  // (characterScope) so the player's choices survive reloads. Same names as the
+  // old local state so the JSX below is unchanged.
+  const taskLvlFilter = useSettingsStore((s) => s.taskFilterLvlFrom); // empty = all, otherwise show level >= input
+  const setTaskLvlFilter = useSettingsStore((s) => s.setTaskFilterLvlFrom);
   // Cancel-task confirm modal target. Holds `{id, name}` while the dialog
   // is open, null when closed. The user explicitly asked for a confirm
   // popup before dropping a task — without it accidental clicks would
@@ -319,15 +324,18 @@ const Quests = () => {
   // Toggle: when on, hides locked / slot-blocked monsters so only the
   // tasks the player can immediately START are shown. Off by default
   // because the full list is informative for planning.
-  const [taskAvailableOnly, setTaskAvailableOnly] = useState(false);
+  const taskAvailableOnly = useSettingsStore((s) => s.taskFilterAvailableOnly);
+  const setTaskAvailableOnly = useSettingsStore((s) => s.setTaskFilterAvailableOnly);
   // Toggle: when on, hides any monster that already has an active task
   // on it. Useful for finding "fresh" monsters to start grinding without
   // scrolling past every entry the player is already busy on.
-  const [taskInactiveOnly, setTaskInactiveOnly] = useState(false);
+  const taskInactiveOnly = useSettingsStore((s) => s.taskFilterInactiveOnly);
+  const setTaskInactiveOnly = useSettingsStore((s) => s.setTaskFilterInactiveOnly);
   // Toggle: when on, sort monsters from HIGHEST level to lowest
   // (default direction is ascending). Mirrors how players plan their
   // grind — start from the toughest unlocked monster and walk down.
-  const [taskSortDesc, setTaskSortDesc] = useState(false);
+  const taskSortDesc = useSettingsStore((s) => s.taskFilterSortDesc);
+  const setTaskSortDesc = useSettingsStore((s) => s.setTaskFilterSortDesc);
   const [questPage, setQuestPage] = useState(0);
   const [questLvlFilter, setQuestLvlFilter] = useState<string>('');
   const [claimSummary, setClaimSummary] = useState<IClaimSummary | null>(null);
@@ -1133,7 +1141,7 @@ const Quests = () => {
           <button
             type="button"
             className={`quests__filter-chip${taskAvailableOnly ? ' quests__filter-chip--on' : ''}`}
-            onClick={() => { setTaskAvailableOnly((v) => !v); setTaskPage(0); }}
+            onClick={() => { setTaskAvailableOnly(!taskAvailableOnly); setTaskPage(0); }}
             title="Pokaż tylko taski, które możesz teraz zacząć"
           >
             <GameIcon name="check-mark-button" /> Dostępne taski
@@ -1141,7 +1149,7 @@ const Quests = () => {
           <button
             type="button"
             className={`quests__filter-chip${taskInactiveOnly ? ' quests__filter-chip--on' : ''}`}
-            onClick={() => { setTaskInactiveOnly((v) => !v); setTaskPage(0); }}
+            onClick={() => { setTaskInactiveOnly(!taskInactiveOnly); setTaskPage(0); }}
             title="Pokaż tylko monstera bez aktywnego taska"
           >
             <GameIcon name="stop-sign" /> Nieaktywne taski
@@ -1149,7 +1157,7 @@ const Quests = () => {
           <button
             type="button"
             className={`quests__filter-chip${taskSortDesc ? ' quests__filter-chip--on' : ''}`}
-            onClick={() => { setTaskSortDesc((v) => !v); setTaskPage(0); }}
+            onClick={() => { setTaskSortDesc(!taskSortDesc); setTaskPage(0); }}
             title="Sortuj od najwyższego poziomu"
           >
             <GameIcon name="down-arrow" /> Sortuj od najwyższego lvl
