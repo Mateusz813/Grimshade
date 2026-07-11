@@ -125,29 +125,10 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   publicParties: [],
 
   createParty: async (self, options) => {
-    // 2026-05-13 spec ("nie moge tworzyc party w trakcie polowania offline"):
-    // block party creation ONLY while an offline HUNT is running — the
-    // 12h passive kill-accumulation flow. The always-on active training
-    // that ticks during normal gameplay is allowed (it's just the
-    // baseline state for any logged-in character, blocking it would lock
-    // every player out of party creation entirely).
-    //
-    // History: the first version of this gate checked
-    // `skillStore.offlineTrainingSkillId`, which never resets to null
-    // once a stat was picked — locking the player out forever. The
-    // second iteration tightened it to `trainingSegmentStartedAt`, but
-    // that flag is ALSO true during normal active training, so it
-    // still blocked the common case. Offline-hunt is the only mode
-    // that genuinely conflicts with shared party combat.
-    try {
-      const { useOfflineHuntStore } = await import('./offlineHuntStore');
-      if (useOfflineHuntStore.getState().isActive) {
-        set({ error: 'Najpierw zakończ polowanie offline, zanim stworzysz party.' });
-        return;
-      }
-    } catch {
-      /* defensive: offlineHuntStore not available — skip the guard */
-    }
+    // 2026-07-11 (owner request): tworzenie party DOZWOLONE w trakcie polowania
+    // offline / treningu. Formowanie party to akcja rosterowa, nie walka — nie
+    // rusza działającego polowania (leci dalej w tle, bez utraty akumulacji).
+    // Ewentualny konflikt na czas WALKI party jest obsługiwany przy jej starcie.
     // Backend-authoritative branch (opt-in). Server creates the party +
     // inserts the leader, and returns the IPartyWithMembers snapshot which
     // adaptToPartyInfo consumes 1:1. The direct Supabase write below is
@@ -203,20 +184,8 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   },
 
   joinPartyById: async (partyId, self, password) => {
-    // 2026-05-13: same guard as createParty — offline hunt and shared
-    // party combat are mutually exclusive. Joining a party while the
-    // 12h hunt is running would either silently kill the hunt's
-    // accumulation or leave the player double-booked between two
-    // active systems.
-    try {
-      const { useOfflineHuntStore } = await import('./offlineHuntStore');
-      if (useOfflineHuntStore.getState().isActive) {
-        set({ error: 'Najpierw zakończ polowanie offline, zanim dołączysz do party.' });
-        return;
-      }
-    } catch {
-      /* defensive */
-    }
+    // 2026-07-11 (owner request): dołączanie do party DOZWOLONE w trakcie
+    // polowania offline / treningu (akcja rosterowa, nie walka; hunt leci dalej).
     // Backend-authoritative branch (opt-in). Server validates capacity /
     // password / min-level under a row lock and returns the fresh snapshot.
     if (isBackendMode()) {

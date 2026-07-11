@@ -23,6 +23,7 @@ import { markAppReady, markAppRestoring } from './lib/appReady';
 import AppRouter from './routes/AppRouter';
 import LevelUpNotification from './components/ui/LevelUpNotification/LevelUpNotification';
 import Spinner from './components/ui/Spinner/Spinner';
+import BackendLoader from './components/ui/BackendLoader/BackendLoader';
 
 /**
  * On module load (before any React render), synchronously restore
@@ -213,6 +214,7 @@ const App = () => {
       <>
         <AppRouter session={session} />
         <LevelUpNotification />
+        <BackendLoader />
       </>
     );
 };

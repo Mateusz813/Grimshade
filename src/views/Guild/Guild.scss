@@ -574,7 +574,13 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 18px;
-        justify-content: flex-start;
+        // 2026-07-11: na mobilce kafelki wyśrodkowane (nie do lewej).
+        justify-content: center;
+
+        // Desktop: wraca do lewej (kafelki 3-w-rzędzie wg starego speca).
+        @media (min-width: 768px) {
+            justify-content: flex-start;
+        }
     }
 
     &__nav-tile {

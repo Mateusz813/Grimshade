@@ -206,16 +206,17 @@ describe('createParty', () => {
         expect(state.error).toBeNull();
     });
 
-    it('refuses to create party while an offline hunt is running', async () => {
+    it('allows creating a party while an offline hunt is running (owner request 2026-07-11)', async () => {
         offlineHuntIsActive.value = true;
+        createPartyApi.mockResolvedValueOnce(makeServerParty({ id: 'party-oh' }));
         await usePartyStore.getState().createParty(SELF, {
             name: 'x', description: '', password: null, isPublic: true,
         });
-        // partyApi.createParty should never be reached.
-        expect(createPartyApi).not.toHaveBeenCalled();
+        // Guard removed — creation now proceeds despite the running offline hunt.
+        expect(createPartyApi).toHaveBeenCalled();
         const state = usePartyStore.getState();
-        expect(state.party).toBeNull();
-        expect(state.error).toContain('Najpierw zakończ polowanie offline');
+        expect(state.party!.id).toBe('party-oh');
+        expect(state.error).toBeNull();
     });
 
     it('surfaces the API error and leaves party=null on failure', async () => {
@@ -249,11 +250,13 @@ describe('joinPartyById', () => {
         expect(usePartyStore.getState().party!.id).toBe('party-2');
     });
 
-    it('refuses to join while an offline hunt is running', async () => {
+    it('allows joining a party while an offline hunt is running (owner request 2026-07-11)', async () => {
         offlineHuntIsActive.value = true;
+        joinPartyApi.mockResolvedValueOnce(makeServerParty({ id: 'party-2' }));
         await usePartyStore.getState().joinPartyById('party-2', SELF);
-        expect(joinPartyApi).not.toHaveBeenCalled();
-        expect(usePartyStore.getState().error).toContain('Najpierw zakończ polowanie offline');
+        // Guard removed — join now proceeds despite the running offline hunt.
+        expect(joinPartyApi).toHaveBeenCalled();
+        expect(usePartyStore.getState().party!.id).toBe('party-2');
     });
 
     it('records the API-returned soft error (e.g. wrong password) without throwing', async () => {
@@ -578,14 +581,16 @@ describe('backend mode', () => {
             expect(usePartyStore.getState().loading).toBe(false);
         });
 
-        it('keeps the offline-hunt pre-check in backend mode', async () => {
+        it('allows creating a party during an offline hunt in backend mode (owner request 2026-07-11)', async () => {
             backendState.on = true;
             offlineHuntIsActive.value = true;
+            backendCreateParty.mockResolvedValueOnce(makeServerParty({ id: 'be-oh' }));
             await usePartyStore.getState().createParty(SELF, {
                 name: 'x', description: '', password: null, isPublic: true,
             });
-            expect(backendCreateParty).not.toHaveBeenCalled();
-            expect(usePartyStore.getState().error).toContain('Najpierw zakończ polowanie offline');
+            // Guard removed — backend creation proceeds despite the running offline hunt.
+            expect(backendCreateParty).toHaveBeenCalled();
+            expect(usePartyStore.getState().party!.id).toBe('be-oh');
         });
 
         it('surfaces the backend error and leaves party=null on failure', async () => {
