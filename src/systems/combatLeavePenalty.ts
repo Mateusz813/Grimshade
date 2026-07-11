@@ -23,6 +23,7 @@ import { applyDeathPenalty } from './levelSystem';
 import { deathsApi } from '../api/v1/deathsApi';
 import { supabase } from '../lib/supabase';
 import { isBackendMode } from '../config/backendMode';
+import { commitStateViaKeepalive } from '../api/backend/commit';
 import { backendApi } from '../api/backend/backendApi';
 
 // 2026-05-20: added 'monster' to cover hunt-route disconnects fired from
@@ -157,7 +158,14 @@ export const applyCombatLeaveDeath = ({
     // after the page unloads. The token is pulled from a module-level cache
     // populated by `onAuthStateChange` (see top of file) so we don't have to
     // wait on `supabase.auth.getSession()`.
-    if (SUPABASE_URL && SUPABASE_ANON && cachedAccessToken) {
+    if (isBackendMode()) {
+        // Tryb backendu: NIE piszemy wprost do Supabase (to była dziura anti-cheat
+        // — surowy PATCH characters level/xp z JWT gracza). Kara jest już w blobie
+        // (_characterStats: obniżony level/xp), więc utrwalamy ją autorytatywnym
+        // commitem stanu KEEPALIVE — przeżywa unload, serwer waliduje i zapisuje
+        // (spadek poziomu przy karze śmierci jest dozwolony).
+        commitStateViaKeepalive(char.id);
+    } else if (SUPABASE_URL && SUPABASE_ANON && cachedAccessToken) {
         try {
             void fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${char.id}`, {
                 method: 'PATCH',

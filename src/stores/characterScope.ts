@@ -32,7 +32,7 @@ import { useConnectivityStore } from './connectivityStore';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 import { saveGame, loadGame, deleteGameSave } from '../storage/gameStorage';
 import { characterApi } from '../api/v1/characterApi';
-import { commitStateToBackend, type ICombatEvent } from '../api/backend/commit';
+import { commitStateToBackend, commitStateViaKeepalive, type ICombatEvent } from '../api/backend/commit';
 import { setPendingCommitFlusher } from '../api/backend/pendingCommit';
 import { supabase } from '../lib/supabase';
 import { isBackendMode } from '../config/backendMode';
@@ -250,7 +250,11 @@ const hookBackendCommitOnHide = (): void => {
   if (_hideHooked || typeof document === 'undefined') return;
   _hideHooked = true;
   const flushOnHide = (): void => {
-    if (isBackendMode() && _activeCharacterId) runBackendCommit();
+    if (!isBackendMode() || !_activeCharacterId) return;
+    // Zrzuć najświeższy stan do localStorage, potem wyślij commit KEEPALIVE —
+    // przeżyje zamknięcie/uśpienie karty (zwykły async commit tam nie dochodzi).
+    flushStoresToLocalStorage();
+    commitStateViaKeepalive(_activeCharacterId);
   };
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushOnHide();

@@ -1,5 +1,6 @@
 import { backendApi } from './backendApi';
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendMode, getBackendBaseUrl } from '../../config/backendMode';
+import { getAuthToken } from './authToken';
 
 interface ILocalSave {
     state: Record<string, unknown>;
@@ -64,5 +65,50 @@ export const commitStateToBackend = async (
     } catch {
         // offline / błąd walidacji — lokalny bufor zostaje, dogoni przy następnym syncu
         return false;
+    }
+};
+
+/**
+ * Zapis przy ZAMYKANIU karty (pagehide / hidden). Zwykły async commit tam NIE
+ * dochodzi (przeglądarka ubija stronę zanim `supabase.auth.getSession()` +
+ * request się dokończą). `fetch(..., {keepalive:true})` przeżywa unload i wysyła
+ * request w tle — ale wymaga tokenu SYNCHRONICZNIE (stąd cache w authToken.ts).
+ *
+ * Ograniczenie przeglądarki: keepalive body ma limit ~64KB. Przy większym blobie
+ * request może zostać odrzucony — wtedy ratuje bufor localStorage (na tym samym
+ * urządzeniu nic nie ginie) + następny sync. To best-effort, nie gwarancja.
+ */
+export const commitStateViaKeepalive = (charId: string | null | undefined): void => {
+    if (!charId || !isBackendMode()) return;
+    const base = getBackendBaseUrl();
+    const token = getAuthToken();
+    if (!base || !token) return;
+
+    let raw: string | null = null;
+    try {
+        raw = localStorage.getItem(`dungeon_rpg_save_char_${charId}`);
+    } catch {
+        return;
+    }
+    if (!raw) return;
+
+    let state: Record<string, unknown> | undefined;
+    try {
+        state = (JSON.parse(raw) as ILocalSave).state;
+    } catch {
+        return;
+    }
+    if (!state || typeof state !== 'object') return;
+
+    const requestId = globalThis.crypto?.randomUUID?.() ?? `r_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    try {
+        void fetch(`${base}/api/v1/characters/${charId}/state`, {
+            method: 'PUT',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ requestId, state }),
+        }).catch(() => { /* best-effort — bufor lokalny zostaje */ });
+    } catch {
+        // np. body > limitu keepalive — bufor lokalny + następny sync ratują
     }
 };

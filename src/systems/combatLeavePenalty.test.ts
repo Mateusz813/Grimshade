@@ -22,6 +22,8 @@ vi.mock('../config/backendMode', () => ({
     setBackendMode: (v: boolean) => { backendFlag.on = v; },
 }));
 vi.mock('../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
+const commitMock = vi.hoisted(() => ({ commitStateViaKeepalive: vi.fn(), commitStateToBackend: vi.fn() }));
+vi.mock('../api/backend/commit', () => commitMock);
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -129,6 +131,27 @@ describe('applyCombatLeaveDeath – guard clauses', () => {
             sourceLevel: 25,
         });
         expect(logDeathSpy).not.toHaveBeenCalled();
+    });
+});
+
+// -- applyCombatLeaveDeath: tryb backendu (anti-cheat) ------------------------
+
+describe('applyCombatLeaveDeath – tryb backendu (regresja anti-cheat)', () => {
+    it('utrwala karę autorytatywnym commitem stanu (keepalive), NIE surowym PATCH-em Supabase', () => {
+        // Dziura: w trybie backendu leciał surowy PATCH /rest/v1/characters z JWT
+        // gracza (podrabialny level/xp). Teraz kara idzie commitem stanu keepalive
+        // — serwer waliduje i zapisuje; żaden bezpośredni zapis do Supabase.
+        backendFlag.on = true;
+        commitMock.commitStateViaKeepalive.mockClear();
+        useCharacterStore.setState({ character: makeCharacter({ level: 50, xp: 1234 }) });
+
+        applyCombatLeaveDeath({ source: 'dungeon', sourceName: 'Loch', sourceLevel: 5 });
+
+        expect(commitMock.commitStateViaKeepalive).toHaveBeenCalledWith('char-test-1');
+        const rawSupabaseWrites = fetchSpy.mock.calls.filter(
+            (c: unknown[]) => typeof c[0] === 'string' && (c[0] as string).includes('/rest/v1/characters'),
+        );
+        expect(rawSupabaseWrites).toHaveLength(0);
     });
 });
 

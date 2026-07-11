@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { getBackendBaseUrl } from '../../config/backendMode';
 import { useApiPendingStore } from '../../stores/apiPendingStore';
 import { flushPendingCommit } from './pendingCommit';
+import { setAuthToken } from './authToken';
 
 // Osobny klient axios dla backendu Laravel (NIE Supabase PostgREST). Ten sam
 // token JWT GoTrue co reszta apki — backend go weryfikuje. baseURL z env.
@@ -29,6 +30,7 @@ backendClient.interceptors.request.use(
         const token = data.session?.access_token;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            setAuthToken(token); // cache do zapisu keepalive przy zamknięciu karty
         }
         return config;
     },
