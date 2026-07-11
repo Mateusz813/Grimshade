@@ -37,6 +37,13 @@ export const backendApi = {
     state: (charId: string) => get(`${c(charId)}/state`),
     updatePrefs: (charId: string, settings: Record<string, unknown>) =>
         client.put(`${c(charId)}/prefs`, { settings }).then((r) => r.data),
+    // Autorytatywny zapis pełnego stanu (blob) — klient liczy grę swoim silnikiem,
+    // serwer waliduje (diff prev↔new: duplikaty itemów, wejścia, śmierć) i zapisuje
+    // (jedyny zapisujący). `event` = kontekst zdarzenia (koniec dungeona/polowania
+    // itp.) dla walidacji. Zwraca autorytatywny stan (jak GET /state), ale klient go
+    // NIE aplikuje (jest źródłem).
+    commitState: (charId: string, state: Record<string, unknown>, event?: Record<string, unknown>) =>
+        client.put(`${c(charId)}/state`, { requestId: rid(), state, ...(event ? { event } : {}) }).then((r) => r.data),
 
     // -- Walka / świat --
     combatResolve: (charId: string, monsterId: string) => post(`${c(charId)}/combat/resolve`, { monsterId }),

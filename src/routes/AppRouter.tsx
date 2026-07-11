@@ -46,7 +46,6 @@ import Raid from '../views/Raid/Raid';
 import Arena from '../views/Arena/Arena';
 import ArenaMatch from '../views/Arena/ArenaMatch';
 import Trainer from '../views/Trainer/Trainer';
-import BackendTest from '../views/BackendTest/BackendTest';
 import OnlineOnlyGuard from './OnlineOnlyGuard';
 
 interface IAppRouterProps {
@@ -140,16 +139,6 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     element={
                         <ProtectedRoute session={session}>
                             <CharacterCreate />
-                        </ProtectedRoute>
-                    }
-                />
-
-                {/* Dev: panel testowy backendu (opt-in, izolowany). */}
-                <Route
-                    path="/backend-test"
-                    element={
-                        <ProtectedRoute session={session}>
-                            <BackendTest />
                         </ProtectedRoute>
                     }
                 />

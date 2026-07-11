@@ -36,7 +36,8 @@ import type { IMonster, TMonsterRarity } from '../../types/monster';
 import monstersRaw from '../../data/monsters.json';
 import itemsRaw from '../../data/items.json';
 import { formatGoldShort } from '../../systems/goldFormat';
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendCombatDelegated, isBackendMode } from '../../config/backendMode';
+import { commitCombatEventNow } from '../../stores/characterScope';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './OfflineHunt.scss';
@@ -349,7 +350,7 @@ const OfflineHunt = () => {
         // syncFromBackend hydratuje store'y autorytatywnym stanem /state. Nie
         // liczymy nagród klienta w tej gałęzi. Feedback = ta sama animacja FX
         // "NAGRODA!"; po sync widok wraca do setup (isActive ze stanu serwera).
-        if (isBackendMode() && character) {
+        if (isBackendCombatDelegated() && character) {
             setClaimFxActive(true);
             try {
                 await backendApi.offlineHuntSettle(character.id);
@@ -365,6 +366,11 @@ const OfflineHunt = () => {
         }
         const result = claimOfflineHunt();
         if (result) {
+            // Tryb backendu: łupy offline zaaplikowane lokalnie → commit z kontekstem
+            // zdarzenia (backend waliduje anty-duplikację offline + drop i zapisuje).
+            if (isBackendMode()) {
+                commitCombatEventNow({ type: 'offline-hunt', outcome: 'settled' });
+            }
             setClaimFxActive(true);
             setTimeout(() => {
                 setClaimResult(result);

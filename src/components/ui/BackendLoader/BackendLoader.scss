@@ -1,4 +1,5 @@
 // Globalny overlay dla requestów backendu w locie (patrz BackendLoader.tsx).
+// Akcent w kolorze transformacji gracza: --loader-accent / --loader-accent-2.
 .backend-loader {
     position: fixed;
     inset: 0;
@@ -6,26 +7,52 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    // Mocno przyciemnione całe tło aplikacji (było 0.45 — teraz prawie czarne).
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(5px) saturate(0.75) brightness(0.7);
+    -webkit-backdrop-filter: blur(5px) saturate(0.75) brightness(0.7);
+    animation: backend-loader-fade 0.18s ease-out;
     // pointer-events domyślnie auto → overlay łapie kliknięcia (blokada).
 
     &__box {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 14px;
-        padding: 24px 32px;
-        border-radius: 14px;
-        background: rgba(20, 20, 24, 0.92);
-        border: 1px solid rgba(255, 152, 0, 0.35);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        gap: 18px;
+        padding: 30px 40px;
+        border-radius: 16px;
+        background: rgba(10, 10, 14, 0.96);
+        border: 1px solid color-mix(in srgb, var(--loader-accent, #ff9800) 45%, transparent);
+        box-shadow:
+            0 12px 50px rgba(0, 0, 0, 0.6),
+            0 0 42px color-mix(in srgb, var(--loader-accent, #ff9800) 22%, transparent);
+    }
+
+    // Pierścień w kolorze transformu (górna krawędź = accent, prawa = accent-2).
+    &__ring {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.09);
+        border-top-color: var(--loader-accent, #ff9800);
+        border-right-color: color-mix(in srgb, var(--loader-accent-2, var(--loader-accent, #ff9800)) 85%, transparent);
+        animation: backend-loader-spin 0.85s linear infinite;
+        box-shadow: 0 0 18px color-mix(in srgb, var(--loader-accent, #ff9800) 42%, transparent);
     }
 
     &__text {
         color: #fff;
         font-size: 14px;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.04em;
+        text-shadow: 0 0 12px color-mix(in srgb, var(--loader-accent, #ff9800) 55%, transparent);
     }
+}
+
+@keyframes backend-loader-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes backend-loader-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

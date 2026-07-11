@@ -34,7 +34,8 @@ import {
     type IStatusState,
 } from '../../systems/skillEffectsV2';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendCombatDelegated, isBackendMode } from '../../config/backendMode';
+import { commitCombatEventNow } from '../../stores/characterScope';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Arena.scss';
@@ -150,6 +151,19 @@ const ArenaMatch = () => {
     const [phase, setPhase] = useState<'fighting' | 'win' | 'lose'>('fighting');
     const [speedMult, setSpeedMult] = useState(1);
     const [tickKey, setTickKey] = useState(0);
+
+    // Tryb backendu: na koniec meczu areny wyślij commit z kontekstem zdarzenia
+    // (backend waliduje LP/AP i zapisuje). Raz na wynik.
+    const arenaEventSentRef = useRef(false);
+    useEffect(() => {
+        if (phase !== 'win' && phase !== 'lose') {
+            arenaEventSentRef.current = false;
+            return;
+        }
+        if (!isBackendMode() || arenaEventSentRef.current) return;
+        arenaEventSentRef.current = true;
+        commitCombatEventNow({ type: 'arena', outcome: phase === 'win' ? 'won' : 'lost' });
+    }, [phase]);
     const [rewardSummary, setRewardSummary] = useState<{ ap: number; lp: number } | null>(null);
     // Cinematic fade-in from solid black on mount — the Arena view did its
     // 1.5s fade-out before navigating here, so this matches the curve and
@@ -500,7 +514,7 @@ const ArenaMatch = () => {
                     // Backend (opt-in): serwer rozstrzyga mecz + liczy nagrody.
                     // `return` pomija kliencki finalizeMatch ORAZ optymistyczne
                     // setPhase — fazę ustawia resolver po odpowiedzi serwera.
-                    if (isBackendMode()) {
+                    if (isBackendCombatDelegated()) {
                         void resolveArenaViaBackend(true);
                         return;
                     }
@@ -520,7 +534,7 @@ const ArenaMatch = () => {
                 if (!finalizedRef.current && ctx) {
                     finalizedRef.current = true;
                     // Backend (opt-in): serwer rozstrzyga mecz + liczy nagrody.
-                    if (isBackendMode()) {
+                    if (isBackendCombatDelegated()) {
                         void resolveArenaViaBackend(false);
                         return;
                     }

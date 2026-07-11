@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { isBackendMode } from '../config/backendMode';
+import { commitStateToBackend } from '../api/backend/commit';
 
 /**
  * Per-character game save storage.
@@ -39,8 +40,12 @@ export const saveGame = async (
   }
 
   // Tryb backendu: serwer jest jedynym zapisującym do game_saves. Nie pisz bloba
-  // wprost do Supabase (uniknij nadpisania stanu serwera + zamknij furtkę zapisu).
-  if (isBackendMode()) return;
+  // wprost do Supabase — zamiast tego wyślij autorytatywny commit do backendu
+  // (serwer waliduje realną mocą z gearu i zapisuje). Zamyka furtkę PostgREST.
+  if (isBackendMode()) {
+    await commitStateToBackend(characterId);
+    return;
+  }
 
   // Try to save to Supabase (online)
   try {
@@ -138,8 +143,12 @@ export const loadGame = async (
  * Called on reconnect or periodic sync.
  */
 export const syncToCloud = async (characterId: string): Promise<void> => {
-  // Tryb backendu: serwer jest jedynym zapisującym do game_saves (patrz saveGame).
-  if (isBackendMode()) return;
+  // Tryb backendu: zamiast upsertu do Supabase wyślij autorytatywny commit stanu
+  // do backendu (jedyny zapisujący). localStorage pozostaje buforem write-ahead.
+  if (isBackendMode()) {
+    await commitStateToBackend(characterId);
+    return;
+  }
 
   const raw = localStorage.getItem(localKey(characterId));
   if (!raw) return;

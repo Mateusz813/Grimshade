@@ -2,6 +2,7 @@ import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { getBackendBaseUrl } from '../../config/backendMode';
 import { useApiPendingStore } from '../../stores/apiPendingStore';
+import { flushPendingCommit } from './pendingCommit';
 
 // Osobny klient axios dla backendu Laravel (NIE Supabase PostgREST). Ten sam
 // token JWT GoTrue co reszta apki — backend go weryfikuje. baseURL z env.
@@ -16,6 +17,14 @@ backendClient.interceptors.request.use(
     async (config) => {
         useApiPendingStore.getState().inc();
         config.baseURL = getBackendBaseUrl();
+        // Przed mutującą akcją (poza samym commitem /state) wypchnij zaległy
+        // commit walki, żeby serwer działał na najświeższym stanie i późniejszy
+        // syncFromBackend nie skasował świeżego progresu (patrz pendingCommit.ts).
+        const method = (config.method ?? 'get').toLowerCase();
+        const url = config.url ?? '';
+        if (method !== 'get' && !url.endsWith('/state')) {
+            await flushPendingCommit();
+        }
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
         if (token) {

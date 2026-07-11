@@ -32,9 +32,12 @@ import { useConnectivityStore } from './connectivityStore';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 import { saveGame, loadGame, deleteGameSave } from '../storage/gameStorage';
 import { characterApi } from '../api/v1/characterApi';
+import { commitStateToBackend, type ICombatEvent } from '../api/backend/commit';
+import { setPendingCommitFlusher } from '../api/backend/pendingCommit';
 import { supabase } from '../lib/supabase';
 import { isBackendMode } from '../config/backendMode';
 import skillsData from '../data/skills.json';
+import type { ICharacter } from '../types/character';
 
 // -- Active character tracker ------------------------------------------------
 
@@ -142,6 +145,110 @@ const AUTO_SAVE_DEBOUNCE_MS = 500;
 let _subscriptionsActive = false;
 /** Unsubscribe functions for all store subscriptions. */
 let _unsubscribers: Array<() => void> = [];
+
+// -- Backend authoritative commit (tryb backendu) ----------------------------
+// W trybie backendu każda zmiana stanu (walka, ekwipunek, gold, level...) jest
+// najpierw zrzucana do localStorage (jak zawsze), a po krótkim debounce wysyłana
+// autorytatywnym commitem do backendu (jedyny zapisujący). Debounce skleja serie
+// zmian (ticki walki); max-wait gwarantuje commit nawet przy ciągłej aktywności.
+let _backendCommitTimer: ReturnType<typeof setTimeout> | null = null;
+let _backendCommitMaxTimer: ReturnType<typeof setTimeout> | null = null;
+/** Czy od ostatniego UDANEGO commitu do backendu był jakiś zapis stanu.
+ *  Ustawiane przy każdej zmianie (też offline, gdzie nie ma timera commitu),
+ *  czyszczone po udanym commicie. Dzięki temu flushBackendCommitNow wie, że po
+ *  powrocie online trzeba wypchnąć progres offline ZANIM akcja intent go nadpisze. */
+let _dirtySinceCommit = false;
+/** Cisza po ostatniej zmianie zanim wyślemy commit (skleja ticki walki).
+ *  Krótko (1,5s) → po dyskretnej akcji (dungeon/boss) progres jest na serwerze
+ *  niemal od razu, więc inne urządzenie widzi go w sekundy. */
+const BACKEND_COMMIT_DEBOUNCE_MS = 1500;
+/** Górny limit — commit poleci nawet gdy zmiany nie ustają (auto-hunt). */
+const BACKEND_COMMIT_MAX_WAIT_MS = 45000;
+
+const clearBackendCommitTimers = (): void => {
+  if (_backendCommitTimer !== null) {
+    clearTimeout(_backendCommitTimer);
+    _backendCommitTimer = null;
+  }
+  if (_backendCommitMaxTimer !== null) {
+    clearTimeout(_backendCommitMaxTimer);
+    _backendCommitMaxTimer = null;
+  }
+};
+
+/** Zrzuć stan do localStorage i wyślij commit do backendu (best-effort). */
+const runBackendCommit = (): void => {
+  clearBackendCommitTimers();
+  const charId = _activeCharacterId;
+  if (!charId || !isBackendMode()) return;
+  // Upewnij się, że localStorage ma najświeższy blob, potem wyślij go serwerowi.
+  flushStoresToLocalStorage();
+  void commitStateToBackend(charId).then((ok) => {
+    if (ok) _dirtySinceCommit = false;
+  });
+};
+
+/** Zaplanuj debounced commit do backendu (no-op poza trybem backendu). */
+const scheduleBackendCommit = (): void => {
+  if (!isBackendMode() || !_activeCharacterId) return;
+  if (_backendCommitTimer !== null) clearTimeout(_backendCommitTimer);
+  _backendCommitTimer = setTimeout(runBackendCommit, BACKEND_COMMIT_DEBOUNCE_MS);
+  if (_backendCommitMaxTimer === null) {
+    _backendCommitMaxTimer = setTimeout(runBackendCommit, BACKEND_COMMIT_MAX_WAIT_MS);
+  }
+};
+
+/**
+ * Wypchnij zaległy commit walki NATYCHMIAST (await). Wołane przez pendingCommit
+ * przed mutującymi akcjami intent (market/shop/itemy), żeby serwer działał na
+ * najświeższym stanie. No-op gdy nic nie czeka na wysłanie.
+ */
+const flushBackendCommitNow = async (): Promise<void> => {
+  if (!isBackendMode() || !_activeCharacterId) return;
+  clearBackendCommitTimers();
+  // Gate na "dirty", nie na timerze: w trybie offline commit NIE jest planowany
+  // (brak timera), więc gate na timerze przepuszczałby nadpisanie progresu offline
+  // przez pierwszą akcję intent po powrocie online. dirty łapie oba przypadki.
+  if (!_dirtySinceCommit) return;
+  flushStoresToLocalStorage();
+  const ok = await commitStateToBackend(_activeCharacterId);
+  if (ok) _dirtySinceCommit = false;
+};
+setPendingCommitFlusher(flushBackendCommitNow);
+
+/**
+ * Wyślij NATYCHMIAST autorytatywny commit stanu z kontekstem ZDARZENIA walki
+ * (koniec dungeona/bossa/rajdu/transformu/areny lub checkpoint polowania co 25 fal).
+ * Front liczy walkę lokalnie — to jest moment „zapisz co się wydarzyło": backend
+ * porówna poprzedni stan z nowym i zwaliduje przejście (duplikaty itemów, dzienne
+ * wejścia, śmierć/ochrona), po czym zapisze. No-op poza trybem backendu.
+ */
+export const commitCombatEventNow = (event: ICombatEvent): void => {
+  if (!isBackendMode() || !_activeCharacterId) return;
+  clearBackendCommitTimers();
+  flushStoresToLocalStorage();
+  void commitStateToBackend(_activeCharacterId, event).then((ok) => {
+    if (ok) _dirtySinceCommit = false;
+  });
+};
+
+let _hideHooked = false;
+/** Zarejestruj (raz) best-effort commit przy chowaniu/zamykaniu karty.
+ *  visibilitychange→hidden łapie backgrounding (mobile PWA — główna platforma),
+ *  pagehide łapie realny unload/zamknięcie karty. Oba wypychają zaległy commit. */
+const hookBackendCommitOnHide = (): void => {
+  if (_hideHooked || typeof document === 'undefined') return;
+  _hideHooked = true;
+  const flushOnHide = (): void => {
+    if (isBackendMode() && _activeCharacterId) runBackendCommit();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushOnHide();
+  });
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', flushOnHide);
+  }
+};
 
 /**
  * Returns the active character ID for THIS tab.
@@ -399,9 +506,46 @@ const collectAllStores = (): Record<string, Record<string, unknown>> => {
  * `_ownerCharacterId` matching the expected charId – otherwise it is rejected
  * and the stores end up at defaults only.
  */
+/** Pola progresu postaci trzymane w blobie pod `_characterStats`. */
+const CHAR_STAT_NUMERIC_KEYS = [
+  'level', 'xp', 'hp', 'max_hp', 'mp', 'max_mp', 'attack', 'defense',
+  'attack_speed', 'crit_chance', 'crit_damage', 'magic_level', 'stat_points', 'highest_level', 'gold',
+] as const;
+
+/**
+ * Przywróć progres postaci (level/xp/gold/staty) z bloba `_characterStats` do
+ * characterStore. characterStore NIE jest w STORE_ENTRIES, więc applyBlobToStores
+ * go nie dotyka — a przy RESTORE wiersz `characters` z serwera bywa NIEAKTUALNY
+ * (np. świeży dungeon jeszcze niescommitowany do backendu), więc bez tego reload
+ * cofałby zdobyty poziom/XP. Aplikujemy WPROST: blob to już wybrany najświeższy
+ * stan (loadGame: newest-wins), więc odzwierciedla też spadki (kara za śmierć).
+ * NIE wołane przy serwerowej hydracji (syncFromBackend bierze res.character).
+ */
+const applyCharacterStatsFromBlob = (blob: Record<string, unknown>, expectedCharId: string): void => {
+  const stats = blob._characterStats;
+  if (!stats || typeof stats !== 'object') return;
+  const current = useCharacterStore.getState().character;
+  if (!current || current.id !== expectedCharId) return; // postać nieustawiona / inna
+  const src = stats as Record<string, unknown>;
+  const patch: Record<string, number> = {};
+  for (const k of CHAR_STAT_NUMERIC_KEYS) {
+    const v = src[k];
+    if (typeof v === 'number' && Number.isFinite(v)) patch[k] = v;
+  }
+  if (Object.keys(patch).length > 0) {
+    useCharacterStore.getState().updateCharacter(patch as Partial<ICharacter>);
+  }
+};
+
 // Eksportowane dla trybu backendu: hydratuje store'y z autorytatywnego bloba
 // state zwróconego przez backend (ten sam kształt co game_saves.state).
-export const applyBlobToStores = (blob: Record<string, unknown>, expectedCharId: string): boolean => {
+// hydrateCharacterStats: TYLKO na ścieżce RESTORE (localStorage/cloud loadGame),
+// NIGDY przy syncFromBackend (tam autorytetem jest res.character z serwera).
+export const applyBlobToStores = (
+  blob: Record<string, unknown>,
+  expectedCharId: string,
+  opts?: { hydrateCharacterStats?: boolean },
+): boolean => {
   // 1) Reset every gameplay store to its default state FIRST. Without this,
   //    a blob missing a particular baseKey would leave that store holding the
   //    previous character's data.
@@ -485,6 +629,12 @@ export const applyBlobToStores = (blob: Record<string, unknown>, expectedCharId:
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[characterScope] base-stat heal failed', err);
+  }
+
+  // 6) Restore-only: przywróć progres postaci (level/xp/gold/staty) z bloba, żeby
+  //    reload nie cofał zdobyć jeszcze niescommitowanych do backendu (patrz helper).
+  if (opts?.hydrateCharacterStats) {
+    applyCharacterStatsFromBlob(blob, expectedCharId);
   }
 
   return true;
@@ -613,6 +763,9 @@ const flushStoresToLocalStorage = (): void => {
  * offline mode where the alternative is data loss.
  */
 const scheduleAutoSave = (): void => {
+  // Każda zmiana stanu = "dirty" do czasu udanego commitu (też offline, gdzie
+  // niżej NIE planujemy backend-commitu — flaga pozwala dogonić po powrocie online).
+  _dirtySinceCommit = true;
   // 2026-05-20 v2: connectivityStore has no dependency on characterScope
   // (one-way import chain), so a static import is cycle-safe.
   const offlineMode = useConnectivityStore.getState().mode === 'offline';
@@ -632,6 +785,9 @@ const scheduleAutoSave = (): void => {
     _autoSaveTimer = null;
     flushStoresToLocalStorage();
   }, AUTO_SAVE_DEBOUNCE_MS);
+
+  // Tryb backendu (online): zaplanuj też autorytatywny commit do backendu.
+  scheduleBackendCommit();
 };
 
 /**
@@ -693,6 +849,12 @@ const startAutoSaveSubscriptions = (): void => {
     useBossScoreStore,
     useBuffStore,
     useTransformStore,
+    // Niosą wycinki blobu (STORE_ENTRIES), ale ich zmiany bywają "samotne"
+    // (start/stop polowania offline, dodanie znajomego) — bez subskrypcji nie
+    // planowałyby zapisu/commitu. combatStore celowo pominięty: jego zmiany i tak
+    // idą w parze z characterStore/inventoryStore (hp/xp/gold/loot) w walce.
+    useOfflineHuntStore,
+    useFriendsStore,
   ];
 
   for (const store of stores) {
@@ -707,6 +869,9 @@ const startAutoSaveSubscriptions = (): void => {
     scheduleAutoSave();
   });
   _unsubscribers.push(unsubChar);
+
+  // Tryb backendu: best-effort commit przy chowaniu karty (raz, globalnie).
+  hookBackendCommitOnHide();
 };
 
 /**
@@ -725,6 +890,8 @@ const stopAutoSaveSubscriptions = (): void => {
     clearTimeout(_autoSaveTimer);
     _autoSaveTimer = null;
   }
+  // Cancel pending backend commit — switch/logout persists explicitly.
+  clearBackendCommitTimers();
 };
 
 /**
@@ -745,7 +912,7 @@ export const restoreFromLocalStorageSync = (charId: string): boolean => {
     const parsed = JSON.parse(raw);
     const state = parsed.state ?? parsed;
     if (state && typeof state === 'object') {
-      return applyBlobToStores(state as Record<string, unknown>, charId);
+      return applyBlobToStores(state as Record<string, unknown>, charId, { hydrateCharacterStats: true });
     }
   } catch {
     // corrupt data
@@ -959,7 +1126,7 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
       if (saved) {
         const cloudBlob: Record<string, unknown> = { ...(saved as Record<string, unknown>) };
         cloudBlob._ownerCharacterId = newCharacterId;
-        const ok = applyBlobToStores(cloudBlob, newCharacterId);
+        const ok = applyBlobToStores(cloudBlob, newCharacterId, { hydrateCharacterStats: true });
         if (ok) restored = true;
       }
     } catch {
@@ -973,7 +1140,7 @@ export const switchToCharacter = async (newCharacterId: string): Promise<void> =
     if (migrated) {
       const migBlob: Record<string, unknown> = { ...(migrated as Record<string, unknown>) };
       migBlob._ownerCharacterId = newCharacterId;
-      applyBlobToStores(migBlob, newCharacterId);
+      applyBlobToStores(migBlob, newCharacterId, { hydrateCharacterStats: true });
       void saveGame(newCharacterId, migBlob);
     } else {
       resetStoresToDefaults();

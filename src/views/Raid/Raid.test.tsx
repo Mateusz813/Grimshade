@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -60,6 +60,8 @@ vi.mock('../../hooks/usePartyReadyCheck', () => ({
 // dedicated backend test flips it on per-call via mockReturnValueOnce.
 vi.mock('../../config/backendMode', () => ({
     isBackendMode: vi.fn(() => false),
+    // Walka jest client-authoritative (od 1.10.0) — serwer NIE liczy rajdu.
+    isBackendCombatDelegated: vi.fn(() => false),
 }));
 vi.mock('../../api/backend/backendApi', () => ({
     backendApi: {
@@ -291,10 +293,12 @@ describe('Raid — backend mode (opt-in)', () => {
         usePartyStore.setState({ party: makeLeaderParty(charId) });
     });
 
-    it('resolves the raid via the authoritative backend and shows feedback (skips client flow)', async () => {
-        // Flip backend mode on for the single isBackendMode() call inside
-        // handleEnterRaid; every other test keeps the default false.
-        vi.mocked(isBackendMode).mockReturnValueOnce(true);
+    it('does NOT delegate raid combat to the server — runs the client flow (client-authoritative)', async () => {
+        // Od 1.10.0 walka liczy się po stronie klienta (identyczna rozgrywka +
+        // realne staty z gearu), a stan utrwala autorytatywny commit. Nawet gdy
+        // tryb backendu jest AKTYWNY (isBackendMode=true), rajd NIE woła
+        // serwerowego resolvera — bo isBackendCombatDelegated() === false.
+        vi.mocked(isBackendMode).mockReturnValue(true);
 
         const { container } = renderRaid();
         const enterBtn = container.querySelector('.raid__enter-btn');
@@ -302,21 +306,15 @@ describe('Raid — backend mode (opt-in)', () => {
 
         fireEvent.click(enterBtn as HTMLElement);
 
-        // Backend authoritative: raidResolve(charId, raidId) -> syncFromBackend.
-        await waitFor(() => {
-            expect(backendApi.raidResolve).toHaveBeenCalledTimes(1);
-        });
-        const [charIdArg, raidIdArg] = vi.mocked(backendApi.raidResolve).mock.calls[0];
-        expect(charIdArg).toBe('leader-1');
-        expect(String(raidIdArg)).toContain('raid_');
-        expect(syncFromBackend).toHaveBeenCalledWith('leader-1');
+        // Client-authoritative: serwerowy resolver rajdu NIGDY nie jest wołany,
+        // a syncFromBackend nie nadpisuje lokalnego stanu walki.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(backendApi.raidResolve).not.toHaveBeenCalled();
+        expect(syncFromBackend).not.toHaveBeenCalled();
+        // Brak serwerowego bannera feedbacku — to była ścieżka delegacji.
+        expect(container.querySelector('.raid__backend-feedback')).toBeNull();
 
-        // Feedback banner surfaces the server's reward line.
-        await waitFor(() => {
-            expect(container.querySelector('.raid__backend-feedback')).not.toBeNull();
-        });
-        expect(container.querySelector('.raid__backend-feedback')?.textContent)
-            .toMatch(/ukończony/i);
+        vi.mocked(isBackendMode).mockReturnValue(false);
     });
 });
 

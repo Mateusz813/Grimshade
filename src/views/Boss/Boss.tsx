@@ -74,7 +74,7 @@ import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useSkillAnim } from '../../hooks/useSkillAnim';
 import { useCombatFx } from '../../hooks/useCombatFx';
 import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
-import { saveCurrentCharacterStores } from '../../stores/characterScope';
+import { saveCurrentCharacterStores, commitCombatEventNow } from '../../stores/characterScope';
 import { deathsApi } from '../../api/v1/deathsApi';
 import { useDeathStore } from '../../stores/deathStore';
 import {
@@ -135,7 +135,7 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import classesRaw from '../../data/classes.json';
 import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendMode, isBackendCombatDelegated } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Boss.scss';
@@ -468,6 +468,25 @@ const Boss = () => {
     // successful revive or when the user picks Wróć).
     const deathChoiceShownRef = useRef(false);
     const [result, setResult]         = useState<IBossResult | null>(null);
+
+    // Tryb backendu: na koniec walki z bossem (result ustawiony) wyślij commit z
+    // kontekstem zdarzenia — backend waliduje dzienne wejścia + drop + śmierć.
+    const bossEventSentRef = useRef(false);
+    useEffect(() => {
+        if (phase !== 'result') {
+            bossEventSentRef.current = false;
+            return;
+        }
+        if (!isBackendMode() || !result || bossEventSentRef.current) return;
+        bossEventSentRef.current = true;
+        commitCombatEventNow({
+            type: 'boss',
+            sourceId: activeBoss?.id,
+            outcome: result.won ? 'won' : 'lost',
+            died: !result.won,
+        });
+    }, [phase, result, activeBoss]);
+
     // Boss-id whose drop-table popup is open. Replaces the inline expansion
     // so the tile stays compact and the drop info reads as a focused modal.
     const [dropModalBoss, setDropModalBoss] = useState<string | null>(null);
@@ -1450,7 +1469,7 @@ const Boss = () => {
         // boss fight in one call — no client-side entry animation, ready-check,
         // or combat loop. Mirror the combat wiring: resolve -> sync -> feedback,
         // then bail out before the legacy client path runs.
-        if (isBackendMode() && character) {
+        if (isBackendCombatDelegated() && character) {
             try {
                 const res = await backendApi.bossResolve(character.id, boss.id);
                 await syncFromBackend(character.id);

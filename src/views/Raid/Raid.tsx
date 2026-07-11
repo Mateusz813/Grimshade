@@ -112,7 +112,8 @@ import {
 } from '../../systems/potionSystem';
 import '../../components/organisms/CombatUI/CombatUI.scss';
 import { formatGoldShort } from '../../systems/goldFormat';
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendMode, isBackendCombatDelegated } from '../../config/backendMode';
+import { commitCombatEventNow } from '../../stores/characterScope';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Raid.scss';
@@ -392,6 +393,24 @@ const Raid = () => {
     const raids = useMemo(() => getAllRaids(), []);
     const [phase, setPhase] = useState<RaidPhase>('lobby');
     const [selectedRaid, setSelectedRaid] = useState<IRaid | null>(null);
+
+    // Tryb backendu: na koniec rajdu (victory/wipe) wyślij commit z kontekstem
+    // zdarzenia — backend waliduje + zapisuje. Raz na wynik.
+    const raidEventSentRef = useRef(false);
+    useEffect(() => {
+        if (phase !== 'victory' && phase !== 'wipe') {
+            raidEventSentRef.current = false;
+            return;
+        }
+        if (!isBackendMode() || raidEventSentRef.current) return;
+        raidEventSentRef.current = true;
+        commitCombatEventNow({
+            type: 'raid',
+            sourceId: selectedRaid?.id,
+            outcome: phase === 'victory' ? 'won' : 'lost',
+            died: phase === 'wipe',
+        });
+    }, [phase, selectedRaid]);
 
     // Backend-mode (opt-in) feedback banner. Only ever set on the isBackendMode()
     // branch of handleEnterRaid; stays null on the default client path so the
@@ -1214,7 +1233,7 @@ const Raid = () => {
         // Boss/Dungeon: resolve -> syncFromBackend -> feedback, a błąd nie
         // wywala gry. Return PRZED starą ścieżką, która zostaje nietknięta.
         const liveChar = useCharacterStore.getState().character;
-        if (isBackendMode() && liveChar) {
+        if (isBackendCombatDelegated() && liveChar) {
             try {
                 const res: unknown = await backendApi.raidResolve(liveChar.id, raid.id);
                 await syncFromBackend(liveChar.id);

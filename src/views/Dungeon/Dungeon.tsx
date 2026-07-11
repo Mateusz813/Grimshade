@@ -79,7 +79,7 @@ import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useSkillAnim } from '../../hooks/useSkillAnim';
 import { useCombatFx } from '../../hooks/useCombatFx';
 import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
-import { saveCurrentCharacterStores } from '../../stores/characterScope';
+import { saveCurrentCharacterStores, commitCombatEventNow } from '../../stores/characterScope';
 import { deathsApi } from '../../api/v1/deathsApi';
 import { useDeathStore } from '../../stores/deathStore';
 import { useTaskStore } from '../../stores/taskStore';
@@ -101,7 +101,7 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import classesRaw from '../../data/classes.json';
 import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendMode, isBackendCombatDelegated } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Dungeon.scss';
@@ -331,6 +331,28 @@ const Dungeon = () => {
     // `result` so we don't have to widen the shared IDungeonResult type
     // (which is also used by the offline simulator).
     const [resultKind, setResultKind] = useState<'win' | 'death' | 'flee' | null>(null);
+
+    // Tryb backendu: na zakończeniu dungeona (wygrana/śmierć/ucieczka) wyślij
+    // autorytatywny commit z KONTEKSTEM ZDARZENIA — backend zwaliduje przejście
+    // (dzienne wejścia, duplikaty itemów, śmierć/ochrona) i zapisze. Debounced
+    // commit i tak by to utrwalił; event daje natychmiastowość + kontekst walidacji.
+    const dungeonEventSentRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (phase !== 'result') {
+            dungeonEventSentRef.current = null;
+            return;
+        }
+        if (!isBackendMode() || !resultKind) return;
+        const key = `${activeDungeon?.id ?? '?'}:${resultKind}`;
+        if (dungeonEventSentRef.current === key) return; // już wysłane dla tego wyniku
+        dungeonEventSentRef.current = key;
+        commitCombatEventNow({
+            type: 'dungeon',
+            sourceId: activeDungeon?.id,
+            outcome: resultKind === 'win' ? 'won' : resultKind === 'flee' ? 'fled' : 'lost',
+            died: resultKind === 'death',
+        });
+    }, [phase, resultKind, activeDungeon]);
 
     // -- Tile-zoom entry animation ---------------------------------------------
     // When the player clicks "Wejdź" we capture the source card's bounding
@@ -1008,7 +1030,7 @@ const Dungeon = () => {
     const handleStart = useCallback((dungeon: IDungeon) => {
         // Tryb backendu (opt-in): oddajemy rozstrzygnięcie serwerowi i pomijamy
         // całą kliencką symulację fal poniżej. Domyślna ścieżka nietknięta.
-        if (isBackendMode()) {
+        if (isBackendCombatDelegated()) {
             void resolveDungeonViaBackend(dungeon);
             return;
         }
@@ -1088,7 +1110,7 @@ const Dungeon = () => {
         (e: React.MouseEvent<HTMLButtonElement>, dungeon: IDungeon) => {
             // Tryb backendu (opt-in): pomijamy cinematic — serwer rozstrzyga
             // dungeon natychmiast (handleStart routuje do resolveDungeonViaBackend).
-            if (isBackendMode()) {
+            if (isBackendCombatDelegated()) {
                 handleStart(dungeon);
                 return;
             }

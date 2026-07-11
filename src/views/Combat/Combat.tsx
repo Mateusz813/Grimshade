@@ -141,7 +141,8 @@ import { getPotionImage, getSpellChestImage, getSummonImage } from '../../system
 // TYLKO gdy isBackendMode() === true — domyślnie gra działa po staremu
 // (kliencki combatEngine). W trybie backendu rozpoczęcie polowania woła
 // jeden resolve na serwerze i hydratuje store'y z /state (patrz runBackendHunt).
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendCombatDelegated, isBackendMode } from '../../config/backendMode';
+import { commitCombatEventNow } from '../../stores/characterScope';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Combat.scss';
@@ -405,6 +406,24 @@ const Combat = () => {
     // in App.tsx). Read it here so we can pass into <CombatSubControls> for
     // the in-bar "X.Yk XP/h" badge.
     const sessionXpPerHour = useCombatStore((s) => s.sessionXpPerHour);
+
+    // Tryb backendu: checkpoint polowania co 25 zabić — wyślij autorytatywny
+    // commit z kontekstem {type:'hunt'} (backend waliduje + zapisuje). Polowanie
+    // leci ciągiem, więc tak progres trafia na serwer co ~25 killi (a debounced
+    // commit i tak łapie resztę na wyjściu). Wybór właściciela: co 25 fal.
+    const sessionKills = useCombatStore((s) => s.sessionKills);
+    const huntCheckpointRef = useRef(0);
+    useEffect(() => {
+        if (!isBackendMode()) return;
+        const total = sessionKills
+            ? Object.values(sessionKills).reduce((a, b) => a + (Number(b) || 0), 0)
+            : 0;
+        if (total > 0 && total - huntCheckpointRef.current >= 25) {
+            huntCheckpointRef.current = total;
+            commitCombatEventNow({ type: 'hunt', outcome: 'settled', wavesCompleted: total });
+        }
+    }, [sessionKills]);
+
     // Party bots fighting alongside the player (hydrated in startNewFight)
     const partyBots = useBotStore((s) => s.bots);
     // 2026-05-09: party humans (non-self, non-bot) shown as ally cards
@@ -2281,7 +2300,7 @@ const Combat = () => {
                                                         // (POST /combat/resolve) i hydratujemy
                                                         // store'y z /state. Domyślna ścieżka
                                                         // (poniżej) pozostaje nietknięta.
-                                                        if (isBackendMode() && character) {
+                                                        if (isBackendCombatDelegated() && character) {
                                                             await runBackendHunt(m);
                                                             return;
                                                         }
@@ -3017,7 +3036,7 @@ const Combat = () => {
                                                 monsters.find((m) => m.id === monster.id) ?? monster;
                                             // 2026-07-09: tryb backendu — kolejne polowanie =
                                             // kolejne serwerowe rozstrzygnięcie (pojedyncze).
-                                            if (isBackendMode() && character) {
+                                            if (isBackendCombatDelegated() && character) {
                                                 await runBackendHunt(baseMonster);
                                                 return;
                                             }

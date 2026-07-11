@@ -31,9 +31,15 @@ import {
 } from './gameStorage';
 import { supabase } from '../lib/supabase';
 import { isBackendMode } from '../config/backendMode';
+import { commitStateToBackend } from '../api/backend/commit';
 
 vi.mock('../config/backendMode', () => ({
     isBackendMode: vi.fn(() => false),
+}));
+// W trybie backendu zapis idzie autorytatywnym commitem do backendu (nie do
+// Supabase). Mockujemy go, żeby test był izolowany (bez realnego axiosa).
+vi.mock('../api/backend/commit', () => ({
+    commitStateToBackend: vi.fn().mockResolvedValue(undefined),
 }));
 
 const CHAR_ID = 'char-test-1';
@@ -259,22 +265,24 @@ describe('deleteGameSave', () => {
 // -- backend mode (server is the sole writer) --------------------------------
 
 describe('backend mode (isBackendMode)', () => {
-    it('saveGame keeps the localStorage cache but does NOT push the blob to Supabase', async () => {
+    it('saveGame keeps the localStorage cache and commits to the backend (not Supabase)', async () => {
         vi.mocked(isBackendMode).mockReturnValue(true);
+        vi.mocked(commitStateToBackend).mockClear();
         withSession();
 
         await saveGame(CHAR_ID, { hp: 100 });
 
         // Local cache still written (offline UX, instant reads)…
         expect(window.localStorage.getItem(STORAGE_KEY)).toContain('"hp":100');
-        // …but the server is authoritative — NO direct game_saves write, so no
-        // clobbering of server state and no client-write cheat vector.
-        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        // …stan idzie autorytatywnym commitem do backendu (jedyny zapisujący)…
+        expect(commitStateToBackend).toHaveBeenCalledWith(CHAR_ID);
+        // …a NIE bezpośrednim zapisem do Supabase (brak furtki client-write).
         expect(supabase.from).not.toHaveBeenCalled();
     });
 
-    it('syncToCloud is a no-op when backend mode is on', async () => {
+    it('syncToCloud commits to the backend when backend mode is on (no Supabase upsert)', async () => {
         vi.mocked(isBackendMode).mockReturnValue(true);
+        vi.mocked(commitStateToBackend).mockClear();
         withSession();
         window.localStorage.setItem(
             STORAGE_KEY,
@@ -283,7 +291,7 @@ describe('backend mode (isBackendMode)', () => {
 
         await syncToCloud(CHAR_ID);
 
-        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        expect(commitStateToBackend).toHaveBeenCalledWith(CHAR_ID);
         expect(supabase.from).not.toHaveBeenCalled();
     });
 

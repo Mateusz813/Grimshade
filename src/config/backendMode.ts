@@ -39,6 +39,23 @@ export const isBackendMode = (): boolean => {
     }
 };
 
+/**
+ * Czy walka jest DELEGOWANA do serwera (serwer sam liczy wynik walki)?
+ *
+ * NIE (od 1.10.0). Walka liczy się po stronie KLIENTA jego silnikiem —
+ * identyczna rozgrywka, animacje i realne staty z ekwipunku (getEffectiveChar).
+ * Wynik jest utrwalany autorytatywnym commitem pełnego stanu do backendu
+ * (patrz `api/backend/commit.ts` + `gameStorage.syncToCloud`): serwer waliduje
+ * realną mocą postaci z gearu i jest JEDYNYM zapisującym (anti-cheat zostaje).
+ *
+ * Poprzedni model (serwer liczył walkę gołymi statami z tabeli `characters`,
+ * ignorując gear) psuł endgame — dlatego walka wróciła na klienta. Flaga jest
+ * jawnym punktem przełączenia na wypadek powrotu do serwerowej symulacji.
+ *
+ * Zwraca `boolean` (nie literał) świadomie — trzyma zależny kod za realną flagą.
+ */
+export const isBackendCombatDelegated = (): boolean => false;
+
 /** Włącz/wyłącz tryb backendu (używane przez panel testowy / ustawienia). */
 export const setBackendMode = (on: boolean): void => {
     try {

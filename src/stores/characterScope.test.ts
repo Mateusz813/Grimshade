@@ -327,6 +327,57 @@ describe('restoreFromLocalStorageSync', () => {
 // switchToCharacter — full character switch flow
 // ----------------------------------------------------------------------------
 
+describe('applyBlobToStores — hydracja _characterStats (regresja: reload nie cofa level/XP)', () => {
+    // characterStore NIE jest w STORE_ENTRIES, więc jego progres żyje w blobie pod
+    // `_characterStats`. Przy RESTORE trzeba go przywrócić (inaczej reload cofa level/XP
+    // do nieaktualnego wiersza `characters` z serwera). Serwerowa hydracja NIE hydratuje.
+    type CharHolder = { current: { character: Record<string, unknown> | null; updateCharacter?: (p: Record<string, unknown>) => void } };
+    const holder = (): CharHolder => characterState as unknown as CharHolder;
+    const setCharWithUpdater = (char: Record<string, unknown>): void => {
+        const h = holder();
+        h.current = {
+            character: char,
+            updateCharacter: (patch: Record<string, unknown>) => {
+                const cur = h.current.character;
+                if (cur) h.current.character = { ...cur, ...patch };
+            },
+        };
+    };
+    const readChar = (): Record<string, unknown> => holder().current.character as Record<string, unknown>;
+
+    it('RESTORE (hydrateCharacterStats:true) przywraca level/xp/highest_level/stat_points z _characterStats', async () => {
+        setCharWithUpdater(makeCharacter({ id: 'char-1', level: 10, xp: 100, highest_level: 10, stat_points: 0 }));
+        const blob = {
+            _ownerCharacterId: 'char-1',
+            _characterStats: { level: 15, xp: 500, gold: 9999, highest_level: 15, stat_points: 3 },
+        };
+        const mod = await import('./characterScope');
+        const ok = mod.applyBlobToStores(blob, 'char-1', { hydrateCharacterStats: true });
+        expect(ok).toBe(true);
+        expect(readChar().level).toBe(15);
+        expect(readChar().xp).toBe(500);
+        expect(readChar().highest_level).toBe(15);
+        expect(readChar().stat_points).toBe(3);
+    });
+
+    it('serwerowa hydracja (bez opta) NIE nadpisuje characterStore z _characterStats', async () => {
+        setCharWithUpdater(makeCharacter({ id: 'char-1', level: 10, xp: 100 }));
+        const blob = { _ownerCharacterId: 'char-1', _characterStats: { level: 999, xp: 999999 } };
+        const mod = await import('./characterScope');
+        mod.applyBlobToStores(blob, 'char-1'); // brak opta => ścieżka serwerowa (res.character autorytatywne)
+        expect(readChar().level).toBe(10);
+        expect(readChar().xp).toBe(100);
+    });
+
+    it('guard: nie hydratuje gdy postać w store ma inny id niż expectedCharId', async () => {
+        setCharWithUpdater(makeCharacter({ id: 'char-2', level: 10 }));
+        const blob = { _ownerCharacterId: 'char-1', _characterStats: { level: 77 } };
+        const mod = await import('./characterScope');
+        mod.applyBlobToStores(blob, 'char-1', { hydrateCharacterStats: true });
+        expect(readChar().level).toBe(10);
+    });
+});
+
 describe('switchToCharacter', () => {
     it('persists the chosen character id to localStorage', async () => {
         const mod = await import('./characterScope');

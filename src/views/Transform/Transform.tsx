@@ -9,7 +9,7 @@ import { useTransformStore } from '../../stores/transformStore';
 import { useNecroSummonStore } from '../../stores/necroSummonStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useBuffStore } from '../../stores/buffStore';
-import { saveCurrentCharacterStores } from '../../stores/characterScope';
+import { saveCurrentCharacterStores, commitCombatEventNow } from '../../stores/characterScope';
 import { applyDeathPenalty, applyFleePenalty } from '../../systems/levelSystem';
 import { consumeDeathProtection } from '../../systems/deathProtection';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
@@ -57,7 +57,7 @@ import { deathsApi } from '../../api/v1/deathsApi';
 // Backend-mode (opt-in) glue. When isBackendMode() is true the authoritative
 // Laravel backend resolves the transform fight + grants the permanent bonus;
 // the client only READS the outcome (via syncFromBackend) and never recomputes.
-import { isBackendMode } from '../../config/backendMode';
+import { isBackendMode, isBackendCombatDelegated } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import {
@@ -594,6 +594,23 @@ const Transform = () => {
   const [showTransformAnimation, setShowTransformAnimation] = useState(false);
   const [showFullscreenAvatar, setShowFullscreenAvatar] = useState(false);
   const [activeTransformId, setActiveTransformId] = useState<number>(0);
+
+  // Tryb backendu: gdy walka transformacji zakończona (allDefeated) wyślij commit
+  // z kontekstem zdarzenia — backend waliduje postęp questa transformacji + drop.
+  const transformEventSentRef = useRef(false);
+  useEffect(() => {
+    if (phase !== 'allDefeated') {
+      transformEventSentRef.current = false;
+      return;
+    }
+    if (!isBackendMode() || transformEventSentRef.current) return;
+    transformEventSentRef.current = true;
+    commitCombatEventNow({
+      type: 'transform',
+      sourceId: activeTransformId ? String(activeTransformId) : undefined,
+      outcome: 'won',
+    });
+  }, [phase, activeTransformId]);
   // Point N6: explicit "all monsters defeated" flag. Previously the view auto-
   // transitioned to phase='allDefeated' 1s after the last kill, which caused
   // the reward popup to briefly flash when the player clicked Uciekaj in that
@@ -1120,7 +1137,7 @@ const Transform = () => {
     // client path reaches after the last kill); the permanent bonus is applied
     // separately by transformClaim in handleCompleteTransform. Bail out before
     // the legacy client quest/combat path runs.
-    if (isBackendMode()) {
+    if (isBackendCombatDelegated()) {
       try {
         const res = await backendApi.transformResolve(character.id, String(transformId));
         await syncFromBackend(character.id);
@@ -2212,7 +2229,7 @@ const Transform = () => {
     // transform bonus + avatar change. We only READ the result via sync — never
     // mutate characterStore / inventoryStore ourselves here. Bail out before the
     // legacy client claim path (completeTransform / addConsumable / addItem).
-    if (isBackendMode()) {
+    if (isBackendCombatDelegated()) {
       try {
         await backendApi.transformClaim(character.id, String(activeTransformId));
         await syncFromBackend(character.id);
