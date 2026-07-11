@@ -32,9 +32,14 @@
     line-height: 1.1;
     font-family: inherit;
 
-    &:hover {
-      color: var(--nav-accent, #ffc107);
-      background: rgba(var(--nav-accent-rgb, 255, 193, 7), 0.08);
+    // Hover TYLKO na urządzeniach z realnym kursorem — na dotyku `:hover` jest
+    // „sticky" (zostaje po pierwszym tapie), co dawało efekt „najpierw się
+    // zaznacza, potem klika". Na mobilce feedback daje stan &--active (trasa).
+    @media (hover: hover) {
+      &:hover {
+        color: var(--nav-accent, #ffc107);
+        background: rgba(var(--nav-accent-rgb, 255, 193, 7), 0.08);
+      }
     }
 
     &--active {

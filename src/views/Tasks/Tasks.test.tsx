@@ -126,6 +126,33 @@ describe('Tasks — smoke', () => {
     });
 });
 
+describe('Tasks — zepsuty zapis (regresja: pusta strona przez crash renderu)', () => {
+    // Zapis z aktywnym/ukończonym taskiem bez pól liczbowych (undefined) — np. stary
+    // format. Bez guardów `.toLocaleString()` na undefined RZUCAŁ przy renderze, a że
+    // apka nie ma ErrorBoundary, CAŁA strona /tasks była pusta. Render nie może rzucać.
+    it('renderuje aktywny task z brakującymi polami liczbowymi bez crasha', () => {
+        useTaskStore.setState({
+            activeTask: null,
+            activeTasks: [{ id: 't1', monsterId: 'rat', monsterName: 'Szczur' } as unknown as IActiveTask],
+            completedTasks: [],
+        } as never);
+        const { container } = renderTasks();
+        expect(container.querySelector('.tasks')).not.toBeNull();
+        expect(container.querySelector('.tasks__active')).not.toBeNull();
+    });
+
+    it('renderuje historię z brakującymi polami bez crasha', () => {
+        useTaskStore.setState({
+            activeTask: null,
+            activeTasks: [],
+            completedTasks: [{ id: 'c1', monsterId: 'rat', monsterName: 'Szczur', completedAt: '' } as unknown as ICompletedTask],
+        } as never);
+        const { container } = renderTasks();
+        fireEvent.click(container.querySelectorAll('.tasks__tab')[1] as HTMLButtonElement);
+        expect(container.querySelector('.tasks__history-item')).not.toBeNull();
+    });
+});
+
 describe('Tasks — header back navigation', () => {
     it('navigates to "/" when back button is clicked', () => {
         const { container } = renderTasks();

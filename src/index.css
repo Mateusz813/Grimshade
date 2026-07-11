@@ -92,6 +92,17 @@ button {
   font-size: inherit;
 }
 
+/* MOBILE: pojedynczy tap ma klikać OD RAZU. `touch-action: manipulation` wyłącza
+   czekanie przeglądarki na double-tap-zoom (to ono powodowało „najpierw się
+   zaznacza, potem klika" — pierwszy tap gubiony). Dotyczy wszystkich klikalnych. */
+button,
+a,
+[role="button"],
+label,
+summary {
+  touch-action: manipulation;
+}
+
 input,
 textarea,
 select {
@@ -182,8 +193,10 @@ h1, h2, h3, h4, h5, h6 {
   transition: background 120ms ease !important;
 }
 
-.page-back-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1) !important;
+@media (hover: hover) {
+  .page-back-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
 }
 
 .page-back-btn:disabled {
@@ -232,7 +245,9 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: none !important;
 }
 
-.page-tab:hover:not(:disabled) { color: #e0e0e0 !important; }
+@media (hover: hover) {
+  .page-tab:hover:not(:disabled) { color: #e0e0e0 !important; }
+}
 
 .page-tab--active {
   color: #e94560 !important;

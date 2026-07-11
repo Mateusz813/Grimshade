@@ -148,8 +148,12 @@ const Tasks = () => {
       {activeTasks.length > 0 && (
         <div className="tasks__active-list">
           {activeTasks.map((activeTask) => {
-            const isComplete = activeTask.progress >= activeTask.killCount;
-            const pct = Math.min(100, Math.floor((activeTask.progress / activeTask.killCount) * 100));
+            // Guardy na wypadek starego/zepsutego zapisu (undefined pola liczbowe) —
+            // bez nich `.toLocaleString()` rzucał i CAŁA strona /tasks była pusta.
+            const killCount = activeTask.killCount ?? 0;
+            const progress = activeTask.progress ?? 0;
+            const isComplete = killCount > 0 && progress >= killCount;
+            const pct = killCount > 0 ? Math.min(100, Math.floor((progress / killCount) * 100)) : 0;
             return (
               <div key={activeTask.id} className="tasks__active">
                 <div className="tasks__active-header">
@@ -165,7 +169,7 @@ const Tasks = () => {
                   </button>
                 </div>
                 <div className="tasks__active-title">
-                  Zabij {activeTask.killCount.toLocaleString('pl-PL')} × {activeTask.monsterName}
+                  Zabij {killCount.toLocaleString('pl-PL')} × {activeTask.monsterName ?? '?'}
                 </div>
                 <div className="tasks__active-progress-row">
                   <div className="tasks__active-bar">
@@ -175,11 +179,11 @@ const Tasks = () => {
                     />
                   </div>
                   <span className="tasks__active-count">
-                    {activeTask.progress.toLocaleString('pl-PL')} / {activeTask.killCount.toLocaleString('pl-PL')}
+                    {progress.toLocaleString('pl-PL')} / {killCount.toLocaleString('pl-PL')}
                   </span>
                 </div>
                 <div className="tasks__active-reward">
-                  Nagroda: <GameIcon name="money-bag" /> {formatGoldShort(activeTask.rewardGold)} · <GameIcon name="star" /> {activeTask.rewardXp.toLocaleString('pl-PL')} XP
+                  Nagroda: <GameIcon name="money-bag" /> {formatGoldShort(activeTask.rewardGold ?? 0)} · <GameIcon name="star" /> {(activeTask.rewardXp ?? 0).toLocaleString('pl-PL')} XP
                 </div>
                 {isComplete && (
                   <button className="tasks__claim-btn" onClick={() => handleClaimReward(activeTask.id)}>
@@ -254,10 +258,10 @@ const Tasks = () => {
                           }
                         >
                           <span className="tasks__threshold-kills">
-                            {isActive ? `${activeForThis!.progress}/` : ''}{task.killCount} zabojstw
+                            {isActive ? `${activeForThis!.progress ?? 0}/` : ''}{task.killCount ?? 0} zabojstw
                           </span>
                           <span className="tasks__threshold-reward">
-                            <GameIcon name="money-bag" /> {formatGoldShort(task.rewardGold)} · <GameIcon name="star" /> {task.rewardXp.toLocaleString('pl-PL')} XP
+                            <GameIcon name="money-bag" /> {formatGoldShort(task.rewardGold ?? 0)} · <GameIcon name="star" /> {(task.rewardXp ?? 0).toLocaleString('pl-PL')} XP
                           </span>
                           {isCompleted && <span className="tasks__threshold-done"><GameIcon name="check-mark-button" /> Gotowe!</span>}
                         </button>
@@ -279,7 +283,7 @@ const Tasks = () => {
             completedTasks.map((ct) => (
               <div key={ct.id} className="tasks__history-item">
                 <div className="tasks__history-name">
-                  <GameIcon name="check-mark-button" /> {ct.killCount.toLocaleString('pl-PL')} × {ct.monsterName}
+                  <GameIcon name="check-mark-button" /> {(ct.killCount ?? 0).toLocaleString('pl-PL')} × {ct.monsterName ?? '?'}
                 </div>
                 <div className="tasks__history-reward">
                   <GameIcon name="money-bag" /> +{formatGoldShort(ct.rewardGold)} · <GameIcon name="star" /> +{(ct.rewardXp || 0).toLocaleString('pl-PL')} XP
