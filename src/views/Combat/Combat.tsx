@@ -141,8 +141,7 @@ import { getPotionImage, getSpellChestImage, getSummonImage } from '../../system
 // TYLKO gdy isBackendMode() === true — domyślnie gra działa po staremu
 // (kliencki combatEngine). W trybie backendu rozpoczęcie polowania woła
 // jeden resolve na serwerze i hydratuje store'y z /state (patrz runBackendHunt).
-import { isBackendCombatDelegated, isBackendMode } from '../../config/backendMode';
-import { commitCombatEventNow } from '../../stores/characterScope';
+import { isBackendCombatDelegated } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Combat.scss';
@@ -406,23 +405,8 @@ const Combat = () => {
     // in App.tsx). Read it here so we can pass into <CombatSubControls> for
     // the in-bar "X.Yk XP/h" badge.
     const sessionXpPerHour = useCombatStore((s) => s.sessionXpPerHour);
-
-    // Tryb backendu: checkpoint polowania co 25 zabić — wyślij autorytatywny
-    // commit z kontekstem {type:'hunt'} (backend waliduje + zapisuje). Polowanie
-    // leci ciągiem, więc tak progres trafia na serwer co ~25 killi (a debounced
-    // commit i tak łapie resztę na wyjściu). Wybór właściciela: co 25 fal.
-    const sessionKills = useCombatStore((s) => s.sessionKills);
-    const huntCheckpointRef = useRef(0);
-    useEffect(() => {
-        if (!isBackendMode()) return;
-        const total = sessionKills
-            ? Object.values(sessionKills).reduce((a, b) => a + (Number(b) || 0), 0)
-            : 0;
-        if (total > 0 && total - huntCheckpointRef.current >= 25) {
-            huntCheckpointRef.current = total;
-            commitCombatEventNow({ type: 'hunt', outcome: 'settled', wavesCompleted: total });
-        }
-    }, [sessionKills]);
+    // Uwaga: checkpoint polowania (co 25 fal → commit) żyje globalnie w
+    // useBackgroundCombat (App.tsx), żeby działał też przy polowaniu w tle.
 
     // Party bots fighting alongside the player (hydrated in startNewFight)
     const partyBots = useBotStore((s) => s.bots);

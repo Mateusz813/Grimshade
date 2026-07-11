@@ -16,6 +16,8 @@ import { useCooldownStore } from '../stores/cooldownStore';
 import { useBotStore } from '../stores/botStore';
 import { useAppRouteStore } from '../stores/appRouteStore';
 import { usePartyStore } from '../stores/partyStore';
+import { isBackendMode } from '../config/backendMode';
+import { commitCombatEventNow } from '../stores/characterScope';
 import {
     doPlayerAttackTick,
     doMonsterAttackTick,
@@ -49,6 +51,40 @@ export const useBackgroundCombat = () => {
     const autoFight = useCombatStore((s) => s.autoFight);
     const backgroundStartedAt = useCombatStore((s) => s.backgroundStartedAt);
     const monster = useCombatStore((s) => s.monster);
+
+    // Tryb backendu: commity polowania SÓLO przez checkpointy (co 25 zabić) + koniec
+    // polowania. Debounced commit jest w trakcie auto-polowania WYŁĄCZONY (patrz
+    // characterScope), więc to jedyne zapisy stanu podczas ciągłej walki — bez spamu.
+    // Hook jest globalny (App.tsx), więc działa też przy polowaniu w TLE.
+    const backgroundActive = useCombatStore((s) => s.backgroundActive);
+    const totalKills = useCombatStore((s) => {
+        const sk = s.sessionKills as Record<string, number> | undefined;
+        return sk ? Object.values(sk).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+    });
+    const huntCommittedRef = useRef(0);
+    const wasAutoHuntingRef = useRef(false);
+    useEffect(() => {
+        if (!isBackendMode()) return;
+        if (totalKills < huntCommittedRef.current) huntCommittedRef.current = 0; // nowa sesja
+        if (totalKills > 0 && totalKills - huntCommittedRef.current >= 25) {
+            huntCommittedRef.current = totalKills;
+            commitCombatEventNow({ type: 'hunt', outcome: 'settled', wavesCompleted: totalKills });
+        }
+    }, [totalKills]);
+    useEffect(() => {
+        const autoHunting = ((phase === 'fighting' || phase === 'victory') && autoFight) || backgroundActive;
+        if (isBackendMode() && wasAutoHuntingRef.current && !autoHunting) {
+            const sk = useCombatStore.getState().sessionKills as Record<string, number> | undefined;
+            const total = sk ? Object.values(sk).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+            const died = phase === 'dead';
+            if (total > huntCommittedRef.current || died) {
+                huntCommittedRef.current = total;
+                commitCombatEventNow({ type: 'hunt', outcome: died ? 'lost' : 'settled', died, wavesCompleted: total });
+            }
+        }
+        wasAutoHuntingRef.current = autoHunting;
+    }, [phase, autoFight, backgroundActive]);
+
     const botsKey = useBotStore((s) => s.bots.map((b) => b.id).join(','));
     // 2026-05-11 spec ("to sa kopie walki to jest blad — ma byc JEDNA
     // wspolna walka"): in a multi-human party the leader's engine is

@@ -17,16 +17,16 @@ describe('BackendLoader', () => {
 
     it('renders nothing while idle', () => {
         render(<BackendLoader />);
-        expect(screen.queryByText(/Przetwarzanie/)).toBeNull();
+        expect(screen.queryByText(/Grimshade/)).toBeNull();
     });
 
     it('shows the overlay only after the delay while a request is pending', () => {
         render(<BackendLoader />);
         act(() => { useApiPendingStore.setState({ pending: 1 }); });
         // before the delay elapses — still hidden (fast requests never flash it)
-        expect(screen.queryByText(/Przetwarzanie/)).toBeNull();
+        expect(screen.queryByText(/Grimshade/)).toBeNull();
         act(() => { vi.advanceTimersByTime(400); });
-        expect(screen.getByText(/Przetwarzanie/)).toBeTruthy();
+        expect(screen.getByText(/Grimshade/)).toBeTruthy();
     });
 
     it('a request that resolves before the delay never shows the overlay', () => {
@@ -35,15 +35,15 @@ describe('BackendLoader', () => {
         act(() => { vi.advanceTimersByTime(200); });
         act(() => { useApiPendingStore.setState({ pending: 0 }); });
         act(() => { vi.advanceTimersByTime(400); });
-        expect(screen.queryByText(/Przetwarzanie/)).toBeNull();
+        expect(screen.queryByText(/Grimshade/)).toBeNull();
     });
 
     it('hides again once all requests finish', () => {
         render(<BackendLoader />);
         act(() => { useApiPendingStore.setState({ pending: 1 }); });
         act(() => { vi.advanceTimersByTime(400); });
-        expect(screen.getByText(/Przetwarzanie/)).toBeTruthy();
+        expect(screen.getByText(/Grimshade/)).toBeTruthy();
         act(() => { useApiPendingStore.setState({ pending: 0 }); });
-        expect(screen.queryByText(/Przetwarzanie/)).toBeNull();
+        expect(screen.queryByText(/Grimshade/)).toBeNull();
     });
 });

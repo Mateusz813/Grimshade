@@ -191,6 +191,16 @@ const runBackendCommit = (): void => {
 /** Zaplanuj debounced commit do backendu (no-op poza trybem backendu). */
 const scheduleBackendCommit = (): void => {
   if (!isBackendMode() || !_activeCharacterId) return;
+  // Podczas AKTYWNEGO polowania (ciągła walka: fighting/victory z auto-fight, albo
+  // w tle) NIE planuj debounced commitu — inaczej każda luka/tick = osobny commit
+  // (spam). Stan na serwer trafia wtedy przez checkpointy co 25 fal + koniec walki
+  // (useBackgroundCombat). localStorage i tak zapisuje na bieżąco (bufor).
+  const cs = useCombatStore.getState() as { phase?: string; backgroundActive?: boolean; autoFight?: boolean };
+  const autoHunting = ((cs.phase === 'fighting' || cs.phase === 'victory') && !!cs.autoFight) || !!cs.backgroundActive;
+  if (autoHunting) {
+    clearBackendCommitTimers();
+    return;
+  }
   if (_backendCommitTimer !== null) clearTimeout(_backendCommitTimer);
   _backendCommitTimer = setTimeout(runBackendCommit, BACKEND_COMMIT_DEBOUNCE_MS);
   if (_backendCommitMaxTimer === null) {
