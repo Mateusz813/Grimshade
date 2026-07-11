@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -55,6 +55,21 @@ vi.mock('../../hooks/usePartyReadyCheck', () => ({
     triggerPartyCombatGo: vi.fn(),
 }));
 
+// Backend-mode (opt-in) glue. isBackendMode defaults to false so every
+// existing default-path test renders the legacy client flow unchanged; the
+// dedicated backend test flips it on per-call via mockReturnValueOnce.
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: vi.fn(() => false),
+}));
+vi.mock('../../api/backend/backendApi', () => ({
+    backendApi: {
+        raidResolve: vi.fn().mockResolvedValue({ won: true, reward: { gold: 1234, xp: 5678 } }),
+    },
+}));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../api/v1/deathsApi', () => ({
     deathsApi: {
         createDeath: vi.fn().mockResolvedValue(null),
@@ -64,6 +79,9 @@ vi.mock('../../api/v1/deathsApi', () => ({
 }));
 
 import Raid from './Raid';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useCombatStore } from '../../stores/combatStore';
 import { useRaidStore } from '../../stores/raidStore';
@@ -263,6 +281,42 @@ describe('Raid — class variants', () => {
         useCharacterStore.setState({ character: makeChar({ id: 'leader-1', class: 'Cleric' }) });
         const { container } = renderRaid();
         expect(container.querySelector('.raid')).not.toBeNull();
+    });
+});
+
+describe('Raid — backend mode (opt-in)', () => {
+    beforeEach(() => {
+        const charId = 'leader-1';
+        useCharacterStore.setState({ character: makeChar({ id: charId }) });
+        usePartyStore.setState({ party: makeLeaderParty(charId) });
+    });
+
+    it('resolves the raid via the authoritative backend and shows feedback (skips client flow)', async () => {
+        // Flip backend mode on for the single isBackendMode() call inside
+        // handleEnterRaid; every other test keeps the default false.
+        vi.mocked(isBackendMode).mockReturnValueOnce(true);
+
+        const { container } = renderRaid();
+        const enterBtn = container.querySelector('.raid__enter-btn');
+        expect(enterBtn).not.toBeNull();
+
+        fireEvent.click(enterBtn as HTMLElement);
+
+        // Backend authoritative: raidResolve(charId, raidId) -> syncFromBackend.
+        await waitFor(() => {
+            expect(backendApi.raidResolve).toHaveBeenCalledTimes(1);
+        });
+        const [charIdArg, raidIdArg] = vi.mocked(backendApi.raidResolve).mock.calls[0];
+        expect(charIdArg).toBe('leader-1');
+        expect(String(raidIdArg)).toContain('raid_');
+        expect(syncFromBackend).toHaveBeenCalledWith('leader-1');
+
+        // Feedback banner surfaces the server's reward line.
+        await waitFor(() => {
+            expect(container.querySelector('.raid__backend-feedback')).not.toBeNull();
+        });
+        expect(container.querySelector('.raid__backend-feedback')?.textContent)
+            .toMatch(/ukończony/i);
     });
 });
 

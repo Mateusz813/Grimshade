@@ -1,5 +1,7 @@
 import { BaseApi } from '../BaseApi';
 import { supabase } from '../../lib/supabase';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../backend/backendApi';
 
 export type TCharacterClass = 'Knight' | 'Mage' | 'Cleric' | 'Archer' | 'Rogue' | 'Necromancer' | 'Bard';
 
@@ -50,6 +52,13 @@ class CharacterApi extends BaseApi {
     };
 
     createCharacter = async (userId: string, payload: ICharacterPayload): Promise<ICharacter> => {
+        // Tryb backendu: serwer Laravel derywuje wszystkie staty z klasy ORAZ
+        // seeduje startowy blob (broń + konsumowalne). Klient wysyła tylko
+        // name+class — reszta payloadu (staty/gold) jest ignorowana, bo serwer
+        // jest jedynym autorytetem (zamyka wektor forge'owania statów na starcie).
+        if (isBackendMode()) {
+            return await backendApi.createCharacter({ name: payload.name, class: payload.class }) as ICharacter;
+        }
         const data = await this.post<ICharacterPayload & { user_id: string }, ICharacter[]>({
             url: '/rest/v1/characters',
             data: { ...payload, user_id: userId },
@@ -59,6 +68,12 @@ class CharacterApi extends BaseApi {
     };
 
     updateCharacter = async (id: string, payload: Partial<ICharacter>): Promise<ICharacter> => {
+        // Tryb backendu: serwer Laravel jest JEDYNYM zapisującym do `characters`
+        // (level/xp/gold/staty). Klient nie pisze wprost — to główny wektor cheatu.
+        // Wołający robią fire-and-forget (void), więc zwracamy optymistyczny kształt.
+        if (isBackendMode()) {
+            return { id, ...payload } as ICharacter;
+        }
         const data = await this.patch<Partial<ICharacter>, ICharacter[]>({
             url: `/rest/v1/characters?id=eq.${id}`,
             data: { ...payload, updated_at: new Date().toISOString() },
@@ -93,6 +108,8 @@ class CharacterApi extends BaseApi {
         league: string;
         leaguePoints: number;
     }): Promise<void> => {
+        // Tryb backendu: rankingi areny liczy i zapisuje serwer (POST /arena/match).
+        if (isBackendMode()) return;
         try {
             const rows = await this.get<Array<Pick<ICharacter, 'arena_kills' | 'arena_deaths'>>>({
                 url: `/rest/v1/characters?id=eq.${params.characterId}&select=arena_kills,arena_deaths&limit=1`,
@@ -153,6 +170,8 @@ class CharacterApi extends BaseApi {
         value: number;
         mode?: 'add' | 'max' | 'set';
     }): Promise<void> => {
+        // Tryb backendu: liczniki rankingowe (mastery/quests/market/dps/...) bumpuje serwer.
+        if (isBackendMode()) return;
         const mode = params.mode ?? 'add';
         const col = params.column;
         try {
@@ -197,6 +216,7 @@ class CharacterApi extends BaseApi {
      * diagnose missing migrations / EXECUTE grants in DevTools.
      */
     bumpArenaDeathRpc = async (targetCharacterId: string): Promise<void> => {
+        if (isBackendMode()) return;
         try {
             const { error } = await supabase.rpc('bump_arena_death', {
                 target_character_id: targetCharacterId,
@@ -212,6 +232,7 @@ class CharacterApi extends BaseApi {
     };
 
     bumpArenaKillRpc = async (targetCharacterId: string): Promise<void> => {
+        if (isBackendMode()) return;
         try {
             const { error } = await supabase.rpc('bump_arena_kill', {
                 target_character_id: targetCharacterId,
@@ -231,6 +252,7 @@ class CharacterApi extends BaseApi {
         quantity: number;
         goldAmount: number;
     }): Promise<void> => {
+        if (isBackendMode()) return;
         try {
             const { error } = await supabase.rpc('bump_market_sale', {
                 seller_character_id: params.sellerCharacterId,
@@ -248,6 +270,13 @@ class CharacterApi extends BaseApi {
     };
 
     deleteCharacter = async (id: string): Promise<void> => {
+        // Tryb backendu: serwer kasuje roster (guild/party), game_saves i wiersz
+        // characters w JEDNEJ transakcji. Klient tylko deleguje i kończy — żadnych
+        // bezpośrednich DELETE do Supabase (autorytatywność + spójność).
+        if (isBackendMode()) {
+            await backendApi.deleteCharacter(id);
+            return;
+        }
         // Membership tables aren't FK-cascaded in the DB, so a deleted character
         // would otherwise linger in its guild / party roster. Clean them here.
         //

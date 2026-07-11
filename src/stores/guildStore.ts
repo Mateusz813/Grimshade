@@ -9,6 +9,8 @@ import {
 import { supabase } from '../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { guildMemberCap } from '../systems/guildSystem';
+import { isBackendMode } from '../config/backendMode';
+import { backendApi } from '../api/backend/backendApi';
 
 /**
  * Guild membership store — caches the player's current guild + its
@@ -58,6 +60,42 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
     hydrateForCharacter: async (characterId) => {
         if (!characterId) return;
         set({ loading: true });
+        // Backend-authoritative hydrate — the server owns membership. There
+        // is no "find my guild by character" endpoint, so we resolve the
+        // guild id from the per-character map (populated on create/join/
+        // accept) or the live guild, then pull the authoritative roster via
+        // showGuild. No Supabase reads / realtime channel in backend mode.
+        if (isBackendMode()) {
+            try {
+                const knownId = get().guildIdByCharacter[characterId] ?? get().guild?.id ?? null;
+                if (!knownId) {
+                    set((s) => ({
+                        guild: null,
+                        members: [],
+                        requests: [],
+                        loading: false,
+                        guildIdByCharacter: { ...s.guildIdByCharacter, [characterId]: null },
+                    }));
+                    return;
+                }
+                const res = await backendApi.showGuild(characterId, knownId) as {
+                    guild: IGuildRow;
+                    members: IGuildMemberRow[];
+                    requests: IGuildJoinRequestRow[];
+                };
+                set((s) => ({
+                    guild: res.guild,
+                    members: res.members ?? [],
+                    requests: res.requests ?? [],
+                    loading: false,
+                    guildIdByCharacter: { ...s.guildIdByCharacter, [characterId]: res.guild.id },
+                }));
+            } catch (err) {
+                console.error('[guildStore] backend hydrate failed:', err);
+                set({ loading: false });
+            }
+            return;
+        }
         try {
             const res = await guildApi.findGuildForCharacter(characterId);
             if (!res) {
@@ -147,7 +185,9 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
 
     setGuild: (g) => {
         set({ guild: g });
-        if (g) {
+        // Backend mode: the server owns guild level/xp/cap — never push a
+        // client-computed cap back to Supabase.
+        if (g && !isBackendMode()) {
             const cap = guildMemberCap(g.level);
             if (cap !== g.member_cap) {
                 // Keep the server row in sync when the client computes a

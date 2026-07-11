@@ -75,6 +75,8 @@ import { useDailyQuestStore } from '../stores/dailyQuestStore';
 import { ELIXIRS } from '../stores/shopStore';
 import { saveCurrentCharacterStores, saveCurrentCharacterStoresForce } from '../stores/characterScope';
 import { deathsApi } from '../api/v1/deathsApi';
+import { isBackendMode } from '../config/backendMode';
+import { backendApi } from '../api/backend/backendApi';
 import { useBuffStore } from '../stores/buffStore';
 import { useMasteryStore, getMasteryXpMultiplier, getMasteryGoldMultiplier } from '../stores/masteryStore';
 import { useCooldownStore } from '../stores/cooldownStore';
@@ -1396,15 +1398,24 @@ export const handlePlayerDeath = (forceConfirm: boolean = false): void => {
     const monsterLevel = s.monster?.level ?? 0;
 
     if (s.monster) {
-        void deathsApi.logDeath({
-            character_id: char.id,
-            character_name: char.name,
-            character_class: char.class,
-            character_level: char.level,
-            source: 'monster',
-            source_name: monsterName,
-            source_level: monsterLevel,
-        });
+        if (isBackendMode() && char) {
+            void backendApi.logDeath(char.id, {
+                source: 'monster',
+                source_name: monsterName,
+                source_level: monsterLevel,
+                result: 'killed',
+            });
+        } else {
+            void deathsApi.logDeath({
+                character_id: char.id,
+                character_name: char.name,
+                character_class: char.class,
+                character_level: char.level,
+                source: 'monster',
+                source_name: monsterName,
+                source_level: monsterLevel,
+            });
+        }
     }
 
     // 2026-06-21: either protection item (death_protection elixir OR amulet of

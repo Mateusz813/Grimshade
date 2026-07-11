@@ -27,6 +27,20 @@ vi.mock('../../../api/v1/chatApi', () => ({
     // TS uses `import type`, so the runtime mock just needs the value.
 }));
 
+// Backend-authoritative branch mocks. Default OFF so every existing client-path
+// test exercises the untouched chatApi.sendMessage flow; the backend describe
+// flips `backendFlag.on`. Mirrors Deposit.test.tsx / Inventory.test.tsx.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const backendApiMock = vi.hoisted(() => ({ chatSend: vi.fn() }));
+
+vi.mock('../../../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../../../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
+
 vi.mock('../../../api/v1/friendsApi', () => ({
     buildPmChannel: (a: string, b: string) => `pm_${[a, b].sort().join('_')}`,
 }));
@@ -53,6 +67,8 @@ import Chat from './Chat';
 import { useFriendsStore } from '../../../stores/friendsStore';
 import { useGuildStore } from '../../../stores/guildStore';
 import { useGuildTagsStore } from '../../../stores/guildTagsStore';
+import { useCharacterStore } from '../../../stores/characterStore';
+import type { ICharacter } from '../../../api/v1/characterApi';
 
 const baseMessage = (overrides: Partial<{
     id: string;
@@ -93,6 +109,9 @@ beforeEach(() => {
     unsubscribeMock.mockReset();
     getMessagesMock.mockResolvedValue([]);
     sendMessageMock.mockResolvedValue(null);
+    backendFlag.on = false;
+    backendApiMock.chatSend.mockReset().mockResolvedValue(null);
+    useCharacterStore.setState({ character: null });
     useFriendsStore.setState({ friends: [], favorites: [], blocked: [] });
     useGuildStore.setState({ guild: null, members: [], requests: [], loading: false, guildIdByCharacter: {}, channel: null });
     useGuildTagsStore.setState({ tags: {}, tagsByName: {} });
@@ -213,6 +232,70 @@ describe('Chat — sending', () => {
         await waitFor(() => {
             expect(screen.getByText(/Nie udało się wysłać/)).toBeTruthy();
         });
+    });
+});
+
+describe('Chat — backend-authoritative branch', () => {
+    const makeChar = (): ICharacter => ({
+        id: 'char-1',
+        user_id: 'user-1',
+        name: 'Hero',
+        class: 'Knight',
+        level: 5,
+    } as ICharacter);
+
+    it('backend ON routes the send through backendApi.chatSend and SKIPS chatApi.sendMessage', async () => {
+        backendFlag.on = true;
+        useCharacterStore.setState({ character: makeChar() });
+        backendApiMock.chatSend.mockResolvedValueOnce(
+            baseMessage({ id: 'be-sent', character_name: 'Hero', content: 'via-backend' }),
+        );
+        renderChat();
+        const input = document.querySelector('.chat__input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: 'via-backend' } });
+        await act(async () => {
+            fireEvent.click(document.querySelector('.chat__send') as HTMLButtonElement);
+        });
+        await waitFor(() => {
+            expect(backendApiMock.chatSend).toHaveBeenCalledWith('char-1', { channel: 'city', content: 'via-backend' });
+            expect(input.value).toBe('');
+        });
+        // The direct Supabase write is gated off in backend mode.
+        expect(sendMessageMock).not.toHaveBeenCalled();
+        // The returned row is pushed optimistically into the log.
+        expect(screen.getByText('via-backend')).toBeTruthy();
+    });
+
+    it('backend ON but no active character falls back to the client chatApi.sendMessage path', async () => {
+        backendFlag.on = true;
+        useCharacterStore.setState({ character: null });
+        sendMessageMock.mockResolvedValueOnce(
+            baseMessage({ id: 'fb', character_name: 'Hero', content: 'fallback' }),
+        );
+        renderChat();
+        const input = document.querySelector('.chat__input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: 'fallback' } });
+        await act(async () => {
+            fireEvent.click(document.querySelector('.chat__send') as HTMLButtonElement);
+        });
+        await waitFor(() => expect(sendMessageMock).toHaveBeenCalledWith('city', 'fallback', 'Hero', 'Knight', 5));
+        expect(backendApiMock.chatSend).not.toHaveBeenCalled();
+    });
+
+    it('backend OFF runs the untouched client chatApi.sendMessage path', async () => {
+        backendFlag.on = false;
+        useCharacterStore.setState({ character: makeChar() });
+        sendMessageMock.mockResolvedValueOnce(
+            baseMessage({ id: 'client', character_name: 'Hero', content: 'client-path' }),
+        );
+        renderChat();
+        const input = document.querySelector('.chat__input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: 'client-path' } });
+        await act(async () => {
+            fireEvent.click(document.querySelector('.chat__send') as HTMLButtonElement);
+        });
+        await waitFor(() => expect(sendMessageMock).toHaveBeenCalledWith('city', 'client-path', 'Hero', 'Knight', 5));
+        expect(backendApiMock.chatSend).not.toHaveBeenCalled();
     });
 });
 

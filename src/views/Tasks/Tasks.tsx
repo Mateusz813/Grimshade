@@ -12,6 +12,9 @@ import { formatGoldShort } from '../../systems/goldFormat';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
 import EmojiText from '../../components/atoms/Twemoji/EmojiText';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Tasks.scss';
 
 interface IMonsterMini {
@@ -65,7 +68,21 @@ const Tasks = () => {
     startTask(task);
   };
 
-  const handleClaimReward = (taskId: string) => {
+  const handleClaimReward = async (taskId: string) => {
+    // Tryb backendu (opt-in): odbior nagrody za task jest autorytatywny —
+    // serwer nalicza gold/xp i usuwa taska. Po sukcesie re-hydratujemy
+    // store'y (task znika, gold/xp z serwera). Start/anulowanie taska
+    // pozostaje klienckie (brak endpointu).
+    if (isBackendMode() && character) {
+      try {
+        await backendApi.claimTask(character.id, taskId);
+        await syncFromBackend(character.id);
+        return;
+      } catch (e) {
+        console.warn('[tasks] claimTask failed', e);
+        return;
+      }
+    }
     claimReward(taskId);
   };
 

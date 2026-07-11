@@ -6,6 +6,8 @@ import {
     type ReadyDestination,
 } from '../stores/partyReadyCheckStore';
 import { useCharacterStore } from '../stores/characterStore';
+import { isBackendMode } from '../config/backendMode';
+import { backendApi } from '../api/backend/backendApi';
 
 /**
  * Mounted once near the top of the app shell. Two responsibilities:
@@ -100,8 +102,12 @@ export const requestPartyCombatStart = (params: {
     if (party && party.leaderId === character.id) {
         void (async () => {
             try {
-                const { partyApi } = await import('../api/v1/partyApi');
-                await partyApi.updatePartyMeta(party.id, { is_public: false });
+                if (isBackendMode()) {
+                    await backendApi.updateParty(character.id, party.id, { isPublic: false });
+                } else {
+                    const { partyApi } = await import('../api/v1/partyApi');
+                    await partyApi.updatePartyMeta(party.id, { is_public: false });
+                }
             } catch {
                 /* non-fatal: leaves party joinable, but isn't a blocker */
             }
@@ -172,8 +178,12 @@ export const triggerPartyCombatGo = (params: {
     if (party && party.leaderId === character.id) {
         void (async () => {
             try {
-                const { partyApi } = await import('../api/v1/partyApi');
-                await partyApi.updatePartyMeta(party.id, { is_public: false });
+                if (isBackendMode()) {
+                    await backendApi.updateParty(character.id, party.id, { isPublic: false });
+                } else {
+                    const { partyApi } = await import('../api/v1/partyApi');
+                    await partyApi.updatePartyMeta(party.id, { is_public: false });
+                }
             } catch { /* non-fatal */ }
         })();
     }

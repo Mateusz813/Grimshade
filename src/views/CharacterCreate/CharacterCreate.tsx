@@ -10,6 +10,8 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { characterApi, type CharacterClass } from '../../api/v1/characterApi';
 import { buildItem } from '../../systems/itemSystem';
 import { switchToCharacter } from '../../stores/characterScope';
+import { isBackendMode } from '../../config/backendMode';
+import { syncFromBackend } from '../../api/backend/syncState';
 import Icon from '../../components/atoms/Icon/Icon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import api from '../../api/v1/axiosInstance';
@@ -144,7 +146,9 @@ const CharacterCreate = () => {
       return;
     }
 
-    // Check character count limit (max 7)
+    // Client-side pre-hint for the max-7 cap. The AUTHORITATIVE limit is
+    // enforced server-side (422) in backend mode — surfaced in the catch below
+    // — but this GET keeps the fast UX feedback for the client path.
     try {
       const existingRes = await api.get(
         `/rest/v1/characters?user_id=eq.${sessionData.session.user.id}&select=id`,
@@ -155,6 +159,30 @@ const CharacterCreate = () => {
       }
     } catch {
       // ignore, proceed with creation
+    }
+
+    // Backend-authoritative branch (opt-in). The server derives ALL base stats
+    // from the class AND seeds the starter loadout (weapon + consumables), so we
+    // send only name+class and SKIP the client CLASS_BASE_STATS payload + the
+    // local addItem/equipItem/addConsumable grants. syncFromBackend then
+    // hydrates every store from the server's seeded blob.
+    if (isBackendMode()) {
+      try {
+        const character = await characterApi.createCharacter(sessionData.session.user.id, {
+          name: data.name,
+          class: selectedId,
+        });
+        await switchToCharacter(character.id);
+        await syncFromBackend(character.id);
+        setCharacter(character);
+        navigate('/');
+      } catch (e) {
+        // Surface the server error (e.g. 422 = 7-character cap) when present.
+        const serverMsg = (e as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message;
+        setError('root', { message: serverMsg ?? 'Błąd tworzenia postaci. Spróbuj ponownie.' });
+      }
+      return;
     }
 
     try {

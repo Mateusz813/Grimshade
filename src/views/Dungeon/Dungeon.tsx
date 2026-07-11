@@ -101,6 +101,9 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import classesRaw from '../../data/classes.json';
 import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Dungeon.scss';
 
 // -- Class config for dual wield ----------------------------------------------
@@ -683,7 +686,9 @@ const Dungeon = () => {
     // shared CombatUI tree communicates hits via card flash (`isHit`), HP-bar
     // tween, and the session log instead, so this is a no-op kept only to
     // avoid touching every callsite. Drop in a later cleanup pass.
-    const showFloatingDmg = useCallback((_text: string, _type: string, _side?: 'left' | 'right') => {}, []);
+    const showFloatingDmg = useCallback((_text: string, _type: string, _side?: 'left' | 'right') => {
+        void _text; void _type; void _side;
+    }, []);
 
     // Auto-scroll log
     useEffect(() => {
@@ -945,8 +950,68 @@ const Dungeon = () => {
         );
     }, [allMonsters, addLog, fx]);
 
+    // -- Backend-authoritative dungeon resolve (opt-in) ----------------------
+    // Tryb backendu: serwer rozstrzyga CAŁY dungeon jednym wywołaniem
+    // POST /dungeon/{id}/resolve i zwraca wynik. Pomijamy lokalną symulację
+    // fal, po sukcesie re-hydratujemy store'y z GET /state (syncFromBackend),
+    // a odpowiedź napędza ekran wyniku. Odpowiedź jest `unknown` — zawężamy
+    // ją defensywnie (żaden `any`), a gold liczymy z delty inventoryStore gdy
+    // serwer nie zwraca liczby, więc ekran wygranej nie pokazuje +0.
+    const resolveDungeonViaBackend = useCallback(async (dungeon: IDungeon): Promise<void> => {
+        const liveChar = useCharacterStore.getState().character;
+        if (!liveChar) return;
+        const goldBefore = useInventoryStore.getState().gold;
+        try {
+            const res: unknown = await backendApi.dungeonResolve(liveChar.id, dungeon.id);
+            await syncFromBackend(liveChar.id);
+
+            const root: Record<string, unknown> =
+                res && typeof res === 'object' ? (res as Record<string, unknown>) : {};
+            const rewardsRaw = root.rewards ?? root.reward;
+            const rewards: Record<string, unknown> =
+                rewardsRaw && typeof rewardsRaw === 'object'
+                    ? (rewardsRaw as Record<string, unknown>)
+                    : {};
+            const num = (v: unknown): number | null =>
+                typeof v === 'number' && Number.isFinite(v) ? v : null;
+
+            const won: boolean =
+                typeof root.won === 'boolean' ? root.won
+                : typeof root.success === 'boolean' ? root.success
+                : root.result === 'loss' || root.result === 'death' ? false
+                : true;
+            const goldDelta = Math.max(0, useInventoryStore.getState().gold - goldBefore);
+            const gold = num(root.gold) ?? num(rewards.gold) ?? goldDelta;
+            const xp = num(root.xp) ?? num(rewards.xp) ?? 0;
+            const wavesCleared = num(root.wavesCleared) ?? num(root.waves_cleared)
+                ?? (won ? getDungeonWaves(dungeon) : 0);
+
+            setActiveDungeon(dungeon);
+            setResult({
+                success: won,
+                wavesCleared,
+                playerHpLeft: playerHpRef.current,
+                gold,
+                xp,
+                items: [],
+            });
+            setResultKind(won ? 'win' : 'death');
+            setPhase('result');
+        } catch (e) {
+            // Błąd backendu nie może wywalić gry — wracamy do listy lochów.
+            console.warn('[dungeon] dungeonResolve failed', e);
+            setPhase('list');
+        }
+    }, []);
+
     // -- Start dungeon --------------------------------------------------------
     const handleStart = useCallback((dungeon: IDungeon) => {
+        // Tryb backendu (opt-in): oddajemy rozstrzygnięcie serwerowi i pomijamy
+        // całą kliencką symulację fal poniżej. Domyślna ścieżka nietknięta.
+        if (isBackendMode()) {
+            void resolveDungeonViaBackend(dungeon);
+            return;
+        }
         setActiveDungeon(dungeon);
         setCurrentWave(0);
         setResult(null);
@@ -995,7 +1060,7 @@ const Dungeon = () => {
         useNecroSummonStore.getState().clear(PLAYER_FX_ID);
         setPhase('running');
         startWaveMonster(dungeon, 0, startHp);
-    }, [charMaxHp, charMaxMp, startWaveMonster]);
+    }, [charMaxHp, charMaxMp, startWaveMonster, resolveDungeonViaBackend]);
 
     /**
      * Click handler for the per-card "Wejdź" button. Drives the cinematic
@@ -1021,6 +1086,12 @@ const Dungeon = () => {
      */
     const handleEnterClick = useCallback(
         (e: React.MouseEvent<HTMLButtonElement>, dungeon: IDungeon) => {
+            // Tryb backendu (opt-in): pomijamy cinematic — serwer rozstrzyga
+            // dungeon natychmiast (handleStart routuje do resolveDungeonViaBackend).
+            if (isBackendMode()) {
+                handleStart(dungeon);
+                return;
+            }
             const card = (e.currentTarget as HTMLElement).closest('.dungeon__card') as HTMLElement | null;
             const reducedMotion = typeof window !== 'undefined'
                 && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -1304,15 +1375,24 @@ const Dungeon = () => {
         const char = useCharacterStore.getState().character;
         if (char) {
             // Log death to global deaths feed (best-effort)
-            void deathsApi.logDeath({
-                character_id: char.id,
-                character_name: char.name,
-                character_class: char.class,
-                character_level: char.level,
-                source: 'dungeon',
-                source_name: dungeon.name_pl,
-                source_level: dungeon.level,
-            });
+            if (isBackendMode() && char) {
+                void backendApi.logDeath(char.id, {
+                    source: 'dungeon',
+                    source_name: dungeon.name_pl,
+                    source_level: dungeon.level,
+                    result: 'killed',
+                });
+            } else {
+                void deathsApi.logDeath({
+                    character_id: char.id,
+                    character_name: char.name,
+                    character_class: char.class,
+                    character_level: char.level,
+                    source: 'dungeon',
+                    source_name: dungeon.name_pl,
+                    source_level: dungeon.level,
+                });
+            }
 
             // Unified protection (2026-06-21): ONE item (death_protection elixir
             // first, else amulet_of_loss) shields EVERYTHING — no level, no xp,
@@ -3029,16 +3109,25 @@ const Dungeon = () => {
                                                     // renders "<dungeon> przegnał <player>"
                                                     // (verb driven by `result: 'fled'`).
                                                     const dungeonForLog = activeDungeonRef.current;
-                                                    void deathsApi.logDeath({
-                                                        character_id: ch.id,
-                                                        character_name: ch.name,
-                                                        character_class: ch.class,
-                                                        character_level: ch.level,
-                                                        source: 'dungeon',
-                                                        source_name: dungeonForLog?.name_pl ?? 'Loch',
-                                                        source_level: dungeonForLog?.level ?? ch.level,
-                                                        result: 'fled',
-                                                    });
+                                                    if (isBackendMode() && ch) {
+                                                        void backendApi.logDeath(ch.id, {
+                                                            source: 'dungeon',
+                                                            source_name: dungeonForLog?.name_pl ?? 'Loch',
+                                                            source_level: dungeonForLog?.level ?? ch.level,
+                                                            result: 'fled',
+                                                        });
+                                                    } else {
+                                                        void deathsApi.logDeath({
+                                                            character_id: ch.id,
+                                                            character_name: ch.name,
+                                                            character_class: ch.class,
+                                                            character_level: ch.level,
+                                                            source: 'dungeon',
+                                                            source_name: dungeonForLog?.name_pl ?? 'Loch',
+                                                            source_level: dungeonForLog?.level ?? ch.level,
+                                                            result: 'fled',
+                                                        });
+                                                    }
                                                     // Unified protection (2026-06-21): ONE
                                                     // protection item shields the flee penalty
                                                     // entirely (no level, no xp, no skill xp).

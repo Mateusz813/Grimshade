@@ -22,6 +22,8 @@ import { saveCurrentCharacterStoresSync } from '../stores/characterScope';
 import { applyDeathPenalty } from './levelSystem';
 import { deathsApi } from '../api/v1/deathsApi';
 import { supabase } from '../lib/supabase';
+import { isBackendMode } from '../config/backendMode';
+import { backendApi } from '../api/backend/backendApi';
 
 // 2026-05-20: added 'monster' to cover hunt-route disconnects fired from
 // the AppShell DC watcher. The deaths API already accepts the value
@@ -97,16 +99,25 @@ export const applyCombatLeaveDeath = ({
     // Best-effort DB log. Fire BEFORE the level update so the recorded
     // `character_level` reflects what the player WAS when they bailed
     // (matches how real deaths log it pre-penalty).
-    void deathsApi.logDeath({
-        character_id: char.id,
-        character_name: char.name,
-        character_class: char.class,
-        character_level: char.level,
-        source,
-        source_name: taggedName,
-        source_level: sourceLevel,
-        result: 'fled',
-    });
+    if (isBackendMode() && char) {
+        void backendApi.logDeath(char.id, {
+            source,
+            source_name: taggedName,
+            source_level: sourceLevel,
+            result: 'fled',
+        });
+    } else {
+        void deathsApi.logDeath({
+            character_id: char.id,
+            character_name: char.name,
+            character_class: char.class,
+            character_level: char.level,
+            source,
+            source_name: taggedName,
+            source_level: sourceLevel,
+            result: 'fled',
+        });
+    }
 
     // Apply level/XP penalty — bypasses Eliksir Ochrony (death protection)
     // and Amulet of Loss intentionally, see header comment.

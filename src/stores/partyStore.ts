@@ -7,6 +7,16 @@ import {
 } from '../systems/partySystem';
 import type { CharacterClass } from '../api/v1/characterApi';
 import { partyApi, extractApiError, type IPartyWithMembers, type IPartyMemberRow } from '../api/v1/partyApi';
+import { isBackendMode } from '../config/backendMode';
+import { backendApi, type IPartyPatch } from '../api/backend/backendApi';
+
+/**
+ * Backend-mode poll interval (ms) for the public feed + active-party
+ * pollers. Realtime (Supabase channels) is deferred in backend mode
+ * (Faza 7 świadomie pominięte), so we fall back to a lightweight poll
+ * that re-fetches the authoritative snapshot from Laravel.
+ */
+const BACKEND_POLL_MS = 8000;
 
 /**
  * Party store — thin wrapper around `partyApi` + Supabase Realtime.
@@ -138,6 +148,28 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
     } catch {
       /* defensive: offlineHuntStore not available — skip the guard */
     }
+    // Backend-authoritative branch (opt-in). Server creates the party +
+    // inserts the leader, and returns the IPartyWithMembers snapshot which
+    // adaptToPartyInfo consumes 1:1. The direct Supabase write below is
+    // skipped entirely so nothing double-fires.
+    if (isBackendMode()) {
+      set({ loading: true, error: null });
+      try {
+        const fresh = await backendApi.createParty(self.id, {
+          name:         options.name.trim() || `${self.name}'s party`,
+          description:  options.description.trim(),
+          password:     options.password,
+          isPublic:     options.isPublic,
+          minJoinLevel: options.minJoinLevel ?? 1,
+        }) as IPartyWithMembers;
+        set({ party: adaptToPartyInfo(fresh), loading: false });
+      } catch (err) {
+        console.error('[partyStore] backend createParty failed:', err);
+        const msg = extractApiError(err) || (err instanceof Error ? err.message : 'Nie udało się utworzyć party.');
+        set({ loading: false, error: msg, party: null });
+      }
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const fresh = await partyApi.createParty({
@@ -185,6 +217,18 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
     } catch {
       /* defensive */
     }
+    // Backend-authoritative branch (opt-in). Server validates capacity /
+    // password / min-level under a row lock and returns the fresh snapshot.
+    if (isBackendMode()) {
+      set({ loading: true, error: null });
+      try {
+        const fresh = await backendApi.joinParty(self.id, partyId, password) as IPartyWithMembers;
+        set({ party: adaptToPartyInfo(fresh), loading: false });
+      } catch (err) {
+        set({ loading: false, error: extractApiError(err) });
+      }
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const result = await partyApi.joinParty({
@@ -211,6 +255,19 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   leaveParty: async (selfId) => {
     const { party } = get();
     if (!party) return;
+    // Backend-authoritative branch (opt-in). Server owns the single-party
+    // invariant, so we skip the sessionStorage stale-membership dance
+    // (that only exists to work around Supabase realtime eventual
+    // consistency). Clear locally immediately regardless of the result.
+    if (isBackendMode()) {
+      set({ party: null });
+      try {
+        await backendApi.leaveParty(selfId, party.id);
+      } catch {
+        // Non-fatal — UI already cleared so it can't get stuck.
+      }
+      return;
+    }
     // 2026-05-13 spec ("po wejsciu na postac moja postac byla w party!!!"):
     // record the just-left party so `hydrateActiveParty` ignores any
     // server row that hasn't been deleted yet by Supabase's eventually
@@ -234,6 +291,18 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   disbandParty: async (selfId) => {
     const { party } = get();
     if (!party) return;
+    // Backend-authoritative branch (opt-in). Leader leaving dissolves the
+    // party server-side; the response is {dissolved:true,party:null} so we
+    // just clear locally.
+    if (isBackendMode()) {
+      try {
+        await backendApi.leaveParty(selfId, party.id);
+      } catch {
+        // Non-fatal — clear locally regardless.
+      }
+      set({ party: null });
+      return;
+    }
     try {
       await partyApi.leaveParty(party.id, selfId);
     } catch {
@@ -245,6 +314,18 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   kickByRowId: async (rowId) => {
     const { party } = get();
     if (!party) return;
+    // Backend-authoritative branch (opt-in). Kick is a leader-only action,
+    // so the acting character is the current leader. Server returns the
+    // fresh snapshot without the kicked member.
+    if (isBackendMode()) {
+      try {
+        const fresh = await backendApi.kickParty(party.leaderId, party.id, rowId) as IPartyWithMembers;
+        set({ party: adaptToPartyInfo(fresh) });
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : 'Błąd wyrzucania gracza.' });
+      }
+      return;
+    }
     try {
       await partyApi.kickMember(party.id, rowId);
     } catch (err) {
@@ -255,6 +336,23 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   updateMeta: async (patch) => {
     const { party } = get();
     if (!party) return;
+    // Backend-authoritative branch (opt-in). Edit party meta is leader-only;
+    // server returns the fresh snapshot with the applied changes. Empty
+    // password ('') clears the gate server-side — mirror the legacy null
+    // semantics by mapping null -> ''.
+    if (isBackendMode()) {
+      const backendPatch: IPartyPatch = {};
+      if (patch.description !== undefined) backendPatch.description = patch.description;
+      if (patch.isPublic !== undefined) backendPatch.isPublic = patch.isPublic;
+      if (patch.password !== undefined) backendPatch.password = patch.password ?? '';
+      try {
+        const fresh = await backendApi.updateParty(party.leaderId, party.id, backendPatch) as IPartyWithMembers;
+        set({ party: adaptToPartyInfo(fresh) });
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : 'Błąd aktualizacji party.' });
+      }
+      return;
+    }
     try {
       await partyApi.updatePartyMeta(party.id, {
         description: patch.description,
@@ -267,6 +365,23 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   },
 
   hydrateActiveParty: async (characterId) => {
+    // Backend-authoritative branch (opt-in). Server owns the single-party
+    // invariant, so we skip the Supabase stale-membership deletes + the
+    // sessionStorage "just-left" dance entirely — the /active endpoint is
+    // the source of truth. null => not in any party (clear local).
+    if (isBackendMode()) {
+      try {
+        const fresh = await backendApi.myActiveParty(characterId) as IPartyWithMembers | null;
+        if (fresh) {
+          set({ party: adaptToPartyInfo(fresh) });
+        } else {
+          set({ party: null });
+        }
+      } catch {
+        // Non-fatal — keep whatever we had.
+      }
+      return;
+    }
     try {
       const fresh = await partyApi.getMyActiveParty(characterId);
       if (fresh) {
@@ -309,6 +424,21 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   transferLeadership: async (newLeaderId) => {
     const { party } = get();
     if (!party) return;
+    // Backend-authoritative branch (opt-in). Handover is leader-only, so the
+    // acting character is the CURRENT leader (captured before the optimistic
+    // flip). Server returns the fresh snapshot with roles + leader_id set.
+    if (isBackendMode()) {
+      const actingLeaderId = party.leaderId;
+      set({ party: { ...party, leaderId: newLeaderId } }); // optimistic
+      try {
+        const fresh = await backendApi.handoverParty(actingLeaderId, party.id, newLeaderId) as IPartyWithMembers;
+        set({ party: adaptToPartyInfo(fresh) });
+      } catch (err) {
+        // Roll back on failure.
+        set({ party, error: err instanceof Error ? err.message : 'Nie udało się przekazać lidera.' });
+      }
+      return;
+    }
     // Optimistic update — flip leader_id locally so the buttons re-render.
     // Realtime push will sync any divergence within the second.
     set({ party: { ...party, leaderId: newLeaderId } });
@@ -351,6 +481,14 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   },
 
   subscribePublicFeed: () => {
+    // Backend-authoritative branch (opt-in). Realtime is deferred, so we
+    // fall back to a lightweight poller that re-fetches the public feed.
+    // We deliberately do NOT open a supabase.channel in backend mode.
+    if (isBackendMode()) {
+      void get().refreshPublicParties();
+      const interval = setInterval(() => { void get().refreshPublicParties(); }, BACKEND_POLL_MS);
+      return () => { clearInterval(interval); };
+    }
     const unsub = partyApi.subscribePublicFeed(
       (parties) => set({ publicParties: parties, error: null }),
       (err) => {
@@ -363,6 +501,18 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
 
   refreshPublicParties: async () => {
     set({ loading: true });
+    // Backend-authoritative branch (opt-in). Server returns the same
+    // IPartyWithMembers[] shape the browser already consumes.
+    if (isBackendMode()) {
+      try {
+        const rows = await backendApi.listPublicParties() as IPartyWithMembers[];
+        set({ publicParties: rows, loading: false, error: null });
+      } catch (err) {
+        const msg = extractApiError(err) || 'Nie udało się pobrać listy party.';
+        set({ loading: false, error: msg });
+      }
+      return;
+    }
     try {
       const rows = await partyApi.listPublicParties();
       set({ publicParties: rows, loading: false, error: null });
@@ -375,6 +525,20 @@ export const usePartyStore = create<IPartyStore>()((set, get) => ({
   subscribeToActiveParty: () => {
     const { party } = get();
     if (!party) return () => {};
+    // Backend-authoritative branch (opt-in). Realtime is deferred, so we
+    // poll the /active endpoint via hydrateActiveParty (which clears the
+    // local party if the server says we're no longer in one — kicked /
+    // dissolved). We resolve the acting character id lazily to avoid a
+    // hard import cycle with characterStore. No supabase.channel here.
+    if (isBackendMode()) {
+      const interval = setInterval(() => {
+        void import('./characterStore').then(({ useCharacterStore }) => {
+          const cid = useCharacterStore.getState().character?.id;
+          if (cid) void get().hydrateActiveParty(cid);
+        }).catch(() => { /* defensive — skip this tick */ });
+      }, BACKEND_POLL_MS);
+      return () => { clearInterval(interval); };
+    }
     const unsub = partyApi.subscribeParty(party.id, (fresh) => {
       if (!fresh) {
         set({ party: null });

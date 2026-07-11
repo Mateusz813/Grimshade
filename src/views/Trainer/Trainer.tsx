@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useTransformStore } from '../../stores/transformStore';
 import { useCombatStore } from '../../stores/combatStore';
@@ -412,6 +415,20 @@ const Trainer = () => {
             : null;
         const t = window.setTimeout(() => {
             lastPushedDpsRef.current = localBest;
+            // Backend-authoritative branch (opt-in). The server records the
+            // high-water DPS (solo / party column + composition snapshot) and
+            // we re-hydrate best_dps5_* from the returned CharacterResource —
+            // NO direct `characters` PATCH fires here. Replaces BOTH the
+            // `characterApi.bumpStat` (number column) AND the ungated
+            // `characterApi.updateCharacter` (composition) client writes.
+            if (isBackendMode()) {
+                void backendApi.dpsRecord(character.id, {
+                    dps: localBest,
+                    inParty,
+                    composition,
+                }).then(() => syncFromBackend(character.id)).catch(() => { /* offline */ });
+                return;
+            }
             void import('../../api/v1/characterApi').then(({ characterApi }) => {
                 void characterApi.bumpStat({
                     characterId: character.id,

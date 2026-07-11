@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -39,6 +39,34 @@ vi.mock('../../hooks/useCombatFx', () => ({
         resetAllyFx: vi.fn(),
     }),
 }));
+
+// Backend-authoritative branch mocks. Default OFF so the existing client-path
+// tests exercise the untouched `characterApi.bumpStat` / `updateCharacter`
+// path; the dedicated describe flips `backendFlag.on`.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const backendApiMock = vi.hoisted(() => ({
+    dpsRecord: vi.fn(),
+}));
+const syncFromBackendMock = vi.hoisted(() => vi.fn());
+const characterApiMock = vi.hoisted(() => ({
+    bumpStat: vi.fn(),
+    updateCharacter: vi.fn(),
+}));
+
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: syncFromBackendMock,
+    syncIfBackend: vi.fn().mockResolvedValue(undefined),
+}));
+// The high-water DPS effect lazy-imports characterApi — mock the module so the
+// client-path tests can assert on bumpStat / updateCharacter without a network.
+vi.mock('../../api/v1/characterApi', () => ({ characterApi: characterApiMock }));
 
 // framer-motion causes happy-dom hangs on AnimatePresence — stub it.
 vi.mock('framer-motion', async () => {
@@ -105,6 +133,11 @@ beforeEach(() => {
     });
     usePartyStore.setState({ party: null });
     usePartyPresenceStore.setState({ byMember: {} });
+    backendFlag.on = false;
+    backendApiMock.dpsRecord.mockReset().mockResolvedValue(undefined);
+    syncFromBackendMock.mockReset().mockResolvedValue(undefined);
+    characterApiMock.bumpStat.mockReset().mockResolvedValue(undefined);
+    characterApiMock.updateCharacter.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -167,6 +200,64 @@ describe('Trainer — sandbox HP/MP isolation', () => {
         useCharacterStore.setState({ character: makeChar({ hp: 1, max_hp: 1 }) });
         const { container } = renderTrainer();
         expect(container.querySelector('.trainer')).not.toBeNull();
+    });
+});
+
+describe('Trainer — high-water DPS record backend branch', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.runOnlyPendingTimers();
+        vi.useRealTimers();
+    });
+
+    // Drive the combat tick until auto-basic lands a hit (bestWindow > 0),
+    // then past the 800ms DPS-push throttle. The tick interval is 500ms and
+    // the first auto-basic fires on tick 2 (=1000ms), so ~1000ms + 800ms +
+    // margin lands the push. `advanceTimersByTimeAsync` also flushes the
+    // microtask queue so the async dpsRecord -> syncFromBackend chain settles.
+    const driveDpsPush = async () => {
+        // Phase 1: run the combat tick long enough to accumulate damage
+        // (bestWindow > 0) and let the passive DPS effect commit + register
+        // its 800ms throttle timeout.
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000);
+        });
+        // Phase 2: advance past the 800ms throttle so the push timeout fires
+        // and its async dpsRecord -> syncFromBackend chain settles.
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(2000);
+        });
+    };
+
+    it('ON: records DPS via backendApi.dpsRecord + syncFromBackend and SKIPS the client characterApi writes', async () => {
+        backendFlag.on = true;
+        renderTrainer();
+        await driveDpsPush();
+        expect(backendApiMock.dpsRecord).toHaveBeenCalled();
+        const [charIdArg, bodyArg] = backendApiMock.dpsRecord.mock.calls[0];
+        expect(charIdArg).toBe('char-1');
+        expect(bodyArg).toMatchObject({ inParty: false, composition: null });
+        expect(typeof (bodyArg as { dps: number }).dps).toBe('number');
+        expect((bodyArg as { dps: number }).dps).toBeGreaterThan(0);
+        expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
+        // No direct characters PATCH may fire in backend mode.
+        expect(characterApiMock.bumpStat).not.toHaveBeenCalled();
+        expect(characterApiMock.updateCharacter).not.toHaveBeenCalled();
+    });
+
+    it('OFF: the old client path runs (characterApi.bumpStat called, backend untouched)', async () => {
+        backendFlag.on = false;
+        renderTrainer();
+        await driveDpsPush();
+        expect(characterApiMock.bumpStat).toHaveBeenCalled();
+        const call = characterApiMock.bumpStat.mock.calls[0][0] as { characterId: string; column: string; mode: string };
+        expect(call.characterId).toBe('char-1');
+        expect(call.column).toBe('best_dps5_solo');
+        expect(call.mode).toBe('max');
+        expect(backendApiMock.dpsRecord).not.toHaveBeenCalled();
+        expect(syncFromBackendMock).not.toHaveBeenCalled();
     });
 });
 

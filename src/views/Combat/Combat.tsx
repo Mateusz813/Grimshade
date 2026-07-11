@@ -137,6 +137,13 @@ import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
 import { AUTO_FIGHT_DELAY_MS } from '../../hooks/useBackgroundCombat';
 import { formatGoldShort } from '../../systems/goldFormat';
 import { getPotionImage, getSpellChestImage, getSummonImage } from '../../systems/spriteAssets';
+// 2026-07-09: opt-in autorytatywny backend (Laravel). Gałąź uruchamia się
+// TYLKO gdy isBackendMode() === true — domyślnie gra działa po staremu
+// (kliencki combatEngine). W trybie backendu rozpoczęcie polowania woła
+// jeden resolve na serwerze i hydratuje store'y z /state (patrz runBackendHunt).
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Combat.scss';
 
 // Potion cooldown durations (ms) — for manual potion use UI
@@ -253,6 +260,49 @@ const formatSkillName = (id: string | null): string => {
     const name = id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     return `${getSkillIcon(id)} ${name}`;
 };
+
+// -- Backend hunt (opt-in) -----------------------------------------------------
+// Kształt odpowiedzi POST /combat/resolve (autorytatywny wynik z serwera —
+// patrz CombatController::resolve + HuntResolver). Store'y mają go APLIKOWAĆ,
+// nie liczyć samodzielnie. Wszystkie pola opcjonalne — porażka nie zwraca
+// nagród, więc narrowing musi być defensywny.
+interface IBackendHuntDrops {
+    stones?: { type?: string; count?: number } | null;
+    potions?: Array<{ potionId?: string; count?: number }>;
+    items?: unknown[];
+}
+interface IBackendHuntResult {
+    won?: boolean;
+    xpGained?: number;
+    goldGained?: number;
+    levelsGained?: number;
+    monsterRarity?: string;
+    playerHp?: number;
+    drops?: IBackendHuntDrops;
+}
+interface IBackendHuntResponse {
+    result?: IBackendHuntResult;
+    gold?: number;
+}
+
+/** Zawęża `unknown` z backendApi.combatResolve do result-a (bez any). */
+const parseBackendHuntResult = (raw: unknown): IBackendHuntResult => {
+    if (typeof raw !== 'object' || raw === null) return {};
+    const obj = raw as IBackendHuntResponse;
+    if (typeof obj.result !== 'object' || obj.result === null) return {};
+    return obj.result;
+};
+
+/** Feedback pokazywany po serwerowym rozstrzygnięciu polowania (toast). */
+interface IBackendHuntFeedback {
+    won: boolean;
+    xp: number;
+    gold: number;
+    levelsGained: number;
+    itemDrops: number;
+    monsterName: string;
+    error: boolean;
+}
 
 // -- Main component ------------------------------------------------------------
 
@@ -408,6 +458,55 @@ const Combat = () => {
 
     /** Monster currently being inspected in the drop-info modal (idle phase). */
     const [dropModalMonsterId, setDropModalMonsterId] = useState<string | null>(null);
+
+    // 2026-07-09: feedback (toast) po serwerowym rozstrzygnięciu polowania w
+    // trybie backendu. Null = brak. Auto-znika po kilku sekundach (efekt niżej).
+    const [backendHuntResult, setBackendHuntResult] = useState<IBackendHuntFeedback | null>(null);
+
+    // Auto-ukrycie toasta z wynikiem serwerowego polowania po 6 s.
+    useEffect(() => {
+        if (!backendHuntResult) return;
+        const id = setTimeout(() => setBackendHuntResult(null), 6000);
+        return () => clearTimeout(id);
+    }, [backendHuntResult]);
+
+    /**
+     * 2026-07-09: pojedyncze serwerowe rozstrzygnięcie polowania (tryb backendu).
+     * Autorytet ma serwer — NIE odpalamy klienckiego combatEngine. Wołamy
+     * POST /combat/resolve, pokazujemy wynik (won/xp/gold/loot z odpowiedzi),
+     * po czym syncFromBackend(charId) hydratuje wszystkie store'y z GET /state.
+     * try/catch: błąd backendu NIE może wywalić gry — pokazujemy toast błędu.
+     */
+    const runBackendHunt = useCallback(async (target: IMonster): Promise<void> => {
+        if (!character) return;
+        try {
+            const raw = await backendApi.combatResolve(character.id, target.id);
+            const result = parseBackendHuntResult(raw);
+            // Autorytatywny stan z serwera -> store'y (level/xp/hp/gold/inventory/...).
+            await syncFromBackend(character.id);
+            const items = result.drops?.items;
+            setBackendHuntResult({
+                won: result.won === true,
+                xp: result.xpGained ?? 0,
+                gold: result.goldGained ?? 0,
+                levelsGained: result.levelsGained ?? 0,
+                itemDrops: Array.isArray(items) ? items.length : 0,
+                monsterName: target.name_pl,
+                error: false,
+            });
+        } catch (e) {
+            console.warn('[combat] backendowe polowanie nie powiodło się', e);
+            setBackendHuntResult({
+                won: false,
+                xp: 0,
+                gold: 0,
+                levelsGained: 0,
+                itemDrops: 0,
+                monsterName: target.name_pl,
+                error: true,
+            });
+        }
+    }, [character]);
 
     /** Hunt-only "Wyjdź" popup ("Zakończ polowanie" / "Wróć do miasta"). */
     const [exitDialogOpen, setExitDialogOpen] = useState(false);
@@ -1512,7 +1611,7 @@ const Combat = () => {
         if (r.finalDamage > 0) {
             useDailyQuestStore.getState().addProgress('deal_damage', r.finalDamage);
         }
-        useSkillStore.getState().addMlvlXpFromSkill(char.class as any);
+        useSkillStore.getState().addMlvlXpFromSkill(char.class);
         s.addLog(
             `Używasz ${formatSkillName(skillId)}: ${r.finalDamage} dmg${r.isCrit ? ' :high-voltage:KRYTYK!' : ''} (-${manualMpCost} MP)`,
             r.isCrit ? 'crit' : 'player',
@@ -1715,6 +1814,46 @@ const Combat = () => {
     // -- Render ----------------------------------------------------------------
     return (
         <div className="combat">
+
+            {/* 2026-07-09: toast wyniku serwerowego polowania (tryb backendu).
+                Renderowany tylko gdy backendHuntResult != null (a ten ustawia
+                się WYŁĄCZNIE w gałęzi isBackendMode()). Klik = zamknij. */}
+            {backendHuntResult && (
+                <div
+                    className="combat__backend-toast"
+                    role="status"
+                    onClick={() => setBackendHuntResult(null)}
+                    style={{
+                        position: 'fixed',
+                        top: 12,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 9999,
+                        maxWidth: '92%',
+                        padding: '10px 16px',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        color: '#fff',
+                        fontSize: 14,
+                        lineHeight: 1.35,
+                        textAlign: 'center',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+                        background: backendHuntResult.error
+                            ? 'rgba(120, 30, 30, 0.95)'
+                            : backendHuntResult.won
+                                ? 'rgba(20, 80, 40, 0.95)'
+                                : 'rgba(90, 70, 20, 0.95)',
+                    }}
+                >
+                    {backendHuntResult.error
+                        ? `Serwer: walka z ${backendHuntResult.monsterName} nie powiodła się. Spróbuj ponownie.`
+                        : backendHuntResult.won
+                            ? `Zwycięstwo nad ${backendHuntResult.monsterName}! +${backendHuntResult.xp} XP, +${backendHuntResult.gold} złota`
+                                + (backendHuntResult.itemDrops > 0 ? `, przedmioty: ${backendHuntResult.itemDrops}` : '')
+                                + (backendHuntResult.levelsGained > 0 ? `, +${backendHuntResult.levelsGained} poziom` : '')
+                            : `Porażka w walce z ${backendHuntResult.monsterName}.`}
+                </div>
+            )}
 
             {/* -- Top bar -----------------------------------------------------
                 Slimmed-down header: no Wstecz button, no "Polowanie" title —
@@ -2133,8 +2272,19 @@ const Combat = () => {
                                                 ><GameIcon name="package" /></button>
                                                 <button
                                                     className="combat__mcard-action combat__mcard-action--fight"
-                                                    onClick={() => {
+                                                    onClick={async () => {
                                                         if (locked) return;
+                                                        // 2026-07-09: tryb backendu (opt-in).
+                                                        // Zamiast klienckiego combatEngine +
+                                                        // party ready-check robimy JEDNO
+                                                        // serwerowe rozstrzygnięcie polowania
+                                                        // (POST /combat/resolve) i hydratujemy
+                                                        // store'y z /state. Domyślna ścieżka
+                                                        // (poniżej) pozostaje nietknięta.
+                                                        if (isBackendMode() && character) {
+                                                            await runBackendHunt(m);
+                                                            return;
+                                                        }
                                                         // 2026-05-09 spec: party ready-check
                                                         // fires when leader picks SPECIFIC
                                                         // monster. Leader's fight does NOT
@@ -2862,9 +3012,15 @@ const Combat = () => {
                                     <button
                                         type="button"
                                         className="combat-ui__victory-btn combat-ui__victory-btn--primary"
-                                        onClick={() => {
+                                        onClick={async () => {
                                             const baseMonster =
                                                 monsters.find((m) => m.id === monster.id) ?? monster;
+                                            // 2026-07-09: tryb backendu — kolejne polowanie =
+                                            // kolejne serwerowe rozstrzygnięcie (pojedyncze).
+                                            if (isBackendMode() && character) {
+                                                await runBackendHunt(baseMonster);
+                                                return;
+                                            }
                                             engineStartNewFight(baseMonster);
                                         }}
                                     >

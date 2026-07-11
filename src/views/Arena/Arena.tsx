@@ -27,6 +27,9 @@ import {
 } from '../../systems/arenaSystem';
 import { formatGoldShort } from '../../systems/goldFormat';
 import Spinner from '../../components/ui/Spinner/Spinner';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Arena.scss';
 
 const Arena = () => {
@@ -226,7 +229,20 @@ const Arena = () => {
         void finalizeMatch;
     };
 
-    const onClaimRewards = () => {
+    const onClaimRewards = async () => {
+        // Backend-authoritative branch (opt-in). Server grants the previous
+        // season's rewards + clears the pending claim; we re-hydrate the
+        // stores from the returned state instead of applying it client-side.
+        if (isBackendMode() && character) {
+            try {
+                await backendApi.claimArenaSeason(character.id);
+                await syncFromBackend(character.id);
+                return;
+            } catch (e) {
+                console.warn('[backend] claimArenaSeason failed', e);
+                return;
+            }
+        }
         const claimed = claimSeasonRewards();
         if (claimed) {
             alert(`Odebrano nagrody za sezon: ${ARENA_LEAGUE_LABELS[claimed.league]}, miejsce ${claimed.finalRank}`);

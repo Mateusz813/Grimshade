@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { isBackendMode } from '../config/backendMode';
 
 /**
  * Per-character game save storage.
@@ -6,6 +7,11 @@ import { supabase } from '../lib/supabase';
  * Fallback: localStorage (offline mode).
  *
  * Conflict resolution: newest `updated_at` wins.
+ *
+ * ⚠️ Tryb backendu (isBackendMode): serwer Laravel jest JEDYNYM zapisującym do
+ * `game_saves`. Klient trzyma wtedy tylko lokalny cache (localStorage) i NIE
+ * wysyła bloba do Supabase — inaczej nadpisywałby autorytatywny stan serwera
+ * po każdej akcji i zostawiał otwartą furtkę cheatera (bezpośredni zapis PostgREST).
  */
 
 const localKey = (characterId: string): string =>
@@ -31,6 +37,10 @@ export const saveGame = async (
   } catch {
     // storage full – silently skip
   }
+
+  // Tryb backendu: serwer jest jedynym zapisującym do game_saves. Nie pisz bloba
+  // wprost do Supabase (uniknij nadpisania stanu serwera + zamknij furtkę zapisu).
+  if (isBackendMode()) return;
 
   // Try to save to Supabase (online)
   try {
@@ -128,6 +138,9 @@ export const loadGame = async (
  * Called on reconnect or periodic sync.
  */
 export const syncToCloud = async (characterId: string): Promise<void> => {
+  // Tryb backendu: serwer jest jedynym zapisującym do game_saves (patrz saveGame).
+  if (isBackendMode()) return;
+
   const raw = localStorage.getItem(localKey(characterId));
   if (!raw) return;
 
@@ -160,6 +173,12 @@ export const syncToCloud = async (characterId: string): Promise<void> => {
  */
 export const deleteGameSave = async (characterId: string): Promise<void> => {
   localStorage.removeItem(localKey(characterId));
+
+  // Tryb backendu: serwer kasuje game_saves w ramach transakcji usuwania postaci
+  // (patrz characterApi.deleteCharacter). Klient TYLKO czyści lokalny cache i NIE
+  // wysyła DELETE do Supabase — spójnie z saveGame/syncToCloud (serwer = jedyny
+  // zapisujący do game_saves).
+  if (isBackendMode()) return;
 
   try {
     const { data: { session } } = await supabase.auth.getSession();

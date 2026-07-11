@@ -36,6 +36,9 @@ import type { IMonster, TMonsterRarity } from '../../types/monster';
 import monstersRaw from '../../data/monsters.json';
 import itemsRaw from '../../data/items.json';
 import { formatGoldShort } from '../../systems/goldFormat';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './OfflineHunt.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -340,7 +343,26 @@ const OfflineHunt = () => {
         setClaimResult(null);
     };
 
-    const handleClaim = (): void => {
+    const handleClaim = async (): Promise<void> => {
+        // Tryb backendu (opt-in): serwer jest autorytetem. `offline-hunt/settle`
+        // rozlicza łupy offline po stronie serwera (zamyka anty-duplikację), a
+        // syncFromBackend hydratuje store'y autorytatywnym stanem /state. Nie
+        // liczymy nagród klienta w tej gałęzi. Feedback = ta sama animacja FX
+        // "NAGRODA!"; po sync widok wraca do setup (isActive ze stanu serwera).
+        if (isBackendMode() && character) {
+            setClaimFxActive(true);
+            try {
+                await backendApi.offlineHuntSettle(character.id);
+                await syncFromBackend(character.id);
+                setPickedSkillId(null);
+                setPickedMonsterId(null);
+            } catch (e) {
+                console.warn('[OfflineHunt] backend offlineHuntSettle failed', e);
+            } finally {
+                setClaimFxActive(false);
+            }
+            return;
+        }
         const result = claimOfflineHunt();
         if (result) {
             setClaimFxActive(true);

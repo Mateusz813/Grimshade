@@ -47,6 +47,21 @@ vi.mock('../../stores/characterScope', () => ({
     peekCharacterStore: vi.fn(() => null),
 }));
 
+// Backend-authoritative branch mocks. Default OFF; a dedicated test flips
+// `backendFlag.on`. The cloud delete no-op lives inside the (mocked)
+// characterApi.deleteCharacter; at the view level we assert the delete flow
+// keeps local cleanup + the password gate under backend mode.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../../api/backend/backendApi', () => ({
+    backendApi: { deleteCharacter: vi.fn() },
+}));
+
 import CharacterSelect from './CharacterSelect';
 import { characterApi } from '../../api/v1/characterApi';
 import { authApi } from '../../api/v1/authApi';
@@ -79,6 +94,7 @@ const renderCharacterSelect = () =>
     );
 
 beforeEach(() => {
+    backendFlag.on = false;
     navigateMock.mockClear();
     vi.mocked(characterApi.getCharacters).mockReset();
     vi.mocked(characterApi.deleteCharacter).mockReset();
@@ -227,6 +243,36 @@ describe('CharacterSelect — actions', () => {
         expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
         expect(deleteCharacterData).not.toHaveBeenCalled();
         expect(container.querySelectorAll('.char-select__card').length).toBe(1);
+    });
+
+    it('backend mode: delete still runs the password gate + local cleanup + delegates cloud delete', async () => {
+        backendFlag.on = true;
+        const char = makeChar({ id: 'a', name: 'Alpha' });
+        vi.mocked(characterApi.getCharacters).mockResolvedValue([char]);
+        vi.mocked(characterApi.deleteCharacter).mockResolvedValue(undefined as never);
+        vi.mocked(authApi.verifyCurrentPassword).mockResolvedValue(true);
+
+        const { container } = renderCharacterSelect();
+        await waitFor(() => {
+            expect(container.querySelector('.char-select__delete-btn')).not.toBeNull();
+        });
+
+        fireEvent.click(container.querySelector('.char-select__delete-btn') as HTMLButtonElement);
+        const input = container.querySelector('.char-select__modal-input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: 'hunter2' } });
+        fireEvent.click(container.querySelector('.char-select__modal-delete') as HTMLButtonElement);
+
+        await waitFor(() => {
+            // Password gate preserved as client UX.
+            expect(authApi.verifyCurrentPassword).toHaveBeenCalledWith('hunter2');
+            // Cloud delete delegated (no-ops the Supabase deletes inside characterApi).
+            expect(characterApi.deleteCharacter).toHaveBeenCalledWith('a');
+            // Local cleanup ALWAYS runs so this browser forgets the character.
+            expect(deleteCharacterData).toHaveBeenCalledWith('a');
+        });
+        await waitFor(() => {
+            expect(container.querySelectorAll('.char-select__card').length).toBe(0);
+        });
     });
 
     it('cancels the delete confirm when Anuluj is clicked', async () => {

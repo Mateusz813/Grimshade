@@ -25,15 +25,30 @@ vi.mock('./axiosInstance', () => ({
     },
 }));
 
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: vi.fn(() => false),
+}));
+
+vi.mock('../backend/backendApi', () => ({
+    backendApi: {
+        createCharacter: vi.fn(),
+        deleteCharacter: vi.fn(),
+    },
+}));
+
 import { supabase } from '../../lib/supabase';
 import api from './axiosInstance';
 import { characterApi } from './characterApi';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../backend/backendApi';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // Domyślnie tryb backendu WYŁĄCZONY — istniejące testy (zapisy do Supabase) bez zmian.
+    vi.mocked(isBackendMode).mockReturnValue(false);
 });
 
 // -- Helpers ----------------------------------------------------------------
@@ -314,6 +329,70 @@ describe('characterApi RPC helpers', () => {
             expect(warn).toHaveBeenCalled();
             warn.mockRestore();
         });
+    });
+});
+
+// -- backend mode: server is the sole writer ---------------------------------
+
+describe('characterApi — backend mode gates all direct character writes', () => {
+    beforeEach(() => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+    });
+
+    it('updateCharacter does NOT PATCH Supabase and returns the optimistic shape', async () => {
+        const result = await characterApi.updateCharacter('c1', { level: 999, gold: 999999 });
+        expect(mockApi.patch).not.toHaveBeenCalled();
+        expect(result).toMatchObject({ id: 'c1', level: 999, gold: 999999 });
+    });
+
+    it('bumpStat is a no-op (no read, no PATCH)', async () => {
+        await characterApi.bumpStat({ characterId: 'c1', column: 'mastery_points', value: 50 });
+        expect(mockApi.get).not.toHaveBeenCalled();
+        expect(mockApi.patch).not.toHaveBeenCalled();
+    });
+
+    it('bumpArenaStats is a no-op', async () => {
+        await characterApi.bumpArenaStats({
+            characterId: 'c1', winDelta: 1, lossDelta: 0, league: 'gold', leaguePoints: 10,
+        });
+        expect(mockApi.get).not.toHaveBeenCalled();
+        expect(mockApi.patch).not.toHaveBeenCalled();
+    });
+
+    it('arena RPC bumps do NOT call supabase.rpc', async () => {
+        const rpc = vi.fn().mockResolvedValue({ error: null });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).rpc = rpc;
+        await characterApi.bumpArenaDeathRpc('victim');
+        await characterApi.bumpArenaKillRpc('victim');
+        await characterApi.bumpMarketSaleRpc({ sellerCharacterId: 's', quantity: 1, goldAmount: 1 });
+        expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it('createCharacter routes to backendApi.createCharacter (name+class only) and SKIPS the Supabase POST', async () => {
+        const seeded = { id: 'srv-1', user_id: 'u1', name: 'Mage1', class: 'Mage', level: 1 };
+        vi.mocked(backendApi.createCharacter).mockResolvedValueOnce(seeded);
+
+        // The client passes full base-stats too, but the backend branch must
+        // forward ONLY name+class — the server derives stats + seeds the blob.
+        const result = await characterApi.createCharacter('u1', {
+            name: 'Mage1', class: 'Mage', hp: 999, gold: 999999,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+
+        expect(backendApi.createCharacter).toHaveBeenCalledWith({ name: 'Mage1', class: 'Mage' });
+        expect(mockApi.post).not.toHaveBeenCalled();
+        expect(result).toBe(seeded);
+    });
+
+    it('deleteCharacter delegates to backendApi.deleteCharacter and issues NO direct Supabase deletes', async () => {
+        vi.mocked(backendApi.deleteCharacter).mockResolvedValueOnce(undefined);
+
+        await characterApi.deleteCharacter('yeet-me');
+
+        expect(backendApi.deleteCharacter).toHaveBeenCalledWith('yeet-me');
+        // Server does roster + game_saves + row in one txn — no client DELETEs.
+        expect(mockApi.delete).not.toHaveBeenCalled();
     });
 });
 

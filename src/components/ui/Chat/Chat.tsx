@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { chatApi, type IMessage } from '../../../api/v1/chatApi';
+import { isBackendMode } from '../../../config/backendMode';
+import { backendApi } from '../../../api/backend/backendApi';
+import { useCharacterStore } from '../../../stores/characterStore';
 import EmojiText from '../../atoms/Twemoji/EmojiText';
 import { useFriendsStore } from '../../../stores/friendsStore';
 import { buildPmChannel } from '../../../api/v1/friendsApi';
@@ -227,6 +230,27 @@ const Chat = ({
         setSending(true);
         setError(null);
         try {
+            // Backend-authoritative branch (opt-in). The server inserts the row
+            // and returns it (same IMessage shape) so we can push it
+            // optimistically. The Realtime subscribe + getMessages READS stay on
+            // Supabase — only the WRITE is gated behind the backend here.
+            if (isBackendMode()) {
+                const activeCharId = useCharacterStore.getState().character?.id;
+                if (activeCharId) {
+                    const inserted = await backendApi.chatSend(
+                        activeCharId,
+                        { channel, content: text },
+                    ) as IMessage | null;
+                    if (inserted) {
+                        setMessages((prev) => {
+                            if (prev.some((m) => m.id === inserted.id)) return prev;
+                            return [...prev, inserted];
+                        });
+                    }
+                    setInput('');
+                    return;
+                }
+            }
             const inserted = await chatApi.sendMessage(channel, text, characterName, characterClass, characterLevel);
             if (inserted) {
                 setMessages((prev) => {

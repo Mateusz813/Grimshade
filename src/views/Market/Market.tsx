@@ -44,6 +44,9 @@ import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Market.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -269,6 +272,91 @@ const resolveListingName = (itemId: string, kind: MarketKind, fallback: string):
     return cleanItemName(itemId);
 };
 
+// -- Backend-mode listing normalizers ----------------------------------------
+// In backend mode the market list (GET) is served by the authoritative
+// Laravel API instead of the client Supabase store. The response shape is
+// not statically typed (backendApi returns `unknown`), so we defensively map
+// each row into the local IMarketListing contract — tolerating both
+// camelCase and snake_case keys, and a bare-array OR `{ data|listings|items:
+// [...] }` envelope. Nothing here runs unless isBackendMode() is true.
+
+const RARITY_VALUES: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
+const MARKET_KIND_VALUES: MarketKind[] = ['item', 'potion', 'elixir', 'stone', 'arena_points', 'spell_chest'];
+
+const asString = (v: unknown, fallback = ''): string =>
+    (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : fallback);
+
+const asNumber = (v: unknown, fallback = 0): number => {
+    const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : fallback;
+};
+
+const asRarity = (v: unknown): Rarity =>
+    (typeof v === 'string' && (RARITY_VALUES as string[]).includes(v) ? (v as Rarity) : 'common');
+
+const asKind = (v: unknown): MarketKind =>
+    (typeof v === 'string' && (MARKET_KIND_VALUES as string[]).includes(v) ? (v as MarketKind) : 'item');
+
+const asBonuses = (v: unknown): Record<string, number> => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    const out: Record<string, number> = {};
+    for (const [k, raw] of Object.entries(v as Record<string, unknown>)) {
+        const n = typeof raw === 'number' ? raw : Number(raw);
+        if (Number.isFinite(n)) out[k] = n;
+    }
+    return out;
+};
+
+const normalizeBackendListing = (raw: unknown): IMarketListing | null => {
+    if (!raw || typeof raw !== 'object') return null;
+    const o = raw as Record<string, unknown>;
+    const pick = (...keys: string[]): unknown => {
+        for (const k of keys) {
+            const val = o[k];
+            if (val !== undefined && val !== null) return val;
+        }
+        return undefined;
+    };
+    const id = asString(pick('id', 'listingId', 'listing_id'));
+    if (!id) return null;
+    const quantity = Math.max(1, asNumber(pick('quantity', 'qty', 'quantityRemaining', 'quantity_remaining'), 1));
+    const quantityInitial = Math.max(quantity, asNumber(pick('quantityInitial', 'quantity_initial'), quantity));
+    return {
+        id,
+        sellerId: asString(pick('sellerId', 'seller_id', 'sellerCharacterId', 'seller_character_id')),
+        sellerName: asString(pick('sellerName', 'seller_name'), '—'),
+        kind: asKind(pick('kind')),
+        itemId: asString(pick('itemId', 'item_id')),
+        itemName: asString(pick('itemName', 'item_name'), 'Przedmiot'),
+        itemLevel: Math.max(1, asNumber(pick('itemLevel', 'item_level'), 1)),
+        rarity: asRarity(pick('rarity')),
+        slot: asString(pick('slot')),
+        price: Math.max(0, asNumber(pick('price'), 0)),
+        quantity,
+        quantityInitial,
+        bonuses: asBonuses(pick('bonuses')),
+        upgradeLevel: Math.max(0, asNumber(pick('upgradeLevel', 'upgrade_level'), 0)),
+        listedAt: asString(pick('listedAt', 'listed_at', 'createdAt', 'created_at')),
+    };
+};
+
+const normalizeBackendListings = (raw: unknown): IMarketListing[] => {
+    const arr = Array.isArray(raw)
+        ? raw
+        : raw && typeof raw === 'object'
+            ? (raw as Record<string, unknown>).data
+              ?? (raw as Record<string, unknown>).listings
+              ?? (raw as Record<string, unknown>).items
+            : undefined;
+    if (!Array.isArray(arr)) return [];
+    const out: IMarketListing[] = [];
+    for (const r of arr) {
+        const n = normalizeBackendListing(r);
+        if (n) out.push(n);
+    }
+    return out;
+};
+
 // -- Component ---------------------------------------------------------------
 
 interface IMarketProps { embedded?: boolean }
@@ -305,6 +393,44 @@ const Market = ({ embedded = false }: IMarketProps) => {
         }, 30_000);
         return () => clearInterval(id);
     }, [character, fetchSaleNotifications]);
+
+    // -- Backend-mode listings (opt-in) ------------------------------------
+    // When the backend flag is ON, the authoritative Laravel API is the
+    // source of truth for the browse/my lists. We keep these in LOCAL
+    // component state so the default (client Supabase) path stays 100%
+    // untouched — the store-driven `listings` / `myListings` are simply not
+    // read while in backend mode.
+    const [backendListings, setBackendListings] = useState<IMarketListing[]>([]);
+    const [backendMyListings, setBackendMyListings] = useState<IMarketListing[]>([]);
+
+    const refreshBackendMarket = useCallback(async () => {
+        if (!isBackendMode()) return;
+        try {
+            const all = await backendApi.marketListings();
+            setBackendListings(normalizeBackendListings(all));
+        } catch (e) {
+            console.warn('[market] marketListings failed', e);
+        }
+        if (character) {
+            try {
+                const mine = await backendApi.marketMine(character.id);
+                setBackendMyListings(normalizeBackendListings(mine));
+            } catch (e) {
+                console.warn('[market] marketMine failed', e);
+            }
+        }
+    }, [character]);
+
+    useEffect(() => {
+        void refreshBackendMarket();
+    }, [refreshBackendMarket]);
+
+    // Source selection — identical to the store lists when NOT in backend
+    // mode (so default behaviour is byte-for-byte unchanged), backend lists
+    // otherwise.
+    const backendMode = isBackendMode();
+    const sourceListings = backendMode ? backendListings : listings;
+    const sourceMyListings = backendMode ? backendMyListings : myListings;
 
     // -- Tab state ----------------------------------------------------------
     const [tab, setTab] = useState<MarketTab>('browse');
@@ -372,8 +498,8 @@ const Market = ({ embedded = false }: IMarketProps) => {
         return sortListings(r, sortBy);
     }, [dedupeById, category, rarityFilter, minLevel, maxLevel, search, sortBy]);
 
-    const filteredBrowse = useMemo(() => applyFilters(listings), [listings, applyFilters]);
-    const filteredMy = useMemo(() => applyFilters(myListings), [myListings, applyFilters]);
+    const filteredBrowse = useMemo(() => applyFilters(sourceListings), [sourceListings, applyFilters]);
+    const filteredMy = useMemo(() => applyFilters(sourceMyListings), [sourceMyListings, applyFilters]);
 
     const pagedBrowse = useMemo(() => {
         const start = (page - 1) * PAGE_SIZE;
@@ -561,6 +687,25 @@ const Market = ({ embedded = false }: IMarketProps) => {
     // buy didn't go through (RLS, sold-out, quantity column missing,
     // network, etc.) instead of the modal silently doing nothing.
     const handleConfirmBuy = async (qty: number) => {
+        // Tryb backendu (opt-in): kupno idzie przez autorytatywny endpoint
+        // /market/listings/{id}/buy. Serwer atomowo waliduje stan/RLS i
+        // rozlicza gold + ekwipunek — to zamyka duping po stronie UI. Po
+        // sukcesie re-hydratujemy store'y (inventory/gold) + odświeżamy
+        // listę marketu.
+        if (isBackendMode() && character && buyTarget) {
+            try {
+                await backendApi.marketBuy(character.id, buyTarget.id);
+                await syncFromBackend(character.id);
+                await refreshBackendMarket();
+                showToast(`Kupiono: ${buyTarget.itemName}`);
+                setBuyTarget(null);
+                return;
+            } catch (e) {
+                console.warn('[market] marketBuy failed', e);
+                showToast('Nie udało się kupić (backend).');
+                return;
+            }
+        }
         if (!buyTarget || !character) return;
         const total = buyTarget.price * qty;
         if (gold < total) { showToast('Za mało złota!'); return; }
@@ -652,6 +797,43 @@ const Market = ({ embedded = false }: IMarketProps) => {
 
     // -- Sell flow --------------------------------------------------------
     const handleConfirmSell = async (price: number, qty: number) => {
+        // Tryb backendu (opt-in): wystawienie idzie przez autorytatywny
+        // endpoint POST /market/listings. Serwer escrowuje przedmiot i tworzy
+        // ofertę — klient nic nie odejmuje sam. Po sukcesie re-hydratujemy
+        // store'y + odświeżamy listę marketu.
+        if (isBackendMode() && character && sellTarget) {
+            if (!isValidPrice(price)) { showToast('Nieprawidłowa cena!'); return; }
+            if (!isValidQuantity(qty, sellTarget.maxQty)) { showToast('Nieprawidłowa ilość!'); return; }
+            let beItemId = '';
+            if (sellTarget.bagItem) beItemId = sellTarget.bagItem.itemId;
+            else if (sellTarget.consumableId) beItemId = sellTarget.consumableId;
+            else if (sellTarget.stoneId) beItemId = sellTarget.stoneId;
+            else if (sellTarget.isArenaPoints) beItemId = 'arena_points';
+            try {
+                await backendApi.marketList(character.id, {
+                    kind: sellTarget.kind,
+                    itemId: beItemId,
+                    itemName: sellTarget.name,
+                    itemLevel: sellTarget.itemLevel,
+                    rarity: sellTarget.rarity,
+                    slot: sellTarget.slot,
+                    price,
+                    quantity: qty,
+                    bonuses: sellTarget.bonuses,
+                    upgradeLevel: sellTarget.upgradeLevel,
+                });
+                await syncFromBackend(character.id);
+                await refreshBackendMarket();
+                setSellTarget(null);
+                setTab('my');
+                showToast(`Wystawiono: ${sellTarget.name} ×${qty}`);
+                return;
+            } catch (e) {
+                console.warn('[market] marketList failed', e);
+                showToast('Nie udało się wystawić (backend).');
+                return;
+            }
+        }
         if (!sellTarget || !character) return;
         if (!isValidPrice(price)) { showToast('Nieprawidłowa cena!'); return; }
         if (!isValidQuantity(qty, sellTarget.maxQty)) { showToast('Nieprawidłowa ilość!'); return; }
@@ -733,6 +915,24 @@ const Market = ({ embedded = false }: IMarketProps) => {
     const handleEditPrice = async (newPrice: number) => {
         if (!editTarget) return;
         if (!isValidPrice(newPrice)) { showToast('Nieprawidłowa cena!'); return; }
+        // Tryb backendu (opt-in): zmiana ceny idzie przez autorytatywny
+        // PATCH /market/listings/{id}. Serwer waliduje właściciela oferty
+        // i zapisuje nową cenę — klient nie mutuje marketStore sam. Po
+        // sukcesie re-hydratujemy store'y + odświeżamy listę marketu.
+        if (isBackendMode() && character && editTarget) {
+            try {
+                await backendApi.editListing(character.id, editTarget.id, { price: newPrice });
+                await syncFromBackend(character.id);
+                await refreshBackendMarket();
+                setEditTarget(null);
+                showToast('Cena zaktualizowana.');
+                return;
+            } catch (e) {
+                console.warn('[market] editListing failed', e);
+                showToast('Nie udało się zaktualizować (backend).');
+                return;
+            }
+        }
         clearError();
         const updated = await editListing(editTarget.id, { price: newPrice });
         if (!updated) {
@@ -745,6 +945,24 @@ const Market = ({ embedded = false }: IMarketProps) => {
     };
 
     const handleCancelListing = async () => {
+        // Tryb backendu (opt-in): zdjęcie oferty idzie przez autorytatywny
+        // DELETE /market/listings/{id}. Serwer zwraca przedmiot do ekwipunku
+        // — klient nie dopisuje itemu sam (to zamyka duping). Po sukcesie
+        // re-hydratujemy store'y + odświeżamy listę marketu.
+        if (isBackendMode() && character && editTarget) {
+            try {
+                await backendApi.marketCancel(character.id, editTarget.id);
+                await syncFromBackend(character.id);
+                await refreshBackendMarket();
+                setEditTarget(null);
+                showToast('Zdjęto z marketu.');
+                return;
+            } catch (e) {
+                console.warn('[market] marketCancel failed', e);
+                showToast('Nie udało się zdjąć z marketu (backend).');
+                return;
+            }
+        }
         if (!editTarget) return;
         // Bag-full guard (only matters for equipment kind — stacks merge
         // into the existing consumable/stone counts).
@@ -804,7 +1022,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         onClick={() => setTab('browse')}
                     >
                         Przeglądaj
-                        {listings.length > 0 && <span className="market__tab-count">({listings.length})</span>}
+                        {sourceListings.length > 0 && <span className="market__tab-count">({sourceListings.length})</span>}
                     </button>
                     <button
                         className={`market__tab${tab === 'sell' ? ' market__tab--active' : ''}`}
@@ -817,7 +1035,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         onClick={() => setTab('my')}
                     >
                         Moje
-                        {myListings.length > 0 && <span className="market__tab-count">({myListings.length})</span>}
+                        {sourceMyListings.length > 0 && <span className="market__tab-count">({sourceMyListings.length})</span>}
                     </button>
                 </div>
                 <button
@@ -1058,6 +1276,19 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         notifications={saleNotifications}
                         onClose={() => setShowNotifications(false)}
                         onDismiss={(id) => {
+                            // Tryb backendu: gold ze sprzedaży jest już naliczony
+                            // autorytatywnie po stronie serwera w chwili kupna, więc
+                            // NIE naliczamy go tu lokalnie (uniknij podwójnego kredytu),
+                            // a odrzucenie leci przez backend (nie wprost do Supabase).
+                            if (isBackendMode() && character) {
+                                void (async () => {
+                                    try {
+                                        await backendApi.dismissNotification(character.id, id);
+                                        await syncFromBackend(character.id);
+                                    } catch { /* ignore */ }
+                                })();
+                                return;
+                            }
                             // 2026-05-08: claim the gold AT dismiss time so
                             // a seller who never opens the popup never
                             // double-claims, but a seller who DOES claim

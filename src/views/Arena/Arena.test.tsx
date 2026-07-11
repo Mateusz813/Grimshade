@@ -1,6 +1,25 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+
+// Backend-mode glue (opt-in). Mocked so the season-claim branch can be
+// exercised without a real backend / axios client. Default off -> the old
+// client `claimSeasonRewards` path is unchanged.
+const backendHoisted = vi.hoisted(() => ({
+    claimArenaSeasonMock: vi.fn(),
+    syncFromBackendMock: vi.fn(),
+    backendState: { on: false },
+}));
+
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendHoisted.backendState.on,
+}));
+vi.mock('../../api/backend/backendApi', () => ({
+    backendApi: { claimArenaSeason: backendHoisted.claimArenaSeasonMock },
+}));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: backendHoisted.syncFromBackendMock,
+}));
 
 /**
  * Arena view — PvP leaderboard hub (~560 lines). The bulk of the file
@@ -132,6 +151,9 @@ const renderArena = () =>
     );
 
 beforeEach(() => {
+    backendHoisted.backendState.on = false;
+    backendHoisted.claimArenaSeasonMock.mockReset();
+    backendHoisted.syncFromBackendMock.mockReset();
     useCharacterStore.setState({ character: makeChar() });
     useArenaStore.setState({
         currentArena: makeArena(500),
@@ -273,6 +295,60 @@ describe('Arena — daily-attempts edge case', () => {
         const { container } = renderArena();
         const fightBtn = container.querySelector('.arena__defense-fight') as HTMLButtonElement;
         expect(fightBtn.disabled).toBe(true);
+    });
+});
+
+describe('Arena — backend mode season claim', () => {
+    // The claim chip only renders on Mondays with a pending reward. We pin
+    // the clock to a Monday (2026-07-06 is a Monday, UTC getUTCDay() === 1)
+    // and re-align seasonStartIso so the mount-time refreshIfNeeded still
+    // short-circuits instead of rebuilding the arena.
+    const seedClaimable = () => {
+        // Fake ONLY Date — leaves setTimeout/setInterval real so waitFor +
+        // the view's rAF centering / countdown tick behave normally.
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-07-06T12:00:00.000Z'));
+        useArenaStore.setState({
+            currentArena: makeArena(500),
+            seasonStartIso: getSeasonStart().toISOString(),
+            pendingRewards: { league: 'bronze', finalRank: 3 },
+        });
+    };
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('claims through the backend + syncs, skipping the client store, when backend mode is on', async () => {
+        backendHoisted.backendState.on = true;
+        backendHoisted.claimArenaSeasonMock.mockResolvedValue({});
+        backendHoisted.syncFromBackendMock.mockResolvedValue(undefined);
+        const claimSeasonRewards = vi.fn();
+        seedClaimable();
+        useArenaStore.setState({ claimSeasonRewards } as never);
+        const { container } = renderArena();
+        const claimBtn = container.querySelector('.arena__action-chip--claim') as HTMLButtonElement;
+        expect(claimBtn).not.toBeNull();
+        fireEvent.click(claimBtn);
+        await waitFor(() =>
+            expect(backendHoisted.claimArenaSeasonMock).toHaveBeenCalledWith('char-1'),
+        );
+        expect(backendHoisted.syncFromBackendMock).toHaveBeenCalledWith('char-1');
+        // Backend is authoritative — the client claimSeasonRewards is skipped.
+        expect(claimSeasonRewards).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the client claimSeasonRewards when backend mode is off', () => {
+        backendHoisted.backendState.on = false;
+        const claimSeasonRewards = vi.fn().mockReturnValue(null);
+        seedClaimable();
+        useArenaStore.setState({ claimSeasonRewards } as never);
+        const { container } = renderArena();
+        const claimBtn = container.querySelector('.arena__action-chip--claim') as HTMLButtonElement;
+        expect(claimBtn).not.toBeNull();
+        fireEvent.click(claimBtn);
+        expect(claimSeasonRewards).toHaveBeenCalledTimes(1);
+        expect(backendHoisted.claimArenaSeasonMock).not.toHaveBeenCalled();
     });
 });
 

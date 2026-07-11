@@ -263,6 +263,10 @@ const CharacterSelect = () => {
         setDeletingId(null);
         return;
       }
+      // Cloud delete: in backend mode characterApi.deleteCharacter delegates to
+      // the server (roster + game_saves + row in one txn) and no-ops the direct
+      // Supabase deletes; the client path keeps its multi-table cleanup. Local
+      // cleanup (deleteCharacterData) always runs to purge this browser's cache.
       await characterApi.deleteCharacter(id);
       await deleteCharacterData(id);
       setCharacters((prev) => prev.filter((c) => c.id !== id));

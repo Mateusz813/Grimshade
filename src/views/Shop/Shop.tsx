@@ -39,6 +39,9 @@ import type { Rarity, EquipmentSlot } from '../../systems/itemSystem';
 import Spinner from '../../components/ui/Spinner/Spinner';
 import Icon from '../../components/atoms/Icon/Icon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Shop.scss';
 
 // -- Types ---------------------------------------------------------------------
@@ -157,8 +160,24 @@ const Shop = () => {
     setBuyPulse((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }));
   };
 
-  const handleBuyItem = (item: IShopItem) => {
+  const handleBuyItem = async (item: IShopItem) => {
     if (!character) return;
+    // Tryb backendu (opt-in): zakup itemu z generowanego katalogu idzie
+    // przez autorytatywny endpoint /shop/buy-item. Serwer jest autorytetem
+    // — po sukcesie re-hydratujemy store'y z GET /state.
+    if (isBackendMode() && character) {
+      try {
+        await backendApi.buyShopItem(character.id, item.id);
+        await syncFromBackend(character.id);
+        showToast(`Kupiono: ${item.name_pl}`);
+        flashBuy(item.id);
+        return;
+      } catch (e) {
+        console.warn('[shop] buyShopItem failed', e);
+        showToast('Nie udało się kupić (backend).');
+        return;
+      }
+    }
     const result = buyShopItem(item, character);
     if (result !== 'ok') {
       showToast(BUY_MESSAGES[result]);
@@ -175,7 +194,23 @@ const Shop = () => {
     setPotionQty((prev) => ({ ...prev, [id]: clamped }));
   };
 
-  const handleBuyPotion = (elixir: IElixir, qty: number) => {
+  const handleBuyPotion = async (elixir: IElixir, qty: number) => {
+    // Tryb backendu (opt-in): HP/MP potiony to pozycje katalogu ELIXIRS,
+    // więc kupujemy je przez autorytatywny endpoint /shop/buy-elixir.
+    // Backend jest autorytetem — po sukcesie re-hydratujemy store'y.
+    if (isBackendMode() && character) {
+      try {
+        await backendApi.buyElixir(character.id, elixir.id, qty);
+        await syncFromBackend(character.id);
+        showToast(`Kupiono ${qty}× ${elixir.name_pl}`);
+        flashBuy(elixir.id);
+        return;
+      } catch (e) {
+        console.warn('[shop] buyElixir (potion) failed', e);
+        showToast('Nie udało się kupić (backend).');
+        return;
+      }
+    }
     const charLvl = character?.level ?? 1;
     // Defense-in-depth: never sell a level-locked potion even if the disabled
     // button is somehow bypassed.
@@ -196,7 +231,22 @@ const Shop = () => {
     triggerGoldFlash(totalPrice);
   };
 
-  const handleBuyElixir = (elixir: IElixir) => {
+  const handleBuyElixir = async (elixir: IElixir) => {
+    // Tryb backendu (opt-in): eliksiry użytkowe też idą przez katalog
+    // ELIXIRS -> /shop/buy-elixir (qty=1). Autorytet po stronie serwera.
+    if (isBackendMode() && character) {
+      try {
+        await backendApi.buyElixir(character.id, elixir.id, 1);
+        await syncFromBackend(character.id);
+        showToast(`Kupiono: ${elixir.name_pl}`);
+        flashBuy(elixir.id);
+        return;
+      } catch (e) {
+        console.warn('[shop] buyElixir failed', e);
+        showToast('Nie udało się kupić (backend).');
+        return;
+      }
+    }
     const result = useShopStore.getState().buyElixir(elixir, character ?? undefined, 1);
     if (result !== 'ok') {
       showToast(BUY_MESSAGES[result]);
@@ -207,8 +257,24 @@ const Shop = () => {
     triggerGoldFlash(getElixirPrice(elixir, character?.level ?? 1));
   };
 
-  const handleBuyArena = (item: IArenaShopItem) => {
+  const handleBuyArena = async (item: IArenaShopItem) => {
     if (!character) return;
+    // Tryb backendu (opt-in): zakup za Punkty Areny idzie przez
+    // autorytatywny endpoint /arena/shop/buy. Serwer generuje
+    // class-correct dropa i rozlicza AP — po sukcesie re-hydratujemy store'y.
+    if (isBackendMode() && character) {
+      try {
+        await backendApi.buyArenaItem(character.id, item.id);
+        await syncFromBackend(character.id);
+        showToast(`Kupiono: ${item.name_pl}`);
+        flashBuy(item.id);
+        return;
+      } catch (e) {
+        console.warn('[shop] buyArenaItem failed', e);
+        showToast('Nie udało się kupić (backend).');
+        return;
+      }
+    }
     // Pass class so mythic weapon/offhand purchases generate the
     // class-correct type (sword for Knight, bow for Archer, …).
     const result = buyArenaItem(item, character.level, character.class);

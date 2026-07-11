@@ -42,6 +42,12 @@ import imgTilesDaily from '../../assets/images/quests/quests-daily.png';
 // every daily-mission tile. Sets the dark-fantasy "scroll" texture
 // behind the chrome regardless of the player's transform tint.
 import imgQuestPergamin from '../../assets/images/quests/quests-pergamin.png';
+// Tryb backendu (opt-in). Gra DOMYŚLNIE działa po staremu; poniższa glue
+// uruchamia się TYLKO gdy isBackendMode() === true. Zero ryzyka dla domyślnej
+// ścieżki klienckiej.
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Quests.scss';
 
 const allQuests = questsRaw as IQuest[];
@@ -218,6 +224,33 @@ interface IClaimSummary {
   entries: IClaimSummaryEntry[];
 }
 
+/**
+ * Buduje wpisy podsumowania nagrody z odpowiedzi backendu przy claimie questa.
+ * Kształt odpowiedzi nie jest twardo znany po stronie frontu, więc zawężamy
+ * z `unknown` — rozpoznajemy gold/xp (top-level lub w `reward`), a gdy nic nie
+ * pasuje pokazujemy generyczny wpis. Autorytatywne wartości i tak trafiają do
+ * store'ów przez syncFromBackend — to jest tylko wizualny feedback.
+ */
+const buildBackendClaimEntries = (res: unknown): IClaimSummaryEntry[] => {
+  const entries: IClaimSummaryEntry[] = [];
+  if (res && typeof res === 'object') {
+    const obj = res as Record<string, unknown>;
+    const reward = obj.reward && typeof obj.reward === 'object'
+      ? (obj.reward as Record<string, unknown>)
+      : obj;
+    if (typeof reward.gold === 'number') {
+      entries.push({ icon: 'money-bag', label: formatGoldShort(reward.gold) });
+    }
+    if (typeof reward.xp === 'number') {
+      entries.push({ icon: 'sparkles', label: `${reward.xp.toLocaleString('pl-PL')} XP` });
+    }
+  }
+  if (entries.length === 0) {
+    entries.push({ icon: 'wrapped-gift', label: 'Nagroda odebrana' });
+  }
+  return entries;
+};
+
 const RARITY_COLORS: Record<string, string> = {
   common: '#9e9e9e', rare: '#2196f3', epic: '#4caf50',
   legendary: '#f44336', mythic: '#ffc107', heroic: '#9c27b0', unique: '#ff5722',
@@ -371,11 +404,34 @@ const Quests = () => {
   const tileAccentRgb = hexToRgb(tileAccent);
   const { activeQuests: dailyActiveQuests, todayQuestDefs, refreshIfNeeded, claimReward } = useDailyQuestStore();
 
+  // Stabilny prymityw dla backendowego efektu daily — dzięki temu, że deps to
+  // string (id), a nie obiekt `character`, podmiana postaci przez
+  // syncFromBackend (setCharacter) NIE zapętla efektu odświeżania daily.
+  const backendCharId = character?.id ?? null;
+
   useEffect(() => {
+    // Tryb backendu: klient NIE generuje daily — robi to autorytatywny backend
+    // (osobny efekt niżej, kluczowany po id postaci). Domyślna ścieżka poniżej
+    // pozostaje w 100% nietknięta.
+    if (isBackendMode()) return;
     if (character) {
       refreshIfNeeded(character.level);
     }
   }, [character, refreshIfNeeded]);
+
+  // Backend (opt-in): odśwież daily przy wejściu na widok / zmianie postaci.
+  // Deps = [backendCharId] (string) — patrz komentarz przy deklaracji.
+  useEffect(() => {
+    if (!isBackendMode() || !backendCharId) return;
+    void (async () => {
+      try {
+        await backendApi.refreshDailyQuests(backendCharId);
+        await syncFromBackend(backendCharId);
+      } catch (e) {
+        console.warn('[quests] backend refreshDailyQuests failed', e);
+      }
+    })();
+  }, [backendCharId]);
 
   const charLevel = character?.level ?? 0;
 
@@ -391,8 +447,20 @@ const Quests = () => {
     return aq.goals.every((g) => (g.progress ?? 0) >= g.count);
   };
 
-  const handleClaimDaily = (questId: string) => {
+  const handleClaimDaily = async (questId: string) => {
     if (!character) return;
+
+    if (isBackendMode()) {
+      try {
+        await backendApi.claimDailyQuest(character.id, questId);
+        await syncFromBackend(character.id);
+        return;
+      } catch (e) {
+        console.warn('[quests] backend claimDailyQuest failed', e);
+        return;
+      }
+    }
+
     const rewards = claimReward(questId, character.level);
     if (!rewards) return;
     addGold(rewards.gold);
@@ -433,9 +501,21 @@ const Quests = () => {
     return elixir ? elixir.description_pl : '';
   };
 
-  const handleClaimQuest = (questId: string) => {
+  const handleClaimQuest = async (questId: string) => {
     const quest = allQuests.find((q) => q.id === questId);
     if (!quest || !character) return;
+
+    if (isBackendMode()) {
+      try {
+        const res = await backendApi.claimQuest(character.id, questId);
+        await syncFromBackend(character.id);
+        setClaimSummary({ questName: quest.name_pl, entries: buildBackendClaimEntries(res) });
+        return;
+      } catch (e) {
+        console.warn('[quests] backend claimQuest failed', e);
+        return;
+      }
+    }
 
     const summaryEntries: IClaimSummaryEntry[] = [];
 
@@ -570,8 +650,32 @@ const Quests = () => {
     aq.goals.every((g) => (g.progress ?? 0) >= g.count),
   );
 
-  const handleClaimAll = () => {
+  const handleClaimAll = async () => {
     if (!character || claimableQuests.length === 0) return;
+
+    if (isBackendMode()) {
+      // Brak endpointu bulk — claimujemy sekwencyjnie przez pojedynczy
+      // /quests/{id}/claim, a stan hydratujemy raz na końcu (backend = autorytet).
+      const entries: IClaimSummaryEntry[] = [];
+      const count = claimableQuests.length;
+      try {
+        for (const aq of claimableQuests) {
+          const res = await backendApi.claimQuest(character.id, aq.questId);
+          entries.push(...buildBackendClaimEntries(res));
+        }
+      } catch (e) {
+        console.warn('[quests] backend claimQuest (bulk) failed', e);
+      }
+      try {
+        await syncFromBackend(character.id);
+      } catch (e) {
+        console.warn('[quests] backend sync (claim-all) failed', e);
+      }
+      if (entries.length > 0) {
+        setClaimSummary({ questName: `${count} questow`, entries });
+      }
+      return;
+    }
 
     const allEntries: IClaimSummaryEntry[] = [];
 
@@ -685,9 +789,32 @@ const Quests = () => {
     setShowAbandonAllConfirm(false);
   };
 
-  const handleClaimAllDaily = () => {
+  const handleClaimAllDaily = async () => {
     if (!character) return;
     const claimable = dailyActiveQuests.filter((a) => a.completed && !a.claimed);
+
+    if (isBackendMode()) {
+      // Sekwencyjny claim daily przez /daily-quests/{id}/claim, sync raz na końcu.
+      const entries: IClaimSummaryEntry[] = [];
+      try {
+        for (const aq of claimable) {
+          const res = await backendApi.claimDailyQuest(character.id, aq.questId);
+          entries.push(...buildBackendClaimEntries(res));
+        }
+      } catch (e) {
+        console.warn('[quests] backend claimDailyQuest (bulk) failed', e);
+      }
+      try {
+        await syncFromBackend(character.id);
+      } catch (e) {
+        console.warn('[quests] backend sync (claim-all-daily) failed', e);
+      }
+      if (entries.length > 0) {
+        setClaimSummary({ questName: `${claimable.length} questow dziennych`, entries });
+      }
+      return;
+    }
+
     const allEntries: IClaimSummaryEntry[] = [];
 
     for (const aq of claimable) {

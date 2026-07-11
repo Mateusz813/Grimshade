@@ -29,9 +29,50 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
+// Backend-authoritative branch mocks. Default OFF so the existing client-path
+// tests exercise the untouched `depositItem` / `withdrawItem` store calls; a
+// dedicated describe flips `backendFlag.on`.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const backendApiMock = vi.hoisted(() => ({
+    deposit: vi.fn(),
+    withdraw: vi.fn(),
+}));
+const syncFromBackendMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: syncFromBackendMock,
+    syncIfBackend: vi.fn().mockResolvedValue(undefined),
+}));
+
 import Deposit from './Deposit';
 import { useInventoryStore } from '../../stores/inventoryStore';
+import { useCharacterStore } from '../../stores/characterStore';
 import type { IInventoryItem } from '../../systems/itemSystem';
+import type { ICharacter } from '../../api/v1/characterApi';
+
+const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
+    id: 'char-1',
+    user_id: 'user-1',
+    name: 'Hero',
+    class: 'Knight',
+    level: 5,
+    xp: 0,
+    hp: 100, max_hp: 100, mp: 30, max_mp: 30,
+    attack: 15, defense: 12, attack_speed: 2.0,
+    crit_chance: 3, crit_damage: 150, magic_level: 0,
+    hp_regen: 0, mp_regen: 0,
+    gold: 0, stat_points: 0, highest_level: 5,
+    equipment: {},
+    created_at: '', updated_at: '',
+    ...overrides,
+} as ICharacter);
 
 const makeItem = (uuid: string, overrides: Partial<IInventoryItem> = {}): IInventoryItem => ({
     uuid,
@@ -56,6 +97,11 @@ beforeEach(() => {
         deposit: [],
     });
     navigateMock.mockReset();
+    backendFlag.on = false;
+    backendApiMock.deposit.mockReset().mockResolvedValue(undefined);
+    backendApiMock.withdraw.mockReset().mockResolvedValue(undefined);
+    syncFromBackendMock.mockReset().mockResolvedValue(undefined);
+    useCharacterStore.setState({ character: makeChar() });
 });
 
 afterEach(() => {
@@ -191,6 +237,77 @@ describe('Deposit — navigation', () => {
         const back = container.querySelector('.deposit__back') as HTMLButtonElement;
         fireEvent.click(back);
         expect(navigateMock).toHaveBeenCalledWith('/');
+    });
+});
+
+describe('Deposit — backend-authoritative branch', () => {
+    it('deposit tile click calls backendApi.deposit + syncFromBackend and SKIPS the store mutation', async () => {
+        backendFlag.on = true;
+        useInventoryStore.setState({ bag: [makeItem('item-1')], deposit: [] });
+        const depositSpy = vi.fn().mockReturnValue(true);
+        useInventoryStore.setState({ depositItem: depositSpy });
+        const { container } = renderDeposit();
+        const tile = container.querySelector('.deposit__tile') as HTMLElement;
+        fireEvent.click(tile);
+        await vi.waitFor(() => expect(backendApiMock.deposit).toHaveBeenCalledWith('char-1', 'item-1'));
+        expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
+        expect(depositSpy).not.toHaveBeenCalled();
+    });
+
+    it('withdraw tile click calls backendApi.withdraw + syncFromBackend and SKIPS the store mutation', async () => {
+        backendFlag.on = true;
+        useInventoryStore.setState({ bag: [], deposit: [makeItem('item-2')] });
+        const withdrawSpy = vi.fn().mockReturnValue(true);
+        useInventoryStore.setState({ withdrawItem: withdrawSpy });
+        const { container } = renderDeposit();
+        const tile = container.querySelector('.deposit__tile') as HTMLElement;
+        fireEvent.click(tile);
+        await vi.waitFor(() => expect(backendApiMock.withdraw).toHaveBeenCalledWith('char-1', 'item-2'));
+        expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
+        expect(withdrawSpy).not.toHaveBeenCalled();
+    });
+
+    it('"Wpłać wszystkie" loops backendApi.deposit over filtered uuids then syncs once', async () => {
+        backendFlag.on = true;
+        useInventoryStore.setState({ bag: [makeItem('a'), makeItem('b')], deposit: [] });
+        const depositSpy = vi.fn().mockReturnValue(true);
+        useInventoryStore.setState({ depositItem: depositSpy });
+        const { container } = renderDeposit();
+        const depositAll = Array.from(container.querySelectorAll('.deposit__bulk-btn'))
+            .find((b) => b.textContent?.includes('Wpłać wszystkie')) as HTMLButtonElement;
+        fireEvent.click(depositAll);
+        await vi.waitFor(() => expect(backendApiMock.deposit).toHaveBeenCalledTimes(2));
+        expect(backendApiMock.deposit).toHaveBeenCalledWith('char-1', 'a');
+        expect(backendApiMock.deposit).toHaveBeenCalledWith('char-1', 'b');
+        expect(syncFromBackendMock).toHaveBeenCalledTimes(1);
+        expect(depositSpy).not.toHaveBeenCalled();
+    });
+
+    it('"Wypłać wszystkie" loops backendApi.withdraw over filtered uuids then syncs once', async () => {
+        backendFlag.on = true;
+        useInventoryStore.setState({ bag: [], deposit: [makeItem('a'), makeItem('b')] });
+        const withdrawSpy = vi.fn().mockReturnValue(true);
+        useInventoryStore.setState({ withdrawItem: withdrawSpy });
+        const { container } = renderDeposit();
+        const withdrawAll = Array.from(container.querySelectorAll('.deposit__bulk-btn'))
+            .find((b) => b.textContent?.includes('Wypłać wszystkie')) as HTMLButtonElement;
+        fireEvent.click(withdrawAll);
+        await vi.waitFor(() => expect(backendApiMock.withdraw).toHaveBeenCalledTimes(2));
+        expect(syncFromBackendMock).toHaveBeenCalledTimes(1);
+        expect(withdrawSpy).not.toHaveBeenCalled();
+    });
+
+    it('with the flag OFF the old client path runs (depositItem called, backend untouched)', () => {
+        backendFlag.on = false;
+        useInventoryStore.setState({ bag: [makeItem('item-1')], deposit: [] });
+        const depositSpy = vi.fn().mockReturnValue(true);
+        useInventoryStore.setState({ depositItem: depositSpy });
+        const { container } = renderDeposit();
+        const tile = container.querySelector('.deposit__tile') as HTMLElement;
+        fireEvent.click(tile);
+        expect(depositSpy).toHaveBeenCalledWith('item-1');
+        expect(backendApiMock.deposit).not.toHaveBeenCalled();
+        expect(syncFromBackendMock).not.toHaveBeenCalled();
     });
 });
 

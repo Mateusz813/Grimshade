@@ -1,6 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+
+// Backend-mode glue (opt-in). Mocked so the CLAIM branch can be exercised
+// without a real backend / axios client. Default off -> client path unchanged.
+const backendHoisted = vi.hoisted(() => ({
+    claimTaskMock: vi.fn(),
+    syncFromBackendMock: vi.fn(),
+    backendState: { on: false },
+}));
+
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendHoisted.backendState.on,
+}));
+vi.mock('../../api/backend/backendApi', () => ({
+    backendApi: { claimTask: backendHoisted.claimTaskMock },
+}));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: backendHoisted.syncFromBackendMock,
+}));
 
 /**
  * Tasks view — standalone /tasks route (the same view also lives inline
@@ -64,6 +82,9 @@ const renderTasks = () =>
 
 beforeEach(() => {
     navigateMock.mockClear();
+    backendHoisted.backendState.on = false;
+    backendHoisted.claimTaskMock.mockReset();
+    backendHoisted.syncFromBackendMock.mockReset();
     useCharacterStore.setState({ character: makeChar() });
     useTaskStore.setState({
         activeTask: null,
@@ -205,6 +226,54 @@ describe('Tasks — active task banner', () => {
         const claimBtn = container.querySelector('.tasks__claim-btn') as HTMLButtonElement;
         fireEvent.click(claimBtn);
         expect(claimReward).toHaveBeenCalledWith(activeTask.id);
+    });
+});
+
+describe('Tasks — backend mode claim', () => {
+    const activeTask: IActiveTask = {
+        id: 'task_rabbit_10',
+        monsterId: 'rabbit',
+        monsterLevel: 1,
+        monsterName: 'Krolik',
+        killCount: 10,
+        rewardGold: 100,
+        rewardXp: 50,
+        progress: 10,
+        startedAt: '2026-05-22T00:00:00.000Z',
+    };
+
+    it('claims through the backend + syncs, skipping the client store, when backend mode is on', async () => {
+        backendHoisted.backendState.on = true;
+        backendHoisted.claimTaskMock.mockResolvedValue({});
+        backendHoisted.syncFromBackendMock.mockResolvedValue(undefined);
+        const claimReward = vi.fn();
+        useTaskStore.setState({
+            activeTasks: [{ ...activeTask, progress: 10 }],
+            claimReward,
+        } as never);
+        const { container } = renderTasks();
+        const claimBtn = container.querySelector('.tasks__claim-btn') as HTMLButtonElement;
+        fireEvent.click(claimBtn);
+        await waitFor(() =>
+            expect(backendHoisted.claimTaskMock).toHaveBeenCalledWith('char-1', activeTask.id),
+        );
+        expect(backendHoisted.syncFromBackendMock).toHaveBeenCalledWith('char-1');
+        // Backend is authoritative — the client claimReward must be skipped.
+        expect(claimReward).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the client claimReward when backend mode is off', () => {
+        backendHoisted.backendState.on = false;
+        const claimReward = vi.fn();
+        useTaskStore.setState({
+            activeTasks: [{ ...activeTask, progress: 10 }],
+            claimReward,
+        } as never);
+        const { container } = renderTasks();
+        const claimBtn = container.querySelector('.tasks__claim-btn') as HTMLButtonElement;
+        fireEvent.click(claimBtn);
+        expect(claimReward).toHaveBeenCalledWith(activeTask.id);
+        expect(backendHoisted.claimTaskMock).not.toHaveBeenCalled();
     });
 });
 

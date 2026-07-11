@@ -59,10 +59,29 @@ vi.mock('../../api/v1/axiosInstance', () => ({
     },
 }));
 
+// Backend-authoritative branch mocks. Default OFF so the existing client-path
+// tests exercise the untouched CLASS_BASE_STATS payload + starter grants; a
+// dedicated describe flips `backendFlag.on`.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const syncFromBackendMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: syncFromBackendMock,
+    syncIfBackend: vi.fn().mockResolvedValue(undefined),
+}));
+
 import CharacterCreate from './CharacterCreate';
 import { characterApi } from '../../api/v1/characterApi';
 import { supabase } from '../../lib/supabase';
 import api from '../../api/v1/axiosInstance';
+import { switchToCharacter } from '../../stores/characterScope';
+import { useInventoryStore } from '../../stores/inventoryStore';
 import type { ICharacter } from '../../api/v1/characterApi';
 
 const renderCreate = () =>
@@ -97,6 +116,9 @@ beforeEach(() => {
     } as never);
     vi.mocked(api.get).mockReset();
     vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
+    backendFlag.on = false;
+    syncFromBackendMock.mockReset().mockResolvedValue(undefined);
+    vi.mocked(switchToCharacter).mockClear();
 });
 
 afterEach(() => {
@@ -244,6 +266,90 @@ describe('CharacterCreate — validation', () => {
         await waitFor(() => {
             expect(container.textContent).toContain('Tylko litery, cyfry i max jedna spacja');
         });
+    });
+});
+
+describe('CharacterCreate — backend-authoritative branch', () => {
+    const createAndSubmit = (container: HTMLElement) => {
+        fireEvent.change(container.querySelector('.character-create__input') as HTMLInputElement, {
+            target: { value: 'HeroOne' },
+        });
+        fireEvent.click(container.querySelectorAll('.character-create__class-btn')[0]); // Knight
+        fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    };
+
+    it('creates with ONLY name+class (no base-stats payload) and hydrates via syncFromBackend', async () => {
+        backendFlag.on = true;
+        const { container } = renderCreate();
+        createAndSubmit(container);
+
+        await waitFor(() => {
+            expect(characterApi.createCharacter).toHaveBeenCalled();
+        });
+        const call = vi.mocked(characterApi.createCharacter).mock.calls[0];
+        expect(call[1]).toEqual({ name: 'HeroOne', class: 'Knight' });
+        // No client base-stats leaking into the backend payload.
+        expect(call[1]).not.toHaveProperty('hp');
+        expect(call[1]).not.toHaveProperty('attack');
+        expect(call[1]).not.toHaveProperty('gold');
+
+        await waitFor(() => {
+            expect(syncFromBackendMock).toHaveBeenCalledWith('new-1');
+            expect(switchToCharacter).toHaveBeenCalledWith('new-1');
+            expect(navigateMock).toHaveBeenCalledWith('/');
+        });
+    });
+
+    it('SKIPS the local starter-loadout grants (server seeds them)', async () => {
+        backendFlag.on = true;
+        const addItemSpy = vi.fn().mockReturnValue(true);
+        const equipItemSpy = vi.fn();
+        const addConsumableSpy = vi.fn();
+        useInventoryStore.setState({
+            addItem: addItemSpy,
+            equipItem: equipItemSpy,
+            addConsumable: addConsumableSpy,
+        });
+
+        const { container } = renderCreate();
+        createAndSubmit(container);
+
+        await waitFor(() => {
+            expect(syncFromBackendMock).toHaveBeenCalledWith('new-1');
+        });
+        expect(addItemSpy).not.toHaveBeenCalled();
+        expect(equipItemSpy).not.toHaveBeenCalled();
+        expect(addConsumableSpy).not.toHaveBeenCalled();
+    });
+
+    it('surfaces the server error message when create fails (e.g. 422 cap)', async () => {
+        backendFlag.on = true;
+        vi.mocked(characterApi.createCharacter).mockRejectedValueOnce({
+            response: { data: { message: 'Osiągnięto limit 7 postaci.' } },
+        });
+
+        const { container } = renderCreate();
+        createAndSubmit(container);
+
+        await waitFor(() => {
+            expect(container.textContent).toContain('Osiągnięto limit 7 postaci');
+        });
+        expect(navigateMock).not.toHaveBeenCalledWith('/');
+    });
+
+    it('with the flag OFF the old client path runs (base-stats payload sent, no syncFromBackend)', async () => {
+        backendFlag.on = false;
+        const { container } = renderCreate();
+        createAndSubmit(container);
+
+        await waitFor(() => {
+            expect(characterApi.createCharacter).toHaveBeenCalled();
+        });
+        const call = vi.mocked(characterApi.createCharacter).mock.calls[0];
+        // Client path forwards the full CLASS_BASE_STATS payload.
+        expect(call[1]).toHaveProperty('hp');
+        expect(call[1]).toHaveProperty('attack_speed');
+        expect(syncFromBackendMock).not.toHaveBeenCalled();
     });
 });
 

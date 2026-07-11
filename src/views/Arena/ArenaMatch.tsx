@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
@@ -34,6 +34,9 @@ import {
     type IStatusState,
 } from '../../systems/skillEffectsV2';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Arena.scss';
 
 const CLASS_COLORS: Record<string, string> = {
@@ -85,6 +88,36 @@ const padTo4 = <T,>(arr: T[]): Array<T | null> => {
     const out: Array<T | null> = [...arr];
     while (out.length < 4) out.push(null);
     return out;
+};
+
+// -- Backend (opt-in) — istotny wycinek odpowiedzi POST /arena/match.
+// Serwer sam symuluje pojedynek, liczy `attackerWon` i nagrody; klient tylko
+// APLIKUJE wynik (ranking/roster areny pozostają klienckie — backend nie ma
+// rostera).
+interface IArenaMatchResult {
+    attackerWon: boolean;
+    attackerAp: number;
+    attackerLp: number;
+}
+
+// Zawęża surową (unknown) odpowiedź backendu do
+// { attackerWon, attackerAp, attackerLp }. Zwraca null gdy kształt jest
+// nieznany — wołający degraduje wtedy do klienckiego rozstrzygnięcia.
+const parseArenaMatchResult = (raw: unknown): IArenaMatchResult | null => {
+    if (typeof raw !== 'object' || raw === null) return null;
+    const obj = raw as Record<string, unknown>;
+    const won = obj.attackerWon;
+    if (typeof won !== 'boolean') return null;
+    const reward = obj.reward;
+    if (typeof reward !== 'object' || reward === null) return null;
+    const attacker = (reward as Record<string, unknown>).attacker;
+    if (typeof attacker !== 'object' || attacker === null) return null;
+    const a = attacker as Record<string, unknown>;
+    return {
+        attackerWon: won,
+        attackerAp: typeof a.arenaPoints === 'number' ? a.arenaPoints : 0,
+        attackerLp: typeof a.leaguePoints === 'number' ? a.leaguePoints : 0,
+    };
 };
 
 const ArenaMatch = () => {
@@ -190,6 +223,50 @@ const ArenaMatch = () => {
         setTickKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Backend (opt-in) — autorytatywne rozstrzygnięcie meczu. Serwer symuluje
+    // walkę własnym RNG, liczy wynik + nagrody i zapisuje obie postaci; my
+    // tylko APLIKUJEMY wynik i hydratujemy store'y przez syncFromBackend
+    // (ranking/roster areny zostają klienckie — backend nie ma rostera).
+    // Błąd / nieznany kształt / brak postaci → degradacja do klienckiego
+    // finalizeMatch, żeby gracz zawsze dostał wynik i nie było crasha.
+    const resolveArenaViaBackend = useCallback(async (clientAttackerWon: boolean): Promise<void> => {
+        const finalizeOnClient = (): void => {
+            if (!ctx) return;
+            const r = finalizeMatch({
+                myCompetitorId: ctx.myCompetitorId,
+                opponentId: ctx.opponentId,
+                attackerWon: clientAttackerWon,
+                attackerIsHigher: ctx.attackerIsHigher,
+                opponentName: ctx.opponentName,
+                opponentClass: ctx.opponentClass as never,
+                opponentLevel: ctx.opponentLevel,
+            });
+            setRewardSummary({ ap: r.attackerAp, lp: r.attackerLp });
+            setPhase(clientAttackerWon ? 'win' : 'lose');
+        };
+        const char = useCharacterStore.getState().character;
+        if (!char || !ctx) {
+            finalizeOnClient();
+            return;
+        }
+        try {
+            const res = await backendApi.arenaMatch(char.id, ctx.opponentId);
+            await syncFromBackend(char.id);
+            const parsed = parseArenaMatchResult(res);
+            if (parsed) {
+                setRewardSummary({ ap: parsed.attackerAp, lp: parsed.attackerLp });
+                setPhase(parsed.attackerWon ? 'win' : 'lose');
+            } else {
+                // Zsynchronizowano, ale kształt odpowiedzi nieznany — pokaż
+                // wynik z symulacji klienta (bez klienckiego finalizeMatch).
+                setPhase(clientAttackerWon ? 'win' : 'lose');
+            }
+        } catch (e) {
+            console.warn('[arena] backend arenaMatch nie powiódł się — fallback do klienta', e);
+            finalizeOnClient();
+        }
+    }, [ctx, finalizeMatch]);
 
     // Combat tick.
     useEffect(() => {
@@ -420,6 +497,13 @@ const ArenaMatch = () => {
             if (op.hp <= 0) {
                 if (!finalizedRef.current && ctx) {
                     finalizedRef.current = true;
+                    // Backend (opt-in): serwer rozstrzyga mecz + liczy nagrody.
+                    // `return` pomija kliencki finalizeMatch ORAZ optymistyczne
+                    // setPhase — fazę ustawia resolver po odpowiedzi serwera.
+                    if (isBackendMode()) {
+                        void resolveArenaViaBackend(true);
+                        return;
+                    }
                     const r = finalizeMatch({
                         myCompetitorId: ctx.myCompetitorId,
                         opponentId: ctx.opponentId,
@@ -435,6 +519,11 @@ const ArenaMatch = () => {
             } else if (me.hp <= 0) {
                 if (!finalizedRef.current && ctx) {
                     finalizedRef.current = true;
+                    // Backend (opt-in): serwer rozstrzyga mecz + liczy nagrody.
+                    if (isBackendMode()) {
+                        void resolveArenaViaBackend(false);
+                        return;
+                    }
                     const r = finalizeMatch({
                         myCompetitorId: ctx.myCompetitorId,
                         opponentId: ctx.opponentId,
@@ -450,7 +539,7 @@ const ArenaMatch = () => {
             }
         }, Math.max(125, TICK_MS / speedMult));
         return () => clearInterval(id);
-    }, [phase, speedMult, ctx, finalizeMatch]);
+    }, [phase, speedMult, ctx, finalizeMatch, resolveArenaViaBackend]);
 
     if (!ctx || !character || !currentArena) {
         return (

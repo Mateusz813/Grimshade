@@ -112,11 +112,46 @@ import {
 } from '../../systems/potionSystem';
 import '../../components/organisms/CombatUI/CombatUI.scss';
 import { formatGoldShort } from '../../systems/goldFormat';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Raid.scss';
 
 const CLASS_COLORS: Record<string, string> = {
     Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
     Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
+};
+
+// -- Backend-mode (opt-in) resolve helpers ------------------------------------
+// Autorytatywny backend rozstrzyga CAŁY rajd jednym wywołaniem
+// POST /raid/{id}/resolve i zwraca wynik. Tu go TYLKO czytamy (nigdy nie
+// liczymy ponownie) i zamieniamy na krótką linię feedbacku. `raidResolve` jest
+// typowany jako `unknown`, więc zawężamy defensywnie — każde pole opcjonalne,
+// a kształt tolerancyjny na płaskie / zagnieżdżone nazwy nagród.
+interface IRaidResolveResult {
+    won?: boolean;
+    victory?: boolean;
+    success?: boolean;
+    reward?: { gold?: number; xp?: number };
+    rewards?: { gold?: number; xp?: number };
+    gold?: number;
+    xp?: number;
+}
+
+const readRaidResolveResult = (res: unknown): IRaidResolveResult =>
+    (typeof res === 'object' && res !== null) ? (res as IRaidResolveResult) : {};
+
+const formatRaidResolveFeedback = (raid: IRaid, res: unknown): string => {
+    const r = readRaidResolveResult(res);
+    const won = r.won ?? r.victory ?? r.success;
+    if (won === false) return `Porażka: rajd „${raid.name_pl}” nie został ukończony.`;
+    const gold = r.reward?.gold ?? r.rewards?.gold ?? r.gold;
+    const xp = r.reward?.xp ?? r.rewards?.xp ?? r.xp;
+    const parts: string[] = [];
+    if (typeof gold === 'number') parts.push(`+${gold} złota`);
+    if (typeof xp === 'number') parts.push(`+${xp} XP`);
+    const rewardStr = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+    return `Rajd „${raid.name_pl}” ukończony!${rewardStr}`;
 };
 
 /**
@@ -357,6 +392,11 @@ const Raid = () => {
     const raids = useMemo(() => getAllRaids(), []);
     const [phase, setPhase] = useState<RaidPhase>('lobby');
     const [selectedRaid, setSelectedRaid] = useState<IRaid | null>(null);
+
+    // Backend-mode (opt-in) feedback banner. Only ever set on the isBackendMode()
+    // branch of handleEnterRaid; stays null on the default client path so the
+    // legacy flow (party ready-check + client combat) renders identically.
+    const [backendFeedback, setBackendFeedback] = useState<string | null>(null);
 
     // 2026-05-13 spec ("lider konczy raid -> sojusznicy do miasta"):
     // mirror of the Boss view logic — when leader's selectedRaid
@@ -1167,7 +1207,25 @@ const Raid = () => {
     // path runs `startRaid` (immediate or queued for go); non-leader
     // member silently no-ops. Member-side go-handling is in the
     // mount effect below.
-    const handleEnterRaid = useCallback((raid: IRaid) => {
+    const handleEnterRaid = useCallback(async (raid: IRaid) => {
+        // Backend-mode (opt-in): autorytatywny serwer rozstrzyga cały rajd
+        // jednym wywołaniem POST /raid/{id}/resolve — bez klienckiego
+        // ready-checka, animacji wejścia czy pętli walki. Wzór jak w
+        // Boss/Dungeon: resolve -> syncFromBackend -> feedback, a błąd nie
+        // wywala gry. Return PRZED starą ścieżką, która zostaje nietknięta.
+        const liveChar = useCharacterStore.getState().character;
+        if (isBackendMode() && liveChar) {
+            try {
+                const res: unknown = await backendApi.raidResolve(liveChar.id, raid.id);
+                await syncFromBackend(liveChar.id);
+                setBackendFeedback(formatRaidResolveFeedback(raid, res));
+                return;
+            } catch (e) {
+                console.warn('[backend] raidResolve failed', e);
+                setBackendFeedback(`Nie udało się rozstrzygnąć rajdu: ${raid.name_pl}.`);
+                return;
+            }
+        }
         const partyState = usePartyStore.getState().party;
         const me = useCharacterStore.getState().character?.id;
         const otherHumans = partyState?.members.filter((m) => m.id !== me && !m.isBot) ?? [];
@@ -2856,16 +2914,25 @@ const Raid = () => {
         // `character_level` reflects the pre-penalty level (matches the
         // pattern used by Boss / Dungeon real-death logs).
         const raidForLog = selectedRaidRef.current;
-        void deathsApi.logDeath({
-            character_id: char.id,
-            character_name: char.name,
-            character_class: char.class,
-            character_level: char.level,
-            source: 'raid',
-            source_name: raidForLog?.name_pl ?? 'Rajd',
-            source_level: raidForLog?.level ?? char.level,
-            result: 'killed',
-        });
+        if (isBackendMode() && char) {
+            void backendApi.logDeath(char.id, {
+                source: 'raid',
+                source_name: raidForLog?.name_pl ?? 'Rajd',
+                source_level: raidForLog?.level ?? char.level,
+                result: 'killed',
+            });
+        } else {
+            void deathsApi.logDeath({
+                character_id: char.id,
+                character_name: char.name,
+                character_class: char.class,
+                character_level: char.level,
+                source: 'raid',
+                source_name: raidForLog?.name_pl ?? 'Rajd',
+                source_level: raidForLog?.level ?? char.level,
+                result: 'killed',
+            });
+        }
         // 2026-06-21 spec: a SINGLE shared helper governs death + flee
         // protection. Consumes ONE protection item (death_protection elixir
         // first, then amulet_of_loss); when protected the player loses NOTHING
@@ -3000,16 +3067,25 @@ const Raid = () => {
         // Same pre-penalty timing as handleWipe so `character_level` reflects
         // the level the player WAS at.
         const raidForLog = selectedRaidRef.current;
-        void deathsApi.logDeath({
-            character_id: char.id,
-            character_name: char.name,
-            character_class: char.class,
-            character_level: char.level,
-            source: 'raid',
-            source_name: raidForLog?.name_pl ?? 'Rajd',
-            source_level: raidForLog?.level ?? char.level,
-            result: 'killed',
-        });
+        if (isBackendMode() && char) {
+            void backendApi.logDeath(char.id, {
+                source: 'raid',
+                source_name: raidForLog?.name_pl ?? 'Rajd',
+                source_level: raidForLog?.level ?? char.level,
+                result: 'killed',
+            });
+        } else {
+            void deathsApi.logDeath({
+                character_id: char.id,
+                character_name: char.name,
+                character_class: char.class,
+                character_level: char.level,
+                source: 'raid',
+                source_name: raidForLog?.name_pl ?? 'Rajd',
+                source_level: raidForLog?.level ?? char.level,
+                result: 'killed',
+            });
+        }
         // 2026-05-14 spec ("Teraz tak wszystko zrob identycznie jak w
         // polowaniu i bossie"): same leader-handoff + party-leave
         // pattern Boss uses (Boss.tsx:4989-5021). If we're the leader,
@@ -3235,16 +3311,25 @@ const Raid = () => {
             // 2026-05-19 v25 spec: log flee to the global deaths feed so the
             // /deaths view renders "<raid> przegnał <player>" (verb driven by
             // `result: 'fled'`).
-            void deathsApi.logDeath({
-                character_id: character.id,
-                character_name: character.name,
-                character_class: character.class,
-                character_level: character.level,
-                source: 'raid',
-                source_name: raidForFlee?.name_pl ?? 'Rajd',
-                source_level: raidForFlee?.level ?? character.level,
-                result: 'fled',
-            });
+            if (isBackendMode() && character) {
+                void backendApi.logDeath(character.id, {
+                    source: 'raid',
+                    source_name: raidForFlee?.name_pl ?? 'Rajd',
+                    source_level: raidForFlee?.level ?? character.level,
+                    result: 'fled',
+                });
+            } else {
+                void deathsApi.logDeath({
+                    character_id: character.id,
+                    character_name: character.name,
+                    character_class: character.class,
+                    character_level: character.level,
+                    source: 'raid',
+                    source_name: raidForFlee?.name_pl ?? 'Rajd',
+                    source_level: raidForFlee?.level ?? character.level,
+                    result: 'fled',
+                });
+            }
             // 2026-06-21 spec: shared death/flee protection helper now gates
             // the flee penalty too — a single protection item (elixir first,
             // then amulet) cancels ALL loss on flee. Flee NEVER loses items
@@ -3345,16 +3430,25 @@ const Raid = () => {
         // the rest of the party may have cleared the raid).
         {
             const raidForLog = selectedRaidRef.current;
-            void deathsApi.logDeath({
-                character_id: ch.id,
-                character_name: ch.name,
-                character_class: ch.class,
-                character_level: ch.level,
-                source: 'raid',
-                source_name: raidForLog?.name_pl ?? 'Rajd',
-                source_level: raidForLog?.level ?? ch.level,
-                result: 'killed',
-            });
+            if (isBackendMode() && ch) {
+                void backendApi.logDeath(ch.id, {
+                    source: 'raid',
+                    source_name: raidForLog?.name_pl ?? 'Rajd',
+                    source_level: raidForLog?.level ?? ch.level,
+                    result: 'killed',
+                });
+            } else {
+                void deathsApi.logDeath({
+                    character_id: ch.id,
+                    character_name: ch.name,
+                    character_class: ch.class,
+                    character_level: ch.level,
+                    source: 'raid',
+                    source_name: raidForLog?.name_pl ?? 'Rajd',
+                    source_level: raidForLog?.level ?? ch.level,
+                    result: 'killed',
+                });
+            }
         }
         const oldLevel = ch.level;
         if (oldLevel > 1) {
@@ -3448,6 +3542,18 @@ const Raid = () => {
 
         return (
             <div className="raid">
+                {/* Backend-mode (opt-in) resolve feedback. Only rendered when the
+                    authoritative server resolved a raid — the default client path
+                    never sets backendFeedback, so this stays invisible there. */}
+                {backendFeedback && (
+                    <div
+                        className="raid__backend-feedback"
+                        role="status"
+                        onClick={() => setBackendFeedback(null)}
+                    >
+                        {backendFeedback}
+                    </div>
+                )}
                 {noParty && (
                     <div className="raid__gate">
                         <span className="raid__gate-icon"><GameIcon name="locked" /></span>
@@ -3672,7 +3778,7 @@ const Raid = () => {
                                     {!blocked && (
                                         <button
                                             className="raid__enter-btn raid__enter-btn--wide"
-                                            onClick={() => handleEnterRaid(r)}
+                                            onClick={() => { void handleEnterRaid(r); }}
                                         >
                                             <GameIcon name="crossed-swords" /> Wejdź
                                         </button>
@@ -4535,6 +4641,10 @@ const Raid = () => {
                                 cooldownProgress: cdActive ? 1 - cd / cdMax : 1,
                                 cooldownRemainingMs: cdActive ? cd : 0,
                                 disabled: count === 0 || cdActive,
+                                // `useRaidPotion` is a useCallback handler (defined above), not a
+                                // React Hook — rules-of-hooks misfires purely on the `use` name
+                                // prefix. Comment only; no runtime-behavior change to this path.
+                                // eslint-disable-next-line react-hooks/rules-of-hooks
                                 onClick: () => useRaidPotion(potion.id),
                             };
                         };

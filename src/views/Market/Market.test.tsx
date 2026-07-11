@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -36,7 +36,32 @@ vi.mock('framer-motion', async () => {
     };
 });
 
+// Backend-mode (opt-in) mocks. Default OFF so every existing test runs the
+// untouched client/Supabase path; a single test flips `backendFlag.on`.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const backendApiMock = vi.hoisted(() => ({
+    marketListings: vi.fn(),
+    marketMine: vi.fn(),
+    marketList: vi.fn(),
+    marketBuy: vi.fn(),
+    marketCancel: vi.fn(),
+    editListing: vi.fn(),
+}));
+
+vi.mock('../../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: vi.fn().mockResolvedValue(undefined),
+    syncIfBackend: vi.fn().mockResolvedValue(undefined),
+}));
+
 import Market from './Market';
+import { syncFromBackend } from '../../api/backend/syncState';
 import { useMarketStore } from '../../stores/marketStore';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
@@ -103,6 +128,14 @@ const renderMarket = () =>
     );
 
 beforeEach(() => {
+    // Backend mode OFF by default + fresh mock resolutions each test.
+    backendFlag.on = false;
+    backendApiMock.marketListings.mockReset().mockResolvedValue([]);
+    backendApiMock.marketMine.mockReset().mockResolvedValue([]);
+    backendApiMock.marketList.mockReset().mockResolvedValue({});
+    backendApiMock.marketBuy.mockReset().mockResolvedValue({});
+    backendApiMock.marketCancel.mockReset().mockResolvedValue({});
+    backendApiMock.editListing.mockReset().mockResolvedValue({});
     useCharacterStore.setState({ character: makeChar() });
     useInventoryStore.setState({
         bag: [],
@@ -269,6 +302,106 @@ describe('Market — listings render', () => {
         const { container } = renderMarket();
         const browseCount = container.querySelector('.market__tab-count')?.textContent ?? '';
         expect(browseCount).toMatch(/\(3\)/);
+    });
+});
+
+describe('Market — backend mode (opt-in)', () => {
+    it('sources the Browse list from backendApi.marketListings, not the store', async () => {
+        backendFlag.on = true;
+        // Store lists intentionally empty — in backend mode they must NOT be
+        // the source of truth for the rendered rows.
+        useMarketStore.setState({ listings: [], myListings: [] });
+        backendApiMock.marketListings.mockResolvedValue([
+            {
+                id: 'be-1',
+                sellerId: 'seller-x',
+                sellerName: 'BackendTrader',
+                kind: 'item',
+                itemId: 'sword_iron',
+                itemName: 'Backend Sword',
+                itemLevel: 5,
+                rarity: 'common',
+                slot: 'mainHand',
+                price: 200,
+                quantity: 1,
+                quantityInitial: 1,
+                bonuses: {},
+                upgradeLevel: 0,
+                listedAt: new Date().toISOString(),
+            },
+        ]);
+        const { container } = renderMarket();
+        await waitFor(() => {
+            expect(container.querySelectorAll('.market__row-icon').length).toBe(1);
+        });
+        expect(backendApiMock.marketListings).toHaveBeenCalled();
+    });
+});
+
+describe('Market — edit price (backend mode)', () => {
+    it('routes handleEditPrice through backendApi.editListing + syncFromBackend and SKIPS the store editListing', async () => {
+        backendFlag.on = true;
+        // Store action spy — in backend mode it must NOT be reached.
+        const storeEditListing = vi.fn().mockResolvedValue(makeListing('l-1'));
+        useMarketStore.setState({ editListing: storeEditListing });
+        // My tab is sourced from backendApi.marketMine in backend mode —
+        // seed one own listing so a row renders + opens the edit modal.
+        backendApiMock.marketMine.mockResolvedValue([makeListing('be-mine-1', { sellerId: 'char-1', price: 100 })]);
+
+        const { container } = renderMarket();
+
+        // Switch to the "Moje" tab where own listings live.
+        const myTab = Array.from(container.querySelectorAll('.market__tab'))
+            .find((t) => t.textContent?.includes('Moje')) as HTMLButtonElement;
+        fireEvent.click(myTab);
+
+        // Wait for the backend-sourced row, then open the edit modal.
+        await waitFor(() => {
+            expect(container.querySelector('.market__row')).not.toBeNull();
+        });
+        fireEvent.click(container.querySelector('.market__row') as HTMLElement);
+
+        // Change the price + save.
+        const priceInput = container.querySelector('.market__modal-price-row input') as HTMLInputElement;
+        fireEvent.change(priceInput, { target: { value: '250' } });
+        const saveBtn = Array.from(container.querySelectorAll('.market__modal-btn'))
+            .find((b) => b.textContent?.includes('Zapisz cenę')) as HTMLButtonElement;
+        fireEvent.click(saveBtn);
+
+        await waitFor(() => {
+            expect(backendApiMock.editListing).toHaveBeenCalledWith('char-1', 'be-mine-1', { price: 250 });
+        });
+        expect(syncFromBackend).toHaveBeenCalledWith('char-1');
+        // Old client path must be skipped.
+        expect(storeEditListing).not.toHaveBeenCalled();
+    });
+
+    it('runs the store editListing path (NOT backendApi) when backend mode is OFF', async () => {
+        backendFlag.on = false;
+        const storeEditListing = vi.fn().mockResolvedValue(makeListing('l-1'));
+        useMarketStore.setState({
+            myListings: [makeListing('l-1', { sellerId: 'char-1', price: 100 })],
+            editListing: storeEditListing,
+        });
+
+        const { container } = renderMarket();
+
+        const myTab = Array.from(container.querySelectorAll('.market__tab'))
+            .find((t) => t.textContent?.includes('Moje')) as HTMLButtonElement;
+        fireEvent.click(myTab);
+
+        fireEvent.click(container.querySelector('.market__row') as HTMLElement);
+
+        const priceInput = container.querySelector('.market__modal-price-row input') as HTMLInputElement;
+        fireEvent.change(priceInput, { target: { value: '250' } });
+        const saveBtn = Array.from(container.querySelectorAll('.market__modal-btn'))
+            .find((b) => b.textContent?.includes('Zapisz cenę')) as HTMLButtonElement;
+        fireEvent.click(saveBtn);
+
+        await waitFor(() => {
+            expect(storeEditListing).toHaveBeenCalledWith('l-1', { price: 250 });
+        });
+        expect(backendApiMock.editListing).not.toHaveBeenCalled();
     });
 });
 

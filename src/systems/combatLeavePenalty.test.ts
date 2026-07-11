@@ -8,6 +8,21 @@ import { useCombatStore } from '../stores/combatStore';
 import { deathsApi } from '../api/v1/deathsApi';
 import type { ICharacter } from '../api/v1/characterApi';
 
+// -- Backend-mode glue mocks --------------------------------------------------
+// Default OFF so every existing test runs the unchanged client path. The
+// dedicated backend-mode describe flips `backendFlag.on`.
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const backendApiMock = vi.hoisted(() => ({
+    logDeath: vi.fn(),
+}));
+vi.mock('../config/backendMode', () => ({
+    isBackendMode: () => backendFlag.on,
+    isBackendConfigured: () => backendFlag.on,
+    getBackendBaseUrl: () => (backendFlag.on ? 'http://localhost:8088' : ''),
+    setBackendMode: (v: boolean) => { backendFlag.on = v; },
+}));
+vi.mock('../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
+
 // -- Helpers ------------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -75,6 +90,8 @@ let logDeathSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
     resetStores();
+    backendFlag.on = false;
+    backendApiMock.logDeath.mockReset().mockResolvedValue(undefined);
     // happy-dom provides a fetch — stub it to a no-op promise.
     fetchSpy = vi
         .spyOn(globalThis, 'fetch')
@@ -368,5 +385,53 @@ describe('applyCombatLeaveDeath – callers must guard idempotency', () => {
         });
         expect(useCharacterStore.getState().character?.level).toBe(98);
         expect(logDeathSpy).toHaveBeenCalledTimes(2);
+    });
+});
+
+// -- applyCombatLeaveDeath: backend-mode death logging ------------------------
+
+describe('applyCombatLeaveDeath – backend mode routes the death log', () => {
+    it('calls backendApi.logDeath (char id + trimmed payload) and SKIPS deathsApi', () => {
+        backendFlag.on = true;
+        useCharacterStore.setState({ character: makeCharacter({ id: 'char-9', level: 100, xp: 5000 }) });
+        applyCombatLeaveDeath({
+            source: 'boss',
+            sourceName: 'Skeleton King',
+            sourceLevel: 100,
+        });
+        // Client Supabase write is gated OFF in backend mode.
+        expect(logDeathSpy).not.toHaveBeenCalled();
+        // Authoritative backend receives id + source/source_name/source_level/result.
+        expect(backendApiMock.logDeath).toHaveBeenCalledTimes(1);
+        expect(backendApiMock.logDeath).toHaveBeenCalledWith('char-9', {
+            source: 'boss',
+            source_name: 'Skeleton King',
+            source_level: 100,
+            result: 'fled',
+        });
+    });
+
+    it('still applies the local level/XP penalty in backend mode (penalty logic unchanged)', () => {
+        backendFlag.on = true;
+        useCharacterStore.setState({ character: makeCharacter({ level: 100, xp: 5000, highest_level: 100 }) });
+        applyCombatLeaveDeath({
+            source: 'dungeon',
+            sourceName: 'Crypt',
+            sourceLevel: 100,
+        });
+        const ch = useCharacterStore.getState().character;
+        expect(ch?.level).toBe(99);
+    });
+
+    it('with the flag OFF the old client path runs (deathsApi called, backendApi not)', () => {
+        backendFlag.on = false;
+        useCharacterStore.setState({ character: makeCharacter({ level: 100, xp: 5000 }) });
+        applyCombatLeaveDeath({
+            source: 'raid',
+            sourceName: 'Raid Boss',
+            sourceLevel: 100,
+        });
+        expect(logDeathSpy).toHaveBeenCalledTimes(1);
+        expect(backendApiMock.logDeath).not.toHaveBeenCalled();
     });
 });

@@ -135,6 +135,9 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import classesRaw from '../../data/classes.json';
 import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Boss.scss';
 
 // -- Class config for dual wield ----------------------------------------------
@@ -200,6 +203,35 @@ type ScreenPhase = 'list' | 'fighting' | 'result';
 
 type TBotClassOrNone = TCharacterClass | 'none';
 const ALL_BOT_CLASSES: TCharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'];
+
+// -- Backend-mode (opt-in) resolve helpers ------------------------------------
+// Authoritative backend returns the fight outcome; we only READ it (never
+// recompute) and turn it into a short feedback line. `bossResolve` is typed as
+// `unknown`, so narrow defensively — every field is optional and the shape is
+// tolerant to the server naming reward fields flat or nested.
+interface IBossResolveResult {
+    won?: boolean;
+    victory?: boolean;
+    reward?: { gold?: number; xp?: number };
+    gold?: number;
+    xp?: number;
+}
+
+const readBossResolveResult = (res: unknown): IBossResolveResult =>
+    (typeof res === 'object' && res !== null) ? (res as IBossResolveResult) : {};
+
+const formatBossResolveFeedback = (boss: IBoss, res: unknown): string => {
+    const r = readBossResolveResult(res);
+    const won = r.won ?? r.victory;
+    if (won === false) return `Porażka: ${boss.name_pl} nie został pokonany.`;
+    const gold = r.reward?.gold ?? r.gold;
+    const xp = r.reward?.xp ?? r.xp;
+    const parts: string[] = [];
+    if (typeof gold === 'number') parts.push(`+${gold} złota`);
+    if (typeof xp === 'number') parts.push(`+${xp} XP`);
+    const rewardStr = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+    return `Pokonano bossa ${boss.name_pl}!${rewardStr}`;
+};
 
 // Bosses ALWAYS run at x1 speed (independent of normal combat speed)
 
@@ -387,6 +419,11 @@ const Boss = () => {
     const setBossFilterSortDesc      = useSettingsStore((s) => s.setBossFilterSortDesc);
 
     const [phase, setPhase]           = useState<ScreenPhase>('list');
+
+    // Backend-mode (opt-in) feedback banner. Only ever set on the isBackendMode()
+    // branch of handleChallenge; stays null on the default client path so the
+    // legacy flow renders identically.
+    const [backendFeedback, setBackendFeedback] = useState<string | null>(null);
 
     // 2026-05-13 spec ("lider konczy bossa -> sojusznicy do miasta"):
     // when the leader of a multi-human party transitions OUT of an
@@ -883,6 +920,7 @@ const Boss = () => {
     // shared CombatUI tree communicates hits via card flash (`isHit`), HP-bar
     // tween, and the session log instead, so this is a no-op kept only to
     // avoid touching every callsite. Drop it in a later cleanup pass.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const showFloatingDmg = useCallback((_text: string, _type: string, _side?: 'left' | 'right') => {}, []);
 
     // Auto-scroll log
@@ -1407,7 +1445,23 @@ const Boss = () => {
     }, [character?.id, playEntryThenFight]);
 
     // -- Open pre-fight bot picker (or skip if already in party) -------------
-    const handleChallenge = useCallback((boss: IBoss) => {
+    const handleChallenge = useCallback(async (boss: IBoss) => {
+        // Backend-mode (opt-in): the authoritative server resolves the whole
+        // boss fight in one call — no client-side entry animation, ready-check,
+        // or combat loop. Mirror the combat wiring: resolve -> sync -> feedback,
+        // then bail out before the legacy client path runs.
+        if (isBackendMode() && character) {
+            try {
+                const res = await backendApi.bossResolve(character.id, boss.id);
+                await syncFromBackend(character.id);
+                setBackendFeedback(formatBossResolveFeedback(boss, res));
+                return;
+            } catch (e) {
+                console.warn('[backend] bossResolve failed', e);
+                setBackendFeedback(`Nie udało się rozstrzygnąć walki: ${boss.name_pl}.`);
+                return;
+            }
+        }
         // 2026-05-12 spec ("ready-check popup przed bossem / raidem /
         // trainerem"): route the click through `requestPartyCombatStart`.
         // For solo / leader: runs the onConfirmed action (immediate or
@@ -1446,7 +1500,7 @@ const Boss = () => {
             payload: { bossId: boss.id },
             onConfirmed: startNow,
         });
-    }, [party, character?.id, playEntryThenFight]);
+    }, [party, character, playEntryThenFight]);
 
     const confirmBossFight = useCallback(() => {
         if (!pendingBoss) return;
@@ -1720,15 +1774,24 @@ const Boss = () => {
         const char = useCharacterStore.getState().character;
         if (char) {
             // Log death to global deaths feed (best-effort)
-            void deathsApi.logDeath({
-                character_id: char.id,
-                character_name: char.name,
-                character_class: char.class,
-                character_level: char.level,
-                source: 'boss',
-                source_name: boss.name_pl,
-                source_level: boss.level,
-            });
+            if (isBackendMode() && char) {
+                void backendApi.logDeath(char.id, {
+                    source: 'boss',
+                    source_name: boss.name_pl,
+                    source_level: boss.level,
+                    result: 'killed',
+                });
+            } else {
+                void deathsApi.logDeath({
+                    character_id: char.id,
+                    character_name: char.name,
+                    character_class: char.class,
+                    character_level: char.level,
+                    source: 'boss',
+                    source_name: boss.name_pl,
+                    source_level: boss.level,
+                });
+            }
 
             // Unified death/flee protection: ONE item (elixir first, then AoL)
             // shields EVERYTHING — no level, xp, skill xp or item loss.
@@ -4264,6 +4327,28 @@ const Boss = () => {
 
     return (
         <div className={`boss${phase === 'fighting' ? ' boss--fighting' : ''}`}>
+            {/* Backend-mode (opt-in) resolve feedback. Only rendered when the
+                authoritative server resolved a boss fight — the default client
+                path never sets backendFeedback, so this stays invisible there. */}
+            {backendFeedback && (
+                <div
+                    className="boss__backend-feedback"
+                    role="status"
+                    onClick={() => setBackendFeedback(null)}
+                    style={{
+                        margin: '8px auto',
+                        maxWidth: '640px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        color: '#ffd54f',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                    }}
+                >
+                    {backendFeedback}
+                </div>
+            )}
             {/* Header now only carries the trophy + boss-score badge under
                 a small top margin — the page title (":ogre: Bossowie") and the
                 "<- Miasto" back button were dropped in the latest UX pass.
@@ -4527,7 +4612,7 @@ const Boss = () => {
                                             )}
                                         </div>
                                         {!blocked && (
-                                            <button className="boss__challenge-btn" onClick={() => handleChallenge(b)}>
+                                            <button className="boss__challenge-btn" onClick={() => { void handleChallenge(b); }}>
                                                 Wyzwij
                                             </button>
                                         )}
@@ -5081,16 +5166,25 @@ const Boss = () => {
                                                     // global deaths feed so the /deaths view
                                                     // renders "<boss> przegnał <player>"
                                                     // (verb driven by `result: 'fled'`).
-                                                    void deathsApi.logDeath({
-                                                        character_id: ch.id,
-                                                        character_name: ch.name,
-                                                        character_class: ch.class,
-                                                        character_level: ch.level,
-                                                        source: 'boss',
-                                                        source_name: activeBoss?.name_pl ?? 'Boss',
-                                                        source_level: activeBoss?.level ?? ch.level,
-                                                        result: 'fled',
-                                                    });
+                                                    if (isBackendMode() && ch) {
+                                                        void backendApi.logDeath(ch.id, {
+                                                            source: 'boss',
+                                                            source_name: activeBoss?.name_pl ?? 'Boss',
+                                                            source_level: activeBoss?.level ?? ch.level,
+                                                            result: 'fled',
+                                                        });
+                                                    } else {
+                                                        void deathsApi.logDeath({
+                                                            character_id: ch.id,
+                                                            character_name: ch.name,
+                                                            character_class: ch.class,
+                                                            character_level: ch.level,
+                                                            source: 'boss',
+                                                            source_name: activeBoss?.name_pl ?? 'Boss',
+                                                            source_level: activeBoss?.level ?? ch.level,
+                                                            result: 'fled',
+                                                        });
+                                                    }
                                                     // Unified protection: ONE item shields the
                                                     // flee penalty too — zero level/xp/skill-xp
                                                     // loss. Flee NEVER loses items either way.

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -34,11 +34,26 @@ vi.mock('framer-motion', async () => {
     };
 });
 
+// Backend-mode glue is opt-in. Partial-mock the flag + the sync helper so
+// the ON-branch is drivable in isolation without hitting the network
+// (syncFromBackend would otherwise fire a real GET /state via axios).
+vi.mock('../../config/backendMode', async () => {
+    const actual = await vi.importActual<typeof import('../../config/backendMode')>('../../config/backendMode');
+    return { ...actual, isBackendMode: vi.fn(() => false) };
+});
+vi.mock('../../api/backend/syncState', async () => {
+    const actual = await vi.importActual<typeof import('../../api/backend/syncState')>('../../api/backend/syncState');
+    return { ...actual, syncFromBackend: vi.fn(async () => {}) };
+});
+
 import Shop from './Shop';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -224,6 +239,114 @@ describe('Shop — gold delta floating overlay', () => {
         // Overlay only appears AFTER a buy (sets goldDelta state). Mount
         // state has goldDelta === null so no floating chip.
         expect(container.querySelector('.shop__gold-delta-floating')).toBeNull();
+    });
+});
+
+describe('Shop — backend mode (opt-in)', () => {
+    beforeEach(() => {
+        // Every test starts with backend mode OFF; the ON test opts in.
+        vi.mocked(isBackendMode).mockReturnValue(false);
+        vi.mocked(syncFromBackend).mockClear();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('routes an elixir purchase through backendApi.buyElixir + syncFromBackend when backend mode is ON', async () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+        const buySpy = vi.spyOn(backendApi, 'buyElixir').mockResolvedValue({});
+
+        const { container } = renderShop();
+        const elixirsTab = Array.from(container.querySelectorAll('.shop__tab'))
+            .find((t) => t.getAttribute('aria-label') === 'Eliksiry') as HTMLButtonElement;
+        fireEvent.click(elixirsTab);
+
+        const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
+        expect(buyBtn).not.toBeNull();
+        fireEvent.click(buyBtn);
+
+        await waitFor(() => expect(buySpy).toHaveBeenCalledTimes(1));
+        // itemId is the catalog elixir id; qty is 1 on the Elixirs tab.
+        expect(buySpy).toHaveBeenCalledWith('char-1', expect.any(String), 1);
+        await waitFor(() => expect(syncFromBackend).toHaveBeenCalledWith('char-1'));
+    });
+
+    it('keeps the default client path untouched when backend mode is OFF', () => {
+        const buySpy = vi.spyOn(backendApi, 'buyElixir');
+
+        const { container } = renderShop();
+        const elixirsTab = Array.from(container.querySelectorAll('.shop__tab'))
+            .find((t) => t.getAttribute('aria-label') === 'Eliksiry') as HTMLButtonElement;
+        fireEvent.click(elixirsTab);
+
+        const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
+        fireEvent.click(buyBtn);
+
+        // No backend call in the default (client-authoritative) path.
+        expect(buySpy).not.toHaveBeenCalled();
+        expect(syncFromBackend).not.toHaveBeenCalled();
+    });
+
+    it('routes an items-tab purchase through backendApi.buyShopItem + syncFromBackend when backend mode is ON', async () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+        const buySpy = vi.spyOn(backendApi, 'buyShopItem').mockResolvedValue({});
+
+        const { container } = renderShop();
+        // Items is the default tab — grab the first buyable card.
+        const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
+        expect(buyBtn).not.toBeNull();
+        fireEvent.click(buyBtn);
+
+        await waitFor(() => expect(buySpy).toHaveBeenCalledTimes(1));
+        // Backend gets (characterId, itemId); it is authoritative for the buy.
+        expect(buySpy).toHaveBeenCalledWith('char-1', expect.any(String));
+        await waitFor(() => expect(syncFromBackend).toHaveBeenCalledWith('char-1'));
+    });
+
+    it('keeps the default client path for items-tab buys when backend mode is OFF', () => {
+        const buySpy = vi.spyOn(backendApi, 'buyShopItem');
+
+        const { container } = renderShop();
+        const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
+        fireEvent.click(buyBtn);
+
+        expect(buySpy).not.toHaveBeenCalled();
+        expect(syncFromBackend).not.toHaveBeenCalled();
+    });
+
+    it('routes an arena-tab purchase through backendApi.buyArenaItem + syncFromBackend when backend mode is ON', async () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+        const buySpy = vi.spyOn(backendApi, 'buyArenaItem').mockResolvedValue({});
+
+        const { container } = renderShop();
+        const arenaTab = Array.from(container.querySelectorAll('.shop__tab'))
+            .find((t) => t.getAttribute('aria-label') === 'Arena') as HTMLButtonElement;
+        fireEvent.click(arenaTab);
+
+        const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
+        expect(buyBtn).not.toBeNull();
+        fireEvent.click(buyBtn);
+
+        await waitFor(() => expect(buySpy).toHaveBeenCalledTimes(1));
+        // Backend gets (characterId, arenaItemId); AP settlement is server-side.
+        expect(buySpy).toHaveBeenCalledWith('char-1', expect.any(String));
+        await waitFor(() => expect(syncFromBackend).toHaveBeenCalledWith('char-1'));
+    });
+
+    it('keeps the default client path for arena-tab buys when backend mode is OFF', () => {
+        const buySpy = vi.spyOn(backendApi, 'buyArenaItem');
+
+        const { container } = renderShop();
+        const arenaTab = Array.from(container.querySelectorAll('.shop__tab'))
+            .find((t) => t.getAttribute('aria-label') === 'Arena') as HTMLButtonElement;
+        fireEvent.click(arenaTab);
+
+        const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
+        fireEvent.click(buyBtn);
+
+        expect(buySpy).not.toHaveBeenCalled();
+        expect(syncFromBackend).not.toHaveBeenCalled();
     });
 });
 

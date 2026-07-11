@@ -33,6 +33,7 @@ import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 import { saveGame, loadGame, deleteGameSave } from '../storage/gameStorage';
 import { characterApi } from '../api/v1/characterApi';
 import { supabase } from '../lib/supabase';
+import { isBackendMode } from '../config/backendMode';
 import skillsData from '../data/skills.json';
 
 // -- Active character tracker ------------------------------------------------
@@ -398,7 +399,9 @@ const collectAllStores = (): Record<string, Record<string, unknown>> => {
  * `_ownerCharacterId` matching the expected charId – otherwise it is rejected
  * and the stores end up at defaults only.
  */
-const applyBlobToStores = (blob: Record<string, unknown>, expectedCharId: string): boolean => {
+// Eksportowane dla trybu backendu: hydratuje store'y z autorytatywnego bloba
+// state zwróconego przez backend (ten sam kształt co game_saves.state).
+export const applyBlobToStores = (blob: Record<string, unknown>, expectedCharId: string): boolean => {
   // 1) Reset every gameplay store to its default state FIRST. Without this,
   //    a blob missing a particular baseKey would leave that store holding the
   //    previous character's data.
@@ -1053,6 +1056,9 @@ const ensureMaxLevelPerks = (): void => {
  * This avoids dependency on a unique constraint that may not exist on the table.
  */
 const syncWeaponSkillsToSupabase = async (charId: string): Promise<void> => {
+  // Tryb backendu: rankingi (character_weapon_skills) zapisuje serwer, nie klient.
+  if (isBackendMode()) return;
+
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
 
@@ -1107,6 +1113,11 @@ const syncWeaponSkillsToSupabase = async (charId: string): Promise<void> => {
  * This is CRITICAL – without this, level/XP resets on character switch!
  */
 const saveCharacterToSupabase = async (charId: string): Promise<void> => {
+  // Tryb backendu: level/xp/gold/staty w tabeli `characters` zapisuje WYŁĄCZNIE
+  // serwer (autorytatywnie). Klient nie może pisać wprost — to główny wektor cheatu
+  // (forge poziomu/golda) i nadpisywałby stan serwera po każdym zabiciu.
+  if (isBackendMode()) return;
+
   const character = useCharacterStore.getState().character;
   if (!character || character.id !== charId) return;
 
@@ -1226,13 +1237,19 @@ export const saveCurrentCharacterStoresSync = (): void => {
 
 /**
  * Clean up all stored data for a deleted character (local + cloud).
+ *
+ * Tryb backendu: lokalne klucze localStorage czyścimy ZAWSZE (poniżej + w
+ * deleteGameSave), ale bezpośredni DELETE do Supabase `game_saves` jest
+ * pominięty — serwer kasuje ten wiersz w transakcji usuwania postaci
+ * (patrz gameStorage.deleteGameSave + characterApi.deleteCharacter).
  */
 export const deleteCharacterData = async (charId: string): Promise<void> => {
-  // Clean up old per-store keys (migration remnants)
+  // Clean up old per-store keys (migration remnants) — runs in every mode.
   for (const entry of STORE_ENTRIES) {
     localStorage.removeItem(oldCharKey(entry.baseKey, charId));
   }
 
-  // Delete unified save
+  // Delete unified save. deleteGameSave clears the localStorage cache in all
+  // modes and skips the Supabase DELETE when isBackendMode() is on.
   await deleteGameSave(charId);
 };

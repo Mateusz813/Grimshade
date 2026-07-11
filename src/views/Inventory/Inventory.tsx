@@ -85,6 +85,9 @@ import Icon from '../../components/atoms/Icon/Icon';
 import { getCharacterAvatar } from '../../data/classAvatars';
 import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import './Inventory.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -117,6 +120,24 @@ const getInventoryItemSlot = (item: IInventoryItem): EquipmentSlot | null => {
   const genInfo = getGeneratedItemInfo(item.itemId);
   if (genInfo) return genInfo.slot;
   return null;
+};
+
+// -- Backend-mode helper (opt-in via isBackendMode) --------------------------
+/**
+ * Reads an item's current upgrade level from the live inventory store (bag or
+ * equipped), matched by uuid. Used ONLY in backend mode: after `syncFromBackend`
+ * hydrates the authoritative server state we compare the new level against the
+ * pre-upgrade level to decide whether the server-resolved enhancement succeeded
+ * (level rose) or failed (unchanged). Returns null when the item can't be found.
+ */
+const readItemUpgradeLevel = (uuid: string): number | null => {
+  const inv = useInventoryStore.getState();
+  const bagItem = inv.bag.find((i) => i.uuid === uuid);
+  if (bagItem) return bagItem.upgradeLevel ?? 0;
+  const equipped = Object.values(inv.equipment).find(
+    (i): i is IInventoryItem => !!i && i.uuid === uuid,
+  );
+  return equipped ? equipped.upgradeLevel ?? 0 : null;
 };
 
 /**
@@ -481,6 +502,18 @@ const handleStatReset = () => {
   const char = useCharacterStore.getState().character;
   if (!char) return;
 
+  // Backend-authoritative branch (opt-in). The server recomputes base stats +
+  // stat_points and consumes the stat_reset elixir; resync re-hydrates the
+  // character/inventory stores. Fire-and-forget so this stays synchronously
+  // callable from the elixir-dose loops.
+  if (isBackendMode()) {
+    void backendApi
+      .statReset(char.id, 'stat_reset')
+      .then(() => syncFromBackend(char.id))
+      .catch((e) => console.warn('[backend] statReset failed', e));
+    return;
+  }
+
   const base = CLASS_BASE_STATS[char.class];
   if (!base) return;
 
@@ -597,29 +630,81 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const isRingSlot = itemSlot === 'ring1' || itemSlot === 'ring2';
 
-  const handleEquip = () => {
+  const handleEquip = async () => {
     if (!character || !itemSlot) return;
     const targetSlot = getEquipTargetSlot(itemSlot, item.itemId, character.class, equipment, ALL_ITEMS);
+    // Backend-authoritative branch (opt-in). Server equips + we re-hydrate.
+    if (isBackendMode()) {
+      try {
+        await backendApi.equip(character.id, item.uuid, targetSlot);
+        await syncFromBackend(character.id);
+        onClose();
+        return;
+      } catch (e) {
+        console.warn('[backend] equip failed', e);
+        onClose();
+        return;
+      }
+    }
     equipItem(item.uuid, targetSlot);
     onClose();
   };
 
-  const handleEquipToSlot = (slot: EquipmentSlot) => {
+  const handleEquipToSlot = async (slot: EquipmentSlot) => {
     if (!character) return;
+    if (isBackendMode()) {
+      try {
+        await backendApi.equip(character.id, item.uuid, slot);
+        await syncFromBackend(character.id);
+        onClose();
+        return;
+      } catch (e) {
+        console.warn('[backend] equip failed', e);
+        onClose();
+        return;
+      }
+    }
     equipItem(item.uuid, slot);
     onClose();
   };
 
-  const handleUnequip = () => {
+  const handleUnequip = async () => {
     if (!equippedSlot) return;
+    if (isBackendMode() && character) {
+      try {
+        await backendApi.unequip(character.id, equippedSlot);
+        await syncFromBackend(character.id);
+        onClose();
+        return;
+      } catch (e) {
+        console.warn('[backend] unequip failed', e);
+        onClose();
+        return;
+      }
+    }
     unequipItem(equippedSlot);
     onClose();
   };
 
   const enhanceRefund = getEnhancementRefund(item.upgradeLevel ?? 0, item.rarity);
 
-  const handleSell = () => {
+  const handleSell = async () => {
     if (actionInProgress) return;
+    // Backend-authoritative branch (opt-in). Server computes gold + stone
+    // refund; we just re-hydrate the store from the returned state.
+    if (isBackendMode() && character) {
+      setActionInProgress(true);
+      try {
+        await backendApi.sell(character.id, item.uuid);
+        await syncFromBackend(character.id);
+        onClose();
+        return;
+      } catch (e) {
+        console.warn('[backend] sell failed', e);
+        setActionInProgress(false);
+        return;
+      }
+    }
     setActionInProgress(true);
     sellItem(item.uuid, sellPrice);
     // Return stones from enhancement refund
@@ -632,8 +717,26 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   // Spec 15: send the item straight to the deposit (warehouse) without
   // having to walk to /deposit. Closes the panel on success; flashes a
   // "Depozyt pełny" toast for ~1.4s if it failed (deposit is at MAX_DEPOSIT_SIZE).
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
     if (actionInProgress) return;
+    // Backend-authoritative branch (opt-in). Server moves the item into the
+    // warehouse; a rejection (e.g. deposit full) surfaces as a caught error.
+    if (isBackendMode() && character) {
+      setActionInProgress(true);
+      try {
+        await backendApi.deposit(character.id, item.uuid);
+        await syncFromBackend(character.id);
+        setDepositToast('ok');
+        setTimeout(onClose, 250);
+        return;
+      } catch (e) {
+        console.warn('[backend] deposit failed', e);
+        setDepositToast('full');
+        setActionInProgress(false);
+        setTimeout(() => setDepositToast(null), 1400);
+        return;
+      }
+    }
     setActionInProgress(true);
     const ok = depositItem(item.uuid);
     if (ok) {
@@ -651,6 +754,32 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const handleDisassemble = () => {
     if (actionInProgress || disassembling) return;
+    // Backend-authoritative branch (opt-in). Server rolls the stone drop and
+    // removes the item; we mirror the same animation shell + close flow and
+    // resync so the bag/stones re-hydrate from the server result.
+    if (isBackendMode() && character) {
+      setActionInProgress(true);
+      setDisassembling(true);
+      setDisassembleResult(null);
+      onDisassembleStateChange?.(true);
+      void (async () => {
+        try {
+          await backendApi.disassemble(character.id, item.uuid);
+          await syncFromBackend(character.id);
+          setDisassembleResult('success');
+        } catch (e) {
+          console.warn('[backend] disassemble failed', e);
+          setDisassembleResult('fail');
+        }
+        setDisassembling(false);
+        setTimeout(() => {
+          setDisassembleResult(null);
+          onDisassembleStateChange?.(false);
+          onClose();
+        }, 2500);
+      })();
+      return;
+    }
     setActionInProgress(true);
     setDisassembling(true);
     setDisassembleResult(null);
@@ -704,6 +833,24 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const handleStartReroll = () => {
     if (!rerollSlot) return;
+    // Backend-authoritative branch (opt-in). The server reroll is ATOMIC:
+    // one call debits the stones AND commits the new bonuses, so we skip the
+    // client preview/accept two-step entirely and just reroll + resync in
+    // place. The "rolling" phase is shown briefly for continuity.
+    if (isBackendMode() && character) {
+      setRerollPhase('rolling');
+      void (async () => {
+        try {
+          await backendApi.reroll(character.id, item.uuid);
+          await syncFromBackend(character.id);
+        } catch (e) {
+          console.warn('[backend] reroll failed', e);
+        }
+        setRerollPhase('idle');
+        setRerolledBonuses(null);
+      })();
+      return;
+    }
     const currentStones = useInventoryStore.getState().stones[rerollStoneType] ?? 0;
     if (currentStones < REROLL_STONE_COST) return;
     if (!useStones(rerollStoneType, REROLL_STONE_COST)) return;
@@ -724,6 +871,13 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   };
 
   const handleAcceptReroll = () => {
+    // Backend mode never reaches the preview/accept step (the atomic reroll
+    // already committed in handleStartReroll); just reset the phase defensively.
+    if (isBackendMode() && character) {
+      setRerollPhase('idle');
+      setRerolledBonuses(null);
+      return;
+    }
     if (!rerolledBonuses) return;
     updateItemBonuses(item.uuid, rerolledBonuses);
     setRerollPhase('idle');
@@ -957,8 +1111,44 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           const canEnhance = canAffordGold && hasEnoughStones && !enhancing;
           const stoneName = STONE_NAMES[cost.stoneType] ?? cost.stoneType;
 
-          const handleEnhance = () => {
+          const handleEnhance = async () => {
             if (!canEnhance) return;
+            // Backend-authoritative branch (opt-in). Server rolls the upgrade
+            // and debits gold/stones; after sync we read the item's level back
+            // to drive the success/fail glow (backend is the source of truth).
+            if (isBackendMode() && character) {
+              setEnhancing(true);
+              setEnhanceResult(null);
+              try {
+                await backendApi.upgrade(character.id, item.uuid);
+                await syncFromBackend(character.id);
+                const newLevel = readItemUpgradeLevel(item.uuid);
+                const succeeded = newLevel === null ? true : newLevel > currentLevel;
+                setEnhanceResult(succeeded ? 'success' : 'fail');
+                // System-tab broadcast — in backend mode the SERVER formats the
+                // message and gates the milestone rule, so we just hand it the
+                // structured payload (no client formatSystemMessage / postSystemEvent
+                // / isUpgradeMilestone check here). Fire-and-forget.
+                if (succeeded) {
+                  const info = getItemDisplayInfo(item.itemId);
+                  const itemName = info?.name_pl ?? item.itemId;
+                  void backendApi.chatSystemEvent(character.id, {
+                    type: 'upgrade',
+                    itemId: item.itemId,
+                    rarity: item.rarity,
+                    upgradeLevel: nextLevel,
+                    itemName,
+                  }).catch(() => { /* offline — fine */ });
+                }
+                setEnhancing(false);
+                setTimeout(() => setEnhanceResult(null), 3000);
+                return;
+              } catch (e) {
+                console.warn('[backend] upgrade failed', e);
+                setEnhancing(false);
+                return;
+              }
+            }
             // 2026-05-26 bug fix (caught przez E2E inventory/upgrade test
             // flake gdzie success animation pokazywała się ale gold/stones
             // nie były odjęte): canEnhance check używa wartości z React
@@ -1959,6 +2149,28 @@ const TrainingPopupBody = memo(() => {
   const allStats = [...classStats, ...GENERAL_TRAINABLE_STATS];
   const uniqueStats = Array.from(new Set(allStats));
 
+  // Backend-authoritative branch (opt-in). Selecting a NEW stat starts offline
+  // training on the server; tapping the already-active stat collects/stops it.
+  // Either way we re-hydrate from the returned state. Client toggle is untouched
+  // in default mode.
+  const handleSelectTraining = async (skillId: string, isSelected: boolean): Promise<void> => {
+    if (isBackendMode() && character) {
+      try {
+        if (isSelected) {
+          await backendApi.collectTraining(character.id);
+        } else {
+          await backendApi.startTraining(character.id, skillId);
+        }
+        await syncFromBackend(character.id);
+        return;
+      } catch (e) {
+        console.warn('[backend] training toggle failed', e);
+        return;
+      }
+    }
+    selectTrainingStat(isSelected ? null : skillId);
+  };
+
   return (
     <div className="inventory__training-popup-body">
       <div className="inventory__training-status">
@@ -1999,7 +2211,7 @@ const TrainingPopupBody = memo(() => {
             <button
               key={skillId}
               type="button"
-              onClick={() => selectTrainingStat(isSelected ? null : skillId)}
+              onClick={() => { void handleSelectTraining(skillId, isSelected); }}
               className={`inventory__training-card${isSelected ? ' inventory__training-card--selected' : ''}`}
             >
               <div className="inventory__training-card-head">
@@ -2200,6 +2412,24 @@ const ActiveSkillsPopupBody = memo(() => {
   };
   const resolveSwap = (slotIdx: 0 | 1 | 2 | 3) => {
     if (!swapTarget) return;
+    // Backend-authoritative branch (opt-in). The server owns the active-skill
+    // slot layout (incl. clearing any other slot that held the skill). We
+    // compute the target skillId (null = unequip when the slot already holds
+    // it) and push it, then resync.
+    if (isBackendMode() && character) {
+      const nextSkillId: string | null = activeSkillSlots[slotIdx] === swapTarget ? null : swapTarget;
+      void (async () => {
+        try {
+          // `null` clears the slot server-side (the documented clear signal).
+          await backendApi.setSkillSlot(character.id, slotIdx, nextSkillId);
+          await syncFromBackend(character.id);
+        } catch (e) {
+          console.warn('[backend] setSkillSlot failed', e);
+        }
+      })();
+      setSwapTarget(null);
+      return;
+    }
     // If clicking the slot already holding the same skill -> unequip.
     if (activeSkillSlots[slotIdx] === swapTarget) {
       setActiveSkillSlot(slotIdx, null);
@@ -2217,6 +2447,25 @@ const ActiveSkillsPopupBody = memo(() => {
   const confirmUnlock = (skillId: string) => {
     const skill = myActiveSkills.find((s) => s.id === skillId);
     if (!skill) return;
+    // Backend-authoritative branch (opt-in). Server debits gold + spell-chest
+    // and unlocks the skill; after sync we read the store back to drive the
+    // same success/fail toast the client path uses.
+    if (isBackendMode() && character) {
+      void (async () => {
+        try {
+          await backendApi.unlockSkill(character.id, skillId);
+          await syncFromBackend(character.id);
+          const unlocked = useSkillStore.getState().unlockedSkills[skillId] === true;
+          setActionResult({ skillId, ok: unlocked, msg: unlocked ? 'Skill odblokowany!' : 'Brak zasobów.' });
+        } catch (e) {
+          console.warn('[backend] unlockSkill failed', e);
+          setActionResult({ skillId, ok: false, msg: 'Brak zasobów.' });
+        }
+        setTimeout(() => setActionResult(null), 2500);
+      })();
+      setUnlockTarget(null);
+      return;
+    }
     const cost = getSpellChestUnlockCost(skill.unlockLevel);
     const ok = unlockSkillFn(skillId, cost.gold, spendGold, cost.chestLevel, useSpellChests);
     setActionResult({ skillId, ok, msg: ok ? 'Skill odblokowany!' : 'Brak zasobów.' });
@@ -2227,7 +2476,7 @@ const ActiveSkillsPopupBody = memo(() => {
   // animation INSIDE the popup (it stays open). Skip-animation
   // checkbox jumps straight to the result. Player closes the popup
   // manually via Anuluj / Zamknij after each attempt.
-  const confirmUpgrade = (skillId: string) => {
+  const confirmUpgrade = async (skillId: string) => {
     const skill = myActiveSkills.find((s) => s.id === skillId);
     if (!skill) return;
     // Spec 7: post-death rollback guard.
@@ -2235,6 +2484,38 @@ const ActiveSkillsPopupBody = memo(() => {
       setActionResult({ skillId, ok: false, msg: `Wymagany poziom ${skill.unlockLevel} (masz ${character.level}).` });
       setTimeout(() => setActionResult(null), 2500);
       return;
+    }
+    // Backend-authoritative branch (opt-in). Server rolls the upgrade + debits
+    // gold/spell-chests; after sync we read the new level back from the store
+    // to drive the same done/outcome panel the client path uses.
+    if (isBackendMode() && character) {
+      const prevLevel = skillUpgradeLevels[skillId] ?? 0;
+      if (!skipUpgradeAnim) setUpgradePhase('rolling');
+      try {
+        await backendApi.upgradeSkill(character.id, skillId);
+        await syncFromBackend(character.id);
+        const newLevel = useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0;
+        const ok = newLevel > prevLevel;
+        setUpgradeOutcome({ ok, newLevel });
+        setUpgradePhase('done');
+        // System-tab broadcast — backend formats + gates the milestone, so we
+        // just send the structured payload (no client formatSystemMessage /
+        // postSystemEvent / isUpgradeMilestone check). Fire-and-forget.
+        if (ok) {
+          void backendApi.chatSystemEvent(character.id, {
+            type: 'skillUpgrade',
+            skillId,
+            skillName: skill.name_pl,
+            upgradeLevel: newLevel,
+          }).catch(() => { /* offline — fine */ });
+        }
+        return;
+      } catch (e) {
+        console.warn('[backend] skill upgrade failed', e);
+        setUpgradeOutcome({ ok: false, newLevel: prevLevel });
+        setUpgradePhase('done');
+        return;
+      }
     }
     const runAttempt = () => {
       const result = upgradeActiveSkillFn(skillId, gold, spendGold, skill.unlockLevel, useSpellChests, getSpellChestCount);
@@ -2534,7 +2815,7 @@ const ActiveSkillsPopupBody = memo(() => {
                     // we kick off another attempt directly. confirmUpgrade
                     // overwrites phase ('rolling' or jumps to 'done' if
                     // skipUpgradeAnim is on) so no manual reset needed.
-                    confirmUpgrade(skill.id);
+                    void confirmUpgrade(skill.id);
                   }}
                 >
                   {upgradePhase === 'rolling'
@@ -2788,6 +3069,26 @@ const Inventory = () => {
   const [stoneConvertResult, setStoneConvertResult] = useState<'success' | 'fail' | null>(null);
 
   const handleStoneConvert = useCallback((stoneId: string) => {
+    // Backend-authoritative branch (opt-in). Server merges the lower-tier
+    // stones into the next tier and returns the new balances via resync; we
+    // show a neutral success glow (the server rejects on shortage -> fail).
+    if (isBackendMode()) {
+      const char = useCharacterStore.getState().character;
+      if (char) {
+        void (async () => {
+          try {
+            await backendApi.convertStones(char.id, stoneId);
+            await syncFromBackend(char.id);
+            setStoneConvertResult('success');
+          } catch (e) {
+            console.warn('[backend] convertStones failed', e);
+            setStoneConvertResult('fail');
+          }
+          setTimeout(() => setStoneConvertResult(null), 2000);
+        })();
+        return;
+      }
+    }
     const success = convertStones(stoneId);
     setStoneConvertResult(success ? 'success' : 'fail');
     setTimeout(() => setStoneConvertResult(null), 2000);
@@ -2813,6 +3114,22 @@ const Inventory = () => {
     const currentCount = useInventoryStore.getState().consumables[elixirId] ?? 0;
     if (currentCount <= 0) return false;
     const effect = elixir.effect;
+
+    // Backend-authoritative branch (opt-in). The server owns the consumable
+    // debit; the buff/heal VISUAL stays client-side (backend doesn't model
+    // transient buffs), so for non-stat_reset elixirs we fire the backend
+    // useConsumable + resync and then fall through to the client visual — sync
+    // reconciles the stack count. stat_reset falls through to handleStatReset
+    // below (itself backend-wired) so we don't double-hit the server.
+    if (isBackendMode() && effect !== 'stat_reset') {
+      const char = useCharacterStore.getState().character;
+      if (char) {
+        void backendApi
+          .useConsumable(char.id, elixirId)
+          .then(() => syncFromBackend(char.id))
+          .catch((e) => console.warn('[backend] useConsumable failed', e));
+      }
+    }
 
     // 1. Stat reset (special: confirm + reset stat points)
     if (effect === 'stat_reset') {
@@ -2952,6 +3269,25 @@ const Inventory = () => {
           setAlchemyToast(`Wymagany lvl ${reqLvl}`);
           setTimeout(() => setAlchemyToast(null), 2200);
           return;
+      }
+      // Backend-authoritative branch (opt-in). Server resolves the recipe by
+      // (inputId, outputId) — passing outputId is what disambiguates recipes
+      // that share an inputId — debits inputs, credits outputs, and resyncs.
+      if (isBackendMode()) {
+        const char = useCharacterStore.getState().character;
+        if (char) {
+          void (async () => {
+            try {
+              await backendApi.convertPotions(char.id, inputId, outputId, batches);
+              await syncFromBackend(char.id);
+              setAlchemyToast(`Przetworzono: +${batches} ${outputName}`);
+            } catch (e) {
+              console.warn('[backend] convertPotions failed', e);
+            }
+            setTimeout(() => setAlchemyToast(null), 2200);
+          })();
+          return;
+        }
       }
       const inv = useInventoryStore.getState();
       const owned = inv.consumables[inputId] ?? 0;
@@ -3255,8 +3591,27 @@ const Inventory = () => {
     return { count: items.length, totalGold };
   }, [bag, selectedUuids]);
 
-  const handleMultiSell = () => {
+  const handleMultiSell = async () => {
     if (selectedUuids.size === 0) return;
+    // Backend-authoritative branch (opt-in). The server exposes only a
+    // single-item sell endpoint, so we sell each selected uuid sequentially
+    // and re-hydrate once at the end. On partial failure we still sync so the
+    // store reflects whatever the server actually processed.
+    if (isBackendMode() && character) {
+      const uuids = Array.from(selectedUuids);
+      try {
+        for (const uuid of uuids) {
+          await backendApi.sell(character.id, uuid);
+        }
+        await syncFromBackend(character.id);
+      } catch (e) {
+        console.warn('[backend] multi-sell failed', e);
+        await syncFromBackend(character.id).catch(() => { /* keep UI alive */ });
+      }
+      setSelectedUuids(new Set());
+      setBulkMode('none');
+      return;
+    }
     sellMultiple(Array.from(selectedUuids), getItemSellPrice);
     setSelectedUuids(new Set());
     setBulkMode('none');
@@ -3272,6 +3627,49 @@ const Inventory = () => {
     const itemsToDisassemble = bag.filter((i) => selectedUuids.has(i.uuid));
     const totalCount = itemsToDisassemble.length;
     if (totalCount === 0) return;
+
+    // Backend-authoritative branch (opt-in). The server disassembles the whole
+    // batch in one call and returns the earned stones via resync. We keep the
+    // rAF progress animation for UX, then reconcile from the server result
+    // instead of computing stones client-side.
+    if (isBackendMode() && character) {
+      const uuids = Array.from(selectedUuids);
+      setDisassembleAnimating(true);
+      setDisassembleProgress(0);
+      setDisassembleTotalItems(totalCount);
+      const TOTAL_ANIM_MS = 1200;
+      const startTime = performance.now();
+      const tick = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / TOTAL_ANIM_MS);
+        setDisassembleProgress(Math.min(totalCount, Math.ceil(progress * totalCount)));
+        const stepIdx = Math.min(totalCount - 1, Math.floor((elapsed / 160) % Math.max(1, totalCount)));
+        const stepItem = itemsToDisassemble[stepIdx];
+        if (stepItem) setDisassembleCurrentItem(stepItem.uuid);
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+          return;
+        }
+        void (async () => {
+          try {
+            await backendApi.disassembleMass(character.id, uuids);
+            await syncFromBackend(character.id);
+          } catch (e) {
+            console.warn('[backend] mass disassemble failed', e);
+            await syncFromBackend(character.id).catch(() => { /* keep UI alive */ });
+          }
+          setDisassembleAnimating(false);
+          setDisassembleProgress(0);
+          setDisassembleTotalItems(0);
+          setDisassembleCurrentItem(null);
+          setBulkDisassembleResult({ total: totalCount, stones: {} });
+          setSelectedUuids(new Set());
+          setBulkMode('none');
+        })();
+      };
+      requestAnimationFrame(tick);
+      return;
+    }
 
     setDisassembleAnimating(true);
     setDisassembleProgress(0);

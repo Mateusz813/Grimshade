@@ -30,6 +30,11 @@ import {
     deleteGameSave,
 } from './gameStorage';
 import { supabase } from '../lib/supabase';
+import { isBackendMode } from '../config/backendMode';
+
+vi.mock('../config/backendMode', () => ({
+    isBackendMode: vi.fn(() => false),
+}));
 
 const CHAR_ID = 'char-test-1';
 const STORAGE_KEY = `dungeon_rpg_save_char_${CHAR_ID}`;
@@ -83,6 +88,8 @@ const installAwaitableChain = (): void => {
 beforeEach(() => {
     window.localStorage.clear();
     vi.clearAllMocks();
+    // Domyślnie tryb backendu WYŁĄCZONY — istniejące zachowanie (zapis do chmury) bez zmian.
+    vi.mocked(isBackendMode).mockReturnValue(false);
 });
 
 // -- saveGame ----------------------------------------------------------------
@@ -246,5 +253,52 @@ describe('deleteGameSave', () => {
     it('is safe to call when no save exists locally', async () => {
         withoutSession();
         await expect(deleteGameSave(CHAR_ID)).resolves.toBeUndefined();
+    });
+});
+
+// -- backend mode (server is the sole writer) --------------------------------
+
+describe('backend mode (isBackendMode)', () => {
+    it('saveGame keeps the localStorage cache but does NOT push the blob to Supabase', async () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+        withSession();
+
+        await saveGame(CHAR_ID, { hp: 100 });
+
+        // Local cache still written (offline UX, instant reads)…
+        expect(window.localStorage.getItem(STORAGE_KEY)).toContain('"hp":100');
+        // …but the server is authoritative — NO direct game_saves write, so no
+        // clobbering of server state and no client-write cheat vector.
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        expect(supabase.from).not.toHaveBeenCalled();
+    });
+
+    it('syncToCloud is a no-op when backend mode is on', async () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+        withSession();
+        window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ state: { x: 1 }, updated_at: new Date().toISOString() }),
+        );
+
+        await syncToCloud(CHAR_ID);
+
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        expect(supabase.from).not.toHaveBeenCalled();
+    });
+
+    it('deleteGameSave clears the localStorage cache but does NOT DELETE from Supabase', async () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
+        withSession();
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: {}, updated_at: '' }));
+
+        await deleteGameSave(CHAR_ID);
+
+        // Local cache is still purged (this browser forgets the character)…
+        expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+        // …but the server owns the game_saves row (deleted in its delete txn) —
+        // no direct client DELETE, so no bypass of the authoritative path.
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        expect(supabase.from).not.toHaveBeenCalled();
     });
 });

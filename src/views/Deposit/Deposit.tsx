@@ -1,6 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInventoryStore } from '../../stores/inventoryStore';
+import { useCharacterStore } from '../../stores/characterStore';
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import {
     RARITY_COLORS,
     findBaseItem,
@@ -67,6 +71,7 @@ const SLOT_FILTERS: ISlotFilterDef[] = [
 
 const Deposit = () => {
     const navigate = useNavigate();
+    const character = useCharacterStore((s) => s.character);
     const bag = useInventoryStore((s) => s.bag);
     const deposit = useInventoryStore((s) => s.deposit);
     const depositItem = useInventoryStore((s) => s.depositItem);
@@ -98,23 +103,61 @@ const Deposit = () => {
     const filteredBag = useMemo(() => bag.filter(filterItem), [bag, filter, slotFilter, search]);
     const filteredDeposit = useMemo(() => deposit.filter(filterItem), [deposit, filter, slotFilter, search]);
 
-    const handleDeposit = (uuid: string) => {
+    const handleDeposit = async (uuid: string) => {
+        // Backend-authoritative branch (opt-in). Server moves the item into the
+        // warehouse; we re-hydrate the stores from the returned state.
+        if (isBackendMode() && character) {
+            try {
+                await backendApi.deposit(character.id, uuid);
+                await syncFromBackend(character.id);
+            } catch (e) {
+                console.warn('[backend] deposit failed', e);
+            }
+            return;
+        }
         depositItem(uuid);
     };
 
-    const handleWithdraw = (uuid: string) => {
+    const handleWithdraw = async (uuid: string) => {
+        if (isBackendMode() && character) {
+            try {
+                await backendApi.withdraw(character.id, uuid);
+                await syncFromBackend(character.id);
+            } catch (e) {
+                console.warn('[backend] withdraw failed', e);
+            }
+            return;
+        }
         withdrawItem(uuid);
     };
 
-    const handleDepositAll = () => {
+    const handleDepositAll = async () => {
         const free = MAX_DEPOSIT_SIZE - deposit.length;
         const toMove = filteredBag.slice(0, free).map((i) => i.uuid);
+        if (isBackendMode() && character) {
+            try {
+                for (const uuid of toMove) await backendApi.deposit(character.id, uuid);
+                await syncFromBackend(character.id);
+            } catch (e) {
+                console.warn('[backend] depositAll failed', e);
+            }
+            return;
+        }
         for (const uuid of toMove) depositItem(uuid);
     };
 
-    const handleWithdrawAll = () => {
+    const handleWithdrawAll = async () => {
         const free = MAX_BAG_SIZE - bag.length;
         const toMove = filteredDeposit.slice(0, free).map((i) => i.uuid);
+        if (isBackendMode() && character) {
+            try {
+                for (const uuid of toMove) await backendApi.withdraw(character.id, uuid);
+                await syncFromBackend(character.id);
+            } catch (e) {
+                console.warn('[backend] withdrawAll failed', e);
+            }
+            return;
+        }
         for (const uuid of toMove) withdrawItem(uuid);
     };
 

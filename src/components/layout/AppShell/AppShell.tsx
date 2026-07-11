@@ -6,6 +6,7 @@ import { useAppRouteStore } from '../../../stores/appRouteStore';
 import { usePartyStore } from '../../../stores/partyStore';
 import { useGuildStore } from '../../../stores/guildStore';
 import { useChatTabsStore } from '../../../stores/chatTabsStore';
+import { isBackendMode } from '../../../config/backendMode';
 import {
   shouldDieOnDisconnect,
   resolveDisconnectSource,
@@ -418,6 +419,15 @@ const AppShell = ({ children }: IAppShellProps) => {
     const charId = ch.id;
     usePartyStore.setState({ party: null });
     void (async () => {
+      // Tryb backendu: opuszczenie party jest autorytatywne (serwer sprząta
+      // party_members + pilnuje invariantu 1-party). Klient NIE kasuje wprost.
+      if (isBackendMode()) {
+        try {
+          const { backendApi } = await import('../../../api/backend/backendApi');
+          await backendApi.leaveParty(charId, partyId);
+        } catch { /* ignore — /parties/active self-heal na następnym loginie */ }
+        return;
+      }
       try {
         const { partyApi } = await import('../../../api/v1/partyApi');
         await partyApi.leaveParty(partyId, charId);

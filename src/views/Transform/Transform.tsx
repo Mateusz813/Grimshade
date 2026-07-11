@@ -54,6 +54,12 @@ import { resolveAutoPotionElixir } from '../../systems/potionSystem';
 import { canUsePotionAtLevel } from '../../systems/potionGating';
 import { CLASS_COLORS } from '../../systems/itemSystem';
 import { deathsApi } from '../../api/v1/deathsApi';
+// Backend-mode (opt-in) glue. When isBackendMode() is true the authoritative
+// Laravel backend resolves the transform fight + grants the permanent bonus;
+// the client only READS the outcome (via syncFromBackend) and never recomputes.
+import { isBackendMode } from '../../config/backendMode';
+import { backendApi } from '../../api/backend/backendApi';
+import { syncFromBackend } from '../../api/backend/syncState';
 import {
   calculateDamage,
   calculateDualWieldDamage,
@@ -434,6 +440,22 @@ const getEffectiveChar = (
 const getAttackMs = (speed: number): number =>
   Math.max(500, Math.floor(3000 / Math.max(1, speed || 1)));
 
+// -- Backend-mode (opt-in) resolve helpers ------------------------------------
+// The authoritative backend returns the transform-fight outcome; we only READ
+// it (never recompute) and turn it into a short feedback line. `transformResolve`
+// is typed as `unknown`, so narrow defensively — every field is optional and the
+// shape is tolerant to the server naming reward fields flat or nested.
+interface ITransformResolveResult {
+  won?: boolean;
+  victory?: boolean;
+  reward?: { gold?: number; xp?: number };
+  gold?: number;
+  xp?: number;
+}
+
+const readTransformResolveResult = (res: unknown): ITransformResolveResult =>
+  (typeof res === 'object' && res !== null) ? (res as ITransformResolveResult) : {};
+
 // -- Component ----------------------------------------------------------------
 
 const Transform = () => {
@@ -465,6 +487,11 @@ const Transform = () => {
 
   // Screen phase
   const [phase, setPhase] = useState<ScreenPhase>('list');
+
+  // Backend-mode (opt-in) resolve/claim feedback banner. Only ever set on the
+  // isBackendMode() branches below — the default client path never touches it,
+  // so it stays invisible in the normal (offline/authoritative-client) flow.
+  const [backendFeedback, setBackendFeedback] = useState<string | null>(null);
 
   // Combat state
   // `currentMonster` + `monsterHp` track the BOSS slot (slot 3, bottom-right).
@@ -1085,8 +1112,41 @@ const Transform = () => {
   }, [completedTransforms, currentQuest, character]);
 
   // -- Start quest --------------------------------------------------------------
-  const handleStartQuest = useCallback((transformId: number) => {
+  const handleStartQuest = useCallback(async (transformId: number) => {
     if (!character) return;
+    // Backend-mode (opt-in): the authoritative server resolves the ENTIRE
+    // transform wave in one call — no client combat loop. On a win we jump
+    // straight to the reward/claim screen (the same 'allDefeated' UI the
+    // client path reaches after the last kill); the permanent bonus is applied
+    // separately by transformClaim in handleCompleteTransform. Bail out before
+    // the legacy client quest/combat path runs.
+    if (isBackendMode()) {
+      try {
+        const res = await backendApi.transformResolve(character.id, String(transformId));
+        await syncFromBackend(character.id);
+        const parsed = readTransformResolveResult(res);
+        const won = parsed.won ?? parsed.victory;
+        if (won === false) {
+          setBackendFeedback('Porazka: transformacja nie zostala ukonczona.');
+          setPhase('list');
+          return;
+        }
+        // Clean resolve — disable the leave guard so the post-fight transition
+        // never gets upgraded to a death on unmount.
+        leavePenaltyAppliedRef.current = true;
+        setActiveTransformId(transformId);
+        setRewards(null);
+        setVictoryReady(false);
+        setBackendFeedback(null);
+        setPhase('allDefeated');
+        return;
+      } catch (e) {
+        console.warn('[backend] transformResolve failed', e);
+        setBackendFeedback('Nie udalo sie rozstrzygnac transformacji.');
+        setPhase('list');
+        return;
+      }
+    }
     const started = useTransformStore.getState().startTransformQuest(transformId, character.level);
     if (started) {
       setActiveTransformId(transformId);
@@ -1157,7 +1217,7 @@ const Transform = () => {
       const reducedMotion = typeof window !== 'undefined'
         && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       if (!card || enterAnim || reducedMotion) {
-        handleStartQuest(transformId);
+        void handleStartQuest(transformId);
         return;
       }
       const rect = card.getBoundingClientRect();
@@ -1180,7 +1240,7 @@ const Transform = () => {
       enterAnimTimeoutsRef.current = [];
       // T+1.34s — start combat under the still-opaque overlay.
       const tCombat = window.setTimeout(() => {
-        handleStartQuest(transformId);
+        void handleStartQuest(transformId);
       }, ENTRY_ANIM_COMBAT_START_AT_MS);
       enterAnimTimeoutsRef.current.push(tCombat);
       // T+2.0s — animation done, drop the overlay.
@@ -1200,13 +1260,14 @@ const Transform = () => {
     enterAnimTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
     enterAnimTimeoutsRef.current = [];
     if (phaseRef.current === 'entering' && pendingTransformIdRef.current != null) {
-      handleStartQuest(pendingTransformIdRef.current);
+      void handleStartQuest(pendingTransformIdRef.current);
     }
     setEnterAnim(null);
   }, [enterAnim, handleStartQuest]);
 
   // -- Start fight with a specific monster --------------------------------------
   const startMonsterFight = useCallback((baseMonster: IMonster, _transformId: number) => {
+    void _transformId; // sygnatura zachowana dla wywołań; wartość nieużywana po wpięciu trybu backendu
     const char = useCharacterStore.getState().character;
     if (!char) return;
 
@@ -1904,15 +1965,24 @@ const Transform = () => {
         const monsterLvl = currentMonster.level ?? char.level;
         const transformName = transformMeta?.name_pl ?? `Transform ${activeTransformId}`;
         const transformLvl = transformMeta?.level ?? char.level;
-        void deathsApi.logDeath({
-          character_id: char.id,
-          character_name: char.name,
-          character_class: char.class,
-          character_level: char.level,
-          source: 'transform',
-          source_name: `${transformName} (Tlvl ${transformLvl}) – ${monsterName} Lvl ${monsterLvl}`,
-          source_level: transformLvl,
-        });
+        if (isBackendMode() && char) {
+          void backendApi.logDeath(char.id, {
+            source: 'transform',
+            source_name: `${transformName} (Tlvl ${transformLvl}) – ${monsterName} Lvl ${monsterLvl}`,
+            source_level: transformLvl,
+            result: 'killed',
+          });
+        } else {
+          void deathsApi.logDeath({
+            character_id: char.id,
+            character_name: char.name,
+            character_class: char.class,
+            character_level: char.level,
+            source: 'transform',
+            source_name: `${transformName} (Tlvl ${transformLvl}) – ${monsterName} Lvl ${monsterLvl}`,
+            source_level: transformLvl,
+          });
+        }
 
         // Unified death/flee protection (2026-06-21): a single helper consumes
         // ONE protection item (death-protection elixir first, then amulet of
@@ -2045,16 +2115,25 @@ const Transform = () => {
       const mon = currentMonster;
       const monsterName = mon?.name_pl ?? mon?.name_en ?? transformMeta?.name_pl ?? `Transform ${activeTransformId}`;
       const monsterLvl = mon?.level ?? transformMeta?.level ?? ch.level;
-      void deathsApi.logDeath({
-        character_id: ch.id,
-        character_name: ch.name,
-        character_class: ch.class,
-        character_level: ch.level,
-        source: 'transform',
-        source_name: monsterName,
-        source_level: monsterLvl,
-        result: 'fled',
-      });
+      if (isBackendMode() && ch) {
+        void backendApi.logDeath(ch.id, {
+          source: 'transform',
+          source_name: monsterName,
+          source_level: monsterLvl,
+          result: 'fled',
+        });
+      } else {
+        void deathsApi.logDeath({
+          character_id: ch.id,
+          character_name: ch.name,
+          character_class: ch.class,
+          character_level: ch.level,
+          source: 'transform',
+          source_name: monsterName,
+          source_level: monsterLvl,
+          result: 'fled',
+        });
+      }
 
       // Unified death/flee protection (2026-06-21): consume ONE protection
       // item and, when protected, skip the flee penalty entirely — zero loss
@@ -2127,8 +2206,26 @@ const Transform = () => {
     }, 3000);
   }, []);
 
-  const handleCompleteTransform = useCallback(() => {
-    if (!character || !rewards) return;
+  const handleCompleteTransform = useCallback(async () => {
+    if (!character) return;
+    // Backend-mode (opt-in): the authoritative server applies the permanent
+    // transform bonus + avatar change. We only READ the result via sync — never
+    // mutate characterStore / inventoryStore ourselves here. Bail out before the
+    // legacy client claim path (completeTransform / addConsumable / addItem).
+    if (isBackendMode()) {
+      try {
+        await backendApi.transformClaim(character.id, String(activeTransformId));
+        await syncFromBackend(character.id);
+        setBackendFeedback(null);
+        setPhase('complete');
+        return;
+      } catch (e) {
+        console.warn('[backend] transformClaim failed', e);
+        setBackendFeedback('Nie udalo sie odebrac nagrody transformacji.');
+        return;
+      }
+    }
+    if (!rewards) return;
 
     // Complete the transform in the store — this is the ONLY state mutation
     // needed for the permanent bonuses. Point 7 (2026-04): bonuses are no
@@ -2176,7 +2273,7 @@ const Transform = () => {
     void saveCurrentCharacterStores();
 
     setPhase('complete');
-  }, [character, rewards]);
+  }, [character, rewards, activeTransformId]);
 
   const handleReturn = useCallback(() => {
     // Reset transform-screen state so the next visit lands fresh on the list
@@ -3183,7 +3280,7 @@ const Transform = () => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 1.2, duration: 0.4 }}
-                      onClick={handleCompleteTransform}
+                      onClick={() => { void handleCompleteTransform(); }}
                     >
                       Kontynuuj
                     </motion.button>
@@ -3247,6 +3344,28 @@ const Transform = () => {
 
   return (
     <div className={`transform${phase === 'fighting' ? ' transform--fighting' : ''}`}>
+      {/* Backend-mode (opt-in) resolve/claim feedback. Only rendered when the
+          authoritative server resolved a transform — the default client path
+          never sets backendFeedback, so this stays invisible there. */}
+      {backendFeedback && (
+        <div
+          className="transform__backend-feedback"
+          role="status"
+          onClick={() => setBackendFeedback(null)}
+          style={{
+            margin: '8px auto',
+            maxWidth: '640px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: 'rgba(0, 0, 0, 0.6)',
+            color: '#ffd54f',
+            textAlign: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          {backendFeedback}
+        </div>
+      )}
       {/* List remains rendered during 'entering' so the morph anchors to a
           live card behind the overlay (fade-out feels grounded instead of
           starting from black). The overlay sits at z-index 9000 above
