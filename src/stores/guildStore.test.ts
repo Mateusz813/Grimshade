@@ -53,6 +53,12 @@ vi.mock('../lib/supabase', () => ({
     },
 }));
 
+// Backend-mode glue — domyślnie OFF (istniejące testy = ścieżka kliencka).
+const backendFlag = vi.hoisted(() => ({ on: false }));
+const showGuildMock = vi.hoisted(() => vi.fn());
+vi.mock('../config/backendMode', () => ({ isBackendMode: () => backendFlag.on }));
+vi.mock('../api/backend/backendApi', () => ({ backendApi: { showGuild: showGuildMock } }));
+
 import { useGuildStore, isCurrentCharacterGuildLeader } from './guildStore';
 import type { IGuildRow, IGuildMemberRow, IGuildJoinRequestRow } from '../api/v1/guildApi';
 
@@ -115,6 +121,8 @@ beforeEach(() => {
     channelOnMock.mockClear();
     channelSubscribeMock.mockClear();
     removeChannelMock.mockClear();
+    showGuildMock.mockReset();
+    backendFlag.on = false;
 });
 
 // -- Initial state ------------------------------------------------------------
@@ -137,6 +145,33 @@ describe('hydrateForCharacter', () => {
     it('is a no-op when characterId is empty', async () => {
         await useGuildStore.getState().hydrateForCharacter('');
         expect(findGuildForCharacterMock).not.toHaveBeenCalled();
+    });
+
+    // Regresja: właściciel gildii po F5 widział ekran "dołącz do gildii" zamiast
+    // swojej gildii — tryb backendu nie odkrywał id gildii przy pustym cache.
+    it('tryb backendu: odkrywa gildię przez findGuildForCharacter (pusty cache) i hydratuje przez showGuild', async () => {
+        backendFlag.on = true;
+        const guild = makeGuild({ id: 'g9', leader_id: 'char-1' });
+        findGuildForCharacterMock.mockResolvedValue({ guild, membership: { character_id: 'char-1' } });
+        showGuildMock.mockResolvedValue({ guild, members: [{ character_id: 'char-1' }], requests: [] });
+        useGuildStore.setState({ guildIdByCharacter: {}, guild: null });
+
+        await useGuildStore.getState().hydrateForCharacter('char-1');
+
+        expect(findGuildForCharacterMock).toHaveBeenCalledWith('char-1');
+        expect(showGuildMock).toHaveBeenCalledWith('char-1', 'g9');
+        expect(useGuildStore.getState().guild?.id).toBe('g9');
+    });
+
+    it('tryb backendu: brak gildii → guild null (ekran dołącz)', async () => {
+        backendFlag.on = true;
+        findGuildForCharacterMock.mockResolvedValue(null);
+        useGuildStore.setState({ guildIdByCharacter: {}, guild: null });
+
+        await useGuildStore.getState().hydrateForCharacter('char-2');
+
+        expect(showGuildMock).not.toHaveBeenCalled();
+        expect(useGuildStore.getState().guild).toBeNull();
     });
 
     it('clears state and maps characterId -> null when no guild membership exists', async () => {

@@ -344,7 +344,12 @@ const Quests = () => {
   // 2026-06-24: task filters/sort persist per-character via settingsStore
   // (characterScope) so the player's choices survive reloads. Same names as the
   // old local state so the JSX below is unchanged.
-  const taskLvlFilter = useSettingsStore((s) => s.taskFilterLvlFrom); // empty = all, otherwise show level >= input
+  // `?? ''` hardens against a hydrated blob that carries `taskFilterLvlFrom:
+  // null` (e.g. an old save or a backend state round-trip): the store field is
+  // typed `string` but `applyBlobToStores` copies blob values verbatim, so a
+  // null slips past the `''` default and every `.trim()` below would throw
+  // "Cannot read properties of null (reading 'trim')" and blank the view.
+  const taskLvlFilter = useSettingsStore((s) => s.taskFilterLvlFrom) ?? ''; // empty = all, otherwise show level >= input
   const setTaskLvlFilter = useSettingsStore((s) => s.setTaskFilterLvlFrom);
   // Cancel-task confirm modal target. Holds `{id, name}` while the dialog
   // is open, null when closed. The user explicitly asked for a confirm

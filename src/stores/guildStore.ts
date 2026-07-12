@@ -60,14 +60,20 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
     hydrateForCharacter: async (characterId) => {
         if (!characterId) return;
         set({ loading: true });
-        // Backend-authoritative hydrate — the server owns membership. There
-        // is no "find my guild by character" endpoint, so we resolve the
-        // guild id from the per-character map (populated on create/join/
-        // accept) or the live guild, then pull the authoritative roster via
-        // showGuild. No Supabase reads / realtime channel in backend mode.
+        // Backend-authoritative hydrate — the server owns membership. Nie ma
+        // serwerowego "find my guild by character", więc id gildii bierzemy z
+        // mapy per-character (create/join/accept) lub żywej gildii; a gdy pusto
+        // (świeży load / F5) — ODKRYWAMY je z Supabase (READ, dozwolony w trybie
+        // backendu; tylko zapisy są zamknięte). Potem autorytatywny showGuild.
         if (isBackendMode()) {
             try {
-                const knownId = get().guildIdByCharacter[characterId] ?? get().guild?.id ?? null;
+                let knownId = get().guildIdByCharacter[characterId] ?? get().guild?.id ?? null;
+                if (!knownId) {
+                    // Bez tego właściciel gildii po F5 widział ekran "dołącz do
+                    // gildii" zamiast swojej gildii (id nie było jeszcze w cache).
+                    const found = await guildApi.findGuildForCharacter(characterId);
+                    knownId = found?.guild?.id ?? null;
+                }
                 if (!knownId) {
                     set((s) => ({
                         guild: null,

@@ -45,6 +45,7 @@ import { useTaskStore } from '../../stores/taskStore';
 import { useDailyQuestStore } from '../../stores/dailyQuestStore';
 import { useMasteryStore } from '../../stores/masteryStore';
 import { useTransformStore } from '../../stores/transformStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { EMPTY_EQUIPMENT } from '../../systems/itemSystem';
 import { getTodayKey } from '../../systems/dailyQuestSystem';
 import type { ICharacter } from '../../api/v1/characterApi';
@@ -104,6 +105,10 @@ beforeEach(() => {
     });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} } as never);
     useTransformStore.setState({ completedTransforms: [] });
+    // Reset the persisted level filter to its `''` default so each test
+    // starts from a clean, non-null value (the null-regression test below
+    // overrides it explicitly).
+    useSettingsStore.setState({ taskFilterLvlFrom: '' });
 });
 
 afterEach(() => {
@@ -310,6 +315,27 @@ describe('Quests — Quests sub-view', () => {
         ) as HTMLButtonElement;
         fireEvent.click(aktywne);
         expect(aktywne.className).toContain('quests__filter-btn--active');
+    });
+});
+
+describe('Quests — hydrated-null level filter regression', () => {
+    // Regression: an old save / backend state round-trip can hydrate
+    // `settings.taskFilterLvlFrom` as `null` (the field is typed `string`,
+    // but `applyBlobToStores` copies blob values verbatim, so a null slips
+    // past the `''` default). The Tasks sub-view then did
+    // `taskLvlFilter.trim()` → "Cannot read properties of null (reading
+    // 'trim')" and the whole view went blank. The `?? ''` guard at the
+    // store read must keep the sub-view rendering.
+    it('renders the Tasks sub-view without crashing when taskFilterLvlFrom is null', () => {
+        useSettingsStore.setState({ taskFilterLvlFrom: null as unknown as string });
+        const { container } = renderQuests();
+        // Before the fix, clicking the Taski tile threw during render.
+        fireEvent.click(container.querySelector('.quests__hub-tile--tasks') as HTMLButtonElement);
+        expect(container.querySelector('.tasks__list')).not.toBeNull();
+        // The level-filter input still mounts (controlled value coerced to '').
+        const lvlInput = container.querySelector('.quests__lvl-filter') as HTMLInputElement | null;
+        expect(lvlInput).not.toBeNull();
+        expect(lvlInput?.value).toBe('');
     });
 });
 
