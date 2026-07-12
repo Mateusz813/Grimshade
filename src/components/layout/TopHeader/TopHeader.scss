@@ -19,7 +19,7 @@
   }
 
   &__avatar-btn {
-    position: relative; // anchors the absolute status dot
+    position: relative;
     flex: 0 0 auto;
     width: 36px;
     height: 36px;
@@ -28,9 +28,6 @@
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.06);
     cursor: pointer;
-    // 2026-05-20 spec: status dot intentionally sits OUTSIDE the avatar
-    // circle (anchored at bottom-right). Drop the clip so the dot
-    // doesn't get sliced off by the rounded mask.
     overflow: visible;
     transition: all 0.15s ease;
 
@@ -50,20 +47,9 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    // The parent dropped `overflow: hidden` so the status dot can poke
-    // out of the bottom-right corner; clip the image itself with
-    // `border-radius` so it stays circular.
     border-radius: 50%;
   }
 
-  // -- Mini HP/MP bars ------------------------------------------------------
-  // Two thin bars stacked vertically, sitting flush next to the avatar. Each
-  // bar carries a tiny percentage label inside it ("10%") so the player can
-  // read pulse status at a glance without hovering for the title tooltip.
-  // The whole cluster is now clickable: tapping opens a popover with the
-  // exact HP/MP values for cases where the percentage alone isn't enough.
-  // Width is fixed (not flex-grow) so the bars don't push the buff/task
-  // chips around as the player levels up and the max values change.
   &__pulse-wrap {
     flex: 0 0 auto;
     position: relative;
@@ -79,7 +65,6 @@
     background: transparent;
     border: 0;
     cursor: pointer;
-    // Reset default button focus chrome — the bars themselves carry hover.
     &:focus { outline: none; }
     &:focus-visible {
       outline: 2px solid rgba(var(--nav-accent-rgb, 255, 193, 7), 0.6);
@@ -97,9 +82,6 @@
 
   &__pulse-bar {
     position: relative;
-    // Bumped from 711px so the inline percentage label has room to breathe.
-    // Total bar cluster: 2*11 + 3 (gap) + 4 (padding) = 29px — still well
-    // inside the 50px header even with the avatar (36px) sitting next to it.
     height: 11px;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.55);
@@ -111,8 +93,6 @@
   &__pulse-fill {
     display: block;
     height: 100%;
-    // Smooth fill animation so a hit/heal reads as motion, not a jump.
-    // Same easing as the in-combat ally/enemy bars for visual consistency.
     transition: width 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
     border-radius: 3px;
 
@@ -127,9 +107,6 @@
     }
   }
 
-  // Tiny "10%" label centred inside the bar. Sits above the fill via z-index
-  // so it stays readable whether the fill covers it or not, and pulls a
-  // subtle text-shadow so it doesn't dissolve over the bright fill colour.
   &__pulse-label {
     position: absolute;
     inset: 0;
@@ -149,9 +126,6 @@
     letter-spacing: -0.2px;
   }
 
-  // -- HP/MP popover (click-to-peek exact values) --------------------------
-  // Mirrors the gold popover layout (small floating box anchored to the
-  // bottom-left of the wrap) so the two info popovers feel consistent.
   &__pulse-popover {
     position: absolute;
     top: calc(100% + 6px);
@@ -209,8 +183,6 @@
     align-items: center;
     gap: 5px;
     border-radius: 15px;
-    // Border tracks the player's transform/class accent. Text + bg tint stay
-    // gold so the buffs chip keeps its visual identity.
     border: 1.5px solid rgba(var(--nav-accent-rgb, 255, 193, 7), 0.55);
     background: rgba(255, 193, 7, 0.1);
     color: #ffc107;
@@ -241,8 +213,6 @@
     line-height: 1;
   }
 
-  // 2026-05-20 spec: tiny connectivity status dot anchored to the
-  // bottom-right of the avatar. Green = online, red = offline.
   &__status-dot {
     position: absolute;
     right: -1px;
@@ -268,17 +238,13 @@
     flex: 1 1 auto;
   }
 
-  // -- Task/quest badge (global) ---------------------------------------------
-  // Sits between the spacer and the gold pill. The button uses the same chip
-  // shape as buffs/gold so the cluster reads as one row of consistent
-  // controls. Dropdown floats below the header on click.
   &__tasks {
     flex: 0 0 auto;
     position: relative;
   }
 
   &__tasks-btn {
-    position: relative; // anchors the absolute corner status dot
+    position: relative;
     height: 30px;
     padding: 0 10px;
     display: inline-flex;
@@ -373,8 +339,6 @@
     height: 30px;
     padding: 0 12px;
     border-radius: 15px;
-    // Border picks up the transform/class accent; numerals + bg tint stay
-    // gold so "money" reads as gold at a glance.
     border: 1.5px solid rgba(var(--nav-accent-rgb, 255, 215, 0), 0.55);
     background: rgba(255, 215, 0, 0.08);
     color: #ffd700;
@@ -399,19 +363,10 @@
     line-height: 1;
   }
 
-  // Tick-up pulse — when the gold value jumps (claim, drop, etc.) the
-  // pill glows in the player's accent for ~850 ms while the displayed
-  // count rolls up. Pure visual; doesn't block clicks. Mirrors the
-  // 600-ms tick-up duration in TopHeader.tsx with a small tail so the
-  // glow lingers a beat after the number settles. Keyframes live
-  // outside the class block at the bottom of this file.
   &__gold-btn--pulse {
     animation: top-header-gold-pulse 850ms ease-out;
   }
 
-  // Click-to-expand breakdown — small pill below the gold chip showing the
-  // four-tier decomposition (sc/cc/k/gold) so the player can see what their
-  // compact display ("1sc") rolls up.
   &__gold-popover {
     position: absolute;
     top: calc(100% + 6px);
@@ -477,10 +432,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  // -- TaskBadge claimable glow ---------------------------------------------
-  // When at least one task / quest / daily is ready to claim, the badge
-  // pulses with a green halo to draw the eye. The animation runs forever
-  // until the player either claims or the rewards drop off the list.
   &__tasks-btn--claimable {
     background: rgba(76, 217, 100, 0.18);
     border-color: rgba(76, 217, 100, 0.85);
@@ -504,14 +455,6 @@
     animation: top-header-claim-blink 0.9s ease-in-out infinite;
   }
 
-  // Combined status dot — anchored to the top-right corner of the
-  // tasks button. Two flavours via the `--{state}` modifier:
-  //   - `--claim`   purple pulse, "you have rewards waiting"
-  //   - `--live`    green pulse, "the monster you're fighting RIGHT
-  //                  NOW counts toward an active task / quest"
-  // Sits at the corner instead of next to the count so it doesn't push
-  // the layout — the button stays the same size whether the dot is on
-  // or off.
   &__tasks-status-dot {
     position: absolute;
     top: -2px;
@@ -533,15 +476,11 @@
     box-shadow: 0 0 6px #4cd964, 0 0 12px rgba(76, 217, 100, 0.65);
     animation: top-header-tasks-blink 0.9s ease-in-out infinite;
   }
-  // Live state on the button itself — subtle green ring so the player
-  // can spot it from peripheral vision without the dropdown open.
   &__tasks-btn--live {
     border-color: rgba(76, 217, 100, 0.55) !important;
     box-shadow: 0 0 0 1px rgba(76, 217, 100, 0.30);
   }
 
-  // Live row inside the dropdown — green-tinted backdrop + small
-  // pulsing dot inside the LIVE tag so the player's eye snaps to it.
   &__task-row--live {
     background: rgba(76, 217, 100, 0.12) !important;
     border-left: 2px solid #4cd964;
@@ -616,9 +555,6 @@
       padding: 0 10px;
     }
 
-    // Mobile: shrink the HP/MP bars + drop the per-bar height a touch so the
-    // header still fits at 46px with the avatar+bars+chips cluster. Label
-    // shrinks to 8px so "100%" still fits within the slimmer bar.
     &__pulse {
       width: 70px;
       gap: 2px;
@@ -632,16 +568,9 @@
       font-size: 8px;
     }
 
-    // Mobile fix — the desktop dropdown anchors `right: 0` against its
-    // positioned-absolute parent (.top-header__tasks). On a 320px viewport
-    // the TaskBadge button sits ~120px from the left edge, so an
-    // absolute-positioned dropdown 260px wide would have its left edge
-    // pushed off-screen at ~-90px. Switch to viewport-anchored fixed
-    // positioning that hugs both edges with an 8px gutter so the full quest
-    // list is always visible regardless of the badge's horizontal slot.
     &__tasks-dropdown {
       position: fixed;
-      top: 50px; // mobile header (46px) + 4px breathing
+      top: 50px;
       left: 8px;
       right: 8px;
       min-width: 0;
@@ -650,11 +579,6 @@
   }
 }
 
-// Gold pill tick-up pulse — fired by `top-header__gold-btn--pulse` when
-// the inventory gold value increases (claim, drop). 0% = resting state,
-// 35% = peak glow + slight scale pop, 100% returns to resting. Total
-// duration 850 ms, ease-out so the glow lingers a beat after the count
-// settles.
 @keyframes top-header-gold-pulse {
   0% {
     background: rgba(255, 215, 0, 0.10);
@@ -673,8 +597,6 @@
   }
 }
 
-// 2026-05-20: gentle blink for the offline status dot. Keeps the
-// "limited mode" signal visible without becoming flashy.
 @keyframes top-header-offline-blink {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.55; }

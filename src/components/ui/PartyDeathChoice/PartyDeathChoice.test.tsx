@@ -3,11 +3,6 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 import PartyDeathChoice from './PartyDeathChoice';
 
-/**
- * PartyDeathChoice — controlled mid-fight popup. Pure presentational + two
- * action callbacks. Tests cover open/closed gating, button wiring, and the
- * disabled state when there are no alive allies.
- */
 
 afterEach(() => {
     cleanup();
@@ -36,7 +31,6 @@ describe('PartyDeathChoice — visibility', () => {
             />,
         );
         expect(screen.getByText('Padłeś!')).toBeTruthy();
-        // Alive ally count is interpolated into the subtitle.
         expect(screen.getByText(/3 sojusznik/)).toBeTruthy();
     });
 });
@@ -95,7 +89,6 @@ describe('PartyDeathChoice — actions', () => {
                 onWaitForResurrection={() => undefined}
             />,
         );
-        // "1 sojusznik" (no suffix on 1).
         expect(screen.getByText(/1 sojusznik\b/)).toBeTruthy();
     });
 });

@@ -1,8 +1,6 @@
-@import '../../styles/breakpoints.scss';
+@use '../../styles/breakpoints' as *;
 
 .deposit {
-    // Match the shell padding used by the other subpages so the shared
-    // .page-header stretches edge-to-edge consistently everywhere.
     padding: 0 20px 80px;
     width: 100%;
     max-width: 100%;
@@ -14,8 +12,6 @@
     }
 
     &__header {
-        // Negate the root gutters so the sticky page-header reaches the page
-        // edges on every breakpoint.
         margin-left: -20px;
         margin-right: -20px;
         margin-bottom: 16px;

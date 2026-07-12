@@ -12,34 +12,13 @@ import { guildMemberCap } from '../systems/guildSystem';
 import { isBackendMode } from '../config/backendMode';
 import { backendApi } from '../api/backend/backendApi';
 
-/**
- * Guild membership store — caches the player's current guild + its
- * members, and surfaces helpers for the leader UI (kick, promote,
- * accept join requests).
- *
- * Membership lookup runs on character switch / login via
- * `hydrateForCharacter`; once we know the guild id, a per-guild
- * Realtime channel keeps the local roster + join-request list in sync.
- *
- * The store is intentionally character-scoped — every store action
- * passes the active character id explicitly. That keeps multi-character
- * sessions on the same browser independent (character A in guild X,
- * character B in guild Y).
- */
 
 interface IGuildStoreState {
-    /** Current guild metadata, or null when the player is unaffiliated. */
     guild: IGuildRow | null;
-    /** Live member list (always sorted by joined_at asc). */
     members: IGuildMemberRow[];
-    /** Pending join requests for the active guild (leader-only UI). */
     requests: IGuildJoinRequestRow[];
-    /** True while membership is being hydrated. */
     loading: boolean;
-    /** Per-character map: characterId -> guildId. Used by routing to
-     *  decide whether /guild lands on the list or the detail view. */
     guildIdByCharacter: Record<string, string | null>;
-    /** Active realtime channel (per-guild). */
     channel: RealtimeChannel | null;
 
     hydrateForCharacter: (characterId: string) => Promise<void>;
@@ -60,17 +39,10 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
     hydrateForCharacter: async (characterId) => {
         if (!characterId) return;
         set({ loading: true });
-        // Backend-authoritative hydrate — the server owns membership. Nie ma
-        // serwerowego "find my guild by character", więc id gildii bierzemy z
-        // mapy per-character (create/join/accept) lub żywej gildii; a gdy pusto
-        // (świeży load / F5) — ODKRYWAMY je z Supabase (READ, dozwolony w trybie
-        // backendu; tylko zapisy są zamknięte). Potem autorytatywny showGuild.
         if (isBackendMode()) {
             try {
                 let knownId = get().guildIdByCharacter[characterId] ?? get().guild?.id ?? null;
                 if (!knownId) {
-                    // Bez tego właściciel gildii po F5 widział ekran "dołącz do
-                    // gildii" zamiast swojej gildii (id nie było jeszcze w cache).
                     const found = await guildApi.findGuildForCharacter(characterId);
                     knownId = found?.guild?.id ?? null;
                 }
@@ -115,10 +87,9 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
                         [characterId]: null,
                     },
                 }));
-                // Tear down any stale channel.
                 const ch = get().channel;
                 if (ch) {
-                    try { void supabase.removeChannel(ch); } catch { /* ignore */ }
+                    try { void supabase.removeChannel(ch); } catch { }
                     set({ channel: null });
                 }
                 return;
@@ -136,11 +107,10 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
                 guildApi.listRequests(res.guild.id),
             ]);
             set({ members, requests });
-            // Open realtime channel for the guild.
             const guildId = res.guild.id;
             const existing = get().channel;
             if (existing) {
-                try { void supabase.removeChannel(existing); } catch { /* ignore */ }
+                try { void supabase.removeChannel(existing); } catch { }
             }
             const ch = supabase.channel(buildGuildChannel(guildId), {
                 config: { broadcast: { self: true } },
@@ -177,7 +147,7 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
         try {
             const members = await guildApi.listMembers(g.id);
             set({ members });
-        } catch { /* offline */ }
+        } catch { }
     },
 
     refreshRequests: async () => {
@@ -186,25 +156,20 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
         try {
             const requests = await guildApi.listRequests(g.id);
             set({ requests });
-        } catch { /* offline */ }
+        } catch { }
     },
 
     setGuild: (g) => {
         set({ guild: g });
-        // Backend mode: the server owns guild level/xp/cap — never push a
-        // client-computed cap back to Supabase.
         if (g && !isBackendMode()) {
             const cap = guildMemberCap(g.level);
             if (cap !== g.member_cap) {
-                // Keep the server row in sync when the client computes a
-                // newer cap from the (possibly higher) live level — no-op
-                // server-side if already correct.
                 void guildApi.updateGuildLevelXp({
                     guildId: g.id,
                     level: g.level,
                     xp: g.xp,
                     memberCap: cap,
-                }).catch(() => { /* offline */ });
+                }).catch(() => { });
             }
         }
     },
@@ -212,7 +177,7 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
     clear: () => {
         const ch = get().channel;
         if (ch) {
-            try { void supabase.removeChannel(ch); } catch { /* ignore */ }
+            try { void supabase.removeChannel(ch); } catch { }
         }
         set({
             guild: null,
@@ -224,8 +189,6 @@ export const useGuildStore = create<IGuildStoreState>()((set, get) => ({
     },
 }));
 
-/** Convenience selector — returns true when the active character is the
- *  guild leader. */
 export const isCurrentCharacterGuildLeader = (characterId: string | undefined): boolean => {
     const g = useGuildStore.getState().guild;
     if (!g || !characterId) return false;

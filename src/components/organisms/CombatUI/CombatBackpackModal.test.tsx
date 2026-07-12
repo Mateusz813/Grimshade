@@ -1,14 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * CombatBackpackModal — popup summarising the cumulative session loot.
- * Reads sessionXp / sessionGold / sessionKills / sessionDrops off combatStore
- * and computes XP / drop bonuses from buffStore + partyStore.
- *
- * ItemIcon is mocked to a flat data-testid so we don't depend on its
- * internal asset resolution. partySystem helpers are kept real (cheap).
- */
 vi.mock('../../ui/ItemIcon/ItemIcon', () => ({
     default: ({ icon, quantity, tooltip }: { icon: string; quantity?: number; tooltip?: string }) => (
         <div data-testid="item-icon" data-icon={icon} data-qty={quantity} title={tooltip} />
@@ -62,10 +54,7 @@ describe('CombatBackpackModal — smoke', () => {
             sessionKills: { normal: 5, strong: 2, epic: 1, legendary: 0, boss: 0 },
         });
         render(<CombatBackpackModal onClose={vi.fn()} />);
-        // 5+2+1+0+0 = 8 kills.
         expect(screen.getByText('8')).toBeTruthy();
-        // XP via toLocaleString('pl-PL'). Separator depends on ICU
-        // availability — match digits with optional separator char.
         expect(screen.getByText(/\+1.?234/)).toBeTruthy();
     });
 });

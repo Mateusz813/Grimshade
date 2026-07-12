@@ -9,10 +9,6 @@ import {
     type MarketKind,
 } from '../../src/systems/marketSystem';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla marketSystem.ts (walidatory + tax).
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/marketSystem.golden.test.ts
-//   cp golden/marketSystem.json ../grimshade-backend/tests/Golden/fixtures/
 
 const PRICE_CASES = [0, 1, 100, 999_999_999, 1_000_000_000, -5, 2.5];
 const QTY_CASES: Array<[number, number | null]> = [

@@ -1,13 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * TutorialModal — new-player guide. Portal to document.body -> query via
- * document.querySelector. Data-driven from TUTORIAL_SECTIONS.
- *
- * Coverage: dialog chrome, one section per data entry (numbered + bulleted),
- * non-empty content guard, all close paths, inside-click no-op.
- */
 
 import TutorialModal from './TutorialModal';
 import { TUTORIAL_SECTIONS } from '../../../data/tutorial';

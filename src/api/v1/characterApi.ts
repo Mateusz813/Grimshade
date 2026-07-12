@@ -5,7 +5,6 @@ import { backendApi } from '../backend/backendApi';
 
 export type TCharacterClass = 'Knight' | 'Mage' | 'Cleric' | 'Archer' | 'Rogue' | 'Necromancer' | 'Bard';
 
-/** @deprecated Use TCharacterClass instead */
 export type CharacterClass = TCharacterClass;
 
 export interface ICharacterPayload {
@@ -28,10 +27,6 @@ export interface ICharacterPayload {
     highest_level?: number;
 }
 
-// Canonical character shape lives in src/types/character.ts (includes the
-// ranking columns: arena_*, mastery_points, quests_*, market_*, etc.).
-// Re-exported here so existing `import { ICharacter } from '.../characterApi'`
-// sites keep working without a second, drift-prone copy of the interface.
 export type { ICharacter } from '../../types/character';
 import type { ICharacter } from '../../types/character';
 
@@ -52,10 +47,6 @@ class CharacterApi extends BaseApi {
     };
 
     createCharacter = async (userId: string, payload: ICharacterPayload): Promise<ICharacter> => {
-        // Tryb backendu: serwer Laravel derywuje wszystkie staty z klasy ORAZ
-        // seeduje startowy blob (broń + konsumowalne). Klient wysyła tylko
-        // name+class — reszta payloadu (staty/gold) jest ignorowana, bo serwer
-        // jest jedynym autorytetem (zamyka wektor forge'owania statów na starcie).
         if (isBackendMode()) {
             return await backendApi.createCharacter({ name: payload.name, class: payload.class }) as ICharacter;
         }
@@ -68,9 +59,6 @@ class CharacterApi extends BaseApi {
     };
 
     updateCharacter = async (id: string, payload: Partial<ICharacter>): Promise<ICharacter> => {
-        // Tryb backendu: serwer Laravel jest JEDYNYM zapisującym do `characters`
-        // (level/xp/gold/staty). Klient nie pisze wprost — to główny wektor cheatu.
-        // Wołający robią fire-and-forget (void), więc zwracamy optymistyczny kształt.
         if (isBackendMode()) {
             return { id, ...payload } as ICharacter;
         }
@@ -82,25 +70,6 @@ class CharacterApi extends BaseApi {
         return data[0];
     };
 
-    /**
-     * 2026-05-19 v15 spec ("Dodać do rankingu arenę"): increment the
-     * player's arena_kills / arena_deaths counters AND overwrite
-     * their current league + LP snapshot. Two PostgREST calls so we
-     * can read the existing kill/death counters, add the delta, then
-     * patch them back — Supabase doesn't support `+ 1` increments
-     * via the REST API.
-     *
-     * Fire-and-forget by the arena store after every match
-     * resolution. Failures get surfaced via console.warn so the
-     * player can see in DevTools whether the migration column
-     * exists / RLS allows the update.
-     *
-     * 2026-05-19 v16 spec ("Zabilem na arenie nekromante i nie
-     * zaliczylo mu tego jako zabojstwo"): added explicit logging
-     * + `Prefer: return=representation` on the PATCH so we know
-     * the column actually persisted and the next leaderboard
-     * fetch will see the new value.
-     */
     bumpArenaStats = async (params: {
         characterId: string;
         winDelta: number;
@@ -108,7 +77,6 @@ class CharacterApi extends BaseApi {
         league: string;
         leaguePoints: number;
     }): Promise<void> => {
-        // Tryb backendu: rankingi areny liczy i zapisuje serwer (POST /arena/match).
         if (isBackendMode()) return;
         try {
             const rows = await this.get<Array<Pick<ICharacter, 'arena_kills' | 'arena_deaths'>>>({
@@ -128,7 +96,6 @@ class CharacterApi extends BaseApi {
                 },
                 config: SUPABASE_RETURN_HEADERS,
             });
-            // eslint-disable-next-line no-console
             console.log('[arena-sync] bumped', {
                 charId: params.characterId,
                 winDelta: params.winDelta,
@@ -139,43 +106,20 @@ class CharacterApi extends BaseApi {
                 resultDeaths: result?.[0]?.arena_deaths,
             });
         } catch (err) {
-            // Surface failures so the user can see whether the
-            // migration was applied / RLS allows the patch.
-            // eslint-disable-next-line no-console
             console.warn('[arena-sync] bumpArenaStats failed:', err);
         }
     };
 
-    /**
-     * 2026-05-19 v16 spec ("Dodaj jeszcze zakladke z punktami
-     * masteri, wykonanymi questami ..."): generic counter bumper
-     * for the per-character activity stats that drive the new
-     * leaderboard tabs (mastery_points, quests_*, market_*,
-     * item_upgrades_done, skill_upgrades_done, best_dps5_*).
-     *
-     * `mode: 'add'` adds the delta to whatever's stored (incremental
-     * counters like quests done / market sales). `mode: 'max'`
-     * replaces the stored value only when the new value is larger
-     * (high-water marks like best_dps5_*). `mode: 'set'` always
-     * overwrites (used by mastery_points which is computed as a
-     * total client-side and pushed verbatim).
-     *
-     * Fire-and-forget — failures (column missing / RLS denied) are
-     * surfaced via console.warn so the player can diagnose without
-     * crashing the game flow.
-     */
     bumpStat = async (params: {
         characterId: string;
         column: keyof ICharacter;
         value: number;
         mode?: 'add' | 'max' | 'set';
     }): Promise<void> => {
-        // Tryb backendu: liczniki rankingowe (mastery/quests/market/dps/...) bumpuje serwer.
         if (isBackendMode()) return;
         const mode = params.mode ?? 'add';
         const col = params.column;
         try {
-            // 'set' skips the read-modify-write — just overwrite.
             let nextValue = params.value;
             if (mode !== 'set') {
                 const rows = await this.get<Array<Record<string, number | null>>>({
@@ -186,7 +130,7 @@ class CharacterApi extends BaseApi {
                     nextValue = (current ?? 0) + Math.max(0, params.value);
                 } else if (mode === 'max') {
                     nextValue = Math.max(current ?? 0, params.value);
-                    if (nextValue === (current ?? 0)) return; // no-op
+                    if (nextValue === (current ?? 0)) return;
                 }
             }
             await this.patch({
@@ -198,23 +142,10 @@ class CharacterApi extends BaseApi {
                 config: SUPABASE_RETURN_HEADERS,
             });
         } catch (err) {
-            // eslint-disable-next-line no-console
             console.warn(`[bumpStat] failed for ${String(col)}:`, err);
         }
     };
 
-    /**
-     * 2026-05-19 v18: cross-player counter bumpers backed by SECURITY
-     * DEFINER RPCs in `leaderboard_migration.sql`. Each call hits a
-     * specific Postgres function that updates the TARGET player's
-     * row — needed because RLS only allows users to UPDATE their own
-     * row, and the arena leaderboard needs the WINNER to bump the
-     * LOSER's `arena_deaths`, the BUYER to bump the SELLER's
-     * `market_items_sold` + `market_gold_earned`, etc.
-     *
-     * Fire-and-forget; failures get console.warn'd so the player can
-     * diagnose missing migrations / EXECUTE grants in DevTools.
-     */
     bumpArenaDeathRpc = async (targetCharacterId: string): Promise<void> => {
         if (isBackendMode()) return;
         try {
@@ -222,11 +153,9 @@ class CharacterApi extends BaseApi {
                 target_character_id: targetCharacterId,
             });
             if (error) {
-                // eslint-disable-next-line no-console
                 console.warn('[arena-sync] bump_arena_death RPC failed:', error);
             }
         } catch (err) {
-            // eslint-disable-next-line no-console
             console.warn('[arena-sync] bump_arena_death RPC threw:', err);
         }
     };
@@ -238,11 +167,9 @@ class CharacterApi extends BaseApi {
                 target_character_id: targetCharacterId,
             });
             if (error) {
-                // eslint-disable-next-line no-console
                 console.warn('[arena-sync] bump_arena_kill RPC failed:', error);
             }
         } catch (err) {
-            // eslint-disable-next-line no-console
             console.warn('[arena-sync] bump_arena_kill RPC threw:', err);
         }
     };
@@ -260,31 +187,18 @@ class CharacterApi extends BaseApi {
                 gold_amount: params.goldAmount,
             });
             if (error) {
-                // eslint-disable-next-line no-console
                 console.warn('[market-sync] bump_market_sale RPC failed:', error);
             }
         } catch (err) {
-            // eslint-disable-next-line no-console
             console.warn('[market-sync] bump_market_sale RPC threw:', err);
         }
     };
 
     deleteCharacter = async (id: string): Promise<void> => {
-        // Tryb backendu: serwer kasuje roster (guild/party), game_saves i wiersz
-        // characters w JEDNEJ transakcji. Klient tylko deleguje i kończy — żadnych
-        // bezpośrednich DELETE do Supabase (autorytatywność + spójność).
         if (isBackendMode()) {
             await backendApi.deleteCharacter(id);
             return;
         }
-        // Membership tables aren't FK-cascaded in the DB, so a deleted character
-        // would otherwise linger in its guild / party roster. Clean them here.
-        //
-        // Intentionally KEPT: chat `messages` (history stays per spec) + historical
-        // guild logs. Needs nothing here: arena rankings read straight from
-        // `characters` (gone with the row) and friends/blocked are local
-        // name-lists filtered on display. Best-effort per table — a row the
-        // session can't touch (RLS) just no-ops; the character delete still runs.
         const memberships = ['guild_members', 'party_members', 'guild_join_requests'] as const;
         await Promise.all(
             memberships.map((table) =>

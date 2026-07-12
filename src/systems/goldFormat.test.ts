@@ -1,14 +1,3 @@
-/**
- * Tests for the gold display formatter.
- *
- * Three tiers above the base `gp` unit (1k = 1 000 gp, 1cc = 100 000 gp,
- * 1sc = 10 000 000 gp). The compact form always shows the highest non-zero
- * tier with TWO decimal places, TRUNCATED (never rounded up) so we don't
- * accidentally show more gold than the player owns.
- *
- * Polish locale uses comma as the decimal separator — verified in every
- * formatted assertion below.
- */
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -19,7 +8,6 @@ import {
     GOLD_PER_SC,
 } from './goldFormat';
 
-// -- Tier constants ----------------------------------------------------------
 
 describe('gold tier constants', () => {
     it('uses the canonical conversion factors (100× per tier)', () => {
@@ -31,7 +19,6 @@ describe('gold tier constants', () => {
     });
 });
 
-// -- formatGoldShort ---------------------------------------------------------
 
 describe('formatGoldShort', () => {
     it('renders raw gp for amounts below 1k', () => {
@@ -62,14 +49,11 @@ describe('formatGoldShort', () => {
     });
 
     it('keeps growing into 4+ digits at the "sc" tier (no further unit)', () => {
-        // 1 billion gp = 100 sc
         expect(formatGoldShort(1_000_000_000)).toBe('100,00 sc');
     });
 
     it('truncates rather than rounds (player never sees more than they own)', () => {
-        // 51 387 gp = 51.387 k -> truncate to 51.38 k, NOT 51.39 k
         expect(formatGoldShort(51_387)).toBe('51,38 k');
-        // 5 138 999 gp = 51.38999 cc -> truncate to 51.38 cc
         expect(formatGoldShort(5_138_999)).toBe('51,38 cc');
     });
 
@@ -91,7 +75,6 @@ describe('formatGoldShort', () => {
     });
 });
 
-// -- getGoldBreakdown --------------------------------------------------------
 
 describe('getGoldBreakdown', () => {
     it('returns all-zeros for 0', () => {

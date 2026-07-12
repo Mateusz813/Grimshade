@@ -4,12 +4,6 @@ import { dirname, resolve } from 'node:path';
 import { computeTaskRewards, getEffectiveTaskXpPerKill } from '../../src/systems/taskRewards';
 import monstersData from '../../src/data/monsters.json';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla taskRewards.ts. Używa REALNYCH rekordów
-// monsterów (mapa override XP ≥lvl300 = 1.05^idx z monsters.json). Backend
-// buduje tę samą mapę z resources/game-content/monsters.json.
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/taskRewards.golden.test.ts
-//   cp golden/taskRewards.json ../grimshade-backend/tests/Golden/fixtures/
 
 type Row = { level: number; xp: number; gold: [number, number] };
 const rows = monstersData as Row[];

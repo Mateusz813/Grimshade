@@ -1,16 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * EnemyCard — one slot in the 4-slot enemy column. Renders monster sprite,
- * HP bar, rarity banner, status countdowns (stun / paralyze / immortal /
- * mark / dark ritual / etc.), per-attack hit pulse, skill animations, and
- * floating damage numbers.
- *
- * MonsterSprite/BossSprite stubbed -> simple <span data-testid> so we don't
- * pull in the sprite registry. isImageUrl stubbed for deterministic URL
- * branching.
- */
 vi.mock('../../ui/Sprite/MonsterSprite', () => ({
     MonsterSprite: (props: { level: number; sprite?: string; name?: string }) => (
         <span data-testid="monster-sprite" data-level={props.level}>{props.sprite ?? '?'}</span>
@@ -76,7 +66,6 @@ describe('EnemyCard — smoke', () => {
         const img = container.querySelector('.combat-ui__enemy-sprite img') as HTMLImageElement;
         expect(img).toBeTruthy();
         expect(img.getAttribute('src')).toBe('/transform.png');
-        // Original MonsterSprite NOT rendered when imageUrl is set.
         expect(screen.queryByTestId('monster-sprite')).toBeNull();
     });
 
@@ -100,7 +89,6 @@ describe('EnemyCard — smoke', () => {
         expect(container.querySelector('.combat-ui__enemy--dead')).toBeTruthy();
         const btn = container.querySelector('button.combat-ui__enemy') as HTMLButtonElement;
         expect(btn.disabled).toBe(true);
-        // Skull renders via <Emoji> as a Twemoji <img> inside the overlay span.
         expect(
             container.querySelector('.combat-ui__enemy-skull svg.game-icon[data-icon="skull"]'),
         ).toBeTruthy();
@@ -125,7 +113,6 @@ describe('EnemyCard — interactions', () => {
 
     it('does not invoke onTarget when no callback provided (no crash)', () => {
         const { container } = render(<EnemyCard enemy={makeEnemy()} />);
-        // Should not throw.
         fireEvent.click(container.querySelector('button.combat-ui__enemy')!);
     });
 });
@@ -136,7 +123,6 @@ describe('EnemyCard — status overlays', () => {
             <EnemyCard enemy={makeEnemy({ statusOverlay: { stunMs: 1500 } })} />,
         );
         expect(container.querySelector('.combat-ui__status-badge--stun')).toBeTruthy();
-        // Status icon renders via <Emoji> as a Twemoji <img>.
         expect(
             container.querySelector('.combat-ui__status-badge--stun svg.game-icon[data-icon="dizzy"]'),
         ).toBeTruthy();
@@ -147,7 +133,6 @@ describe('EnemyCard — status overlays', () => {
             <EnemyCard enemy={makeEnemy({ statusOverlay: { paralyzeMs: 2000 } })} />,
         );
         expect(container.querySelector('.combat-ui__status-badge--paral')).toBeTruthy();
-        // Status icon renders via <Emoji> as a Twemoji <img>.
         expect(
             container.querySelector('.combat-ui__status-badge--paral svg.game-icon[data-icon="locked"]'),
         ).toBeTruthy();
@@ -200,7 +185,6 @@ describe('EnemyCard — floats & hit pulse', () => {
         );
         expect(screen.getByText('DEATH ATTACK')).toBeTruthy();
         expect(container.querySelector('.combat-ui__float--death')).toBeTruthy();
-        // CRIT chip suppressed for DEATH ATTACK floats.
         expect(container.querySelector('.combat-ui__float-crit')).toBeNull();
     });
 

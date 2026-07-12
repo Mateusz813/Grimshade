@@ -10,7 +10,6 @@ import {
 } from './raidSystem';
 import type { IRaid, IRaidMemberState } from '../types/raid';
 
-// -- Helpers ------------------------------------------------------------------
 
 const makeMember = (id: string = 'm1'): IRaidMemberState => ({
     id,
@@ -30,7 +29,6 @@ const makeMember = (id: string = 'm1'): IRaidMemberState => ({
     transformTier: 0,
 });
 
-// -- getRaidWaveCount ---------------------------------------------------------
 
 describe('getRaidWaveCount', () => {
     it('returns 1 for raids lvl ≤ 10', () => {
@@ -70,7 +68,6 @@ describe('getRaidWaveCount', () => {
     });
 });
 
-// -- getAllRaids --------------------------------------------------------------
 
 describe('getAllRaids', () => {
     it('returns at least one raid', () => {
@@ -116,12 +113,10 @@ describe('getAllRaids', () => {
         const a = getAllRaids();
         const b = getAllRaids();
         expect(a).not.toBe(b);
-        // But shape should be equal.
         expect(a.length).toBe(b.length);
     });
 });
 
-// -- getRaidById --------------------------------------------------------------
 
 describe('getRaidById', () => {
     it('returns null for non-existent id', () => {
@@ -133,7 +128,6 @@ describe('getRaidById', () => {
     });
 
     it('returns the correct raid for a known id', () => {
-        // Use the first raid as a known fixture.
         const first = getAllRaids()[0];
         const fetched = getRaidById(first.id);
         expect(fetched).not.toBeNull();
@@ -142,7 +136,6 @@ describe('getRaidById', () => {
     });
 });
 
-// -- estimateRaidRewards ------------------------------------------------------
 
 describe('estimateRaidRewards', () => {
     it('returns goldMin <= goldMax', () => {
@@ -169,9 +162,6 @@ describe('estimateRaidRewards', () => {
     });
 
     it('uses level² as the XP bonus floor (lvl 1 raid still includes +1)', () => {
-        // For any raid, est.xp >= level² (the completion bonus alone).
-        // Per-kill xp is also added, so the inequality is strict, but we
-        // verify the lower bound to lock the formula shape.
         for (const raid of getAllRaids()) {
             const est = estimateRaidRewards(raid);
             expect(est.xp).toBeGreaterThanOrEqual(raid.level * raid.level);
@@ -179,7 +169,6 @@ describe('estimateRaidRewards', () => {
     });
 });
 
-// -- generateWaveBosses -------------------------------------------------------
 
 describe('generateWaveBosses', () => {
     const raid: IRaid = getAllRaids()[0];
@@ -228,17 +217,12 @@ describe('generateWaveBosses', () => {
     });
 
     it('later waves are harder than wave 0 (HP higher)', () => {
-        // Use a multi-wave raid (lvl > 10).
         const multiWaveRaid = getAllRaids().find((r) => r.waves >= 2);
         if (!multiWaveRaid) {
-            // Skip: every raid is single-wave (shouldn't happen with
-            // bestiary as-is, but bail gracefully if it does).
             return;
         }
         const wave0 = generateWaveBosses(multiWaveRaid, 0);
         const wave1 = generateWaveBosses(multiWaveRaid, 1);
-        // Compare averages because per-slot HPs are identical between
-        // bosses in the same wave (no per-slot randomness in this code).
         const avg0 = wave0.reduce((s, b) => s + b.maxHp, 0) / wave0.length;
         const avg1 = wave1.reduce((s, b) => s + b.maxHp, 0) / wave1.length;
         expect(avg1).toBeGreaterThan(avg0);
@@ -252,13 +236,11 @@ describe('generateWaveBosses', () => {
     });
 });
 
-// -- rollMemberRewards --------------------------------------------------------
 
 describe('rollMemberRewards', () => {
     let randomSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
-        // Pin Math.random to 0.5 by default — deterministic mid-range rolls.
         randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     });
 
@@ -269,8 +251,6 @@ describe('rollMemberRewards', () => {
     it('returns 0 XP / 0 gold when 0 bosses defeated', () => {
         const raid = getAllRaids()[0];
         const result = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: 0 });
-        // No bosses defeated AND no completion bonus -> 0 across the board
-        // (cleared check is bossesDefeated >= waves*4; 0 fails that).
         expect(result.xp).toBe(0);
         expect(result.gold).toBe(0);
     });
@@ -283,10 +263,9 @@ describe('rollMemberRewards', () => {
     });
 
     it('XP and gold scale roughly linearly with bosses defeated', () => {
-        const raid = getAllRaids()[5]; // some mid-level raid
+        const raid = getAllRaids()[5];
         const one = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: 1 });
         const two = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: 2 });
-        // 2 kills should be more than 1 kill (linear-ish, ignoring bonus).
         expect(two.xp).toBeGreaterThan(one.xp);
         expect(two.gold).toBeGreaterThan(one.gold);
     });
@@ -296,9 +275,6 @@ describe('rollMemberRewards', () => {
         const totalSlots = raid.waves * 4;
         const partial = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: totalSlots - 1 });
         const full = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: totalSlots });
-        // The completion bonus is `raid.level²` XP + `raid.level * 1000` gold,
-        // PLUS the bonus from one extra kill — so full > partial by at least
-        // the completion bonus delta.
         expect(full.xp).toBeGreaterThan(partial.xp);
         expect(full.gold).toBeGreaterThan(partial.gold);
     });
@@ -307,9 +283,7 @@ describe('rollMemberRewards', () => {
         const raid = getAllRaids()[5];
         const member = makeMember();
         const result = rollMemberRewards({ member, raid, bossesDefeated: 2 });
-        // Always includes xp + gold lines at minimum, plus per-boss rolls.
         expect(result.drops.length).toBeGreaterThanOrEqual(2);
-        // Every drop is keyed to this member id.
         for (const d of result.drops) {
             expect(d.memberId).toBe(member.id);
         }
@@ -357,9 +331,6 @@ describe('rollMemberRewards', () => {
     });
 
     it('with Math.random=0 picks the first rarity in every roll table', () => {
-        // First entry in ITEM_RARITY_CHANCES is 'heroic'.
-        // First in STONE_DROPS is 'heroic'.
-        // First in COMPLETION_ROLL is 'heroic'.
         randomSpy.mockReturnValue(0);
         const raid = getAllRaids()[0];
         const result = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: 1 });
@@ -370,7 +341,6 @@ describe('rollMemberRewards', () => {
     it('items array is populated with generated items', () => {
         const raid = getAllRaids()[0];
         const result = rollMemberRewards({ member: makeMember(), raid, bossesDefeated: 1 });
-        // At minimum the completion bonus item lands here.
         expect(result.items.length).toBeGreaterThanOrEqual(1);
         for (const item of result.items) {
             expect(item.uuid).toBeDefined();
@@ -380,7 +350,6 @@ describe('rollMemberRewards', () => {
     });
 });
 
-// -- todayIso -----------------------------------------------------------------
 
 describe('todayIso', () => {
     it('returns YYYY-MM-DD format', () => {

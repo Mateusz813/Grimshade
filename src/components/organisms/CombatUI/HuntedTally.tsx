@@ -1,12 +1,6 @@
 import { useCombatStore } from '../../../stores/combatStore';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
 
-/**
- * "Upolowano:" strip — hunting-only widget that shows one rarity-tinted
- * monster icon per rarity tier with a kill counter beside it. Higher
- * rarities count more toward task/quest progress; the spec asks us to
- * surface the breakdown so the player can see how their loot is shaped.
- */
 const RARITY_TIERS: Array<{ id: string; emoji: string; label: string }> = [
     { id: 'normal',    emoji: 'ogre', label: 'Zwykły' },
     { id: 'strong',    emoji: 'goblin', label: 'Silny' },

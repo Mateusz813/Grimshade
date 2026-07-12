@@ -2,11 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, cleanup } from '@testing-library/react';
 import { useWakeLock, isWakeLockSupported } from './useWakeLock';
 
-/**
- * useWakeLock tests — we stub `navigator.wakeLock` with a fake that records
- * request/release calls and lets us fire the OS-driven 'release' event +
- * visibilitychange so we can assert the re-acquire-on-visible behaviour.
- */
 
 interface IFakeSentinel {
     released: boolean;
@@ -88,7 +83,6 @@ describe('useWakeLock', () => {
         await flush();
         expect(requestSpy).toHaveBeenCalledTimes(1);
 
-        // OS releases the sentinel (page hidden), then the user returns.
         sentinels[0]._fireRelease();
         setVisibility('visible');
         document.dispatchEvent(new Event('visibilitychange'));
@@ -102,7 +96,6 @@ describe('useWakeLock', () => {
         await flush();
         expect(requestSpy).toHaveBeenCalledTimes(1);
 
-        // OS releases the sentinel, then the user returns and the window regains focus.
         sentinels[0]._fireRelease();
         setVisibility('visible');
         window.dispatchEvent(new Event('focus'));

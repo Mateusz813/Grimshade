@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
@@ -91,19 +92,12 @@ const padTo4 = <T,>(arr: T[]): Array<T | null> => {
     return out;
 };
 
-// -- Backend (opt-in) — istotny wycinek odpowiedzi POST /arena/match.
-// Serwer sam symuluje pojedynek, liczy `attackerWon` i nagrody; klient tylko
-// APLIKUJE wynik (ranking/roster areny pozostają klienckie — backend nie ma
-// rostera).
 interface IArenaMatchResult {
     attackerWon: boolean;
     attackerAp: number;
     attackerLp: number;
 }
 
-// Zawęża surową (unknown) odpowiedź backendu do
-// { attackerWon, attackerAp, attackerLp }. Zwraca null gdy kształt jest
-// nieznany — wołający degraduje wtedy do klienckiego rozstrzygnięcia.
 const parseArenaMatchResult = (raw: unknown): IArenaMatchResult | null => {
     if (typeof raw !== 'object' || raw === null) return null;
     const obj = raw as Record<string, unknown>;
@@ -125,13 +119,7 @@ const ArenaMatch = () => {
     const navigate = useNavigate();
     const character = useCharacterStore((s) => s.character);
     const activeSkillSlots = useSkillStore((s) => s.activeSkillSlots);
-    const { currentArena, finalizeMatch } = useArenaStore();
-    // Subscribe to the underlying completedTransforms array (stable reference
-    // until the player actually unlocks a tier) — calling
-    // `getHighestTransformColor()` directly inside the selector would return
-    // a fresh object every render, fail Zustand's identity check, and trigger
-    // the "getSnapshot should be cached" infinite loop. Derive the colour in
-    // a memo bound to the array reference instead.
+    const { currentArena, finalizeMatch } = useArenaStore(useShallow((s) => ({ currentArena: s.currentArena, finalizeMatch: s.finalizeMatch })));
     const completedTransforms = useTransformStore((s) => s.completedTransforms);
     const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
     const transformColor = useMemo(
@@ -139,7 +127,6 @@ const ArenaMatch = () => {
         [completedTransforms, getHighestTransformColor],
     );
 
-    // Pull match context — set by Arena.tsx before navigating here.
     const ctx = useMemo<IMatchContext | null>(() => {
         try {
             const raw = sessionStorage.getItem('arena.match');
@@ -152,8 +139,6 @@ const ArenaMatch = () => {
     const [speedMult, setSpeedMult] = useState(1);
     const [tickKey, setTickKey] = useState(0);
 
-    // Tryb backendu: na koniec meczu areny wyślij commit z kontekstem zdarzenia
-    // (backend waliduje LP/AP i zapisuje). Raz na wynik.
     const arenaEventSentRef = useRef(false);
     useEffect(() => {
         if (phase !== 'win' && phase !== 'lose') {
@@ -165,9 +150,6 @@ const ArenaMatch = () => {
         commitCombatEventNow({ type: 'arena', outcome: phase === 'win' ? 'won' : 'lost' });
     }, [phase]);
     const [rewardSummary, setRewardSummary] = useState<{ ap: number; lp: number } | null>(null);
-    // Cinematic fade-in from solid black on mount — the Arena view did its
-    // 1.5s fade-out before navigating here, so this matches the curve and
-    // makes the transition feel seamless. Click anywhere to skip.
     const [entryFading, setEntryFading] = useState(true);
     useEffect(() => {
         const t = window.setTimeout(() => setEntryFading(false), 1500);
@@ -179,26 +161,16 @@ const ArenaMatch = () => {
     const tickIdRef = useRef(0);
     const finalizedRef = useRef(false);
 
-    // Per-slot floats for the shared CombatArena overlay.
     const [playerFloats, setPlayerFloats] = useState<Array<{ key: number; dmg: number; kind: 'monster' | 'spell' | 'basic' }>>([]);
     const [opponentFloats, setOpponentFloats] = useState<Array<{ key: number; dmg: number; kind: 'basic' | 'spell' | 'monster' }>>([]);
     const floatKeyRef = useRef(0);
-    // Per-attack pulse counters drive the keyed flash overlay on each card
-    // — incremented every basic / spell hit so the CSS animation re-mounts
-    // and replays even on rapid back-to-back hits.
     const [opponentHitPulse, setOpponentHitPulse] = useState(0);
     const [playerHitPulse, setPlayerHitPulse] = useState(0);
-    // Animation overlays (per-class attack flash + cast-glyph) — uses the
-    // shared useCombatFx hook so the visual is identical to every other
-    // combat view (Hunt/Boss/Dungeon/Transform).
     const fx = useCombatFx();
-    // Per-class attack class ('combat-ui__enemy--attack-Knight' etc.)
-    // toggled briefly on every basic hit so the slash/spell visual lands.
     const [opponentAttackingClass, setOpponentAttackingClass] = useState<string | null>(null);
     const [playerAttackingClass, setPlayerAttackingClass] = useState<string | null>(null);
     const ATTACK_FLASH_MS = 350;
 
-    // Build player + opponent on mount.
     useEffect(() => {
         if (!ctx || !character || !currentArena) return;
         const opponent = currentArena.competitors.find((c) => c.id === ctx.opponentId);
@@ -235,15 +207,8 @@ const ArenaMatch = () => {
             status: newStatusState(),
         };
         setTickKey((k) => k + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Backend (opt-in) — autorytatywne rozstrzygnięcie meczu. Serwer symuluje
-    // walkę własnym RNG, liczy wynik + nagrody i zapisuje obie postaci; my
-    // tylko APLIKUJEMY wynik i hydratujemy store'y przez syncFromBackend
-    // (ranking/roster areny zostają klienckie — backend nie ma rostera).
-    // Błąd / nieznany kształt / brak postaci → degradacja do klienckiego
-    // finalizeMatch, żeby gracz zawsze dostał wynik i nie było crasha.
     const resolveArenaViaBackend = useCallback(async (clientAttackerWon: boolean): Promise<void> => {
         const finalizeOnClient = (): void => {
             if (!ctx) return;
@@ -272,8 +237,6 @@ const ArenaMatch = () => {
                 setRewardSummary({ ap: parsed.attackerAp, lp: parsed.attackerLp });
                 setPhase(parsed.attackerWon ? 'win' : 'lose');
             } else {
-                // Zsynchronizowano, ale kształt odpowiedzi nieznany — pokaż
-                // wynik z symulacji klienta (bez klienckiego finalizeMatch).
                 setPhase(clientAttackerWon ? 'win' : 'lose');
             }
         } catch (e) {
@@ -282,7 +245,6 @@ const ArenaMatch = () => {
         }
     }, [ctx, finalizeMatch]);
 
-    // Combat tick.
     useEffect(() => {
         if (phase !== 'fighting') return;
         const TICK_MS = 500;
@@ -294,7 +256,6 @@ const ArenaMatch = () => {
             if (!me || !op) return;
             if (me.hp <= 0 || op.hp <= 0) return;
 
-            // -- Status tick: drain timers + apply DOTs ----------------------
             const meDot = tickStatus(me.status, TICK_MS / speedMult, me.maxHp);
             const opDot = tickStatus(op.status, TICK_MS / speedMult, op.maxHp);
             if (meDot.dotDamage > 0) {
@@ -316,7 +277,6 @@ const ArenaMatch = () => {
             if (me.hp <= 0 && me.status.cannotDieMs > 0) me.hp = 1;
             if (op.hp <= 0 && op.status.cannotDieMs > 0) op.hp = 1;
 
-            // Apply a single damage hit to a target through all gates.
             const dealDamage = (target: ICombatant, raw: number): number => {
                 if (raw <= 0) return 0;
                 const apply = applyIncomingDamage(target.status, target.hp, raw);
@@ -324,14 +284,8 @@ const ArenaMatch = () => {
                 return apply.absorbed ? 0 : -apply.hpDelta;
             };
 
-            // Helper: try cast a skill from `caster` against `target`. The
-            // chosen skill id bubbles up so the view can fire the spell-glyph
-            // animation overlay on the target card.
             const tryCast = (caster: ICombatant, target: ICombatant): { dealt: number; aoe: boolean; skillId: string | null } => {
                 if (isStunned(caster.status)) return { dealt: 0, aoe: false, skillId: null };
-                // 2026-06-21 fix: cast ONLY equipped skills (caster.skillSlots),
-                // not every class skill the level allows. A new character with
-                // empty slots casts nothing → basic attacks only.
                 const skills = getArenaCastableSkills(caster.class, caster.skillSlots, caster.level);
                 const cd = caster.cooldowns;
                 const chosen = skills
@@ -363,16 +317,12 @@ const ArenaMatch = () => {
                         let finalDmg = Math.max(1, Math.floor(
                             baseDmg * ARENA_DAMAGE_MULTIPLIER * apply.castDmgMult - effDef * 0.3,
                         ));
-                        // instant_kill_chance success → finite execute burst
-                        // (12% of target max HP, or the normal hit if bigger),
-                        // NOT a one-shot.
                         if ((apply.executeBurstPct ?? 0) > 0) {
                             finalDmg = Math.max(finalDmg, Math.floor(target.maxHp * (apply.executeBurstPct ?? 0) / 100));
                         }
                         dealt = dealDamage(target, finalDmg);
                     }
                 }
-                // Heal caster from spell dmg.
                 if (apply.healCasterPctOfDmg > 0 && dealt > 0) {
                     const heal = Math.floor(dealt * (apply.healCasterPctOfDmg / 100));
                     const hr = applyIncomingHeal(caster.status, heal);
@@ -384,7 +334,6 @@ const ArenaMatch = () => {
                     caster.hp = Math.min(caster.maxHp, caster.hp + hr.hpDelta);
                 }
                 if (apply.healPartyPctInstant > 0) {
-                    // 1v1 — only caster.
                     const heal = Math.floor(caster.maxHp * (apply.healPartyPctInstant / 100));
                     const hr = applyIncomingHeal(caster.status, heal);
                     caster.hp = Math.min(caster.maxHp, caster.hp + hr.hpDelta);
@@ -397,12 +346,6 @@ const ArenaMatch = () => {
                 return { dealt, aoe: apply.aoe, skillId: chosen.id };
             };
 
-            // 2026-05 v6: Knight/Rogue dual-wield twin-strike. Each
-            // class with `dualWield: true` lands TWO 60% hits per
-            // attack tick instead of one 100% hit. Same total ~120%
-            // damage but reads as two separate swings (matching the
-            // Hunt/Boss/Dungeon convention). Opponent dual-wielders
-            // get the same treatment automatically.
             const ARENA_CLASS_DUAL_WIELD: Record<string, boolean> = {
                 Knight: true, Rogue: true,
             };
@@ -416,8 +359,6 @@ const ArenaMatch = () => {
                     target.hp = 0;
                     return target.maxHp;
                 }
-                // Party instant-kill buff roll → finite execute burst (12% of
-                // target max HP, or the normal hit if bigger), NOT a one-shot.
                 if ((hit.executeBurstPct ?? 0) > 0) {
                     finalDmg = Math.max(finalDmg, Math.floor(target.maxHp * (hit.executeBurstPct ?? 0) / 100));
                 }
@@ -428,10 +369,6 @@ const ArenaMatch = () => {
                 }
                 return dealt;
             };
-            // Basic attack (every 2 ticks). Returns the per-strike
-            // damage list so the float pass can render each hit as a
-            // distinct number — twin-strike shows TWO floats, not one
-            // combined sum (matches every other combat view).
             const tryBasic = (caster: ICombatant, target: ICombatant): number[] => {
                 if (tick % 2 !== 0) return [];
                 if (isStunned(caster.status)) return [];
@@ -443,21 +380,15 @@ const ArenaMatch = () => {
                 return dmg > 0 ? [dmg] : [];
             };
 
-            // Player turn — basic + skill (if off CD). tryBasic now
-            // returns an array of per-strike damage so dual-wield
-            // (Knight/Rogue) shows two distinct floats, not one
-            // combined sum.
             const myBasicHits = tryBasic(me, op);
             const myBasic = myBasicHits.reduce((s, d) => s + d, 0);
             const mySkillRes = tryCast(me, op);
             const mySkill = mySkillRes.dealt;
-            // Opponent turn.
             const opBasicHits = tryBasic(op, me);
             const opBasic = opBasicHits.reduce((s, d) => s + d, 0);
             const opSkillRes = tryCast(op, me);
             const opSkill = opSkillRes.dealt;
 
-            // Floats — one per strike so twin-strike reads as two.
             for (const hitDmg of myBasicHits) {
                 if (hitDmg <= 0) continue;
                 const k = ++floatKeyRef.current;
@@ -477,16 +408,8 @@ const ArenaMatch = () => {
                 setPlayerFloats((arr) => [...arr.slice(-3), { key: k, dmg: opSkill, kind: 'monster' }]);
             }
 
-            // Animation triggers — basic-attack flash + per-spell glyph
-            // overlay. The per-class swing visual lands on the TARGET
-            // card (enemy gets `attack-Knight`, player gets `attack-Mage`,
-            // etc.), matching the Boss/Hunt convention. Wiring the attack
-            // class to the attacker's own card painted the slash on top
-            // of the player's portrait, which read as "I'm attacking
-            // myself" — the bug the player just flagged.
             if (myBasic > 0) {
                 setOpponentHitPulse((p) => p + 1);
-                // me (player) attacks -> opponent card shows the slash.
                 setOpponentAttackingClass(`attack-${me.class}`);
                 window.setTimeout(() => setOpponentAttackingClass(null), ATTACK_FLASH_MS);
             }
@@ -496,7 +419,6 @@ const ArenaMatch = () => {
             }
             if (opBasic > 0) {
                 setPlayerHitPulse((p) => p + 1);
-                // opponent attacks -> player card shows the slash.
                 setPlayerAttackingClass(`attack-${op.class}`);
                 window.setTimeout(() => setPlayerAttackingClass(null), ATTACK_FLASH_MS);
             }
@@ -507,13 +429,9 @@ const ArenaMatch = () => {
 
             setTickKey((kk) => kk + 1);
 
-            // End check.
             if (op.hp <= 0) {
                 if (!finalizedRef.current && ctx) {
                     finalizedRef.current = true;
-                    // Backend (opt-in): serwer rozstrzyga mecz + liczy nagrody.
-                    // `return` pomija kliencki finalizeMatch ORAZ optymistyczne
-                    // setPhase — fazę ustawia resolver po odpowiedzi serwera.
                     if (isBackendCombatDelegated()) {
                         void resolveArenaViaBackend(true);
                         return;
@@ -533,7 +451,6 @@ const ArenaMatch = () => {
             } else if (me.hp <= 0) {
                 if (!finalizedRef.current && ctx) {
                     finalizedRef.current = true;
-                    // Backend (opt-in): serwer rozstrzyga mecz + liczy nagrody.
                     if (isBackendCombatDelegated()) {
                         void resolveArenaViaBackend(false);
                         return;
@@ -566,9 +483,6 @@ const ArenaMatch = () => {
 
     const me = playerRef.current;
     const op = opponentRef.current;
-    // Look up the opponent in the live competitor roster so we can read
-    // their `completedTransforms` for the avatar render. The opponentRef
-    // copy doesn't carry that field (it's purely combat stats).
     const opponentCompetitor = currentArena?.competitors.find((c) => c.id === ctx?.opponentId);
     const opponentTransforms = opponentCompetitor?.completedTransforms ?? [];
 
@@ -577,14 +491,6 @@ const ArenaMatch = () => {
         ?? CLASS_COLORS[character.class]
         ?? '#e94560';
 
-    // Merge local damage-tally floats with the spell-overlay floats from
-    // useCombatFx so the targeted card shows BOTH the tally number AND the
-    // spell-icon decoration on the same render. Both sources mint
-    // monotonic ints starting at 1, so collisions ("Encountered two
-    // children with the same key, `16`") were inevitable. Namespace each
-    // source by adding a constant offset — local floats keep their raw
-    // key, fx floats get +1_000_000 — well past any realistic in-fight
-    // sequence number, so a render never sees a duplicate.
     const FX_KEY_OFFSET = 1_000_000;
     const opponentMergedFloats = [
         ...opponentFloats.map((f) => ({ id: f.key, kind: f.kind, value: f.dmg })),
@@ -603,9 +509,6 @@ const ArenaMatch = () => {
             kind: 'monster' as const,
             currentHp: Math.max(0, op.hp),
             maxHp: op.maxHp,
-            // Arena is PvP — the opponent is just another player. The
-            // 'boss' rarity used to drop a "BOSS" rarity badge on the
-            // card; 'normal' suppresses it entirely.
             rarity: 'normal',
             isDead: op.hp <= 0,
             isTargetedByPlayer: true,
@@ -613,9 +516,6 @@ const ArenaMatch = () => {
             attackingClassName: opponentAttackingClass,
             skillAnim: fx.enemySkill[0] ?? null,
             floats: opponentMergedFloats as never,
-            // Use the opponent's transform tier (read via the live
-            // competitor roster) so the arena card shows their actual
-            // avatar — matches the leaderboard.
             imageUrl: getCharacterAvatar(op.class as never, opponentTransforms),
             imageObjectFit: 'cover' as const,
         }] : [],
@@ -649,10 +549,6 @@ const ArenaMatch = () => {
         setSpeedMult(opts[(idx + 1) % opts.length]);
     };
 
-    // -- Skill bar (read-only) — show the player's loadout with cooldown
-    // sweeps. Arena combat is fully automatic so the slots aren't
-    // clickable (`disabled: true`); the visual purpose is to give the
-    // player situational awareness ("my big AOE is coming back in 4s").
     const TICK_MS_FOR_BAR = 500;
     const playerSkills = me ? getClassActiveSkills(me.class) : [];
     const uiSkills: Array<ICombatSkillSlot | null> = activeSkillSlots.slice(0, 4).map((slotId) => {
@@ -676,8 +572,6 @@ const ArenaMatch = () => {
     });
     while (uiSkills.length < 4) uiSkills.push(null);
 
-    // Potion dock removed for arena — arena rules disallow consumables
-    // entirely so the row would just be a row of greyed-out icons.
 
     return (
         <div className="arena arena--match">
@@ -685,9 +579,6 @@ const ArenaMatch = () => {
                 <div className="combat-ui">
                     <CombatTopControls
                         speed={{ label: `X${speedMult}`, onCycle: cycleSpeed }}
-                        // Arena is fully automatic per spec — no auto/manual
-                        // skill toggle, no auto-potion (potions disabled
-                        // entirely on arena). Hide both controls.
                         autoSkill={null}
                         autoPotion={null}
                     />
@@ -699,24 +590,14 @@ const ArenaMatch = () => {
                         overlay={null}
                     />
 
-                    {/* Sub-controls strip — gives the arena view the same log
-                        icon as every other combat screen. The compact-HUD
-                        flag (set by `CombatHudHost compact`) floats the icon
-                        to the top-right corner so the strip itself collapses
-                        to nothing in 1v1. */}
                     <CombatSubControls xp={null} />
 
-                    {/* Potion dock removed — arena disallows consumables and
-                        the empty greyed-out slots only added visual noise. */}
 
                     <CombatActionBar
                         skills={uiSkills}
                         exit={{
                             kind: 'flee',
                             onFlee: () => {
-                                // Flee mid-fight = forfeit. Treat as a loss but
-                                // skip penalty (per spec: ucieczka nie zabiera
-                                // XP/Skilli/eq).
                                 if (!finalizedRef.current) {
                                     finalizedRef.current = true;
                                     finalizeMatch({
@@ -736,7 +617,6 @@ const ArenaMatch = () => {
                 </div>
             </CombatHudHost>
 
-            {/* Result overlay */}
             <AnimatePresence>
                 {(phase === 'win' || phase === 'lose') && (
                     <motion.div
@@ -753,8 +633,6 @@ const ArenaMatch = () => {
                             justifyContent: 'center',
                             padding: 16,
                         }}
-                        // Use the shared tickKey so React doesn't bail on prop
-                        // identity — keeps the result fresh after re-render.
                         key={`result-${tickKey}`}
                     >
                         <motion.div
@@ -762,12 +640,6 @@ const ArenaMatch = () => {
                             animate={{ scale: 1, y: 0 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                             style={{
-                                // Transparent panel + transform-coloured
-                                // border + matching glow so the result card
-                                // wears the player's tier (cyan / violet /
-                                // gold / …) instead of the universal
-                                // green/red gradient. The blur keeps the
-                                // arena art readable underneath.
                                 background: 'rgba(15, 17, 28, 0.55)',
                                 backdropFilter: 'blur(8px)',
                                 WebkitBackdropFilter: 'blur(8px)',
@@ -814,9 +686,6 @@ const ArenaMatch = () => {
                 )}
             </AnimatePresence>
 
-            {/* Cinematic fade-in from black — matches the 1.5s fade-out
-                on the Arena view so the hand-off feels continuous. Click
-                anywhere on the overlay to skip and reveal combat now. */}
             {entryFading && (
                 <div
                     className="arena__entry-overlay arena__entry-overlay--in"

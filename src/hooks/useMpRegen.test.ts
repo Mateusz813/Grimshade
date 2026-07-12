@@ -1,22 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-/**
- * useMpRegen tests
- *
- * The hook drives a 1s interval that regenerates HP and (out of combat)
- * MP based on flat stats. Behaviour shifts by combat phase:
- *   - fighting -> heals HP only when there's headroom
- *   - victory  -> heals HP only
- *   - idle     -> heals both HP and MP up to the effective max
- *
- * `useAppRouteStore.isCharacterless` short-circuits the entire tick so
- * regen pauses on login / character-select screens.
- *
- * Engine helpers (`getEffectiveChar`, training/equipment math) are
- * mocked so we can precisely control the effective max and the regen
- * inputs without dragging in the whole engine.
- */
 
 vi.mock('../systems/combatEngine', () => ({
     getEffectiveChar: vi.fn((c) => c),
@@ -34,8 +18,6 @@ vi.mock('../systems/skillSystem', () => ({
 vi.mock('../systems/itemSystem', () => ({
     getTotalEquipmentStats: vi.fn(() => ({ hp: 0, mp: 0, attack: 0, defense: 0, speed: 0, critChance: 0, critDmg: 0 })),
     flattenItemsData: vi.fn(() => []),
-    // inventoryStore reads EMPTY_EQUIPMENT for the initial state; without it
-    // store module-load throws and the entire test file fails to load.
     EMPTY_EQUIPMENT: {
         mainHand: null, offHand: null, helmet: null, armor: null,
         pants: null, gloves: null, boots: null, shoulders: null,
@@ -104,13 +86,10 @@ afterEach(() => {
 describe('useMpRegen — tick wiring', () => {
     it('sets up a 1s interval and cleans it up on unmount', () => {
         const { unmount } = renderHook(() => useMpRegen());
-        // With zero regen stats there are no writes; just verify
-        // teardown completes without throwing.
         act(() => { vi.advanceTimersByTime(3000); });
         expect(updateCharacterSpy).not.toHaveBeenCalled();
         unmount();
         act(() => { vi.advanceTimersByTime(5000); });
-        // Still no writes after unmount.
         expect(updateCharacterSpy).not.toHaveBeenCalled();
     });
 });
@@ -141,12 +120,6 @@ describe('useMpRegen — out of combat', () => {
         });
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
-        // 1 tick at 1s:
-        //   - hp_regen (3) caps at 5% of max_hp (100) = 5 -> applied 3.
-        //   - mp_regen (2) caps at 5% of max_mp (30) = 1.5 -> fractional
-        //     accumulator gathers 1.5; only the floor (1) is applied
-        //     this tick — the remaining 0.5 carries to the next tick.
-        // Net writes therefore land at hp 53 and mp 11.
         expect(updateCharacterSpy).toHaveBeenCalled();
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
         expect(last.hp).toBe(53);
@@ -154,10 +127,6 @@ describe('useMpRegen — out of combat', () => {
     });
 
     it('2026-06-24 regression: applies TRANSFORM regen even when base char.mp_regen/hp_regen is 0', () => {
-        // The bug: the panel showed "MP regen 3/s" (from a transform) but MP
-        // never moved, because the hook read char.mp_regen (0) instead of the
-        // effective char's mp_regen. Now the hook uses getEffectiveChar, which
-        // folds in the transform bonus — so regen actually applies.
         (getEffectiveChar as ReturnType<typeof vi.fn>).mockImplementation((c) => ({
             ...c, hp_regen: 4, mp_regen: 3, max_hp: 1000, max_mp: 1000,
         }));
@@ -168,7 +137,6 @@ describe('useMpRegen — out of combat', () => {
         act(() => { vi.advanceTimersByTime(1100); });
         expect(updateCharacterSpy).toHaveBeenCalled();
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
-        // cap = 5% of 1000 = 50/s, so the full 4 HP + 3 MP apply this tick.
         expect(last.hp).toBe(54);
         expect(last.mp).toBe(13);
     });
@@ -180,8 +148,6 @@ describe('useMpRegen — out of combat', () => {
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
-        // Cap is 5% of max per second -> max(5, regen) for max_hp 100 -> 5
-        // We just confirm we never exceed max_hp / max_mp.
         expect(last.hp).toBeLessThanOrEqual(100);
         expect(last.mp).toBeLessThanOrEqual(30);
     });
@@ -219,7 +185,6 @@ describe('useMpRegen — in combat (fighting)', () => {
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
         expect(healPlayerHpSpy).toHaveBeenCalled();
-        // MP is intentionally frozen in combat — no direct character.mp writes.
         expect(updateCharacterSpy).not.toHaveBeenCalled();
     });
 
@@ -274,14 +239,12 @@ describe('useMpRegen — between waves (victory)', () => {
 
 describe('useMpRegen — regen cap', () => {
     it('caps regen at 5% of effective max even with massive raw values', () => {
-        // Set hp_regen so high that the cap dominates. Max HP = 100 -> cap = 5/s.
         useCharacterStore.setState({
             character: makeChar({ hp_regen: 9999, max_hp: 100, hp: 10 }),
         });
         renderHook(() => useMpRegen());
         act(() => { vi.advanceTimersByTime(1100); });
         const last = updateCharacterSpy.mock.calls.at(-1)?.[0];
-        // After 1 tick at 5/s cap -> hp goes 10 -> 15.
         expect(last.hp).toBe(15);
     });
 });

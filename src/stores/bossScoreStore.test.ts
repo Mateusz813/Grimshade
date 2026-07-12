@@ -8,9 +8,6 @@ beforeEach(() => {
     });
 });
 
-// The score formula is `floor(level * 10 + (level / 100) * level)` — i.e.
-// linear with a quadratic tail. We pin a few sample values so a future
-// rebalance has to update both the formula and the tests intentionally.
 
 describe('addBossKill', () => {
     it('records the first kill with count = 1', () => {
@@ -18,7 +15,6 @@ describe('addBossKill', () => {
         const entry = useBossScoreStore.getState().bossKills['boss_25'];
         expect(entry.count).toBe(1);
         expect(typeof entry.lastKill).toBe('string');
-        // ISO timestamp sanity — should parse back into a finite Date.
         expect(Number.isNaN(new Date(entry.lastKill).getTime())).toBe(false);
     });
 
@@ -31,21 +27,18 @@ describe('addBossKill', () => {
     });
 
     it('adds the per-kill score to totalScore', () => {
-        // level 25 -> floor(25*10 + (25/100)*25) = floor(250 + 6.25) = 256
         useBossScoreStore.getState().addBossKill('boss_25', 25);
         expect(useBossScoreStore.getState().totalScore).toBe(256);
     });
 
     it('accumulates totalScore across multiple bosses/levels', () => {
         const store = useBossScoreStore.getState();
-        // level 25 -> 256, level 100 -> floor(1000 + 100) = 1100
         store.addBossKill('boss_25', 25);
         store.addBossKill('boss_100', 100);
         expect(useBossScoreStore.getState().totalScore).toBe(256 + 1100);
     });
 
     it('handles level 0 cleanly (score = 0, no NaN)', () => {
-        // Defensive: even if a bad data row sneaks through, we don't NaN out.
         useBossScoreStore.getState().addBossKill('boss_x', 0);
         const state = useBossScoreStore.getState();
         expect(state.totalScore).toBe(0);
@@ -56,17 +49,12 @@ describe('addBossKill', () => {
         const store = useBossScoreStore.getState();
         store.addBossKill('boss_25', 25);
         const firstTs = useBossScoreStore.getState().bossKills['boss_25'].lastKill;
-        // Tiny sleep via Date.now spin is overkill; the assertion below
-        // tolerates same-ms writes.
         store.addBossKill('boss_25', 25);
         const secondTs = useBossScoreStore.getState().bossKills['boss_25'].lastKill;
-        // The store always writes a fresh `new Date().toISOString()`, so the
-        // second write is at least as recent as the first.
         expect(new Date(secondTs).getTime()).toBeGreaterThanOrEqual(new Date(firstTs).getTime());
     });
 });
 
-// -- getTotalScore ------------------------------------------------------------
 
 describe('getTotalScore', () => {
     it('returns 0 on a fresh store', () => {
@@ -79,7 +67,6 @@ describe('getTotalScore', () => {
     });
 });
 
-// -- getBossKillCount ---------------------------------------------------------
 
 describe('getBossKillCount', () => {
     it('returns 0 for an unrecorded boss', () => {

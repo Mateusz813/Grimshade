@@ -5,19 +5,12 @@ import { generateBotParty, generateBotWithClass } from '../systems/botSystem';
 
 interface IBotStore {
     bots: IBot[];
-    /** Generate 3 bot companions for a boss fight */
     generateBots: (playerLevel: number, playerClass: TCharacterClass) => void;
-    /** Generate bots with explicit class picks (manual party builder) */
     generateBotsCustom: (playerLevel: number, botClasses: TCharacterClass[]) => void;
-    /** Update a specific bot's HP after taking damage */
     updateBotHp: (botId: string, newHp: number) => void;
-    /** Update a specific bot's MP after using a skill */
     updateBotMp: (botId: string, newMp: number) => void;
-    /** Mark a bot as dead */
     killBot: (botId: string) => void;
-    /** Get all alive bots */
     getAliveBots: () => IBot[];
-    /** Reset bots (clear party) */
     clearBots: () => void;
 }
 

@@ -1,28 +1,3 @@
-/**
- * Tests for guildApi — guild CRUD + roster + boss state + treasury.
- *
- * guildApi uses a hybrid pattern: read paths go through BaseApi
- * (PostgREST URLs), while writes / inserts / RPC-like calls use
- * `supabase.from(...)` chains directly. We mock both layers.
- *
- * What this file covers:
- * - buildGuildChannel: pure helper.
- * - listGuilds: URL building with pagination + search.
- * - countGuilds: supabase head/count.
- * - findGuildById / findGuildForCharacter: read paths.
- * - createGuild: insert guild then auto-add leader as member; rollback
- *   on member-insert failure.
- * - leaveGuild: dissolve on leader-leave-with-no-members, transfer on
- *   leader-leave-with-members, normal leave for non-leaders.
- * - kickMember / updateMemberStats / updateGuildLevelXp.
- * - Join requests: requestJoin / listRequests / deleteRequest / accept.
- * - Boss: fetchOrCreateWeeklyBoss / claim / release / applyDamage /
- *   list attempts / log attempt / contributions.
- * - Treasury: list / deposit / withdraw / logs.
- *
- * The supabase mock uses the same chainable structure as the global
- * setup file but lets us inject results per-call.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -40,11 +15,9 @@ import api from './axiosInstance';
 import { supabase } from '../../lib/supabase';
 import { guildApi, buildGuildChannel } from './guildApi';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 const mkRes = <T>(data: T) => ({ data });
 
-/** Per-call supabase.from chain mock. */
 const buildChain = (result: { data: unknown; error: unknown; count?: number }) => {
     const chain: Record<string, unknown> = {};
     const methods = ['select', 'insert', 'update', 'delete', 'eq', 'in', 'is', 'ilike', 'order', 'limit'];
@@ -62,7 +35,6 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-// -- Helpers ----------------------------------------------------------------
 
 describe('buildGuildChannel', () => {
     it('builds a per-guild realtime channel name', () => {
@@ -70,7 +42,6 @@ describe('buildGuildChannel', () => {
     });
 });
 
-// -- List / lookup ---------------------------------------------------------
 
 describe('guildApi.listGuilds', () => {
     it('builds URL with offset, limit, order, and select=*', async () => {
@@ -104,7 +75,6 @@ describe('guildApi.listGuilds', () => {
         const url = mockApi.get.mock.calls[0][0] as string;
         expect(url).toContain('offset=0');
         expect(url).toContain('limit=10');
-        // No name= when search empty
         expect(url).not.toContain('name=ilike');
     });
 });
@@ -112,9 +82,6 @@ describe('guildApi.listGuilds', () => {
 describe('guildApi.countGuilds', () => {
     it('uses supabase head count', async () => {
         const chain = buildChain({ data: null, error: null, count: 42 });
-        // The query is built with `select(..., { count, head })` returning
-        // the chain. The final `await query` resolves to {count: 42}.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (chain.select as any).mockReturnValue({
             then: (resolve: (v: unknown) => unknown) => resolve({ count: 42 }),
             ilike: vi.fn().mockReturnValue({
@@ -128,7 +95,6 @@ describe('guildApi.countGuilds', () => {
 
     it('returns 0 when count is null', async () => {
         const chain = buildChain({ data: null, error: null });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (chain.select as any).mockReturnValue({
             then: (resolve: (v: unknown) => unknown) => resolve({ count: null }),
             ilike: vi.fn(),
@@ -177,7 +143,7 @@ describe('guildApi.findGuildForCharacter', () => {
     it('returns null when membership exists but guild row is missing', async () => {
         mockApi.get
             .mockResolvedValueOnce(mkRes([{ guild_id: 'g-vanished' }]))
-            .mockResolvedValueOnce(mkRes([])); // guild gone
+            .mockResolvedValueOnce(mkRes([]));
         const result = await guildApi.findGuildForCharacter('c1');
         expect(result).toBeNull();
     });
@@ -191,7 +157,6 @@ describe('guildApi.listGuildSummaries', () => {
     });
 
     it('counts members per guild and pairs leader id -> name', async () => {
-        // 2 members in g1 (one is leader), 1 in g2.
         mockApi.get
             .mockResolvedValueOnce(mkRes([
                 { guild_id: 'g1', character_id: 'c1', character_name: 'Alice' },
@@ -210,7 +175,6 @@ describe('guildApi.listGuildSummaries', () => {
     });
 });
 
-// -- Create / leave / kick -------------------------------------------------
 
 describe('guildApi.createGuild', () => {
     it('inserts the guild then adds the founder as first member', async () => {
@@ -233,14 +197,12 @@ describe('guildApi.createGuild', () => {
             leaderTransformTier: 2,
         });
 
-        // First insert: guild row with uppercase tag.
         const guildPayload = vi.mocked(guildChain.insert).mock.calls[0][0];
         expect(guildPayload).toMatchObject({
             name: 'Dragons',
             tag: 'DRG',
             leader_id: 'c1',
         });
-        // Second insert: leader member row with transform tier.
         const memberPayload = vi.mocked(memberChain.insert).mock.calls[0][0];
         expect(memberPayload).toMatchObject({
             guild_id: 'g1',
@@ -299,7 +261,6 @@ describe('guildApi.createGuild', () => {
                 leaderId: 'c', leaderName: 'A', leaderClass: 'Knight', leaderLevel: 1,
             }),
         ).rejects.toThrow('RLS denied');
-        // Rollback was attempted on the guilds table.
         expect(rollbackChain.delete).toHaveBeenCalled();
     });
 });
@@ -312,7 +273,6 @@ describe('guildApi.leaveGuild', () => {
     });
 
     it('non-leader leave just removes the member row', async () => {
-        // findGuildById GET
         mockApi.get.mockResolvedValueOnce(mkRes([{ id: 'g1', leader_id: 'leader-1' }]));
         const deleteChain = buildChain({ data: null, error: null });
         vi.mocked(supabase.from).mockReturnValueOnce(deleteChain as never);
@@ -325,12 +285,8 @@ describe('guildApi.leaveGuild', () => {
 
     it('leader leave transfers leadership to a LIVE remaining member (never a ghost)', async () => {
         mockApi.get
-            // findGuildById
             .mockResolvedValueOnce(mkRes([{ id: 'g1', leader_id: 'c-leader' }]))
-            // fresh authoritative existence check: only c-2nd still exists
-            // (c-ghost was deleted -> omitted from the result).
             .mockResolvedValueOnce(mkRes([{ id: 'c-2nd' }]));
-        // guild_members snapshot still lists a leftover ghost alongside the live one.
         const candidatesChain = buildChain({
             data: [{ character_id: 'c-2nd' }, { character_id: 'c-ghost' }],
             error: null,
@@ -338,12 +294,11 @@ describe('guildApi.leaveGuild', () => {
         const removeChain = buildChain({ data: null, error: null });
         const transferChain = buildChain({ data: null, error: null });
         vi.mocked(supabase.from)
-            .mockReturnValueOnce(candidatesChain as never) // select candidates
-            .mockReturnValueOnce(removeChain as never)     // delete leaver
-            .mockReturnValueOnce(transferChain as never);  // update leader_id
+            .mockReturnValueOnce(candidatesChain as never)
+            .mockReturnValueOnce(removeChain as never)
+            .mockReturnValueOnce(transferChain as never);
 
         const result = await guildApi.leaveGuild({ guildId: 'g1', characterId: 'c-leader' });
-        // Only one LIVE candidate -> leadership must go to it, never the ghost.
         const updatePayload = vi.mocked(transferChain.update).mock.calls[0][0];
         expect(updatePayload).toEqual({ leader_id: 'c-2nd' });
         expect(result).toEqual({ disbanded: false });
@@ -351,18 +306,17 @@ describe('guildApi.leaveGuild', () => {
 
     it('leader leave with only ghost members left disbands the guild', async () => {
         mockApi.get
-            .mockResolvedValueOnce(mkRes([{ id: 'g1', leader_id: 'c-leader' }])) // findGuildById
-            .mockResolvedValueOnce(mkRes([])); // existence check: no candidate still exists
-        // snapshot has a leftover ghost row, but it resolves to no live character.
+            .mockResolvedValueOnce(mkRes([{ id: 'g1', leader_id: 'c-leader' }]))
+            .mockResolvedValueOnce(mkRes([]));
         const candidatesChain = buildChain({ data: [{ character_id: 'c-ghost' }], error: null });
         const removeChain = buildChain({ data: null, error: null });
         const purgeChain = buildChain({ data: null, error: null });
         const disbandChain = buildChain({ data: null, error: null });
         vi.mocked(supabase.from)
-            .mockReturnValueOnce(candidatesChain as never) // select candidates
-            .mockReturnValueOnce(removeChain as never)     // delete leaver
-            .mockReturnValueOnce(purgeChain as never)      // purge leftover member rows
-            .mockReturnValueOnce(disbandChain as never);   // delete guild
+            .mockReturnValueOnce(candidatesChain as never)
+            .mockReturnValueOnce(removeChain as never)
+            .mockReturnValueOnce(purgeChain as never)
+            .mockReturnValueOnce(disbandChain as never);
 
         const result = await guildApi.leaveGuild({ guildId: 'g1', characterId: 'c-leader' });
         expect(disbandChain.delete).toHaveBeenCalled();
@@ -371,17 +325,16 @@ describe('guildApi.leaveGuild', () => {
 
     it('leader leave with no other members at all disbands the guild', async () => {
         mockApi.get
-            .mockResolvedValueOnce(mkRes([{ id: 'g1', leader_id: 'c-leader' }])); // findGuildById only
-        // snapshot has no other members -> existence check is skipped entirely.
+            .mockResolvedValueOnce(mkRes([{ id: 'g1', leader_id: 'c-leader' }]));
         const candidatesChain = buildChain({ data: [], error: null });
         const removeChain = buildChain({ data: null, error: null });
         const purgeChain = buildChain({ data: null, error: null });
         const disbandChain = buildChain({ data: null, error: null });
         vi.mocked(supabase.from)
-            .mockReturnValueOnce(candidatesChain as never) // select candidates (empty)
-            .mockReturnValueOnce(removeChain as never)     // delete leaver
-            .mockReturnValueOnce(purgeChain as never)      // purge leftover member rows
-            .mockReturnValueOnce(disbandChain as never);   // delete guild
+            .mockReturnValueOnce(candidatesChain as never)
+            .mockReturnValueOnce(removeChain as never)
+            .mockReturnValueOnce(purgeChain as never)
+            .mockReturnValueOnce(disbandChain as never);
 
         const result = await guildApi.leaveGuild({ guildId: 'g1', characterId: 'c-leader' });
         expect(disbandChain.delete).toHaveBeenCalled();
@@ -394,8 +347,8 @@ describe('guildApi.disbandGuild', () => {
         const membersChain = buildChain({ data: null, error: null });
         const guildChain = buildChain({ data: null, error: null });
         vi.mocked(supabase.from)
-            .mockReturnValueOnce(membersChain as never) // delete guild_members
-            .mockReturnValueOnce(guildChain as never);  // delete guilds
+            .mockReturnValueOnce(membersChain as never)
+            .mockReturnValueOnce(guildChain as never);
 
         await guildApi.disbandGuild('g1');
 
@@ -427,8 +380,6 @@ describe('guildApi.listMembers', () => {
     });
 
     it('hides ghost members whose character was deleted (read-only, never deletes)', async () => {
-        // 1st GET: guild_members snapshot (1 live + 1 deleted-char ghost).
-        // 2nd GET: existing-character check returns only the live id.
         mockApi.get
             .mockResolvedValueOnce(mkRes([
                 { id: 'm-live', guild_id: 'g1', character_id: 'c-live', character_name: 'Live', character_class: 'Mage', character_level: 5, character_transform_tier: 0, joined_at: '1' },
@@ -438,12 +389,9 @@ describe('guildApi.listMembers', () => {
 
         const result = await guildApi.listMembers('g1');
 
-        // Ghost (deleted character) is filtered out of the roster.
         expect(result.map((m) => m.character_id)).toEqual(['c-live']);
-        // Existence checked against characters with UNQUOTED uuids (quoting matches nothing).
         const checkUrl = String(mockApi.get.mock.calls[1][0]);
         expect(checkUrl).toContain('characters?id=in.(c-live,c-ghost)');
-        // listMembers is READ-ONLY — it must NEVER delete (that caused a data-loss bug).
         expect(mockApi.delete).not.toHaveBeenCalled();
     });
 
@@ -452,10 +400,9 @@ describe('guildApi.listMembers', () => {
             .mockResolvedValueOnce(mkRes([
                 { id: 'm1', guild_id: 'g1', character_id: 'c1', character_name: 'A', character_class: 'Mage', character_level: 5, character_transform_tier: 0, joined_at: '1' },
             ]))
-            .mockResolvedValueOnce(mkRes([])); // existence check empty (unreliable / all-deleted)
+            .mockResolvedValueOnce(mkRes([]));
 
         const result = await guildApi.listMembers('g1');
-        // Guard: don't hide everyone — return the raw rows.
         expect(result.map((m) => m.character_id)).toEqual(['c1']);
         expect(mockApi.delete).not.toHaveBeenCalled();
     });
@@ -533,7 +480,6 @@ describe('guildApi.updateGuildLevelXp', () => {
     });
 });
 
-// -- Join requests ---------------------------------------------------------
 
 describe('guildApi.requestJoin', () => {
     it('inserts a join request', async () => {
@@ -606,7 +552,6 @@ describe('guildApi.acceptRequest', () => {
 
         const memberPayload = vi.mocked(memberChain.insert).mock.calls[0][0];
         expect(memberPayload.character_id).toBe('c1');
-        // Purge was called on character_id.
         expect(purgeChain.delete).toHaveBeenCalled();
     });
 
@@ -622,7 +567,6 @@ describe('guildApi.acceptRequest', () => {
     });
 });
 
-// -- Boss ------------------------------------------------------------------
 
 describe('guildApi.fetchOrCreateWeeklyBoss', () => {
     it('returns existing boss row when one already exists for the week', async () => {
@@ -644,7 +588,7 @@ describe('guildApi.fetchOrCreateWeeklyBoss', () => {
         expect(payload).toMatchObject({
             guild_id: 'g1',
             boss_tier: 1,
-            boss_current_hp: payload.boss_max_hp, // freshly created -> full HP
+            boss_current_hp: payload.boss_max_hp,
             boss_killed: false,
             current_attacker_id: null,
         });
@@ -673,7 +617,6 @@ describe('guildApi.claimBossArena', () => {
             weekStart: '2026-05-18',
         });
 
-        // The `.is('current_attacker_id', null)` precondition ensures atomicity.
         expect(chain.is).toHaveBeenCalledWith('current_attacker_id', null);
         expect(result).toBe(claimed);
     });
@@ -756,7 +699,7 @@ describe('guildApi.applyBossDamage', () => {
             guildId: 'g1', weekStart: '2026-05-18', damage: -50,
         });
         const payload = vi.mocked(updateChain.update).mock.calls[0][0];
-        expect(payload.boss_current_hp).toBe(100); // unchanged
+        expect(payload.boss_current_hp).toBe(100);
     });
 });
 
@@ -852,7 +795,7 @@ describe('guildApi.addContribution', () => {
         });
 
         const payload = vi.mocked(updateChain.update).mock.calls[0][0];
-        expect(payload.total_damage).toBe(350); // 200 + 150
+        expect(payload.total_damage).toBe(350);
     });
 
     it('inserts new contribution row when none exists', async () => {
@@ -890,7 +833,6 @@ describe('guildApi.markContributionClaimed', () => {
     });
 });
 
-// -- Treasury --------------------------------------------------------------
 
 describe('guildApi.listTreasury', () => {
     it('queries items ordered by deposited_at desc, limit 1000', async () => {
@@ -1031,7 +973,3 @@ describe('guildApi.resetGuildBossForTesting', () => {
     });
 });
 
-// TODO: realtime channel subscriptions aren't covered — they're thin
-// wrappers over supabase.channel().on(...).subscribe() and our supabase
-// mock already returns the chainable channel object, so the contract is
-// already exercised through indirect calls.

@@ -1,5 +1,3 @@
-// Generates minimal valid PNG icons for PWA
-// Usage: node scripts/generate-icons.js
 const zlib = require('node:zlib');
 const fs   = require('node:fs');
 const path = require('node:path');
@@ -28,13 +26,12 @@ function createPNG(size, r, g, b) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+  ihdr[8] = 8; ihdr[9] = 2;
 
-  // Raw scanlines: filter byte (0 = None) + RGB pixels per row
   const raw = Buffer.alloc(size * (1 + size * 3));
   for (let y = 0; y < size; y++) {
     const rowStart = y * (1 + size * 3);
-    raw[rowStart] = 0; // filter None
+    raw[rowStart] = 0;
     for (let x = 0; x < size; x++) {
       const px = rowStart + 1 + x * 3;
       raw[px] = r; raw[px + 1] = g; raw[px + 2] = b;
@@ -44,14 +41,13 @@ function createPNG(size, r, g, b) {
   const idat = zlib.deflateSync(raw, { level: 6 });
 
   return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), // PNG signature
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', ihdr),
     chunk('IDAT', idat),
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
 
-// #1a1a2e = rgb(26, 26, 46)  – matches theme_color
 const BG = [26, 26, 46];
 const publicDir = path.join(__dirname, '..', 'public');
 

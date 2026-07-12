@@ -10,7 +10,6 @@ import {
     type Rarity,
 } from '../systems/itemSystem';
 
-// -- Helpers ------------------------------------------------------------------
 
 let uuidCounter = 0;
 const makeItem = (overrides: Partial<IInventoryItem> = {}): IInventoryItem => {
@@ -83,7 +82,6 @@ beforeEach(() => {
     useCharacterStore.setState({ character: null, isLoading: false });
 });
 
-// -- addItem / restoreItem ----------------------------------------------------
 
 describe('addItem', () => {
     it('appends item to the bag and returns true', () => {
@@ -99,7 +97,6 @@ describe('addItem', () => {
         const initial = useInventoryStore.getState().gold;
         const ok = useInventoryStore.getState().addItem(makeItem({ rarity: 'common' }));
         expect(ok).toBe(true);
-        // Bag stays empty because the item was sold immediately.
         expect(useInventoryStore.getState().bag).toHaveLength(0);
         expect(useInventoryStore.getState().gold).toBeGreaterThan(initial);
     });
@@ -122,7 +119,6 @@ describe('restoreItem', () => {
     });
 
     it('returns false when bag is full', () => {
-        // Pre-fill the bag exactly to MAX_BAG_SIZE
         useInventoryStore.setState({
             bag: Array.from({ length: MAX_BAG_SIZE }, () => makeItem()),
         });
@@ -131,7 +127,6 @@ describe('restoreItem', () => {
     });
 });
 
-// -- removeItem ---------------------------------------------------------------
 
 describe('removeItem', () => {
     it('removes the item with the given uuid', () => {
@@ -151,7 +146,6 @@ describe('removeItem', () => {
     });
 });
 
-// -- equipItem / unequipItem (HP / MP delta integration) ----------------------
 
 describe('equipItem', () => {
     it('moves item from bag into the named slot', () => {
@@ -183,16 +177,9 @@ describe('equipItem', () => {
     });
 
     it('applies the equipment HP delta to character.hp (deferred microtask)', async () => {
-        // 2026-05-21 spec: equipping +HP gear bumps current HP by the same
-        // amount. The bump is applied via a lazy `import('./characterStore')`
-        // promise chain — we need to flush enough microtasks for the
-        // import to resolve and its `.then` callback to run.
         useCharacterStore.setState({
             character: makeChar({ hp: 50, max_hp: 100, mp: 30, max_mp: 30 }),
         });
-        // sword_of_beginnings is a base item so getTotalEquipmentStats
-        // resolves via getItemStats (the legacy branch). Adding hp=25
-        // as a bonus surfaces as +25 hp in the equipment delta.
         const weapon = makeItem({
             itemId: 'sword_of_beginnings',
             bonuses: { hp: 25 },
@@ -200,12 +187,9 @@ describe('equipItem', () => {
         });
         useInventoryStore.setState({ bag: [weapon] });
         useInventoryStore.getState().equipItem(weapon.uuid, 'mainHand');
-        // Flush the dynamic import + its .then callback. setTimeout(0)
-        // resolves after all pending microtasks (more reliable than a
-        // bounded number of Promise.resolve() awaits).
         await new Promise((resolve) => setTimeout(resolve, 0));
         const c = useCharacterStore.getState().character!;
-        expect(c.hp).toBe(75); // 50 + 25 from the equipped weapon's hp bonus
+        expect(c.hp).toBe(75);
     });
 });
 
@@ -236,13 +220,11 @@ describe('unequipItem', () => {
             bag: Array.from({ length: MAX_BAG_SIZE }, () => makeItem()),
         });
         useInventoryStore.getState().unequipItem('mainHand');
-        // Slot retains the item, bag length unchanged
         expect(useInventoryStore.getState().equipment.mainHand?.uuid).toBe(equipped.uuid);
         expect(useInventoryStore.getState().bag).toHaveLength(MAX_BAG_SIZE);
     });
 });
 
-// -- sellItem / sellMultiple --------------------------------------------------
 
 describe('sellItem', () => {
     it('removes item from bag and adds gold', () => {
@@ -277,7 +259,6 @@ describe('sellMultiple', () => {
     });
 });
 
-// -- Gold ---------------------------------------------------------------------
 
 describe('addGold', () => {
     it('adds the given amount', () => {
@@ -303,7 +284,6 @@ describe('spendGold', () => {
     });
 });
 
-// -- Stones --------------------------------------------------------------------
 
 describe('addStones / getStoneCount / useStones', () => {
     it('adds + reads stone count', () => {
@@ -376,7 +356,6 @@ describe('convertStones', () => {
     });
 });
 
-// -- Consumables --------------------------------------------------------------
 
 describe('addConsumable / useConsumable', () => {
     it('adds a consumable and uses one at a time', () => {
@@ -397,19 +376,15 @@ describe('addConsumable / useConsumable', () => {
         expect(useInventoryStore.getState().consumables['mana_potion']).toBe(1);
     });
 
-    // 2026-06-21 hard level gate: HP/MP potions cannot be drunk below their
-    // unlock level. This is the single chokepoint every drink path funnels
-    // through (manual dock, auto-potion engine, bag use) — the guarantee behind
-    // "nie mozna ich wczesniej uzyc".
     const setLevel = (level: number) =>
         useCharacterStore.setState({ character: { level } as ICharacter });
 
     it('blocks drinking an above-level potion (no consume, returns false)', () => {
         setLevel(14);
-        useInventoryStore.getState().addConsumable('hp_potion_md', 3); // 150 HP, req lvl 20
+        useInventoryStore.getState().addConsumable('hp_potion_md', 3);
         const used = useInventoryStore.getState().useConsumable('hp_potion_md');
         expect(used).toBe(false);
-        expect(useInventoryStore.getState().consumables['hp_potion_md']).toBe(3); // untouched
+        expect(useInventoryStore.getState().consumables['hp_potion_md']).toBe(3);
     });
 
     it('allows drinking once the character reaches the unlock level', () => {
@@ -459,7 +434,6 @@ describe('addSpellChest / useSpellChests / getSpellChestCount', () => {
     });
 });
 
-// -- Deposit ------------------------------------------------------------------
 
 describe('depositItem / withdrawItem', () => {
     it('moves an item bag -> deposit', () => {
@@ -503,7 +477,6 @@ describe('depositItem / withdrawItem', () => {
     });
 });
 
-// -- Arena Points -------------------------------------------------------------
 
 describe('addArenaPoints / spendArenaPoints', () => {
     it('adds arena points', () => {
@@ -529,7 +502,6 @@ describe('addArenaPoints / spendArenaPoints', () => {
     });
 });
 
-// -- Item upgrade / bonuses ---------------------------------------------------
 
 describe('upgradeItem', () => {
     it('bumps upgradeLevel on a bag item', () => {
@@ -550,7 +522,6 @@ describe('upgradeItem', () => {
 
     it('is a no-op for unknown uuid', () => {
         useInventoryStore.getState().upgradeItem('missing');
-        // No throw, no side effects to assert beyond.
         expect(useInventoryStore.getState().bag).toHaveLength(0);
     });
 });
@@ -573,10 +544,8 @@ describe('updateItemBonuses', () => {
     });
 });
 
-// -- Death loss ---------------------------------------------------------------
 
 describe('applyDeathItemLoss', () => {
-    // deathLevel 100 = above the lvl 1-50 beginner grace, so items are at risk.
     it('returns 0 and changes nothing when protected by AOL', () => {
         useInventoryStore.setState({ bag: [makeItem(), makeItem()] });
         const lost = useInventoryStore.getState().applyDeathItemLoss(true, 100);
@@ -596,7 +565,6 @@ describe('applyDeathItemLoss', () => {
         expect(useInventoryStore.getState().bag.length).toBeLessThanOrEqual(1);
     });
 
-    // 2026-06-24: lvl 1-50 beginner grace — no item loss even unprotected.
     it('loses NOTHING at level <= 50 (beginner grace), even with a full bag', () => {
         useInventoryStore.setState({ bag: [makeItem(), makeItem(), makeItem()] });
         for (const lvl of [1, 25, 50]) {
@@ -614,7 +582,6 @@ describe('applyDeathItemLoss', () => {
     });
 });
 
-// -- Disassemble --------------------------------------------------------------
 
 describe('disassembleMultiple', () => {
     it('removes the listed bag items from the bag', () => {

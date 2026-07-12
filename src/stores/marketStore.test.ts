@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IMarketListing } from '../systems/marketSystem';
 
-// -- Hoisted mocks ------------------------------------------------------------
-// marketStore wraps `marketApi` 1:1. Each method is a `vi.fn` we configure per
-// test, so no network round-trip and no `setTimeout(8000)` race for the
-// fetchListings timeout path.
 
 const {
     getListingsMock,
@@ -51,7 +47,6 @@ vi.mock('../api/v1/marketApi', () => ({
 import { useMarketStore } from './marketStore';
 import { useCharacterStore } from './characterStore';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeListing = (overrides: Partial<IMarketListing> = {}): IMarketListing => ({
     id: 'ml_1',
@@ -80,8 +75,6 @@ beforeEach(() => {
         isLoading: false,
         error: null,
     });
-    // Seed a fake character so buyListing has a buyerCharacterId. Tests
-    // that explicitly want the "no character" path override this.
     useCharacterStore.setState({
         character: { id: 'buyer-char-1', name: 'Buyer', class: 'Knight' } as never,
     });
@@ -98,7 +91,6 @@ beforeEach(() => {
     buyListingMock.mockReset();
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('marketStore — initial state', () => {
     it('starts with empty listings + flags', () => {
@@ -111,7 +103,6 @@ describe('marketStore — initial state', () => {
     });
 });
 
-// -- fetchListings ------------------------------------------------------------
 
 describe('fetchListings', () => {
     it('populates the listings array on success', async () => {
@@ -125,9 +116,7 @@ describe('fetchListings', () => {
     });
 
     it('keeps isLoading false during the initial silent populate', async () => {
-        // listings.length === 0 -> don't flip the global spinner.
         getListingsMock.mockImplementation(async () => {
-            // Snapshot state mid-flight.
             expect(useMarketStore.getState().isLoading).toBe(false);
             return [];
         });
@@ -155,7 +144,6 @@ describe('fetchListings', () => {
     });
 });
 
-// -- fetchMyListings ----------------------------------------------------------
 
 describe('fetchMyListings', () => {
     it('populates myListings on success', async () => {
@@ -174,7 +162,6 @@ describe('fetchMyListings', () => {
     });
 });
 
-// -- fetchSaleNotifications ---------------------------------------------------
 
 describe('fetchSaleNotifications', () => {
     it('populates saleNotifications on success', async () => {
@@ -192,7 +179,6 @@ describe('fetchSaleNotifications', () => {
     });
 });
 
-// -- listItem -----------------------------------------------------------------
 
 describe('listItem', () => {
     const payload: Omit<IMarketListing, 'id' | 'listedAt'> = {
@@ -250,7 +236,6 @@ describe('listItem', () => {
     });
 });
 
-// -- editListing --------------------------------------------------------------
 
 describe('editListing', () => {
     it('returns null when the listing is not in myListings', async () => {
@@ -302,7 +287,6 @@ describe('editListing', () => {
     });
 });
 
-// -- cancelListing ------------------------------------------------------------
 
 describe('cancelListing', () => {
     it('returns null when listing is not in myListings', async () => {
@@ -330,13 +314,7 @@ describe('cancelListing', () => {
     });
 });
 
-// -- buyListing ---------------------------------------------------------------
-//
-// Tests target the 2026-05-25 v3 contract: `marketStore.buyListing` calls
-// the SECURITY DEFINER `marketApi.buyListing(listingId, buyerCharacterId)`
-// RPC for each unit, never `getListing()` or `decrementListing()`.
 
-/** Build a successful RPC return shape. */
 const makeRpcOk = (overrides: Partial<{ remainingQty: number; quantityPurchased: number; sellerId: string; itemId: string; itemName: string; kind: IMarketListing['kind']; price: number; rarity: IMarketListing['rarity']; itemLevel: number; slot: string; bonuses: Record<string, number>; upgradeLevel: number; sellerName: string; listingId: string }> = {}) => ({
     ok: true as const,
     listingId: 'ml_1',
@@ -411,16 +389,12 @@ describe('buyListing', () => {
         const s = useMarketStore.getState();
         expect(s.listings).toEqual([]);
         expect(s.myListings).toEqual([]);
-        // RPC inserts the sale notification server-side — the store no
-        // longer fires the JS-side `createSaleNotification` call.
         expect(createSaleNotificationMock).not.toHaveBeenCalled();
     });
 
     it('partial buy: passes qty to RPC + updates remaining quantity locally', async () => {
         const listing = makeListing({ id: 'ml_1', quantity: 10, kind: 'potion', price: 100 });
         useMarketStore.setState({ listings: [listing], myListings: [listing] });
-        // Single RPC call decrements the whole stack of N units. The
-        // function returns remaining_qty after the buy.
         buyListingMock.mockResolvedValue(makeRpcOk({
             remainingQty: 7,
             quantityPurchased: 3,
@@ -431,7 +405,6 @@ describe('buyListing', () => {
 
         const r = await useMarketStore.getState().buyListing('ml_1', 3);
         expect(buyListingMock).toHaveBeenCalledTimes(1);
-        // The store passes (listingId, buyerCharacterId, qty) to the RPC.
         expect(buyListingMock).toHaveBeenCalledWith('ml_1', 'buyer-char-1', 3);
         expect(r?.quantity).toBe(3);
         expect(r?.totalPaid).toBe(300);
@@ -441,9 +414,6 @@ describe('buyListing', () => {
     });
 
     it('reports out_of_stock when RPC rejects a qty larger than available', async () => {
-        // qty=5 requested but listing only has 2 left -> server returns
-        // out_of_stock atomically (no partial buys at the RPC layer —
-        // either we get all qty units or nothing).
         const listing = makeListing({ id: 'ml_1', quantity: 2, kind: 'potion', price: 50 });
         useMarketStore.setState({ listings: [listing], myListings: [listing] });
         buyListingMock.mockResolvedValue({ ok: false, reason: 'out_of_stock' });
@@ -461,7 +431,6 @@ describe('buyListing', () => {
     });
 });
 
-// -- dismissNotification ------------------------------------------------------
 
 describe('dismissNotification', () => {
     it('removes the notification from the store and calls the API', async () => {
@@ -477,7 +446,6 @@ describe('dismissNotification', () => {
     });
 });
 
-// -- clearError ---------------------------------------------------------------
 
 describe('clearError', () => {
     it('resets error to null', () => {

@@ -2,21 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * CharacterSelect view — post-login character picker (max 7 alts per
- * account). Lists every character with HP/MP bars + class avatar +
- * delete + select. Fetches via characterApi + supabase session.
- *
- * Coverage:
- *   - Spinner mounts while characters load.
- *   - Logged-out users get bounced to /login.
- *   - Loaded list renders one card per character.
- *   - Empty list renders the "Nie masz jeszcze żadnych postaci" copy.
- *   - Select button calls switchToCharacter + navigates to /.
- *   - Delete button surfaces a confirm flow + commit deletes the row.
- *   - Create-new button visible while count < 7; hidden at 7.
- *   - Logout button calls supabase signOut + navigates to /login.
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -47,10 +32,6 @@ vi.mock('../../stores/characterScope', () => ({
     peekCharacterStore: vi.fn(() => null),
 }));
 
-// Backend-authoritative branch mocks. Default OFF; a dedicated test flips
-// `backendFlag.on`. The cloud delete no-op lives inside the (mocked)
-// characterApi.deleteCharacter; at the view level we assert the delete flow
-// keeps local cleanup + the password gate under backend mode.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 vi.mock('../../config/backendMode', () => ({
     isBackendMode: () => backendFlag.on,
@@ -197,13 +178,10 @@ describe('CharacterSelect — actions', () => {
             expect(container.querySelector('.char-select__delete-btn')).not.toBeNull();
         });
 
-        // Trash click opens the password modal (not an inline confirm).
         fireEvent.click(container.querySelector('.char-select__delete-btn') as HTMLButtonElement);
         expect(container.querySelector('.char-select__modal')).not.toBeNull();
-        // Nothing deleted yet — password not entered.
         expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
 
-        // Type the current password + confirm.
         const input = container.querySelector('.char-select__modal-input') as HTMLInputElement;
         fireEvent.change(input, { target: { value: 'hunter2' } });
         fireEvent.click(container.querySelector('.char-select__modal-delete') as HTMLButtonElement);
@@ -213,7 +191,6 @@ describe('CharacterSelect — actions', () => {
             expect(characterApi.deleteCharacter).toHaveBeenCalledWith('a');
             expect(deleteCharacterData).toHaveBeenCalledWith('a');
         });
-        // After delete the card + modal disappear.
         await waitFor(() => {
             expect(container.querySelectorAll('.char-select__card').length).toBe(0);
             expect(container.querySelector('.char-select__modal')).toBeNull();
@@ -239,7 +216,6 @@ describe('CharacterSelect — actions', () => {
             expect(authApi.verifyCurrentPassword).toHaveBeenCalledWith('wrong-password');
             expect(container.querySelector('.char-select__modal-error')).not.toBeNull();
         });
-        // Character NOT deleted, modal still open, card still present.
         expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
         expect(deleteCharacterData).not.toHaveBeenCalled();
         expect(container.querySelectorAll('.char-select__card').length).toBe(1);
@@ -263,11 +239,8 @@ describe('CharacterSelect — actions', () => {
         fireEvent.click(container.querySelector('.char-select__modal-delete') as HTMLButtonElement);
 
         await waitFor(() => {
-            // Password gate preserved as client UX.
             expect(authApi.verifyCurrentPassword).toHaveBeenCalledWith('hunter2');
-            // Cloud delete delegated (no-ops the Supabase deletes inside characterApi).
             expect(characterApi.deleteCharacter).toHaveBeenCalledWith('a');
-            // Local cleanup ALWAYS runs so this browser forgets the character.
             expect(deleteCharacterData).toHaveBeenCalledWith('a');
         });
         await waitFor(() => {
@@ -289,7 +262,6 @@ describe('CharacterSelect — actions', () => {
         const cancelBtn = container.querySelector('.char-select__modal-cancel') as HTMLButtonElement;
         fireEvent.click(cancelBtn);
 
-        // Modal closes, nothing verified or deleted.
         expect(container.querySelector('.char-select__modal')).toBeNull();
         expect(authApi.verifyCurrentPassword).not.toHaveBeenCalled();
         expect(characterApi.deleteCharacter).not.toHaveBeenCalled();
@@ -341,12 +313,3 @@ describe('CharacterSelect — create + logout buttons', () => {
     });
 });
 
-// TODO: Cover the post-select "fetch fresh char from supabase" branch where
-//       a second getCharacters call retrieves the up-to-date row. The current
-//       happy-path test asserts switchToCharacter + navigate but doesn't
-//       check that setCharacter received the *fresh* copy. Would need a
-//       chained mockResolvedValueOnce dance + characterStore inspection.
-// TODO: Render side-effect of getEffectiveMaxStats() — multiple peek*
-//       helpers walk localStorage; we mock peekCharacterStore -> null which
-//       short-circuits all of them. Wider coverage of the elixir + transform
-//       bonus paths lives in the source-level system tests already.

@@ -1,13 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * CombatPotionDock — floating 4-slot potion column (HP / %HP / MP / %MP).
- * Empty / undefined slots render as transparent placeholders so the column
- * height stays locked.
- *
- * isImageUrl stubbed for deterministic emoji-vs-img branching.
- */
 vi.mock('../../../systems/spriteAssets', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../systems/spriteAssets')>();
     return {
@@ -61,7 +54,6 @@ describe('CombatPotionDock — smoke', () => {
 
     it('uses fallback emoji glyph when no icon URL is provided', () => {
         render(<CombatPotionDock hpPotion={makePot({ kind: 'hp', icon: undefined })} />);
-        // HP fallback is 'red-heart'.
         expect(screen.getByText('red-heart')).toBeTruthy();
     });
 

@@ -4,11 +4,6 @@ import { dirname, resolve } from 'node:path';
 import { getMonsterUnlockStatus, type IMonsterLike } from '../../src/systems/progression';
 import type { IMasteryData } from '../../src/stores/masteryStore';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla progression.ts (bramkowanie).
-// Portujemy podzbiór AUTORYTATYWNY: {unlocked, lockKind, requiredMonsterId}.
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/progression.golden.test.ts
-//   cp golden/progression.json ../grimshade-backend/tests/Golden/fixtures/
 
 const MONSTERS: IMonsterLike[] = [
     { id: 'rat', level: 1, name_pl: 'Szczur' },

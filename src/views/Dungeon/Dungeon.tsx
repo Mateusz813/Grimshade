@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { rollWeaponDamage, formatSkillName } from '../../systems/combatViewHelpers';
+import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import dungeonData from '../../data/dungeons.json';
 import monstersData from '../../data/monsters.json';
 import itemsData from '../../data/items.json';
 import { useCharacterStore } from '../../stores/characterStore';
+import { useCooldownStore } from '../../stores/cooldownStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useSkillStore } from '../../stores/skillStore';
 import { useDungeonStore } from '../../stores/dungeonStore';
@@ -25,7 +28,6 @@ import {
     type IDungeonResult,
     type DungeonMonsterType,
 } from '../../systems/dungeonSystem';
-// Dungeon combat uses simplified damage calculation (no skills/crits)
 import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
@@ -106,7 +108,6 @@ import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Dungeon.scss';
 
-// -- Class config for dual wield ----------------------------------------------
 
 interface IDungeonClassData {
     dualWield?: boolean;
@@ -119,38 +120,19 @@ for (const c of classesArray) {
     classesDataMap[c.id] = c;
 }
 
-/**
- * Returns a CSS hue value (0-360) for a dungeon card gradient based on level.
- * Low levels = cool greens/teals, mid = blues/purples, high = reds/golds.
- */
 const getDungeonCardHue = (level: number): number => {
-    if (level <= 10) return 160;     // teal
-    if (level <= 25) return 140;     // green
-    if (level <= 50) return 200;     // blue
-    if (level <= 100) return 240;    // indigo
-    if (level <= 200) return 270;    // purple
-    if (level <= 400) return 300;    // magenta
-    if (level <= 600) return 330;    // pink
-    if (level <= 800) return 15;     // orange-red
-    return 45;                       // gold
+    if (level <= 10) return 160;
+    if (level <= 25) return 140;
+    if (level <= 50) return 200;
+    if (level <= 100) return 240;
+    if (level <= 200) return 270;
+    if (level <= 400) return 300;
+    if (level <= 600) return 330;
+    if (level <= 800) return 15;
+    return 45;
 };
 
-/**
- * Returns a random weapon damage value from equipped mainHand weapon.
- */
-const rollWeaponDamage = (): number => {
-    const { equipment } = useInventoryStore.getState();
-    const weapon = equipment.mainHand;
-    if (!weapon) return 0;
-    const dmgMin = weapon.bonuses.dmg_min ?? weapon.bonuses.attack ?? 0;
-    const dmgMax = weapon.bonuses.dmg_max ?? dmgMin;
-    if (dmgMax <= 0) return 0;
-    return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
-};
 
-/**
- * Returns a random weapon damage value from equipped offHand weapon (Rogue dual wield).
- */
 const rollOffHandDamage = (): number => {
     const { equipment } = useInventoryStore.getState();
     const weapon = equipment.offHand ?? equipment.mainHand;
@@ -161,30 +143,12 @@ const rollOffHandDamage = (): number => {
     return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
 };
 
-// -- Constants -----------------------------------------------------------------
 
-// `entering` is a brief cinematic phase between the lobby and combat — the
-// dungeon image zooms from the clicked card to fullscreen while the screen
-// darkens to black, holds, then reveals into the combat HUD. Combat does NOT
-// tick during this phase (no spawn, no intervals) so the player isn't taking
-// damage while watching the intro. A click anywhere on the overlay skips
-// directly to combat (handled in `handleEnterClick`'s skip branch).
 type ScreenPhase = 'list' | 'entering' | 'running' | 'result';
 
-// Total length of the cinematic entry. Capped at 2s so veteran grinders
-// don't feel held hostage between runs — the morph + darkness + reveal
-// still read as a deliberate transition at this tempo, just snappier.
 const ENTRY_ANIM_TOTAL_MS = 2000;
-// When inside the entry animation, we mount the combat panel + spawn the
-// first wave at this offset so the AnimatePresence fade-in lines up with the
-// "reveal" portion of the overlay (the last ~33%) rather than snapping in
-// at the very end. Combat intervals don't run yet — the panel is rendered
-// for AnimatePresence to crossfade UNDER the still-fading-out black overlay
-// so the reveal looks like the dungeon "appearing" rather than popping in.
-// Kept at 67% of the total (matches the darkness `times` peak end-point).
 const ENTRY_ANIM_COMBAT_START_AT_MS = 1340;
 
-// Dungeons ALWAYS run at x1 speed (independent of normal combat speed)
 
 const MONSTER_TYPE_BADGES: Record<DungeonMonsterType, { label: string; icon: string; color: string }> = {
     Normal:    { label: 'Normal',    icon: '',   color: '#9e9e9e' },
@@ -194,12 +158,8 @@ const MONSTER_TYPE_BADGES: Record<DungeonMonsterType, { label: string; icon: str
     Boss:      { label: 'BOSS',      icon: 'crown', color: '#ffc107' },
 };
 
-// -- Drop table helpers -------------------------------------------------------
 
 const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'] as const;
-// Heroic isn't part of the regular item drop, but stones include a "Heroic
-// Stone" tier — kept here so the stone-color lookup below has a hue to use
-// (matches Boss.tsx's heroic colour for visual consistency across views).
 const RARITY_LABELS: Record<string, { label: string; color: string }> = {
     common:    { label: 'Common',    color: '#ffffff' },
     rare:      { label: 'Rare',      color: '#2196f3' },
@@ -217,11 +177,6 @@ interface IStoneDropInfo {
     name: string;
     chance: number;
     minLevel: number;
-    /** Maps the stone tier to the matching item-rarity colour so the dot in
-     *  the drop modal reads as "this stone is in the X tier" at a glance —
-     *  e.g. a Rare Stone shares the blue dot used for Rare items. Without
-     *  this, all stone dots collapsed to the same grey and players had to
-     *  read the labels to tell them apart. */
     rarity: keyof typeof RARITY_LABELS;
 }
 
@@ -247,7 +202,6 @@ const getDungeonItemDropTiers = () => {
 const getDungeonStoneDrops = (dungeonLevel: number) =>
     DUNGEON_STONE_DROPS.filter((s) => dungeonLevel >= s.minLevel);
 
-// -- Skill / Potion constants -------------------------------------------------
 
 const SKILL_COOLDOWN_MS = 5000;
 const SKILL_MP_COST = 15;
@@ -256,11 +210,6 @@ const POTION_COOLDOWN_MS = 1000;
 const hpPotions = ELIXIRS.filter((e) => e.effect.startsWith('heal_hp'));
 const mpPotions = ELIXIRS.filter((e) => e.effect.startsWith('heal_mp'));
 
-const formatSkillName = (id: string | null): string => {
-    if (!id) return '—';
-    const name = id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    return `${getSkillIcon(id)} ${name}`;
-};
 
 const getBestPotion = (
     potions: typeof ELIXIRS,
@@ -268,7 +217,6 @@ const getBestPotion = (
     characterLevel: number = Number.POSITIVE_INFINITY,
 ) => {
     const reversed = [...potions].reverse();
-    // 2026-06-21: only pick a potion the character is high enough level to drink.
     return (
         reversed.find((e) => (consumables[e.id] ?? 0) > 0 && canUsePotionAtLevel(e.id, characterLevel))
         ?? reversed.find((e) => canUsePotionAtLevel(e.id, characterLevel))
@@ -276,7 +224,6 @@ const getBestPotion = (
     );
 };
 
-// -- Combat log entry type ----------------------------------------------------
 
 interface ILogEntry {
     id: number;
@@ -284,17 +231,12 @@ interface ILogEntry {
     type: 'player' | 'monster' | 'crit' | 'system' | 'wave' | 'block' | 'dodge';
 }
 
-// -- Get attack interval ms ---------------------------------------------------
 
 const getAttackMs = (speed: number): number =>
     Math.max(500, Math.floor(3000 / Math.max(1, speed || 1)));
 
-// Pause between a wave's monster dying and the next wave's monster
-// spawning. Drives the slim "next monster in…" bar pinned under the
-// TopHeader so the player has a visible cue during the lull.
 const WAVE_SPAWN_DELAY_MS = 600;
 
-// -- Component -----------------------------------------------------------------
 
 const Dungeon = () => {
     const character    = useCharacterStore((s) => s.character);
@@ -302,40 +244,19 @@ const Dungeon = () => {
     const equipment    = useInventoryStore((s) => s.equipment);
     const consumables  = useInventoryStore((s) => s.consumables);
     const completedTransforms = useTransformStore((s) => s.completedTransforms);
-    // Bug 2 (2026-04): subscribe to allBuffs so render-time charMaxHp/charMaxMp
-    // recomputes whenever a buff is added/removed/expired. Without this the
-    // component renders only on character/equipment changes — meaning a buff
-    // tick-down mid-combat leaves charMaxHp stale and the auto-potion clamps
-    // heals at the wrong cap.
     const _activeBuffs = useBuffStore((s) => s.allBuffs);
     void _activeBuffs;
-    // Necromancer summon stack — when the local player is a necro, this is
-    // the live ordered list spawned by `useNecroSummonStore`. The shared
-    // AllyCard renders the summon-count badge from `summonCount` /
-    // `summonsByType` plumbed below.
     const necroSummons = useNecroSummonStore((s) => s.summons);
     const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
-    const { activeSkillSlots } = useSkillStore();
-    // Dungeons always run at x1 speed (no speed controls)
+    const { activeSkillSlots } = useSkillStore(useShallow((s) => ({ activeSkillSlots: s.activeSkillSlots })));
     const { setDungeonCompleted, getAttemptsUsed, getAttemptsMax, canEnter, isDungeonCleared } = useDungeonStore();
 
     const [phase, setPhase]               = useState<ScreenPhase>('list');
     const [activeDungeon, setActiveDungeon] = useState<IDungeon | null>(null);
-    // Holds the dungeon id whose drop-table popup is open (replaces the old
-    // inline-expansion behaviour — the drop info now lives in a modal so the
-    // tile body stays compact and a single click opens a focused view).
     const [dropModalDungeon, setDropModalDungeon] = useState<string | null>(null);
     const [result, setResult]             = useState<IDungeonResult | null>(null);
-    // Result kind drives the post-combat CTA — green "Odbierz" on win, red
-    // "Uciekaj" on flee, red "Wróć" on death. Tracked separately from
-    // `result` so we don't have to widen the shared IDungeonResult type
-    // (which is also used by the offline simulator).
     const [resultKind, setResultKind] = useState<'win' | 'death' | 'flee' | null>(null);
 
-    // Tryb backendu: na zakończeniu dungeona (wygrana/śmierć/ucieczka) wyślij
-    // autorytatywny commit z KONTEKSTEM ZDARZENIA — backend zwaliduje przejście
-    // (dzienne wejścia, duplikaty itemów, śmierć/ochrona) i zapisze. Debounced
-    // commit i tak by to utrwalił; event daje natychmiastowość + kontekst walidacji.
     const dungeonEventSentRef = useRef<string | null>(null);
     useEffect(() => {
         if (phase !== 'result') {
@@ -344,7 +265,7 @@ const Dungeon = () => {
         }
         if (!isBackendMode() || !resultKind) return;
         const key = `${activeDungeon?.id ?? '?'}:${resultKind}`;
-        if (dungeonEventSentRef.current === key) return; // już wysłane dla tego wyniku
+        if (dungeonEventSentRef.current === key) return;
         dungeonEventSentRef.current = key;
         commitCombatEventNow({
             type: 'dungeon',
@@ -354,21 +275,11 @@ const Dungeon = () => {
         });
     }, [phase, resultKind, activeDungeon]);
 
-    // -- Tile-zoom entry animation ---------------------------------------------
-    // When the player clicks "Wejdź" we capture the source card's bounding
-    // box + visual identity (hue + image), animate a fixed overlay growing
-    // from that rect to fullscreen, then flip phase to 'running'. The
-    // overlay holds at fullscreen through the AnimatePresence cross-fade
-    // so the player never sees a blank flash between the list and the
-    // combat panel.
     const [enterAnim, setEnterAnim] = useState<
         | { x: number; y: number; w: number; h: number; hue: number; image: string; dungeonId: string }
         | null
     >(null);
     const enterAnimTimeoutsRef = useRef<number[]>([]);
-    // The dungeon the cinematic is leading INTO — read by `skipEntryAnimation`
-    // so a click during the intro can hand the right object to `handleStart`
-    // without waiting for the queued timeout. Reset to null on overlay teardown.
     const pendingDungeonRef = useRef<IDungeon | null>(null);
     useEffect(() => {
         return () => {
@@ -377,16 +288,10 @@ const Dungeon = () => {
         };
     }, []);
 
-    // -- Wave combat state ------------------------------------------------------
-    // A wave now spawns 1–4 monsters at once (see `getWaveComposition`).
-    // `currentMonsters` carries each enemy with per-slot HP + rarity tier so
-    // the arena can render the lineup, the attack callbacks can target the
-    // first alive slot, and the wave-clear handler can iterate kills for
-    // XP/gold/loot rolls.
     interface ICurrentMonster {
-        slot: number;                    // 0..3 — stable arena column
-        monster: IDungeonMonster;        // base stats AFTER scaleDungeonMonsterAsType
-        type: DungeonMonsterType;        // rarity tier this slot was scaled to
+        slot: number;
+        monster: IDungeonMonster;
+        type: DungeonMonsterType;
         currentHp: number;
         maxHp: number;
     }
@@ -396,75 +301,42 @@ const Dungeon = () => {
     const [playerMp, setPlayerMp]             = useState(0);
     const [combatLog, setCombatLog]           = useState<ILogEntry[]>([]);
     const [, setWaveItems]                    = useState<IGeneratedItem[]>([]);
-    // Per-slot hit pulse — incremented on EVERY distinct hit landed against
-    // that monster slot. Drives the keyed flash overlay in EnemyCard so two
-    // hits inside the same 300ms window each get their own visible flash
-    // instead of merging into one (e.g. auto-attack + auto-skill firing on
-    // the same tick). Counter never resets between waves — only the slot
-    // number matters for keying.
     const [monsterHitPulses, setMonsterHitPulses] = useState<Record<number, number>>({});
-    // Slot index of the monster the player is currently swinging at, so the
-    // attack VFX (`attack-${class}`) lands on the right card.
     const [playerAttackingSlot, setPlayerAttackingSlot] = useState<number | null>(null);
 
-    // Skill & potion state
     const [skillCooldowns, setSkillCooldowns] = useState<Record<string, number>>({});
-    const [hpPotionCooldown, setHpPotionCooldown] = useState(0);
-    const [mpPotionCooldown, setMpPotionCooldown] = useState(0);
-    const [pctHpCooldown, setPctHpCooldown] = useState(0);
-    const [pctMpCooldown, setPctMpCooldown] = useState(0);
+    const hpPotionCooldown = useCooldownStore((s) => s.hpPotionCooldown);
+    const mpPotionCooldown = useCooldownStore((s) => s.mpPotionCooldown);
+    const pctHpCooldown = useCooldownStore((s) => s.pctHpCooldown);
+    const pctMpCooldown = useCooldownStore((s) => s.pctMpCooldown);
+    const setHpPotionCooldown = useCooldownStore((s) => s.setHpPotionCooldown);
+    const setMpPotionCooldown = useCooldownStore((s) => s.setMpPotionCooldown);
+    const setPctHpCooldown = useCooldownStore((s) => s.setPctHpCooldown);
+    const setPctMpCooldown = useCooldownStore((s) => s.setPctMpCooldown);
     const [speedMode, setSpeedMode] = useState<'x1' | 'x2' | 'x4'>('x1');
     const speedMult = speedMode === 'x4' ? 4 : speedMode === 'x2' ? 2 : 1;
     const cycleSpeed = useCallback(() => {
-        // Pure state transition — BuffStore sync happens in the
-        // useEffect below to avoid "setState during render" warnings
-        // (calling Zustand inside a React updater fn caused TopHeader
-        // to attempt a re-render mid-Dungeon-render).
         setSpeedMode((s) => (s === 'x1' ? 'x2' : s === 'x2' ? 'x4' : 'x1'));
     }, []);
 
-    // Sync BuffStore.combatSpeedMult with selected speed; reset to 1 on
-    // unmount so skill buffs drain real-time outside the dungeon.
     useEffect(() => {
         useBuffStore.getState().setCombatSpeedMult(speedMult);
         return () => useBuffStore.getState().setCombatSpeedMult(1);
     }, [speedMult]);
 
-    // Cleric Błogosławieństwo accumulator — actual useEffect lives
-    // below where fx + charMaxHp + playerHpRef are all in scope.
     const partyHealAccumRef = useRef(0);
     const { trigger: triggerSkillAnim } = useSkillAnim();
-    // Per-slot combat VFX (skill overlays + floating damage numbers).
-    // Lives in a single hook so each enemy / ally slot has its own
-    // independent stream of visuals — no merging when two hits land in
-    // the same frame. See `useCombatFx` doc-comment for full per-kind
-    // semantics. We then bind `enemyFloats[slot]` / `enemySkill[slot]`
-    // (and the ally side) into the `uiEnemies` / `uiAllies` arrays
-    // built lower in the render so EnemyCard / AllyCard render them
-    // automatically.
     const fx = useCombatFx();
     const skillCooldownRef = useRef<Map<string, number>>(new Map());
     const hpPotionCooldownRef = useRef(0);
     const mpPotionCooldownRef = useRef(0);
     const pctHpCooldownRef = useRef(0);
     const pctMpCooldownRef = useRef(0);
+    useEffect(() => { useCooldownStore.getState().clearAll(); return () => useCooldownStore.getState().clearAll(); }, []);
     const playerMpRef = useRef(0);
 
-    // Animation state — `monsterHitPulses` (per-slot counter) is tracked
-    // above. The player-side hit flash uses a SINGLE counter (there's still
-    // only one player slot) but it's a counter not a boolean — every monster
-    // attack increments it so the keyed flash overlay in AllyCard re-mounts
-    // and replays the animation even when 4 monsters all swing in the same
-    // 300ms window. Without the counter, two near-simultaneous hits would
-    // visually merge into one shake because the boolean class was already on.
     const [playerHitPulse, setPlayerHitPulse] = useState(0);
 
-    // Wave-spawn countdown — flips ON the moment a wave's monster dies and
-    // OFF when the next wave's monster spawns. While ON, an rAF loop fills
-    // `spawnProgress` 0->1 over the speed-scaled `WAVE_SPAWN_DELAY_MS` so
-    // the slim "next monster in…" bar pinned under the header animates
-    // smoothly. We carry the start timestamp + duration in a ref so the
-    // effect can pick the loop back up if speed changes mid-countdown.
     const [waitingForSpawn, setWaitingForSpawn] = useState(false);
     const [spawnProgress, setSpawnProgress] = useState(0);
     const spawnStartRef = useRef<number>(0);
@@ -482,14 +354,8 @@ const Dungeon = () => {
     const logEndRef = useRef<HTMLDivElement>(null);
     const logIdRef = useRef(0);
 
-    // Refs for interval callbacks
     const playerHpRef     = useRef(0);
 
-    // Level-up HP/MP refill — characterStore.addXp refills hp/mp to max on
-    // every level-up, but Dungeon keeps a LOCAL playerHp/playerMp useState
-    // that doesn't see the store-side refill. Without this, leveling up
-    // mid-wave would leave the player's bars stuck at the pre-level-up value
-    // until the next damage tick. We sync the local mirrors here.
     useLevelUpRefill(phase === 'running', useCallback((maxHp, maxMp) => {
         playerHpRef.current = maxHp;
         playerMpRef.current = maxMp;
@@ -497,25 +363,15 @@ const Dungeon = () => {
         setPlayerMp(maxMp);
     }, []));
 
-    // Per-slot live HP for the wave's lineup. Mirrors `currentMonsters[i].currentHp`
-    // but lives outside React state so the high-frequency attack callbacks
-    // can read/write without forcing a render every tick. The state setter
-    // is fired once per damage event for the UI sync.
     const monsterHpsRef   = useRef<number[]>([]);
     const currentWaveRef  = useRef(0);
     const activeDungeonRef = useRef<IDungeon | null>(null);
-    // Snapshot of the wave's spawned monsters so callbacks have access to
-    // `defense` / `name_pl` / `level` without re-deriving from state.
     const currentMonstersRef = useRef<ICurrentMonster[]>([]);
     const phaseRef        = useRef<ScreenPhase>('list');
     const waveItemsRef    = useRef<IGeneratedItem[]>([]);
     const waveXpRef       = useRef(0);
     const waveGoldRef     = useRef(0);
 
-    // Skill-effect session — shared status state across player + per-monster
-    // for DOTs, stuns, marks, immortality, dodges, AOE. Reset on every fresh
-    // dungeon run (see handleStart). Each monster has a stable id of the
-    // form `monster_${wave}_${slot}` so its statuses don't bleed across waves.
     const effectsRef = useRef<ICombatEffectsSession>(newCombatEffectsSession());
     const PLAYER_FX_ID = 'player';
     const monsterFxId = (wave: number, slot: number) => `monster_${wave}_${slot}`;
@@ -526,10 +382,6 @@ const Dungeon = () => {
     const allItems: IBaseItem[] = flattenItemsData(itemsData as Parameters<typeof flattenItemsData>[0]);
     const skillLevels = useSkillStore((s) => s.skillLevels);
 
-    // -- Filter / sort state (per-character via characterScope) --------------
-    // Pulled from settingsStore so the toggles persist between sessions and
-    // across class swaps. Defaults are "show everything" (no filter) so an
-    // existing player opening the dungeon list sees no behavioural change.
     const dungeonFilterAvailableOnly = useSettingsStore((s) => s.dungeonFilterAvailableOnly);
     const dungeonFilterMinLevel      = useSettingsStore((s) => s.dungeonFilterMinLevel);
     const dungeonFilterSortDesc      = useSettingsStore((s) => s.dungeonFilterSortDesc);
@@ -537,31 +389,16 @@ const Dungeon = () => {
     const setDungeonFilterMinLevel      = useSettingsStore((s) => s.setDungeonFilterMinLevel);
     const setDungeonFilterSortDesc      = useSettingsStore((s) => s.setDungeonFilterSortDesc);
 
-    // Configured auto-potion ids — drive the potion-dock display so the UI
-    // shows the SPECIFIC potion the player selected (not the strongest owned).
     const autoPotionHpId    = useSettingsStore((s) => s.autoPotionHpId);
     const autoPotionMpId    = useSettingsStore((s) => s.autoPotionMpId);
     const autoPotionPctHpId = useSettingsStore((s) => s.autoPotionPctHpId);
     const autoPotionPctMpId = useSettingsStore((s) => s.autoPotionPctMpId);
 
-    // NOTE: `if (!character) return …` early-return was moved DOWN past every
-    // hook in this component (search for "// Dungeon render guard (after-hooks)").
-    // The original early return here violated Rules of Hooks — first render
-    // with `character === null` skipped all subsequent hooks; second render
-    // with character hydrated registered them, mismatching hook count and
-    // crashing the <Dungeon> subtree with the React "change in order of Hooks"
-    // error. The derived values below use `character?.X ?? 0` so they still
-    // compute safely when character is null (their results are unused in
-    // that case — the post-hooks guard renders the spinner instead).
     const eqStats   = getTotalEquipmentStats(equipment, allItems);
     const tb        = getTrainingBonuses(skillLevels, character?.class ?? 'Knight');
-    // Gear-gap penalty: under-geared players deal proportionally less damage so
-    // low-level gear can't practically clear far-higher-level dungeons.
     const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), activeDungeon?.level ?? 0);
     const charAtk   = ((character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult;
     const charDef   = (character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus();
-    // Include active transform in max HP/MP so auto-potion thresholds use the
-    // true cap.
     const effChar   = character ? getEffectiveChar(character) : null;
     const baseMaxHp = (character?.max_hp ?? 0) + eqStats.hp + tb.max_hp + getElixirHpBonus();
     const baseMaxMp = (character?.max_mp ?? 0) + eqStats.mp + tb.max_mp + getElixirMpBonus();
@@ -569,11 +406,6 @@ const Dungeon = () => {
     const charMaxMp = effChar?.max_mp ?? baseMaxMp;
     const charSpeed = ((character?.attack_speed ?? 1) + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier();
 
-    // Cleric Błogosławieństwo pulse — 1-Hz game-time tick that pushes
-    // a +X HP float on the player slot every in-game second. Dungeon
-    // is solo so only slot 0 fires. Heal also applied to playerHpRef
-    // so the local bar rises (TopHeader keeps characterStore.hp in
-    // sync via its central tick).
     useEffect(() => {
         const TICK = 250;
         const id = setInterval(() => {
@@ -603,13 +435,8 @@ const Dungeon = () => {
             }
         }, TICK);
         return () => clearInterval(id);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fx, charMaxHp]);
 
-    // Potions shown in the dock — respect the player's auto-potion CONFIG
-    // (resolveAutoPotionElixir picks the SPECIFIC configured potion) so the
-    // UI matches what auto-drink actually uses. Falls back to the best owned
-    // potion when the configured one isn't held, so the slot never goes empty.
     const dockLevel = character?.level ?? 1;
     const bestHpPotion =
         resolveAutoPotionElixir(autoPotionHpId, 'hp', 'flat', consumables, dockLevel)
@@ -624,25 +451,9 @@ const Dungeon = () => {
         resolveAutoPotionElixir(autoPotionPctMpId, 'mp', 'pct', consumables, dockLevel)
         ?? getBestPotionUtil(PCT_MP_POTIONS, consumables, dockLevel);
 
-    // Keep refs in sync
     phaseRef.current = phase;
     activeDungeonRef.current = activeDungeon;
 
-    // -- Live HP/MP mirror -> characterStore ---------------------------------
-    // Mirrors the local `playerHp` / `playerMp` state into the global
-    // characterStore on every change so the TopHeader's mini-bars (which
-    // read `character.hp` / `character.mp`) update in real time as the
-    // player takes hits / heals / drinks potions inside the dungeon. Gated
-    // by the `running` phase so the initial 0 state we hold before
-    // `handleStart` doesn't clobber the real character HP.
-    //
-    // CRITICAL: clamp to the EFFECTIVE max (base + equipment + training +
-    // active elixirs + transform), NOT the raw `liveChar.max_hp`. Without
-    // this, drinking an HP potion while a +50% HP elixir is active would
-    // bring local HP from 100 -> 130 (cap = 150 effective) but the mirror
-    // would clamp the store write to 100 (base) — making the TopHeader
-    // bar show a stale, lower value, and worse, persisting a sub-effective
-    // HP that any later "read character.hp" branch would see as truth.
     useEffect(() => {
         if (phase !== 'running') return;
         const liveChar = useCharacterStore.getState().character;
@@ -656,20 +467,10 @@ const Dungeon = () => {
         useCharacterStore.getState().updateCharacter({ hp: safeHp, mp: safeMp });
     }, [playerHp, playerMp, phase]);
 
-    // -- URL-leave / tab-close = death (anti-cheat) -------------------------
-    // If the player navigates away mid-fight (back button, address bar, tab
-    // close) we treat it as a real death — see `applyCombatLeaveDeath` for
-    // why. The guard fires at most ONCE per leave event via `appliedRef` so
-    // the unmount cleanup AND the beforeunload listener don't double-tap
-    // the same death. Reset on every fresh combat run by `handleStart`.
     const leavePenaltyAppliedRef = useRef(false);
     useEffect(() => {
         const fire = () => {
             if (leavePenaltyAppliedRef.current) return;
-            // Only the actively-fighting phase counts — lobby/list/result
-            // are safe to leave from. Refs (not state) so the cleanup
-            // closure sees the LATEST phase, not whatever was current
-            // when the effect mounted.
             if (phaseRef.current !== 'running') return;
             const dungeon = activeDungeonRef.current;
             if (!dungeon) return;
@@ -680,14 +481,9 @@ const Dungeon = () => {
                 sourceLevel: dungeon.level,
             });
         };
-        // beforeunload: tab close / refresh / browser-quit. Without this the
-        // saved-on-unload localStorage snapshot would NOT include the penalty
-        // and the player could resurrect a clean character on reload.
         window.addEventListener('beforeunload', fire);
         return () => {
             window.removeEventListener('beforeunload', fire);
-            // useEffect cleanup also covers in-app navigation (the most
-            // common cheat vector — typing /town in the URL bar).
             fire();
         };
     }, []);
@@ -695,35 +491,23 @@ const Dungeon = () => {
     const addLog = useCallback((text: string, type: ILogEntry['type']) => {
         const id = ++logIdRef.current;
         setCombatLog((prev) => [...prev.slice(-50), { id, text, type }]);
-        // Mirror into the unified session log (uncapped) so the shared
-        // <CombatLogsModal> in <CombatSubControls> can render the full
-        // dungeon-run feed without each view rolling its own modal. The local
-        // `'wave'` separator type doesn't exist in the store union -> map to
-        // `'system'` so the modal renders it as a neutral log line.
         const sessionType = type === 'wave' ? 'system' : type;
         useCombatStore.getState().addSessionLog(text, sessionType);
     }, []);
 
-    // Floating damage numbers were tied to the legacy bespoke arena. The
-    // shared CombatUI tree communicates hits via card flash (`isHit`), HP-bar
-    // tween, and the session log instead, so this is a no-op kept only to
-    // avoid touching every callsite. Drop in a later cleanup pass.
     const showFloatingDmg = useCallback((_text: string, _type: string, _side?: 'left' | 'right') => {
         void _text; void _type; void _side;
     }, []);
 
-    // Auto-scroll log
     useEffect(() => {
         logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [combatLog.length]);
 
-    // -- Cooldown tick (100ms, scaled by speedMult) ---------------------------
     useEffect(() => {
         if (phase !== 'running') return;
         const TICK_MS = 100;
         const DEC = TICK_MS * speedMult;
         const id = setInterval(() => {
-            // Skill cooldowns
             setSkillCooldowns((prev) => {
                 const next = { ...prev };
                 let changed = false;
@@ -735,16 +519,16 @@ const Dungeon = () => {
                 }
                 return changed ? next : prev;
             });
-            // Potion cooldowns
-            setHpPotionCooldown((v) => { const nv = Math.max(0, v - DEC); hpPotionCooldownRef.current = nv; return nv; });
-            setMpPotionCooldown((v) => { const nv = Math.max(0, v - DEC); mpPotionCooldownRef.current = nv; return nv; });
-            setPctHpCooldown((v) => { const nv = Math.max(0, v - DEC); pctHpCooldownRef.current = nv; return nv; });
-            setPctMpCooldown((v) => { const nv = Math.max(0, v - DEC); pctMpCooldownRef.current = nv; return nv; });
+            useCooldownStore.getState().tick(DEC);
+            const _cd = useCooldownStore.getState();
+            hpPotionCooldownRef.current = _cd.hpPotionCooldown;
+            mpPotionCooldownRef.current = _cd.mpPotionCooldown;
+            pctHpCooldownRef.current = _cd.pctHpCooldown;
+            pctMpCooldownRef.current = _cd.pctMpCooldown;
         }, TICK_MS);
         return () => clearInterval(id);
     }, [phase, speedMult]);
 
-    // -- Helpers: heal / spend MP ---------------------------------------------
     const healPlayerHp = useCallback((amount: number, max: number) => {
         const newHp = Math.min(max, playerHpRef.current + amount);
         playerHpRef.current = newHp;
@@ -757,7 +541,6 @@ const Dungeon = () => {
         setPlayerMp(newMp);
     }, []);
 
-    // spendPlayerMp – handled inline in skill/attack callbacks via playerMpRef
 
     const startHpCooldown = useCallback(() => {
         setHpPotionCooldown(POTION_COOLDOWN_MS);
@@ -769,21 +552,14 @@ const Dungeon = () => {
         mpPotionCooldownRef.current = POTION_COOLDOWN_MS;
     }, []);
 
-    // -- Settings toggles --------------------------------------------------
-    const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore();
+    const { skillMode, setSkillMode, autoPotionHpEnabled, autoPotionMpEnabled } = useSettingsStore(useShallow((s) => ({ skillMode: s.skillMode, setSkillMode: s.setSkillMode, autoPotionHpEnabled: s.autoPotionHpEnabled, autoPotionMpEnabled: s.autoPotionMpEnabled })));
 
-    // -- Auto-potion helper --------------------------------------------------
     const tryAutoPotion = useCallback(() => {
         const settings = useSettingsStore.getState();
         const inv = useInventoryStore.getState();
         const hp = playerHpRef.current;
         const mp = playerMpRef.current;
 
-        // Bug 2 (2026-04): pull the EFFECTIVE max HP/MP fresh on every fire so
-        // active-but-stale buffs (e.g. a +500 / +25% elixir that ticked down
-        // mid-combat without re-rendering Dungeon.tsx) can't clamp the heal at
-        // the wrong cap. Closure-captured `charMaxHp` was the old culprit
-        // behind "potion count went down but HP barely moved" reports.
         const freshChar = useCharacterStore.getState().character;
         const freshEff = freshChar ? getEffectiveChar(freshChar) : null;
         const liveMaxHp = freshEff?.max_hp ?? charMaxHp;
@@ -794,9 +570,6 @@ const Dungeon = () => {
         const hpPct = liveMaxHp > 0 ? (hp / liveMaxHp) * 100 : 100;
         const mpPct = liveMaxMp > 0 ? (mp / liveMaxMp) * 100 : 100;
 
-        // Hard safety: never fire a potion when HP/MP are already at (or above) max —
-        // regardless of threshold. Guards against stale refs, transform-cap drift,
-        // and floating-point rounding when the user sees "100%" in the UI.
         const hpAtFull = liveMaxHp > 0 && hp >= liveMaxHp;
         const mpAtFull = liveMaxMp > 0 && mp >= liveMaxMp;
 
@@ -817,7 +590,6 @@ const Dungeon = () => {
             return null;
         };
 
-        // Flat HP
         if (!hpAtFull && settings.autoPotionHpEnabled && settings.autoPotionHpThreshold > 0 && hpPct <= settings.autoPotionHpThreshold && hpPotionCooldownRef.current <= 0) {
             const pot = resolveAmount(settings.autoPotionHpId, 'flat', 'hp', liveMaxHp);
             if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
@@ -828,7 +600,6 @@ const Dungeon = () => {
             }
         }
 
-        // Flat MP
         if (!mpAtFull && settings.autoPotionMpEnabled && settings.autoPotionMpThreshold > 0 && mpPct <= settings.autoPotionMpThreshold && mpPotionCooldownRef.current <= 0) {
             const pot = resolveAmount(settings.autoPotionMpId, 'flat', 'mp', liveMaxMp);
             if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
@@ -839,7 +610,6 @@ const Dungeon = () => {
             }
         }
 
-        // Pct HP
         if (!hpAtFull && settings.autoPotionPctHpEnabled && settings.autoPotionPctHpThreshold > 0 && hpPct <= settings.autoPotionPctHpThreshold && pctHpCooldownRef.current <= 0) {
             const pot = resolveAmount(settings.autoPotionPctHpId, 'pct', 'hp', liveMaxHp);
             if (pot && pot.amount > 0 && hpMissing >= pot.amount) {
@@ -852,7 +622,6 @@ const Dungeon = () => {
             }
         }
 
-        // Pct MP
         if (!mpAtFull && settings.autoPotionPctMpEnabled && settings.autoPotionPctMpThreshold > 0 && mpPct <= settings.autoPotionPctMpThreshold && pctMpCooldownRef.current <= 0) {
             const pot = resolveAmount(settings.autoPotionPctMpId, 'pct', 'mp', liveMaxMp);
             if (pot && pot.amount > 0 && mpMissing >= pot.amount) {
@@ -876,28 +645,22 @@ const Dungeon = () => {
         pctMpCooldownRef.current = PCT_POTION_COOLDOWN_MS;
     }, []);
 
-    // -- Manual potion use ---------------------------------------------------
     const doUsePotion = useCallback((elixirId: string) => {
         const elixir = ELIXIRS.find((e) => e.id === elixirId);
         if (!elixir) return;
         const isHp = elixir.effect.startsWith('heal_hp');
         const isMp = elixir.effect.startsWith('heal_mp');
         const isPct = elixir.effect.includes('_pct_');
-        // Check cooldown for the correct slot
         if (isHp && !isPct && hpPotionCooldownRef.current > 0) return;
         if (isMp && !isPct && mpPotionCooldownRef.current > 0) return;
         if (isHp && isPct && pctHpCooldownRef.current > 0) return;
         if (isMp && isPct && pctMpCooldownRef.current > 0) return;
         const used = useInventoryStore.getState().useConsumable(elixirId);
         if (!used) return;
-        // Start cooldown for the correct slot
         if (isHp && !isPct) startHpCooldown();
         if (isMp && !isPct) startMpCooldown();
         if (isHp && isPct) startPctHpCooldown();
         if (isMp && isPct) startPctMpCooldown();
-        // Bug 2: read fresh effective max so a buff that just landed is
-        // reflected immediately. Without this, the closure-captured
-        // charMaxHp could clamp the heal at the pre-buff cap.
         const freshChar = useCharacterStore.getState().character;
         const freshEff = freshChar ? getEffectiveChar(freshChar) : null;
         const liveMaxHp = freshEff?.max_hp ?? charMaxHp;
@@ -918,11 +681,6 @@ const Dungeon = () => {
         }
     }, [charMaxHp, charMaxMp, healPlayerHp, healPlayerMp, startHpCooldown, startMpCooldown, startPctHpCooldown, startPctMpCooldown, addLog]);
 
-    // -- Start a wave's monsters (1–4 enemies at once) ------------------------
-    // The composition + count come from `getWaveComposition` / `pickWaveMonsters`
-    // in dungeonSystem. Each spawned monster is independently scaled to its own
-    // tier (lead = wave's nominal type, escorts = same or one tier below) so the
-    // HP bars and damage numbers match the per-slot rarity badge.
     const startWaveMonster = useCallback((dungeon: IDungeon, waveIdx: number, hp: number) => {
         const totalWaves = getDungeonWaves(dungeon);
         const dLvl       = getDungeonMinLevel(dungeon);
@@ -944,15 +702,8 @@ const Dungeon = () => {
         setCurrentMonsters(spawned);
         currentMonstersRef.current = spawned;
         monsterHpsRef.current = spawned.map((m) => m.currentHp);
-        // Reset pulse counters on every fresh wave so the first hit on any
-        // slot bumps from 0->1 (rendered) instead of e.g. 5->6 with the
-        // EnemyCard already holding key=5 from a finished animation.
         setMonsterHitPulses({});
         setPlayerAttackingSlot(null);
-        // Drop any in-flight FX from the previous wave (skill overlays still
-        // animating, leftover damage floats) so the new wave starts visually
-        // clean. Without this, the floats from the killing blow on wave N
-        // would briefly hover over the freshly-spawned monsters of wave N+1.
         fx.resetFx();
 
         setPlayerHp(hp);
@@ -972,13 +723,6 @@ const Dungeon = () => {
         );
     }, [allMonsters, addLog, fx]);
 
-    // -- Backend-authoritative dungeon resolve (opt-in) ----------------------
-    // Tryb backendu: serwer rozstrzyga CAŁY dungeon jednym wywołaniem
-    // POST /dungeon/{id}/resolve i zwraca wynik. Pomijamy lokalną symulację
-    // fal, po sukcesie re-hydratujemy store'y z GET /state (syncFromBackend),
-    // a odpowiedź napędza ekran wyniku. Odpowiedź jest `unknown` — zawężamy
-    // ją defensywnie (żaden `any`), a gold liczymy z delty inventoryStore gdy
-    // serwer nie zwraca liczby, więc ekran wygranej nie pokazuje +0.
     const resolveDungeonViaBackend = useCallback(async (dungeon: IDungeon): Promise<void> => {
         const liveChar = useCharacterStore.getState().character;
         if (!liveChar) return;
@@ -1020,16 +764,12 @@ const Dungeon = () => {
             setResultKind(won ? 'win' : 'death');
             setPhase('result');
         } catch (e) {
-            // Błąd backendu nie może wywalić gry — wracamy do listy lochów.
             console.warn('[dungeon] dungeonResolve failed', e);
             setPhase('list');
         }
     }, []);
 
-    // -- Start dungeon --------------------------------------------------------
     const handleStart = useCallback((dungeon: IDungeon) => {
-        // Tryb backendu (opt-in): oddajemy rozstrzygnięcie serwerowi i pomijamy
-        // całą kliencką symulację fal poniżej. Domyślna ścieżka nietknięta.
         if (isBackendCombatDelegated()) {
             void resolveDungeonViaBackend(dungeon);
             return;
@@ -1043,19 +783,8 @@ const Dungeon = () => {
         waveItemsRef.current = [];
         waveXpRef.current = 0;
         waveGoldRef.current = 0;
-        // Fresh session for the shared backpack/logs HUD — every new dungeon
-        // run starts with empty drops/xp/gold/kills, mirrored from the per-
-        // wave handlers below.
         useCombatStore.getState().clearCombatSession();
-        // Each fresh run is a new "leave guard" cycle — clearing the flag
-        // here so a player who survived run #1 (clean exit) can still be
-        // punished for bailing mid-fight on run #2.
         leavePenaltyAppliedRef.current = false;
-        // HP/MP persistence: every dungeon run starts from the player's
-        // CURRENT pool (clamped to live max), not full. So if you bailed out
-        // of a previous fight at 23% HP, that's the HP you start the next
-        // one with. Full heal only happens via potions, rest, or death
-        // recovery — never as a hidden side-effect of starting combat.
         const startChar = useCharacterStore.getState().character;
         const startHp = startChar
             ? Math.max(1, Math.min(charMaxHp, startChar.hp ?? charMaxHp))
@@ -1075,41 +804,14 @@ const Dungeon = () => {
         pctHpCooldownRef.current = 0;
         setPctMpCooldown(0);
         pctMpCooldownRef.current = 0;
-        // Fresh effect session — clear all timers / DOTs / queues from prior
-        // runs so a leftover stun doesn't carry over into a new dungeon.
         effectsRef.current = newCombatEffectsSession();
-        // Drop any necro summons left from a prior dungeon run.
         useNecroSummonStore.getState().clear(PLAYER_FX_ID);
         setPhase('running');
         startWaveMonster(dungeon, 0, startHp);
     }, [charMaxHp, charMaxMp, startWaveMonster, resolveDungeonViaBackend]);
 
-    /**
-     * Click handler for the per-card "Wejdź" button. Drives the cinematic
-     * entry sequence — see the comment block on `ENTRY_ANIM_TOTAL_MS` for
-     * the full timeline. We:
-     *
-     *   1. Capture the source card's bounding box + visual identity
-     *      (hue + image) so the overlay can morph from the tile.
-     *   2. Flip the screen into the new `'entering'` phase — combat does
-     *      NOT mount yet, so monsters don't tick or attack while the
-     *      cinematic plays.
-     *   3. Schedule combat start at `ENTRY_ANIM_COMBAT_START_AT_MS` so the
-     *      combat HUD mounts UNDER the still-fading overlay (the reveal
-     *      then crossfades from black to combat instead of snapping in).
-     *   4. Clear the overlay at `ENTRY_ANIM_TOTAL_MS` so the cinematic
-     *      formally ends.
-     *
-     * Click anywhere on the overlay during the cinematic to skip — handled
-     * by `skipEntryAnimation` below.
-     *
-     * Reduced-motion users + a missing card element bypass the animation
-     * entirely (instant `handleStart`).
-     */
     const handleEnterClick = useCallback(
         (e: React.MouseEvent<HTMLButtonElement>, dungeon: IDungeon) => {
-            // Tryb backendu (opt-in): pomijamy cinematic — serwer rozstrzyga
-            // dungeon natychmiast (handleStart routuje do resolveDungeonViaBackend).
             if (isBackendCombatDelegated()) {
                 handleStart(dungeon);
                 return;
@@ -1124,9 +826,6 @@ const Dungeon = () => {
             const rect = card.getBoundingClientRect();
             const dungeonLvl = getDungeonMinLevel(dungeon);
             const url = getDungeonImage(dungeon.id);
-            // Stash the dungeon to start in BOTH the overlay state (for
-            // visuals) and a ref (so the skip handler can access it
-            // without a stale closure on the React state setter).
             pendingDungeonRef.current = dungeon;
             setEnterAnim({
                 x: rect.left,
@@ -1138,19 +837,12 @@ const Dungeon = () => {
                 dungeonId: dungeon.id,
             });
             setPhase('entering');
-            // Cancel any in-flight previous morph so a rapid double-click
-            // doesn't leave a stale overlay on screen.
             enterAnimTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
             enterAnimTimeoutsRef.current = [];
-            // T+2.4s — mount combat HUD under the still-opaque overlay so
-            // the reveal portion of the animation (last ~1.2s) crossfades
-            // from black to combat instead of popping in at the very end.
             const tCombat = window.setTimeout(() => {
                 handleStart(dungeon);
             }, ENTRY_ANIM_COMBAT_START_AT_MS);
             enterAnimTimeoutsRef.current.push(tCombat);
-            // T+2.0s — animation done, drop the overlay so the combat
-            // HUD becomes the sole visible layer.
             const tEnd = window.setTimeout(() => {
                 setEnterAnim(null);
             }, ENTRY_ANIM_TOTAL_MS);
@@ -1159,20 +851,6 @@ const Dungeon = () => {
         [enterAnim, handleStart],
     );
 
-    /**
-     * Skip the cinematic — clicked anywhere on the overlay during the
-     * 'entering' phase. We:
-     *
-     *   1. Cancel every queued timeout so they don't fire later and
-     *      double-start combat.
-     *   2. If combat hasn't mounted yet (still in 'entering'), call
-     *      `handleStart` immediately so the player jumps straight in.
-     *   3. Clear the overlay state so AnimatePresence runs the (fast)
-     *      exit animation on the overlay div.
-     *
-     * Idempotent — calling twice is a no-op because `enterAnim` becomes
-     * null after the first invocation and the early return short-circuits.
-     */
     const skipEntryAnimation = useCallback(() => {
         if (!enterAnim) return;
         enterAnimTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
@@ -1183,11 +861,6 @@ const Dungeon = () => {
         setEnterAnim(null);
     }, [enterAnim, handleStart]);
 
-    // -- Handle a single monster dying inside the current wave ---------------
-    // Per-slot rewards (XP, gold, mastery, kill counters, item drops, potion
-    // drops) fire here. Wave-clear logic (advance wave / end dungeon) only
-    // triggers once every slot in `currentMonstersRef.current` reports
-    // `currentHp <= 0`.
     const handleWaveMonsterDeath = useCallback((slotIdx: number) => {
         const dungeon = activeDungeonRef.current;
         if (!dungeon || !character) return;
@@ -1196,19 +869,12 @@ const Dungeon = () => {
         const killed = slots[slotIdx];
         if (!killed) return;
 
-        // Tick combat elixirs per kill (was per wave — now matches kill cadence
-        // since waves spawn 1–4 monsters and we want the elixir tick to scale
-        // with the actual fight pace).
         tickCombatElixirs(1500);
 
         const totalWaves = getDungeonWaves(dungeon);
         const wave = currentWaveRef.current;
         const isBossWave = wave === totalWaves - 1;
 
-        // Roll item drop per kill — boss-wave roll for slots inside the boss
-        // wave, regular roll otherwise. The lead slot of a boss wave still
-        // uses the boss roll so the legendary/mythic shower stays attached
-        // to the lead boss kill rather than a random escort slot.
         const drop = rollDungeonItemDrop(dungeon, character.level, allItems, isBossWave);
         if (drop) {
             waveItemsRef.current = [...waveItemsRef.current, drop];
@@ -1224,8 +890,6 @@ const Dungeon = () => {
             useQuestStore.getState().addProgress('drop_rarity', drop.rarity, 1);
         }
 
-        // Potion drops keyed off the killed monster's level (mega potions
-        // gated to lvl ≥100 inside the helper).
         const potionDrops = rollPotionDrop(killed.monster.level);
         if (potionDrops.length > 0) {
             const inv = useInventoryStore.getState();
@@ -1235,20 +899,15 @@ const Dungeon = () => {
             }
         }
 
-        // Per-kill task / quest / mastery progress.
         const killedMonster = killed.monster;
         useTaskStore.getState().addKill(killedMonster.id, killedMonster.level, 1);
         useQuestStore.getState().addProgress('kill', killedMonster.id, 1);
         useDailyQuestStore.getState().addProgress('kill_any', 1);
         useMasteryStore.getState().addMasteryKills(killedMonster.id, 1);
-        // Use the SLOT's rarity (Boss/Legendary/Epic/Strong/Normal) for the
-        // session-kill pill so the player sees per-mob rarity counters
-        // instead of every kill collapsing into the lead's tier.
         useCombatStore.getState().incrementSessionKill(
             killed.type.toLowerCase() as TMonsterRarity,
         );
 
-        // Mastery N7: per-kill XP/Gold bonus (+2% per level, cap +50%)
         const killMasteryLvl = useMasteryStore.getState().getMasteryLevel(killedMonster.id);
         const killXpMult = getMasteryXpMultiplier(killMasteryLvl);
         const killGoldMult = getMasteryGoldMultiplier(killMasteryLvl);
@@ -1264,19 +923,12 @@ const Dungeon = () => {
             }
         }
 
-        // Wave-clear gate — only proceed when EVERY slot in the wave is dead.
         const allDead = currentMonstersRef.current.every((m) => m.currentHp <= 0);
         if (!allDead) return;
 
         const hp = playerHpRef.current;
 
         if (isBossWave) {
-            // ALL WAVES CLEARED — reward = (accumulated monster XP/gold × 4)
-            //                            + level-driven completion bonus.
-            // The bonus differentiates dungeons that share a base bestiary
-            // tail (e.g. lvl 960 vs 980) so progression keeps moving.
-            //   bonus_xp   = dungeon.level²        (lvl 1 = +1, lvl 900 = +810k)
-            //   bonus_gold = dungeon.level × 1 000 (lvl 1 = +1k, lvl 960 = +9,6 cc)
             const DUNGEON_REWARD_MULTIPLIER = 4;
             const dungeonLevel = dungeon.level ?? 1;
             const xpBonus = dungeonLevel * dungeonLevel;
@@ -1285,17 +937,13 @@ const Dungeon = () => {
             const xp = waveXpRef.current * DUNGEON_REWARD_MULTIPLIER + xpBonus;
             const items = waveItemsRef.current;
 
-            // Apply rewards
             const inv = useInventoryStore.getState();
             inv.addGold(gold);
             const xpResult = useCharacterStore.getState().addXp(xp);
             for (const gen of items) inv.addItem(buildItem(gen));
 
-            // Final XP/Gold tally for the unified backpack modal — drop-by-
-            // drop appends are already in `useCombatStore.lastDrops`.
             useCombatStore.getState().addSessionStats(xp, gold);
 
-            // Spell chest drops (dungeon = 1.5x multiplier)
             const dungeonLvl = dungeon.level ?? 1;
             const chestDrops = rollSpellChestDrop(dungeonLvl, 'normal', true, false);
             const chestNames: string[] = [];
@@ -1305,7 +953,6 @@ const Dungeon = () => {
             }
 
             setDungeonCompleted(dungeon.id);
-            // Track dungeon completion for quests
             useQuestStore.getState().addProgress('dungeon', dungeon.id, 1);
             useQuestStore.getState().addProgress('complete_dungeons_any', 'any', 1);
             useDailyQuestStore.getState().addProgress('complete_dungeon', 1);
@@ -1316,20 +963,6 @@ const Dungeon = () => {
             }
             setResult({ success: true, wavesCleared: totalWaves, playerHpLeft: hp, gold, xp, items });
             setResultKind('win');
-            // Persist the player's end-of-run HP/MP back to the character
-            // store so the next combat (any view) starts from this exact
-            // state. Winning the dungeon is no longer a hidden full heal —
-            // it's just a victory. (Full heal still happens on real death.)
-            //
-            // CRITICAL FIX (HP-drops-to-tiny-percent bug):
-            //   Recompute the EFFECTIVE max HP/MP using the post-addXp
-            //   character so a level-up's "full heal" lands at the
-            //   displayed bar's ceiling (base + equipment + training +
-            //   elixir + transform). Without this, addXp's internal heal
-            //   only counts base + equipment + training (see
-            //   getEffectiveMaxBonuses in characterStore.ts), so an active
-            //   elixir or transform leaves the player at a tiny fraction
-            //   of the bar even on a clean kill.
             const liveCharAfter = useCharacterStore.getState().character;
             if (liveCharAfter) {
                 const eqLive = getTotalEquipmentStats(equipment, allItems);
@@ -1340,22 +973,16 @@ const Dungeon = () => {
                 const liveEffectiveMaxHp = effLive?.max_hp ?? baseMaxHpLive;
                 const liveEffectiveMaxMp = effLive?.max_mp ?? baseMaxMpLive;
                 const finalHp = xpResult.levelsGained > 0
-                    ? liveEffectiveMaxHp                                                       // level-up = full heal at the displayed max
-                    : Math.max(1, Math.min(liveEffectiveMaxHp, hp));                           // no level-up = preserve in-run damage
+                    ? liveEffectiveMaxHp
+                    : Math.max(1, Math.min(liveEffectiveMaxHp, hp));
                 const finalMp = xpResult.levelsGained > 0
                     ? liveEffectiveMaxMp
                     : Math.max(0, Math.min(liveEffectiveMaxMp, playerMpRef.current));
                 useCharacterStore.getState().updateCharacter({ hp: finalHp, mp: finalMp });
             }
-            // Clean win — disable the leave guard so closing the result
-            // screen doesn't punish a player who actually finished the run.
             leavePenaltyAppliedRef.current = true;
             setPhase('result');
         } else {
-            // Next wave after a short pause — the slim spawn-timer bar
-            // under the header animates over this interval. Speed-scaled
-            // so the x2/x4 buttons collapse the wait alongside the
-            // attack tempo (otherwise the lull stretches the run out).
             const nextWave = wave + 1;
             setCurrentWave(nextWave);
             addLog(`:check-mark-button: Fala ${wave + 1} zaliczona! HP: ${hp}/${charMaxHp}`, 'system');
@@ -1366,14 +993,6 @@ const Dungeon = () => {
             setWaitingForSpawn(true);
             setTimeout(() => {
                 if (phaseRef.current === 'running') {
-                    // Read FRESH HP at the moment of wave start so any heal
-                    // that landed during the spawn delay (auto-potion firing
-                    // mid-tick, manual potion sip, regen) is preserved
-                    // instead of being overwritten by the stale `hp` snapshot
-                    // captured back at wave-clear time. This was the cause
-                    // of "potion heals get reverted at wave end" — closing
-                    // over a pre-heal value clobbered the fresh post-heal
-                    // ref read.
                     startWaveMonster(dungeon, nextWave, playerHpRef.current);
                 }
                 setWaitingForSpawn(false);
@@ -1382,21 +1001,15 @@ const Dungeon = () => {
         }
     }, [character, allItems, addLog, setDungeonCompleted, charMaxHp, charMaxMp, startWaveMonster, speedMult]);
 
-    // -- Handle player death --------------------------------------------------
     const handlePlayerDeath = useCallback(() => {
         const dungeon = activeDungeonRef.current;
         if (!dungeon) return;
-        // Real combat death is the canonical penalty for this run — flag the
-        // leave-guard as already-applied so the unmount cleanup doesn't fire
-        // a SECOND penalty when the player closes the result screen.
         leavePenaltyAppliedRef.current = true;
         const wave = currentWaveRef.current;
         const totalWaves = getDungeonWaves(dungeon);
 
-        // Apply death penalty (same as normal combat)
         const char = useCharacterStore.getState().character;
         if (char) {
-            // Log death to global deaths feed (best-effort)
             if (isBackendMode() && char) {
                 void backendApi.logDeath(char.id, {
                     source: 'dungeon',
@@ -1416,9 +1029,6 @@ const Dungeon = () => {
                 });
             }
 
-            // Unified protection (2026-06-21): ONE item (death_protection elixir
-            // first, else amulet_of_loss) shields EVERYTHING — no level, no xp,
-            // no skill xp, no item loss — on both death and flee.
             const prot = consumeDeathProtection();
 
             useCharacterStore.getState().fullHealEffective();
@@ -1430,7 +1040,6 @@ const Dungeon = () => {
             let skillXpLossPercent = 0;
 
             if (prot.isProtected) {
-                // ZERO loss: keep level/xp/skill xp/items intact, only full-heal.
                 const savedByTxt = prot.consumedId === 'death_protection'
                     ? 'Eliksir Ochrony'
                     : 'Amulet of Loss';
@@ -1458,7 +1067,6 @@ const Dungeon = () => {
                     addLog(`:skull: Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony. ${skillPctTxt}`, 'system');
                 }
 
-                // Item loss happens on UNPROTECTED DEATH ONLY.
                 const itemsLost = useInventoryStore.getState().applyDeathItemLoss(false, char.level);
                 if (itemsLost > 0) {
                     addLog(`:skull: Stracileś ${itemsLost} przedmiot(ow) przy śmierci!`, 'system');
@@ -1467,7 +1075,6 @@ const Dungeon = () => {
 
             void saveCurrentCharacterStores();
 
-            // Trigger epic death overlay (auto-navigates to town)
             useDeathStore.getState().triggerDeath({
                 killedBy: dungeon.name_pl,
                 sourceLevel: dungeon.level,
@@ -1483,22 +1090,13 @@ const Dungeon = () => {
             addLog(`:skull: Poległeś na fali ${wave + 1}/${totalWaves}! Dungeon nieukończony.`, 'system');
         }
 
-        // Death wipes the in-flight session feed/loot — the death modal owns
-        // the post-mortem, so the unified backpack/logs HUD should reset.
         useCombatStore.getState().clearCombatSession();
-        // Drop necro summons — corpses don't follow the necro into the
-        // afterlife.
         useNecroSummonStore.getState().clear(PLAYER_FX_ID);
         setResult({ success: false, wavesCleared: wave, playerHpLeft: 0, gold: 0, xp: 0, items: [] });
         setResultKind('death');
         setPhase('result');
     }, [addLog]);
 
-    // -- Helpers for multi-monster targeting ----------------------------------
-    // Both attack callbacks below funnel through these so the "front of the
-    // line" rule (player always swings at the first alive slot) is enforced
-    // in one place. Mutates the shared HP ref + the slot-keyed React state
-    // and returns the post-hit HP for the caller's death-check.
     const getFirstAliveSlot = useCallback((): number => {
         const hps = monsterHpsRef.current;
         for (let i = 0; i < hps.length; i++) {
@@ -1513,13 +1111,6 @@ const Dungeon = () => {
         const after = Math.max(0, before - dmg);
         hps[slot] = after;
 
-        // CRITICAL: update `currentMonstersRef.current` synchronously OUTSIDE
-        // the setState updater. The wave-clear gate inside
-        // `handleWaveMonsterDeath` reads `currentMonstersRef.current.every(
-        // m => m.currentHp <= 0)` immediately after the kill — if we leave
-        // the ref update inside the React updater (which can run async under
-        // batched state), the check sees stale HP and the wave never
-        // advances past the first kill. (Bug fix: dungeon stuck on wave 1.)
         const cur = currentMonstersRef.current;
         if (!cur[slot]) return after;
         const next = cur.slice();
@@ -1529,10 +1120,8 @@ const Dungeon = () => {
         return after;
     }, []);
 
-    // -- Manual skill use (click a slot when skillMode === 'manual') ----------
     const doManualSkill = useCallback((slotIdx: 0 | 1 | 2 | 3) => {
         if (phaseRef.current !== 'running') return;
-        // Stun gate — caster cannot cast while paralysed.
         if (isCombatantStunned(effectsRef.current, PLAYER_FX_ID)) return;
         const targetSlot = getFirstAliveSlot();
         if (targetSlot < 0) return;
@@ -1541,13 +1130,11 @@ const Dungeon = () => {
         if (!skillId) return;
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-        // 2026-06-21: recast window scales with combat speed (see auto-cast note).
         if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
         }
-        // 2026-05 v7: Apokalipsa Śmierci synchronous self-cost.
         const skillDefDng = getSkillDef(skillId);
         if ((skillDefDng?.effect ?? '').includes('death_apocalypse')) {
             const hpPct = playerHpRef.current / Math.max(1, charMaxHp);
@@ -1570,10 +1157,6 @@ const Dungeon = () => {
                 addLog(`:broken-heart: Apokalipsa: -${lost} HP`, 'system');
             }
         }
-        // Apply v2 effects (stun/dot/aoe/instant_kill/marks/etc.) to the
-        // currently-targeted monster. Enemy ids span every alive slot in
-        // the wave so enemy_* effects (mark / silence / etc.) splash to
-        // every active opponent in the lineup.
         const wave = currentWaveRef.current;
         const targetFxId = monsterFxId(wave, targetSlot);
         const aliveEnemyIds = currentMonstersRef.current
@@ -1585,7 +1168,6 @@ const Dungeon = () => {
             ? (targetSlotData!.currentHp / targetMaxHp) * 100
             : 100;
         const sDef = getSkillDef(skillId);
-        // 2026-05 v6: classify cast affinity — see Combat.tsx / Boss.tsx.
         const skillBaseMult = sDef?.damage ?? 0;
         const isDamageHit = skillBaseMult > 0;
         const targetsEnemy = isDamageHit || skillTargetsEnemy(sDef?.effect ?? null);
@@ -1598,10 +1180,7 @@ const Dungeon = () => {
             allyIds: [PLAYER_FX_ID],
             enemyIds: aliveEnemyIds,
         });
-        // def_pen drops monster def for this hit (Strzał Snajpera, etc.).
         const defPenFracDng = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-        // Skill-upgrade combat bonus — local player's own cast (Dungeon is
-        // solo). Modest & capped.
         const skillUpgradeMultDng = getCombatSkillUpgradeMultiplier(
             useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
         );
@@ -1617,10 +1196,6 @@ const Dungeon = () => {
                     ? Math.max(normalSkillDmgDng, Math.floor(targetMaxHp * (apply.executeBurstPct ?? 0) / 100))
                     : normalSkillDmgDng))
             : 0;
-        // 2026-05 v7: spell hits also consume Klątwa Śmierci (count
-        // mark) AND get Kraina Śmierci (duration ×N). Without this,
-        // the player's basic attacks were ×2 from Kraina but their
-        // spell cast (the heavy hitter) stayed at base damage.
         if (isDamageHit && skillDmg > 0) {
             const tgtStSpell = ensureStatus(effectsRef.current, monsterFxId(currentWaveRef.current, targetSlot));
             const ampSpell = consumeTargetMarkAmp(tgtStSpell);
@@ -1635,14 +1210,7 @@ const Dungeon = () => {
         skillCooldownRef.current.set(skillId, now);
         setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
         { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd, speedMult); }
-        // 2026-05 v7: track total damage dealt this cast (primary +
-        // splash) — Żniwa Dusz `aoe;heal_self_pct_dmg:50` heals on the
-        // SUM, not just the primary. Initialised here, populated after
-        // the AOE splash block lands, then consumed in the heal block
-        // BELOW the splash logic.
         let totalDmgDealtThisCast = isDamageHit ? skillDmg : 0;
-        // 2026-05 v6: Cleric Niebiańskie Leczenie — heal_party_pct.
-        // Dungeon is solo so only the player slot. Float + skill anim.
         if (apply.healPartyPctInstant > 0) {
             const heal = Math.max(1, Math.floor(charMaxHp * (apply.healPartyPctInstant / 100)));
             const before = playerHpRef.current;
@@ -1657,10 +1225,6 @@ const Dungeon = () => {
             fx.triggerAllySkillAnim(0, skillId);
             addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${tag}`, 'system');
         }
-        // 2026-05 v6: Cleric `heal` / `holy_nova` — heal_lowest_ally_pct.
-        // Dungeon is solo so player IS the lowest ally; heals N% of
-        // their max HP. Float on player slot + ally skill anim so the
-        // green +HP shows up clearly (was previously silent).
         if (apply.healLowestAllyPct > 0) {
             const heal = Math.floor(charMaxHp * (apply.healLowestAllyPct / 100));
             const before = playerHpRef.current;
@@ -1690,9 +1254,6 @@ const Dungeon = () => {
             } else {
                 addLog(`:sparkles: ${formatSkillName(skillId)}: DEBUFF (-${SKILL_MP_COST} MP)`, 'player');
             }
-            // Stun / paralyze label — per-target. AOE casts push the
-            // float ONLY on the slots that actually got stunned (each
-            // enemy rolls independently in the engine).
             if (apply.aoe) {
                 for (const idx of apply.aoeStunIdxs ?? []) {
                     fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'dizzy', label: 'STUN' });
@@ -1706,15 +1267,12 @@ const Dungeon = () => {
                 fx.pushEnemyFloat(targetSlot, 0, 'spell', { icon: 'locked', label: 'PARAL' });
             }
         }
-        // MLVL XP from skill use (all classes)
         if (character) {
             useSkillStore.getState().addMlvlXpFromSkill(character.class);
         }
         if (isDamageHit && afterSkill <= 0) {
             handleWaveMonsterDeath(targetSlot);
         }
-        // Multistrike (Wielostrzał) — fire N follow-up basic attacks on
-        // the same slot, ~120ms apart so they read as a quick burst.
         if (isDamageHit && (apply.multistrike ?? 0) > 0) {
             const extra = Math.max(0, Math.floor(apply.multistrike));
             for (let n = 0; n < extra; n++) {
@@ -1731,8 +1289,6 @@ const Dungeon = () => {
                 }, 120 * (n + 1));
             }
         }
-        // AOE splash — primary 100% (above), splash 75% per target.
-        // Per-target instant_kill_chance roll for AOE+IK skills.
         if (isDamageHit && apply.aoe) {
             const splashDmgManual = Math.max(1, Math.floor(skillDmg * 0.75));
             const splashIkPctManual = apply.instantKillPct ?? 0;
@@ -1740,16 +1296,10 @@ const Dungeon = () => {
                 if (i === targetSlot) continue;
                 const slotMon = currentMonstersRef.current[i];
                 if (!slotMon || slotMon.currentHp <= 0) continue;
-                // AOE re-roll of instant_kill_chance — on success deals a
-                // finite execute burst (12% of splash target max HP, or the
-                // normal splash if bigger), NOT a full-HP one-shot.
                 const splashIk = splashIkPctManual > 0 && Math.random() * 100 < splashIkPctManual;
                 let splashApplied = splashIk
                     ? Math.max(splashDmgManual, Math.floor(slotMon.maxHp * 12 / 100))
                     : splashDmgManual;
-                // 2026-05 v7: each splash slot consumes its own markAmp /
-                // markAmpAll — Kraina marks every AOE'd enemy and the
-                // splash on each one should ×2 too.
                 if (!splashIk) {
                     const splashSt = ensureStatus(effectsRef.current, monsterFxId(currentWaveRef.current, i));
                     const ampSplash = consumeTargetMarkAmp(splashSt);
@@ -1770,10 +1320,6 @@ const Dungeon = () => {
                 }
             }
         }
-        // 2026-05 v7: heal-on-cast (Void Ray, Bossa Nova, Pochłonięcie
-        // Życia, Żniwa Dusz, Uderzenie Święte). Moved BELOW the splash
-        // block so AOE casts heal on the TOTAL damage dealt (primary +
-        // splash). Single-target casts heal off totalDmg === skillDmg.
         if (apply.healCasterPctOfDmg > 0 && totalDmgDealtThisCast > 0) {
             const heal = Math.floor(totalDmgDealtThisCast * (apply.healCasterPctOfDmg / 100));
             const before = playerHpRef.current;
@@ -1789,7 +1335,6 @@ const Dungeon = () => {
                 addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
             }
         }
-        // Necro summon spawn — only when the local player is a necro.
         if (apply.summons.length > 0 && character?.class === 'Necromancer') {
             const store = useNecroSummonStore.getState();
             for (const sm of apply.summons) {
@@ -1799,8 +1344,6 @@ const Dungeon = () => {
                 }
             }
         }
-        // 2026-05 v7: Apokalipsa Śmierci — target damage only (self-cost
-        // already paid at top of doManualSkill).
         if (apply.deathApocalypse && character) {
             const tgtMon = currentMonstersRef.current[targetSlot];
             if (tgtMon && tgtMon.currentHp > 0) {
@@ -1813,21 +1356,14 @@ const Dungeon = () => {
         }
     }, [addLog, charAtk, charMaxHp, character, handleWaveMonsterDeath, showFloatingDmg, getFirstAliveSlot, applyDamageToSlot, fx]);
 
-    // -- Player attack callback -----------------------------------------------
-    // Targets the FIRST ALIVE slot (left -> right). After each hit, if the
-    // target dies, the auto-skill / overflow chain naturally retargets to
-    // the next alive slot via `getFirstAliveSlot()` so a single tick can
-    // chain into the next escort if the player overkills.
     const doPlayerAttack = useCallback(() => {
         if (phaseRef.current !== 'running') return;
-        // Stun gate — paralysed players skip their entire swing tick.
         if (isCombatantStunned(effectsRef.current, PLAYER_FX_ID)) return;
         const initialTarget = getFirstAliveSlot();
         if (initialTarget < 0) return;
 
         const isDualWield = !!classesDataMap[character?.class ?? '']?.dualWield;
 
-        // -- Helper: single hit with weapon roll, retargets each call ---------
         const doSingleHit = (hand: 'left' | 'right' | undefined, weaponRollFn: () => number, dmgPercent: number) => {
             if (phaseRef.current !== 'running') return 0;
             const slot = getFirstAliveSlot();
@@ -1840,9 +1376,6 @@ const Dungeon = () => {
             const baseDmg = Math.max(1, totalAtk - slotData.monster.defense);
             const variance = Math.floor(baseDmg * 0.2);
             const rolledDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
-            // 2026-05 v6: consume player "next basic" buff queues so that
-            // crit_buff_next / crit_next / dmg_amp_next / atk_buff actually
-            // affect the swing that follows the cast.
             const playerStatus = ensureStatus(effectsRef.current, PLAYER_FX_ID);
             const mods = consumeCasterBasicHitMods(playerStatus);
             syncCasterChargeConsume(mods.consumed);
@@ -1852,12 +1385,6 @@ const Dungeon = () => {
 
             const newMHp = applyDamageToSlot(slot, finalDmg);
 
-            // Per-attack hit pulse (counter — increment so the keyed flash
-            // overlay re-mounts and replays on every distinct hit, even when
-            // dual-wield's two swings land in the same 150ms window). The
-            // attack VFX class still toggles via the timeout — that's bound
-            // to the player's outgoing animation duration, not the hit
-            // feedback on the target card.
             setMonsterHitPulses((prev) => ({ ...prev, [slot]: (prev[slot] ?? 0) + 1 }));
             setPlayerAttackingSlot(slot);
             const animDur = ATTACK_ANIM_DURATION[character?.class ?? ''] ?? 350;
@@ -1870,9 +1397,6 @@ const Dungeon = () => {
             } else {
                 showFloatingDmg(`-${finalDmg}`, 'player');
             }
-            // Anchored basic-hit float on the targeted slot. Dual-wield's
-            // off-hand strike also goes through here, so each swing gets its
-            // own float with the sword-hand glyph as a visual cue.
             fx.pushEnemyFloat(slot, finalDmg, 'basic', { icon: hand ? 'dagger' : undefined });
 
             const handPrefix = hand === 'left' ? '[Lewa] ' : hand === 'right' ? '[Prawa] ' : '';
@@ -1886,20 +1410,14 @@ const Dungeon = () => {
             return finalDmg;
         };
 
-        // -- Execute attack(s) ------------------------------------------------
         if (isDualWield) {
-            // Hit 1: left hand (mainHand, 60%)
             doSingleHit('left', rollWeaponDamage, 0.6);
-            // Hit 2: right hand (offHand, 60%) – 150ms delay. The doSingleHit
-            // helper internally retargets so if the first hit kills slot 0
-            // the off-hand swing lands on slot 1.
             setTimeout(() => {
                 if (phaseRef.current !== 'running') return;
                 if (getFirstAliveSlot() < 0) return;
                 doSingleHit('right', rollOffHandDamage, 0.6);
             }, 150);
         } else {
-            // Normal swing — full charAtk (weapon roll already included).
             const slot = getFirstAliveSlot();
             const slotData = currentMonstersRef.current[slot];
             if (slot >= 0 && slotData) {
@@ -1927,16 +1445,11 @@ const Dungeon = () => {
             }
         }
 
-        // Grant skill XP from attack (weapon skill for non-magic + MLVL for magic classes)
         if (character) {
             useSkillStore.getState().addWeaponSkillXpFromAttack(character.class);
             useSkillStore.getState().addMlvlXpFromAttack(character.class);
         }
 
-        // Necromancer summon swing — every live summon attacks the front
-        // monster slot for a fraction of the necro's attack stat. The
-        // contribution is dealt as a single combined hit per tick (with a
-        // dedicated log line) so the UI doesn't get spammed.
         if (character?.class === 'Necromancer') {
             const summonBonus = useNecroSummonStore.getState().totalAttackBonus(PLAYER_FX_ID, charAtk);
             const tgt = getFirstAliveSlot();
@@ -1944,8 +1457,6 @@ const Dungeon = () => {
                 const slotMon = currentMonstersRef.current[tgt];
                 if (slotMon && slotMon.currentHp > 0) {
                     let dmg = Math.max(1, summonBonus - Math.floor(slotMon.monster.defense * 0.5));
-                    // 2026-05 v7: summon swings consume Klątwa Śmierci
-                    // (count) AND Kraina Śmierci (duration ×N).
                     const monStSum = ensureStatus(effectsRef.current, monsterFxId(currentWaveRef.current, tgt));
                     const ampSum = consumeTargetMarkAmp(monStSum);
                     if (ampSum.mult !== 1) {
@@ -1959,9 +1470,6 @@ const Dungeon = () => {
             }
         }
 
-        // Auto-skill fire (check all 4 slots) – only when skill mode is AUTO.
-        // Re-targets to the first alive slot every fire so an overkill chain
-        // walks down the line instead of wasting damage on a dead slot.
         if (getFirstAliveSlot() >= 0 && useSettingsStore.getState().skillMode === 'auto') {
             const now = Date.now();
             const slots = useSkillStore.getState().activeSkillSlots;
@@ -1969,14 +1477,10 @@ const Dungeon = () => {
                 const skillId = slots[i];
                 if (!skillId) continue;
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-                // 2026-06-21: scale recast window by combat speed (x2 → 2.5s,
-                // x4 → 1.25s) to match the speed-scaled cooldown bar.
                 if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 const tgt = getFirstAliveSlot();
                 if (tgt < 0) break;
-                // Apply v2 effects (stun/dot/aoe/instant_kill/marks/etc.)
-                // for the auto-fire path, mirroring doManualSkill.
                 const wave = currentWaveRef.current;
                 const tgtFxId = monsterFxId(wave, tgt);
                 const aliveEnemyIds = currentMonstersRef.current
@@ -1988,7 +1492,6 @@ const Dungeon = () => {
                     ? (tgtSlotData!.currentHp / tgtMaxHp) * 100
                     : 100;
                 const sDef = getSkillDef(skillId);
-                // 2026-05 v7: Apokalipsa Śmierci synchronous self-cost.
                 if ((sDef?.effect ?? '').includes('death_apocalypse')) {
                     const hpPct = playerHpRef.current / Math.max(1, charMaxHp);
                     if (hpPct < 0.05) continue;
@@ -2016,12 +1519,10 @@ const Dungeon = () => {
                     allyIds: [PLAYER_FX_ID],
                     enemyIds: aliveEnemyIds,
                 });
-                // 2026-05 v6: same affinity classification as manual cast.
                 const skillBaseMult = sDef?.damage ?? 0;
                 const isDamageHitAuto = skillBaseMult > 0;
                 const targetsEnemyAuto = isDamageHitAuto || skillTargetsEnemy(sDef?.effect ?? null);
                 const defPenFracAuto = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-                // Skill-upgrade combat bonus — local player's own auto-cast.
                 const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
                     useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
                 );
@@ -2034,8 +1535,6 @@ const Dungeon = () => {
                             ? Math.max(normalSkillDmgAuto, Math.floor(tgtMaxHp * (apply.executeBurstPct ?? 0) / 100))
                             : normalSkillDmgAuto))
                     : 0;
-                // 2026-05 v7: auto-skill spells also consume Klątwa AND
-                // get Kraina ×N — same as manual cast / basic attack.
                 if (isDamageHitAuto && skillDmg > 0) {
                     const tgtStAuto = ensureStatus(effectsRef.current, tgtFxId);
                     const ampAuto = consumeTargetMarkAmp(tgtStAuto);
@@ -2076,7 +1575,6 @@ const Dungeon = () => {
                         fx.pushEnemyFloat(tgt, 0, 'spell', { icon: 'locked', label: 'PARAL' });
                     }
                 }
-                // Multistrike — fire N follow-up basic attacks on same slot.
                 if (isDamageHitAuto && (apply.multistrike ?? 0) > 0) {
                     const extra = Math.max(0, Math.floor(apply.multistrike));
                     for (let n = 0; n < extra; n++) {
@@ -2093,11 +1591,7 @@ const Dungeon = () => {
                         }, 120 * (n + 1));
                     }
                 }
-                // 2026-05 v7: track total dmg (primary + splash) so
-                // Żniwa Dusz heals on the SUM via auto-skill too.
                 let totalDmgAuto = isDamageHitAuto ? skillDmg : 0;
-                // AOE splash — primary 100%, splash 75% per target +
-                // per-target IK roll for AOE+IK skills.
                 if (isDamageHitAuto && apply.aoe) {
                     const splashDmgAuto = Math.max(1, Math.floor(skillDmg * 0.75));
                     const splashIkPctAuto = apply.instantKillPct ?? 0;
@@ -2105,13 +1599,10 @@ const Dungeon = () => {
                         if (j === tgt) continue;
                         const slotMon = currentMonstersRef.current[j];
                         if (!slotMon || slotMon.currentHp <= 0) continue;
-                        // AOE re-roll of instant_kill_chance — finite execute
-                        // burst (12% of splash target max HP) on success.
                         const splashIk = splashIkPctAuto > 0 && Math.random() * 100 < splashIkPctAuto;
                         let splashApplied = splashIk
                             ? Math.max(splashDmgAuto, Math.floor(slotMon.maxHp * 12 / 100))
                             : splashDmgAuto;
-                        // 2026-05 v7: each splash consumes its own markAmp.
                         if (!splashIk) {
                             const splashStAuto = ensureStatus(effectsRef.current, monsterFxId(currentWaveRef.current, j));
                             const ampSplashAuto = consumeTargetMarkAmp(splashStAuto);
@@ -2132,9 +1623,6 @@ const Dungeon = () => {
                         }
                     }
                 }
-                // 2026-05 v7: heal_self_pct_dmg on auto-skill — Żniwa
-                // Dusz / Pochłonięcie Życia / Promień Pustki / Bossa
-                // Nova heal off TOTAL damage dealt this cast.
                 if (apply.healCasterPctOfDmg > 0 && totalDmgAuto > 0) {
                     const heal = Math.floor(totalDmgAuto * (apply.healCasterPctOfDmg / 100));
                     if (heal > 0) {
@@ -2147,7 +1635,6 @@ const Dungeon = () => {
                         addLog(`:sparkles: ${formatSkillName(skillId)}: +${heal} HP${cappedTag}`, 'system');
                     }
                 }
-                // Necro summon spawn — only when the local player is a necro.
                 if (apply.summons.length > 0 && character?.class === 'Necromancer') {
                     const store = useNecroSummonStore.getState();
                     for (const sm of apply.summons) {
@@ -2157,7 +1644,6 @@ const Dungeon = () => {
                 }
                     }
                 }
-                // 2026-05 v7: Apokalipsa Śmierci — target damage only.
                 if (apply.deathApocalypse && character) {
                     const tgtMon = currentMonstersRef.current[tgt];
                     if (tgtMon && tgtMon.currentHp > 0) {
@@ -2168,47 +1654,29 @@ const Dungeon = () => {
                         if (after <= 0) handleWaveMonsterDeath(tgt);
                     }
                 }
-                break; // One skill per attack tick
+                break;
             }
         }
 
-        // Auto-potion check
         tryAutoPotion();
     }, [charAtk, addLog, showFloatingDmg, handleWaveMonsterDeath, tryAutoPotion, character, getFirstAliveSlot, applyDamageToSlot, fx]);
 
-    // -- Monster attack callback ----------------------------------------------
-    // Processes ONE monster's swing — driven by a per-slot interval clocked at
-    // that monster's individual attack speed. This is the per-attacker model
-    // the player asked for: 4 escorts with different speeds = 4 independent
-    // hit animations & 4 independent log lines instead of one aggregate "monsters
-    // hit you" tick. Utamo Vita / auto-potion / death check still run per call
-    // because each is a per-hit reaction, not a per-tick batch.
     const doMonsterAttack = useCallback((attackerSlot: number) => {
         if (phaseRef.current !== 'running') return;
         const slotData = currentMonstersRef.current[attackerSlot];
         if (!slotData || slotData.currentHp <= 0) return;
-        // Stun gate — paralysed monsters skip their swing tick. Each monster
-        // has its own status keyed by `monster_${wave}_${slot}` so stunning
-        // slot 0 doesn't silence slots 1..3.
         if (isCombatantStunned(effectsRef.current, monsterFxId(currentWaveRef.current, attackerSlot))) return;
-        // 2026-05 v6: Krok Cienia / Unik charge buff — burns one charge
-        // per non-magic enemy hit, skips the swing entirely.
         if (useBuffStore.getState().getBuffCharges('skill_charge_dodge_next') > 0) {
             useBuffStore.getState().consumeBuffCharge('skill_charge_dodge_next');
             addLog(`${slotData.monster.name_pl} atakuje – Krok Cienia! Unik!`, 'dodge');
             return;
         }
-        // 2026-05 v6: Cleric Boska Tarcza — block_next_party charge.
-        // Stacks up to 2; consumed per incoming basic monster hit, eats
-        // the entire hit.
         if (useBuffStore.getState().getBuffCharges('skill_charge_block_next_party') > 0) {
             useBuffStore.getState().consumeBuffCharge('skill_charge_block_next_party');
             fx.pushAllyFloat(0, 0, 'heal', { icon: 'shield', label: 'BLOCK' });
             addLog(`:shield: Boska Tarcza! Blok!`, 'system');
             return;
         }
-        // 2026-05 v6: Rogue Bomba Dymna (dodge_buff:50:4000) — % chance
-        // to fully dodge each incoming basic during the buff window.
         const dngPlayerSt = ensureStatus(effectsRef.current, PLAYER_FX_ID);
         if (dngPlayerSt.dodgeBuffMs > 0 && dngPlayerSt.dodgeBuffPct > 0) {
             if (Math.random() * 100 < dngPlayerSt.dodgeBuffPct) {
@@ -2218,15 +1686,11 @@ const Dungeon = () => {
             }
         }
 
-        // 2026-05 v6: defBuffPct (Knight Umocnienie / Żelazna Obrona)
-        // bumps player def for the buff window. Engine wrote it but
-        // never read it on incoming damage — fixed here.
         const psDng = effectsRef.current.statuses.get(PLAYER_FX_ID);
         const dngDefMult = (psDng && psDng.defBuffMs > 0 && psDng.defBuffPct > 0)
             ? 1 + (psDng.defBuffPct / 100) : 1;
         const effPlayerDef = Math.floor(charDef * dngDefMult);
 
-        // immortal — Knight Absolutne Cięcie zeroes incoming damage.
         if (psDng && psDng.immortalMs > 0) {
             fx.pushAllyFloat(0, 0, 'heal', { icon: 'sparkles', label: 'BLOCK' });
             addLog(`:sparkles: BLOCK! Niewrażliwość chroni przed ${slotData.monster.name_pl}`, 'block');
@@ -2238,7 +1702,6 @@ const Dungeon = () => {
 
         let hpDmg = rawDmg;
         let mpDmg = 0;
-        // 2026-05 v6: Mage Tarcza Many — 100% MP redirect (self only).
         if (psDng && psDng.manaShieldMs > 0 && rawDmg > 0) {
             const ms = Math.min(rawDmg, Math.max(0, playerMpRef.current));
             mpDmg += ms;
@@ -2251,7 +1714,6 @@ const Dungeon = () => {
                 fx.pushAllyFloat(0, ms, 'spell', { icon: 'shield' });
             }
         }
-        // -- Utamo Vita (Magic Shield): 50% of remaining -> MP ----------
         const hasUtamoDng = useBuffStore.getState().hasBuff('utamo_vita');
         if (hasUtamoDng && playerMpRef.current > 0 && hpDmg > 0) {
             const utamoMp = Math.floor(hpDmg * 0.5);
@@ -2272,10 +1734,6 @@ const Dungeon = () => {
             }
         }
 
-        // Necromancer summon shield — front-of-queue summon eats single-target
-        // hits before the necro's HP pool. AOE branches don't exist here
-        // (dungeon monsters all swing single-target), so `damageFirst` is
-        // the only path required.
         if (character?.class === 'Necromancer' && hpDmg > 0) {
             const store = useNecroSummonStore.getState();
             if (store.count(PLAYER_FX_ID) > 0) {
@@ -2288,16 +1746,8 @@ const Dungeon = () => {
         playerHpRef.current = newPHp;
         setPlayerHp(newPHp);
 
-        // Pulse counter — increment so AllyCard's keyed flash overlay re-mounts
-        // and replays from frame 0. Without this, two near-simultaneous hits
-        // from different monsters would visually merge into a single shake.
         setPlayerHitPulse((p) => p + 1);
         showFloatingDmg(`-${rawDmg}${hasUtamoDng && mpDmg > 0 ? 'blue-circle' : ''}`, 'monster');
-        // Anchored monster-attack float on the player ally slot (0). Plain
-        // physical hit -> 'monster' kind (red). The Utamo Vita :blue-circle: marker is
-        // dropped here on purpose — the float colour already says "I got
-        // hit" and the marker would just clutter the number; the addLog
-        // line below still records the MP-shield split for the log reader.
         fx.pushAllyFloat(0, rawDmg, 'monster');
 
         const utamoSuffix = hasUtamoDng && mpDmg > 0 ? ` :blue-circle: (${hpDmg} HP / ${mpDmg} MP)` : '';
@@ -2315,34 +1765,19 @@ const Dungeon = () => {
         }
     }, [charDef, charMaxHp, addLog, showFloatingDmg, handlePlayerDeath, tryAutoPotion, fx]);
 
-    // -- Refs for stable intervals --------------------------------------------
     const playerAtkRef  = useRef(doPlayerAttack);
     const monsterAtkRef = useRef(doMonsterAttack);
     useEffect(() => { playerAtkRef.current  = doPlayerAttack; });
     useEffect(() => { monsterAtkRef.current = doMonsterAttack; });
 
-    // -- Attack intervals (scaled by speedMult) -------------------------------
-    // Player interval resets when the wave's lead monster id changes (fresh
-    // wave spawns). Per-slot kills don't restart the timer — kills are
-    // processed inside the callback via `handleWaveMonsterDeath`.
     const waveLeadId = currentMonsters[0]?.monster.id ?? null;
     useEffect(() => {
         if (phase !== 'running' || !waveLeadId) return;
         const interval = Math.max(200, getAttackMs(charSpeed) / speedMult);
         const id = setInterval(() => playerAtkRef.current(), interval);
         return () => clearInterval(id);
-    }, [phase, waveLeadId, charSpeed, speedMult]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [phase, waveLeadId, charSpeed, speedMult]);
 
-    // Per-monster intervals: every alive escort gets ITS OWN setInterval ticking
-    // at its individual `monster.speed`. This is what gives each mob its own
-    // independent hit animation when the player is solo-tanking 4 monsters with
-    // different attack speeds — each one swings on its own timer instead of all
-    // four firing on a single shared 2s tick. Effect re-runs when the wave
-    // composition changes (new wave spawns / monster slot removed) — `wavePulse`
-    // is bumped from the wave-spawn handler so we don't try to use stale
-    // currentMonsters identities. Kills DON'T restart timers (the callback
-    // bails out early via the `currentHp <= 0` guard) so a freshly-revealed
-    // mob doesn't get a free swing on death of its neighbour.
     const monsterSlotKey = useMemo(() => {
         return currentMonsters
             .map((m, idx) => `${idx}:${m.monster.id}:${m.monster.speed ?? 1.5}`)
@@ -2361,13 +1796,8 @@ const Dungeon = () => {
         return () => {
             ids.forEach((id) => window.clearInterval(id));
         };
-    }, [phase, monsterSlotKey, speedMult]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [phase, monsterSlotKey, speedMult]);
 
-    // Status / DOT tick — drains stun timers + applies DOT damage to every
-    // alive combatant on a separate cadence (every 250 ms scaled by speed)
-    // so paralysed combatants recover in real-time and DOTs deal their
-    // per-second slice consistently. Wave-clear leaves dead monsters'
-    // statuses in the map; they're filtered out here via maxHp lookup.
     useEffect(() => {
         if (phase !== 'running') return;
         const TICK_MS = 250;
@@ -2404,7 +1834,6 @@ const Dungeon = () => {
                     const apply = effectsRouteDamage(effectsRef.current, r.id, slotData.currentHp, r.dotDamage);
                     if (apply.appliedDmg > 0) {
                         const after = applyDamageToSlot(m.slot, apply.appliedDmg);
-                        // 2026-05 v6: per-tick DOT visual on the affected slot.
                         fx.pushEnemyFloat(m.slot, apply.appliedDmg, 'spell', { icon: 'skull-and-crossbones' });
                         if (after <= 0) {
                             handleWaveMonsterDeath(m.slot);
@@ -2412,9 +1841,6 @@ const Dungeon = () => {
                         }
                     }
                 }
-                // 2026-05 v7: Mroczny Rytuał detonation. % of monster max
-                // HP, no DEF mit. Re-read currentHp because the DOT branch
-                // above may have shifted it.
                 if (r.darkRitualTriggered && r.darkRitualDamage > 0) {
                     const fresh = currentMonstersRef.current[m.slot];
                     if (fresh && fresh.currentHp > 0) {
@@ -2429,13 +1855,8 @@ const Dungeon = () => {
             }
         }, 250);
         return () => clearInterval(id);
-    }, [phase, speedMult, charMaxHp, monsterSlotKey, applyDamageToSlot, handlePlayerDeath, handleWaveMonsterDeath]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [phase, speedMult, charMaxHp, monsterSlotKey, applyDamageToSlot, handlePlayerDeath, handleWaveMonsterDeath]);
 
-    // -- Spawn-bar progress driver (rAF) --------------------------------------
-    // While `waitingForSpawn` is true, fill `spawnProgress` 0->1 over the
-    // duration captured when the wave-clear handler armed the timeout.
-    // We restart the loop fresh on every transition so toggling speed mid
-    // countdown re-syncs the bar to the new (already-shortened) timeout.
     useEffect(() => {
         if (!waitingForSpawn) return;
         let raf = 0;
@@ -2449,10 +1870,6 @@ const Dungeon = () => {
         return () => cancelAnimationFrame(raf);
     }, [waitingForSpawn]);
 
-    // Reset the spawn bar when the player leaves the running phase (flee /
-    // death / completion). The setTimeout in the wave-clear handler is
-    // best-effort and might still resolve in the background; this cleanup
-    // guarantees the bar disappears the moment the phase flips.
     useEffect(() => {
         if (phase !== 'running') {
             setWaitingForSpawn(false);
@@ -2461,27 +1878,14 @@ const Dungeon = () => {
     }, [phase]);
 
     const totalWaves = activeDungeon ? getDungeonWaves(activeDungeon) : 0;
-    // isBossWave computed inline where needed (inside wave completion handler)
 
-    // Dungeon render guard (after-hooks) — see note up near the eqStats block.
-    // Placed AFTER every hook in this component so we never alter hook call
-    // order between renders. Character starts null on the first render after
-    // a `goto('/dungeon')` (App.tsx re-hydrates async via switchToCharacter)
-    // and the React Rules of Hooks detector would crash the tree if we
-    // returned early before all `useEffect`s registered.
     if (!character) return <div className="dungeon"><Spinner size="lg" /></div>;
 
     return (
         <div className="dungeon">
             <AnimatePresence mode="wait">
 
-                {/* -- List -------------------------------------------------------- */}
                 {phase === 'list' && (() => {
-                    // Apply the three persisted filters before rendering the
-                    // list. Sorting happens last so the visible order always
-                    // respects the player's choice. Defaults yield the
-                    // unfiltered, ascending data order — i.e. behaves exactly
-                    // like the pre-filter view for new players.
                     const gateLvlForFilter = getPartyGateLevel(character.level, party?.members ?? null);
                     let visibleDungeons = allDungeons.slice();
                     if (dungeonFilterMinLevel > 0) {
@@ -2490,9 +1894,6 @@ const Dungeon = () => {
                         );
                     }
                     if (dungeonFilterAvailableOnly) {
-                        // "Available" = player meets the level gate AND has
-                        // attempts left. Everything else (locked, exhausted)
-                        // is hidden from the list.
                         visibleDungeons = visibleDungeons.filter(
                             (d) => getDungeonMinLevel(d) <= gateLvlForFilter && canEnter(d.id),
                         );
@@ -2508,12 +1909,6 @@ const Dungeon = () => {
                     return (
                     <motion.div key="list" className="dungeon__panel"
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        {/* Persistent filter bar — same visual / interaction
-                            shape as the Hunt-Hub filter strip (pill toggles
-                            then a numeric input then an optional Wyczyść)
-                            so the two listing screens feel like siblings.
-                            Saved per character via settingsStore /
-                            characterScope plumbing. */}
                         <section className="dungeon__hub-filters">
                             <h2 className="dungeon__hub-section-title">Filtry</h2>
                             <div className="dungeon__filter-bar">
@@ -2583,18 +1978,12 @@ const Dungeon = () => {
                             const attemptsUsed = getAttemptsUsed(d.id);
                             const attemptsMax  = getAttemptsMax();
                             const noAttempts   = !canEnter(d.id);
-                            // Gate by the lowest human level in the party — the
-                            // weakest member dictates what content the group can
-                            // enter. Solo players keep their own level.
                             const gateLevel    = getPartyGateLevel(character.level, party?.members ?? null);
                             const tooLow       = gateLevel < getDungeonMinLevel(d);
                             const blocked      = noAttempts || tooLow;
 
                             const dungeonLvl = getDungeonMinLevel(d);
                             const allDone = attemptsUsed >= attemptsMax;
-                            // Persistent "ever beat this dungeon" flag —
-                            // separate from `allDone` (daily reset). Drives
-                            // the "Pokonany" stamp at the top of the card.
                             const cleared = isDungeonCleared(d.id);
                             const est = estimateDungeonRewards(d, allMonsters, monstersRaw);
 
@@ -2604,24 +1993,12 @@ const Dungeon = () => {
                                     className={`dungeon__card${blocked ? ' dungeon__card--blocked' : ''}${allDone ? ' dungeon__card--all-done' : ''}`}
                                     style={{
                                         '--card-hue': getDungeonCardHue(dungeonLvl),
-                                        // Per-dungeon background art. The ID
-                                        // -> image map in spriteAssets is
-                                        // stable across filter / sort, so a
-                                        // given dungeon always shows the
-                                        // same picture. Falls back to `none`
-                                        // when art is missing — the hue
-                                        // gradient layers still carry the
-                                        // card's visual identity.
                                         '--card-image': (() => {
                                             const url = getDungeonImage(d.id);
                                             return url ? `url("${url}")` : 'none';
                                         })(),
                                     } as React.CSSProperties}
                                 >
-                                    {/* Corner badges — required level top-left,
-                                        wave count top-right. Pinned absolute so
-                                        the centred head can claim the full card
-                                        width without fighting these for space. */}
                                     <span className="dungeon__corner dungeon__corner--lvl">
                                         Lvl {dungeonLvl}
                                     </span>
@@ -2629,42 +2006,22 @@ const Dungeon = () => {
                                         {getDungeonWaves(d)} fal
                                     </span>
 
-                                    {/* "Pokonany" stamp — only when the player
-                                        is locked out for the day (5/5 daily
-                                        attempts used) AND has actually cleared
-                                        the dungeon. `allDone` alone implies a
-                                        prior clear under the current data
-                                        model (attempts only increment on
-                                        victory), but we keep `cleared` in the
-                                        condition as belt-and-suspenders so the
-                                        badge stays truthful if the attempts
-                                        rule ever changes. Centered between
-                                        the lvl and waves corners. */}
                                     {allDone && cleared && (
                                         <span className="dungeon__corner dungeon__corner--cleared">
                                             <GameIcon name="check-mark-button" /> Pokonany
                                         </span>
                                     )}
 
-                                    {/* Centred head — icon, name and the flavour
-                                        description in a max-width block so long
-                                        names wrap nicely on every screen and
-                                        the card has a clear "title page" feel. */}
                                     <div className="dungeon__card-head">
                                         <h3 className="dungeon__card-name">{d.name_pl}</h3>
                                         <p className="dungeon__card-desc">{d.description_pl}</p>
                                     </div>
 
-                                    {/* Quick reward summary — the level / wave
-                                        info already lives in the corners, so the
-                                        meta row is reduced to gold + XP. */}
                                     <div className="dungeon__card-rewards">
                                         <span><GameIcon name="money-bag" /> {formatGoldShort(est.goldMin)}–{formatGoldShort(est.goldMax)}</span>
                                         <span><GameIcon name="star" /> ~{est.xp.toLocaleString('pl-PL')} XP</span>
                                     </div>
 
-                                    {/* Drop table is now a popup — opens the
-                                        modal at the bottom of the panel. */}
                                     <button
                                         className="dungeon__drop-btn"
                                         onClick={() => setDropModalDungeon(d.id)}
@@ -2701,9 +2058,6 @@ const Dungeon = () => {
                             );
                         })}
 
-                        {/* Drop-table modal — single instance lives outside the
-                            .map() so only one popup is mounted at a time.
-                            Backdrop click & explicit :multiply: both dismiss. */}
                         {dropModalDungeon && (() => {
                             const d = allDungeons.find((x) => x.id === dropModalDungeon);
                             if (!d) return null;
@@ -2830,20 +2184,7 @@ const Dungeon = () => {
                     );
                 })()}
 
-                {/* -- Running (real combat) — unified shared CombatUI tree -----
-                    Same JSX family used by hunting/boss/transform/raid/trainer.
-                    Dungeon-specific shape:
-                      - 1–4 monsters in slots 0..3 (composition per wave)
-                      - 1 player in slot 0, 3 empty ally slots (no party bots)
-                      - bgVariant="default" (daily-boss reserved for Boss view)
-                      - Exit = `kind: 'flee'` with the standard 1/10 death penalty
-                ------------------------------------------------------------- */}
                 {phase === 'running' && activeDungeon && currentMonsters.length > 0 && (() => {
-                    // -- Enemy slots (left column, 4 fixed) -------------------
-                    // Walk the wave's spawned monsters into 4 fixed slots,
-                    // padding empties with `null`. The player always targets
-                    // the first alive slot (left -> right) so we mark only
-                    // that one as `isTargetedByPlayer` for the highlight.
                     const firstAliveIdx = currentMonsters.findIndex((m) => m.currentHp > 0);
                     const uiEnemies: Array<ICombatEnemy | null> = [null, null, null, null];
                     for (const m of currentMonsters) {
@@ -2860,20 +2201,10 @@ const Dungeon = () => {
                             rarity,
                             isDead: m.currentHp <= 0,
                             isTargetedByPlayer: m.slot === firstAliveIdx && m.currentHp > 0,
-                            // Per-attack pulse counter — every distinct hit increments
-                            // it so EnemyCard's keyed flash overlay re-mounts and the
-                            // CSS animation replays from frame 0. Solves the "rapid
-                            // hits visually merge into one shake" problem when the
-                            // player's auto-attack and an auto-skill land within the
-                            // same 300ms window.
                             hitPulse: monsterHitPulses[m.slot] ?? 0,
                             attackingClassName: playerAttackingSlot === m.slot
                                 ? `attack-${character.class}`
                                 : null,
-                            // Per-slot VFX from useCombatFx — themed skill
-                            // overlay + floating damage stack. EnemyCard
-                            // renders both internally; we just pass the
-                            // current snapshot for this monster's slot.
                             skillAnim: fx.enemySkill[m.slot] ?? null,
                             floats: fx.enemyFloats[m.slot] ?? [],
                             statusOverlay: (() => {
@@ -2899,7 +2230,6 @@ const Dungeon = () => {
                     }
                     const aliveCount = currentMonsters.filter((m) => m.currentHp > 0).length;
 
-                    // -- Player accent for transform-tinted HUD chrome --------
                     const classColorFallbackMap: Record<string, string> = {
                         Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
                         Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
@@ -2911,7 +2241,6 @@ const Dungeon = () => {
                         ?? classColorFallbackMap[character.class]
                         ?? '#e94560';
 
-                    // -- Ally slots (right column) — Dungeon is solo ----------
                     const playerSummonList = necroSummons[PLAYER_FX_ID] ?? [];
                     const playerSummonsByType: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>> = {};
                     for (const sm of playerSummonList) {
@@ -2962,21 +2291,9 @@ const Dungeon = () => {
                                 useNecroSummonStore.getState().despawnOne(PLAYER_FX_ID, type);
                                 addLog(`:dashing-away: Odesłano: ${type}`, 'system');
                             },
-                            // Aggro pip count = number of alive monsters
-                            // currently hostile to the player. Drives the
-                            // shared HUD's "you have N attackers" badge.
                             aggroCount: aliveCount,
-                            // Per-attacker pulse counter — bumped on every monster
-                            // swing so the player's flash overlay re-mounts even
-                            // when 4 monsters with different attack speeds land
-                            // hits inside the same 300ms window.
                             hitPulse: playerHitPulse,
-                            // Attacker-side animation removed — slash/spell visual
-                            // lives on the target enemy card only (see uiEnemies).
                             attackingClassName: null,
-                            // Per-slot VFX for the player ally — monster-attack
-                            // floats land here (red); future heal floats
-                            // (`kind: 'heal'`) too.
                             skillAnim: fx.allySkill[0] ?? null,
                             floats: fx.allyFloats[0] ?? [],
                             summonSpawn: fx.allySummonSpawn[0] ?? null,
@@ -2984,7 +2301,6 @@ const Dungeon = () => {
                         null, null, null,
                     ];
 
-                    // -- Skill slots (action-bar) -----------------------------
                     const uiSkills: Array<ICombatSkillSlot | null> =
                         (activeSkillSlots as (string | null)[]).map((skillId, i) => {
                             if (!skillId) return null;
@@ -3003,10 +2319,6 @@ const Dungeon = () => {
                             };
                         });
 
-                    // -- Potion slots (action-bar = pct, sub-controls = flat) -
-                    // Type the `potion` param as the widest of the four sources
-                    // (`bestPctHpPotion` is `IElixir | null` — flat helpers
-                    // never return null, so they fit in here too).
                     const buildPotion = (
                         potion: typeof bestPctHpPotion,
                         kind: ICombatPotionSlot['kind'],
@@ -3018,7 +2330,6 @@ const Dungeon = () => {
                         const cdActive = cd > 0;
                         return {
                             kind,
-                            // 2026-05: pass the actual potion's PNG art to the dock.
                             icon: getPotionImage(potion.id) ?? undefined,
                             count,
                             cooldownProgress: cdActive ? 1 - cd / cdMax : 1,
@@ -3057,15 +2368,6 @@ const Dungeon = () => {
                                         autoPotion={{ on: autoPotOn, onToggle: toggleAutoPot }}
                                     />
 
-                                    {/* Spawn-timer bar — visible only between
-                                        waves while the next monster is about
-                                        to appear. Shares the slim fixed-top
-                                        visual with the hunting auto-fight bar
-                                        so the player learns one cue: thin bar
-                                        under the header = "next monster
-                                        incoming". Speed-scaled in the
-                                        wave-clear handler so x2/x4 collapses
-                                        the wait too. */}
                                     {waitingForSpawn && (
                                         <div
                                             className="combat-ui__spawn-bar"
@@ -3082,12 +2384,6 @@ const Dungeon = () => {
                                         </div>
                                     )}
 
-                                    {/* Wave banner — sits BELOW the top-controls
-                                        chip cluster and ABOVE the arena so it's
-                                        always visible during the fight without
-                                        crowding the page header. Shared visual
-                                        with Transform/Raid via the unified
-                                        `combat-ui__wave-banner` class. */}
                                     <div className="combat-ui__wave-banner" aria-live="polite">
                                         <span className="combat-ui__wave-banner-label">Fala</span>
                                         <span className="combat-ui__wave-banner-value">
@@ -3099,7 +2395,6 @@ const Dungeon = () => {
                                         enemies={uiEnemies}
                                         allies={uiAllies}
                                         bgVariant="default"
-                                        /* Per-slot animation only — see Combat.tsx note. */
                                         overlay={null}
                                     />
 
@@ -3117,19 +2412,9 @@ const Dungeon = () => {
                                         exit={{
                                             kind: 'flee',
                                             onFlee: () => {
-                                                // Standard flee penalty (1/10 death) —
-                                                // applies XP loss but never strips a
-                                                // level and never touches equipment.
-                                                // Flag the leave-guard as already-applied
-                                                // so unmounting after this flee doesn't
-                                                // upgrade the soft penalty to a real death.
                                                 leavePenaltyAppliedRef.current = true;
                                                 const ch = useCharacterStore.getState().character;
                                                 if (ch && ch.level > 1) {
-                                                    // 2026-05-19 v25 spec: log flee to the
-                                                    // global deaths feed so the /deaths view
-                                                    // renders "<dungeon> przegnał <player>"
-                                                    // (verb driven by `result: 'fled'`).
                                                     const dungeonForLog = activeDungeonRef.current;
                                                     if (isBackendMode() && ch) {
                                                         void backendApi.logDeath(ch.id, {
@@ -3150,10 +2435,6 @@ const Dungeon = () => {
                                                             result: 'fled',
                                                         });
                                                     }
-                                                    // Unified protection (2026-06-21): ONE
-                                                    // protection item shields the flee penalty
-                                                    // entirely (no level, no xp, no skill xp).
-                                                    // Flee NEVER loses items either way.
                                                     const fleeProt = consumeDeathProtection();
                                                     const dungeonForFlee = activeDungeonRef.current;
                                                     if (fleeProt.isProtected) {
@@ -3187,12 +2468,6 @@ const Dungeon = () => {
                                                             ? ` · -${pen.levelsLost} lvl`
                                                             : '';
                                                         addLog(`:person-running: Uciekłeś${lvlTxt} · -${pen.skillXpLossPercent}% Skill XP`, 'system');
-                                                        // 2026-05-14 spec ("Jezeli sojusznik
-                                                        // ucieknie z bossa lub dungeona ...
-                                                        // powinien wyskoczyc mu popup ze
-                                                        // udalo Ci sie uciec"): flee overlay
-                                                        // (kind: 'flee') with the penalty —
-                                                        // same pattern boss + raid use now.
                                                         useDeathStore.getState().triggerDeath({
                                                             kind: 'flee',
                                                             killedBy: dungeonForFlee?.name_pl ?? 'Loch',
@@ -3208,9 +2483,6 @@ const Dungeon = () => {
                                                     }
                                                 }
                                                 useCombatStore.getState().clearCombatSession();
-                                                // Persist current HP/MP — fleeing keeps your wounds
-                                                // (matches death/win persistence policy: combat outcomes
-                                                // never silently top you off).
                                                 useCharacterStore.getState().updateCharacter({
                                                     hp: Math.max(1, Math.min(charMaxHp, playerHpRef.current)),
                                                     mp: Math.max(0, Math.min(charMaxMp, playerMpRef.current)),
@@ -3234,34 +2506,19 @@ const Dungeon = () => {
                     );
                 })()}
 
-                {/* -- Result ------------------------------------------------------ */}
                 {phase === 'result' && result && activeDungeon && (
-                    // `--centered` modifier vertically centres the result
-                    // card in the visible viewport (header + bottom nav
-                    // subtracted) so the celebration screen sits in the
-                    // middle of the screen instead of crammed under the
-                    // header with empty space below.
                     <motion.div key="result" className="dungeon__panel dungeon__panel--centered"
                         initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
                         <div
                             className={`dungeon__result${result.success ? ' dungeon__result--win' : ' dungeon__result--loss'}`}
                             style={{
                                 '--card-hue': getDungeonCardHue(getDungeonMinLevel(activeDungeon)),
-                                // Same per-dungeon art as the lobby card. The
-                                // result screen is the celebration view, so we
-                                // keep the image visible and let the reward
-                                // rows / banner sit on top with their own
-                                // backgrounds for legibility.
                                 '--card-image': (() => {
                                     const url = getDungeonImage(activeDungeon.id);
                                     return url ? `url("${url}")` : 'none';
                                 })(),
                             } as React.CSSProperties}
                         >
-                            {/* Win view starts with a shimmering gradient banner
-                                that shouts the dungeon name back at the player —
-                                the celebration framing the run earned. The
-                                shimmer animation lives in SCSS via ::before. */}
                             {result.success && (
                                 <div className="dungeon__victory-banner">
                                     <span className="dungeon__victory-icon"><GameIcon name="trophy" /></span>
@@ -3305,14 +2562,6 @@ const Dungeon = () => {
                                 </p>
                             )}
 
-                            {/* Result actions — single CTA. Win -> green "Odbierz"
-                                (celebratory claim-the-spoils beat; items
-                                already landed in the inventory). Flee -> red
-                                "Uciekaj" so the panel doesn't visually
-                                celebrate a bail-out. Death -> red "Wróć" so
-                                the loss state stays consistent and never
-                                tempts the player into thinking there's loot
-                                to claim. */}
                             <div className="dungeon__result-actions">
                                 {resultKind === 'flee' ? (
                                     <button
@@ -3336,10 +2585,6 @@ const Dungeon = () => {
                                         >
                                             Odbierz
                                         </button>
-                                        {/* Spec 4 (2026-05): "Walcz ponownie" button when the
-                                            same dungeon still has attempts left for the day —
-                                            saves the player a trip back to the list to start
-                                            another run. */}
                                         {activeDungeon && canEnter(activeDungeon.id) && (
                                             <button
                                                 className="dungeon__back-btn dungeon__back-btn--again"
@@ -3348,10 +2593,6 @@ const Dungeon = () => {
                                                 <GameIcon name="crossed-swords" /> Walcz ponownie
                                             </button>
                                         )}
-                                        {/* 2026-05 v6: when this dungeon's daily attempts
-                                            are spent, jump to the next higher-level dungeon
-                                            within reach (level <= char.level) that still has
-                                            attempts available. */}
                                         {(() => {
                                             if (!activeDungeon) return null;
                                             if (canEnter(activeDungeon.id)) return null;
@@ -3378,37 +2619,6 @@ const Dungeon = () => {
                 )}
             </AnimatePresence>
 
-            {/* Tile-zoom entry overlay — a fixed-position, full-screen
-                framer panel that morphs from the clicked card's bounding
-                box into the viewport, then crossfades out once the
-                running phase has mounted underneath. Lives outside the
-                phase-switching AnimatePresence (which uses mode="wait")
-                so it can stay on top during the brief
-                list->running swap and hide any visual flash. */}
-            {/* -- Cinematic entry sequence (2.0s) -------------------------
-                Three stacked motion layers, all sharing the same total
-                duration so we can keep the timing readable in one place.
-
-                Layer 1 — IMAGE: morphs from the clicked card's bounding
-                box up to fullscreen + a touch past (scale 1.06) for that
-                "we're being pulled in" feel. Holds at fullscreen, then
-                fades out at the very end so the reveal lands on the
-                combat HUD underneath rather than on the dungeon image.
-
-                Layer 2 — DARKNESS: a flat black panel that fades 0 -> 1 in
-                lockstep with the image zoom, holds black through the mid
-                of the animation, then fades 1 -> 0 to reveal whatever
-                mounted underneath (combat HUD, mounted at 2.4s).
-
-                Layer 3 — SKIP HINT: tiny "kliknij aby pominąć" label
-                that fades in once the screen is dark enough to read it,
-                stays visible during the hold, then fades out with the
-                rest of the overlay. Pure UX-affordance — the whole
-                overlay is the click target, not just the hint.
-
-                The wrapper itself owns the click -> skip handler and
-                takes pointer events so the player can interrupt at any
-                point during the cinematic. */}
             <AnimatePresence>
                 {enterAnim && (
                     <motion.div
@@ -3417,11 +2627,8 @@ const Dungeon = () => {
                         onClick={skipEntryAnimation}
                         initial={{ opacity: 1 }}
                         animate={{ opacity: 1 }}
-                        // Fast exit on skip / formal completion — combat is
-                        // already mounted underneath, no need to linger.
                         exit={{ opacity: 0, transition: { duration: 0.18, ease: 'linear' } }}
                     >
-                        {/* Layer 1 — dungeon image, card -> fullscreen + soft zoom */}
                         <motion.div
                             className="dungeon__enter-image"
                             initial={{
@@ -3440,39 +2647,15 @@ const Dungeon = () => {
                                 height: '100dvh',
                                 borderRadius: 0,
                                 scale: 1.06,
-                                // 4 keyframes to match the `times` array below:
-                                // hold full opacity through the zoom-in, then
-                                // crossfade to 0 just before the darkness panel
-                                // peaks so the eventual reveal lands on combat.
                                 opacity: [1, 1, 0, 0],
                             }}
                             transition={{
-                                // Faster card->fullscreen morph — gets the
-                                // image filling the viewport just before the
-                                // darkness panel hits peak opacity at 0.66s,
-                                // so the geometry is settled by the time the
-                                // screen reads as fully black. Compressed
-                                // proportionally with the 2s total.
                                 top:          { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
                                 left:         { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
                                 width:        { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
                                 height:       { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
                                 borderRadius: { duration: 0.66, ease: [0.22, 0.61, 0.36, 1] },
-                                // Slow continuous zoom past fullscreen — only
-                                // visible up to ~36% (when the image fades
-                                // out) but cheap to keep running through the
-                                // hold so any partial visibility on slower
-                                // devices still feels alive instead of frozen.
                                 scale:        { duration: 2.0, ease: 'linear' },
-                                // Image must be GONE before the darkness
-                                // starts to lift (>67%) — otherwise the reveal
-                                // would show the still-frame dungeon image
-                                // instead of the combat HUD that mounted
-                                // underneath at 67% (1.34s). We hold full
-                                // opacity until 30% (image dominates the
-                                // zoom-in), then crossfade to 0 over the
-                                // 30->36% window (~0.12s) which lines up with
-                                // the darkness panel hitting peak black at 33%.
                                 opacity:      { duration: 2.0, times: [0, 0.3, 0.36, 1], ease: 'linear' },
                             }}
                             style={{
@@ -3483,42 +2666,23 @@ const Dungeon = () => {
                             } as React.CSSProperties}
                         />
 
-                        {/* Layer 2 — darkness fade 0 -> 1 -> 1 -> 0
-                            Compressed to the new 2s total. The screen reaches
-                            FULL black at 33% (≈0.66s) and holds. The combat
-                            HUD mounts at 67% / 1.34s (under the still-opaque
-                            panel) so the reveal from 67%->100% (1.34s->2s)
-                            crossfades the player straight into the live arena
-                            instead of the dungeon image. */}
                         <motion.div
                             className="dungeon__enter-darkness"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: [0, 1, 1, 0] }}
                             transition={{
                                 duration: 2.0,
-                                // 0s clear -> 0.66s full black -> 1.34s still
-                                // black (combat mounts here) -> 2.0s fully
-                                // transparent.
                                 times: [0, 0.33, 0.67, 1],
                                 ease: 'easeInOut',
                             }}
                         />
 
-                        {/* Layer 3 — skip affordance */}
                         <motion.div
                             className="dungeon__enter-skip-hint"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: [0, 0, 1, 1, 0, 0] }}
                             transition={{
                                 duration: 2.0,
-                                // Hint surfaces only during the dark hold —
-                                // visible at 35% (just after peak black at
-                                // 33%), fades out by 67% so it's gone the
-                                // moment the reveal starts. Final 0 keyframe
-                                // holds through to t=1 so framer keeps the
-                                // hint hidden during the combat reveal.
-                                // Relative `times` are unchanged — they scale
-                                // automatically with the new 2s duration.
                                 times: [0, 0.2, 0.35, 0.55, 0.67, 1],
                                 ease: 'linear',
                             }}

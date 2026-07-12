@@ -9,16 +9,12 @@ import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './BuffPopover.scss';
 
 interface IBuffPopoverProps {
-  /** Anchor button — outside-click ignores it so re-clicking the opener doesn't reopen. */
   anchorRef: RefObject<HTMLElement | null>;
-  /** Closes the popup. */
   onClose: () => void;
 }
 
-/** Effects that only tick during active combat (paused otherwise). */
 const COMBAT_ONLY_EFFECTS = new Set(['xp_boost', 'premium_xp_boost']);
 
-/** Format remaining ms as "Xh YYm" / "Mm SSs" / "Ns". */
 const formatTimeLeft = (ms: number): string => {
   if (ms <= 0) return 'wygasł';
   const totalSec = Math.floor(ms / 1000);
@@ -30,15 +26,6 @@ const formatTimeLeft = (ms: number): string => {
   return `${s}s`;
 };
 
-/**
- * Popup that lists every active buff for the current character with a live
- * countdown. Pausable buffs (e.g. elixirs that only tick in combat) show a :pause-button:
- * indicator when combat is idle.
- *
- * Also surfaces the passive death-protection counters (Amulet of Loss, Death
- * Protection potion) — they don't have timers but the player should see they
- * are armed.
- */
 const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
   const popoverRef = useRef<HTMLDivElement>(null);
   const character = useCharacterStore((s) => s.character);
@@ -47,8 +34,6 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
   const combatPhase = useCombatStore((s) => s.phase);
   const consumables = useInventoryStore((s) => s.consumables);
 
-  // Track wall-clock time as state so countdowns update live without calling
-  // Date.now() during render (react-hooks/purity).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -58,7 +43,6 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
     return () => clearInterval(id);
   }, [cleanExpired]);
 
-  // Outside-click + Escape handling
   useEffect(() => {
     const onDocPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;

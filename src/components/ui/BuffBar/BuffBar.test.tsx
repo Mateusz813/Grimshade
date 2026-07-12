@@ -2,14 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * BuffBar — collapsible pill stack rendered above combat. Hidden on
- * characterless routes; null when nothing to show. Renders death-prot
- * counters, AOL counters, and the active buff list with countdown.
- *
- * - TinyIcon is stubbed to avoid Vite-asset resolution.
- * - getElixirImage is stubbed via the spriteAssets factory mock.
- */
 
 vi.mock('../TinyIcon/TinyIcon', () => ({
     default: ({ icon }: { icon: string }) => (
@@ -123,13 +115,10 @@ describe('BuffBar — collapse toggle', () => {
             ],
         });
         renderAt('/inventory');
-        // Pills visible by default.
         expect(screen.getByText('A')).toBeTruthy();
         const toggle = document.querySelector('.buff-bar__toggle') as HTMLButtonElement;
-        // Expanded toggle shows the Lucide "x" collapse glyph (<Icon name="x">).
         expect(toggle.querySelector('svg.ui-icon')?.getAttribute('data-icon')).toBe('x');
         fireEvent.click(toggle);
-        // After collapsing the pills disappear; toggle now shows :sparkles: + count.
         expect(screen.queryByText('A')).toBeNull();
         expect(toggle.querySelector('svg.game-icon')?.getAttribute('data-icon')).toBe('sparkles');
         expect(toggle.textContent).toContain('2');

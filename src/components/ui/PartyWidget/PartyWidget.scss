@@ -1,33 +1,13 @@
 @use '../../../styles/variables' as *;
 
-// -----------------------------------------------------------------------------
-// Floating party widget — a fixed-position shield button + popover roster.
-// Visible on every screen when the player is in a party.
-// -----------------------------------------------------------------------------
 
-// 2026-05-19 v14: the legacy combat-HUD hide is gone. The shield
-// button now sits in the bottom-right corner above the chat icon
-// (clear of every in-arena ally slot), so it stays visible across
-// every screen while the player is in a party.
 
-// 2026-05-19 v13 spec ("Ikonka party umiesc nad ikonka chatu troszke
-// i rozwijanie party wtedy do gory"): the party shield button now
-// stacks JUST ABOVE the floating chat icon in the bottom-right
-// corner instead of pinning to the top of the viewport. Popover
-// opens UPWARD from the button so it never overlaps the bottom-nav
-// or the chat popup that opens to its left.
 .party-widget {
   &__btn {
     position: fixed;
     right: 0;
-    // 2026-05-19 v14 spec ("Ikonka party ma byc na stale jezeli
-    // jestesmy w party i wielkosci ikonki chatu"): same 36×36
-    // footprint as the chat icon. Chat icon sits at `bottom: 50px`
-    // with a 36px height (top edge ~86px). 92px places the party
-    // shield 6px above it — same vertical column, no overlap.
     bottom: 92px;
-    z-index: 1305; // sits just under chat icon (1310) — both above
-                   // the bottom-nav (1300).
+    z-index: 1305;
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -57,9 +37,6 @@
   &__btn-count {
     position: absolute;
     bottom: -2px;
-    // 2026-05-19 v14: badge moved to the LEFT side so it doesn't
-    // spill past the viewport (button is now flush against
-    // right:0 — anything at right:-3 would clip).
     left: -2px;
     min-width: 16px;
     height: 16px;
@@ -75,16 +52,10 @@
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
   }
 
-  // -- Popover --------------------------------------------------------------
-  // 2026-05-19 v13: anchored to the BOTTOM-right so it grows upward
-  // off the screen (away from the chat popup which opens to the
-  // left of the icon stack and away from the bottom-nav). Top is
-  // free so the popover can be as tall as its roster content
-  // demands without clipping.
   &__popover {
     position: fixed;
     right: 4px;
-    bottom: 138px; // clears the party btn (92px bottom + 36px height + 10px gap)
+    bottom: 138px;
     z-index: 1306;
     width: min(320px, calc(100vw - 16px));
     max-height: calc(100vh - 200px);

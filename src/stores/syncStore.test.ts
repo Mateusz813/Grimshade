@@ -26,7 +26,6 @@ describe('setLastSynced', () => {
     });
 
     it('accepts arbitrary strings — store does not validate format', () => {
-        // Documenting current behaviour: the setter is intentionally dumb.
         useSyncStore.getState().setLastSynced('not-iso');
         expect(useSyncStore.getState().lastSynced).toBe('not-iso');
     });
@@ -43,8 +42,6 @@ describe('setSyncing', () => {
 
 describe('initial state', () => {
     it('exposes isOnline (boolean), lastSynced (null) and isSyncing (false) on boot', () => {
-        // After our beforeEach reset, state should match the documented defaults.
-        // navigator.onLine inside happy-dom is true by default.
         const s = useSyncStore.getState();
         expect(typeof s.isOnline).toBe('boolean');
         expect(s.lastSynced).toBeNull();
@@ -52,7 +49,3 @@ describe('initial state', () => {
     });
 });
 
-// TODO: the module installs `window.addEventListener('online'/'offline')`
-// handlers at import time. Testing those would require resetting modules
-// + emitting the events on `window` — left out because the setter logic
-// is already covered above and the listeners are one-liners.

@@ -1,17 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 
-/**
- * useBackgroundCombat tests
- *
- * The hook is a thick orchestrator: it owns five intervals (player tick,
- * monster tick, bot tick, status tick, auto-skill tick, cooldown tick)
- * plus offline catch-up + auto-fight + 10h cap + XP-per-hour. We mock
- * the combat engine so the hook's wiring logic can be exercised
- * without dragging the whole engine into the test.
- */
 
-// All engine entry points are mocked. We can assert on them.
 vi.mock('../systems/combatEngine', () => ({
     SPEED_MULT: { x1: 1, x2: 2, x4: 4 },
     doPlayerAttackTick: vi.fn(),
@@ -53,7 +43,6 @@ import {
     stopCombat,
 } from '../systems/combatEngine';
 
-// -- Fixtures ----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -100,11 +89,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // Tear down any hooks left mounted by prior tests. Without
-    // `cleanup()` the per-hook setInterval handlers keep ticking
-    // across tests — so a later `vi.advanceTimersByTime()` invokes
-    // the engine spies from previous renders and breaks "not called"
-    // assertions in the unmount / offline-catch-up suites.
     cleanup();
     vi.useRealTimers();
 });
@@ -158,7 +142,6 @@ describe('useBackgroundCombat — fighting phase', () => {
     it('runs the auto-skill poll at 250ms (passes autoSkillOnly=true)', () => {
         renderHook(() => useBackgroundCombat());
         act(() => { vi.advanceTimersByTime(260); });
-        // doPlayerAttackTick is called both by main + auto-skill poll
         const callsWithTrue = (doPlayerAttackTick as ReturnType<typeof vi.fn>).mock.calls.filter(
             (c) => c[0] === true,
         );
@@ -298,7 +281,6 @@ describe('useBackgroundCombat — auto-fight on victory', () => {
 
 describe('useBackgroundCombat — 10h cap', () => {
     it('calls stopCombat when backgroundStartedAt + 10h has already elapsed', () => {
-        // 11h ago — past the cap -> stops immediately on mount.
         const longAgo = new Date(Date.now() - 11 * 60 * 60 * 1000).toISOString();
         useCombatStore.setState({ backgroundStartedAt: longAgo });
         renderHook(() => useBackgroundCombat());

@@ -23,16 +23,6 @@ import itemsRaw from '../data/items.json';
 
 const ALL_ITEMS_FOR_HEAL = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-/**
- * Returns the player's full effective max HP / MP — base + equipment +
- * training + elixir + transform — mirroring `getEffectiveChar` in
- * combatEngine.ts. Used by level-up and death-respawn to fully restore
- * HP/MP up to the bar the player actually sees in the header.
- *
- * Older revisions only summed equipment + training, leaving 10–20 % gap
- * after death whenever the player had an active elixir or completed
- * transform tier.
- */
 const getEffectiveMaxValues = (baseMaxHp: number, baseMaxMp: number): { maxHp: number; maxMp: number } => {
     try {
         const { equipment } = useInventoryStore.getState();
@@ -50,11 +40,6 @@ const getEffectiveMaxValues = (baseMaxHp: number, baseMaxMp: number): { maxHp: n
     }
 };
 
-/**
- * Backwards-compatible delta helper — kept so existing call sites that
- * only need bonus deltas (level-up bar widening) keep working without
- * recomputing the whole effective max each time.
- */
 const getEffectiveMaxBonuses = (): { hpBonus: number; mpBonus: number } => {
     try {
         const { equipment } = useInventoryStore.getState();
@@ -89,13 +74,6 @@ const STAT_POINT_BONUSES: Record<StatPointStat, number> = {
   defense: 1,
 };
 
-/**
- * Milestone stat bonuses granted automatically every 10 levels, on top of the
- * normal per-level HP/MP gain and manual stat-point allocation. Each class
- * gets its own HP/MP emphasis but everyone earns +1 ATK and +1 DEF per
- * milestone. These bonuses are gated on `highest_level` so dying and
- * re-leveling NEVER grants them twice.
- */
 interface IMilestoneBonus {
     hp: number;
     mp: number;
@@ -115,35 +93,11 @@ const MILESTONE_BONUSES: Record<CharacterClass, IMilestoneBonus> = {
 
 const MILESTONE_INTERVAL = 10;
 
-/**
- * Count milestone levels crossed in range (prevHighest, newHighest].
- * Returns the number of multiples of 10 that are strictly greater than
- * prevHighest and less-or-equal to newHighest.
- */
 const countMilestonesCrossed = (prevHighest: number, newHighest: number): number => {
     if (newHighest <= prevHighest) return 0;
     return Math.floor(newHighest / MILESTONE_INTERVAL) - Math.floor(prevHighest / MILESTONE_INTERVAL);
 };
 
-/**
- * Deterministic LOWER BOUND for a character's base max_hp / max_mp, derived
- * purely from class + highest level — the EXACT same constants the level-up
- * path uses (classes.json baseStats + BASE_HP/MP_PER_LEVEL + MILESTONE_BONUSES).
- *
- * This is the floor a healthy, never-corrupted character's base stats can NEVER
- * legitimately be below: at level L a character has earned
- *   base.hp + perLevelHp·(L-1) + floor(L/10)·milestone.hp
- * worth of HP from leveling alone (manual stat-point spends only ADD on top, so
- * the real value is ≥ this). The 2026-06-24 player-data fix uses this floor to:
- *   1) detect already-corrupted bases (max_mp collapsed toward 0 on mobile by the
- *      double-run unbake bug) and heal them back up (healCorruptedBaseStats), and
- *   2) refuse to run the lossy geometric unbake on a base that's already below
- *      the floor (transformStore.migrateLegacyBakedBonuses).
- *
- * NOTE: this is a FLOOR, not the exact base — it intentionally ignores manual
- * stat-point allocation (which can only raise the real value), so healing to the
- * floor never lowers a character that legitimately spent points into HP/MP.
- */
 export const computeBaseStatFloor = (
     characterClass: CharacterClass,
     highestLevel: number,
@@ -164,12 +118,6 @@ export const computeBaseStatFloor = (
     };
 };
 
-/**
- * Gold milestone schedule: levels 10, 20, 30, 40, 50, then 100, 150, 200, …
- * (every 50 from 100 onward, forever). Reward: 10000 × level.
- *
- * Gated on highest_level so re-leveling after death never re-awards gold.
- */
 const GOLD_MILESTONE_REWARD_PER_LEVEL = 10000;
 const isGoldMilestoneLevel = (level: number): boolean => {
     if (level <= 0) return false;
@@ -194,22 +142,8 @@ interface ICharacterState {
   updateCharacter: (partial: Partial<ICharacter>) => void;
   addXp: (xp: number) => IXpGainResult;
   spendStatPoint: (stat: StatPointStat) => void;
-  /**
-   * Spend EVERY available stat point on a single stat in one go. Used by the
-   * Postać view's stat-alloc tiles so a player who just dinged 50 levels
-   * doesn't have to click 50 times. Idempotent — no-op when stat_points = 0.
-   */
   spendAllStatPoints: (stat: StatPointStat) => void;
   fullHealEffective: () => void;
-  /**
-   * Player-data repair (2026-06-24): raise base max_hp / max_mp back up to the
-   * deterministic class+level FLOOR (computeBaseStatFloor) when a corrupted save
-   * has collapsed them (the mobile double-run transform-unbake bug drove base
-   * MP toward 0). Only ever RAISES a deficient stat to the floor — a healthy
-   * stat (already ≥ floor) is left untouched, so a character who legitimately
-   * spent stat-points into HP/MP is never lowered. Idempotent: a no-op (returns
-   * false) once both stats are at or above the floor. Returns true if it healed.
-   */
   healCorruptedBaseStats: () => boolean;
   clearCharacter: () => void;
 }
@@ -220,7 +154,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
   setCharacter: (character) => set({
     character: character ? {
       ...character,
-      // Ensure highest_level is always set (migration for existing characters)
       highest_level: Math.max(character.highest_level ?? 1, character.level),
     } : null,
   }),
@@ -233,26 +166,21 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const char = get().character;
     if (!char) return { levelsGained: 0, statPointsGained: 0, newLevel: 0 };
 
-    // Ensure current XP is valid (not negative, not exceeding level threshold)
     const safeCurrentXp = Math.max(0, char.xp ?? 0);
     const result = processXpGain(char.level, safeCurrentXp, xp);
     const hpPerLevel = BASE_HP_PER_LEVEL[char.class] ?? 10;
     const mpPerLevel = BASE_MP_PER_LEVEL[char.class] ?? 5;
 
-    // Only award stat points, HP/MP for levels ABOVE highest_level ever reached
-    // This prevents exploit: die -> lose level -> re-level -> get free stat points
     const highestLevel = char.highest_level ?? char.level;
     const newHighest = Math.max(highestLevel, result.newLevel);
     const newLevelsCount = Math.max(0, result.newLevel - highestLevel);
 
     const hpGain = newLevelsCount * hpPerLevel;
     const mpGain = newLevelsCount * mpPerLevel;
-    // Only generate stat points for genuinely new levels
     const statPointsGained = newLevelsCount > 0
       ? newLevelsCount * statPointsForLevelUp(char.class)
       : 0;
 
-    // Milestone bonuses every 10 levels (idempotent vs death penalty: gated on highest_level)
     const milestonesCrossed = countMilestonesCrossed(highestLevel, newHighest);
     const milestoneBonus = MILESTONE_BONUSES[char.class] ?? { hp: 0, mp: 0, attack: 0, defense: 0 };
     const milestoneHp = milestonesCrossed * milestoneBonus.hp;
@@ -260,8 +188,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const milestoneAtk = milestonesCrossed * milestoneBonus.attack;
     const milestoneDef = milestonesCrossed * milestoneBonus.defense;
 
-    // Gold milestone rewards: 10/20/30/40/50/100/150/200/… -> 10k × level.
-    // Gated on highest_level — re-leveling after death never re-awards gold.
     const goldMilestoneLevels = collectGoldMilestones(highestLevel, newHighest);
     const milestoneGoldGain = goldMilestoneLevels.reduce(
         (sum, lv) => sum + lv * GOLD_MILESTONE_REWARD_PER_LEVEL,
@@ -272,21 +198,10 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const newMaxMp = char.max_mp + mpGain + milestoneMp;
     const newAttack = (char.attack ?? 0) + milestoneAtk;
     const newDefense = (char.defense ?? 0) + milestoneDef;
-    // 2026-06-21 fix: the milestone gold reward used to be added to
-    // `character.gold` (the `characters` table column), but the gold the
-    // player actually sees / spends lives in `inventoryStore.gold` (the
-    // game_saves blob — what TopHeader renders, what the shop spends, what
-    // task rewards credit via `addGold`). Writing only to `character.gold`
-    // meant the "+1cc" level-up announcement fired but the balance never
-    // moved. We now credit the inventory pool (below, after the set) so the
-    // reward lands where every other gold reward does. `character.gold` is
-    // left untouched — consistent with task/hunting/shop gold, which never
-    // touch it either.
     const { hpBonus, mpBonus } = getEffectiveMaxBonuses();
     const effectiveMaxHp = newMaxHp + hpBonus;
     const effectiveMaxMp = newMaxMp + mpBonus;
 
-    // On level-up: FULL HEAL to 100% HP/MP. Otherwise just clamp.
     const didLevelUp = result.levelsGained > 0;
     const newHp = didLevelUp
       ? effectiveMaxHp
@@ -312,17 +227,10 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
       },
     });
 
-    // Credit the milestone gold to the SPENDABLE/displayed pool (inventory),
-    // not the vestigial `characters.gold` column. Guarded so non-milestone
-    // level-ups don't churn the inventory store.
     if (milestoneGoldGain > 0) {
       useInventoryStore.getState().addGold(milestoneGoldGain);
     }
 
-    // Fire global level-up notification (deferred to next microtask so React
-    // picks it up as a separate render – prevents the notification from being
-    // swallowed when other state changes happen in the same synchronous block,
-    // e.g. dungeon setPhase('result') called right after addXp).
     if (result.levelsGained > 0) {
       const _newLevel = result.newLevel;
       const _levelsGained = result.levelsGained;
@@ -360,7 +268,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
       [stat]: (char[stat] ?? 0) + bonus,
     };
 
-    // When increasing max_hp/max_mp, also increase current hp/mp
     if (stat === 'max_hp') {
       updates.hp = (char.hp ?? 0) + bonus;
     } else if (stat === 'max_mp') {
@@ -381,9 +288,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
       stat_points: 0,
       [stat]: (char[stat] ?? 0) + total,
     };
-    // Same hp/mp side-effect as the single-point version — bumping max_hp/mp
-    // also tops up the current pool by the same amount so the bar shows the
-    // gain immediately instead of leaving an awkward gap until next heal.
     if (stat === 'max_hp') updates.hp = (char.hp ?? 0) + total;
     if (stat === 'max_mp') updates.mp = (char.mp ?? 0) + total;
 
@@ -392,10 +296,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
   fullHealEffective: () => {
     const char = get().character;
     if (!char) return;
-    // Use the FULL effective max (equipment + training + elixir + transform)
-    // so a heavily-buffed player respawns at the cap shown in the header,
-    // not just at base + gear. Elixir/transform-aware so death-respawn
-    // doesn't silently cap them at 80–90 %.
     const { maxHp, maxMp } = getEffectiveMaxValues(char.max_hp, char.max_mp);
     set({
       character: {
@@ -421,8 +321,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     const updates: Partial<ICharacter> = {};
     if (hpLow) {
         updates.max_hp = floor.max_hp;
-        // Never strand current hp above the (possibly previously-broken) max;
-        // bump it up to the new floor only if it was sitting below it.
         if ((char.hp ?? 0) > floor.max_hp) {
             updates.hp = floor.max_hp;
         } else {
@@ -438,7 +336,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
         }
     }
 
-    // eslint-disable-next-line no-console
     console.warn(
         `[characterStore] Healed corrupted base stats for ${char.class} ` +
         `(lvl ${char.level}, highest ${char.highest_level ?? char.level}): ` +
@@ -450,15 +347,6 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     return true;
   },
   clearCharacter: () => {
-    // 2026-05-13 spec ("Kiedy wychodze do wyboru postaci to moje party
-    // ktore mialem powinno zostac zlikwidowane"): leave any active
-    // party before tearing down the character session. We can't rely
-    // solely on the AvatarMenu menu-button hook because the player can
-    // also reach char-select by clearing the URL — at that point only
-    // the local React Router triggers, not our menu callback. By
-    // wiring the dissolve into clearCharacter itself we cover every
-    // exit path (menu, URL, programmatic logout). Fire-and-forget
-    // because the character clear must not be blocked on network.
     const charId = get().character?.id;
     if (charId) {
         void (async () => {
@@ -467,13 +355,11 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
                 if (usePartyStore.getState().party) {
                     await usePartyStore.getState().leaveParty(charId);
                 }
-            } catch { /* best effort */ }
+            } catch { }
         })();
     }
     set({ character: null });
   },
 }));
 
-// Let inventoryStore's potion level-gate read the LIVE character level without
-// a circular import (characterStore -> inventoryStore is the only static edge).
 registerCharacterLevelGetter(() => useCharacterStore.getState().character?.level ?? 1);

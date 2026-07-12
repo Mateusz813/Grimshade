@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { useArenaStore } from '../../stores/arenaStore';
 import { useCharacterStore } from '../../stores/characterStore';
@@ -47,20 +48,12 @@ const Arena = () => {
         finalizeMatch,
         claimSeasonRewards,
         injectOtherPlayers,
-    } = useArenaStore();
+    } = useArenaStore(useShallow((s) => ({ currentArena: s.currentArena, defenseSnapshot: s.defenseSnapshot, matchLog: s.matchLog, pendingRewards: s.pendingRewards, refreshIfNeeded: s.refreshIfNeeded, attemptsRemaining: s.attemptsRemaining, submitDefenseSnapshot: s.submitDefenseSnapshot, finalizeMatch: s.finalizeMatch, claimSeasonRewards: s.claimSeasonRewards, injectOtherPlayers: s.injectOtherPlayers })));
 
-    // Keep season + arena fresh on mount + when level changes.
     useEffect(() => {
         if (character) refreshIfNeeded(character.level);
     }, [character, refreshIfNeeded]);
 
-    // Pull the user's other characters (Supabase) and slot them into the
-    // current arena instance, replacing the same number of low-LP bots.
-    // Per spec each character on the account is auto-enrolled in their
-    // league every week; this is the closest sync-friendly approximation
-    // — the alts join "their" league which for a fresh week is wherever
-    // the active character lands. Failure (offline / no session) silently
-    // falls back to the bot-only roster.
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
@@ -80,65 +73,38 @@ const Arena = () => {
                     defense: c.defense,
                 })));
             } catch {
-                // offline / no session — leave the bot roster in place.
             }
         };
         void load();
         return () => { cancelled = true; };
     }, [injectOtherPlayers, currentArena?.id]);
 
-    // Auto-submit the defense snapshot on every visit. Per spec the player
-    // is auto-enrolled in their league every week — there is no opt-in
-    // button anymore. Re-snapshotting on each visit also keeps the
-    // defender stats current with the player's latest gear / level / buffs
-    // without surfacing a "press to confirm" UX wart.
     useEffect(() => {
         if (character) submitDefenseSnapshot();
     }, [character, submitDefenseSnapshot]);
 
-    // Centre the leaderboard scroll on the player's own row. We deliberately
-    // walk up to the `.arena__list` ancestor and set its scrollTop directly
-    // rather than calling `scrollIntoView` — the latter cascades up to the
-    // page and would also push the AppShell scroll position, hiding the
-    // league strip and the defense card. Local scroll only keeps the
-    // chrome visible while the player lands centred on themselves.
     useEffect(() => {
         if (!currentArena) return;
-        // 2026-06-24: center on the player's own row EXACTLY ONCE per view mount,
-        // then never again. `currentArena`'s object reference is REPLACED
-        // post-mount by submitDefenseSnapshot (sync) and the async
-        // injectOtherPlayers (after the Supabase fetch), which used to re-run
-        // this effect and yank scrollTop back to the player — making the
-        // leaderboard impossible to browse (it kept snapping back). The ref guard
-        // lets the player scroll freely after the initial auto-center.
         if (hasCentredRef.current) return;
         const raf = requestAnimationFrame(() => {
-            if (hasCentredRef.current) return; // a concurrent rAF already centered
+            if (hasCentredRef.current) return;
             const row = meRowRef.current;
             if (!row) return;
-            // Walk up to the scroll container (.arena__list).
             let list: HTMLElement | null = row.parentElement;
             while (list && !list.classList.contains('arena__list')) {
                 list = list.parentElement;
             }
             if (!list) return;
-            // getBoundingClientRect handles arbitrary nesting (the row sits
-            // inside a wrapper div for the dividers + row), so compute the
-            // delta in viewport space and translate into list-scroll space.
             const rowRect = row.getBoundingClientRect();
             const listRect = list.getBoundingClientRect();
             const offsetWithinList = rowRect.top - listRect.top + list.scrollTop;
             const target = offsetWithinList - (list.clientHeight / 2) + (rowRect.height / 2);
             list.scrollTop = Math.max(0, target);
-            // Mark centered only after a SUCCESSFUL center (row was found), so if
-            // the row isn't mounted yet on the first pass a later render still
-            // gets its one shot.
             hasCentredRef.current = true;
         });
         return () => cancelAnimationFrame(raf);
     }, [currentArena]);
 
-    // Re-render every minute so the season countdown ticks live.
     const [, setTickKey] = useState(0);
     useEffect(() => {
         const id = setInterval(() => setTickKey((k) => k + 1), 60_000);
@@ -147,21 +113,10 @@ const Arena = () => {
 
     const [rewardsOpen, setRewardsOpen] = useState(false);
     const [logOpen, setLogOpen] = useState(false);
-    // "Walcz" popup — opens from the defense card and shows just the
-    // attackable opponents (±2 ranks), so the player can fight without
-    // scrolling through the leaderboard to find someone in range.
     const [fightOpen, setFightOpen] = useState(false);
-    // Entry transition — fade-to-black before pushing the match route.
-    // Click anywhere on the overlay to skip and route immediately.
     const [entering, setEntering] = useState<{ pendingNav: () => void } | null>(null);
     const completedTransforms = useTransformStore((s) => s.completedTransforms);
-    // Auto-scroll target: the player's own leaderboard row. We attach this
-    // ref to the `--me` row inside the list and call scrollIntoView in
-    // an effect so the user lands centred on themselves rather than at
-    // rank #1 every time they open the arena.
     const meRowRef = useRef<HTMLDivElement | null>(null);
-    // One-shot guard: true once we've auto-centered on the player's row, so
-    // later currentArena reference changes never re-yank the scroll position.
     const hasCentredRef = useRef(false);
 
     if (!character) {
@@ -194,13 +149,10 @@ const Arena = () => {
             alert('Brak ataków na dziś (limit 10).');
             return;
         }
-        // Determine attacker-is-higher: lower visible rank = better position.
         const myRank = myEntry?.rank ?? 999;
         const oppRank = ranked.find((r) => r.competitor.id === opponent.id)?.rank ?? 999;
-        const attackerIsHigher = myRank > oppRank; // attacking UP the table
+        const attackerIsHigher = myRank > oppRank;
 
-        // Hand off to the dedicated combat view (route below).
-        // We pass IDs via sessionStorage to avoid a chunky URL state.
         sessionStorage.setItem('arena.match', JSON.stringify({
             arenaId: currentArena.id,
             myCompetitorId,
@@ -210,29 +162,18 @@ const Arena = () => {
             opponentClass: opponent.class,
             opponentLevel: opponent.level,
         }));
-        // Cinematic entry — overlay fades to black over 1.5s, then we
-        // push the route. The match view starts with its own fade-in
-        // from black so the transition is seamless.
         const pendingNav = () => navigate('/arena/match');
         setEntering({ pendingNav });
         window.setTimeout(() => {
-            // Guard against the user clicking-through (skip) — `entering`
-            // gets cleared by the click handler before the timeout fires.
             setEntering((cur) => {
                 if (cur) cur.pendingNav();
                 return null;
             });
         }, 1500);
-        // `finalizeMatch` is called from inside the match view on result —
-        // we just declare a use here so the destructured action isn't
-        // flagged as unused on this view.
         void finalizeMatch;
     };
 
     const onClaimRewards = async () => {
-        // Backend-authoritative branch (opt-in). Server grants the previous
-        // season's rewards + clears the pending claim; we re-hydrate the
-        // stores from the returned state instead of applying it client-side.
         if (isBackendMode() && character) {
             try {
                 await backendApi.claimArenaSeason(character.id);
@@ -252,16 +193,10 @@ const Arena = () => {
     const seasonMs = getSeasonMsRemaining();
     const isMonday = new Date().getUTCDay() === 1;
 
-    // The arena id is shaped like `bronze_578656609`. Strip the prefix for
-    // the numeric "Liga nr" display so the player sees a clean number; keep
-    // the full id for the leading line so the underscore form is also visible.
     const arenaIdNumeric = currentArena.id.split('_').slice(1).join('_') || currentArena.id;
 
     return (
         <div className="arena">
-            {/* League strip — header bar (back + title + global AP) was removed
-                per design: AP now lives inline next to the league label, and
-                the arena id is shown in two forms inside this strip. */}
             <div
                 className="arena__league-strip arena__league-strip--with-color"
                 style={{ '--league-color': leagueColor } as React.CSSProperties}
@@ -293,12 +228,6 @@ const Arena = () => {
                 </div>
             </div>
 
-            {/* Defense snapshot — auto-refreshed; avatar reflects the
-                player's highest unlocked transform tier instead of the raw
-                class portrait. Title text removed per design; the right
-                column is now the "Walcz" CTA that opens an attackable-list
-                popup so the player can pick a fight without scrolling to
-                find someone in their ±2 rank window. */}
             <div className="arena__defense">
                 <div className="arena__defense-avatar">
                     <img
@@ -324,7 +253,6 @@ const Arena = () => {
                 </button>
             </div>
 
-            {/* My position summary */}
             {myEntry && (
                 <div className="arena__pos-strip">
                     <span className="arena__pos-rank">#{myEntry.rank}</span>
@@ -337,12 +265,6 @@ const Arena = () => {
                 </div>
             )}
 
-            {/* Leaderboard. Both dividers render exactly ONCE even when a
-                tie produces multiple rows at the cutoff rank. We mark the
-                first row at/after the cutoff with the flag and clear it
-                so the next row inherits a regular layout. Without these
-                guards a 5-way tie at rank 41 would show 5 stacked
-                "Awans do wyższej ligi" bars (the bug from issue #3). */}
             <div className="arena__list">
                 {(() => {
                     let promoRendered = false;
@@ -352,11 +274,6 @@ const Arena = () => {
                         const isMe = c.id === myCompetitorId;
                         const attackable = !isMe && attackableIds.has(c.id) && attemptsRemaining() > 0;
                         const dividers: React.ReactNode[] = [];
-                        // Promotion divider — render BEFORE the first row whose
-                        // rank is just past the promotion cutoff. So the line
-                        // sits visually beneath the last promoted person (the
-                        // tied group above) and above the first row that
-                        // missed the cut.
                         if (!promoRendered && promoteCutoff !== null && entry.rank > promoteCutoff) {
                             dividers.push(
                                 <div key={`promo-${idx}`} className="arena__divider arena__divider--promo">
@@ -365,8 +282,6 @@ const Arena = () => {
                             );
                             promoRendered = true;
                         }
-                        // Relegation divider — render ONCE before the first
-                        // relegated row.
                         if (!relegRendered && relegateStartRank !== null && entry.rank >= relegateStartRank) {
                             dividers.push(
                                 <div key={`relegate-${idx}`} className="arena__divider arena__divider--relegate">
@@ -387,8 +302,6 @@ const Arena = () => {
                                     attackable ? 'arena__row--attackable' : '',
                                 ].filter(Boolean).join(' ')}
                             >
-                                {/* Top-3 wear a medal in front of the rank
-                                    chip. Lower ranks just show the number. */}
                                 <span className="arena__row-rank">
                                     {entry.rank === 1 && <span className="arena__row-medal"><GameIcon name="1st-place-medal" /></span>}
                                     {entry.rank === 2 && <span className="arena__row-medal"><GameIcon name="2nd-place-medal" /></span>}
@@ -425,7 +338,6 @@ const Arena = () => {
                 })()}
             </div>
 
-            {/* Rewards popup */}
             {rewardsOpen && (
                 <div className="arena__modal-bg" onClick={() => setRewardsOpen(false)}>
                     <div className="arena__modal" onClick={(e) => e.stopPropagation()}>
@@ -435,9 +347,6 @@ const Arena = () => {
                         </div>
                         {getRewardBuckets().map((b) => {
                             const scaled = applyLeagueMultiplier(b, league);
-                            // Medal glyph for the top 3 positions: gold / silver
-                            // / bronze. Lower buckets show no medal — the rank
-                            // chip alone is enough chrome.
                             const medal = b.positionLabel === '1' ? '1st-place-medal'
                                 : b.positionLabel === '2' ? '2nd-place-medal'
                                 : b.positionLabel === '3' ? '3rd-place-medal'
@@ -498,7 +407,6 @@ const Arena = () => {
                 </div>
             )}
 
-            {/* Log popup */}
             {logOpen && (
                 <div className="arena__modal-bg" onClick={() => setLogOpen(false)}>
                     <div className="arena__modal" onClick={(e) => e.stopPropagation()}>
@@ -523,10 +431,6 @@ const Arena = () => {
                 </div>
             )}
 
-            {/* Entry-to-fight overlay — fades from transparent -> solid
-                black over 1.5s, then routes to /arena/match. Click anywhere
-                to skip and go immediately. The match view then plays its
-                own fade-in from black for a continuous transition. */}
             {entering && (
                 <div
                     className="arena__entry-overlay"
@@ -537,10 +441,6 @@ const Arena = () => {
                 />
             )}
 
-            {/* "Walcz" opponent picker — opens from the defense card and
-                lists every attackable competitor (±2 ranks). Picking one
-                fires the same `handleAttack` path as the leaderboard row,
-                so the player gets a focused choose-and-fight flow. */}
             {fightOpen && (
                 <div className="arena__modal-bg" onClick={() => setFightOpen(false)}>
                     <div className="arena__modal" onClick={(e) => e.stopPropagation()}>

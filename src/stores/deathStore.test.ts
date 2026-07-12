@@ -41,7 +41,6 @@ describe('triggerDeath', () => {
     it('overwrites a previous event rather than queueing', () => {
         useDeathStore.getState().triggerDeath({ ...baseEvent, killedBy: 'Rat' });
         useDeathStore.getState().triggerDeath({ ...baseEvent, killedBy: 'Wolf' });
-        // Only the latest write should be visible — there's no queue.
         expect(useDeathStore.getState().event!.killedBy).toBe('Wolf');
     });
 
@@ -67,7 +66,6 @@ describe('clearDeath', () => {
     });
 
     it('is a no-op when no event is present', () => {
-        // Calling clear on already-null state must not throw and must stay null.
         expect(() => useDeathStore.getState().clearDeath()).not.toThrow();
         expect(useDeathStore.getState().event).toBeNull();
     });

@@ -2,29 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Friends view — per-character social graph (friends + favorites +
- * blocked). Hits `friendsApi` for online lookup but the store actions
- * (addFriend / blockUser / etc.) are local-only.
- *
- * Coverage:
- *   - Smoke render: .friends root + 2 tabs (Znajomi + Zablokowani).
- *   - Spinner fallback when character is null.
- *   - Tab switching toggles --active modifier + content.
- *   - Empty friends list renders the "Pusta lista" message.
- *   - Friends list shows the saved names with the action row (PM,
- *     block, remove).
- *   - Add-friend lookup error toast appears when the field is wrong.
- *   - Clicking remove opens the confirm dialog; confirm fires
- *     removeFriend.
- *   - Star toggle calls toggleFavorite.
- *   - Edge: blocked-and-friend coexistence — row gets the
- *     --also-blocked modifier and :unlocked: button (not :prohibited:).
- *
- * Mocks: framer-motion not needed (no AnimatePresence in this view),
- * friendsApi (findManyByName / findByName) to avoid hitting the
- * supabase mock for every test.
- */
 
 vi.mock('../../api/v1/friendsApi', () => ({
     friendsApi: {
@@ -99,8 +76,6 @@ describe('Friends — smoke', () => {
     it('shows the spinner-only layout when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderFriends();
-        // Spec: `if (!character) return <div className="friends"><Spinner /></div>`.
-        // The root still mounts but the tabs row does not.
         expect(container.querySelector('.friends')).not.toBeNull();
         expect(container.querySelector('.friends__tabs')).toBeNull();
     });
@@ -162,7 +137,6 @@ describe('Friends — friend rows', () => {
     it('shows the filled star on a favorited friend', () => {
         const { container } = renderFriends();
         const stars = container.querySelectorAll('.friends__row-star');
-        // Bob is favorited -> first row's star is --on.
         const onStars = container.querySelectorAll('.friends__row-star--on');
         expect(onStars.length).toBe(1);
         expect(stars.length).toBe(2);
@@ -249,7 +223,6 @@ describe('Friends — add lookup', () => {
     it('shows a lookup error when the search field is empty + clicks search', () => {
         const { container } = renderFriends();
         const searchBtn = container.querySelector('.friends__add-btn') as HTMLButtonElement;
-        // Disabled when no input — feels accurate enough to assert.
         expect(searchBtn.disabled).toBe(true);
     });
 
@@ -259,7 +232,6 @@ describe('Friends — add lookup', () => {
         fireEvent.change(input, { target: { value: 'Hero' } });
         const searchBtn = container.querySelector('.friends__add-btn') as HTMLButtonElement;
         fireEvent.click(searchBtn);
-        // Self-add short-circuits with a synchronous error toast.
         await Promise.resolve();
         expect(container.textContent).toContain('Nie możesz dodać samego siebie');
     });
@@ -286,10 +258,3 @@ describe('Friends — blocked tab list', () => {
     });
 });
 
-// TODO: doLookup happy path with a real `friendsApi.findByName` hit
-//       requires re-mocking the resolved value per-test + awaiting the
-//       `.then` chain. Doable but adds async glue for one extra branch;
-//       the friendsStore unit tests already cover addFriend mechanics.
-// TODO: 60 s setInterval that re-runs refreshFriendsInfo is wrapped in
-//       useEffect — verifying the cleanup with fake timers is feasible
-//       but doesn't change render contract. Skipped.

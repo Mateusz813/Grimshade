@@ -40,14 +40,11 @@ interface IClassData {
 
 const classes = classesData as IClassData[];
 
-// Per-class base stats matching DB columns (CLAUDE.md spec)
 const CLASS_BASE_STATS: Record<CharacterClass, {
   hp: number; max_hp: number; mp: number; max_mp: number;
   attack: number; defense: number; attack_speed: number;
   crit_chance: number; crit_damage: number; magic_level: number;
 }> = {
-  // attack_speed: HIGHER = FASTER attacks (formula: getAttackMs = 3000/speed).
-  // Knight = tank = slowest. Archer/Rogue = DPS = fastest.
   Knight:      { hp:120, max_hp:120, mp:30,  max_mp:30,  attack:10, defense:5,  attack_speed:1.5, crit_chance:0.03, crit_damage:2.0, magic_level:0 },
   Mage:        { hp:80,  max_hp:80,  mp:200, max_mp:200, attack:6,  defense:2,  attack_speed:2.0, crit_chance:0.05, crit_damage:2.0, magic_level:5 },
   Cleric:      { hp:100, max_hp:100, mp:150, max_mp:150, attack:7,  defense:4,  attack_speed:2.0, crit_chance:0.03, crit_damage:2.0, magic_level:5 },
@@ -57,7 +54,6 @@ const CLASS_BASE_STATS: Record<CharacterClass, {
   Bard:        { hp:95,  max_hp:95,  mp:120, max_mp:120, attack:8,  defense:3,  attack_speed:2.0, crit_chance:0.07, crit_damage:2.0, magic_level:3 },
 };
 
-// Starter weapons per class
 const STARTER_WEAPONS: Record<CharacterClass, { id: string; name: string; dmg_min: number; dmg_max: number }> = {
   Knight:      { id: 'sword_of_beginnings', name: 'Sword of Beginnings',   dmg_min: 4, dmg_max: 8 },
   Mage:        { id: 'apprentice_staff',    name: 'Apprentice Staff',       dmg_min: 3, dmg_max: 6 },
@@ -85,15 +81,6 @@ const CLASS_IMAGES: Record<CharacterClass, string> = {
 
 const STAT_MAX: Record<string, number> = { hp: 200, mp: 200, attack: 10, defense: 5, speed: 3 };
 
-// 2026-05-19 v20 spec ("Daj ograniczenie przy tworzeniu postaci na
-// ilosc znakow w nicku na 18 znakow max bez znakow specjalnych,
-// tylko litery i cyfry moze byc spacja ale tylko jedna"): tightened
-// the name validator. Max 18 chars, English-letter or digit alphabet
-// only (no Polish diacritics — they'd embed punctuation-adjacent
-// characters that bot/UI rendering can't always handle), and at
-// most ONE space anywhere in the name. The trailing-only space rule
-// is enforced by the regex (no consecutive spaces, no leading /
-// trailing space accepted by the trim + count rule).
 const getCreateSchema = () =>
   z.object({
     name: z
@@ -146,9 +133,6 @@ const CharacterCreate = () => {
       return;
     }
 
-    // Client-side pre-hint for the max-7 cap. The AUTHORITATIVE limit is
-    // enforced server-side (422) in backend mode — surfaced in the catch below
-    // — but this GET keeps the fast UX feedback for the client path.
     try {
       const existingRes = await api.get(
         `/rest/v1/characters?user_id=eq.${sessionData.session.user.id}&select=id`,
@@ -158,14 +142,8 @@ const CharacterCreate = () => {
         return;
       }
     } catch {
-      // ignore, proceed with creation
     }
 
-    // Backend-authoritative branch (opt-in). The server derives ALL base stats
-    // from the class AND seeds the starter loadout (weapon + consumables), so we
-    // send only name+class and SKIP the client CLASS_BASE_STATS payload + the
-    // local addItem/equipItem/addConsumable grants. syncFromBackend then
-    // hydrates every store from the server's seeded blob.
     if (isBackendMode()) {
       try {
         const character = await characterApi.createCharacter(sessionData.session.user.id, {
@@ -177,7 +155,6 @@ const CharacterCreate = () => {
         setCharacter(character);
         navigate('/');
       } catch (e) {
-        // Surface the server error (e.g. 422 = 7-character cap) when present.
         const serverMsg = (e as { response?: { data?: { message?: string } } })
           ?.response?.data?.message;
         setError('root', { message: serverMsg ?? 'Błąd tworzenia postaci. Spróbuj ponownie.' });
@@ -206,10 +183,8 @@ const CharacterCreate = () => {
         stat_points: 0,
       });
 
-      // Switch to new character scope (resets all stores to defaults)
       await switchToCharacter(character.id);
 
-      // Grant starter weapon (add to inventory and equip it)
       const starterWeapon = STARTER_WEAPONS[selectedId];
       const starterItem = buildItem({
         itemId: starterWeapon.id,
@@ -220,8 +195,6 @@ const CharacterCreate = () => {
       useInventoryStore.getState().addItem(starterItem);
       useInventoryStore.getState().equipItem(starterItem.uuid, 'mainHand');
 
-      // 2026-06-24: starter consumables — every new character gets 30× of the
-      // smallest HP + MP potions so they have healing from the very first fight.
       useInventoryStore.getState().addConsumable('hp_potion_sm', 30);
       useInventoryStore.getState().addConsumable('mp_potion_sm', 30);
 
@@ -235,7 +208,6 @@ const CharacterCreate = () => {
   return (
     <div className="character-create">
       <div className="character-create__layout">
-        {/* Left – class picker + name */}
         <div className="character-create__panel">
           <button
             type="button"
@@ -254,10 +226,6 @@ const CharacterCreate = () => {
                 type="text"
                 autoComplete="off"
                 placeholder="Wpisz nazwę…"
-                // 2026-05-19 v20: cap at 18 chars from the input
-                // itself so the player can't even type past the
-                // limit. The zod validator still runs on submit as
-                // a belt-and-braces guard.
                 maxLength={18}
                 {...register('name')}
               />
@@ -295,7 +263,6 @@ const CharacterCreate = () => {
           </form>
         </div>
 
-        {/* Right – class detail panel */}
         <div
           className={`character-create__detail${selectedClass ? ' character-create__detail--active' : ''}`}
           style={selectedClass ? {

@@ -2,25 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { usePartyPresenceStore, type IPartyMemberSnapshot } from './partyPresenceStore';
 import { supabase } from '../lib/supabase';
 
-/**
- * Presence layer is a Supabase realtime broadcaster behind a 500 ms
- * publish throttle. The global vitest setup already mocks
- * `supabase.channel(...)` but its default stub omits `.send` — we
- * override the channel factory here so `publish()` doesn't crash on
- * `channel.send is not a function`.
- *
- * Real wall-clock matters in two places:
- *   - `publish` throttle (MIN_PUBLISH_INTERVAL_MS = 500)
- *   - presence GC interval (10 s)
- *
- * We use `vi.useFakeTimers()` where time-sensitive behaviour is in
- * play and otherwise let happy-dom's wall clock run.
- */
 
-// Per-file supabase channel override: returns a builder with the same
-// shape the global mock uses PLUS a `.send` no-op so `publish()` can
-// fire safely. We re-install this in beforeEach so per-test mockClear()
-// doesn't strip the implementation.
 const installChannelMock = (): ReturnType<typeof vi.fn> => {
     const sendMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(supabase.channel).mockReturnValue({
@@ -43,20 +25,14 @@ const makeSnapshot = (overrides?: Partial<Omit<IPartyMemberSnapshot, 'receivedAt
 });
 
 beforeEach(() => {
-    // Always tear down any leftover subscription / pending timer between
-    // tests. `clear()` is the canonical reset path so we use it instead
-    // of `setState({...})` (which would skip the channel teardown).
     usePartyPresenceStore.getState().clear();
     installChannelMock();
 });
 
 afterEach(() => {
-    // Some tests use fake timers — restore the real clock before the
-    // next test so other suites aren't affected.
     vi.useRealTimers();
 });
 
-// -- subscribe ----------------------------------------------------------------
 
 describe('subscribe', () => {
     it('opens a channel + stores the partyId on first subscribe', () => {
@@ -64,7 +40,6 @@ describe('subscribe', () => {
         const state = usePartyPresenceStore.getState();
         expect(state.partyId).toBe('party-1');
         expect(state.channel).not.toBeNull();
-        // Cleanup so we don't leak the channel into the next test.
         unsub();
     });
 
@@ -73,7 +48,6 @@ describe('subscribe', () => {
         const channelBefore = usePartyPresenceStore.getState().channel;
         const unsub2 = usePartyPresenceStore.getState().subscribe('party-1');
         const channelAfter = usePartyPresenceStore.getState().channel;
-        // Same channel reference — store did NOT tear it down and open a new one.
         expect(channelAfter).toBe(channelBefore);
         unsub1();
         unsub2();
@@ -81,7 +55,6 @@ describe('subscribe', () => {
 
     it('tears down the previous channel + resets byMember when switching parties', () => {
         const unsub1 = usePartyPresenceStore.getState().subscribe('party-1');
-        // Seed a snapshot for party-1 so we can verify it gets wiped.
         usePartyPresenceStore.setState({
             byMember: { 'char-9': { ...makeSnapshot({ id: 'char-9' }), receivedAt: Date.now() } },
             channel: usePartyPresenceStore.getState().channel,
@@ -96,7 +69,6 @@ describe('subscribe', () => {
 
     it('returns a cleanup function that clears channel + partyId + byMember', () => {
         const unsub = usePartyPresenceStore.getState().subscribe('party-1');
-        // Seed a snapshot to confirm cleanup wipes it.
         usePartyPresenceStore.setState({
             byMember: { 'char-9': { ...makeSnapshot({ id: 'char-9' }), receivedAt: Date.now() } },
             channel: usePartyPresenceStore.getState().channel,
@@ -110,13 +82,10 @@ describe('subscribe', () => {
     });
 });
 
-// -- publish ------------------------------------------------------------------
 
 describe('publish', () => {
     it('is a no-op when no channel is open (no subscribe yet)', () => {
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 100 }));
-        // No subscribe -> byMember stays empty (the early return fires
-        // before the local-mirror step).
         expect(usePartyPresenceStore.getState().byMember).toEqual({});
     });
 
@@ -126,7 +95,6 @@ describe('publish', () => {
         const entry = usePartyPresenceStore.getState().byMember['char-1'];
         expect(entry).toBeDefined();
         expect(entry.hp).toBe(150);
-        // `receivedAt` is stamped at write time — finite ms since epoch.
         expect(typeof entry.receivedAt).toBe('number');
         expect(entry.receivedAt).toBeGreaterThan(0);
         unsub();
@@ -141,13 +109,9 @@ describe('publish', () => {
     });
 
     it('throttle: a 2nd rapid publish within the window does NOT lose the local mirror update', () => {
-        // The pendingSnapshot queue is internal to the module — what the
-        // CALLER is guaranteed is: their own state mirror always reflects
-        // the latest publish(). Verify that contract on a fast pair.
         const unsub = usePartyPresenceStore.getState().subscribe('party-1');
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 200 }));
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 1 }));
-        // Local mirror = freshest values, regardless of throttle state.
         expect(usePartyPresenceStore.getState().byMember['char-1'].hp).toBe(1);
         unsub();
     });
@@ -179,10 +143,6 @@ describe('publish', () => {
     });
 
     it('preserves real effective combat stats (attack, defense) on the local mirror', () => {
-        // 2026-06-19: the leader's Boss/Raid engine reads these to let a
-        // geared human party-mate's bot slot hit with their real power
-        // instead of a bot-tier approximation. They must round-trip through
-        // the broadcast payload exactly as published.
         const unsub = usePartyPresenceStore.getState().subscribe('party-1');
         usePartyPresenceStore.getState().publish(makeSnapshot({
             id: 'char-geared',
@@ -196,9 +156,6 @@ describe('publish', () => {
     });
 
     it('leaves attack/defense undefined for older-client snapshots (leader falls back to bot formula)', () => {
-        // The default makeSnapshot omits attack/defense — simulating a
-        // pre-2026-06-19 client. The leader's override is `pres.attack ??
-        // botStat.attack`, so undefined here must NOT become 0/NaN.
         const unsub = usePartyPresenceStore.getState().subscribe('party-1');
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-old' }));
         const entry = usePartyPresenceStore.getState().byMember['char-old'];
@@ -208,7 +165,6 @@ describe('publish', () => {
     });
 });
 
-// -- clear --------------------------------------------------------------------
 
 describe('clear', () => {
     it('drops everything: channel, partyId, byMember', () => {
@@ -220,7 +176,6 @@ describe('clear', () => {
         expect(state.channel).toBeNull();
         expect(state.partyId).toBeNull();
         expect(state.byMember).toEqual({});
-        // The cleanup function from subscribe is still callable but a no-op.
         unsub();
     });
 
@@ -231,18 +186,14 @@ describe('clear', () => {
 
     it('clears any queued pending timer (re-call clear, then publish — fresh state, no stale broadcast)', () => {
         const unsub = usePartyPresenceStore.getState().subscribe('party-1');
-        // Burn one publish so the next falls into the throttled-pending branch.
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 200 }));
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 1 }));
-        // Clear — should drop the pending timer too (smoke-tested by NOT
-        // crashing on subsequent state writes).
         usePartyPresenceStore.getState().clear();
         expect(usePartyPresenceStore.getState().byMember).toEqual({});
         unsub();
     });
 });
 
-// -- Lifecycle integration ---------------------------------------------------
 
 describe('subscribe -> publish -> unsubscribe lifecycle', () => {
     it('local mirror persists across publishes until the cleanup is invoked', () => {
@@ -257,24 +208,9 @@ describe('subscribe -> publish -> unsubscribe lifecycle', () => {
     it('re-subscribing to a DIFFERENT party blanks the previous mirror so old allies don\'t leak in', () => {
         const unsub1 = usePartyPresenceStore.getState().subscribe('party-1');
         usePartyPresenceStore.getState().publish(makeSnapshot({ id: 'char-1', hp: 200 }));
-        // Switch parties — the API doesn't require calling unsub1; subscribe()
-        // tears the old channel down internally.
         usePartyPresenceStore.getState().subscribe('party-2');
         expect(usePartyPresenceStore.getState().byMember).toEqual({});
         unsub1();
     });
 });
 
-// TODO: the `gc` interval (every 10 s drops snapshots older than 30 s) is
-// covered by the design but skipped here — exercising it cleanly requires
-// `vi.useFakeTimers()` AND control over the channel's `subscribe` side
-// effect ordering, which collides with the global setup's blanket
-// supabase mock. A future test pass with a per-suite supabase override
-// could lock it down; for now the snapshot freshness path is exercised
-// indirectly by `publish` writing a current `receivedAt`.
-//
-// TODO: pending-snapshot flush after the 500 ms throttle window opens —
-// same reasoning. The `publish()` test above asserts the local-mirror
-// freshness contract, which is what the rest of the app reads; the
-// broadcast-flush path is internal and best validated in an integration
-// test against a real Supabase channel.

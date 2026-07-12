@@ -1,10 +1,3 @@
-/**
- * Tests for deathsApi — POST to character_deaths + read recent deaths.
- *
- * Both methods are non-throwing: failures should be logged and the
- * caller gets back `null` / `[]` instead of an exception so the death
- * flow never breaks because of a missing table / RLS error.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -22,7 +15,6 @@ import api from './axiosInstance';
 import { deathsApi } from './deathsApi';
 import type { IDeathPayload } from './deathsApi';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 const mkRes = <T>(data: T) => ({ data });
 
@@ -126,6 +118,3 @@ describe('deathsApi.listRecentDeaths', () => {
     });
 });
 
-// TODO: no tests for the RLS policy in this file — that's the territory
-// of the SQL migration test in scripts/. The unit tests here exercise
-// the wire shape + fallback behaviour, which is all the helper owns.

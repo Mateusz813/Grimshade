@@ -2,19 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Login view — email/password sign in via Supabase. Small component
- * (~80 lines), pure form + a single supabase.auth.signInWithPassword
- * call.
- *
- * Coverage:
- *   - Smoke render of the `.login` root + email/password fields.
- *   - Form submit hits supabase.auth.signInWithPassword with typed values.
- *   - Server error renders as `.login__error` text.
- *   - Successful login navigates to `/`.
- *   - zod validation surfaces inline errors on bad email / short password.
- *   - Register / Forgot links present.
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -154,6 +141,3 @@ describe('Login — client-side validation', () => {
     });
 });
 
-// TODO: Cover the loading state of the submit button (isSubmitting -> 'Logowanie…').
-//       react-hook-form's isSubmitting flag flips during the async promise but
-//       happy-dom + microtask timing makes it brittle to assert on.

@@ -1,6 +1,3 @@
-// -- Skill Animation Mapping -------------------------------------------------
-// Maps each active skill ID to a visual animation category shown on the monster
-// when the skill fires in combat.
 
 export type SkillAnimCategory =
   | 'fire'
@@ -19,11 +16,8 @@ export type SkillAnimCategory =
 export interface ISkillAnimation {
   category: SkillAnimCategory;
   emoji: string;
-  /** CSS class suffix appended to the overlay element */
   cssClass: string;
-  /** Duration in ms */
   duration: number;
-  /** Primary colour (for reference / potential inline use) */
   color: string;
 }
 
@@ -46,12 +40,7 @@ function anim(category: SkillAnimCategory, emoji: string): ISkillAnimation {
   return { ...ANIM_PRESETS[category], emoji };
 }
 
-/**
- * Mapping from skill ID -> visual animation data.
- * Skills that are pure self-buffs still get a visual so the player sees feedback.
- */
 export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
-  // -- Knight ------------------------------------------------------------------
   shield_bash:     anim('physical',  'shield'),
   battle_cry:      anim('buff',      'postal-horn'),
   whirlwind:       anim('physical',  'tornado'),
@@ -68,7 +57,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   god_slash:       anim('holy',      'crossed-swords'),
   absolute_cleave: anim('physical',  'skull'),
 
-  // -- Mage --------------------------------------------------------------------
   fireball:         anim('fire',      'fire'),
   ice_lance:        anim('ice',       'snowflake'),
   thunder_strike:   anim('lightning', 'high-voltage'),
@@ -85,7 +73,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   god_nova:         anim('holy',      'sun'),
   big_bang:         anim('fire',      'collision'),
 
-  // -- Cleric ------------------------------------------------------------------
   holy_strike:        anim('holy',    'sparkles'),
   heal:               anim('holy',    'green-heart'),
   divine_shield:      anim('buff',    'shield'),
@@ -102,7 +89,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   divine_pillar:      anim('holy',    'classical-building'),
   holy_apocalypse:    anim('holy',    'sun'),
 
-  // -- Archer ------------------------------------------------------------------
   precise_shot:    anim('arrow',    'bullseye'),
   poison_arrow:    anim('poison',   'skull-and-crossbones'),
   eagle_eye:       anim('buff',     'eagle'),
@@ -119,7 +105,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   destiny_shot:    anim('arcane',   'shooting-star'),
   universe_arrow:  anim('arcane',   'milky-way'),
 
-  // -- Rogue -------------------------------------------------------------------
   backstab:         anim('physical', 'dagger'),
   poison_blade:     anim('poison',   'skull-and-crossbones'),
   evasion:          anim('buff',     'dashing-away'),
@@ -136,7 +121,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   god_assassin:     anim('dark',     'crossed-swords'),
   absolute_death:   anim('dark',     'skull-and-crossbones'),
 
-  // -- Necromancer -------------------------------------------------------------
   life_drain:       anim('dark',     'purple-heart'),
   summon_skeleton:  anim('summon',   'skull'),
   death_curse:      anim('dark',     'crystal-ball'),
@@ -153,7 +137,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   lich_transformation: anim('dark',  'crown'),
   death_apocalypse: anim('dark',     'skull-and-crossbones'),
 
-  // -- Bard --------------------------------------------------------------------
   battle_hymn:      anim('music',    'musical-note'),
   lullaby:          anim('music',    'musical-notes'),
   ballad_of_heroes: anim('music',    'musical-score'),
@@ -170,12 +153,6 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   god_ballad:       anim('music',    'crown'),
   universe_song:    anim('music',    'shooting-star'),
 
-  // -- Guild boss spells (2026-05-18 v11) -----------------------------------
-  // The guild dungeon boss draws from its own spell registry
-  // (`data/guildBossSpells.ts`). Registering the ids here lets
-  // `useCombatFx.triggerAllySkillAnim(slot, spellId)` find a themed
-  // overlay so the player sees fire / poison / lightning / dark
-  // bursts on their tile instead of just a damage float.
   cios:             anim('physical',  'crossed-swords'),
   pozoga:           anim('fire',      'fire'),
   mroz:             anim('ice',       'snowflake'),
@@ -185,16 +162,10 @@ export const SKILL_ANIMATIONS: Record<string, ISkillAnimation> = {
   eksplozja:        anim('fire',      'collision'),
   swietlistosc:     anim('holy',      'sparkles'),
   mrocznaAura:      anim('dark',      'milky-way'),
-  // Apocalypse-tier spells reuse the arcane/dark keyframes — no
-  // dedicated 'apocalypse' preset, but arcane reads as cataclysmic
-  // enough at the tier-9/10 cadence.
   apokalipsa:       anim('arcane',    'skull-and-crossbones'),
   apokalipsaCienia: anim('dark',      'skull'),
 };
 
-/**
- * Look up the animation data for a skill. Returns undefined for unknown IDs.
- */
 export const getSkillAnimation = (skillId: string): ISkillAnimation | undefined => {
   return SKILL_ANIMATIONS[skillId];
 };

@@ -1,24 +1,3 @@
-/**
- * Per-tier boss spell kits + visual themes for the guild loch.
- *
- * Every tier of the dungeon boss casts a different mix of spells —
- * lower tiers focus on basic strikes, higher tiers layer on AOE,
- * curses and apocalyptic finishers. The fight UI reads each spell's
- * `kind` to pick the matching CSS animation (fire glow, lightning
- * arc, dark shroud, etc.) and shows a damage float using the spell's
- * `color` so the player can read at a glance what hit them.
- *
- * Difficulty scales TWO axes:
- *   - `castIntervalMs` falls with tier — boss casts more often.
- *   - `damageMult` multiplies the base hit so every cast at tier 10
- *     drops a meaningful chunk of the player's max HP.
- *
- * Damage formula (in GuildBoss combat loop):
- *   dmg = floor(playerMaxHp × spell.dmgPctOfPlayerMaxHp × tierMult)
- * where `tierMult` ramps from 0.6× at tier 1 to ~2.4× at tier 10.
- * Net effect: a tier-1 basic chip is ~3 % player HP, a tier-10
- * apocalypse ~30 %.
- */
 
 export type TGuildBossSpellKind =
     | 'fire'
@@ -33,14 +12,9 @@ export type TGuildBossSpellKind =
 export interface IGuildBossSpell {
     id: string;
     name: string;
-    /** Visual theme — drives the CSS animation + tint colour. */
     kind: TGuildBossSpellKind;
-    /** Base damage as a fraction of the player's max HP. */
     dmgPctOfPlayerMaxHp: number;
-    /** Hex colour used by the damage float + cast overlay. */
     color: string;
-    /** Emoji glyph rendered alongside the float — quick at-a-glance
-     *  for what just hit. */
     icon: string;
 }
 
@@ -59,30 +33,12 @@ const SPELLS: Record<string, IGuildBossSpell> = {
 };
 
 interface ITierKit {
-    /** Spell ids this boss draws from each cast. */
     pool: string[];
-    /** Milliseconds between casts at speedMult=1. Scales down per tier
-     *  -> higher tiers cast more often. */
     castIntervalMs: number;
-    /** Damage multiplier applied on top of `spell.dmgPctOfPlayerMaxHp`. */
     damageMult: number;
-    /** Banner label for the boss-info panel. */
     label: string;
 }
 
-// 2026-05-18 v10 spec ("Bossy sa troche za slabe"): every tier
-// damageMult bumped ~1.5× so spell hits feel threatening and the
-// boss can actually kill an unprepared solo player before they
-// chip the 10% block-gate. Cast intervals tightened ~12% so spells
-// land more often, especially at higher tiers.
-//
-// 2026-05-18 v13: roster extended 10 -> 20 tiers ("Dodalem kolejne
-// bossy do lochu gildii do numer 20"). Tiers 11–20 continue the
-// curve — cast cadence shaves ~75ms / tier and damageMult climbs
-// ~0.45 / tier, so a tier-20 boss casts every ~1.05s with a 9.10×
-// kit multiplier (≈ 3× the tier-10 baseline). Pools are biased
-// toward apocalypse-class spells so the visual identity feels
-// genuinely terminal.
 const TIER_KITS: Record<number, ITierKit> = {
     1:  { pool: ['cios', 'pozoga'],                                                                      castIntervalMs: 3700, damageMult: 0.95, label: 'Strażnik Lochu' },
     2:  { pool: ['cios', 'pozoga', 'mroz'],                                                              castIntervalMs: 3400, damageMult: 1.15, label: 'Cienisty Lord' },
@@ -104,13 +60,6 @@ const TIER_KITS: Record<number, ITierKit> = {
     18: { pool: ['apokalipsaCienia', 'apokalipsa', 'mrocznaAura', 'eksplozja', 'krwawienie'],            castIntervalMs: 1150, damageMult: 7.65, label: 'Architekt Zagłady' },
     19: { pool: ['apokalipsaCienia', 'apokalipsa', 'mrocznaAura', 'klatwa', 'swietlistosc', 'burza'],    castIntervalMs: 1100, damageMult: 8.35, label: 'Sędzia Wszechrzeczy' },
     20: { pool: ['apokalipsaCienia', 'apokalipsa', 'mrocznaAura', 'swietlistosc', 'eksplozja', 'burza'], castIntervalMs: 1050, damageMult: 9.10, label: 'Praboga Otchłani' },
-    // 2026-05-19 v21: tiers 21-50. Apocalypse-class spell pools at
-    // every level (the kit's spell pool is irrelevant past tier 20
-    // since every entry is already maximum-rarity).  castIntervalMs
-    // floors at 700ms so basic-attack cadence stays readable, and
-    // damageMult climbs ~0.5 per tier so tier 50 hits ~24× the
-    // base spell damage — strong enough to demand top-end gear /
-    // transforms even for veteran guilds.
     21: { pool: ['apokalipsaCienia', 'apokalipsa', 'mrocznaAura', 'swietlistosc', 'eksplozja'], castIntervalMs: 1020, damageMult:  9.60, label: 'Konglomerat Otchłani' },
     22: { pool: ['apokalipsaCienia', 'apokalipsa', 'mrocznaAura', 'klatwa', 'burza'],            castIntervalMs:  990, damageMult: 10.10, label: 'Czarny Lewiatan' },
     23: { pool: ['apokalipsaCienia', 'apokalipsa', 'eksplozja', 'mrocznaAura'],                  castIntervalMs:  960, damageMult: 10.60, label: 'Pożeracz Czasu' },
@@ -148,20 +97,16 @@ const safeTier = (tier: number): number => {
     return Math.min(50, Math.max(1, Math.floor(tier)));
 };
 
-/** Return the tier kit (clamped to 1..50). */
 export const getGuildBossKit = (tier: number): ITierKit => {
     return TIER_KITS[safeTier(tier)];
 };
 
-/** Pick one random spell from the tier's pool. */
 export const pickGuildBossSpell = (tier: number): IGuildBossSpell => {
     const kit = getGuildBossKit(tier);
     const id = kit.pool[Math.floor(Math.random() * kit.pool.length)];
     return SPELLS[id] ?? SPELLS.cios;
 };
 
-/** Damage dealt to the player when the boss casts `spell` at `tier`
- *  against a character whose live max HP is `playerMaxHp`. */
 export const computeBossSpellDamage = (
     spell: IGuildBossSpell,
     tier: number,
@@ -172,16 +117,11 @@ export const computeBossSpellDamage = (
     return Math.max(1, Math.floor(raw));
 };
 
-/** Tier-1 -> ~3 700 ms, tier-10 -> ~1 700 ms, tier-20 -> ~1 050 ms,
- *  tier-50 -> ~700 ms (floor). Scales by combat-speed multiplier
- *  (X1/X2/X4) on top. */
 export const getBossCastIntervalMs = (tier: number, speedMult: number): number => {
     const kit = getGuildBossKit(tier);
     return Math.max(250, Math.floor(kit.castIntervalMs / Math.max(1, speedMult)));
 };
 
-/** Display label for the boss (e.g. "Strażnik Lochu") shown next to
- *  the dungeon-tier in the header. */
 export const getGuildBossLabel = (tier: number): string => {
     return getGuildBossKit(tier).label;
 };

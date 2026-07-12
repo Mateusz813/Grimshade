@@ -1,11 +1,3 @@
-/**
- * Tests for the potion categorisation / cooldown / label / resolver helpers.
- *
- * Pure functions over hard-coded ID sets — no mocks. The cooldown constants
- * are also tested for value AND for the relationship between flat (5s/1s
- * range) and pct (sub-second range) cooldowns so future bumps don't
- * accidentally invert the ordering and break the dual auto-potion UX.
- */
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -31,7 +23,6 @@ import {
     PCT_POTION_MIN_LEVEL,
 } from './potionSystem';
 
-// -- ID sets -----------------------------------------------------------------
 
 describe('potion ID sets', () => {
     it('lists Great/Super/Ultimate/Divine for both HP and MP pct sets', () => {
@@ -62,7 +53,6 @@ describe('potion ID sets', () => {
     });
 });
 
-// -- isPctPotion -------------------------------------------------------------
 
 describe('isPctPotion (effect string)', () => {
     it('returns true for percentage effects', () => {
@@ -82,7 +72,6 @@ describe('isPctPotion (effect string)', () => {
     });
 });
 
-// -- isPctPotionId / isFlatPotionId ------------------------------------------
 
 describe('isPctPotionId / isFlatPotionId', () => {
     it('classifies each canonical HP potion correctly', () => {
@@ -113,7 +102,6 @@ describe('isPctPotionId / isFlatPotionId', () => {
     });
 });
 
-// -- Cooldown constants ------------------------------------------------------
 
 describe('potion cooldown constants', () => {
     it('uses 1s for flat potions, 0.5s for pct potions', () => {
@@ -126,7 +114,6 @@ describe('potion cooldown constants', () => {
     });
 });
 
-// -- getPotionCooldownMs -----------------------------------------------------
 
 describe('getPotionCooldownMs', () => {
     it('returns the pct cooldown for percentage potions', () => {
@@ -145,7 +132,6 @@ describe('getPotionCooldownMs', () => {
     });
 });
 
-// -- Pool integrity ----------------------------------------------------------
 
 describe('potion pools derived from ELIXIRS', () => {
     it('ALL_HP_POTIONS only contains heal_hp_* elixirs', () => {
@@ -171,7 +157,6 @@ describe('potion pools derived from ELIXIRS', () => {
     });
 });
 
-// -- getPotionLabel ----------------------------------------------------------
 
 describe('getPotionLabel', () => {
     it('formats flat HP/MP heal effects', () => {
@@ -193,11 +178,9 @@ describe('getPotionLabel', () => {
     });
 });
 
-// -- getBestPotion -----------------------------------------------------------
 
 describe('getBestPotion', () => {
     it('returns the strongest potion the player owns', () => {
-        // FLAT_HP_POTIONS ordered low->high (sm, md, lg)
         const consumables = { hp_potion_sm: 5, hp_potion_md: 2 };
         const best = getBestPotion(FLAT_HP_POTIONS, consumables);
         expect(best?.id).toBe('hp_potion_md');
@@ -211,7 +194,6 @@ describe('getBestPotion', () => {
 
     it('falls back to the strongest pool entry when the player owns none', () => {
         const best = getBestPotion(FLAT_HP_POTIONS, {});
-        // The reversed list's first entry = highest tier in the pool.
         expect(best?.id).toBe(FLAT_HP_POTIONS[FLAT_HP_POTIONS.length - 1].id);
     });
 
@@ -219,13 +201,10 @@ describe('getBestPotion', () => {
         expect(getBestPotion([], {})).toBeNull();
     });
 
-    // 2026-06-21: level gate — never pick a potion the character is too low
-    // level to drink (it would no-op at useConsumable, and could get the player
-    // killed via a wasted auto-potion tick).
     it('skips an owned potion above the character level, picks the best USABLE one', () => {
-        const consumables = { hp_potion_sm: 5, hp_potion_md: 5 }; // md needs lvl 20
+        const consumables = { hp_potion_sm: 5, hp_potion_md: 5 };
         const best = getBestPotion(FLAT_HP_POTIONS, consumables, 14);
-        expect(best?.id).toBe('hp_potion_sm'); // sm (lvl 1) — md is gated out
+        expect(best?.id).toBe('hp_potion_sm');
     });
 
     it('includes the higher potion once the character is high enough', () => {
@@ -235,7 +214,6 @@ describe('getBestPotion', () => {
     });
 });
 
-// -- resolveAutoPotionElixir -------------------------------------------------
 
 describe('resolveAutoPotionElixir', () => {
     it('returns the preferred elixir when the player owns it', () => {
@@ -272,24 +250,19 @@ describe('resolveAutoPotionElixir', () => {
         expect(e).toBeNull();
     });
 
-    // 2026-06-21: auto-potion must skip a potion the character can't drink yet.
     it('skips an above-level preferred potion and the above-level fallback', () => {
-        // Owns a high-tier flat potion (md, req lvl 20) at level 14: gated out.
         const consumables = { hp_potion_md: 5 };
         expect(resolveAutoPotionElixir('hp_potion_md', 'hp', 'flat', consumables, 14)).toBeNull();
-        // Add the tier-1 (lvl 1) — now auto-potion falls back to it.
         const e = resolveAutoPotionElixir('hp_potion_md', 'hp', 'flat', { ...consumables, hp_potion_sm: 3 }, 14);
         expect(e?.id).toBe('hp_potion_sm');
     });
 
     it('refuses a pct potion below its high unlock level', () => {
-        // hp_potion_great needs lvl 200.
         expect(resolveAutoPotionElixir(undefined, 'hp', 'pct', { hp_potion_great: 5 }, 100)).toBeNull();
         expect(resolveAutoPotionElixir(undefined, 'hp', 'pct', { hp_potion_great: 5 }, 200)?.id).toBe('hp_potion_great');
     });
 });
 
-// -- PCT_POTION_MIN_LEVEL ----------------------------------------------------
 
 describe('PCT_POTION_MIN_LEVEL', () => {
     it('is 100 (matches Great HP/MP unlock level)', () => {

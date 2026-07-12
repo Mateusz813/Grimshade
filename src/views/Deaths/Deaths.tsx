@@ -14,10 +14,6 @@ import Spinner from '../../components/ui/Spinner/Spinner';
 import Icon from '../../components/atoms/Icon/Icon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 
-// Battle backdrop fallbacks — used when we can't resolve a per-instance
-// background (e.g. legacy boss row, unknown raid). Each maps directly to the
-// art the actual combat view paints during the fight, so the feed reads as
-// "screenshot from the place that killed you".
 import bgBoss from '../../assets/images/battle/battle-boss.png';
 import bgDungeon from '../../assets/images/battle/battle-dungeon.png';
 import bgRaid from '../../assets/images/battle/battle-raid.png';
@@ -52,24 +48,12 @@ const SOURCE_META: Record<TDeathSource, ISourceMeta> = {
     raid:      { label: 'Rajd',      icon: 'crossed-swords', color: '#9c27b0' },
 };
 
-// 2026-05-19 v25 spec: add 'raid' filter; order kept roughly by difficulty.
 const FILTER_ORDER: TFilter[] = ['all', 'raid', 'boss', 'dungeon', 'transform', 'monster'];
 
-// 2026-05-19 v25 spec ("daj po 100 rekordow na strone"): page size used by
-// both the slice math and the page-button row.
 const PAGE_SIZE = 100;
 
-// We load up to 1000 most-recent records so pagination has enough material
-// to show many pages without re-fetching on every page-flip.
 const FETCH_LIMIT = 1000;
 
-// -- Legacy suffix scrub ------------------------------------------------------
-// 2026-05-19 v25 spec: source_name used to be stored as "Boss Name (uciekłeś
-// z gry)" for tab-close / URL-leave penalties. The new code strips that
-// suffix at log time (see `combatLeavePenalty.ts`) and writes
-// `result: 'fled'` instead. We still see the legacy rows in the feed though,
-// so we (a) strip the suffix when displaying source_name and (b) infer
-// `result: 'fled'` from the suffix when `result` is missing.
 const LEAVE_SUFFIX_RE = /\s*\(uciekłeś z gry\)\s*/i;
 const cleanSourceName = (s: string): string => s.replace(LEAVE_SUFFIX_RE, '').trim();
 const inferResult = (d: IDeathRecord): 'killed' | 'fled' => {
@@ -78,10 +62,6 @@ const inferResult = (d: IDeathRecord): 'killed' | 'fled' => {
     return 'killed';
 };
 
-// -- Transform sprite glob ---------------------------------------------------
-// Mirrors the local glob in Transform.tsx. We keep it in this file rather
-// than promoting it to spriteAssets.ts because no other view needs it and
-// the death feed is the only consumer.
 type GlobMod = { default: string } | string;
 const TRANSFORM_FILES = import.meta.glob(
     '../../assets/images/transforms/transform-*.png',
@@ -100,7 +80,6 @@ const TRANSFORM_IMG_BY_TIER: Map<number, string> = (() => {
     return out;
 })();
 
-// -- Name -> ID indexes built once at module load ------------------------------
 const DUNGEON_ID_BY_NAME: Map<string, string> = (() => {
     const out = new Map<string, string>();
     for (const d of dungeonsRaw as { id: string; name_pl: string }[]) {
@@ -117,11 +96,6 @@ const TRANSFORM_TIER_BY_NAME: Map<string, number> = (() => {
     return out;
 })();
 
-// 2026-05-20 spec ("Cesarz chaosu na liscie bossow ma swoj unikalny
-// background i uzyj go tutaj tez"): the boss list paints each card with
-// `boss{N}.png` keyed by 0-based array index. Build the same name -> index
-// map here so we can call `getBossCardImage(idx)` from the deaths feed and
-// get the boss's unique canvas instead of the generic `battle-boss.png`.
 const BOSS_INDEX_BY_NAME: Map<string, number> = (() => {
     const out = new Map<string, number>();
     (bossesRaw as { name_pl: string }[]).forEach((b, idx) => {
@@ -130,31 +104,12 @@ const BOSS_INDEX_BY_NAME: Map<string, number> = (() => {
     return out;
 })();
 
-/**
- * 2026-05-20 spec: split image resolution into two concerns:
- *
- *   `resolvePortrait` returns a SMALL portrait/avatar to render inline next
- *   to the name — only meaningful for monster + boss rows. Dungeons / raids
- *   / transforms render with name-only + their art as background ("Dungeony
- *   tylko nazwa i jako tlo to co jest w zdjeciu tak samo raidy i transform").
- *
- *   `resolveRowBackground` returns the painting to layer behind the entire
- *   row. For bosses this is the boss list's unique `boss{N}.png` card art
- *   (so "Cesarz Chaosu" in the feed matches its card on the boss list).
- *   Dungeons + raids use `dung-N.png`, transforms use `transform-N.png`.
- *
- * Both return `null` when nothing matches; the caller falls back to the
- * generic `battle-{type}.png` backdrop for backgrounds, and to the
- * source-type emoji for missing portraits.
- */
 const resolvePortrait = (d: IDeathRecord): string | null => {
     switch (d.source) {
         case 'boss':
             return getBossImageNearest(d.source_level);
         case 'monster':
             return getMonsterImageNearest(d.source_level);
-        // Dungeons / raids / transforms intentionally have no inline
-        // portrait — the artwork lives in the row background instead.
         case 'dungeon':
         case 'raid':
         case 'transform':
@@ -167,34 +122,24 @@ const resolveRowBackground = (d: IDeathRecord): string | null => {
     const cleanName = cleanSourceName(d.source_name).toLowerCase();
     switch (d.source) {
         case 'boss': {
-            // Per-boss card painting (`boss1.png`, `boss2.png`, …) — the
-            // same art the boss list paints behind each tile.
             const idx = BOSS_INDEX_BY_NAME.get(cleanName);
             if (idx !== undefined) {
                 const url = getBossCardImage(idx);
                 if (url) return url;
             }
-            // Fallback to the portrait if the unique card art isn't present
-            // yet (the user adds them progressively).
             return getBossImageNearest(d.source_level);
         }
         case 'monster':
-            // No "monster card" art — reuse the portrait as a soft backdrop.
             return getMonsterImageNearest(d.source_level);
         case 'dungeon': {
             const id = DUNGEON_ID_BY_NAME.get(cleanName);
             return id ? getDungeonImage(id) : null;
         }
         case 'raid': {
-            // Raids reuse dungeon name + art (see raidSystem.getAllRaids).
             const id = DUNGEON_ID_BY_NAME.get(cleanName);
             return id ? getDungeonImage(id) : null;
         }
         case 'transform': {
-            // Transform source_name historically takes the form
-            // "Transformacja III (Tlvl 100) – Harpia Lvl 13" (real-death) or
-            // bare "Transformacja III" (older / new flee log). Try the full
-            // string first, then the leading "Transformacja N" prefix.
             const tier = TRANSFORM_TIER_BY_NAME.get(cleanName)
                 ?? TRANSFORM_TIER_BY_NAME.get(cleanName.split(/[(–-]/)[0]?.trim() ?? '');
             return tier ? TRANSFORM_IMG_BY_TIER.get(tier) ?? null : null;
@@ -220,11 +165,6 @@ const formatDateTime = (iso: string): string => {
     return `${date} ${time}`;
 };
 
-// 2026-05-20 spec: render a humanised "X temu" string in Polish. Picks the
-// largest unit that's at least 1 — seconds -> minutes -> hours -> days ->
-// weeks -> months -> years. Uses the simple "1 X / N X" pluralisation that
-// matches how Polish abbreviations read in chat-style timestamps elsewhere
-// in the game (see DeathNotification + chat feed).
 const formatRelative = (iso: string): string => {
     const past = new Date(iso).getTime();
     if (Number.isNaN(past)) return '';
@@ -252,11 +192,6 @@ const Deaths = () => {
     const [filter, setFilter] = useState<TFilter>('all');
     const [page, setPage] = useState(0);
 
-    // 2026-05-19 v25 spec ("Skasuj z naglowka Ksiega smierci i guzik do
-    // odswiezenia oraz akcje z nim zwiazane usun"): the manual refresh
-    // button is gone. We load once on mount — the feed is rarely so
-    // hot that a stale view matters, and the absence of a refresh
-    // button keeps the header empty as requested.
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -269,14 +204,11 @@ const Deaths = () => {
         return () => { cancelled = true; };
     }, []);
 
-    // 2026-05-18: prime guild tag cache for every name in the list so
-    // [TAG] renders inline next to the death entry.
     useEffect(() => {
         if (deaths.length === 0) return;
         void useGuildTagsStore.getState().resolveTagsByName(deaths.map((d) => d.character_name));
     }, [deaths]);
 
-    // Reset page on filter change so we don't end up on an empty page.
     useEffect(() => {
         setPage(0);
     }, [filter]);
@@ -308,9 +240,6 @@ const Deaths = () => {
 
     return (
         <div className="deaths">
-            {/* 2026-05-19 v25 spec ("Skasuj z naglowka Ksiega smierci i guzik do
-                odswiezenia"): header is fully removed. Filters render directly
-                at the top so the page opens straight to the feed. */}
             <div className="deaths__filters">
                 {FILTER_ORDER.map((f) => {
                     const meta = f === 'all' ? null : SOURCE_META[f];
@@ -354,11 +283,6 @@ const Deaths = () => {
                     const result = inferResult(d);
                     const isFled = result === 'fled';
                     const displaySourceName = cleanSourceName(d.source_name);
-                    // 2026-05-20 spec: portraits only for monster + boss; the
-                    // dungeon / raid / transform variants render name-only
-                    // with the art as the row background. resolveRowBackground
-                    // picks the per-instance painting; generic battle-{type}
-                    // PNG is the fallback when nothing matches.
                     const portrait = resolvePortrait(d);
                     const bgUrl = resolveRowBackground(d) ?? FALLBACK_BG[d.source as TDeathSource] ?? null;
                     const tag = useGuildTagsStore.getState().getTagByNameSync(d.character_name);
@@ -368,18 +292,12 @@ const Deaths = () => {
                             className={`deaths__item deaths__item--${result}`}
                             style={{
                                 borderLeftColor: meta.color,
-                                // The instance art is rendered as a low-opacity
-                                // background behind the row. Without the dark
-                                // overlay the text would be unreadable on
-                                // brighter dungeon paintings, so the gradient
-                                // sits on top to keep contrast in check.
                                 ['--deaths-bg-url' as string]: bgUrl ? `url(${bgUrl})` : 'none',
                             }}
                         >
                             <div className="deaths__item-bg" aria-hidden />
 
                             <div className="deaths__item-content">
-                                {/* Source-type chip — top-left both layouts. */}
                                 <div className="deaths__item-chip-row">
                                     <span
                                         className="deaths__item-badge"
@@ -390,9 +308,6 @@ const Deaths = () => {
                                     </span>
                                 </div>
 
-                                {/* Sprite + monster name + verb + victim form
-                                    one logical group. Desktop lays them out
-                                    left -> right; mobile stacks them vertically. */}
                                 <div className="deaths__item-main">
                                     {portrait && (
                                         <div className="deaths__sprite">
@@ -439,12 +354,6 @@ const Deaths = () => {
                                     </div>
                                 </div>
 
-                                {/* 2026-05-19 v25 spec ("Data w prawym dolnym rogu
-                                    zawsze"): timestamp pinned bottom-right of the
-                                    card on both layouts.
-                                    2026-05-20 spec: render a humanised "X temu"
-                                    string above the absolute date — sec / min /
-                                    godz. / dni / tyg. / mies. / lat. */}
                                 <div className="deaths__item-date">
                                     <span className="deaths__item-date-rel">
                                         {formatRelative(d.died_at)}
@@ -459,7 +368,6 @@ const Deaths = () => {
                 })}
             </ul>
 
-            {/* Pagination. Hidden when only one page exists. */}
             {!loading && totalPages > 1 && (
                 <div className="deaths__pager">
                     <button

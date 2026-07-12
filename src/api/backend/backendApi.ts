@@ -1,8 +1,5 @@
 import client from './client';
 
-// Typowany klient autorytatywnego backendu. Każda metoda mutująca wysyła
-// `requestId` (idempotencja). Odpowiedzi to autorytatywny stan/wynik z serwera
-// — store'y mają go APLIKOWAĆ, nie liczyć samodzielnie.
 
 const rid = (): string =>
     (globalThis.crypto?.randomUUID?.() ?? `r_${Date.now()}_${Math.random().toString(36).slice(2)}`);
@@ -31,21 +28,14 @@ export interface IPartyPatch {
 }
 
 export const backendApi = {
-    // -- Meta / odczyt --
     contentVersion: () => get<{ version: string }>('/api/v1/content/version'),
     characters: () => get('/api/v1/characters'),
     state: (charId: string) => get(`${c(charId)}/state`),
     updatePrefs: (charId: string, settings: Record<string, unknown>) =>
         client.put(`${c(charId)}/prefs`, { settings }).then((r) => r.data),
-    // Autorytatywny zapis pełnego stanu (blob) — klient liczy grę swoim silnikiem,
-    // serwer waliduje (diff prev↔new: duplikaty itemów, wejścia, śmierć) i zapisuje
-    // (jedyny zapisujący). `event` = kontekst zdarzenia (koniec dungeona/polowania
-    // itp.) dla walidacji. Zwraca autorytatywny stan (jak GET /state), ale klient go
-    // NIE aplikuje (jest źródłem).
     commitState: (charId: string, state: Record<string, unknown>, event?: Record<string, unknown>) =>
         client.put(`${c(charId)}/state`, { requestId: rid(), state, ...(event ? { event } : {}) }).then((r) => r.data),
 
-    // -- Walka / świat --
     combatResolve: (charId: string, monsterId: string) => post(`${c(charId)}/combat/resolve`, { monsterId }),
     bossResolve: (charId: string, bossId: string) => post(`${c(charId)}/boss/${bossId}/resolve`),
     dungeonResolve: (charId: string, dungeonId: string) => post(`${c(charId)}/dungeon/${dungeonId}/resolve`),
@@ -54,7 +44,6 @@ export const backendApi = {
     transformClaim: (charId: string, transformId: string) => post(`${c(charId)}/transform/claim`, { transformId }),
     offlineHuntSettle: (charId: string) => post(`${c(charId)}/offline-hunt/settle`),
 
-    // -- Ekwipunek / itemy --
     sell: (charId: string, itemUuid: string) => post(`${c(charId)}/items/sell`, { itemUuid }),
     upgrade: (charId: string, itemUuid: string) => post(`${c(charId)}/items/upgrade`, { itemUuid }),
     equip: (charId: string, itemUuid: string, slot: string) => post(`${c(charId)}/inventory/equip`, { itemUuid, slot }),
@@ -66,18 +55,15 @@ export const backendApi = {
     reroll: (charId: string, itemUuid: string) => post(`${c(charId)}/items/reroll`, { itemUuid }),
     convertStones: (charId: string, stoneType: string) => post(`${c(charId)}/stones/convert`, { stoneType }),
 
-    // -- Sklep --
     shopCatalog: () => get('/api/v1/shop/catalog'),
     buyElixir: (charId: string, itemId: string, quantity: number) => post(`${c(charId)}/shop/buy-elixir`, { itemId, quantity }),
     buyShopItem: (charId: string, itemId: string) => post(`${c(charId)}/shop/buy-item`, { itemId }),
 
-    // -- Potiony / konsumowalne --
     convertPotions: (charId: string, inputId: string, outputId: string, batches: number) =>
         post(`${c(charId)}/potions/convert`, { inputId, outputId, batches }),
     useConsumable: (charId: string, consumableId: string) => post(`${c(charId)}/consumables/use`, { consumableId }),
     statReset: (charId: string, consumableId?: string) => post(`${c(charId)}/character/stat-reset`, { consumableId }),
 
-    // -- Progresja --
     claimTask: (charId: string, taskId: string) => post(`${c(charId)}/tasks/${taskId}/claim`),
     claimQuest: (charId: string, questId: string) => post(`${c(charId)}/quests/${questId}/claim`),
     refreshDailyQuests: (charId: string) => post(`${c(charId)}/daily-quests/refresh`),
@@ -88,7 +74,6 @@ export const backendApi = {
     unlockSkill: (charId: string, skillId: string) => post(`${c(charId)}/skills/${skillId}/unlock`),
     setSkillSlot: (charId: string, slot: number, skillId: string | null) => post(`${c(charId)}/skills/slot`, { slot, skillId }),
 
-    // -- Arena / market / feed --
     arenaMatch: (charId: string, opponentId: string) => post(`${c(charId)}/arena/match`, { opponentId }),
     arenaShop: (charId: string) => get(`${c(charId)}/arena/shop`),
     buyArenaItem: (charId: string, itemId: string) => post(`${c(charId)}/arena/shop/buy`, { itemId }),
@@ -107,7 +92,6 @@ export const backendApi = {
     deathsFeed: () => get('/api/v1/deaths'),
     logDeath: (charId: string, body: Record<string, unknown>) => post(`${c(charId)}/deaths`, body),
 
-    // -- Gildie --
     createGuild: (charId: string, body: Record<string, unknown>) => post(`${c(charId)}/guilds`, body),
     showGuild: (charId: string, guildId: string) => get(`${c(charId)}/guilds/${guildId}`),
     joinGuild: (charId: string, guildId: string) => post(`${c(charId)}/guilds/${guildId}/join`),
@@ -136,7 +120,6 @@ export const backendApi = {
         return get(`/api/v1/guilds${suffix ? `?${suffix}` : ''}`);
     },
 
-    // -- Party --
     createParty: (charId: string, body: Record<string, unknown>) => post(`${c(charId)}/parties`, body),
     showParty: (charId: string, partyId: string) => get(`${c(charId)}/parties/${partyId}`),
     joinParty: (charId: string, partyId: string, password?: string) =>
@@ -151,18 +134,13 @@ export const backendApi = {
     listPublicParties: () => get('/api/v1/parties'),
     myActiveParty: (charId: string) => get(`${c(charId)}/parties/active`),
 
-    // -- Chat --
     chatSend: (charId: string, body: { channel: string; content: string }) =>
         post(`${c(charId)}/chat/messages`, body),
     chatSystemEvent: (charId: string, payload: Record<string, unknown>) =>
         post(`${c(charId)}/chat/system-event`, payload),
 
-    // -- Postać (create/delete) --
     createCharacter: (body: { name: string; class: string }) => post('/api/v1/characters', body),
     deleteCharacter: (charId: string) => del(`/api/v1/characters/${charId}`),
 
-    // -- DPS --
     dpsRecord: (charId: string, body: Record<string, unknown>) => post(`${c(charId)}/dps-record`, body),
 };
-
-export type BackendApi = typeof backendApi;

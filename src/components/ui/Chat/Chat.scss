@@ -6,8 +6,6 @@
   border-radius: $radius-md;
   overflow: hidden;
 
-  // Full-height mode (used by GlobalChat tabs). Let the message list flex-grow
-  // to fill remaining space while the header/input stay at natural height.
   &--fill {
     display: flex;
     flex-direction: column;
@@ -19,7 +17,6 @@
     }
   }
 
-  // -- Header (collapsible) ----------------------------------------------------
   &__header {
     display: flex;
     justify-content: space-between;
@@ -44,7 +41,6 @@
     color: $color-text-muted;
   }
 
-  // -- Message list -----------------------------------------------------------
   &__messages {
     position: relative;
     overflow-y: auto;
@@ -53,7 +49,6 @@
     flex-direction: column;
     gap: 3px;
 
-    // Custom scrollbar
     &::-webkit-scrollbar { width: 4px; }
     &::-webkit-scrollbar-track { background: transparent; }
     &::-webkit-scrollbar-thumb { background: $color-border; border-radius: 2px; }
@@ -86,10 +81,6 @@
   }
 
   &__msg-time {
-    // 2026-05-14 spec ("chat__msg-time color na bialy zmien"):
-    // timestamps were muted to the border colour, which made them
-    // unreadable on the dark chat background. White matches the
-    // primary text and stays legible across themes.
     color: #ffffff;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
@@ -148,18 +139,6 @@
     flex: 1;
   }
 
-  // 2026-05-19 v14 spec ("Chat system brak zdjecia przedmiotu oraz
-  // dodawaj odpowiednie tlo z rarity"): structured system-message
-  // payloads render with a rarity-tinted pill + ItemIcon. The
-  // `--rarity-{X}` modifier paints the pill in the item's rarity
-  // colour so a `+20` legendary glows red, a heroic glows purple,
-  // mythic glows gold, etc.
-  // 2026-05-19 v15 spec ("zrob tak zeby ten tekst sie zawijal w dol
-  // a nie tak ze nie da sie tego przeczytac"): pill is a 2-cell
-  // flex row — fixed-width ItemIcon on the left, inline-text body
-  // on the right. The body is a single span that wraps line-by-
-  // line via normal text flow, so "Magiczne Naramienniki" stays
-  // as words on a row instead of one character per row.
   &__msg-text--system {
     display: flex;
     align-items: center;
@@ -182,8 +161,6 @@
     &.chat__msg-text--rarity-mythic    { border-color: rgba(255, 193, 7, 0.75);  background: rgba(255, 193, 7, 0.18); }
     &.chat__msg-text--rarity-heroic    { border-color: rgba(156, 39, 176, 0.75); background: rgba(156, 39, 176, 0.18); }
 
-    // 2026-05-20 spec: skill upgrades use a distinct teal/cyan tint so
-    // they're visually separable from item upgrades in the System feed.
     &.chat__msg-text--skill {
       border-color: rgba(0, 188, 212, 0.6);
       background: rgba(0, 188, 212, 0.14);
@@ -196,8 +173,6 @@
     flex: 0 0 auto;
 
     .item-icon {
-      // Tighter footprint than `--sm` default so the icon fits
-      // inline with the message text.
       width: 28px;
       height: 28px;
     }
@@ -210,13 +185,6 @@
     overflow-wrap: break-word;
   }
 
-  // -- Context menu -----------------------------------------------------------
-  // 2026-05-19 v9 spec ("Jak klikam w nick kogos co napisal to nie
-  // wyskakuja mi opcje dodatkowe"): the menu portals to <body> at
-  // `position: fixed`, so its z-index competes with every other
-  // floating layer. The ChatUnreadBadge popup sits at z:1311 and was
-  // hiding the menu under itself. Push the menu well above any
-  // floating popover (1500) so it always reads on top.
   &__menu {
     position: absolute;
     z-index: 1500;
@@ -293,7 +261,6 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  // -- Error ------------------------------------------------------------------
   &__error {
     font-size: $font-xs;
     color: $color-accent;
@@ -301,7 +268,6 @@
     margin: 0;
   }
 
-  // -- Input ------------------------------------------------------------------
   &__input-row {
     display: flex;
     gap: $spacing-xs;

@@ -16,10 +16,6 @@ import OfflineRewardModal from '../../components/ui/OfflineRewardModal/OfflineRe
 import Icon from '../../components/atoms/Icon/Icon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import { getCharacterAvatar } from '../../data/classAvatars';
-// Per-tile background art lives under `images/town/`. Each tile in the
-// 7-up nav grid below maps to one of these PNGs and is rendered as an
-// `<img>` (object-fit: cover) behind the glass-chip label so the entire
-// tile becomes its own piece of art instead of just an emoji.
 import imgOffline    from '../../assets/images/town/town-offline.png';
 import imgDeposit    from '../../assets/images/town/town-deposit.png';
 import imgMarket     from '../../assets/images/town/town-market.png';
@@ -68,17 +64,12 @@ const hexToRgb = (hex: string): string => {
   return `${r},${g},${b}`;
 };
 
-/** How often the tiles auto-pulse (per user spec: every 30 seconds). */
 const TILE_AUTOPULSE_INTERVAL_MS = 30_000;
-/** How long each pulse animation lasts before the class is cleared. */
 const TILE_AUTOPULSE_DURATION_MS = 900;
 
 const Town = () => {
   const navigate   = useNavigate();
   const character  = useCharacterStore((s) => s.character);
-  // 2026-05-08: market sale notifications. The market tile glows when
-  // someone has bought one of the player's listings — the actual list
-  // lives in `marketStore.saleNotifications`, refreshed on /town mount.
   const saleNotifications = useMarketStore((s) => s.saleNotifications);
   const fetchSaleNotifications = useMarketStore((s) => s.fetchSaleNotifications);
   const hasMarketSales = saleNotifications.length > 0;
@@ -90,10 +81,6 @@ const Town = () => {
   const transformColor = getHighestTransformColor();
   const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
 
-  // Derive a single accent color (not a gradient) from the current transform tier.
-  // Before the first transform is completed we fall back to the character class
-  // color so the avatar accent never looks out-of-place. Once a transform tier
-  // is completed, switch to the transform's solid color or first gradient stop.
   const classColorFallback = character ? (CLASS_COLORS[character.class] ?? '#e94560') : '#e94560';
   const tileAccent = (() => {
     if (!transformColor) return classColorFallback;
@@ -112,7 +99,6 @@ const Town = () => {
   const equipment = useInventoryStore((s) => s.equipment);
   const skillLevels = useSkillStore((s) => s.skillLevels);
 
-  // Combat state for live widget and blocking the rest button.
   const combatPhase = useCombatStore((s) => s.phase);
   const combatMonster = useCombatStore((s) => s.monster);
   const combatMonsterRarity = useCombatStore((s) => s.monsterRarity);
@@ -122,11 +108,6 @@ const Town = () => {
   const offlineHuntActive = useOfflineHuntStore((s) => s.isActive);
   const offlineHuntMonster = useOfflineHuntStore((s) => s.targetMonster);
   const offlineHuntStartedAt = useOfflineHuntStore((s) => s.startedAt);
-  // 2026-05-20 spec ("zamiast napisu offline trening to ile tam jestesmy
-  // na 12h"): tick once a second while the hunt is active so the elapsed
-  // time on the tile stays current. The ticker is gated on `isActive` so
-  // we don't burn a render budget on the Town view in the common case
-  // where no hunt is running.
   const [offlineTick, setOfflineTick] = useState(Date.now());
   useEffect(() => {
     if (!offlineHuntActive) return;
@@ -145,20 +126,12 @@ const Town = () => {
     const sec = offlineHuntElapsedSec;
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
-    // "5h 23m / 12h" — concise enough to fit the tile's glass label.
     return `${h}h ${m.toString().padStart(2, '0')}m / 12h`;
   })();
-  // Rest is the only Town tile that has a "blocked while fighting" state — the
-  // 6 other tiles always navigate freely.
   const isBlocked = isCombatActive;
   const blockedReason = 'Zakończ walkę najpierw';
 
-  // Party state for expand widget
   const party = usePartyStore((s) => s.party);
-  // 2026-05-09: live HP/MP for party members comes from the realtime
-  // presence broadcast, NOT from `party.members[].hp` (which is just a
-  // 0/1 placeholder set by `rowToMember` because the parties DB schema
-  // doesn't track health). Hook ensures the strip shows real bars.
   const partyPresence = usePartyPresenceStore((s) => s.byMember);
   const addBotHelper = usePartyStore((s) => s.addBotHelper);
   const removePartyMember = usePartyStore((s) => s.removeMember);
@@ -167,9 +140,6 @@ const Town = () => {
   const createParty = usePartyStore((s) => s.createParty);
   const [partyExpanded, setPartyExpanded] = useState(false);
 
-  // 2026-05-20 spec: party features (create, bots, public list) are
-  // multiplayer-only; mute the buttons in offline mode so the player
-  // can't accidentally spin up a row they can't use.
   const playMode = useConnectivityStore((s) => s.mode);
   const isOffline = playMode === 'offline';
   const handleCreateParty = useCallback(() => {
@@ -195,7 +165,6 @@ const Town = () => {
 
   const isPartyLeader = !!party && !!character && party.leaderId === character.id;
 
-  // Effective max HP/MP via the engine helper (single source of truth with Combat).
   const eqStats = getTotalEquipmentStats(equipment, ALL_ITEMS);
   const tb = getTrainingBonuses(skillLevels, character?.class);
   const engineEff = character ? engineGetEffectiveChar(character) : null;
@@ -206,7 +175,6 @@ const Town = () => {
     ? engineEff.max_mp
     : (character ? character.max_mp + (eqStats.mp ?? 0) + (tb.max_mp ?? 0) + getElixirMpBonus() : 0);
 
-  // -- Rest / Heal -------------------------------------------------------------
   const [isResting, setIsResting] = useState(false);
   const [restResult, setRestResult] = useState<{ hpHealed: number; mpHealed: number } | null>(null);
 
@@ -214,12 +182,11 @@ const Town = () => {
     if (!character || isResting) return;
     const hpToHeal = Math.max(0, effMaxHp - character.hp);
     const mpToHeal = Math.max(0, effMaxMp - character.mp);
-    if (hpToHeal <= 0 && mpToHeal <= 0) return; // already full
+    if (hpToHeal <= 0 && mpToHeal <= 0) return;
 
     setIsResting(true);
     setRestResult(null);
 
-    // Animate for 10s then apply the heal
     setTimeout(() => {
       const store = useCharacterStore.getState();
       const c = store.character;
@@ -240,14 +207,8 @@ const Town = () => {
     ? character.hp < effMaxHp || character.mp < effMaxMp
     : false;
 
-  // -- Offline reward popup ---------------------------------------------------
   const { reward: offlineReward, clearReward: clearOfflineReward } = useOfflineTrainingResume();
 
-  // -- Tile auto-pulse (every 30s) --------------------------------------------
-  // The user wanted tiles to come alive on their own (not just on hover). We
-  // toggle a `town__nav--pulse` class on the nav root every 30 seconds; child
-  // tiles use that to play a brief glow/scale animation, then we remove the
-  // class so the next pulse re-triggers the keyframes from scratch.
   const [tilesPulsing, setTilesPulsing] = useState(false);
   useEffect(() => {
     const id = setInterval(() => {
@@ -258,8 +219,6 @@ const Town = () => {
     return () => clearInterval(id);
   }, []);
 
-  // 2026-05-18: prime the guild tag cache for every party member so
-  // the [TAG] prefix renders in the expanded party widget.
   useEffect(() => {
     if (!party || party.members.length === 0) return;
     const names = party.members.filter((m) => !m.isBot).map((m) => m.name);
@@ -281,8 +240,6 @@ const Town = () => {
         onClose={clearOfflineReward}
       />
 
-      {/* Character card – HP/MP/XP bars at a glance. The avatar/gold/lang/sync
-          /logout chrome moved to the persistent TopHeader + AvatarMenu. */}
       {character && (() => {
         const flameTier = Math.min(completedTransforms.length, 11);
         const ablazeBoost = 1 + (flameTier - 1) * 0.22;
@@ -358,7 +315,6 @@ const Town = () => {
         );
       })()}
 
-      {/* -- Compact Combat Indicator --------------------------------------- */}
       {isCombatActive && combatMonster && (
         <div
           className={`town__combat-strip town__combat-strip--${combatMonsterRarity}`}
@@ -394,39 +350,16 @@ const Town = () => {
         </div>
       )}
 
-      {/* -- Party Expand Widget ---------------------------------------- */}
-      {/* 2026-05-18 spec ("usun ten uuid party i napis party, zostaw tylko
-          ikonki klasy od lewej sojusznikow party i color borderu ma byc
-          color aktualnego ich transformu"): collapsed header now shows
-          ONLY the row of class-icon avatars (no :handshake: chip, no "Party"
-          label, no UUID, no count badge). Each avatar's border is tinted
-          with that ally's highest-completed-transform colour — local
-          player resolves via the live transform store, remote allies via
-          their party-presence `transformTier` snapshot, AI bots fall
-          back to neutral grey (no transform progression). The body
-          (HP bars, kick, actions) still renders when the strip is
-          expanded — only the header chrome was trimmed. */}
       {party ? (
         <div className={`town__party-strip${partyExpanded ? ' town__party-strip--expanded' : ''}`}>
           <div
             className="town__party-strip-header"
             onClick={() => setPartyExpanded((v) => !v)}
           >
-            {/* 2026-05-18 spec ("Dodaj tylko na samym przodze ikonke rak
-                ze to party, przed ikonkami klass"): re-add the :handshake: chip
-                at the very left edge so the strip still reads visually
-                as "this is your party" — the UUID + label stay gone,
-                only the small icon is back. */}
             <span className="town__party-strip-icon"><GameIcon name="handshake" /></span>
             <div className="town__party-strip-avatars">
               {party.members.slice(0, MAX_PARTY_SIZE).map((m) => {
                 const memberHpPct = m.maxHp > 0 ? Math.min(1, m.hp / m.maxHp) : 0;
-                // Resolve transform colour per member. Self pulls from
-                // the live transform store so swapping a tier mid-
-                // session re-tints the border immediately; others come
-                // from the broadcast presence snapshot (transformTier:
-                // 0 means base class -> no transform colour, falls back
-                // to the class palette below).
                 let transformTier = 0;
                 if (!m.isBot) {
                   if (m.id === character?.id) {
@@ -437,9 +370,6 @@ const Town = () => {
                 }
                 const tColor = transformTier > 0 ? getTransformColor(transformTier) : null;
                 const borderCss = tColor?.css ?? CLASS_COLORS[m.class] ?? 'rgba(255,255,255,0.18)';
-                // Use a thicker tinted border to make the transform
-                // colour pop; gradient transforms get the gradient via
-                // `border-image`, solid colours land on plain border.
                 const avatarStyle: React.CSSProperties = tColor?.gradient
                   ? {
                       border: '2px solid transparent',
@@ -479,10 +409,6 @@ const Town = () => {
               {party.members.map((m) => {
                 const weight = getAggroWeight(m.class);
                 const isMe = m.id === character?.id;
-                // 2026-05-09: pull live HP/MP from the realtime presence
-                // snapshot for remote allies; for the local player and
-                // bots use the live store value. Falls back to the row
-                // placeholder only when no source exists yet.
                 let curHp = m.hp;
                 let maxHp = m.maxHp;
                 if (isMe && character) {
@@ -496,7 +422,7 @@ const Town = () => {
                     }
                 }
                 const memberHpPct = maxHp > 0 ? Math.min(1, curHp / maxHp) : 0;
-                const hasLiveHp = maxHp > 1; // bigger than the 0/1 placeholder
+                const hasLiveHp = maxHp > 1;
                 return (
                   <div key={m.id} className={`town__party-row${isMe ? ' town__party-row--me' : ''}${m.isBot ? ' town__party-row--bot' : ''}`}>
                     <span className="town__party-row-icon">
@@ -505,11 +431,6 @@ const Town = () => {
                     <div className="town__party-row-info">
                       <div className="town__party-row-name">
                         {(() => {
-                            // 2026-05-18: prefix [TAG] when the row's
-                            // character belongs to a guild. For me pull
-                            // from the live guild store; for others use
-                            // the cached lookup populated by the effect
-                            // a few lines below.
                             if (isMe) {
                                 const myTag = useGuildStore.getState().guild?.tag;
                                 return myTag ? `[${myTag}] ${m.name}` : m.name;
@@ -556,13 +477,6 @@ const Town = () => {
               })}
 
               <div className="town__party-strip-actions">
-                {/* 2026-05-09 spec ("jako sojusznik party nie leader nie
-                    powinienem moc dodawac boty"): only the leader can
-                    add bots. Members see no +Bot affordance. */}
-                {/* 2026-05-20 spec: bot helpers are blocked in offline mode
-                    (same rule as "no other live players"). Hide the +Bot
-                    affordance entirely so it can't be tapped — the store
-                    also short-circuits as belt-and-braces. */}
                 {isPartyLeader && !isOffline && canJoinParty(party.members.length) && (
                   <button
                     className="town__party-action-btn town__party-action-btn--add-bot"
@@ -610,7 +524,6 @@ const Town = () => {
           <span className="town__party-strip-empty-text">
             {isOffline ? 'Tryb offline — party niedostępne' : 'Solo — brak party'}
           </span>
-          {/* 2026-05-20 spec: hide party CTAs in offline mode. */}
           {!isOffline && (
             <button className="town__party-strip-create" onClick={handleCreateParty}>
               + Stwórz party
@@ -628,9 +541,6 @@ const Town = () => {
         </div>
       )}
 
-      {/* -- Town tiles (mobile-first responsive grid) ---------------------
-          Order is fixed by user spec, left -> right:
-          Offline trening · Depozyt · Market · Potwory · Odpoczynek · Rankingi · Śmierci  */}
       <nav
         className={`town__nav town__nav--seven${tilesPulsing ? ' town__nav--pulse' : ''}`}
         style={{
@@ -643,14 +553,6 @@ const Town = () => {
           onClick={() => navigate('/offline-hunt')}
           title={offlineHuntActive && offlineHuntMonster ? `Polowanie: ${offlineHuntMonster.name_pl}` : 'Offline Trening'}
         >
-          {/* 2026-05-20 spec ("Jak polowanie jest aktywne to zamiast
-              zdjecia na kafelku Offline trening to co jest to dajemy
-              tego potwora ktorego bijemy aktualnie i czas zamiast napisu
-              offline trening to ile tam jestesmy na 12h"): when a hunt is
-              running, the static offline-trening painting is swapped for
-              a centered MonsterSprite of the mob being farmed, and the
-              glass label reads the elapsed/12h timer instead of the
-              static "Offline Trening" string. */}
           {offlineHuntActive && offlineHuntMonster ? (
             <span className="town__nav-tile-monster">
               <MonsterSprite
@@ -724,7 +626,6 @@ const Town = () => {
         </button>
       </nav>
 
-      {/* -- Rest Healing Overlay ------------------------------------------- */}
       {(isResting || restResult) && (
         <div className={`town__rest-overlay${restResult ? ' town__rest-overlay--done' : ''}`}>
           <div className="town__rest-particles">

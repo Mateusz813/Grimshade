@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, type CSSProperties } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore, MAX_BAG_SIZE } from '../../stores/inventoryStore';
@@ -55,8 +56,6 @@ type MarketTab = 'browse' | 'sell' | 'my';
 
 const PAGE_SIZE = 50;
 
-// -- Filter category metadata (label + icon resolver) ------------------------
-// Drives both the dropdown render AND the per-listing kind/slot mapping.
 const CATEGORY_OPTIONS: { value: MarketFilterCategory; label: string; iconKind: 'item' | 'potion' | 'elixir' | 'stone' | 'arena' | 'all' }[] = [
     { value: 'all',           label: 'Wszystkie',     iconKind: 'all' },
     { value: 'mainHand',      label: 'Główna',        iconKind: 'item' },
@@ -95,16 +94,8 @@ const RARITY_OPTIONS: { value: Rarity | 'all'; label: string }[] = [
     { value: 'heroic',    label: 'Heroic' },
 ];
 
-// 2026-05-08: HP/MP potions split out from "elixirs" — they're stack-kind
-// `potion` listings, while the rest of consumables are `elixir` kind.
 const isPotionId = (id: string): boolean => id.startsWith('hp_potion_') || id.startsWith('mp_potion_');
 
-// 2026-05-08 v3: legacy -> shop-id alias map. The consumables store key
-// the player's counts under quest-data IDs (`xp_elixir`, `cooldown_elixir`,
-// `hp_sm` etc.) that don't match the shop's canonical IDs
-// (`xp_boost`, `cd_reduction_elixir`, `hp_potion_sm`...). At display
-// time we resolve through this map so names + PNG art look right;
-// storage keys stay as-is so existing counts remain valid.
 const CONSUMABLE_ALIASES: Record<string, string> = {
     xp_elixir:            'xp_boost',
     skill_xp_elixir:      'skill_xp_boost',
@@ -134,9 +125,6 @@ const consumableIcon = (id: string): string =>
     getConsumableImage(aliasConsumableId(id)) ?? 'test-tube';
 
 const consumableRarity = (id: string): Rarity => {
-    // Premium / 100% boosters -> mythic; "great" % potions -> legendary;
-    // standard buff elixirs / mid-tier potions -> epic; cheap flats -> rare;
-    // anything else -> common. Loose heuristic only used as a colour hint.
     const x = aliasConsumableId(id);
     if (x === 'premium_xp_boost') return 'heroic';
     if (x.endsWith('_100') || x.includes('_divine') || x.includes('_ultimate')) return 'mythic';
@@ -146,19 +134,11 @@ const consumableRarity = (id: string): Rarity => {
     return 'common';
 };
 
-// Spell chest helpers — `spell_chest_<level>` ids map by level to a
-// PNG tier (1..15). Used by the sell-tile builder so chests can be
-// listed on the market like any other consumable.
 const isSpellChestId = (id: string): boolean => id.startsWith('spell_chest_');
 const parseSpellChestLevel = (id: string): number => {
     const n = parseInt(id.replace('spell_chest_', ''), 10);
     return Number.isFinite(n) && n > 0 ? n : (SPELL_CHEST_LEVELS[0] ?? 5);
 };
-// 2026-05-08 v3 spec ("Spell chesty maja odpowiednie kolory borderow"):
-// rarity now follows the canonical 15-tier ladder used in Inventory
-// (so the market border matches the bag tile border for the same
-// chest). Tier 1-4 common (gray), 5-8 rare (blue), 9-10 epic (green),
-// 11-12 legendary (yellow), 13-14 mythic (red), 15 heroic (purple).
 const CHEST_LEVEL_TO_TIER: Record<number, number> = {
     5: 1, 10: 2, 20: 3, 30: 4, 40: 5, 50: 6, 60: 7, 70: 8,
     80: 9, 100: 10, 150: 11, 300: 12, 600: 13, 800: 14, 1000: 15,
@@ -176,30 +156,18 @@ const spellChestRarity = (level: number): Rarity => {
     return CHEST_TIER_RARITY[tier] ?? 'common';
 };
 
-// True for a consumables-map key that's actually a stone (legacy
-// data sometimes stores stones in `consumables` instead of `stones`).
 const isStoneId = (id: string): boolean => id.endsWith('_stone');
 
-// 2026-05-08 v3: clean display name for an item id. Falls through:
-//   1. itemGenerator's display info (preferred for `gen_*` ids)
-//   2. items.json base entry (legacy items)
-//   3. formatItemName (last-resort prettifier — ALSO appends Lvl/Rarity
-//      from the id itself, so we suffix-strip via heuristic when needed)
 const cleanItemName = (itemId: string): string => {
     const gen = getItemDisplayInfo(itemId);
     if (gen?.name_pl) return gen.name_pl;
     const base = findBaseItem(itemId, ALL_ITEMS);
     if (base?.name_pl) return base.name_pl;
-    // formatItemName turns `magic_boots_lvl27_rare` -> "Magic Boots Lvl27 Rare".
-    // Strip the trailing " LvlN <Rarity>" suffix so the display name is
-    // just the core item name.
     return formatItemName(itemId)
         .replace(/\s+Lvl\d+\s+\w+$/i, '')
         .trim();
 };
 
-// Stat display labels — mirrors Shop.tsx so the bonus rows on listings
-// look identical to bag tooltips.
 const STAT_LABEL: Record<string, string> = {
     attack: 'ATK',
     defense: 'DEF',
@@ -223,11 +191,6 @@ const formatBonusEntries = (
         .filter((k) => (bonuses?.[k] ?? 0) > 0)
         .map((k) => ({ key: k, label: STAT_LABEL[k] ?? k, value: bonuses[k] }));
 
-// 2026-05-08 v3: kind heuristic for listings whose row data doesn't
-// carry an explicit `kind` (e.g. legacy notifications). Pattern-matches
-// the itemId so the right icon/name resolver is chosen and we never
-// fall through to `getPotionImage`'s hp-50 placeholder for an equipment
-// item (the bug behind "magic boots showed a red potion icon").
 const detectKindFromId = (itemId: string): MarketKind => {
     if (itemId === 'arena_points') return 'arena_points';
     if (isStoneId(itemId)) return 'stone';
@@ -238,17 +201,11 @@ const detectKindFromId = (itemId: string): MarketKind => {
     return 'item';
 };
 
-// Unified icon resolver — tries the registry that matches the kind
-// FIRST so we never accidentally fall into the wrong family's
-// "any-thing" placeholder. Returns the emoji fallback (last arg) only
-// when no registry has art for the id.
 const resolveListingIcon = (itemId: string, kind: MarketKind, slot?: string): string => {
     if (kind === 'item') {
         return getItemImage(itemId, slot) ?? getItemIcon(itemId, slot ?? '', ALL_ITEMS);
     }
     if (kind === 'potion' || kind === 'elixir') {
-        // Resolve aliases (xp_elixir -> xp_boost) so legacy IDs still
-        // hit the shop's PNG registry.
         return getConsumableImage(aliasConsumableId(itemId)) ?? 'test-tube';
     }
     if (kind === 'stone') return getStoneImage(itemId) ?? 'gem-stone';
@@ -259,7 +216,6 @@ const resolveListingIcon = (itemId: string, kind: MarketKind, slot?: string): st
     return 'package';
 };
 
-// Clean display name resolver — same priority chain as the icon.
 const resolveListingName = (itemId: string, kind: MarketKind, fallback: string): string => {
     if (kind === 'stone') return STONE_NAMES[itemId] ?? fallback;
     if (kind === 'potion' || kind === 'elixir') {
@@ -272,13 +228,6 @@ const resolveListingName = (itemId: string, kind: MarketKind, fallback: string):
     return cleanItemName(itemId);
 };
 
-// -- Backend-mode listing normalizers ----------------------------------------
-// In backend mode the market list (GET) is served by the authoritative
-// Laravel API instead of the client Supabase store. The response shape is
-// not statically typed (backendApi returns `unknown`), so we defensively map
-// each row into the local IMarketListing contract — tolerating both
-// camelCase and snake_case keys, and a bare-array OR `{ data|listings|items:
-// [...] }` envelope. Nothing here runs unless isBackendMode() is true.
 
 const RARITY_VALUES: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 const MARKET_KIND_VALUES: MarketKind[] = ['item', 'potion', 'elixir', 'stone', 'arena_points', 'spell_chest'];
@@ -357,7 +306,6 @@ const normalizeBackendListings = (raw: unknown): IMarketListing[] => {
     return out;
 };
 
-// -- Component ---------------------------------------------------------------
 
 interface IMarketProps { embedded?: boolean }
 
@@ -375,9 +323,8 @@ const Market = ({ embedded = false }: IMarketProps) => {
         fetchListings, fetchMyListings, fetchSaleNotifications,
         listItem, editListing, cancelListing, buyListing,
         dismissNotification, clearError,
-    } = useMarketStore();
+    } = useMarketStore(useShallow((s) => ({ listings: s.listings, myListings: s.myListings, saleNotifications: s.saleNotifications, error: s.error, fetchListings: s.fetchListings, fetchMyListings: s.fetchMyListings, fetchSaleNotifications: s.fetchSaleNotifications, listItem: s.listItem, editListing: s.editListing, cancelListing: s.cancelListing, buyListing: s.buyListing, dismissNotification: s.dismissNotification, clearError: s.clearError })));
 
-    // Initial fetch + periodic poll for sale notifications + listings.
     useEffect(() => {
         void fetchListings();
         if (character) {
@@ -394,12 +341,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
         return () => clearInterval(id);
     }, [character, fetchSaleNotifications]);
 
-    // -- Backend-mode listings (opt-in) ------------------------------------
-    // When the backend flag is ON, the authoritative Laravel API is the
-    // source of truth for the browse/my lists. We keep these in LOCAL
-    // component state so the default (client Supabase) path stays 100%
-    // untouched — the store-driven `listings` / `myListings` are simply not
-    // read while in backend mode.
     const [backendListings, setBackendListings] = useState<IMarketListing[]>([]);
     const [backendMyListings, setBackendMyListings] = useState<IMarketListing[]>([]);
 
@@ -425,17 +366,12 @@ const Market = ({ embedded = false }: IMarketProps) => {
         void refreshBackendMarket();
     }, [refreshBackendMarket]);
 
-    // Source selection — identical to the store lists when NOT in backend
-    // mode (so default behaviour is byte-for-byte unchanged), backend lists
-    // otherwise.
     const backendMode = isBackendMode();
     const sourceListings = backendMode ? backendListings : listings;
     const sourceMyListings = backendMode ? backendMyListings : myListings;
 
-    // -- Tab state ----------------------------------------------------------
     const [tab, setTab] = useState<MarketTab>('browse');
 
-    // -- Shared filter state -----------------------------------------------
     const [category, setCategory] = useState<MarketFilterCategory>('all');
     const [rarityFilter, setRarityFilter] = useState<Rarity | 'all'>('all');
     const [sortBy, setSortBy] = useState<MarketSortBy>('newest');
@@ -444,10 +380,8 @@ const Market = ({ embedded = false }: IMarketProps) => {
     const [maxLevel, setMaxLevel] = useState(1000);
     const [page, setPage] = useState(1);
 
-    // Reset to page 1 whenever the active filter set changes.
     useEffect(() => { setPage(1); }, [category, rarityFilter, sortBy, search, minLevel, maxLevel, tab]);
 
-    // -- Modals ------------------------------------------------------------
     const [buyTarget, setBuyTarget] = useState<IMarketListing | null>(null);
     const [sellTarget, setSellTarget] = useState<{
         kind: MarketKind;
@@ -455,7 +389,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
         consumableId?: string;
         stoneId?: string;
         isArenaPoints?: boolean;
-        // Display info baked in so the modal doesn't recompute.
         name: string;
         rarity: Rarity;
         icon: string;
@@ -474,11 +407,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
         setTimeout(() => setToast(null), 2500);
     };
 
-    // -- Derived: filtered + sorted listings -------------------------------
-    // 2026-05-08 v3: dedupe by id BEFORE filtering so React never sees
-    // two children with the same key. The optimistic-prepend in
-    // listItem can collide with a concurrent fetchListings re-fetch
-    // and surface as duplicate rows in the UI.
     const dedupeById = useCallback((items: IMarketListing[]): IMarketListing[] => {
         const seen = new Set<string>();
         const out: IMarketListing[] = [];
@@ -513,9 +441,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
     const totalBrowsePages = Math.max(1, Math.ceil(filteredBrowse.length / PAGE_SIZE));
     const totalMyPages = Math.max(1, Math.ceil(filteredMy.length / PAGE_SIZE));
 
-    // -- Sell-tab inventory grid ------------------------------------------
-    // Combines bag equipment, stackable consumables, stones, and arena
-    // points into a flat list of "sellable tiles" the player can click.
     interface ISellTile {
         key: string;
         kind: MarketKind;
@@ -527,7 +452,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
         bonuses: Record<string, number>;
         upgradeLevel: number;
         maxQty: number;
-        // Source pointers for the actual sell action.
         bagItem?: IInventoryItem;
         consumableId?: string;
         stoneId?: string;
@@ -536,13 +460,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
 
     const sellTiles = useMemo<ISellTile[]>(() => {
         const out: ISellTile[] = [];
-        // Bag equipment — use the clean item name (no "Lvl27 Rare"
-        // suffix) so the tile / modal looks tidy. The level shows in
-        // its own corner badge below.
-        // 2026-05-08 v3: getItemSlotSafe handles BOTH legacy items.json
-        // entries AND generated `type_lvlN_rarity` ids — without it the
-        // sell-tab category filter (Buty / Hełm / etc.) would silently
-        // drop every generated item because findBaseItem can't see them.
         for (const item of bag) {
             const slot = getItemSlotSafe(item.itemId, ALL_ITEMS) ?? '';
             const name = cleanItemName(item.itemId);
@@ -561,13 +478,8 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 bagItem: item,
             });
         }
-        // Stack consumables (potions + elixirs + spell chests +
-        // legacy stones-stored-in-consumables).
-        // 2026-05-08 v3 spec ("Wszystko mozna w markecie wystawiac na
-        // sprzedaz pamietaj") — every consumable type is sellable.
         for (const [id, count] of Object.entries(consumables)) {
             if ((count ?? 0) <= 0) continue;
-            // Spell chests get their own kind + chest art.
             if (isSpellChestId(id)) {
                 const lvl = parseSpellChestLevel(id);
                 out.push({
@@ -585,9 +497,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 });
                 continue;
             }
-            // Legacy stones stored in the consumables map (e.g. an
-            // older save had stones[*] data leaked here). Route to
-            // the stone bucket so they render with proper art + name.
             if (isStoneId(id)) {
                 const tier = id.split('_')[0] as Rarity;
                 out.push({
@@ -619,7 +528,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 consumableId: id,
             });
         }
-        // Stones
         for (const [id, count] of Object.entries(stones)) {
             if ((count ?? 0) <= 0) continue;
             const tier = id.split('_')[0] as Rarity;
@@ -637,7 +545,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 stoneId: id,
             });
         }
-        // Arena points
         if (arenaPoints > 0) {
             out.push({
                 key: 'ap',
@@ -659,7 +566,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
     const filteredSellTiles = useMemo(() => {
         const q = search.trim().toLowerCase();
         return sellTiles.filter((t) => {
-            // Category match
             if (category !== 'all') {
                 if (category === 'potions') { if (t.kind !== 'potion') return false; }
                 else if (category === 'elixirs') { if (t.kind !== 'elixir') return false; }
@@ -682,16 +588,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
     }, [filteredSellTiles, page]);
     const totalSellPages = Math.max(1, Math.ceil(filteredSellTiles.length / PAGE_SIZE));
 
-    // -- Buy flow ---------------------------------------------------------
-    // 2026-05-08 v3: surface failures via toast so the user sees WHY a
-    // buy didn't go through (RLS, sold-out, quantity column missing,
-    // network, etc.) instead of the modal silently doing nothing.
     const handleConfirmBuy = async (qty: number) => {
-        // Tryb backendu (opt-in): kupno idzie przez autorytatywny endpoint
-        // /market/listings/{id}/buy. Serwer atomowo waliduje stan/RLS i
-        // rozlicza gold + ekwipunek — to zamyka duping po stronie UI. Po
-        // sukcesie re-hydratujemy store'y (inventory/gold) + odświeżamy
-        // listę marketu.
         if (isBackendMode() && character && buyTarget) {
             try {
                 await backendApi.marketBuy(character.id, buyTarget.id);
@@ -709,25 +606,16 @@ const Market = ({ embedded = false }: IMarketProps) => {
         if (!buyTarget || !character) return;
         const total = buyTarget.price * qty;
         if (gold < total) { showToast('Za mało złota!'); return; }
-        // Equipment kind needs free bag slot; stack kinds add to
-        // consumables/stones/AP and don't consume bag slots.
         if (buyTarget.kind === 'item' && bag.length >= MAX_BAG_SIZE) {
             showToast('Plecak pełny!'); return;
         }
         clearError();
         const result = await buyListing(buyTarget.id, qty);
         if (!result) {
-            // marketStore set its `error` field; surface it as a toast
-            // so the player sees something happened.
             const msg = useMarketStore.getState().error ?? 'Nie udało się kupić.';
             showToast(msg);
             return;
         }
-        // Spend gold, push the purchase into inventory.
-        // 2026-05-08 v3 spec ("Odebralem przedmiot z marketu ale nie
-        // mam go w ekwipunku"): use restoreItem so a buyer with
-        // auto-sell-rare ON doesn't have their freshly-bought rare
-        // item silently flipped into gold by addItem's auto-sell hook.
         inv.getState().spendGold(total);
         if (result.listing.kind === 'item') {
             inv.getState().restoreItem({
@@ -745,28 +633,11 @@ const Market = ({ embedded = false }: IMarketProps) => {
         } else if (result.listing.kind === 'arena_points') {
             inv.getState().addArenaPoints(qty);
         } else if (result.listing.kind === 'spell_chest') {
-            // Spell chests live in the consumables map under their
-            // `spell_chest_<level>` ids — same storage path as elixirs.
             inv.getState().addConsumable(result.listing.itemId, qty);
         }
         showToast(`Kupiono: ${result.listing.itemName} ×${qty}`);
-        // 2026-05-19 v16 spec ("kupionymi przedmiotami na markecie"):
-        // bump the BUYER's lifetime market-purchases counter +
-        // gold spent.
-        //
-        // 2026-05-19 v18 spec ("Zakladka sprzedaz zle zlicza, to nie
-        // powinno zliczac jak wystawie przedmiot tylko dopiero
-        // jezeli ktos go kupi i jak ktos kupi na markecie to jemu
-        // wzrasta punkt zakupu a w sprzedazy osobie co sprzedala i
-        // w sprzedazy i zakupie obok sprzedanych zapisuj ile kasy
-        // sie zarobilo lub wydalo"): on a successful purchase we now
-        // ALSO push the SELLER's sold-count + gold-earned via the
-        // `bump_market_sale` RPC. That moves the "Sprzedaż" tab
-        // from "items listed" semantics to true "items sold"
-        // semantics.
         if (character) {
           void import('../../api/v1/characterApi').then(({ characterApi }) => {
-            // Buyer side — own row, regular PATCH (RLS-safe).
             void characterApi.bumpStat({
               characterId: character.id,
               column: 'market_items_bought',
@@ -779,9 +650,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
               value: total,
               mode: 'add',
             });
-            // Seller side — different character row, RPC required.
-            // Skip if buyer == seller (testing with alts) so the
-            // numbers don't double-count.
             const sellerId = result.listing.sellerId;
             if (sellerId && sellerId !== character.id) {
               void characterApi.bumpMarketSaleRpc({
@@ -790,17 +658,12 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 goldAmount: total,
               });
             }
-          }).catch(() => { /* offline */ });
+          }).catch(() => { });
         }
         setBuyTarget(null);
     };
 
-    // -- Sell flow --------------------------------------------------------
     const handleConfirmSell = async (price: number, qty: number) => {
-        // Tryb backendu (opt-in): wystawienie idzie przez autorytatywny
-        // endpoint POST /market/listings. Serwer escrowuje przedmiot i tworzy
-        // ofertę — klient nic nie odejmuje sam. Po sukcesie re-hydratujemy
-        // store'y + odświeżamy listę marketu.
         if (isBackendMode() && character && sellTarget) {
             if (!isValidPrice(price)) { showToast('Nieprawidłowa cena!'); return; }
             if (!isValidQuantity(qty, sellTarget.maxQty)) { showToast('Nieprawidłowa ilość!'); return; }
@@ -837,11 +700,8 @@ const Market = ({ embedded = false }: IMarketProps) => {
         if (!sellTarget || !character) return;
         if (!isValidPrice(price)) { showToast('Nieprawidłowa cena!'); return; }
         if (!isValidQuantity(qty, sellTarget.maxQty)) { showToast('Nieprawidłowa ilość!'); return; }
-        // Clear any stale error before retrying.
         clearError();
 
-        // Determine itemId for the listing — for bag equipment it's the
-        // template id; for stack kinds it's the consumable / stone / AP id.
         let itemId = '';
         if (sellTarget.bagItem) itemId = sellTarget.bagItem.itemId;
         else if (sellTarget.consumableId) itemId = sellTarget.consumableId;
@@ -869,17 +729,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
             return;
         }
 
-        // Remove the items from inventory now that they're escrowed on
-        // the market. Equipment leaves the bag entirely; stacks
-        // decrement by `qty`.
-        // 2026-05-08 v3 spec ("z 27 kamieni mam juz 29 zduplikowalem sobie je"):
-        // duplication bug fix — the listing was being CREATED, but
-        // the inventory deduction silently threw `consumeStones is
-        // not a function` (the actual API is `useStones`). The seller
-        // ended up with the listing on the market AND still holding
-        // the original stack, so cancelling refunded a duplicate.
-        // Decrement the source FIRST, and abort the listing creation
-        // entirely if escrow fails.
         let escrowOk = true;
         if (sellTarget.bagItem) {
             inv.getState().removeItem(sellTarget.bagItem.uuid);
@@ -891,10 +740,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
             escrowOk = inv.getState().spendArenaPoints(qty);
         }
         if (!escrowOk) {
-            // Roll back the listing — caller didn't actually have the
-            // resource we promised the buyer. Ditch the stale row,
-            // close the modal so the player can retry from a clean
-            // state.
             void cancelListing(id);
             setSellTarget(null);
             showToast('Brak wystarczającej ilości w plecaku.');
@@ -903,22 +748,11 @@ const Market = ({ embedded = false }: IMarketProps) => {
         setSellTarget(null);
         setTab('my');
         showToast(`Wystawiono: ${sellTarget.name} ×${qty}`);
-        // 2026-05-19 v18: listing creation no longer increments the
-        // "Sprzedaż" leaderboard counter — that fires on the actual
-        // PURCHASE event via the `bump_market_sale` RPC (see
-        // handleConfirmBuy above). Listing-without-sale is just an
-        // escrow; the seller shouldn't get credit until the gold
-        // actually changes hands.
     };
 
-    // -- Edit / cancel flow -----------------------------------------------
     const handleEditPrice = async (newPrice: number) => {
         if (!editTarget) return;
         if (!isValidPrice(newPrice)) { showToast('Nieprawidłowa cena!'); return; }
-        // Tryb backendu (opt-in): zmiana ceny idzie przez autorytatywny
-        // PATCH /market/listings/{id}. Serwer waliduje właściciela oferty
-        // i zapisuje nową cenę — klient nie mutuje marketStore sam. Po
-        // sukcesie re-hydratujemy store'y + odświeżamy listę marketu.
         if (isBackendMode() && character && editTarget) {
             try {
                 await backendApi.editListing(character.id, editTarget.id, { price: newPrice });
@@ -945,10 +779,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
     };
 
     const handleCancelListing = async () => {
-        // Tryb backendu (opt-in): zdjęcie oferty idzie przez autorytatywny
-        // DELETE /market/listings/{id}. Serwer zwraca przedmiot do ekwipunku
-        // — klient nie dopisuje itemu sam (to zamyka duping). Po sukcesie
-        // re-hydratujemy store'y + odświeżamy listę marketu.
         if (isBackendMode() && character && editTarget) {
             try {
                 await backendApi.marketCancel(character.id, editTarget.id);
@@ -964,8 +794,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
             }
         }
         if (!editTarget) return;
-        // Bag-full guard (only matters for equipment kind — stacks merge
-        // into the existing consumable/stone counts).
         if (editTarget.kind === 'item' && bag.length >= MAX_BAG_SIZE) {
             showToast('Opróżnij plecak — pełny.'); return;
         }
@@ -976,10 +804,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
             showToast(msg);
             return;
         }
-        // Return the asset to the player. restoreItem (NOT addItem)
-        // so the auto-sell hook can never quietly convert a returned
-        // rare/epic/etc. item to gold — the player explicitly asked
-        // for it back.
         if (cancelled.kind === 'item') {
             inv.getState().restoreItem({
                 uuid: `mkt_cancel_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
@@ -1011,10 +835,7 @@ const Market = ({ embedded = false }: IMarketProps) => {
 
     return (
         <div className={`market${embedded ? ' market--embedded' : ''}`}>
-            {/* 2026-05-08 v2 spec: header WRÓĆ + gold chip removed.
-                The TopHeader already shows gold; no need to duplicate. */}
 
-            {/* Tabs row + notification button */}
             <div className="market__top-row">
                 <div className="market__tabs">
                     <button
@@ -1051,7 +872,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 </button>
             </div>
 
-            {/* Shared filter bar — visible on every tab. */}
             <div className="market__filters">
                 <input
                     type="text"
@@ -1105,13 +925,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 />
             </div>
 
-            {/* 2026-05-08: global loading spinner removed per user
-                feedback ("caly czas jest loading state"). The market
-                store's `isLoading` flag is still set during async
-                actions so individual buttons can show their own
-                inline spinner — but a page-level spinner that blocks
-                the entire view is too aggressive. Errors stay
-                visible in the banner below. */}
             {error && (
                 <div className="market__error">
                     <span>{error}</span>
@@ -1139,9 +952,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                                     listing={l}
                                     isOwn={isOwn}
                                     onClick={() => {
-                                        // Browse own listing -> reroute to edit
-                                        // popup (matches My-tab behaviour, since
-                                        // buying your own item is a no-op).
                                         if (isOwn) setEditTarget(l);
                                         else setBuyTarget(l);
                                     }}
@@ -1163,13 +973,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         {pagedSellTiles.length === 0 ? (
                             <p className="market__empty">Brak przedmiotów do wystawienia.</p>
                         ) : pagedSellTiles.map((t) => (
-                            // 2026-05-08 v3 spec: tiles are small &
-                            // compact — corner Lv badge (only for
-                            // equipment with itemLevel > 1), corner
-                            // upgrade / qty badges, name only at the
-                            // bottom. No "rare/epic" caption — the
-                            // border + name colour already convey
-                            // rarity at a glance.
                             <button
                                 key={t.key}
                                 type="button"
@@ -1221,7 +1024,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 )}
             </AnimatePresence>
 
-            {/* Pagination — only when more than one page. */}
             {totalPagesForTab > 1 && (
                 <div className="market__pagination">
                     <button
@@ -1246,7 +1048,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
                 </div>
             )}
 
-            {/* -- Modals ----------------------------------------------- */}
             <AnimatePresence>
                 {buyTarget && (
                     <BuyModal
@@ -1276,25 +1077,15 @@ const Market = ({ embedded = false }: IMarketProps) => {
                         notifications={saleNotifications}
                         onClose={() => setShowNotifications(false)}
                         onDismiss={(id) => {
-                            // Tryb backendu: gold ze sprzedaży jest już naliczony
-                            // autorytatywnie po stronie serwera w chwili kupna, więc
-                            // NIE naliczamy go tu lokalnie (uniknij podwójnego kredytu),
-                            // a odrzucenie leci przez backend (nie wprost do Supabase).
                             if (isBackendMode() && character) {
                                 void (async () => {
                                     try {
                                         await backendApi.dismissNotification(character.id, id);
                                         await syncFromBackend(character.id);
-                                    } catch { /* ignore */ }
+                                    } catch { }
                                 })();
                                 return;
                             }
-                            // 2026-05-08: claim the gold AT dismiss time so
-                            // a seller who never opens the popup never
-                            // double-claims, but a seller who DOES claim
-                            // gets paid out correctly. Without an authoritative
-                            // server-side trigger this is the safest place
-                            // to credit the gold.
                             const n = saleNotifications.find((x) => x.id === id);
                             if (n) inv.getState().addGold(n.goldReceived);
                             void dismissNotification(id);
@@ -1316,7 +1107,6 @@ const Market = ({ embedded = false }: IMarketProps) => {
     );
 };
 
-// -- Sub-components ----------------------------------------------------------
 
 interface IListingRowProps {
     listing: IMarketListing;
@@ -1327,17 +1117,9 @@ interface IListingRowProps {
 
 const ListingRow = ({ listing, isOwn, isMyTab, onClick }: IListingRowProps) => {
     const color = RARITY_COLORS[listing.rarity];
-    // 2026-05-08 v3 — kind-aware resolvers so an equipment listing
-    // never accidentally renders the hp-50 potion fallback, and a
-    // potion listing never renders the generic stone placeholder.
     const icon = resolveListingIcon(listing.itemId, listing.kind, listing.slot);
     const cleanName = resolveListingName(listing.itemId, listing.kind, listing.itemName);
     const stats = formatBonusEntries(listing.bonuses);
-    // 2026-05-08 v3 spec ("tylko eliksiry te co sa w sklepie w zakladce
-    // eliksir maja miec taki border, takto potiony maja miec swoj rarity
-    // border"): the gold->purple gradient is reserved for `kind === 'elixir'`.
-    // HP/MP potions (kind: 'potion') stay on their rarity-tinted border so
-    // the family stays visually distinct.
     const isElixirRow = listing.kind === 'elixir';
     return (
         <button
@@ -1391,7 +1173,6 @@ const ListingRow = ({ listing, isOwn, isMyTab, onClick }: IListingRowProps) => {
     );
 };
 
-// -- Buy modal --
 interface IBuyModalProps {
     listing: IMarketListing;
     playerGold: number;
@@ -1455,10 +1236,6 @@ const BuyModal = ({ listing, playerGold, onClose, onConfirm }: IBuyModalProps) =
                         <div className="market__modal-seller">od: {listing.sellerName}</div>
                     </div>
                 </div>
-                {/* 2026-05-08 v3: stats list shown directly on the buy
-                    popup so the player decides without flipping back
-                    to inventory. Empty for stack kinds (no bonuses on a
-                    potion / elixir / stone). */}
                 {stats.length > 0 && (
                     <ul className="market__modal-stats">
                         {stats.map((s) => (
@@ -1503,7 +1280,6 @@ const BuyModal = ({ listing, playerGold, onClose, onConfirm }: IBuyModalProps) =
     );
 };
 
-// -- Sell modal --
 interface ISellModalProps {
     target: {
         kind: MarketKind;
@@ -1568,8 +1344,6 @@ const SellModal = ({ target, onClose, onConfirm }: ISellModalProps) => {
                     </div>
                     <div>
                         <div className="market__modal-name" style={{ color }}>{target.name}</div>
-                        {/* 2026-05-08 v3: rarity caption removed — the
-                            border + name colour already convey it. */}
                     </div>
                 </div>
                 {stats.length > 0 && (
@@ -1624,7 +1398,6 @@ const SellModal = ({ target, onClose, onConfirm }: ISellModalProps) => {
     );
 };
 
-// -- Edit modal --
 interface IEditModalProps {
     listing: IMarketListing;
     onClose: () => void;
@@ -1677,9 +1450,6 @@ const EditListingModal = ({ listing, onClose, onEditPrice, onCancelListing }: IE
                         )}
                     </div>
                 </div>
-                {/* Stats list — same as buy/sell modal so the seller
-                    sees what they're listing. Stack kinds (potion /
-                    elixir / stone) have no bonuses -> empty. */}
                 {(() => {
                     const stats = formatBonusEntries(listing.bonuses);
                     if (stats.length === 0) return null;
@@ -1726,7 +1496,6 @@ const EditListingModal = ({ listing, onClose, onEditPrice, onCancelListing }: IE
     );
 };
 
-// -- Sale notifications modal --
 interface INotificationsModalProps {
     notifications: IMarketSaleNotification[];
     onClose: () => void;
@@ -1754,12 +1523,6 @@ const NotificationsModal = ({ notifications, onClose, onDismiss }: INotification
                 <ul className="market__notify-list">
                     {notifications.map((n) => {
                         const color = RARITY_COLORS[n.rarity];
-                        // 2026-05-08 v3: detect the listing kind from
-                        // the itemId pattern — sale-notification rows
-                        // don't carry a `kind` field, so without this
-                        // every notification fell through to the
-                        // potion fallback (a magic boots sale showed
-                        // a red potion icon).
                         const kind = detectKindFromId(n.itemId);
                         const icon = resolveListingIcon(n.itemId, kind);
                         const cleanName = resolveListingName(n.itemId, kind, n.itemName);

@@ -1,7 +1,6 @@
 @use '../../styles/variables' as *;
 @use '../../styles/breakpoints' as *;
 
-// -- Main container ----------------------------------------------------------
 .oh {
     min-height: 100dvh;
     padding: 0 20px 120px;
@@ -19,9 +18,6 @@
         color: $color-text-muted;
     }
 
-    // -- Header ----------------------------------------------------------
-    // &__header / &__back / &__title inherit from .page-header / .page-back-btn / .page-title.
-    // Negate the root's side padding so the shared header padding (20/28px) isn't doubled.
     &__header {
         margin-left: -20px;
         margin-right: -20px;
@@ -53,7 +49,6 @@
         margin: 0;
     }
 
-    // -- Active hunt card ------------------------------------------------
     &__active {
         background: linear-gradient(180deg, rgba(33, 150, 243, 0.12) 0%, rgba(20, 20, 30, 0.9) 100%);
         border: 2px solid rgba(33, 150, 243, 0.35);
@@ -92,7 +87,6 @@
         font-weight: 600;
     }
 
-    // -- Target card -----------------------------------------------------
     &__target-card {
         display: flex;
         align-items: center;
@@ -138,7 +132,6 @@
         span:last-child { color: #ffc107; }
     }
 
-    // -- Progress bar ----------------------------------------------------
     &__progress {
         margin-bottom: 12px;
     }
@@ -167,7 +160,6 @@
         color: $color-text-muted;
     }
 
-    // -- Live stats grid -------------------------------------------------
     &__live-stats {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -192,7 +184,6 @@
         strong { color: $color-text; font-size: 13px; }
     }
 
-    // -- Active buttons --------------------------------------------------
     &__active-btns {
         display: flex;
         gap: 8px;
@@ -202,14 +193,12 @@
         }
     }
 
-    // -- Setup section ---------------------------------------------------
     &__setup {
         display: flex;
         flex-direction: column;
         gap: 16px;
     }
 
-    // -- Card (generic dark section) -------------------------------------
     &__card {
         background: linear-gradient(180deg, rgba(255, 193, 7, 0.06) 0%, rgba(20, 20, 30, 0.9) 100%);
         border: 1px solid rgba(255, 193, 7, 0.18);
@@ -243,7 +232,6 @@
         flex-shrink: 0;
     }
 
-    // -- Skill grid ------------------------------------------------------
     &__skill-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -271,9 +259,6 @@
             border-color: rgba(255, 255, 255, 0.2);
         }
 
-        // 2026-05-20 spec: active chip painted in the transform-accent
-        // colour (--oh-accent / --oh-accent-rgb) instead of the legacy
-        // hardcoded yellow.
         &--active {
             background: rgba(var(--oh-accent-rgb, 255, 193, 7), 0.14);
             border-color: var(--oh-accent, #ffc107);
@@ -293,9 +278,6 @@
         color: $color-text-muted;
     }
 
-    // -- Sort toggle row -------------------------------------------------
-    // 2026-05-20 spec: above the monster grid. Two pill toggles painted in
-    // the transform accent (--oh-accent) when active; muted otherwise.
     &__sort-row {
         display: flex;
         align-items: center;
@@ -339,7 +321,6 @@
         }
     }
 
-    // -- Monster list ----------------------------------------------------
     &__monster-list {
         display: grid;
         grid-template-columns: 1fr;
@@ -376,9 +357,6 @@
             border-color: rgba(255, 255, 255, 0.16);
         }
 
-        // Mirrors &__skill-chip--active — see the comment above. Same
-        // transform-accent palette so picking a skill + a monster reads
-        // as the same kind of selection.
         &--active {
             background: rgba(var(--oh-accent-rgb, 255, 193, 7), 0.12);
             border-color: var(--oh-accent, #ffc107);
@@ -431,7 +409,6 @@
         flex-shrink: 0;
     }
 
-    // -- Info box --------------------------------------------------------
     &__info {
         padding: 10px 14px;
         background: rgba(255, 193, 7, 0.06);
@@ -442,7 +419,6 @@
         color: $color-text-muted;
     }
 
-    // -- Buttons ---------------------------------------------------------
     &__btn {
         padding: 12px 20px;
         border: none;
@@ -462,10 +438,6 @@
             transform: none !important;
         }
 
-        // 2026-05-20 spec ("kolory guzikow ... w kolorze transformu"):
-        // the primary CTA picks up the active-transform accent. Falls
-        // back to the legacy yellow gradient when no transform is set
-        // and no class colour resolves.
         &--start {
             width: 100%;
             padding: 14px;
@@ -502,14 +474,12 @@
     }
 }
 
-// -- Animations --------------------------------------------------------------
 
 @keyframes oh-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
 }
 
-// -- Epic claim FX overlay ---------------------------------------------------
 
 .oh__fx {
     position: fixed;
@@ -581,7 +551,6 @@
     pointer-events: none;
 }
 
-// -- Reward modal ------------------------------------------------------------
 
 .oh-modal {
     &__backdrop {
@@ -596,7 +565,6 @@
         padding: 16px;
     }
 
-    // The modal card itself
     position: relative;
     width: 100%;
     max-width: 420px;
@@ -614,10 +582,9 @@
         align-items: center;
         gap: 10px;
         margin-bottom: 14px;
-        padding-right: 44px; // leave room for the absolute close button
+        padding-right: 44px;
     }
 
-    // Top-right close (X) — >=44x44px tap target for mobile.
     &__close {
         position: absolute;
         top: 8px;
@@ -650,7 +617,6 @@
         color: #4caf50;
     }
 
-    // -- Quick stat pills ------------------------------------------------
     &__stats {
         display: flex;
         gap: 8px;
@@ -678,7 +644,6 @@
     &__stat-icon { font-size: 14px; }
     &__stat-val { font-size: 13px; }
 
-    // -- Rarity pills row ------------------------------------------------
     &__rarity-row {
         display: flex;
         flex-wrap: wrap;
@@ -696,7 +661,6 @@
         letter-spacing: 0.03em;
     }
 
-    // -- XP rows ---------------------------------------------------------
     &__xp-row {
         display: flex;
         align-items: center;
@@ -736,7 +700,6 @@
         white-space: nowrap;
     }
 
-    // -- Drops grid ------------------------------------------------------
     &__drops {
         margin-top: 10px;
         padding: 10px;
@@ -780,7 +743,6 @@
         font-weight: 700;
     }
 
-    // -- No drops text ---------------------------------------------------
     &__no-drops {
         text-align: center;
         padding: 10px;
@@ -790,7 +752,6 @@
         margin-top: 8px;
     }
 
-    // -- OK button -------------------------------------------------------
     &__ok-btn {
         width: 100%;
         min-height: 48px;

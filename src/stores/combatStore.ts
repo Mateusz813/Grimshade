@@ -15,12 +15,6 @@ export interface IWaveMonster {
     maxHp: number;
     rarity: TMonsterRarity;
     isDead: boolean;
-    /**
-     * Current aggro target for THIS monster.
-     * 'player' -> attacking the player
-     * `bot_<id>` -> attacking a party bot by ID
-     * null -> not yet resolved (will pick on next attack tick)
-     */
     aggroTarget: string | null;
 }
 
@@ -40,65 +34,28 @@ interface ICombatStore {
     log: ICombatLogEntry[];
     earnedXp: number;
     earnedGold: number;
-    /** Monster pre-selected from MonsterList screen, to auto-start on Combat mount */
     selectedMonster: IMonster | null;
-    /** Rarity of the current monster encounter */
     monsterRarity: TMonsterRarity;
 
-    // -- Background combat fields ---------------------------------------------
-    /** Whether combat is running in background (player navigated away) */
     backgroundActive: boolean;
-    /** Base (unscaled) monster being fought — used for auto-fight re-rolls */
     baseMonster: IMonster | null;
-    /** Whether auto-fight is enabled */
     autoFight: boolean;
-    /** ISO timestamp when background combat started (for 10h cap) */
     backgroundStartedAt: string | null;
-    /** Cumulative session XP earned */
     sessionXpEarned: number;
-    /** Cumulative session gold earned */
     sessionGoldEarned: number;
-    /** Session kills by monster rarity */
     sessionKills: Record<string, number>;
-    /** Timestamp when session started (Date.now()) */
     sessionStartedAt: number;
-    /** Last combat event — for triggering animations in Combat.tsx */
     lastCombatEvent: ICombatEvent | null;
-    /** Last dropped items — for the per-fight victory popup display.
-     *  Resets at the start of each new fight. Use `sessionDrops` for the
-     *  cumulative session backpack view. */
     lastDrops: IDropDisplay[];
-    /** Cumulative drops since the player entered the combat view. Never
-     *  resets between fights — only `clearCombatSession` (explicit exit /
-     *  death / boss-kill) wipes it. Powers the :backpack: backpack modal. */
     sessionDrops: IDropDisplay[];
-    /** XP per hour computed by useBackgroundCombat */
     sessionXpPerHour: number;
-    /** ISO timestamp of the last combat tick – used for offline catch-up */
     lastCombatTickAt: string | null;
-    /**
-     * Uncapped per-session log used by the new shared <CombatLogsModal>.
-     * The legacy `log` is capped at 50 for the inline ticker; this one keeps
-     * every entry until the player explicitly leaves the fight (exit popup,
-     * boss defeat, death). It does NOT reset between waves so multi-wave
-     * sessions accumulate the full history.
-     */
     sessionLog: ICombatLogEntry[];
 
-    // -- Wave (multi-monster) state ------------------------------------------
-    /** All monsters in the current wave (1-4 of the same base monster type). */
     waveMonsters: IWaveMonster[];
-    /** Index of the currently-targeted monster in waveMonsters. */
     activeTargetIdx: number;
-    /**
-     * Sticky planned wave size (1-4). Persists across waves — clicking
-     * "Dodaj potwora" bumps this, so every subsequent auto-fight spawns
-     * the same number of monsters without the user re-clicking each time.
-     * Reset to 1 on `resetCombat()`.
-     */
     wavePlannedCount: number;
 
-    // -- Actions --------------------------------------------------------------
     initCombat:        (monster: IMonster, playerHp: number, playerMp: number, rarity?: TMonsterRarity) => void;
     setSelectedMonster:(monster: IMonster | null) => void;
     dealToMonster:(dmg: number) => void;
@@ -108,15 +65,11 @@ interface ICombatStore {
     addReward:    (xp: number, gold: number) => void;
     setPhase:     (phase: CombatPhase) => void;
     setHps:       (monsterHp: number, playerHp: number) => void;
-    /** Restore HP, capped at maxHp. */
     healPlayerHp: (amount: number, maxHp: number) => void;
-    /** Restore MP, capped at maxMp. */
     healPlayerMp: (amount: number, maxMp: number) => void;
-    /** Subtract MP (e.g. skill cost). Floors at 0. */
     spendPlayerMp:(cost: number) => void;
     resetCombat:  () => void;
 
-    // -- Background combat actions --------------------------------------------
     setBackgroundActive: (active: boolean) => void;
     setBaseMonster: (m: IMonster | null) => void;
     setAutoFight: (on: boolean) => void;
@@ -129,37 +82,18 @@ interface ICombatStore {
     appendDrops: (drops: IDropDisplay[]) => void;
     setSessionXpPerHour: (v: number) => void;
     setLastCombatTickAt: (ts: string | null) => void;
-    /** Append a log entry to the uncapped session log. */
     addSessionLog: (text: string, type: ICombatLogEntry['type']) => void;
-    /** Wipe the session log + drops + tally — call when the player exits the
-     *  combat view via the in-fight exit button or after a death/boss-defeat
-     *  result screen. */
     clearCombatSession: () => void;
 
-    // -- Wave actions --------------------------------------------------------
-    /** Append a monster to the wave (max MAX_WAVE_MONSTERS). Returns true if added. */
     addWaveMonster: (m: IMonster, rarity: TMonsterRarity) => boolean;
-    /** Set the aggro target for a specific wave monster (by index). */
     setWaveMonsterAggro: (waveIdx: number, target: string | null) => void;
-    /** Apply damage to a wave monster by index (non-active monsters included). */
     damageWaveMonster: (waveIdx: number, dmg: number) => void;
-    /** Clear wave & reset active target to 0. */
     resetWave: () => void;
-    /** Find next alive monster in wave, promote it to active. Returns true if one found. */
     advanceToNextWaveTarget: () => boolean;
-    /** Mark current active monster as dead in the wave. */
     markActiveWaveMonsterDead: () => void;
-    /** Set the sticky planned wave size (clamped 1..MAX_WAVE_MONSTERS). */
     setWavePlannedCount: (n: number) => void;
-    /** Bump the planned wave size by 1 (no-op at max). Returns new count. */
     incrementWavePlannedCount: () => number;
-    /** Decrease the planned wave size by 1 (no-op at min=1). Returns new count. */
     decrementWavePlannedCount: () => number;
-    /**
-     * Remove the last alive non-active monster from the current wave (during fight).
-     * Used by the ":minus: Usuń potwora" button so the player can bail out of extra
-     * monsters they've already spawned. Returns true if one was removed.
-     */
     removeLastWaveMonster: () => boolean;
 }
 
@@ -178,7 +112,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
     selectedMonster: null,
     monsterRarity: 'normal' as TMonsterRarity,
 
-    // Background combat defaults
     backgroundActive: false,
     baseMonster: null,
     autoFight: true,
@@ -239,11 +172,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             const entry = { id: _logId++, text, type };
             return {
                 log: [...s.log.slice(-49), entry],
-                // Session log is what feeds <CombatLogsModal>. Capped at 1000
-                // entries per request — long sessions used to grow this array
-                // unboundedly which both fattened the React state and made the
-                // modal scroll painfully when the player opened it after an
-                // hour of grinding.
                 sessionLog: [...s.sessionLog, entry].slice(-1000),
             };
         }),
@@ -253,8 +181,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             const newEntries = entries.map((e) => ({ id: _logId++, text: e.text, type: e.type }));
             return {
                 log: [...s.log, ...newEntries].slice(-50),
-                // Same 1000-entry cap as `addLog` — prevents bulk inserts
-                // (e.g. mass loot drops) from blowing past the limit.
                 sessionLog: [...s.sessionLog, ...newEntries].slice(-1000),
             };
         }),
@@ -316,7 +242,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             wavePlannedCount: 1,
         }),
 
-    // Background combat actions
     setBackgroundActive: (active) => set({ backgroundActive: active }),
     setBaseMonster: (m) => set({ baseMonster: m }),
     setAutoFight: (on) => set({ autoFight: on }),
@@ -332,17 +257,11 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             sessionStartedAt: Date.now(),
         }),
     emitCombatEvent: (event) => set({ lastCombatEvent: event }),
-    // `setLastDrops` overwrites the per-fight `lastDrops` window (used by the
-    // result screens in Boss/Dungeon/Raid). It also appends to the cumulative
-    // `sessionDrops` so the :backpack: backpack modal sees every fight's loot since
-    // the player entered the combat view.
     setLastDrops: (drops) =>
         set((s) => ({
             lastDrops: drops,
             sessionDrops: drops.length > 0 ? [...s.sessionDrops, ...drops] : s.sessionDrops,
         })),
-    // `appendDrops` is the wave-aware variant — used when multiple monsters
-    // die in the same wave. Same dual-write semantics.
     appendDrops: (drops) =>
         set((s) => ({
             lastDrops: [...s.lastDrops, ...drops],
@@ -365,7 +284,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             sessionStartedAt: Date.now(),
         }),
 
-    // -- Wave actions --------------------------------------------------------
     addWaveMonster: (m, rarity) => {
         const s = useCombatStore.getState();
         if (s.waveMonsters.length >= MAX_WAVE_MONSTERS) return false;
@@ -398,7 +316,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
             const newWave = s.waveMonsters.map((w, i) =>
                 i === waveIdx ? { ...w, currentHp: Math.max(0, w.currentHp - dmg) } : w,
             );
-            // If we hit the active target, mirror into monsterCurrentHp
             const newMonsterHp = waveIdx === s.activeTargetIdx
                 ? Math.max(0, s.monsterCurrentHp - dmg)
                 : s.monsterCurrentHp;
@@ -417,7 +334,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
 
     advanceToNextWaveTarget: () => {
         const s = useCombatStore.getState();
-        // Find first alive monster starting from top (top-to-bottom aggro)
         const nextIdx = s.waveMonsters.findIndex((w) => !w.isDead);
         if (nextIdx === -1) return false;
         const next = s.waveMonsters[nextIdx];
@@ -453,8 +369,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
     removeLastWaveMonster: () => {
         const s = useCombatStore.getState();
         if (s.waveMonsters.length <= 1) return false;
-        // Find the LAST alive monster that is NOT the current active target.
-        // Iterate from the end so we always pick the most recently added one.
         let removeIdx = -1;
         for (let i = s.waveMonsters.length - 1; i >= 0; i--) {
             const w = s.waveMonsters[i];
@@ -465,7 +379,6 @@ export const useCombatStore = create<ICombatStore>((set) => ({
         }
         if (removeIdx === -1) return false;
         const newWave = s.waveMonsters.filter((_, i) => i !== removeIdx);
-        // Active idx may need to shift left if we removed something before it.
         const newActiveIdx = removeIdx < s.activeTargetIdx
             ? s.activeTargetIdx - 1
             : s.activeTargetIdx;

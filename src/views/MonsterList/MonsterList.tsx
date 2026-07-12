@@ -29,13 +29,6 @@ import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import monstersRaw from '../../data/monsters.json';
 import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
 import { formatGoldShort } from '../../systems/goldFormat';
-// 2026-05-19 v22 spec ("Odtworz widok praktycznie 1:1 jak lista
-// potworow w polowaniu /combat"): pull in the same SCSS used by the
-// hunt hub so the `combat__mcard-*` / `combat__filter-*` classes
-// resolve here too. Combat.scss top-level rules are scoped under
-// `.combat`, so wrapping the root in that class below is what
-// activates the styling — the file itself is side-effect-only and
-// has no global selectors.
 import '../Combat/Combat.scss';
 import './MonsterList.scss';
 
@@ -105,32 +98,15 @@ const MonsterList = () => {
   const character = useCharacterStore((s) => s.character);
   const characterLevel = character?.level ?? 1;
 
-  // 2026-05-19 v23 spec ("Jak nie jestem liderem party to powinien
-  // guzik walki byc zablokowany"): party-member view is read-only —
-  // only the leader can pick a monster + start the fight. The flag
-  // is true when the player belongs to a party AND isn't its
-  // leader; solo / leader / no-party players see the buttons
-  // enabled.
   const party = usePartyStore((s) => s.party);
   const isNonLeaderMember = !!party && party.leaderId !== character?.id;
 
-  // 2026-05-19 v23 spec ("filtry sa wspoldzielone z polowaniem a nie
-  // powinny byc to powinny byc 2 osobne filtry niezalezne od
-  // siebie"): the MonsterList filter bar now uses LOCAL component
-  // state instead of the shared `settingsStore.huntFilter*` slice.
-  // Toggling a filter here no longer leaks into the /combat hub.
-  // State resets on unmount — that's fine, the bestiary is a quick
-  // glance + go.
   const [filterAvailableOnly, setFilterAvailableOnly] = useState(false);
   const [filterTaskedOnly,    setFilterTaskedOnly]    = useState(false);
   const [filterMinLevel,      setFilterMinLevel]      = useState(0);
   const [filterSortDesc,      setFilterSortDesc]      = useState(false);
 
   const [dropModalMonsterId, setDropModalMonsterId] = useState<string | null>(null);
-  // 2026-05-19 v24 spec ("dodaj ze jak sie kliknie w ikonke potwora
-  // to sie powieksza na caly ekran"): full-screen image preview
-  // triggered by clicking the sprite cell on any card. Backdrop
-  // click + ESC dismiss.
   const [fullScreenMonsterId, setFullScreenMonsterId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -142,11 +118,6 @@ const MonsterList = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [fullScreenMonsterId]);
 
-  // 2026-05-19 v23 spec ("Guzik walki nie powinien przenosic do
-  // walki tylko do podstrony z polowaniem i widoku /combat"): the
-  // :crossed-swords: button just navigates to the /combat hub now — the player
-  // re-picks the monster there and the leader-only ready-check
-  // fires from that screen, matching the hunt flow exactly.
   const handleFight = (m: IMonster) => {
     if (isNonLeaderMember) return;
     const unlock = getMonsterUnlockStatus(m, monsters, characterLevel, masteries);
@@ -183,11 +154,6 @@ const MonsterList = () => {
   const anyFilterActive =
     filterAvailableOnly || filterTaskedOnly || filterMinLevel > 0 || filterSortDesc;
 
-  // 2026-05-19 v22 spec ("Skasuj boxa z napisem miasto"): no back
-  // header — navigation lives in the bottom-nav. Root is wrapped in
-  // both `combat` (loads the hub / filter / mcard styles) and a
-  // `monster-list` modifier so MonsterList-specific overrides can
-  // still hook in via `MonsterList.scss`.
   return (
     <div className="combat monster-list">
       <div className="combat__hub">
@@ -288,10 +254,6 @@ const MonsterList = () => {
                 return (
                   <article key={m.id} className={cardClass}>
                     <div className="combat__mcard-head">
-                      {/* 2026-05-19 v24 spec: clicking the sprite
-                          opens a fullscreen preview. Locked monsters
-                          still show the lock glyph; the click only
-                          enlarges revealed art. */}
                       <button
                         type="button"
                         className="combat__mcard-sprite monster-list__sprite-btn"
@@ -447,7 +409,6 @@ const MonsterList = () => {
         </section>
       </div>
 
-      {/* Drop info modal — same content as Combat's hub modal. */}
       {dropModalMonsterId && (() => {
         const m = monsterById.get(dropModalMonsterId);
         if (!m) return null;
@@ -582,7 +543,6 @@ const MonsterList = () => {
                   })}
                 </div>
 
-                {/* Potion drops */}
                 <div className="combat__drops-potions">
                   <div className="combat__drops-potions-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                   <div className="combat__variant-tier">
@@ -619,7 +579,6 @@ const MonsterList = () => {
                   )}
                 </div>
 
-                {/* Spell chest drops */}
                 {chestInfo.levels.length > 0 && (
                   <div className="combat__drops-potions">
                     <div className="combat__drops-potions-title">
@@ -638,7 +597,6 @@ const MonsterList = () => {
                   </div>
                 )}
 
-                {/* Mastery progress block */}
                 {(() => {
                   const mKillsNow = masteryKills[m.id] ?? 0;
                   const mRequired = isMaxMasteryHere ? 0 : MASTERY_KILL_THRESHOLD * (mLvl + 1);
@@ -683,11 +641,6 @@ const MonsterList = () => {
         );
       })()}
 
-      {/* 2026-05-19 v24 spec ("dodaj ze jak sie kliknie w ikonke
-          potwora to sie powieksza na caly ekran"): fullscreen sprite
-          preview. Backdrop click anywhere dismisses; ESC handled by
-          the effect above. The inner sprite uses object-fit:contain
-          so the artwork keeps its aspect ratio at any viewport. */}
       {fullScreenMonsterId && (() => {
         const m = monsterById.get(fullScreenMonsterId);
         if (!m) return null;

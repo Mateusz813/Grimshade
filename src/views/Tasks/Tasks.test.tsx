@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-// Backend-mode glue (opt-in). Mocked so the CLAIM branch can be exercised
-// without a real backend / axios client. Default off -> client path unchanged.
 const backendHoisted = vi.hoisted(() => ({
     claimTaskMock: vi.fn(),
     syncFromBackendMock: vi.fn(),
@@ -20,25 +18,6 @@ vi.mock('../../api/backend/syncState', () => ({
     syncFromBackend: backendHoisted.syncFromBackendMock,
 }));
 
-/**
- * Tasks view — standalone /tasks route (the same view also lives inline
- * inside Quests/Tasks tab, but here we cover the dedicated view).
- *
- * Coverage:
- *   - Smoke render: root .tasks + header + slot badge + tabs.
- *   - Tab toggle: switching between "Dostepne taski" / "Historia" moves
- *     the --active modifier.
- *   - Available list: renders grouped monster cards (one per unique
- *     monsterId, sorted by level).
- *   - History tab: renders the empty state when no completed tasks,
- *     a row per ICompletedTask otherwise.
- *   - Active banner: renders when activeTasks is non-empty, with kill
- *     count + cancel button.
- *   - Claim button shows on a fully-progressed task.
- *
- * Mocks: framer-motion (none used here actually — Tasks.tsx has no
- * motion imports — kept setup minimal).
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -127,9 +106,6 @@ describe('Tasks — smoke', () => {
 });
 
 describe('Tasks — zepsuty zapis (regresja: pusta strona przez crash renderu)', () => {
-    // Zapis z aktywnym/ukończonym taskiem bez pól liczbowych (undefined) — np. stary
-    // format. Bez guardów `.toLocaleString()` na undefined RZUCAŁ przy renderze, a że
-    // apka nie ma ErrorBoundary, CAŁA strona /tasks była pusta. Render nie może rzucać.
     it('renderuje aktywny task z brakującymi polami liczbowymi bez crasha', () => {
         useTaskStore.setState({
             activeTask: null,
@@ -182,8 +158,6 @@ describe('Tasks — available list', () => {
     it('renders at least one monster group on the available tab (data ships with tasks.json)', () => {
         const { container } = renderTasks();
         const groups = container.querySelectorAll('.tasks__monster-group');
-        // tasks.json ships hundreds of tasks; even level-1 characters
-        // see the full list (with lock badges) so the count is > 0.
         expect(groups.length).toBeGreaterThan(0);
     });
 
@@ -285,7 +259,6 @@ describe('Tasks — backend mode claim', () => {
             expect(backendHoisted.claimTaskMock).toHaveBeenCalledWith('char-1', activeTask.id),
         );
         expect(backendHoisted.syncFromBackendMock).toHaveBeenCalledWith('char-1');
-        // Backend is authoritative — the client claimReward must be skipped.
         expect(claimReward).not.toHaveBeenCalled();
     });
 
@@ -336,15 +309,7 @@ describe('Tasks — edge cases', () => {
     it('handles a null character gracefully (level defaults to 1 inside the view)', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderTasks();
-        // The view doesn't gate on `character`; it just uses level ?? 1
-        // for the unlock check. Root still mounts.
         expect(container.querySelector('.tasks')).not.toBeNull();
     });
 });
 
-// TODO: handleStartTask runs the full unlock + slot-cap pipeline. Test
-//       coverage of the lock-badge state for a low-level character could
-//       compare a button's disabled attribute; skipped here because the
-//       fixture tasks.json is large enough that finding "a level-100
-//       task" deterministically would couple the test to JSON ordering.
-//       Covered by progression.test.ts unit tests.

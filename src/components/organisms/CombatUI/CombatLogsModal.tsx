@@ -10,28 +10,6 @@ interface IProps {
     onClose: () => void;
 }
 
-/**
- * 2026-05-11 spec ("logi powinny miec 4 filtry"):
- *   - Moje ataki — own basic / spell / crit hits + dodge / block
- *   - Sojusznicy  — ally (bot or human party member) hits
- *   - Potwór      — incoming damage from monsters (any target)
- *   - Drop + XP   — kill loot lines, level-ups, mastery procs
- *
- * Filters are independent toggles — any combination is allowed. A
- * 5th "Inne" filter catches system / quest / non-combat lines.
- *
- * Colors mirror the spec:
- *   - Green for own swing
- *   - Yellow + "KRYTYK" for own crit
- *   - Blue + caster name for ally swing
- *   - Red for monster hit on us / ally
- *   - Orange for monster crit
- *   - Gold for loot
- *   - Grey for system / other
- *
- * Skill ids are translated through `getSkillDef(id).name_pl` so the
- * log shows "Zatruta Strzała" instead of "poisoned_arrow".
- */
 
 type TFilterKey = 'me' | 'ally' | 'monster' | 'loot' | 'other';
 
@@ -49,7 +27,6 @@ const FILTERS: readonly IFilterDef[] = [
     { key: 'other',   label: 'Inne',          icon: 'clipboard' },
 ];
 
-/** Map a combatStore log type into the user-facing filter bucket. */
 const bucketOf = (
     type: 'player' | 'monster' | 'crit' | 'system' | 'loot' | 'block' | 'dodge' | 'dualwield',
     text: string,
@@ -57,40 +34,28 @@ const bucketOf = (
     if (type === 'loot') return 'loot';
     if (type === 'monster') return 'monster';
     if (type === 'crit') {
-        // crit is used for BOTH player crits and monster crits — heuristic
-        // on the text: a monster crit text starts with the monster's name
-        // and contains "atakuje", a player crit contains "Atakujesz".
         if (text.startsWith('Atakujesz') || text.includes('cię za')) return 'me';
         return 'monster';
     }
     if (type === 'block' || type === 'dodge') return 'me';
     if (type === 'player' || type === 'dualwield') {
-        // "Sojusznik" prefix -> ally line. Otherwise it's our own swing.
         if (text.startsWith('[') && text.includes(']')) return 'ally';
         if (text.startsWith('skull') || text.startsWith('bow-and-arrow') || text.startsWith('skull-and-crossbones')) {
-            // Necro summon / multistrike — count as me.
             return 'me';
         }
         return 'me';
     }
-    // 'system' -> quest progress, training XP, mastery procs etc.
-    // Mastery proc lines start with ":fire: Mastery" — count as loot.
     if (text.startsWith(':fire: Mastery') || text.includes('Mastery Lvl')) return 'loot';
     if (text.startsWith('Awans!') || text.startsWith('star')) return 'loot';
     return 'other';
 };
 
-/** Color class per log row. Mirrors the spec colour-code. */
 const colorClassOf = (
     type: string,
     text: string,
 ): string => {
-    if (type === 'loot') return 'combat-log--loot';        // gold / drops
+    if (type === 'loot') return 'combat-log--loot';
     if (type === 'crit') {
-        // 2026-05-12 spec ("w logach nie pokazuje mi krytycznych obrazen
-        // sojusznikow"): ally crit lines start with `[nick]` (we set that
-        // prefix in the damage-event watcher). They get the ally-crit
-        // color (brighter blue + bold), distinct from monster crits.
         if (text.startsWith('[')) return 'combat-log--ally-crit';
         if (text.startsWith('Atakujesz') || text.includes('cię za')) return 'combat-log--my-crit';
         return 'combat-log--monster-crit';
@@ -104,18 +69,11 @@ const colorClassOf = (
     return 'combat-log--other';
 };
 
-/**
- * Replace any `skill_id_with_underscores` in the text with its
- * `name_pl` from skillBuffs. Catches phrases like
- * "[AUTO] precyzyjny_strzal: 1234 dmg" and ":skull-and-crossbones: Klątwa Śmierci: poisoned_arrow ×2 dmg".
- */
 const translateSkillIds = (text: string): string => {
     return text.replace(/\b([a-z][a-z0-9]+(?:_[a-z0-9]+)+)\b/g, (match) => {
         const def = getSkillDef(match);
         if (def?.name_pl) return def.name_pl;
         if (def?.name_en) return def.name_en;
-        // Convert remaining snake_case to Title Case as a fallback so
-        // the log doesn't read like raw data.
         return match
             .split('_')
             .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
@@ -129,7 +87,6 @@ const CombatLogsModal = ({ onClose }: IProps) => {
     const character = useCharacterStore((s) => s.character);
     const party     = usePartyStore((s) => s.party);
 
-    // All filters ON by default — player sees everything until they toggle.
     const [filters, setFilters] = useState<Record<TFilterKey, boolean>>({
         me: true, ally: true, monster: true, loot: true, other: true,
     });
@@ -162,7 +119,6 @@ const CombatLogsModal = ({ onClose }: IProps) => {
                     <button type="button" className="combat-ui__modal-close" onClick={onClose} aria-label="Zamknij">×</button>
                 </header>
 
-                {/* Filter toolbar */}
                 <div
                     className="combat-ui__modal-log-filters"
                     style={{
@@ -207,17 +163,11 @@ const CombatLogsModal = ({ onClose }: IProps) => {
                             {filtered.map((entry) => {
                                 const colorClass = colorClassOf(entry.type, entry.text);
                                 let text = translateSkillIds(entry.text);
-                                // Tag own crits / monster crits with the
-                                // explicit label the spec asks for.
                                 if (entry.type === 'crit') {
                                     if (!text.includes('KRYTYK')) {
                                         text = text.replace(':high-voltage:', ':high-voltage:KRYTYK');
                                     }
                                 }
-                                // Prefix ally-attack lines that don't already
-                                // start with a [nick] tag with one of the
-                                // remote member names so the player can see
-                                // who hit.
                                 const isAllyLine = colorClass === 'combat-ui__modal-log-row--ally';
                                 if (isAllyLine && !text.startsWith('[')) {
                                     const guess = allyNames[0] ?? 'Sojusznik';
@@ -228,11 +178,6 @@ const CombatLogsModal = ({ onClose }: IProps) => {
                                         key={entry.id}
                                         className={`combat-ui__modal-log-row combat-ui__modal-log-row--${entry.type} ${colorClass}`}
                                         style={(() => {
-                                            // Inline color overrides — spec
-                                            // colours are explicit. Existing
-                                            // SCSS rules also style the row
-                                            // by type; we add a stronger
-                                            // colour for the new spec.
                                             switch (colorClass) {
                                                 case 'combat-log--my':
                                                     return { color: '#7fff7f' };

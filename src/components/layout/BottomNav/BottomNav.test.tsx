@@ -2,17 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * BottomNav tests — six fixed buttons (Walka / Questy / Postać / Miasto /
- * Społeczność / Sklep). The component reads navigation state from
- * react-router + offline mode from connectivityStore + claimable counters
- * from task/quest/dailyQuest stores. Highlights the active item via
- * useLocation and gates the Społeczność tab in offline mode.
- *
- * Mocks:
- *   - useNavigate via react-router mock so we can assert click behaviour.
- *   - useTransformAccent -> simple object (no DOM side-effects).
- */
 
 const navigateMock = vi.fn();
 
@@ -50,7 +39,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // Vitest globals:false means @testing-library doesn't auto-cleanup.
     cleanup();
 });
 
@@ -158,7 +146,7 @@ describe('BottomNav — claimable dot on Questy', () => {
                 killCount: 10,
                 rewardGold: 100,
                 rewardXp: 50,
-                progress: 10, // reached threshold
+                progress: 10,
                 startedAt: new Date().toISOString(),
             }],
             completedTasks: [],

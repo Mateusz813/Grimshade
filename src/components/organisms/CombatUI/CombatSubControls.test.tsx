@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * CombatSubControls — strip with bag/logs buttons + XP bar. Compact mode
- * (Dungeon/Boss/Raid/Arena) hides the bag and floats logs. The bag + logs
- * open modals which are mocked out here so we only test the trigger.
- */
 vi.mock('./CombatBackpackModal', () => ({
     default: ({ onClose }: { onClose: () => void }) => (
         <div data-testid="bag-modal">
@@ -84,7 +79,6 @@ describe('CombatSubControls — XP bar', () => {
 
     it('renders XP bar with computed percentage', () => {
         render(<CombatSubControls xp={{ current: 25, max: 100, level: 7 }} />);
-        // 25/100 = 25%.
         expect(screen.getByText(/Lv 7 · 25%/)).toBeTruthy();
     });
 
@@ -95,7 +89,6 @@ describe('CombatSubControls — XP bar', () => {
                 xpPerHour={1500}
             />,
         );
-        // 1500 -> "1.5k" via formatRate.
         expect(screen.getByText(/1\.5k XP\/h/)).toBeTruthy();
     });
 
@@ -128,9 +121,7 @@ describe('CombatSubControls — compact mode', () => {
 
     it('never opens bag modal in compact mode even via state (no trigger)', () => {
         render(<CombatSubControls />);
-        // No bag button to click.
         expect(screen.queryByLabelText('Łup tej sesji')).toBeNull();
-        // Still can open logs modal.
         fireEvent.click(screen.getByLabelText('Logi walki'));
         expect(screen.getByTestId('logs-modal')).toBeTruthy();
     });

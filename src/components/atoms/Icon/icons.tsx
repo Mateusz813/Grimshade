@@ -1,18 +1,5 @@
-import type { ReactNode } from 'react';
-
-/**
- * Owned inline-SVG icons for the few UI glyphs that are NOT emoji (so Twemoji
- * has no asset): eye / eye-off toggles, refresh / sync spinners, directional
- * arrows, chevrons, trend triangles, status dots.
- *
- * Line icons are Lucide (ISC — free for commercial use, no attribution). The
- * filled `dot` / `triangle*` are hand-authored. All use `currentColor`, so they
- * tint with the surrounding text and work for dynamic toggles (React owns the
- * SVG — unlike the emoji parser, no remount dance needed).
- */
 
 export const ICON_PATHS = {
-  // -- Lucide line icons (stroke=currentColor) ---------------------------------
   eye: (
     <>
       <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
@@ -74,7 +61,6 @@ export const ICON_PATHS = {
     </>
   ),
 
-  // -- Filled (override stroke->fill) -------------------------------------------
   triangleUp: <path d="M12 5 4 19h16z" fill="currentColor" stroke="none" />,
   triangleDown: <path d="M12 19 4 5h16z" fill="currentColor" stroke="none" />,
   dot: <circle cx="12" cy="12" r="6" fill="currentColor" stroke="none" />,
@@ -83,5 +69,3 @@ export const ICON_PATHS = {
 export type IconName = keyof typeof ICON_PATHS;
 
 export const ICON_NAMES = Object.keys(ICON_PATHS) as IconName[];
-
-export const __iconRegistry: Record<string, ReactNode> = ICON_PATHS;

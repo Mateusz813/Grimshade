@@ -20,12 +20,6 @@ import {
     type TMonsterRarity,
 } from '../../src/systems/combat';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla combat.ts (podzbiór czystych formuł).
-// calculateDamage / dualWield ZAWSZE z jawnymi flagami isCrit/isBlocked/isDodged
-// (bez Math.random) — parytet matematyki. Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/combat.golden.test.ts
-//   cp golden/combat.json ../grimshade-backend/tests/Golden/fixtures/
-// SKIP (getSpeedMultiplier → Infinity) pominięte — testowane wprost w PHP.
 
 const DAMAGE_CASES: ICombatParams[] = [
     { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, isCrit: false, isBlocked: false, isDodged: false, critDmg: 2 },

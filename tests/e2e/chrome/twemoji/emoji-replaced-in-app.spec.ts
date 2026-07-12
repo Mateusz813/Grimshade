@@ -1,12 +1,3 @@
-/**
- * Atomic E2E — icons render app-wide as INLINE <svg> components (vite-plugin-svgr
- * `?react`), NOT as <img> and NOT as raw emoji characters.
- *
- * Flow: seed character -> login -> Town. Town is icon-dense (nav tiles, combat
- * strip, character card). Assert the page contains `svg.game-icon` elements with
- * real content + a `data-icon` name, and that the legacy `img.twemoji` approach
- * is gone.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
@@ -41,7 +32,6 @@ test.describe('Chrome › Twemoji', { tag: '@chrome' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
             await waitForAppReady(page);
 
-            // Icons render as inline <svg class="game-icon"> (svgr ?react).
             const icons = page.locator('svg.game-icon');
             await expect(icons.first()).toBeVisible({ timeout: 10_000 });
             expect(await icons.count()).toBeGreaterThan(0);
@@ -55,10 +45,8 @@ test.describe('Chrome › Twemoji', { tag: '@chrome' }, () => {
                     oldImgs: document.querySelectorAll('img.twemoji').length,
                 };
             });
-            // Every inline icon has real <path> content + a data-icon name.
             expect(stats.withContent).toBe(stats.count);
             expect(stats.withName).toBe(stats.count);
-            // Legacy <img class="twemoji"> approach is fully gone.
             expect(stats.oldImgs).toBe(0);
         } finally {
             if (createdId) {

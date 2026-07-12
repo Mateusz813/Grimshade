@@ -17,11 +17,6 @@ import './CharacterSelect.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-/**
- * Peek a character's completed transforms list from localStorage without
- * switching active character. Used to render the correct transform avatar on
- * the character list.
- */
 const getPeekedCompletedTransforms = (charId: string): number[] => {
   const t = peekCharacterStore(charId, 'transforms');
   const list = t?.completedTransforms as unknown;
@@ -29,14 +24,6 @@ const getPeekedCompletedTransforms = (charId: string): number[] => {
   return [];
 };
 
-/**
- * Inspect a character's persisted buffs (without switching active character)
- * and return the effective max-HP/MP modifiers from any active elixirs.
- *
- * Pausable buffs are considered active when remainingMs > 0 (the timer only
- * ticks during combat, so it does not expire on its own). Realtime buffs are
- * considered active when their expiresAt is still in the future.
- */
 const getElixirMaxBonuses = (
   charId: string,
   baseMaxHp: number,
@@ -64,15 +51,6 @@ const getElixirMaxBonuses = (
   return { hpFlat, hpPctMul, mpFlat, mpPctMul };
 };
 
-/**
- * Sum the per-class transform bonuses for a peeked character. Mirrors
- * `sumCompletedBonuses` from transformBonuses.ts but reads via
- * `peekCharacterStore` so we can compute stats for ANY character on the
- * select list without switching the active store. Returns zeroed values
- * when the character has no transforms or its save still uses the
- * legacy "baked" mode (in which case the bonuses are already inside
- * the raw `max_hp` / `max_mp` numbers and re-applying would double-count).
- */
 const getTransformMaxBonuses = (
   charId: string,
   charClass?: string,
@@ -81,7 +59,7 @@ const getTransformMaxBonuses = (
   if (!charClass) return ZERO;
   const t = peekCharacterStore(charId, 'transforms');
   if (!t) return ZERO;
-  if (t.bakedBonusesApplied) return ZERO; // legacy save — bonuses live in base stats
+  if (t.bakedBonusesApplied) return ZERO;
   const completed = t.completedTransforms as unknown;
   if (!Array.isArray(completed) || completed.length === 0) return ZERO;
   let flatHp = 0;
@@ -105,14 +83,6 @@ const getTransformMaxBonuses = (
   };
 };
 
-/**
- * Read a character's saved equipment + training bonuses + transform
- * bonuses + active elixir buffs from localStorage (without switching
- * active character) and return effective max HP/MP — matching the
- * `getEffectiveChar` calc that runs after login. Without this, the
- * select list under-reported HP for any character with a transform
- * unlocked (their bonus tier got skipped).
- */
 const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: number, charClass?: string): { maxHp: number; maxMp: number } => {
   const inv = peekCharacterStore(charId, 'inventory');
   const skills = peekCharacterStore(charId, 'skills');
@@ -127,14 +97,10 @@ const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: numb
     eqHp = s.hp ?? 0;
     eqMp = s.mp ?? 0;
   } catch {
-    /* ignore */
   }
 
   const tb = getTrainingBonuses(skillLevels, charClass);
   const tx = getTransformMaxBonuses(charId, charClass);
-  // Mirror getEffectiveChar's order:
-  //   raw = base + equip + training + elixirFlat + transformFlat
-  //   eff = floor(raw * elixirPctMul * transformPctMul)
   const baseSum = {
     hp: baseMaxHp + eqHp + (tb.max_hp ?? 0) + tx.flatHp,
     mp: baseMaxMp + eqMp + (tb.max_mp ?? 0) + tx.flatMp,
@@ -158,12 +124,6 @@ const hexToRgb = (hex: string): string => {
   return `${r},${g},${b}`;
 };
 
-/**
- * Derive the accent color for a character card. Characters who have completed
- * at least one transform tier get the transform color (solid color or first
- * gradient stop) instead of the class color — same rule as Town / Stats /
- * Inventory / Skills so the UI stays coherent.
- */
 const getCardAccent = (charId: string, charClass: string): { color: string; rgb: string; tier: number } => {
   const fallback = CLASS_COLORS[charClass] ?? '#e94560';
   const completed = getPeekedCompletedTransforms(charId);
@@ -185,8 +145,6 @@ const CharacterSelect = () => {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  // Delete is password-gated: the modal requires the account's CURRENT password
-  // (verified via authApi.verifyCurrentPassword) before a character is removed.
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -198,8 +156,6 @@ const CharacterSelect = () => {
         return;
       }
       try {
-        // CRITICAL: Save current character data to Supabase BEFORE loading the list
-        // This ensures level/XP/stats are up-to-date in the database
         await saveCurrentCharacterStores();
 
         const chars = await characterApi.getCharacters(session.session.user.id);
@@ -220,8 +176,6 @@ const CharacterSelect = () => {
     try {
       await switchToCharacter(char.id);
 
-      // CRITICAL: Fetch fresh character data from Supabase after switching
-      // The `char` object from the list may be stale (old level/XP)
       const { data: session } = await supabase.auth.getSession();
       if (session.session) {
         const freshChars = await characterApi.getCharacters(session.session.user.id);
@@ -256,17 +210,12 @@ const CharacterSelect = () => {
     setDeletingId(id);
     setDeleteError(null);
     try {
-      // Security gate: never delete without re-verifying the account password.
       const ok = await authApi.verifyCurrentPassword(deletePassword);
       if (!ok) {
         setDeleteError('Nieprawidłowe hasło.');
         setDeletingId(null);
         return;
       }
-      // Cloud delete: in backend mode characterApi.deleteCharacter delegates to
-      // the server (roster + game_saves + row in one txn) and no-ops the direct
-      // Supabase deletes; the client path keeps its multi-table cleanup. Local
-      // cleanup (deleteCharacterData) always runs to purge this browser's cache.
       await characterApi.deleteCharacter(id);
       await deleteCharacterData(id);
       setCharacters((prev) => prev.filter((c) => c.id !== id));
@@ -288,10 +237,6 @@ const CharacterSelect = () => {
   return (
     <div className="char-select">
       <header className="char-select__header">
-        {/* 2026-05-21 spec ("skasuj napis grimshade obok"): brand artwork
-            is the title now — the wordmark already sits inside the
-            artwork itself, so the inline "Grimshade" span was reading
-            as a duplicate. */}
         <h1 className="char-select__title">
           <img src={pwaIcon} alt="Grimshade" className="char-select__title-icon" />
         </h1>

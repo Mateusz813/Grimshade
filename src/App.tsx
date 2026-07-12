@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { useCharacterStore, computeBaseStatFloor } from './stores/characterStore';
@@ -25,15 +26,6 @@ import LevelUpNotification from './components/ui/LevelUpNotification/LevelUpNoti
 import Spinner from './components/ui/Spinner/Spinner';
 import BackendLoader from './components/ui/BackendLoader/BackendLoader';
 
-/**
- * On module load (before any React render), synchronously restore
- * all 12 gameplay stores from localStorage. This eliminates the race
- * condition where components render with default/empty state while
- * the async Supabase fetch is still in flight.
- *
- * Character stats (level, xp, etc.) are fetched from Supabase separately –
- * this only restores inventory, skills, tasks, mastery, settings, etc.
- */
 const earlyRestoreCharId = getActiveCharacterIdForRestore();
 let _earlyRestored = false;
 if (earlyRestoreCharId) {
@@ -42,7 +34,7 @@ if (earlyRestoreCharId) {
 
 const App = () => {
     const [session, setSession] = useState<Session | null | undefined>(undefined);
-    const { setLoading } = useCharacterStore();
+    const { setLoading } = useCharacterStore(useShallow((s) => ({ setLoading: s.setLoading })));
     const [restoring, setRestoring] = useState(true);
     const restoredRef = useRef(false);
     useSync();
@@ -50,31 +42,22 @@ const App = () => {
     useBackgroundCombat();
     useChatUnreadSubscription();
     useLeaderboardStatSync();
-    // Keep the screen awake while logged in (idle/auto-combat PWA) — gated on
-    // the player's setting (default ON). No-op on browsers without Wake Lock.
     const keepScreenAwake = useSettingsStore((s) => s.keepScreenAwake);
     useWakeLock(!!session && keepScreenAwake);
 
-    // Auto-save character stores when closing/refreshing the page
     useEffect(() => {
         const handleBeforeUnload = () => saveCurrentCharacterStoresSync();
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, []);
 
-    // -- Global skill-slot purge ---------------------------------------------
-    // Subscribe to character.level + class so any time the player drops below
-    // a slotted spell's unlock-level (death penalty in any view, including
-    // legacy deaths from before the per-view purge landed) the slot clears
-    // automatically. Mounted at the App root so it covers every route, not
-    // just the combat views.
     useEffect(() => {
         const sync = () => {
             const ch = useCharacterStore.getState().character;
             if (!ch) return;
             useSkillStore.getState().purgeLockedSkillSlots(ch.class, ch.level);
         };
-        sync(); // run once on mount so stale slots from earlier sessions flush
+        sync();
         const unsub = useCharacterStore.subscribe((s, prev) => {
             if (!s.character || !prev.character) return;
             if (s.character.level !== prev.character.level || s.character.class !== prev.character.class) {
@@ -84,32 +67,17 @@ const App = () => {
         return unsub;
     }, []);
 
-    // Also save on visibilitychange (mobile browsers may not fire beforeunload)
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
-                // Immediate local flush (survives a kill).
                 saveCurrentCharacterStoresSync();
-                // 2026-06-23 #10: when ONLINE, also push a full cloud save on
-                // background/lock so the canonical row is current before the
-                // player might open the game on another device — shrinks the
-                // "double rewards across devices" window. The page stays alive
-                // on a mobile lock (unlike `beforeunload`), so the async save
-                // can land. Skipped in OFFLINE mode (offline progress is synced
-                // deliberately via `transitionToOnline`, not piecemeal).
                 if (useConnectivityStore.getState().mode === 'online') {
-                    // 2026-06-24 #3 guard: NEVER push implausibly-low (corrupted)
-                    // base stats to the cloud — that's how the MP-collapse bug
-                    // propagated across devices. If a char's max_hp/max_mp is
-                    // below the deterministic class-level floor, skip the cloud
-                    // push; the on-load heal repairs it instead.
                     const ch = useCharacterStore.getState().character;
                     const floor = ch ? computeBaseStatFloor(ch.class, ch.highest_level ?? ch.level) : null;
                     const corrupted = !!ch && !!floor && (ch.max_hp < floor.max_hp || ch.max_mp < floor.max_mp);
                     if (ch && !corrupted) {
-                        void saveCurrentCharacterStoresForce().catch(() => { /* offline / RLS — local flush already done */ });
+                        void saveCurrentCharacterStoresForce().catch(() => { });
                     } else if (corrupted) {
-                        // eslint-disable-next-line no-console
                         console.warn('[App] Skipped cloud save — base stats below floor (corrupted), avoiding propagation', { max_hp: ch?.max_hp, max_mp: ch?.max_mp });
                     }
                 }
@@ -134,7 +102,6 @@ const App = () => {
         return () => subscription.unsubscribe();
     }, []);
 
-    // Auto-restore character and store data on page refresh
     useEffect(() => {
         if (!session) {
             setRestoring(false);
@@ -146,43 +113,30 @@ const App = () => {
         if (!savedCharId) {
             setRestoring(false);
             setLoading(false);
-            // Nothing to restore — app is immediately ready for interaction.
             markAppReady();
             return;
         }
 
         restoredRef.current = true;
-        // Restore chain starting (cloud loadGame will be in flight). Block
-        // E2E interaction until the `finally` flips this back to ready —
-        // otherwise a tap can race the late applyBlobToStores. See appReady.ts.
         markAppRestoring();
 
-        // Restore character from Supabase and reload all store data
         const restore = async () => {
             try {
                 const characters = await characterApi.getCharacters(session.user.id);
                 const char = characters.find((c) => c.id === savedCharId);
                 if (char) {
                     useCharacterStore.getState().setCharacter(char);
-                    // switchToCharacter will restore from localStorage first (sync),
-                    // then try Supabase (async) and take the newer version
                     await switchToCharacter(savedCharId);
                 } else if (_earlyRestored) {
-                    // Character not found in Supabase but we have local data –
-                    // still call switchToCharacter to set up auto-save subscriptions
                     await switchToCharacter(savedCharId);
                 }
             } catch {
-                // Offline or error – if early restore worked, we already have data.
-                // Still set up auto-save subscriptions for the locally-restored data.
                 if (_earlyRestored) {
                     await switchToCharacter(savedCharId);
                 }
             } finally {
                 setRestoring(false);
                 setLoading(false);
-                // Restore chain settled (cloud load + applyBlobToStores done).
-                // Safe for E2E to interact now.
                 markAppReady();
             }
         };
@@ -205,11 +159,6 @@ const App = () => {
         );
     }
 
-    // 2026-05-19 v5: ChatUnreadBadge moved into AppRouterInner (which
-    // sits inside <BrowserRouter>) so `useNavigate` inside the popup's
-    // Chat component has a Router context. Mounting it here at the App
-    // root crashed with "useNavigate() may be used only in the context
-    // of a <Router> component" the moment the player opened the popup.
     return (
       <>
         <AppRouter session={session} />

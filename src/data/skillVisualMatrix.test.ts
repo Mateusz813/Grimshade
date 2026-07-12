@@ -8,39 +8,6 @@ import {
 import { getSkillIcon } from './skillIcons';
 import { isImageUrl } from '../systems/spriteAssets';
 
-/**
- * #14 — EXHAUSTIVE spell-visual matrix.
- *
- * The user's ask: "Na każdym widoku walki trzeba przetestować każdy spell
- * każdej klasy czy poprawnie się wyświetla u każdego — na moim ekranie i na
- * ekranie sojuszników, każdy jeden spell na każdym ekranie walki dosłownie."
- *
- * Why this single data-level test covers that whole matrix instead of
- * 105 skills × 8 combat views × 2 screens (= 1680) flaky E2E runs:
- *
- *   ALL 8 combat views (Combat, Dungeon, Boss, Raid, Transform, Arena,
- *   Trainer, Guild) render skill visuals through ONE shared primitive —
- *   `useCombatFx` -> `triggerEnemySkillAnim` (MY cast, shown on the target
- *   card on MY screen) and `triggerAllySkillAnim` (an ally's cast, shown on
- *   the ally card — i.e. the ally-screen path). Both resolve the visual via
- *   `getSkillAnimation(skillId)` + `getSkillIcon(skillId)`, and BOTH bail out
- *   silently when `getSkillAnimation` returns undefined:
- *
- *       const animData = getSkillAnimation(skillId);
- *       if (!animData) return;          // <- NO overlay renders. The spell is
- *                                       //   invisible on every view + screen.
- *
- *   So a skill present in skills.json but MISSING from SKILL_ANIMATIONS would
- *   cast with zero visual feedback everywhere. This test is the guard: every
- *   active skill of every class MUST resolve to complete, valid visual data,
- *   so it renders correctly on every view, own screen and ally screen alike.
- *
- * The companion `useCombatFx.test.ts` then proves the own-screen (enemy slot)
- * and ally-screen (ally slot) primitives actually set render state for every
- * one of these ids; the per-view wiring is covered by each view's component
- * test + the E2E specs (solo-trainer-per-class = own screen, party-member-
- * sees-ally-spell-cast = ally screen over the Realtime broadcast).
- */
 
 const DOCUMENTED_CATEGORIES: ReadonlySet<SkillAnimCategory> = new Set([
     'fire', 'ice', 'lightning', 'holy', 'dark', 'physical',
@@ -53,8 +20,6 @@ interface IActiveSkill {
     unlockLevel: number;
 }
 
-// Flatten every active skill of every class from skills.json into
-// [class, skill] pairs so each test row is labelled with both.
 const activeSkills = skillsData.activeSkills as unknown as Record<string, IActiveSkill[]>;
 const ALL_SKILLS: Array<{ cls: string; skill: IActiveSkill }> = [];
 for (const cls of Object.keys(activeSkills)) {
@@ -76,7 +41,6 @@ describe('#14 spell-visual matrix — every active skill of every class', () => 
         expect(new Set(ids).size).toBe(ids.length);
     });
 
-    // -- The core exhaustive loop — one assertion path per skill --------------
     for (const { cls, skill } of ALL_SKILLS) {
         describe(`${cls} › ${skill.id} (${skill.name})`, () => {
             it('resolves a DEFINED animation (will not silently skip the overlay)', () => {
@@ -108,9 +72,6 @@ describe('#14 spell-visual matrix — every active skill of every class', () => 
             });
 
             it('the resolved on-screen overlay glyph is always non-empty', () => {
-                // Mirrors useSkillAnim line 31 / useCombatFx.resolveAnimEmoji:
-                // prefer the per-class PNG artwork, else fall back to the
-                // animation emoji. SOMETHING visible must always render.
                 const anim = getSkillAnimation(skill.id)!;
                 const icon = getSkillIcon(skill.id);
                 const overlayGlyph = isImageUrl(icon) ? icon : anim.emoji;

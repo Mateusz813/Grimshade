@@ -6,7 +6,6 @@ import { computeTaskRewards, type IMonsterRewardSource } from '../systems/taskRe
 
 const monstersList = monstersData as unknown as (IMonsterRewardSource & { id: string })[];
 
-// -- Types ---------------------------------------------------------------------
 
 export interface ITask {
   id: string;
@@ -33,12 +32,8 @@ export interface ICompletedTask {
   completedAt: string;
 }
 
-// Active-task cap removed per the 2026-05 redesign — players can pick up
-// as many tasks as they want. The only constraint is one task per monster
-// id (enforced below in `startTask`).
 
 interface ITaskStore {
-  /** @deprecated Use activeTasks instead. Kept for migration. */
   activeTask: IActiveTask | null;
   activeTasks: IActiveTask[];
   completedTasks: ICompletedTask[];
@@ -46,13 +41,10 @@ interface ITaskStore {
   addKill: (monsterId: string, monsterLevel: number, killCount?: number) => void;
   claimReward: (taskId: string) => void;
   cancelTask: (taskId: string) => void;
-  /** Helper: check if a specific monster already has an active task. */
   hasTaskForMonster: (monsterId: string) => boolean;
-  /** Helper: get active task for a specific monster (if any). */
   getTaskForMonster: (monsterId: string) => IActiveTask | undefined;
 }
 
-// -- Store ---------------------------------------------------------------------
 
 export const useTaskStore = create<ITaskStore>()(
     (set, get) => ({
@@ -62,11 +54,7 @@ export const useTaskStore = create<ITaskStore>()(
 
       startTask: (task) => {
         const { activeTasks } = get();
-        // Cannot take two tasks for the same monster (only constraint
-        // remaining — the 2-task global cap was removed in the 2026-05
-        // redesign so players can build up large parallel grind lists).
         if (activeTasks.some((t) => t.monsterId === task.monsterId)) return;
-        // Cannot take a task that is already active (same task id)
         if (activeTasks.some((t) => t.id === task.id)) return;
 
         const newTask: IActiveTask = {
@@ -77,7 +65,6 @@ export const useTaskStore = create<ITaskStore>()(
 
         set({
           activeTasks: [...activeTasks, newTask],
-          // Keep activeTask in sync (first task) for backward compat
           activeTask: activeTasks.length === 0 ? newTask : get().activeTask,
         });
       },
@@ -85,7 +72,6 @@ export const useTaskStore = create<ITaskStore>()(
       addKill: (monsterId, _monsterLevel, killCount = 1) => {
         const { activeTasks } = get();
 
-        // Update regular tasks
         const idx = activeTasks.findIndex((t) => t.monsterId === monsterId);
         if (idx !== -1) {
           const updated = [...activeTasks];
@@ -104,19 +90,15 @@ export const useTaskStore = create<ITaskStore>()(
       claimReward: (taskId: string) => {
         const { activeTasks, completedTasks } = get();
 
-        // Regular task claim
         const task = activeTasks.find((t) => t.id === taskId);
         if (!task) return;
         if (task.progress < task.killCount) return;
 
-        // Recompute rewards from live monster data to guarantee any stale
-        // numbers baked into in-progress tasks (pre-rebalance) are corrected.
         const monster = monstersList.find((m) => m.id === task.monsterId);
         const fresh = monster
           ? computeTaskRewards(monster, task.killCount)
           : { rewardGold: task.rewardGold, rewardXp: task.rewardXp };
 
-        // Add rewards
         useInventoryStore.getState().addGold(fresh.rewardGold);
         useCharacterStore.getState().addXp(fresh.rewardXp);
 
@@ -130,7 +112,6 @@ export const useTaskStore = create<ITaskStore>()(
           completedAt: new Date().toISOString(),
         };
 
-        // Keep last 20 completed tasks
         const newCompleted = [completed, ...completedTasks].slice(0, 20);
         const remaining = activeTasks.filter((t) => t.id !== taskId);
 
@@ -144,7 +125,6 @@ export const useTaskStore = create<ITaskStore>()(
       cancelTask: (taskId: string) => {
         const { activeTasks } = get();
 
-        // Cancel regular task
         const remaining = activeTasks.filter((t) => t.id !== taskId);
         set({
           activeTasks: remaining,

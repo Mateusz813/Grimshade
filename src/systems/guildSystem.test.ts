@@ -20,7 +20,6 @@ import {
     contributionMultiplier,
 } from './guildSystem';
 
-// -- Constants ----------------------------------------------------------------
 
 describe('guild constants', () => {
     it('initial member cap = 20', () => {
@@ -52,7 +51,6 @@ describe('guild constants', () => {
     });
 });
 
-// -- clampGuildBossTier -------------------------------------------------------
 
 describe('clampGuildBossTier', () => {
     it('returns 1 for tier 0 or below', () => {
@@ -80,14 +78,11 @@ describe('clampGuildBossTier', () => {
 
     it('returns 1 for NaN or Infinity', () => {
         expect(clampGuildBossTier(Number.NaN)).toBe(1);
-        // Number.POSITIVE_INFINITY > 50 -> clamped to 50, but is also not
-        // finite. Number.isFinite returns false so spec says return 1.
         expect(clampGuildBossTier(Number.POSITIVE_INFINITY)).toBe(1);
         expect(clampGuildBossTier(Number.NEGATIVE_INFINITY)).toBe(1);
     });
 });
 
-// -- getGuildBossMaxHp --------------------------------------------------------
 
 describe('getGuildBossMaxHp', () => {
     it('tier 1 = 2M HP', () => {
@@ -110,13 +105,11 @@ describe('getGuildBossMaxHp', () => {
     });
 
     it('follows the 1.25^(tier-1) growth curve', () => {
-        // Tier 5 = 2M × 1.25^4.
         const expected = Math.floor(2_000_000 * Math.pow(1.25, 4));
         expect(getGuildBossMaxHp(5)).toBe(expected);
     });
 });
 
-// -- guildXpToNextLevel -------------------------------------------------------
 
 describe('guildXpToNextLevel', () => {
     it('returns 0 for level 0 (no progression below level 1)', () => {
@@ -145,13 +138,11 @@ describe('guildXpToNextLevel', () => {
     });
 
     it('keeps climbing after boss tier cap (uses level × tier-50 HP)', () => {
-        // At level 100, tier clamps to 50 but cost still = level × HP.
         const tier50Hp = getGuildBossMaxHp(50);
         expect(guildXpToNextLevel(100)).toBe(100 * tier50Hp);
     });
 });
 
-// -- guildXpForLevel ----------------------------------------------------------
 
 describe('guildXpForLevel', () => {
     it('returns 0 for level 1 (base)', () => {
@@ -174,7 +165,6 @@ describe('guildXpForLevel', () => {
     });
 });
 
-// -- guildMemberCap -----------------------------------------------------------
 
 describe('guildMemberCap', () => {
     it('returns 20 at level 1', () => {
@@ -190,12 +180,10 @@ describe('guildMemberCap', () => {
     it('never returns less than the initial 20 cap', () => {
         expect(guildMemberCap(1)).toBeGreaterThanOrEqual(20);
         expect(guildMemberCap(0)).toBeGreaterThanOrEqual(20);
-        // Below level 1 still bottoms out at 20 (Math.max(0, level-1) = 0).
         expect(guildMemberCap(-5)).toBe(20);
     });
 });
 
-// -- applyGuildXp -------------------------------------------------------------
 
 describe('applyGuildXp', () => {
     it('accumulates XP without levelling up', () => {
@@ -242,14 +230,12 @@ describe('applyGuildXp', () => {
     });
 
     it('does not lose precision across stacked level-ups', () => {
-        // Drop one boss-tier kill at level 1 — guarantees one level-up.
         const result = applyGuildXp(1, 0, getGuildBossMaxHp(1));
         expect(result.level).toBe(2);
         expect(result.leveledUp).toBe(true);
     });
 });
 
-// -- computeGuildBossDamage ---------------------------------------------------
 
 describe('computeGuildBossDamage', () => {
     it('returns at least 1 damage even at low character stats', () => {
@@ -272,35 +258,29 @@ describe('computeGuildBossDamage', () => {
     it('caps single-hit damage at 5% of boss max HP', () => {
         const bossMax = getGuildBossMaxHp(1);
         const cap = Math.floor(bossMax * 0.05);
-        // Even with an absurd attack stat, the cap should hold.
         const dmg = computeGuildBossDamage(1_000_000_000, 1000, 1);
         expect(dmg).toBeLessThanOrEqual(cap);
     });
 
     it('per-swing damage scales UP with tier (2026-06-18 balance: was DOWN)', () => {
-        // New curve: damage grows +5%/tier instead of shrinking ÷1.15^tier, so
-        // high tiers stay finite/clearable instead of needing millions of swings.
         const tier1 = computeGuildBossDamage(100, 100, 1);
         const tier10 = computeGuildBossDamage(100, 100, 10);
         expect(tier10).toBeGreaterThan(tier1);
     });
 
     it('treats tier <= 0 as tier 1', () => {
-        // Both should produce identical damage caps (boss HP cap matches).
         const tier0 = computeGuildBossDamage(50, 50, 0);
         const tier1 = computeGuildBossDamage(50, 50, 1);
         expect(tier0).toBe(tier1);
     });
 
     it('high tier stays CLEARABLE (regression: old ÷1.15^tier curve diverged → trillions of swings)', () => {
-        // Tier 50, a geared veteran: swings-to-clear must be bounded, not astronomical.
         const hp = getGuildBossMaxHp(50);
         const dmg = computeGuildBossDamage(50_000_000, 1000, 50);
-        expect(hp / dmg).toBeLessThan(1000); // was ~10^12+ under the old curve
+        expect(hp / dmg).toBeLessThan(1000);
     });
 });
 
-// -- getCurrentWeekStartIso ---------------------------------------------------
 
 describe('getCurrentWeekStartIso', () => {
     it('returns ISO date format (YYYY-MM-DD)', () => {
@@ -309,7 +289,6 @@ describe('getCurrentWeekStartIso', () => {
     });
 
     it('returns the Monday for a Wednesday', () => {
-        // 2026-05-20 is a Wednesday.
         const iso = getCurrentWeekStartIso(new Date('2026-05-20T14:30:00.000Z'));
         expect(iso).toBe('2026-05-18');
     });
@@ -320,7 +299,6 @@ describe('getCurrentWeekStartIso', () => {
     });
 
     it('returns the previous Monday for a Sunday', () => {
-        // Sunday counts as the END of the prior Mon->Sun week.
         const iso = getCurrentWeekStartIso(new Date('2026-05-24T23:00:00.000Z'));
         expect(iso).toBe('2026-05-18');
     });
@@ -331,11 +309,9 @@ describe('getCurrentWeekStartIso', () => {
     });
 });
 
-// -- isGuildBossClaimDay ------------------------------------------------------
 
 describe('isGuildBossClaimDay', () => {
     it('returns true on Sunday', () => {
-        // 2026-05-24 is a Sunday (UTC).
         expect(isGuildBossClaimDay(new Date('2026-05-24T10:00:00.000Z'))).toBe(true);
     });
 
@@ -344,12 +320,11 @@ describe('isGuildBossClaimDay', () => {
     });
 
     it('returns false on weekdays', () => {
-        expect(isGuildBossClaimDay(new Date('2026-05-20T10:00:00.000Z'))).toBe(false); // Wed
-        expect(isGuildBossClaimDay(new Date('2026-05-22T10:00:00.000Z'))).toBe(false); // Fri
+        expect(isGuildBossClaimDay(new Date('2026-05-20T10:00:00.000Z'))).toBe(false);
+        expect(isGuildBossClaimDay(new Date('2026-05-22T10:00:00.000Z'))).toBe(false);
     });
 });
 
-// -- getTodayIso --------------------------------------------------------------
 
 describe('getTodayIso', () => {
     it('returns YYYY-MM-DD slice of given date', () => {
@@ -367,7 +342,6 @@ describe('getTodayIso', () => {
     });
 });
 
-// -- contributionMultiplier ---------------------------------------------------
 
 describe('contributionMultiplier', () => {
     it('returns 0 when bossMaxHp <= 0', () => {
@@ -376,9 +350,6 @@ describe('contributionMultiplier', () => {
     });
 
     it('returns 0.1 at the floor (0% damage)', () => {
-        // 0.1 + share*1.9 -> at share=0: 0.1. The Math.max(0.05, ...) floor
-        // only kicks in if share*1.9 + 0.1 dropped below 0.05, which it
-        // doesn't at share=0 (0.1 > 0.05).
         expect(contributionMultiplier(0, 1000)).toBe(0.1);
     });
 
@@ -387,28 +358,22 @@ describe('contributionMultiplier', () => {
     });
 
     it('caps share at 1.0 (over-damage does not boost beyond 2.0)', () => {
-        // If a member somehow dealt 200% of HP (e.g. overkill bookkeeping),
-        // multiplier still maxes at 2.0.
         expect(contributionMultiplier(2000, 1000)).toBe(2.0);
     });
 
     it('scales linearly between 0.1 and 2.0 across share', () => {
-        // 50% share -> 0.1 + 0.5*1.9 = 1.05.
         const half = contributionMultiplier(500, 1000);
         expect(half).toBeCloseTo(1.05, 4);
     });
 
     it('respects the 0.05 floor (defensive)', () => {
-        // Floor is unreachable via formula but kept as a safety net.
-        // We verify behaviour at share=0 lands at 0.1 (the formula
-        // result) — the floor doesn't activate.
         expect(contributionMultiplier(0, 1)).toBeGreaterThanOrEqual(0.05);
     });
 
     it('returns higher multiplier for higher share', () => {
-        const low  = contributionMultiplier(100, 1000);  // 10% -> 0.29
-        const mid  = contributionMultiplier(500, 1000);  // 50% -> 1.05
-        const high = contributionMultiplier(900, 1000);  // 90% -> 1.81
+        const low  = contributionMultiplier(100, 1000);
+        const mid  = contributionMultiplier(500, 1000);
+        const high = contributionMultiplier(900, 1000);
         expect(mid).toBeGreaterThan(low);
         expect(high).toBeGreaterThan(mid);
     });

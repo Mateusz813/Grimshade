@@ -1,15 +1,9 @@
-// ==============================================================================
-// Level-Up Notification — two modes: subtle (in-combat) & epic (out-of-combat)
-// ==============================================================================
 
 .lvlup {
   position: fixed;
   z-index: 10000;
   pointer-events: auto;
 
-  // ============================================================================
-  // SUBTLE MODE (top banner during combat/dungeon/boss)
-  // ============================================================================
   &--subtle {
     top: 0;
     left: 0;
@@ -69,9 +63,6 @@
     font-weight: 600;
   }
 
-  // ============================================================================
-  // EPIC MODE (fullscreen celebration)
-  // ============================================================================
   &--epic {
     inset: 0;
     display: flex;
@@ -83,7 +74,6 @@
     cursor: pointer;
   }
 
-  // -- Light rays from center ----------------------------------------------
   &__rays {
     position: absolute;
     top: 50%;
@@ -105,7 +95,6 @@
     animation: lvlup-ray-grow 1.2s ease-out 0.3s forwards;
   }
 
-  // -- Expanding rings -----------------------------------------------------
   &__rings {
     position: absolute;
     top: 50%;
@@ -130,7 +119,6 @@
     &--3 { animation-delay: 1.4s; border-color: rgba(255, 193, 7, 0.3); }
   }
 
-  // -- Floating particles --------------------------------------------------
   &__particles {
     position: absolute;
     inset: 0;
@@ -150,7 +138,6 @@
     opacity: 0;
   }
 
-  // -- Center content ------------------------------------------------------
   &__center {
     position: relative;
     z-index: 2;
@@ -220,8 +207,6 @@
       animation-delay: 1.6s;
     }
 
-    // Milestone gold reward — bigger, golden, with a stronger glow so it
-    // really feels like a "wow" moment when crossing 10/20/50/100/etc.
     &--gold {
       color: #ffca28;
       font-size: 20px;
@@ -255,9 +240,6 @@
   }
 }
 
-// ==============================================================================
-// Keyframes — Subtle
-// ==============================================================================
 
 @keyframes lvlup-subtle-in {
   from { opacity: 0; transform: translateY(-30px); }
@@ -284,9 +266,6 @@
   to   { transform: scale(1.15); }
 }
 
-// ==============================================================================
-// Keyframes — Epic
-// ==============================================================================
 
 @keyframes lvlup-epic-in {
   from { opacity: 0; }

@@ -1,7 +1,3 @@
-// Reusable loader spinner. The ring rotates and a sweeping arc traces
-// around it; the colour reads from `--combat-accent` / `--nav-accent` /
-// `--task-accent` if the parent set one of those, otherwise falls back
-// to a pale-gold tint that contrasts against the dark background.
 .spinner {
     display: inline-flex;
     flex-direction: column;

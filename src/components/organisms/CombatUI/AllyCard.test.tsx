@@ -1,15 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * AllyCard — one slot in the 4-slot ally column. Renders avatar, HP/MP bars,
- * level/aggro badges, summon stack badges (Necromancer), hit pulse, skill
- * animation overlays, and floating numbers. Empty slot renders as a
- * transparent placeholder.
- *
- * `isImageUrl` stubbed so URL-vs-emoji branching is deterministic without
- * pulling in real Vite-resolved asset modules.
- */
 vi.mock('../../../systems/spriteAssets', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../systems/spriteAssets')>();
     return {
@@ -71,7 +62,6 @@ describe('AllyCard — smoke', () => {
     it('marks the card as dead with skull overlay when isDead is true', () => {
         const { container } = render(<AllyCard ally={makeAlly({ isDead: true })} />);
         expect(container.querySelector('.combat-ui__ally--dead')).toBeTruthy();
-        // Skull renders via <Emoji> as a Twemoji <img> inside the overlay span.
         expect(
             container.querySelector('.combat-ui__ally-skull svg.game-icon[data-icon="skull"]'),
         ).toBeTruthy();
@@ -134,8 +124,6 @@ describe('AllyCard — badges & overlays', () => {
 describe('AllyCard — summon badges', () => {
     it('renders per-type summon badges when summonsByType has counts', () => {
         render(<AllyCard ally={makeAlly({ summonsByType: { skeleton: 2, ghost: 1 } })} />);
-        // Each badge renders <Emoji> as a Twemoji <img> followed by ×N text.
-        // Locate the badge by its emoji img, then assert the ×N text sibling.
         const skeletonBtn = document
             .querySelector('svg.game-icon[data-icon="skull"]')
             ?.closest('button.combat-ui__ally-summon-badge');
@@ -190,7 +178,6 @@ describe('AllyCard — floats & skill animations', () => {
         );
         const floats = container.querySelectorAll('.combat-ui__float');
         expect(floats.length).toBe(2);
-        // Heal renders with leading +.
         expect(screen.getByText('+12')).toBeTruthy();
     });
 
@@ -204,8 +191,6 @@ describe('AllyCard — floats & skill animations', () => {
         );
         const overlay = container.querySelector('.skill-anim-overlay.skill-anim--fire');
         expect(overlay).toBeTruthy();
-        // Non-URL emoji routes through TinyIcon -> <Emoji>, rendering a Twemoji
-        // <img> (not text) inside the overlay's .skill-anim-emoji span.
         expect(overlay?.querySelector('svg.game-icon[data-icon="fire"]')).toBeTruthy();
     });
 
@@ -235,15 +220,12 @@ describe('AllyCard — floats & skill animations', () => {
 });
 
 describe('AllyCard — bot badge', () => {
-    // 2026-06-21: bots no longer carry an icon shortcode in their name; the
-    // robot badge is the UI marker that distinguishes an AI bot helper.
     it('renders a robot badge for an AI bot ally', () => {
         const { container } = render(
             <AllyCard ally={makeAlly({ isBot: true, isPlayer: false, name: 'Bot Lecznik' })} />,
         );
         const badge = container.querySelector('.combat-ui__ally-bot-badge svg.game-icon[data-icon="robot"]');
         expect(badge).toBeTruthy();
-        // The name renders as plain text (no leftover shortcodes).
         expect(screen.getByText('Bot Lecznik')).toBeTruthy();
     });
 

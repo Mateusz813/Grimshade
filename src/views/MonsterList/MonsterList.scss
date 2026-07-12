@@ -350,7 +350,6 @@
     50% { opacity: 0.7; }
   }
 
-  // -- Mastery card modifier -----------------------------------------------
   &__card--mastery-max {
     border-color: rgba(#9c27b0, 0.6);
     box-shadow: 0 0 12px rgba(#9c27b0, 0.25), inset 0 0 20px rgba(#9c27b0, 0.06);
@@ -372,7 +371,6 @@
     }
   }
 
-  // -- Mastery XP/Gold bonus inline chip -------------------------------------
   &__mastery-xp-bonus {
     color: #ffb74d;
     font-weight: 700;
@@ -380,7 +378,6 @@
     cursor: help;
   }
 
-  // -- Mastery badge ---------------------------------------------------------
   &__mastery-badge {
     display: inline-flex;
     align-items: center;
@@ -405,7 +402,6 @@
     50% { box-shadow: 0 0 10px rgba(#9c27b0, 0.6); }
   }
 
-  // -- Mastery section in details --------------------------------------------
   &__mastery {
     margin-top: $spacing-sm;
     margin-bottom: $spacing-xs;
@@ -573,11 +569,6 @@
     border: 1px solid rgba(255, 152, 0, 0.35);
   }
 
-  // 2026-05-19 v24 spec ("dodaj ze jak sie kliknie w ikonke potwora
-  // to sie powieksza na caly ekran"): the sprite cell is now a
-  // button — strip default button chrome so it looks identical to
-  // the old `<span>` baseline. Hover hint via subtle scale so the
-  // player notices it's interactive.
   &__sprite-btn {
     background: transparent;
     border: 0;
@@ -600,9 +591,6 @@
     }
   }
 
-  // Fullscreen sprite preview — fixed overlay above the entire
-  // viewport. Backdrop click + ESC dismiss; close button is a
-  // belt-and-braces escape hatch on touch.
   &__fullscreen-backdrop {
     position: fixed;
     inset: 0;
@@ -622,12 +610,6 @@
   }
 
   &__fullscreen-inner {
-    // 2026-05-19 v24 spec ("max width 300px i height 300px na
-    // powiekszeniu nie wiecej bo pikseluje sie"): hard-cap the
-    // sprite at 300×300. The source artwork is native low-res, so
-    // anything bigger upscales into jaggies. `min()` lets it shrink
-    // on tiny phones (90vw / 90vh) while never exceeding the
-    // 300-px ceiling.
     width: min(90vw, 90vh, 300px);
     height: min(90vw, 90vh, 300px);
     display: flex;

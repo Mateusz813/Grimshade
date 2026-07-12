@@ -7,16 +7,9 @@ import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './TutorialModal.scss';
 
 interface ITutorialModalProps {
-  /** Closes the modal (cancel button, backdrop click, Escape). */
   onClose: () => void;
 }
 
-/**
- * New-player tutorial. Opened from the avatar menu ("Tutorial"). Renders via a
- * portal to document.body (like the other menu modals) so it survives the menu
- * closing. Data-driven from `TUTORIAL_SECTIONS` — each section is a numbered,
- * bold-titled card with a one-liner + bullet points.
- */
 const TutorialModal = ({ onClose }: ITutorialModalProps) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

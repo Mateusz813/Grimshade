@@ -9,7 +9,6 @@ import {
 } from '../systems/skillSystem';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 
-// -- Helpers ------------------------------------------------------------------
 
 const SKILL_INITIAL_STATE = {
     skillLevels: {},
@@ -59,13 +58,11 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar(), isLoading: false });
 });
 
-// -- initSkills ---------------------------------------------------------------
 
 describe('initSkills', () => {
     it('inits class weapon skills + magic_level at level 0 / xp 0', () => {
         useSkillStore.getState().initSkills('Knight');
         const s = useSkillStore.getState();
-        // Knight has sword_fighting + shielding, plus magic_level seeded for all.
         expect(s.skillLevels['sword_fighting']).toBe(0);
         expect(s.skillLevels['shielding']).toBe(0);
         expect(s.skillLevels['magic_level']).toBe(0);
@@ -80,7 +77,6 @@ describe('initSkills', () => {
     });
 });
 
-// -- addSkillXp ---------------------------------------------------------------
 
 describe('addSkillXp', () => {
     it('accumulates XP without levelling up', () => {
@@ -91,7 +87,7 @@ describe('addSkillXp', () => {
     });
 
     it('levels up exactly when threshold is reached', () => {
-        const need = skillXpToNextLevel(0); // 100 by default
+        const need = skillXpToNextLevel(0);
         const gained = useSkillStore.getState().addSkillXp('sword_fighting', need);
         expect(gained).toBe(1);
         expect(useSkillStore.getState().skillLevels['sword_fighting']).toBe(1);
@@ -106,11 +102,9 @@ describe('addSkillXp', () => {
     });
 });
 
-// -- applyDeathPenalty --------------------------------------------------------
 
 describe('applyDeathPenalty', () => {
     it('removes 25% of total banked XP across all trainable skills (25% default)', () => {
-        // Knight skills + general stats start at lvl 5 each.
         useSkillStore.setState({
             skillLevels: {
                 sword_fighting: 5,
@@ -126,9 +120,6 @@ describe('applyDeathPenalty', () => {
             },
         });
         useSkillStore.getState().applyDeathPenalty('Knight');
-        // After losing 25% of banked XP (default), levels drop a bit.
-        // Exact level depends on the cumulative XP curve — just verify each
-        // skill dropped below its starting level (5 → 4 each).
         const s = useSkillStore.getState();
         expect(s.skillLevels['sword_fighting']).toBeLessThan(5);
         expect(s.skillLevels['shielding']).toBeLessThan(5);
@@ -137,13 +128,11 @@ describe('applyDeathPenalty', () => {
     });
 
     it('applies the requested loss percentage (e.g. 2.5 for flee)', () => {
-        // Big skill so the small flee % is observable
         useSkillStore.setState({
             skillLevels: { sword_fighting: 50 },
             skillXp: { sword_fighting: 0 },
         });
         useSkillStore.getState().applyDeathPenalty('Knight', 2.5);
-        // 2.5% off a level-50 skill should leave it still at 50 or 49.
         const level = useSkillStore.getState().skillLevels['sword_fighting'];
         expect(level).toBeGreaterThanOrEqual(49);
         expect(level).toBeLessThanOrEqual(50);
@@ -160,19 +149,14 @@ describe('applyDeathPenalty', () => {
     });
 
     it('skips skills that are completely unset (lvl 0, xp 0)', () => {
-        // Make sure addSkillXp doesn't break on undefined skill ids.
-        // applyDeathPenalty must early-continue for empty skills so we
-        // don't accidentally end up with NaN levels.
         useSkillStore.setState({ skillLevels: {}, skillXp: {} });
         useSkillStore.getState().applyDeathPenalty('Knight', 50);
-        // All trainable skills are zero — no entries should be added either.
         for (const v of Object.values(useSkillStore.getState().skillLevels)) {
             expect(v).toBe(0);
         }
     });
 });
 
-// -- setActiveSkillSlot / purgeLockedSkillSlots -------------------------------
 
 describe('setActiveSkillSlot', () => {
     it('sets a skill into a slot', () => {
@@ -187,7 +171,6 @@ describe('setActiveSkillSlot', () => {
     });
 
     it('removes the skill from any other slot it currently occupies', () => {
-        // Avoid duplicates: a skill can only live in one slot at a time.
         useSkillStore.setState({ activeSkillSlots: ['shield_bash', null, null, null] });
         useSkillStore.getState().setActiveSkillSlot(2, 'shield_bash');
         const slots = useSkillStore.getState().activeSkillSlots;
@@ -198,16 +181,14 @@ describe('setActiveSkillSlot', () => {
 
 describe('purgeLockedSkillSlots', () => {
     it('clears slots holding skills whose unlockLevel > currentLevel', () => {
-        // ultimate_slash unlocks at lvl 100 — a lvl 50 Knight should not
-        // be able to keep it slotted after a death-penalty level drop.
         useSkillStore.setState({
             activeSkillSlots: ['shield_bash', 'ultimate_slash', null, null],
         });
         const cleared = useSkillStore.getState().purgeLockedSkillSlots('Knight', 50);
         expect(cleared).toBe(1);
         const slots = useSkillStore.getState().activeSkillSlots;
-        expect(slots[0]).toBe('shield_bash'); // unlocked at 5, kept
-        expect(slots[1]).toBeNull();           // ultimate_slash purged
+        expect(slots[0]).toBe('shield_bash');
+        expect(slots[1]).toBeNull();
     });
 
     it('returns 0 when nothing needs purging', () => {
@@ -222,7 +203,6 @@ describe('purgeLockedSkillSlots', () => {
     });
 });
 
-// -- isSkillUnlocked / unlockSkill --------------------------------------------
 
 describe('isSkillUnlocked', () => {
     it('returns false by default', () => {
@@ -283,7 +263,6 @@ describe('unlockAllActiveSkills', () => {
     });
 });
 
-// -- upgradeActiveSkill -------------------------------------------------------
 
 describe('upgradeActiveSkill', () => {
     it('returns failure shape when player has not enough gold', () => {
@@ -292,7 +271,7 @@ describe('upgradeActiveSkill', () => {
         const getChestCount = vi.fn().mockReturnValue(99);
         const result = useSkillStore.getState().upgradeActiveSkill(
             'shield_bash',
-            0, // insufficient gold
+            0,
             spendGold,
             5,
             useChests,
@@ -306,10 +285,10 @@ describe('upgradeActiveSkill', () => {
     it('returns failure shape when player has not enough chests', () => {
         const spendGold = vi.fn().mockReturnValue(true);
         const useChests = vi.fn().mockReturnValue(true);
-        const getChestCount = vi.fn().mockReturnValue(0); // no chests
+        const getChestCount = vi.fn().mockReturnValue(0);
         const result = useSkillStore.getState().upgradeActiveSkill(
             'shield_bash',
-            10_000_000, // plenty of gold
+            10_000_000,
             spendGold,
             5,
             useChests,
@@ -321,8 +300,6 @@ describe('upgradeActiveSkill', () => {
     });
 
     it('bumps skillUpgradeLevels on success (Math.random forced low)', () => {
-        // Force success at +1 -> target=1, success rate = 100% anyway.
-        // We still mock Math.random to be safe across levels.
         const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
         const spendGold = vi.fn().mockReturnValue(true);
         const useChests = vi.fn().mockReturnValue(true);
@@ -342,7 +319,6 @@ describe('upgradeActiveSkill', () => {
     });
 
     it('keeps level on fail but reports chests + gold spent (Math.random forced high)', () => {
-        // Target = +2 (90% success). Force random=0.99 -> fail.
         useSkillStore.setState({ skillUpgradeLevels: { shield_bash: 1 } });
         const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99);
         const spendGold = vi.fn().mockReturnValue(true);
@@ -357,15 +333,13 @@ describe('upgradeActiveSkill', () => {
             getChestCount,
         );
         expect(result.success).toBe(false);
-        expect(result.newLevel).toBe(1); // stays at +1
+        expect(result.newLevel).toBe(1);
         expect(result.goldSpent).toBeGreaterThan(0);
-        // Skill upgrade level unchanged in state
         expect(useSkillStore.getState().getSkillUpgradeLevel('shield_bash')).toBe(1);
         randomSpy.mockRestore();
     });
 });
 
-// -- Weapon / MLVL XP from attacks / blocks -----------------------------------
 
 describe('addShieldingXpOnBlock', () => {
     it('grants shielding XP scaled by current level', () => {
@@ -374,11 +348,9 @@ describe('addShieldingXpOnBlock', () => {
             skillXp: { shielding: 0 },
         });
         const gained = useSkillStore.getState().addShieldingXpOnBlock();
-        // levelsGained for a single block at lvl 0 is usually 0 (small XP).
         expect(gained).toBeGreaterThanOrEqual(0);
         const xp = useSkillStore.getState().skillXp['shielding'] ?? 0;
         const level = useSkillStore.getState().skillLevels['shielding'] ?? 0;
-        // Some XP has been banked — either current xp > 0 or level > 0.
         expect(xp + level).toBeGreaterThan(0);
         expect(xp + level).toBe(shieldingXpPerBlock(0));
     });
@@ -388,7 +360,6 @@ describe('addMlvlXpFromAttack', () => {
     it('returns 0 for non-magic classes (Knight)', () => {
         const gained = useSkillStore.getState().addMlvlXpFromAttack('Knight');
         expect(gained).toBe(0);
-        // No magic_level XP should be added either.
         expect(useSkillStore.getState().skillXp['magic_level'] ?? 0).toBe(0);
     });
 
@@ -398,7 +369,6 @@ describe('addMlvlXpFromAttack', () => {
             skillXp: { magic_level: 0 },
         });
         useSkillStore.getState().addMlvlXpFromAttack('Mage');
-        // Some XP should have been added — exact value follows mlvlXpPerAttack(0).
         const xp = useSkillStore.getState().skillXp['magic_level'] ?? 0;
         const lvl = useSkillStore.getState().skillLevels['magic_level'] ?? 0;
         expect(xp + lvl).toBe(mlvlXpPerAttack(0));
@@ -416,8 +386,6 @@ describe('addWeaponSkillXpFromAttack', () => {
     });
 
     it('skips when the class weapon skill IS magic_level (avoid double-dip)', () => {
-        // Mage's weapon skill is magic_level and they gain MLVL from
-        // attacks via addMlvlXpFromAttack — skipping here prevents double-counting.
         const before = useSkillStore.getState().skillXp['magic_level'] ?? 0;
         const gained = useSkillStore.getState().addWeaponSkillXpFromAttack('Mage');
         expect(gained).toBe(0);
@@ -439,7 +407,6 @@ describe('addMlvlXpFromSkill', () => {
     });
 });
 
-// -- Offline training ---------------------------------------------------------
 
 describe('selectTrainingStat', () => {
     it('selects the new skill and starts a fresh segment', () => {
@@ -482,10 +449,9 @@ describe('collectOfflineTraining', () => {
     });
 
     it('credits XP for a skill that has been training', () => {
-        // Start training 10 minutes ago (in effective seconds via accumulated bucket).
         useSkillStore.setState({
             offlineTrainingSkillId: 'sword_fighting',
-            trainingSegmentStartedAt: null, // paused
+            trainingSegmentStartedAt: null,
             trainingAccumulatedEffectiveSeconds: 600,
             trainingCurrentSpeedMultiplier: 1,
             skillLevels: { sword_fighting: 0 },
@@ -493,12 +459,10 @@ describe('collectOfflineTraining', () => {
         });
         const xp = useSkillStore.getState().collectOfflineTraining();
         expect(xp).toBeGreaterThan(0);
-        // The accumulator was flushed and reset.
         expect(useSkillStore.getState().trainingAccumulatedEffectiveSeconds).toBe(0);
     });
 });
 
-// -- resetSkills --------------------------------------------------------------
 
 describe('resetSkills', () => {
     it('clears every gameplay piece back to the initial state', () => {
@@ -519,5 +483,4 @@ describe('resetSkills', () => {
     });
 });
 
-// keep imports referenced even if a future refactor drops the equipment setup
 void EMPTY_EQUIPMENT;

@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePartyDamageStore } from './partyDamageStore';
 
-/**
- * Damage tracker for the floating PartyWidget. Three setters, all simple
- * — no realtime, no API, no cross-store. Each test resets to a known
- * baseline so `addDamage` invariants (skip non-finite / non-positive
- * amounts, never overwrite — accumulate) are tested in isolation.
- */
 
 const resetStore = (): void => {
     usePartyDamageStore.setState({
@@ -19,7 +13,6 @@ beforeEach(() => {
     resetStore();
 });
 
-// -- addDamage ----------------------------------------------------------------
 
 describe('addDamage', () => {
     it('records a first hit for a brand-new member', () => {
@@ -71,9 +64,7 @@ describe('addDamage', () => {
     });
 
     it('does not clobber an existing bucket when called with an invalid amount', () => {
-        // Seed a real value first…
         usePartyDamageStore.getState().addDamage('char-1', 200);
-        // …then try a bad input. The bucket should stay at 200.
         usePartyDamageStore.getState().addDamage('char-1', -10);
         usePartyDamageStore.getState().addDamage('char-1', Number.NaN);
         expect(usePartyDamageStore.getState().damage['char-1']).toBe(200);
@@ -86,7 +77,6 @@ describe('addDamage', () => {
     });
 });
 
-// -- setMemberDamage ----------------------------------------------------------
 
 describe('setMemberDamage', () => {
     it('writes an absolute total for a member (replaces, does not add)', () => {
@@ -128,7 +118,6 @@ describe('setMemberDamage', () => {
     });
 });
 
-// -- reset --------------------------------------------------------------------
 
 describe('reset', () => {
     it('wipes every member bucket', () => {
@@ -142,16 +131,11 @@ describe('reset', () => {
 
     it('refreshes the sessionStart timestamp to a current ISO string', () => {
         const before = usePartyDamageStore.getState().sessionStart;
-        // Force a stale baseline so the timestamp must change to pass.
         usePartyDamageStore.setState({ sessionStart: '1999-01-01T00:00:00.000Z' });
         usePartyDamageStore.getState().reset();
         const after = usePartyDamageStore.getState().sessionStart;
-        // Either same as the seeded baseline (vanishingly unlikely) or a
-        // newer ISO timestamp — strictly: must not match the 1999 baseline.
         expect(after).not.toBe('1999-01-01T00:00:00.000Z');
-        // Parses back into a finite Date.
         expect(Number.isNaN(new Date(after).getTime())).toBe(false);
-        // And the reset's timestamp is >= the test's beforeEach baseline.
         expect(new Date(after).getTime()).toBeGreaterThanOrEqual(new Date(before).getTime());
     });
 
@@ -161,7 +145,6 @@ describe('reset', () => {
     });
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('initial state', () => {
     it('exposes an empty damage map + a parseable sessionStart on boot', () => {

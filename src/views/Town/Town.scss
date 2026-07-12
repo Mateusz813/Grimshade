@@ -2,19 +2,9 @@
 @use '../../styles/breakpoints' as *;
 
 .town {
-  // 2026-05-19 v17 spec ("w Miescie mam scroll mimo ze nie jest
-  // potrzebny napraw to i pokazuj scroll tylko jak jest potrzebny
-  // na mniejszych ekranach"): drop the hard `min-height: 100vh`.
-  // AppShell already pins its own min-height + flex-fills the main
-  // area, so this rule only ever forced a phantom scroll when the
-  // town tiles fit comfortably in the viewport. Letting the content
-  // size itself naturally means scroll appears strictly when the
-  // grid actually overflows the available area (small phones,
-  // 4-row wrap, etc.).
   background: transparent;
   color: $color-text;
 
-  // -- Header -----------------------------------------------------------------
   &__header {
     background: $color-bg-secondary;
     border-bottom: 1px solid $color-border;
@@ -85,7 +75,6 @@
     border-radius: 50%;
   }
 
-  // -- Language switcher ------------------------------------------------------
   &__lang-switch {
     display: flex;
     border: 1px solid $color-border;
@@ -111,7 +100,6 @@
     }
   }
 
-  // -- Sync bar ---------------------------------------------------------------
   &__sync-bar {
     display: flex;
     align-items: center;
@@ -151,10 +139,7 @@
     &:disabled { opacity: 0.4; cursor: not-allowed; }
   }
 
-  // -- Character card ---------------------------------------------------------
   &__character-card {
-    // 20px breathing room below the fixed TopHeader; horizontal margins match
-    // the party-strip / nav so all sections share the same 16px gutter.
     margin: 20px 16px 0;
     background:
       linear-gradient(
@@ -174,22 +159,12 @@
     overflow: hidden;
     box-shadow: 0 2px 12px rgba(var(--class-color-rgb, 233,69,96), 0.1);
 
-    // -- Single bar chasing border + pulsing glow (transform tier 1+) -----
-    // Renders an inline <svg> whose <rect> has exactly one short dash and a
-    // huge gap in stroke-dasharray — so only a single ~20px bar is visible
-    // at any moment, travelling clockwise around the whole border. The card
-    // itself also pulses a soft outer glow. Intensity scales with
-    // `--ablaze-boost` so each subsequent transform tier looks stronger.
     &--ablaze {
-      // Bar length grows more aggressively per tier so the visual jump
-      // between transforms is clearly visible (20px @ T1 -> ~73px @ T8).
       --_trace-stroke:  calc(2px  + 1.2px * (var(--ablaze-boost, 1) - 1));
       --_trace-bar:     calc(20px + 35px  * (var(--ablaze-boost, 1) - 1));
       --_trace-gap:     4000px;
       --_trace-glow:    calc(6px  + 6px   * (var(--ablaze-boost, 1) - 1));
       --_trace-speed:   clamp(2.2s, calc(5.6s / var(--ablaze-boost, 1)), 5.6s);
-      // Pulse base + amplitude both scale with the tier, so the glow not
-      // only gets wider/brighter at rest but also breathes harder.
       --_glow-spread:   calc(18px + 22px  * (var(--ablaze-boost, 1) - 1));
       --_glow-a1:       min(0.80, calc(0.30 + 0.20 * (var(--ablaze-boost, 1) - 1)));
       --_glow-a2:       min(0.65, calc(0.18 + 0.16 * (var(--ablaze-boost, 1) - 1)));
@@ -201,16 +176,12 @@
       animation: town-card-pulse 2.4s ease-in-out infinite;
     }
 
-    // Card contents sit above the trace layer.
     &--ablaze > * {
       position: relative;
       z-index: 1;
     }
   }
 
-  // -- SVG trace layer ----------------------------------------------------
-  // Fills the character card, no viewBox — SVG coordinates map 1:1 to CSS
-  // pixels so the rounded corners line up with the card's border-radius.
   &__card-trace {
     position: absolute;
     inset: 0;
@@ -222,8 +193,6 @@
   }
 
   &__card-trace-rect {
-    // Geometry via SVG CSS props — widely supported in modern browsers.
-    // Inset by half the stroke so the bar sits just inside the card edge.
     x: 1px;
     y: 1px;
     width:  calc(100% - 2px);
@@ -234,24 +203,17 @@
     stroke: rgba(var(--tile-accent-rgb, 233,69,96), 1);
     stroke-width: var(--_trace-stroke, 2px);
     stroke-linecap: round;
-    // Exactly one short dash + a huge gap -> only one ~20px bar visible
-    // at any moment, travelling around the perimeter.
     stroke-dasharray: var(--_trace-bar, 20px) var(--_trace-gap, 4000px);
     filter: drop-shadow(0 0 var(--_trace-glow, 6px)
       rgba(var(--tile-accent-rgb, 233,69,96), 1));
     animation: town-card-trace-march var(--_trace-speed, 4s) linear infinite;
   }
 
-  // Move stroke-dashoffset by exactly (bar + gap) so the pattern lands back
-  // on itself — seamless infinite loop. Negative value = clockwise travel.
   @keyframes town-card-trace-march {
     from { stroke-dashoffset: 0; }
     to   { stroke-dashoffset: calc(-1 * (var(--_trace-bar, 20px) + var(--_trace-gap, 4000px))); }
   }
 
-  // Outer box-shadow pulse — expands and brightens at 50%. Both spread
-  // and alpha are driven by `--_pulse-amp`, which is itself tier-scaled,
-  // so each higher transform breathes noticeably harder.
   @keyframes town-card-pulse {
     0%, 100% {
       box-shadow:
@@ -316,7 +278,6 @@
     color: $color-legendary;
   }
 
-  // -- Stat bars --------------------------------------------------------------
   &__bar-wrap {
     display: flex;
     align-items: center;
@@ -348,7 +309,6 @@
   &__bar--mp .town__bar-fill  { background: #1e88e5; }
   &__bar--xp .town__bar-fill  { background: #ffc107; }
 
-  // XP percentage text centered on the bar
   &__bar--xp {
     position: relative;
   }
@@ -405,14 +365,7 @@
     50% { box-shadow: 0 0 8px 2px rgba(#ffc107, 0.3); }
   }
 
-  // -- Live combat widget ---------------------------------------------------
-  // -- Compact combat strip (next to avatar area) -----------------------------
   &__combat-strip {
-    // 10px gap above so the strip never sits flush against the character
-    // card (which would visually fuse the two boxes into one), matching
-    // the `&__party-strip` spacing one section below. 0 bottom keeps the
-    // gap to the next box owned by THAT next box's top margin — no
-    // double-counting of vertical gaps between sections.
     margin: 10px 16px 0;
     padding: 8px 12px;
     display: flex;
@@ -511,11 +464,7 @@
     50% { box-shadow: 0 0 8px 0 rgba(255, 255, 255, 0.06); }
   }
 
-  // -- Party expand widget --------------------------------------------------
   &__party-strip {
-    // 10px from the box above (character card / combat strip), 0 below — the
-    // gap to the first tile is owned by `&__nav--seven`'s top padding so we
-    // don't double-count it.
     margin: 10px 16px 0;
     padding: 8px 12px;
     background: rgba(#ff9800, 0.06);
@@ -532,9 +481,6 @@
       border: 1px solid rgba(#9e9e9e, 0.25);
       border-left: 3px solid #9e9e9e;
 
-      // On phones the row gets too cramped — stack the icon/label, then the
-      // two action buttons go full-width one beneath the other so the user
-      // can comfortably tap either Stwórz / Dołącz.
       @include mobile-only {
         flex-wrap: wrap;
         gap: 8px;
@@ -630,10 +576,6 @@
     display: flex;
     gap: 6px;
     flex: 1;
-    // 2026-05-18 spec ("zostaw tylko ikonki klasy od lewej sojusznikow
-    // party"): collapsed header strip no longer carries the "Party"
-    // label or UUID code on the left, so the avatar row anchors to the
-    // LEFT edge of the strip instead of crowding the right side.
     justify-content: flex-start;
     flex-wrap: wrap;
   }
@@ -861,19 +803,12 @@
     }
   }
 
-  // -- Blocked nav buttons during combat -------------------------------------
   &__nav-btn--blocked {
     opacity: 0.4;
     pointer-events: none;
     position: relative;
   }
 
-  // -- Offline-locked tiles --------------------------------------------------
-  // 2026-05-20 spec ("Miejsca w ktore nie moge wejsc offline powinny zostac
-  // zablokowane nie mozliwe do klikniecia wyszarzone"): visually distinct
-  // from --blocked so the player sees this is a MODE restriction, not a
-  // combat-state restriction. Grayscale filter + reduced opacity + no
-  // pointer events.
   &__nav-btn--offline-locked {
     filter: grayscale(0.85) brightness(0.6);
     opacity: 0.6;
@@ -901,7 +836,6 @@
     font-size: 0.6rem;
   }
 
-  // -- Navigation grid --------------------------------------------------------
   &__nav {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -939,8 +873,6 @@
     transition: all $transition-normal;
     overflow: hidden;
 
-    // Hover is now handled by the tile-particles mixin (per-tile glow).
-    // Only set a generic fallback for tiles without the mixin.
     &:hover:not(.town__nav-tile) {
       border-color: $color-accent;
       background: $color-bg-card;
@@ -974,13 +906,10 @@
     display: block;
   }
 
-  // Point N1: Postać tile uses the active transform avatar as a background.
-  // The avatar itself must stay sharp — only the label gets a blur bubble.
-  // The tile has NO border (user removed the gold border) and sits flush.
   &__nav-btn--character {
     position: relative;
     border: none;
-    padding: 0; // inner overlays control spacing
+    padding: 0;
     overflow: hidden;
     isolation: isolate;
 
@@ -988,10 +917,6 @@
       box-shadow: 0 0 20px rgba(255, 193, 7, 0.35);
     }
 
-    // Only the icon needs its position/z-index overridden here.
-    // The label uses the `.town__nav-btn-label--glass` positioning
-    // (absolute, bottom: 0) so it sits at the bottom of the tile like
-    // every other tile — don't override it with `position: relative`.
     .town__nav-icon {
       position: relative;
       z-index: 3;
@@ -1009,19 +934,12 @@
     z-index: 0;
     transform: scale(1.05);
     transition: transform $transition-normal;
-    // No blur / saturate here — the avatar stays crisp.
 
     .town__nav-btn--character:hover & {
       transform: scale(1.1);
     }
   }
 
-  // Per-tile artwork. Each of the 7 nav tiles (offline, deposit, market,
-  // monsters, rest, rankings, deaths) renders an absolutely-positioned
-  // <img> behind the label glass-chip so the whole tile becomes the
-  // image. `object-fit: cover` keeps the art filling the tile without
-  // distortion. Sits at z-index: 0 so the existing emoji-particles and
-  // label chip layer on top.
   &__nav-tile-img {
     position: absolute;
     inset: 0;
@@ -1039,18 +957,10 @@
   .town__nav-tile--has-img:hover .town__nav-tile-img {
     transform: scale(1.08);
   }
-  // When a tile carries its own artwork, suppress the legacy
-  // emoji-icon stack used by tiles that don't have art yet — the
-  // background image is the icon now. The label glass-chip still
-  // renders on top.
   &__nav-tile--has-img .town__nav-icon {
     display: none;
   }
 
-  // 2026-05-20 spec: when an offline hunt is running, the offline tile
-  // swaps its static art for a centred MonsterSprite of the mob being
-  // farmed. This wrapper sits in the same absolute layer the static
-  // <img> would and scales the MonsterSprite to fill the tile.
   &__nav-tile-monster {
     position: absolute;
     inset: 0;
@@ -1061,8 +971,6 @@
     overflow: hidden;
     pointer-events: none;
     user-select: none;
-    // Dark vignette so the label chip stays readable on top of bright
-    // monster art (some sprites are very high-key).
     background: radial-gradient(
       ellipse at center,
       rgba(0, 0, 0, 0.15) 0%,
@@ -1082,8 +990,6 @@
     transition: transform $transition-normal;
   }
 
-  // Point N1: label sits inside its own frosted-glass chip at the bottom of
-  // the tile so only the label area is blurred, not the whole avatar.
   &__nav-btn-label--glass {
     position: absolute;
     left: 0;
@@ -1134,7 +1040,6 @@
     filter: drop-shadow(0 0 4px rgba(#4caf50, 0.8));
   }
 
-  // -- Task indicator on nav button ------------------------------------------
   &__nav-btn--task-active {
     border-color: rgba(#ffc107, 0.5);
     background: linear-gradient(135deg, rgba(#ffc107, 0.08) 0%, $color-bg-secondary 60%);
@@ -1203,7 +1108,6 @@
     transition: width 0.5s ease-out;
   }
 
-  // -- Rest / Heal Button ------------------------------------------------------
   &__nav-btn--rest {
     border-color: rgba(#4caf50, 0.5);
     background: linear-gradient(135deg, rgba(#4caf50, 0.08) 0%, $color-bg-secondary 60%);
@@ -1238,20 +1142,12 @@
     50% { box-shadow: 0 0 20px rgba(#ffc107, 0.5); }
   }
 
-  // -- Nav tile unique backgrounds ------------------------------------------
-  // Every tile gets an epic gradient + the label in a frosted-glass bar
-  // at the bottom. The icon stays centered and large.
   &__nav-tile {
     position: relative;
     isolation: isolate;
 
-    // Every tile uses the glass label for text. 2026-05-20: added
-    // `.town__nav-tile-monster` to the exclusion list — the offline-hunt
-    // tile swaps its static <img> for a <span> wrapper around a
-    // MonsterSprite while a hunt is running, and that wrapper must NOT
-    // be hidden by this rule.
     > span:not(.town__nav-icon):not(.town__nav-btn-label):not(.town__blocked-tag):not(.town__claim-badge):not(.town__task-indicator):not(.town__rest-full-tag):not(.town__coming-soon):not(.town__nav-avatar-bg):not(.town__nav-badge):not(.town__nav-tile-monster) {
-      display: none; // hide old plain text spans
+      display: none;
     }
   }
 
@@ -1289,12 +1185,6 @@
     z-index: 4;
   }
 
-  // -- Tile backgrounds (uniform transform-tier color) ----------------------
-  // Every tile uses the same base gradient derived from the player's current
-  // transform color (--tile-accent set on .town__nav). Particles are STATIC
-  // by default — they only animate when the tile is hovered. On hover the
-  // border also lights up in the accent color.
-  // The "Postać" tile is excluded — it keeps its avatar background.
 
   @mixin tile-particles($emoji1, $emoji2, $_unused1: null, $_unused2: null, $_unused3: null) {
     background: #{'linear-gradient(135deg, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.25) 0%, rgba(var(--tile-accent-rgb, 76, 175, 80), 0.08) 45%, #{$color-bg-secondary} 100%)'};
@@ -1302,9 +1192,6 @@
     position: relative;
     overflow: hidden;
 
-    // Hover: gradient wave diagonally from bottom-left to top-right in the
-    // transform's accent color. Background is oversized and slid back and
-    // forth via `animation-direction: alternate` for the infinite sweep.
     &::before {
       content: '';
       position: absolute;
@@ -1329,21 +1216,14 @@
     }
   }
 
-  // Diagonal wave: with background-size 200% the image is exactly 2× the tile,
-  // so positioning the image so its center lands on the bottom-left corner
-  // (X=100%, Y=0%) and animating to top-right corner (X=0%, Y=100%) makes the
-  // 45deg gradient's bright center band sweep from corner to corner. Using
-  // `alternate` reverses it for the return trip.
   @keyframes tile-gradient-wave {
     0%   { background-position: 100% 0%; }
     100% { background-position: 0% 100%; }
   }
 
-  // Each tile keeps its unique emoji pair. Colors/border come from
-  // --tile-accent-rgb (set on .town__nav from the active transform).
   &__nav-tile--combat      { @include tile-particles('crossed-swords', 'drop-of-blood'); }
   &__nav-tile--inventory   { @include tile-particles('backpack', 'gem-stone'); }
-  &__nav-tile--character   { /* handled by avatar bg — no particles */ }
+  &__nav-tile--character   { }
   &__nav-tile--skills      { @include tile-particles('sparkles', 'cyclone'); }
   &__nav-tile--shop        { @include tile-particles('money-bag', 'shopping-cart'); }
   &__nav-tile--deposit     { @include tile-particles('bank', 'gem-stone'); }
@@ -1355,10 +1235,6 @@
   &__nav-tile--monsters    { @include tile-particles('dragon', ''); }
   &__nav-tile--market      { @include tile-particles('', ''); }
 
-  // 2026-05-08: Market tile gets an attention-getting glow + corner badge
-  // when the seller has unseen sale notifications (someone bought one
-  // of their listings while they were away). Pulses gold so it pops
-  // against the dark town nav strip.
   &__nav-tile--alert {
     animation: town-market-alert 1.6s ease-in-out infinite;
     box-shadow:
@@ -1397,7 +1273,6 @@
   &__nav-tile--leaderboard { @include tile-particles('trophy', '1st-place-medal'); }
   &__nav-tile--deaths      { @include tile-particles('skull', 'skull-and-crossbones'); }
 
-  // -- Rest Overlay (fullscreen epic animation) ------------------------------
   &__rest-overlay {
     position: fixed;
     inset: 0;
@@ -1419,7 +1294,6 @@
     to   { opacity: 1; }
   }
 
-  // -- Floating particles -----------------------------------------------------
   &__rest-particles {
     position: absolute;
     inset: 0;
@@ -1453,7 +1327,6 @@
     }
   }
 
-  // -- Expanding rings --------------------------------------------------------
   &__rest-rings {
     position: absolute;
     top: 50%;
@@ -1495,7 +1368,6 @@
     }
   }
 
-  // -- Center content ---------------------------------------------------------
   &__rest-center {
     position: relative;
     z-index: 1;
@@ -1567,7 +1439,6 @@
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
 
-  // -- Progress bar (loading) -------------------------------------------------
   &__rest-progress {
     width: 200px;
     height: 6px;
@@ -1595,25 +1466,8 @@
     100% { background-position: -200% 0; }
   }
 
-  // -- 7-tile responsive grid (mobile-first refactor) -------------------------
-  // Per user spec the Miasto tiles are reduced to exactly 7 (Offline trening,
-  // Depozyt, Market, Potwory, Odpoczynek, Rankingi, Smierci) and the layout
-  // must be stacked on mobile and horizontal on desktop. We override the
-  // default `.town__nav` grid only when the `--seven` modifier is present so
-  // we don't disturb any other view that might still reference the base grid.
   &__nav--seven {
-    // Auto-fill grid: each track is a fixed 130-px column on mobile (or
-    // 180-px on tablet+), and the browser packs as many columns as the
-    // viewport fits. `justify-content: center` splits the leftover side
-    // gap evenly, so the row reads as visually centered. The breakpoints
-    // are implicit — 2 columns on a 360-px phone (32-px padding + 2×130
-    // + 8-px gap = 300 px ≤ 360), 3 columns from ~438 px upward, 4 from
-    // ~576, etc. The 720-px @media swap then bumps the track to 180-px
-    // so desktop fits 4-7 of the larger tiles.
     display: grid;
-    // auto-FIT (not auto-fill): empty repeated tracks collapse to 0 so the
-    // populated tiles actually centre via `justify-content: center` on wide
-    // screens. auto-fill would keep the empty tracks and pack tiles left.
     grid-template-columns: repeat(auto-fit, 130px);
     justify-content: center;
     gap: $spacing-sm;
@@ -1626,8 +1480,6 @@
     }
 
     .town__nav-btn {
-      // Tile fills its fixed-width column (130 / 180). Height is
-      // explicit at the spec'd ratio so the artwork crops consistently.
       width: 100%;
       height: 200px;
 
@@ -1637,11 +1489,6 @@
     }
   }
 
-  // -- Periodic auto-pulse (every 30s) ----------------------------------------
-  // The `town__nav--pulse` class is toggled on by Town.tsx for ~900ms every
-  // 30 seconds. While present, every child tile plays a one-shot glow + scale
-  // pop so the navigation gently signals it's interactive even when the
-  // player is just standing still in town.
   &__nav--pulse .town__nav-tile {
     animation: town-tile-autopulse 0.9s ease-out;
   }

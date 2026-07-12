@@ -2,23 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Shop view — town vendor (~640 lines). 4 tabs (Items / Potions /
- * Elixirs / Arena), backpack-style item cards with stat comparisons.
- *
- * Coverage:
- *   - Smoke render + spinner fallback when character is null.
- *   - 4 tab buttons render with aria-label aria-labels.
- *   - Default tab is "items".
- *   - Tab switching moves the --active modifier.
- *   - Items tab renders generated cards (per-class catalog).
- *   - Potions / Elixirs tabs render cards from the ELIXIRS registry.
- *   - Arena tab renders the arena shop catalog.
- *   - Class variants (Mage, Archer, Rogue) all render generated items.
- *
- * Mocks: framer-motion (animations); no need to mock Supabase as
- * shopStore is purely local.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -34,9 +17,6 @@ vi.mock('framer-motion', async () => {
     };
 });
 
-// Backend-mode glue is opt-in. Partial-mock the flag + the sync helper so
-// the ON-branch is drivable in isolation without hitting the network
-// (syncFromBackend would otherwise fire a real GET /state via axios).
 vi.mock('../../config/backendMode', async () => {
     const actual = await vi.importActual<typeof import('../../config/backendMode')>('../../config/backendMode');
     return { ...actual, isBackendMode: vi.fn(() => false) };
@@ -105,8 +85,6 @@ describe('Shop — smoke', () => {
     it('shows a spinner-only .shop layout when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderShop();
-        // Spec: `if (!character) return <div className="shop"><Spinner /></div>`.
-        // The .shop root mounts but the tabs row does not.
         expect(container.querySelector('.shop')).not.toBeNull();
         expect(container.querySelector('.shop__tabs')).toBeNull();
     });
@@ -164,8 +142,6 @@ describe('Shop — tab switching', () => {
 describe('Shop — items tab cards', () => {
     it('renders at least one shop card on the Items tab for a Knight', () => {
         const { container } = renderShop();
-        // `generateShopItems(class, level)` produces a per-class catalog.
-        // For Knight level 5 the catalog is non-empty.
         const cards = container.querySelectorAll('.shop__card-icon');
         expect(cards.length).toBeGreaterThan(0);
     });
@@ -183,7 +159,6 @@ describe('Shop — potions tab', () => {
         const potionsTab = Array.from(container.querySelectorAll('.shop__tab'))
             .find((t) => t.getAttribute('aria-label') === 'Potiony') as HTMLButtonElement;
         fireEvent.click(potionsTab);
-        // Potion cards reuse `.shop__card-icon` shell.
         const cards = container.querySelectorAll('.shop__card-icon');
         expect(cards.length).toBeGreaterThan(0);
     });
@@ -206,7 +181,6 @@ describe('Shop — arena tab', () => {
         const arenaTab = Array.from(container.querySelectorAll('.shop__tab'))
             .find((t) => t.getAttribute('aria-label') === 'Arena') as HTMLButtonElement;
         fireEvent.click(arenaTab);
-        // Arena shop reuses the same card class.
         const cards = container.querySelectorAll('.shop__card-icon');
         expect(cards.length).toBeGreaterThan(0);
     });
@@ -236,15 +210,12 @@ describe('Shop — class variants', () => {
 describe('Shop — gold delta floating overlay', () => {
     it('does NOT render the gold-delta overlay on first mount', () => {
         const { container } = renderShop();
-        // Overlay only appears AFTER a buy (sets goldDelta state). Mount
-        // state has goldDelta === null so no floating chip.
         expect(container.querySelector('.shop__gold-delta-floating')).toBeNull();
     });
 });
 
 describe('Shop — backend mode (opt-in)', () => {
     beforeEach(() => {
-        // Every test starts with backend mode OFF; the ON test opts in.
         vi.mocked(isBackendMode).mockReturnValue(false);
         vi.mocked(syncFromBackend).mockClear();
     });
@@ -267,7 +238,6 @@ describe('Shop — backend mode (opt-in)', () => {
         fireEvent.click(buyBtn);
 
         await waitFor(() => expect(buySpy).toHaveBeenCalledTimes(1));
-        // itemId is the catalog elixir id; qty is 1 on the Elixirs tab.
         expect(buySpy).toHaveBeenCalledWith('char-1', expect.any(String), 1);
         await waitFor(() => expect(syncFromBackend).toHaveBeenCalledWith('char-1'));
     });
@@ -283,7 +253,6 @@ describe('Shop — backend mode (opt-in)', () => {
         const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
         fireEvent.click(buyBtn);
 
-        // No backend call in the default (client-authoritative) path.
         expect(buySpy).not.toHaveBeenCalled();
         expect(syncFromBackend).not.toHaveBeenCalled();
     });
@@ -293,13 +262,11 @@ describe('Shop — backend mode (opt-in)', () => {
         const buySpy = vi.spyOn(backendApi, 'buyShopItem').mockResolvedValue({});
 
         const { container } = renderShop();
-        // Items is the default tab — grab the first buyable card.
         const buyBtn = container.querySelector('.shop__buy-btn:not([disabled])') as HTMLButtonElement;
         expect(buyBtn).not.toBeNull();
         fireEvent.click(buyBtn);
 
         await waitFor(() => expect(buySpy).toHaveBeenCalledTimes(1));
-        // Backend gets (characterId, itemId); it is authoritative for the buy.
         expect(buySpy).toHaveBeenCalledWith('char-1', expect.any(String));
         await waitFor(() => expect(syncFromBackend).toHaveBeenCalledWith('char-1'));
     });
@@ -329,7 +296,6 @@ describe('Shop — backend mode (opt-in)', () => {
         fireEvent.click(buyBtn);
 
         await waitFor(() => expect(buySpy).toHaveBeenCalledTimes(1));
-        // Backend gets (characterId, arenaItemId); AP settlement is server-side.
         expect(buySpy).toHaveBeenCalledWith('char-1', expect.any(String));
         await waitFor(() => expect(syncFromBackend).toHaveBeenCalledWith('char-1'));
     });
@@ -350,13 +316,3 @@ describe('Shop — backend mode (opt-in)', () => {
     });
 });
 
-// TODO: Buying flow — clicking a card's buy button calls `buyShopItem`
-//       which routes through shopStore + inventoryStore. The
-//       success/error toast appears via setState ladder; the toast text
-//       lives inside an AnimatePresence stub. Smoke-testing the toast is
-//       feasible but the heavier buy contract (generated item lands in
-//       bag, gold drops, daily-cap counter increments) is covered by
-//       shopStore tests + Playwright.
-// TODO: Stat-comparison arrows (compareStat green/red ^v) require the
-//       player to equip something + the catalog to contain the same slot
-//       — out of scope for the smoke pass.

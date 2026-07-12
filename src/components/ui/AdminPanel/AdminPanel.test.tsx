@@ -1,21 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
-/**
- * AdminPanel tests — admin-only debug overlay rendered through a portal.
- * Hard-gated by Supabase auth session email; bails to null for anyone
- * who isn't ADMIN_EMAIL.
- *
- * Heavy gameplay stores are not exercised directly here. Instead the
- * test focuses on:
- *   - auth gating (admin email -> renders; other / null -> bails)
- *   - tab navigation buttons
- *   - close button wiring
- *   - toast feedback after an action click
- *
- * Stores are kept at their defaults; we mock `supabase.auth.getSession`
- * via the global setup mock but override the response per test.
- */
 
 import { supabase } from '../../../lib/supabase';
 import AdminPanel, { ADMIN_EMAIL } from './AdminPanel';
@@ -43,8 +28,6 @@ describe('AdminPanel — gating', () => {
     it('renders nothing when session is null', async () => {
         setSession(null);
         const { container } = render(<AdminPanel onClose={() => undefined} />);
-        // The component starts with authorised = null (renders null) and
-        // resolves the session async. Either way, the panel never mounts.
         await waitFor(() => {
             expect(container.querySelector('.admin-panel')).toBeNull();
         });
@@ -54,10 +37,8 @@ describe('AdminPanel — gating', () => {
         setSession('random@user.com');
         const { container } = render(<AdminPanel onClose={() => undefined} />);
         await waitFor(() => {
-            // Allow the effect to resolve.
             expect(vi.mocked(supabase.auth.getSession)).toHaveBeenCalled();
         });
-        // Still no panel rendered.
         expect(container.querySelector('.admin-panel')).toBeNull();
         expect(document.querySelector('.admin-panel')).toBeNull();
     });
@@ -66,7 +47,6 @@ describe('AdminPanel — gating', () => {
         setSession(ADMIN_EMAIL);
         render(<AdminPanel onClose={() => undefined} />);
         await waitFor(() => {
-            // Panel is mounted via portal — query via document.
             expect(document.querySelector('.admin-panel')).toBeTruthy();
         });
         expect(screen.getByRole('dialog', { name: 'Panel administratora' })).toBeTruthy();
@@ -91,7 +71,6 @@ describe('AdminPanel — chrome', () => {
         await waitFor(() => {
             expect(document.querySelector('.admin-panel')).toBeTruthy();
         });
-        // Default tab is "char" (Postać).
         expect(screen.getByText(/Punkty statystyk/)).toBeTruthy();
     });
 
@@ -100,10 +79,7 @@ describe('AdminPanel — chrome', () => {
         await waitFor(() => {
             expect(document.querySelector('.admin-panel')).toBeTruthy();
         });
-        // Tab labels render via <EmojiText>; the :backpack: shortcode is now an
-        // inline <svg> icon, so only the trailing plain text " Inv" remains.
         fireEvent.click(screen.getByText(/Inv/));
-        // Inventory tab shows the rarity dropdown row label.
         expect(screen.getByText('Generator przedmiotów')).toBeTruthy();
     });
 
@@ -148,11 +124,6 @@ describe('AdminPanel — tab navigation', () => {
         await waitFor(() => {
             expect(document.querySelector('.admin-panel')).toBeTruthy();
         });
-        // Tab labels render via <EmojiText>; each :shortcode: is now an inline
-        // <svg> icon, so only the trailing plain text remains. Locate the tab
-        // by its trimmed button text among the `.admin-panel__tab` buttons —
-        // body content (e.g. <h3>Skille</h3>, "Reset wszystkiego" buttons)
-        // shares the same words so a bare text match would be ambiguous.
         const clickTab = (label: string) => {
             const btn = Array.from(
                 document.querySelectorAll<HTMLButtonElement>('.admin-panel__tab'),

@@ -1,17 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useChatNotificationsStore } from './chatNotificationsStore';
 
-// -- Reset helper -------------------------------------------------------------
-// The store is character-agnostic and session-only — no persist / no api —
-// so a plain `setState({ unreadCount: 0 })` is enough between tests. The
-// global `afterEach` in `tests/vitest.setup.ts` already clears storage,
-// but we explicitly reset the in-memory counter here for clarity.
 
 beforeEach(() => {
     useChatNotificationsStore.setState({ unreadCount: 0 });
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('chatNotificationsStore — initial state', () => {
     it('starts with zero unread messages', () => {
@@ -25,7 +19,6 @@ describe('chatNotificationsStore — initial state', () => {
     });
 });
 
-// -- incrementUnread ----------------------------------------------------------
 
 describe('incrementUnread', () => {
     it('bumps unreadCount by one', () => {
@@ -46,7 +39,6 @@ describe('incrementUnread', () => {
     });
 });
 
-// -- markAllRead --------------------------------------------------------------
 
 describe('markAllRead', () => {
     it('zeroes the counter when there are unread messages', () => {
@@ -67,7 +59,6 @@ describe('markAllRead', () => {
     });
 });
 
-// -- Interaction: increment then markAllRead ----------------------------------
 
 describe('increment then markAllRead', () => {
     it('after several increments, markAllRead resets to zero', () => {

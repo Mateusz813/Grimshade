@@ -13,22 +13,15 @@ import dailyQuestsRaw from '../data/dailyQuests.json';
 const ALL_DAILY_QUESTS = dailyQuestsRaw as IDailyQuestDef[];
 
 interface IDailyQuestState {
-    /** Date key when quests were last refreshed */
     lastRefreshDate: string | null;
-    /** Today's active daily quests */
     activeQuests: IActiveDailyQuest[];
-    /** Quest definitions for today (cached) */
     todayQuestDefs: IDailyQuestDef[];
 }
 
 interface IDailyQuestStore extends IDailyQuestState {
-    /** Refresh daily quests if it's a new day */
     refreshIfNeeded: (playerLevel: number) => void;
-    /** Increment progress for a specific goal type */
     addProgress: (goalType: DailyQuestGoalType, amount: number) => void;
-    /** Claim rewards for a completed quest */
     claimReward: (questId: string, playerLevel: number) => { gold: number; xp: number; elixir?: string } | null;
-    /** Reset all daily quest data */
     resetDailyQuests: () => void;
 }
 
@@ -91,9 +84,6 @@ export const useDailyQuestStore = create<IDailyQuestStore>()(
                     ),
                 });
 
-                // 2026-05-19 v16 spec ("wykonanymi questami dziennymi"):
-                // bump daily-quest completion counter on the character
-                // row so the leaderboard ranks players by daily haul.
                 void Promise.all([
                     import('./characterStore'),
                     import('../api/v1/characterApi'),
@@ -106,7 +96,7 @@ export const useDailyQuestStore = create<IDailyQuestStore>()(
                         value: 1,
                         mode: 'add',
                     });
-                }).catch(() => { /* offline */ });
+                }).catch(() => { });
 
                 return rewards;
             },

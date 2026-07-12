@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// -- Hoisted mocks ------------------------------------------------------------
-// guildStore makes Supabase realtime + guildApi calls in `hydrateForCharacter`
-// and `setGuild`. Mock both so tests stay deterministic and offline.
 
 const {
     findGuildForCharacterMock,
@@ -18,7 +15,6 @@ const {
 } = vi.hoisted(() => {
     const onFn = vi.fn();
     const subscribeFn = vi.fn();
-    // Each `.on()` returns the channel itself so chaining keeps working.
     onFn.mockImplementation(() => chMock);
     const chMock = { on: onFn, subscribe: subscribeFn };
     return {
@@ -53,7 +49,6 @@ vi.mock('../lib/supabase', () => ({
     },
 }));
 
-// Backend-mode glue — domyślnie OFF (istniejące testy = ścieżka kliencka).
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const showGuildMock = vi.hoisted(() => vi.fn());
 vi.mock('../config/backendMode', () => ({ isBackendMode: () => backendFlag.on }));
@@ -62,7 +57,6 @@ vi.mock('../api/backend/backendApi', () => ({ backendApi: { showGuild: showGuild
 import { useGuildStore, isCurrentCharacterGuildLeader } from './guildStore';
 import type { IGuildRow, IGuildMemberRow, IGuildJoinRequestRow } from '../api/v1/guildApi';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeGuild = (overrides: Partial<IGuildRow> = {}): IGuildRow => ({
     id: 'g1',
@@ -125,7 +119,6 @@ beforeEach(() => {
     backendFlag.on = false;
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('guildStore — initial state', () => {
     it('starts unaffiliated', () => {
@@ -139,7 +132,6 @@ describe('guildStore — initial state', () => {
     });
 });
 
-// -- hydrateForCharacter ------------------------------------------------------
 
 describe('hydrateForCharacter', () => {
     it('is a no-op when characterId is empty', async () => {
@@ -147,8 +139,6 @@ describe('hydrateForCharacter', () => {
         expect(findGuildForCharacterMock).not.toHaveBeenCalled();
     });
 
-    // Regresja: właściciel gildii po F5 widział ekran "dołącz do gildii" zamiast
-    // swojej gildii — tryb backendu nie odkrywał id gildii przy pustym cache.
     it('tryb backendu: odkrywa gildię przez findGuildForCharacter (pusty cache) i hydratuje przez showGuild', async () => {
         backendFlag.on = true;
         const guild = makeGuild({ id: 'g9', leader_id: 'char-1' });
@@ -216,7 +206,6 @@ describe('hydrateForCharacter', () => {
     });
 
     it('tears down a stale channel when re-hydrating into "no guild"', async () => {
-        // First hydrate – opens channel A
         findGuildForCharacterMock.mockResolvedValueOnce({
             guild: makeGuild(),
             membership: makeMember(),
@@ -224,7 +213,6 @@ describe('hydrateForCharacter', () => {
         await useGuildStore.getState().hydrateForCharacter('char-1');
         expect(useGuildStore.getState().channel).not.toBeNull();
 
-        // Second hydrate – player no longer in a guild
         findGuildForCharacterMock.mockResolvedValueOnce(null);
         await useGuildStore.getState().hydrateForCharacter('char-1');
         expect(removeChannelMock).toHaveBeenCalled();
@@ -232,7 +220,6 @@ describe('hydrateForCharacter', () => {
     });
 
     it('sets loading=false even when the API throws', async () => {
-        // Swallow the console.error from the catch arm to keep test output clean.
         const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         findGuildForCharacterMock.mockRejectedValue(new Error('offline'));
         await useGuildStore.getState().hydrateForCharacter('char-1');
@@ -241,7 +228,6 @@ describe('hydrateForCharacter', () => {
     });
 });
 
-// -- refreshMembers -----------------------------------------------------------
 
 describe('refreshMembers', () => {
     it('is a no-op when no guild is active', async () => {
@@ -262,12 +248,10 @@ describe('refreshMembers', () => {
         useGuildStore.setState({ guild: makeGuild(), members: [makeMember()] });
         listMembersMock.mockRejectedValue(new Error('offline'));
         await expect(useGuildStore.getState().refreshMembers()).resolves.toBeUndefined();
-        // Original member list intact.
         expect(useGuildStore.getState().members).toHaveLength(1);
     });
 });
 
-// -- refreshRequests ----------------------------------------------------------
 
 describe('refreshRequests', () => {
     it('is a no-op when no guild is active', async () => {
@@ -292,7 +276,6 @@ describe('refreshRequests', () => {
     });
 });
 
-// -- setGuild -----------------------------------------------------------------
 
 describe('setGuild', () => {
     it('replaces the current guild', () => {
@@ -308,15 +291,12 @@ describe('setGuild', () => {
     });
 
     it('does NOT push a cap update when stored member_cap already matches level', () => {
-        // level=1 -> cap=20 per guildMemberCap; matches the stored cap so
-        // no API call is made.
         const g = makeGuild({ level: 1, member_cap: 20 });
         useGuildStore.getState().setGuild(g);
         expect(updateGuildLevelXpMock).not.toHaveBeenCalled();
     });
 
     it('pushes a cap update when the level implies a different cap than what is stored', () => {
-        // level=5 -> cap=24 (20 + 4) per guildMemberCap. Stored cap is stale (20).
         const g = makeGuild({ level: 5, xp: 999, member_cap: 20 });
         useGuildStore.getState().setGuild(g);
         expect(updateGuildLevelXpMock).toHaveBeenCalledWith(
@@ -330,7 +310,6 @@ describe('setGuild', () => {
     });
 });
 
-// -- clear --------------------------------------------------------------------
 
 describe('clear', () => {
     it('resets guild/members/requests/loading/channel', () => {
@@ -362,7 +341,6 @@ describe('clear', () => {
     });
 });
 
-// -- isCurrentCharacterGuildLeader --------------------------------------------
 
 describe('isCurrentCharacterGuildLeader', () => {
     it('returns true when the character is the guild leader', () => {

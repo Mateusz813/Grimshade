@@ -9,7 +9,6 @@ import {
 import monstersData from '../data/monsters.json';
 import tasksData from '../data/tasks.json';
 
-// -- Fixtures -----------------------------------------------------------------
 const makeMonster = (overrides?: Partial<IMonsterRewardSource>): IMonsterRewardSource => ({
     level: 1,
     xp: 10,
@@ -17,7 +16,6 @@ const makeMonster = (overrides?: Partial<IMonsterRewardSource>): IMonsterRewardS
     ...overrides,
 });
 
-// -- Constants ----------------------------------------------------------------
 
 describe('TASK_XP_CURVE_THRESHOLD', () => {
     it('is 300', () => {
@@ -31,7 +29,6 @@ describe('TASK_XP_GEOMETRIC_RATIO', () => {
     });
 });
 
-// -- getEffectiveTaskXpPerKill ------------------------------------------------
 
 describe('getEffectiveTaskXpPerKill', () => {
     it('returns the monster native xp below the threshold', () => {
@@ -55,39 +52,28 @@ describe('getEffectiveTaskXpPerKill', () => {
     });
 
     it('uses the override map for monsters at the threshold (level 300)', () => {
-        // The first monster at lvl 300 in monsters.json keeps native xp as anchor.
-        // From real data: death_knight lvl 300, xp 1538.
         const monster = makeMonster({ level: 300, xp: 999_999 });
-        // Override must NOT just echo monster.xp — it must read from the map
-        // built off monsters.json. The override floors the anchor.
         const result = getEffectiveTaskXpPerKill(monster);
         expect(result).toBeGreaterThan(0);
-        // The override should NOT match the made-up huge xp we passed.
         expect(result).not.toBe(999_999);
     });
 
     it('scales geometrically by 1.05 across consecutive override-level monsters', () => {
-        // Pull two consecutive monsters >= 300 from real data and verify
-        // override[next] === floor(override[first] * 1.05^(steps)).
         const overrideMonsters = (monstersData as unknown as IMonsterRewardSource[])
             .filter((m) => m.level >= TASK_XP_CURVE_THRESHOLD)
             .sort((a, b) => a.level - b.level);
         if (overrideMonsters.length < 2) {
-            // Defensive — if the data ever drops below 2 monsters in the
-            // override range this test becomes a no-op; we still pass.
             return;
         }
         const a = overrideMonsters[0];
         const b = overrideMonsters[1];
         const xpA = getEffectiveTaskXpPerKill(a);
         const xpB = getEffectiveTaskXpPerKill(b);
-        // Index 1 = anchor * 1.05^1. Allow a 1-unit floor()/Math.pow drift.
         const expected = Math.max(1, Math.floor(xpA * TASK_XP_GEOMETRIC_RATIO));
         expect(xpB).toBe(expected);
     });
 
     it('clamps override result to a minimum of 1', () => {
-        // Find ANY override-range monster and verify > 0.
         const overrideMonsters = (monstersData as unknown as IMonsterRewardSource[])
             .filter((m) => m.level >= TASK_XP_CURVE_THRESHOLD);
         for (const m of overrideMonsters) {
@@ -96,20 +82,17 @@ describe('getEffectiveTaskXpPerKill', () => {
     });
 });
 
-// -- computeTaskRewards -------------------------------------------------------
 
 describe('computeTaskRewards', () => {
     it('computes xp = floor(xp * killCount * 1.5) for a sub-threshold monster', () => {
         const monster = makeMonster({ level: 5, xp: 10, gold: [2, 4] });
         const result = computeTaskRewards(monster, 100);
-        // 10 * 100 * 1.5 = 1500
         expect(result.rewardXp).toBe(1500);
     });
 
     it('computes gold = floor(maxGold * killCount * 3)', () => {
         const monster = makeMonster({ level: 5, xp: 10, gold: [2, 4] });
         const result = computeTaskRewards(monster, 100);
-        // maxGold = 4, 4 * 100 * 3 = 1200
         expect(result.rewardGold).toBe(1200);
     });
 
@@ -128,17 +111,14 @@ describe('computeTaskRewards', () => {
     });
 
     it('returns 0 gold when monster.gold is missing or malformed', () => {
-        // monster.gold has only 1 element -> falls through the length check
         const monster = { level: 5, xp: 10, gold: [5] as unknown as [number, number] };
         const result = computeTaskRewards(monster, 100);
         expect(result.rewardGold).toBe(0);
-        // XP path still applies
         expect(result.rewardXp).toBe(Math.floor(10 * 100 * 1.5));
     });
 
     it('floors fractional xp results', () => {
         const monster = makeMonster({ level: 5, xp: 7, gold: [1, 2] });
-        // 7 * 3 * 1.5 = 31.5 -> floor -> 31
         expect(computeTaskRewards(monster, 3).rewardXp).toBe(31);
     });
 
@@ -149,8 +129,6 @@ describe('computeTaskRewards', () => {
         if (overrideMonsters.length === 0) return;
         const anchor = overrideMonsters[0];
         const overrideXp = getEffectiveTaskXpPerKill(anchor);
-        // Compute rewards using a deliberately inflated `xp` on the same
-        // level – the override map MUST win over the local field.
         const stub: IMonsterRewardSource = { ...anchor, xp: 9_999_999 };
         const result = computeTaskRewards(stub, 1);
         expect(result.rewardXp).toBe(Math.floor(overrideXp * 1.5));
@@ -163,7 +141,6 @@ describe('computeTaskRewards', () => {
         if (overrideMonsters.length === 0) return;
         const anchor = overrideMonsters[0];
         const result = computeTaskRewards(anchor, 10);
-        // Gold = floor(monster.gold[1] * 10 * 3) — unchanged by the curve.
         expect(result.rewardGold).toBe(Math.floor(anchor.gold[1] * 10 * 3));
     });
 
@@ -175,7 +152,6 @@ describe('computeTaskRewards', () => {
     });
 });
 
-// -- 100k-kill task tier (2026-06-24) ----------------------------------------
 describe('100k-kill task tier', () => {
     const tasks = tasksData as Array<{ id: string; monsterId: string; killCount: number }>;
 
@@ -196,8 +172,6 @@ describe('100k-kill task tier', () => {
     });
 
     it('reward is linear: the 100k task pays exactly 10x the 10k task', () => {
-        // The UI + claim both use computeTaskRewards (linear in killCount), so a
-        // 100k task is worth exactly 10x the 10k task for the same monster.
         const monsters = monstersData as unknown as Array<IMonsterRewardSource & { id: string }>;
         const rat = monsters.find((m) => m.id === 'rat')!;
         const r10k = computeTaskRewards(rat, 10000);

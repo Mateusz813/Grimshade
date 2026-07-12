@@ -15,7 +15,6 @@ import { useBuffStore } from '../stores/buffStore';
 import { useCharacterStore } from '../stores/characterStore';
 import type { ICharacter } from '../api/v1/characterApi';
 
-// -- Helpers ------------------------------------------------------------------
 
 const CHAR_ID = 'char-elixir-test';
 
@@ -47,7 +46,6 @@ const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     ...overrides,
 });
 
-/** Push a pausable buff straight onto buffStore for the active character. */
 const seedPausable = (effect: string, remainingMs: number = 60_000): void => {
     useBuffStore.setState((s) => ({
         allBuffs: [
@@ -67,12 +65,10 @@ const seedPausable = (effect: string, remainingMs: number = 60_000): void => {
 };
 
 beforeEach(() => {
-    // Reset stores cleanly so buffs from previous tests don't leak.
     useBuffStore.setState({ allBuffs: [], combatSpeedMult: 1 });
     useCharacterStore.setState({ character: makeChar(), isLoading: false });
 });
 
-// -- getAtkDamageMultiplier ---------------------------------------------------
 
 describe('getAtkDamageMultiplier', () => {
     it('returns 1.0 when no ATK damage buff is active', () => {
@@ -95,7 +91,6 @@ describe('getAtkDamageMultiplier', () => {
     });
 
     it('picks the highest tier when multiple tiers are active', () => {
-        // All three tiers active -> +100% must win per the if-else cascade.
         seedPausable('atk_dmg_25');
         seedPausable('atk_dmg_50');
         seedPausable('atk_dmg_100');
@@ -109,7 +104,6 @@ describe('getAtkDamageMultiplier', () => {
     });
 });
 
-// -- getSpellDamageMultiplier -------------------------------------------------
 
 describe('getSpellDamageMultiplier', () => {
     it('returns 1.0 with no buff', () => {
@@ -139,7 +133,6 @@ describe('getSpellDamageMultiplier', () => {
     });
 });
 
-// -- Flat bonuses -------------------------------------------------------------
 
 describe('getElixirHpBonus', () => {
     it('returns 0 when no hp_boost_500 buff', () => {
@@ -190,7 +183,6 @@ describe('getElixirDefBonus', () => {
     });
 });
 
-// -- Percent multipliers ------------------------------------------------------
 
 describe('getElixirHpPctMultiplier', () => {
     it('returns 1.0 with no buff', () => {
@@ -214,7 +206,6 @@ describe('getElixirMpPctMultiplier', () => {
     });
 });
 
-// -- getElixirAttackSpeedMultiplier -------------------------------------------
 
 describe('getElixirAttackSpeedMultiplier', () => {
     it('returns 1.0 with no buff', () => {
@@ -227,17 +218,14 @@ describe('getElixirAttackSpeedMultiplier', () => {
     });
 });
 
-// -- tickCombatElixirs --------------------------------------------------------
 
 describe('tickCombatElixirs', () => {
     it('does nothing when no elixir buffs are active', () => {
-        // Should be a safe no-op — no buffs in store, no errors thrown.
         expect(() => tickCombatElixirs(1000)).not.toThrow();
         expect(useBuffStore.getState().allBuffs).toHaveLength(0);
     });
 
     it('drains every ALWAYS_DRAIN buff by the given ms', () => {
-        // The full ALWAYS_DRAIN list from the source.
         const always = ['hp_boost_500', 'mp_boost_500', 'atk_boost_50', 'def_boost_50', 'hp_pct_25', 'mp_pct_25', 'attack_speed'];
         for (const e of always) seedPausable(e, 10_000);
 
@@ -253,14 +241,12 @@ describe('tickCombatElixirs', () => {
 
     it('removes an ALWAYS_DRAIN buff once it fully drains', () => {
         seedPausable('hp_boost_500', 500);
-        tickCombatElixirs(1000); // drain more than remaining
+        tickCombatElixirs(1000);
         const buffs = useBuffStore.getState().allBuffs;
         expect(buffs.find((b) => b.effect === 'hp_boost_500')).toBeUndefined();
     });
 
     it('drains ONLY the highest tier from the ATK group', () => {
-        // All 3 tiers active. After tick only +100% should have drained;
-        // the lower tiers preserve their full duration.
         seedPausable('atk_dmg_25', 10_000);
         seedPausable('atk_dmg_50', 10_000);
         seedPausable('atk_dmg_100', 10_000);
@@ -278,7 +264,6 @@ describe('tickCombatElixirs', () => {
     });
 
     it('drains the next tier once +100% expires', () => {
-        // No +100% — top remaining tier is +50%.
         seedPausable('atk_dmg_25', 10_000);
         seedPausable('atk_dmg_50', 10_000);
 
@@ -306,16 +291,10 @@ describe('tickCombatElixirs', () => {
         seedPausable('hp_boost_500', 5000);
         tickCombatElixirs(0);
         const buffs = useBuffStore.getState().allBuffs;
-        // consumePausableTime is called with 0 -> min(0, remainingMs) = 0
-        // so the buff remains at the same remainingMs.
         expect(buffs.find((b) => b.effect === 'hp_boost_500')!.remainingMs).toBe(5000);
     });
 });
 
-// -- Mocked-store fallback paths ----------------------------------------------
-// All getters read `useBuffStore.getState()` directly. We use the real store
-// (not a mock) but call hasBuff against a clean state to verify the default
-// branch returns the documented "no change" value.
 
 describe('default-branch fallbacks', () => {
     it('every getter returns its neutral value when buffStore has no buffs', () => {

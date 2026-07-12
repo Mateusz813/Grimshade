@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
@@ -44,7 +45,6 @@ import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Shop.scss';
 
-// -- Types ---------------------------------------------------------------------
 
 type Tab = 'items' | 'potions' | 'elixirs' | 'arena';
 
@@ -59,8 +59,6 @@ const BUY_MESSAGES: Record<BuyResult, string> = {
 const isPotionElixir = (id: string): boolean =>
   id.startsWith('hp_potion_') || id.startsWith('mp_potion_');
 
-// 2026-05-08: human-readable labels for the bonus stat keys we display
-// on the item card. Keys mirror itemGenerator's bonus map.
 const STAT_LABEL: Record<string, string> = {
   attack: 'ATK',
   defense: 'DEF',
@@ -72,42 +70,17 @@ const STAT_LABEL: Record<string, string> = {
   dmg_min: 'DMG MIN',
   dmg_max: 'DMG MAX',
 };
-// 2026-05-08 v3: per spec ("pokazuj tylko bazowe w sklepie") the card
-// renders ONLY the base stats — no random pool. previewBonuses is
-// already pruned to base stats by buildPreviewBonuses, so the card just
-// iterates STAT_ORDER and renders whatever's there.
 const STAT_ORDER = ['dmg_min', 'dmg_max', 'hp', 'attack', 'defense', 'mp', 'speed', 'critChance', 'critDmg'];
 
-/**
- * Compare a shop item's preview stat to the player's currently-equipped
- * piece in the same slot. Returns the delta (preview − current effective)
- * so the caller can render a green ^ or red v arrow + magnitude.
- *
- * 2026-05-08 v3 — base stats on the equipped item store the RAW bonus
- * value; the displayed/effective number the player sees in the gear
- * modal is `getUpgradedBaseStat(raw, upgradeLevel)`. The shop preview
- * is also raw (always +0 upgrade), but if we compared raw-to-raw an
- * equipped +5 armor would look the same as a fresh +0 of the same
- * tier — exactly the bug the player flagged ("moja zbroja zalozona ma
- * ponad 1700HP, a w sklepie pisze ze bardziej mi sie oplaca kupic
- * gdy to nie prawda"). Lift the equipped side through the upgrade
- * multiplier so the delta reflects the EFFECTIVE numbers in play.
- *
- * Random bonuses (e.g. crit chance on a chest armor) are never scaled
- * by upgrade level, so we only apply the multiplier to keys that the
- * slot's base-stat list says are scaled.
- */
 const compareStat = (
   preview: number,
   equipped: IInventoryItem | null | undefined,
   stat: string,
   slot?: string,
 ): number => {
-  if (!equipped) return preview; // no equipped -> everything is an upgrade
+  if (!equipped) return preview;
   const raw = equipped.bonuses?.[stat] ?? 0;
   const upgradeLevel = equipped.upgradeLevel ?? 0;
-  // Only apply the upgrade multiplier when this stat is the SLOT's
-  // base stat (the same set itemSystem treats as scaled).
   const isBase = slot
     ? getBaseStatKeysForSlot(slot as never).includes(stat)
     : false;
@@ -115,7 +88,6 @@ const compareStat = (
   return preview - cur;
 };
 
-// -- Component -----------------------------------------------------------------
 
 const Shop = () => {
   const [activeTab, setActiveTab] = useState<Tab>('items');
@@ -128,15 +100,8 @@ const Shop = () => {
   const arenaPoints = useInventoryStore((s) => s.arenaPoints);
   const consumables = useInventoryStore((s) => s.consumables);
   const equipment = useInventoryStore((s) => s.equipment);
-  const { buyShopItem } = useShopStore();
+  const { buyShopItem } = useShopStore(useShallow((s) => ({ buyShopItem: s.buyShopItem })));
 
-  // 2026-05-08 v2: gold-loss flash now driven by the actual sticker
-  // price, not a balance-diff watcher. The previous implementation
-  // computed `prev - gold` which under-reported when auto-sell fired
-  // immediately after a buy and reimbursed part of the cost (e.g.
-  // buying a 3,02k common Luk while auto-sell-common is on netted
-  // -2,5k). The flash should reflect the sticker price the player
-  // saw on the card, regardless of any auto-sell aftermath.
   const [goldFlash, setGoldFlash] = useState(0);
   const [goldDelta, setGoldDelta] = useState<number | null>(null);
   const goldDeltaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,9 +127,6 @@ const Shop = () => {
 
   const handleBuyItem = async (item: IShopItem) => {
     if (!character) return;
-    // Tryb backendu (opt-in): zakup itemu z generowanego katalogu idzie
-    // przez autorytatywny endpoint /shop/buy-item. Serwer jest autorytetem
-    // — po sukcesie re-hydratujemy store'y z GET /state.
     if (isBackendMode() && character) {
       try {
         await backendApi.buyShopItem(character.id, item.id);
@@ -195,9 +157,6 @@ const Shop = () => {
   };
 
   const handleBuyPotion = async (elixir: IElixir, qty: number) => {
-    // Tryb backendu (opt-in): HP/MP potiony to pozycje katalogu ELIXIRS,
-    // więc kupujemy je przez autorytatywny endpoint /shop/buy-elixir.
-    // Backend jest autorytetem — po sukcesie re-hydratujemy store'y.
     if (isBackendMode() && character) {
       try {
         await backendApi.buyElixir(character.id, elixir.id, qty);
@@ -212,8 +171,6 @@ const Shop = () => {
       }
     }
     const charLvl = character?.level ?? 1;
-    // Defense-in-depth: never sell a level-locked potion even if the disabled
-    // button is somehow bypassed.
     if (elixir.minLevel && charLvl < elixir.minLevel) {
       showToast(`Wymaga poziomu ${elixir.minLevel}`);
       return;
@@ -232,8 +189,6 @@ const Shop = () => {
   };
 
   const handleBuyElixir = async (elixir: IElixir) => {
-    // Tryb backendu (opt-in): eliksiry użytkowe też idą przez katalog
-    // ELIXIRS -> /shop/buy-elixir (qty=1). Autorytet po stronie serwera.
     if (isBackendMode() && character) {
       try {
         await backendApi.buyElixir(character.id, elixir.id, 1);
@@ -259,9 +214,6 @@ const Shop = () => {
 
   const handleBuyArena = async (item: IArenaShopItem) => {
     if (!character) return;
-    // Tryb backendu (opt-in): zakup za Punkty Areny idzie przez
-    // autorytatywny endpoint /arena/shop/buy. Serwer generuje
-    // class-correct dropa i rozlicza AP — po sukcesie re-hydratujemy store'y.
     if (isBackendMode() && character) {
       try {
         await backendApi.buyArenaItem(character.id, item.id);
@@ -275,8 +227,6 @@ const Shop = () => {
         return;
       }
     }
-    // Pass class so mythic weapon/offhand purchases generate the
-    // class-correct type (sword for Knight, bow for Archer, …).
     const result = buyArenaItem(item, character.level, character.class);
     if (result !== 'ok') {
       showToast(result === 'no_gold' ? 'Za mało Punktów Areny!' : BUY_MESSAGES[result]);
@@ -286,12 +236,6 @@ const Shop = () => {
     flashBuy(item.id);
   };
 
-  // 2026-06-21 Rules-of-Hooks fix: ALL hooks must run before any early return.
-  // The `if (!character) return <Spinner>` guard used to sit ABOVE these
-  // useMemos — so when the character hydrated after mount the re-render ran
-  // MORE hooks than the first ("Rendered more hooks than during the previous
-  // render" crash, same class as the Boss/Transform/Dungeon/Trainer fixes).
-  // useMemos are now null-safe and the guard moved below them.
   const availableItems = useMemo(
     () => (character ? generateShopItems(character.class, character.level) : []),
     [character?.class, character?.level],
@@ -306,34 +250,12 @@ const Shop = () => {
 
   return (
     <div className="shop shop--dark">
-      {/* 2026-05-08: header chrome stripped per spec — no back button or
-          page title. Just the tabs row and a gold/AP chip pinned at the
-          top-right so the player still sees their wallet. */}
-      {/* 2026-05-08: gold chip lives in the global TopHeader; the
-          duplicate next-to-tabs chip was redundant. We KEEP the
-          gold-flash logic so the TopHeader number animation can be
-          wired later — the React state still tracks deltas. The
-          floating "−Nk" delta is rendered as a fixed overlay near
-          the top-right so the player sees their balance drop even
-          though the chip itself isn't here. */}
-      {/* 2026-05-08: tabs are icons-ONLY (no text labels) per spec.
-          Each tab pulls its glyph from the elixir/potion/item registry
-          where possible — Items uses a sword PNG, Potions uses the
-          divine HP potion art, Elixirs uses the universal `eliksiry-1`
-          art, Arena keeps the colosseum emoji until/unless an art file
-          lands. The active state colour is `var(--nav-accent)` so it
-          tracks the player's active transformation tier.            */}
       <header className="shop__header-strip">
         <nav className="shop__tabs page-tabs">
           {(['items', 'potions', 'elixirs', 'arena'] as Tab[]).map((tab) => {
-            // Resolve a per-tab glyph. Falls back to the legacy emoji
-            // when no PNG is registered.
             const glyphImg =
               tab === 'items'   ? getItemImage('sword', 'mainHand', 'sword')
             : tab === 'potions' ? getPotionImage('hp_potion_divine')
-              // 2026-05-08: per spec the Eliksiry tab shows the
-              // stat-reset elixir art (it's the most recognisable
-              // "elixir" silhouette in the new pack).
             : tab === 'elixirs' ? getElixirImage('stat_reset')
             : null;
             const fallbackEmoji =
@@ -364,8 +286,6 @@ const Shop = () => {
           })}
         </nav>
       </header>
-      {/* Gold-loss delta overlay — fixed top-right so it aligns with
-          the global header's gold chip without duplicating the chip. */}
       {goldDelta !== null && (
         <span key={`gold-delta-${goldFlash}`} className="shop__gold-delta-floating">
           −{formatGoldShort(goldDelta)}
@@ -374,7 +294,6 @@ const Shop = () => {
 
       <AnimatePresence mode="wait">
 
-        {/* -- Items tab — backpack-style grid ---------------------------- */}
         {activeTab === 'items' && (
           <motion.div
             key="items"
@@ -391,15 +310,6 @@ const Shop = () => {
               const canBuy = gold >= item.price;
               const pulseKey = buyPulse[item.id] ?? 0;
               const equipped = equipment[item.slot as EquipmentSlot];
-              // Order the bonus rows by STAT_ORDER so they're visually
-              // stable card-to-card. Render every preview stat plus a
-              // ^ / v vs the equipped piece in the same slot.
-              // 2026-05-08 v3: only base stats. previewBonuses is
-              // already pruned by buildPreviewBonuses, so anything in
-              // the map is by definition a base stat for the slot.
-              // Pass `item.slot` to compareStat so the equipped value
-              // is lifted through its upgrade multiplier before the
-              // delta is computed (raw stored vs displayed effective).
               const baseEntries = STAT_ORDER
                 .filter((k) => (item.previewBonuses?.[k] ?? 0) !== 0)
                 .map((k) => ({
@@ -416,9 +326,6 @@ const Shop = () => {
                 >
                   <div
                     className="shop__card-icon"
-                    // 2026-05-08 spec: hard #000 background. Only the
-                    // border keeps the rarity color so the player
-                    // still sees rarity at a glance.
                     style={{ borderColor: color }}
                     aria-label={`${label} ${item.name_pl}`}
                   >
@@ -434,9 +341,6 @@ const Shop = () => {
                     {item.name_pl}
                   </div>
                   <div className="shop__card-meta">{slotLabel}</div>
-                  {/* Base stats only — generator's slot-specific roll
-                      (HP for armor, DMG MIN/MAX for weapons, ATK for
-                      gloves/rings, DEF for necklace/earrings, etc.). */}
                   {baseEntries.length > 0 && (
                     <ul className="shop__card-stats">
                       {baseEntries.map((b) => (
@@ -470,7 +374,6 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* -- Potions tab — backpack-style grid w/ qty input ------------- */}
         {activeTab === 'potions' && (
           <motion.div
             key="potions"
@@ -485,9 +388,6 @@ const Shop = () => {
               const qty = getPotionQty(elixir.id);
               const unitPrice = getElixirPrice(elixir, character?.level ?? 1);
               const totalPrice = unitPrice * qty;
-              // 2026-06-21: HP/MP potions are level-gated (50→lvl1, 150→20,
-              // 400→50, 1000→100, 20%→200, 35%→350, 50%→500, 100%→700). Block
-              // the buy below the unlock level — mirrors the elixirs tab.
               const levelLocked = !!(elixir.minLevel && (character?.level ?? 1) < elixir.minLevel);
               const canBuy = !levelLocked && gold >= totalPrice;
               const pulseKey = buyPulse[elixir.id] ?? 0;
@@ -551,7 +451,6 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* -- Elixirs tab — backpack-style grid, single buy ------------- */}
         {activeTab === 'elixirs' && (
           <motion.div
             key="elixirs"
@@ -572,19 +471,10 @@ const Shop = () => {
               const dailyExhausted = isCapped && dailyRemaining <= 0;
               const canBuy = !levelLocked && !dailyExhausted && gold >= unitPrice;
               const pulseKey = buyPulse[elixir.id] ?? 0;
-              // 2026-05-08: utility elixirs (XP boost, ATK, Utamo
-              // Vita, etc.) live in `assets/images/eliksirs/` — use
-              // the dedicated elixir registry instead of the potion
-              // one which only knows about HP/MP variants.
               const img = getElixirImage(elixir.id);
               return (
                 <div
                   key={elixir.id}
-                  // 2026-05-08 v3 spec ("eliksiry maja taki sam border
-                  // wszedzie") — utility elixirs get the gold->purple
-                  // gradient border via `shop__card--elixir`. Same
-                  // visual treatment as the market sell tile + listing
-                  // row + bag tile so the family reads as one cohort.
                   className={`shop__card shop__card--elixir${levelLocked ? ' shop__card--locked' : ''}${pulseKey ? ' shop__card--bought' : ''}`}
                   data-pulse={pulseKey}
                 >
@@ -620,7 +510,6 @@ const Shop = () => {
           </motion.div>
         )}
 
-        {/* -- Arena tab — backpack-style grid, AP currency -------------- */}
         {activeTab === 'arena' && (
           <motion.div
             key="arena"
@@ -630,11 +519,6 @@ const Shop = () => {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.18 }}
           >
-            {/* 2026-05-08 v2: full-width AP banner above the grid.
-                Replaces the old "Sklep Areny" side-panel chip. The
-                player sees their AP balance at a glance, and the
-                items render in the same backpack-style grid as the
-                other tabs. Currency abbrev. is "AP" (not "PA"). */}
             <div className="shop__arena-banner">
               <span className="shop__arena-banner-label">Punkty Areny</span>
               <span className="shop__arena-banner-value">
@@ -645,26 +529,16 @@ const Shop = () => {
               {(() => {
                 const catalog = getArenaShopCatalog();
                 const lvl = Math.min(1000, Math.max(1, character.level));
-                // 2026-05-08: pick the player's class-correct mythic
-                // weapon + offhand types so the preview art and the
-                // generated drop are aligned. Knight -> sword/shield,
-                // Mage -> staff/spellbook, Archer -> bow/quiver, etc.
                 const classMainType = CLASS_WEAPON_TYPES[character.class]?.[0] ?? 'sword';
                 const classOffType = CLASS_OFFHAND_TYPES[character.class]?.[0] ?? 'shield';
                 return catalog.map((item) => {
                   const price = item.perLevel ? item.apPrice * lvl : item.apPrice;
-                  // 2026-06-21: arena HP/MP potions are level-gated by the real
-                  // potion they pay out (payloadId → getPotionMinLevel).
                   const potionReqLevel = item.kind === 'potion' && item.payloadId
                     ? getPotionMinLevel(item.payloadId)
                     : 0;
                   const levelLocked = potionReqLevel > 0 && character.level < potionReqLevel;
                   const canBuy = !levelLocked && arenaPoints >= price;
                   const pulseKey = buyPulse[item.id] ?? 0;
-                  // Resolve the right PNG per kind. Mythic weapons
-                  // pull the class-specific art, stones show their
-                  // tier art, potions/elixirs use the unified
-                  // consumable resolver.
                   const img =
                     item.kind === 'mythic_weapon'
                       ? getItemImage(classMainType, 'mainHand', classMainType)
@@ -678,9 +552,6 @@ const Shop = () => {
                   return (
                     <div
                       key={item.id}
-                      // Arena elixirs get the gold->purple gradient border
-                      // for consistency with the rest of the app. Stones,
-                      // potions and mythic weapons keep their default chrome.
                       className={`shop__card${item.kind === 'elixir' ? ' shop__card--elixir' : ''}${levelLocked ? ' shop__card--locked' : ''}${pulseKey ? ' shop__card--bought' : ''}`}
                       data-pulse={pulseKey}
                     >

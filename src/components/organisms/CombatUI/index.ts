@@ -1,23 +1,3 @@
-// Barrel exports for the unified combat UI.
-//
-// All combat views (Combat=hunting, Boss, Dungeon, Transform, Raid, Trainer)
-// pull from this entry. Each view supplies its own data — the components
-// own the layout, animations, and polish so the experience is identical
-// across modes (just with more or fewer features visible).
-//
-// Required wiring per view:
-//   1. `<CombatHudHost active={isFighting}>` somewhere near the root —
-//      tells AppShell to swap the global BottomNav for the combat action bar.
-//   2. `<CombatTopControls .../>` under the header (only during fight).
-//   3. `<CombatTaskBadge items={...}/>` top-left (only during fight, hunting/boss/etc.).
-//   4. `<CombatArena enemies={...} allies={...} />` for the 4v4 grid.
-//   5. `<CombatSubControls .../>` for flat potions + XP bar + backpack + logs.
-//   6. (Hunting only) `<HuntedTally />` strip + (only when victory) the
-//       new bottom action footer with "Walcz ponownie" / "Zmień potwora".
-//   7. `<CombatActionBar .../>` fixed at the bottom — replaces nav.
-//   8. (Hunting only) `<HuntExitDialog />` triggered from the action bar.
-//
-// Import its SCSS once (in the view's own SCSS) via `@use` of CombatUI.scss.
 
 export { CombatHudHost } from './CombatHudHost';
 export { default as CombatArena } from './CombatArena';

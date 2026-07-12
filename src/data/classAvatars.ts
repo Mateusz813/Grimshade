@@ -1,8 +1,3 @@
-// Shared class avatar registry.
-// Returns a transform avatar (based on the highest completed transform) when
-// available, otherwise the base class avatar. Used by Combat, Dungeon, Boss,
-// Transform, Inventory and CharacterStats so an active transform's look is
-// reflected everywhere.
 
 import knightImg from '../assets/images/classes/knight.png';
 import mageImg from '../assets/images/classes/mage.png';
@@ -98,7 +93,6 @@ import bard11 from '../assets/images/classes/bard-11.png';
 
 import { getHighestCompletedTransform } from '../systems/transformSystem';
 
-/** Base avatar per class (no transform). */
 export const BASE_CLASS_AVATARS: Record<string, string> = {
     Knight: knightImg,
     Mage: mageImg,
@@ -109,7 +103,6 @@ export const BASE_CLASS_AVATARS: Record<string, string> = {
     Bard: bardImg,
 };
 
-/** Transform avatars per class -> transform id (1..11). */
 export const TRANSFORM_AVATARS: Record<string, Record<number, string>> = {
     Knight: { 1: knight1, 2: knight2, 3: knight3, 4: knight4, 5: knight5, 6: knight6, 7: knight7, 8: knight8, 9: knight9, 10: knight10, 11: knight11 },
     Mage: { 1: mage1, 2: mage2, 3: mage3, 4: mage4, 5: mage5, 6: mage6, 7: mage7, 8: mage8, 9: mage9, 10: mage10, 11: mage11 },
@@ -120,10 +113,6 @@ export const TRANSFORM_AVATARS: Record<string, Record<number, string>> = {
     Bard: { 1: bard1, 2: bard2, 3: bard3, 4: bard4, 5: bard5, 6: bard6, 7: bard7, 8: bard8, 9: bard9, 10: bard10, 11: bard11 },
 };
 
-/**
- * Returns the correct avatar image URL for a character, using the highest
- * completed transform avatar when available, otherwise the base class avatar.
- */
 export const getCharacterAvatar = (
     characterClass: string,
     completedTransformIds: number[] = [],

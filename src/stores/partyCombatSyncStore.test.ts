@@ -2,22 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { usePartyCombatSyncStore } from './partyCombatSyncStore';
 import { supabase } from '../lib/supabase';
 
-/**
- * Combat-sync store wires party realtime broadcasts. Most actions also
- * touch local state (lastSpellByCaster map, lastDamageByAttacker map,
- * etc.) BEFORE sending — that's the contract members rely on for
- * instant UI updates. We test the local-mirror writes here.
- *
- * The global vitest setup (`tests/vitest.setup.ts`) mocks
- * `supabase.channel(...)` but its default stub omits `.send` and
- * `removeChannel`. We override the channel factory below so publishes
- * don't crash on the missing methods, and we add a `removeChannel`
- * spy on the supabase object so `clear()` + party-switch teardown
- * don't blow up either.
- *
- * Where actions short-circuit on `channel == null` (and SKIP the local
- * mirror as a result), the test subscribes first so the channel exists.
- */
 
 const installChannelMock = (): void => {
     vi.mocked(supabase.channel).mockReturnValue({
@@ -26,9 +10,6 @@ const installChannelMock = (): void => {
         unsubscribe: vi.fn(),
         send: vi.fn().mockResolvedValue(undefined),
     } as never);
-    // removeChannel isn't on the global mock either — add it (the source
-    // wraps removeChannel calls in try/catch but happy-dom still surfaces
-    // the "is not a function" before the catch fires in some paths).
     if (typeof (supabase as unknown as { removeChannel?: unknown }).removeChannel !== 'function') {
         (supabase as unknown as { removeChannel: typeof vi.fn }).removeChannel = vi.fn();
     }
@@ -61,21 +42,14 @@ const BASELINE = {
 
 beforeEach(() => {
     installChannelMock();
-    // Use `clear()` so the module-level seq counters (outboundSeq,
-    // killSeqOutbound, bossSeqOutbound, raidSeqOutbound, lastPublishAt,
-    // etc.) reset too. Without that they leak across tests and assertions
-    // about "first seq = 1" become flaky.
     usePartyCombatSyncStore.getState().clear();
-    // Belt-and-braces: setState to a clean baseline (clear should already
-    // do this, but explicit beats implicit when the module retains state).
     usePartyCombatSyncStore.setState({ ...BASELINE });
 });
 
 afterEach(() => {
-    try { usePartyCombatSyncStore.getState().clear(); } catch { /* ignore */ }
+    try { usePartyCombatSyncStore.getState().clear(); } catch { }
 });
 
-// -- subscribe ----------------------------------------------------------------
 
 describe('subscribe', () => {
     it('opens a channel + records the partyId on first call', () => {
@@ -98,7 +72,6 @@ describe('subscribe', () => {
 
     it('resets the local maps when switching parties', () => {
         const unsub1 = usePartyCombatSyncStore.getState().subscribe('party-1');
-        // Seed some stale state for party-1.
         usePartyCombatSyncStore.setState({
             lastSpellByCaster: { 'char-1': { casterId: 'char-1', skillId: 's', sentAt: 1 } as never },
             lastDamageByAttacker: { 'char-1': { attackerId: 'char-1', attackerName: 'x', damage: 1, isCrit: false, targetIdx: 0, sentAt: 1 } as never },
@@ -126,7 +99,6 @@ describe('subscribe', () => {
     });
 });
 
-// -- publishSpellCast --------------------------------------------------------
 
 describe('publishSpellCast', () => {
     it('is a no-op when no channel is open (local mirror not touched)', () => {
@@ -172,7 +144,6 @@ describe('publishSpellCast', () => {
     });
 });
 
-// -- publishDamageEvent ------------------------------------------------------
 
 describe('publishDamageEvent', () => {
     it('is a no-op when no channel is open', () => {
@@ -216,7 +187,6 @@ describe('publishDamageEvent', () => {
     });
 });
 
-// -- publishBossDamage -------------------------------------------------------
 
 describe('publishBossDamage', () => {
     it('is a no-op when no channel is open', () => {
@@ -249,7 +219,6 @@ describe('publishBossDamage', () => {
         pub({ attackerId: 'boss', targetId: 'bot-1', damage: 25 });
         pub({ attackerId: 'boss', targetId: 'bot-2', damage: 28 });
         const map = usePartyCombatSyncStore.getState().lastBossDamageByAttacker;
-        // All three present; nothing got overwritten.
         expect(Object.keys(map).sort()).toEqual(['boss::bot-1', 'boss::bot-2', 'boss::player']);
         expect(map['boss::player'].damage).toBe(30);
         expect(map['boss::bot-1'].damage).toBe(25);
@@ -258,7 +227,6 @@ describe('publishBossDamage', () => {
     });
 });
 
-// -- publishRaidDamage -------------------------------------------------------
 
 describe('publishRaidDamage', () => {
     it('is a no-op when no channel is open', () => {
@@ -292,13 +260,11 @@ describe('publishRaidDamage', () => {
             targetId: 'boss-a',
             damage: 50,
         });
-        // ally-on-boss hit -> no sourceBossId -> key uses an empty trailing segment.
         expect(usePartyCombatSyncStore.getState().lastRaidDamageByAttacker['char-1::boss-a::']).toBeDefined();
         unsub();
     });
 });
 
-// -- publishBossState --------------------------------------------------------
 
 describe('publishBossState', () => {
     it('is a no-op when no channel is open', () => {
@@ -334,11 +300,9 @@ describe('publishBossState', () => {
             bossId: 'b1', bossHp: 200, scaledBossMaxHp: 250, phase: 'fighting',
         });
         const seqAfterFirst = usePartyCombatSyncStore.getState().lastBossState!.seq;
-        // Second call inside the throttle window with the SAME phase -> no-op.
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b1', bossHp: 180, scaledBossMaxHp: 250, phase: 'fighting',
         });
-        // seq + lastBossState should not have changed.
         const snap = usePartyCombatSyncStore.getState().lastBossState!;
         expect(snap.seq).toBe(seqAfterFirst);
         expect(snap.bossHp).toBe(200);
@@ -350,20 +314,17 @@ describe('publishBossState', () => {
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b1', bossHp: 200, scaledBossMaxHp: 250, phase: 'fighting',
         });
-        // Phase change -> not throttled even if MIN_STATE_PUBLISH_MS hasn't elapsed.
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b1', bossHp: 0, scaledBossMaxHp: 250, phase: 'result', won: true,
         });
         const snap = usePartyCombatSyncStore.getState().lastBossState!;
         expect(snap.phase).toBe('result');
         expect(snap.won).toBe(true);
-        // seq advanced past the first call.
         expect(snap.seq).toBe(2);
         unsub();
     });
 });
 
-// -- publishRaidState --------------------------------------------------------
 
 describe('publishRaidState', () => {
     it('is a no-op when no channel is open', () => {
@@ -405,7 +366,6 @@ describe('publishRaidState', () => {
             ],
             members: [],
         });
-        // Same phase, same wave — but b2 just died. Must NOT be throttled.
         usePartyCombatSyncStore.getState().publishRaidState({
             raidId: 'r1',
             phase: 'fighting',
@@ -421,7 +381,6 @@ describe('publishRaidState', () => {
     });
 });
 
-// -- publishBossKilled -------------------------------------------------------
 
 describe('publishBossKilled', () => {
     it('is a no-op when no channel is open', () => {
@@ -454,13 +413,9 @@ describe('publishBossKilled', () => {
     });
 });
 
-// -- publishTrainerState -----------------------------------------------------
 
 describe('publishTrainerState', () => {
     it('mirrors the trainer state locally even when no channel is open', () => {
-        // Special case: the source mirrors local state BEFORE the
-        // `if (!channel) return` early-return, so callers' UI updates
-        // even before subscribe.
         usePartyCombatSyncStore.getState().publishTrainerState({
             speedMult: 2,
             trainerAttacks: true,
@@ -506,14 +461,9 @@ describe('publishTrainerState', () => {
     });
 });
 
-// -- publishTrainerAttack ----------------------------------------------------
 
 describe('publishTrainerAttack', () => {
     it('mirrors the attack locally with a monotonic seq starting at 1 (regardless of channel)', () => {
-        // Same pre-channel mirror pattern as publishTrainerState — caller's
-        // own UI must render their swing instantly. `seq` is omitted from the
-        // Omit<..., 'sentAt' | 'seq'> contract because the publish path stamps
-        // the real monotonic value — exactly like the Trainer.tsx call sites.
         usePartyCombatSyncStore.getState().publishTrainerAttack({
             attackerId: 'char-1',
             attackerClass: 'Knight',
@@ -524,7 +474,6 @@ describe('publishTrainerAttack', () => {
         const map = usePartyCombatSyncStore.getState().lastTrainerAttackByAttacker;
         const keys = Object.keys(map);
         expect(keys.length).toBeGreaterThan(0);
-        // Key is `${attackerId}::${seq}`. First publish ever -> seq=1.
         const first = map[keys[0]];
         expect(first.attackerId).toBe('char-1');
         expect(first.damage).toBe(50);
@@ -532,27 +481,20 @@ describe('publishTrainerAttack', () => {
     });
 
     it('rapid-fire publishes from the SAME attacker each land in a unique slot (no overwrites)', () => {
-        // 2026-05-15 v11 spec: same-ms publishes (DOT ticks, AOE splashes,
-        // multistrike basics) must not collide.
         const pub = usePartyCombatSyncStore.getState().publishTrainerAttack;
         pub({ attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 10, kind: 'basic' });
         pub({ attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 20, kind: 'basic' });
         pub({ attackerId: 'char-1', attackerClass: 'Knight', dummyIdx: 0, damage: 30, kind: 'basic' });
         const map = usePartyCombatSyncStore.getState().lastTrainerAttackByAttacker;
-        // 3 distinct entries — sums to 10+20+30 = 60.
         const total = Object.values(map).reduce((acc, ev) => acc + ev.damage, 0);
         expect(total).toBe(60);
     });
 });
 
-// -- publishMemberSkillRequest + consumeMemberSkillRequest ------------------
 
 describe('publishMemberSkillRequest', () => {
     it('is a no-op when no channel is open', () => {
         usePartyCombatSyncStore.getState().publishMemberSkillRequest('char-1', 'fireball');
-        // Nothing in the pending queue (the publish path goes through the
-        // channel; the leader's consume path is the one that populates it
-        // from inbound broadcasts).
         expect(usePartyCombatSyncStore.getState().pendingMemberSkillRequests).toEqual({});
     });
 });
@@ -568,7 +510,6 @@ describe('consumeMemberSkillRequest', () => {
         });
         const first = usePartyCombatSyncStore.getState().consumeMemberSkillRequest('char-1');
         expect(first).toBe('fireball');
-        // Tail stays.
         expect(usePartyCombatSyncStore.getState().pendingMemberSkillRequests['char-1']).toEqual(['iceshard', 'thunder']);
     });
 
@@ -585,12 +526,10 @@ describe('consumeMemberSkillRequest', () => {
             pendingMemberSkillRequests: { 'char-1': ['fireball'] },
         });
         expect(usePartyCombatSyncStore.getState().consumeMemberSkillRequest('char-other')).toBeNull();
-        // Existing queue untouched.
         expect(usePartyCombatSyncStore.getState().pendingMemberSkillRequests['char-1']).toEqual(['fireball']);
     });
 });
 
-// -- requestMemberBossEntry --------------------------------------------------
 
 describe('requestMemberBossEntry', () => {
     it('writes pendingBossEntryAt (current ms) + pendingBossEntryBossId (no channel needed)', () => {
@@ -607,7 +546,6 @@ describe('requestMemberBossEntry', () => {
     });
 });
 
-// -- requestMemberRaidEntry --------------------------------------------------
 
 describe('requestMemberRaidEntry', () => {
     it('writes pendingRaidEntryAt + pendingRaidEntryRaidId', () => {
@@ -624,11 +562,9 @@ describe('requestMemberRaidEntry', () => {
     });
 });
 
-// -- publishState / publishMemberHit / publishAttackAction / publishMonsterKilled --
 
 describe('publishState', () => {
     it('is a no-op when no channel is open (no module-level seq bump)', () => {
-        // Capture pre-publish state.
         const before = usePartyCombatSyncStore.getState().lastAppliedSeq;
         usePartyCombatSyncStore.getState().publishState({
             senderId: 'char-leader',
@@ -642,8 +578,6 @@ describe('publishState', () => {
             monsterRarity: 'normal',
             partyDamage: {},
         });
-        // lastAppliedSeq is owned by the channel handler — must stay at 0
-        // when nothing inbound has been processed.
         expect(usePartyCombatSyncStore.getState().lastAppliedSeq).toBe(before);
     });
 
@@ -722,9 +656,6 @@ describe('publishAttackAction', () => {
 describe('publishMonsterKilled', () => {
     it('does not throw with channel open + assigns the kill seq monotonically', () => {
         const unsub = usePartyCombatSyncStore.getState().subscribe('party-1');
-        // The store doesn't mirror the kill locally, but it does bump
-        // `killSeqOutbound` module-side. We can verify it indirectly by
-        // observing that two sequential calls don't throw.
         expect(() => {
             usePartyCombatSyncStore.getState().publishMonsterKilled({
                 monsterId: 'rat',
@@ -754,7 +685,6 @@ describe('publishMonsterKilled', () => {
     });
 });
 
-// -- publishCombatSpeed / publishCombatEnd / publishVictory / publishBossEntrySkip --
 
 describe('publishCombatSpeed', () => {
     it('is a no-op when no channel is open', () => {
@@ -814,12 +744,10 @@ describe('publishBossEntrySkip', () => {
     });
 });
 
-// -- clear -------------------------------------------------------------------
 
 describe('clear', () => {
     it('wipes channel + partyId + every transient field', () => {
         const unsub = usePartyCombatSyncStore.getState().subscribe('party-1');
-        // Seed lots of stale state.
         usePartyCombatSyncStore.setState({
             lastSpellByCaster: { 'char-1': { casterId: 'char-1', skillId: 's', sentAt: 1 } as never },
             lastDamageByAttacker: { 'char-1': { attackerId: 'char-1', attackerName: 'x', damage: 1, isCrit: false, targetIdx: 0, sentAt: 1 } as never },
@@ -868,7 +796,6 @@ describe('clear', () => {
         });
         expect(usePartyCombatSyncStore.getState().lastBossState!.seq).toBe(1);
         usePartyCombatSyncStore.getState().clear();
-        // Re-subscribe (clear tears the channel down).
         const unsub2 = usePartyCombatSyncStore.getState().subscribe('party-1');
         usePartyCombatSyncStore.getState().publishBossState({
             bossId: 'b2', bossHp: 200, scaledBossMaxHp: 200, phase: 'fighting',
@@ -879,12 +806,9 @@ describe('clear', () => {
     });
 });
 
-// -- Initial state -----------------------------------------------------------
 
 describe('initial state', () => {
     it('boots with everything null / empty', () => {
-        // After a `clear()` in beforeEach, the store should look exactly
-        // like the freshly-imported defaults.
         const s = usePartyCombatSyncStore.getState();
         expect(s.lastAppliedSeq).toBe(0);
         expect(s.lastSpellByCaster).toEqual({});
@@ -911,21 +835,3 @@ describe('initial state', () => {
     });
 });
 
-// TODO: inbound channel-handler paths (`state`, `spell-cast`, `combat-speed`,
-// `victory`, `combat-end`, `attack-action`, `damage-event`, `member-hit`,
-// `monster-killed`, `boss-state`, `raid-state`, `boss-entry-skip`,
-// `boss-damage`, `raid-damage`, `boss-killed`, `trainer-state`,
-// `trainer-attack`, `member-skill-request`) all feed local state from
-// realtime broadcasts. They're driven by the supabase mock's `channel.on`
-// stub which is a no-op in the global setup — synthesizing inbound events
-// from a unit test requires a per-suite mock that captures the handlers
-// and replays payloads. Covered indirectly by integration tests against
-// real Supabase Realtime.
-//
-// TODO: applyStateLocally() is async and side-effecting (touches
-// useCombatStore + usePartyDamageStore via dynamic imports). Its tests
-// belong with the channel-handler integration set above.
-//
-// TODO: the auto-fireGo subscriber wired at module bottom is no-op'ed
-// in the source (`void s;`) per the v3 spec — defer is owned by the
-// ReadyCheckModal consumer.

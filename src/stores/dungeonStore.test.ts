@@ -13,7 +13,6 @@ beforeEach(() => {
     resetStore();
 });
 
-// -- setDungeonCompleted ------------------------------------------------------
 
 describe('setDungeonCompleted', () => {
     it('records a fresh attempt with `used = 1` + today as date', () => {
@@ -32,7 +31,6 @@ describe('setDungeonCompleted', () => {
         const store = useDungeonStore.getState();
         store.setDungeonCompleted('dungeon_1');
         store.setDungeonCompleted('dungeon_1');
-        // Still a single `true` value, not duplicated / overwritten with garbage.
         expect(useDungeonStore.getState().clearedDungeonIds['dungeon_1']).toBe(true);
     });
 
@@ -62,13 +60,11 @@ describe('setDungeonCompleted', () => {
         const state = useDungeonStore.getState();
         expect(state.dailyAttempts['dungeon_1'].used).toBe(1);
         expect(state.dailyAttempts['dungeon_8'].used).toBe(2);
-        // Both register as cleared regardless of how many runs each got.
         expect(state.clearedDungeonIds['dungeon_1']).toBe(true);
         expect(state.clearedDungeonIds['dungeon_8']).toBe(true);
     });
 });
 
-// -- setLastResult ------------------------------------------------------------
 
 describe('setLastResult', () => {
     it('stores the result reference verbatim', () => {
@@ -84,7 +80,6 @@ describe('setLastResult', () => {
     });
 });
 
-// -- getAttemptsUsed / getAttemptsMax -----------------------------------------
 
 describe('getAttemptsUsed', () => {
     it('returns 0 when no record exists', () => {
@@ -113,7 +108,6 @@ describe('getAttemptsMax', () => {
     });
 });
 
-// -- canEnter -----------------------------------------------------------------
 
 describe('canEnter', () => {
     it('returns true on a fresh dungeon', () => {
@@ -142,7 +136,6 @@ describe('canEnter', () => {
     });
 });
 
-// -- isDungeonCleared ---------------------------------------------------------
 
 describe('isDungeonCleared', () => {
     it('returns false for an untouched dungeon', () => {
@@ -155,13 +148,11 @@ describe('isDungeonCleared', () => {
     });
 
     it('stays true even after daily-attempts rollover', () => {
-        // Seed: cleared once today, but force `dailyAttempts` to a stale date.
         useDungeonStore.setState({
             dailyAttempts: { dungeon_1: { used: 1, date: '1999-12-31' } },
             clearedDungeonIds: { dungeon_1: true },
             lastResult: null,
         });
-        // Daily count resets, but "ever cleared" must NOT.
         expect(useDungeonStore.getState().getAttemptsUsed('dungeon_1')).toBe(0);
         expect(useDungeonStore.getState().isDungeonCleared('dungeon_1')).toBe(true);
     });

@@ -1,22 +1,3 @@
-/**
- * Per-tier loch artwork registry.
- *
- * Two assets per dungeon level:
- *   - `loch{N}.png`   — full-bleed background for the boss-arena view
- *   - `loch-{N}.png`  — boss portrait shown in the centre of the arena
- *
- * Both are imported statically so Vite hashes them at build time and
- * the bundle includes the right asset under `public/`. The map is
- * keyed by tier (1..50) and falls back to tier 1 when the requested
- * tier is out of range — keeps the UI from blowing up if the boss
- * tier ever climbs past the shipped art set.
- *
- * 2026-05-19 v21: tier roster extended 20 -> 50 ("dodalem bossow do
- * poziomu 50 wiec dodaj wszystkie bossy w lochach do poziomu 50 i
- * poziom 50 jest ostatnim po nim boss 50 powtarza sie"). Tier 50 is
- * the terminal art set — once a guild grinds past it the boss tier
- * stays clamped at 50 forever (or until a new pack ships).
- */
 
 import bg1  from '../assets/images/guild/loch/loch1.png';
 import bg2  from '../assets/images/guild/loch/loch2.png';

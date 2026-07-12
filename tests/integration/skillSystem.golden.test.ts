@@ -41,36 +41,7 @@ import {
     rollSkillUpgrade,
 } from '../../src/systems/skillSystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla skillSystem.ts.
-//
-// Żyje w tests/integration/ (używa fs do zapisu fixture — poza src typecheckem).
-//
-// Dwie role:
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/skillSystem.json z realnych funkcji.
-//  2. Normalnie → GUARD: commitowany fixture == aktualny output TS. Zmiana
-//     formuły w TS bez regeneracji → ten test zczerwienieje.
-//
-// Fixture kopiowany do backendu (grimshade-backend/tests/Golden/fixtures/
-// skillSystem.json) → Pest odtwarza w PHP → parytet TS↔PHP.
-//
-// Prawie wszystko tu jest CZYSTE/deterministyczne (formuły XP, koszty, bonusy) →
-// golden bit-exact. Jedyna funkcja RNG to rollSkillUpgrade (1× Math.random) →
-// podmieniamy Math.random na mulberry32(seed) (withSeed) i zapisujemy seed;
-// backend replay z Mulberry32Rng(seed) konsumuje RNG w tej samej kolejności.
-//
-// POMINIĘTE: SKILL_NAMES_PL (etykiety UI do wyświetlania — patrz PHP docblock).
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/skillSystem.golden.test.ts
-//   cp golden/skillSystem.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// UWAGA pow: krzywe używają Math.pow (1.8 / 2.2 / 1.15 / 1.08). Zweryfikowane
-// bajt-w-bajt z PHP `**` na tej maszynie (V8 fdlibm ↔ Apple libm) — te same
-// wektory dają identyczne wyniki, więc bit-parity trzyma.
-// ============================================================================
 
-/** Podmiana Math.random na deterministyczny mulberry32(seed) (wzór z lootSystem). */
 const withSeed = <T>(seed: number, fn: () => T): T => {
     const rng = new Mulberry32(seed);
     const orig = Math.random;
@@ -84,18 +55,15 @@ const withSeed = <T>(seed: number, fn: () => T): T => {
 
 const CLASSES: CharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'];
 
-// -1 trafia gałęzie guardów (skillLevel <= 0); 0/1/100/1000 = brzegi + skala.
 const SKILL_LEVELS = [-1, 0, 1, 2, 3, 5, 10, 25, 50, 99, 100, 101, 150, 500, 1000];
 const MLVL_LEVELS = [-1, 0, 1, 2, 5, 10, 25, 50, 100, 500, 1000];
 
-// (skillLevel, skillId) — pokrywa mapę mnożników + fallback ?? 0.5.
 const OFFLINE_RATE_STAT_CASES: Array<[number, string]> = [
     [0, 'sword_fighting'], [10, 'sword_fighting'], [50, 'magic_level'],
     [5, 'max_hp'], [5, 'defense'], [5, 'hp_regen'], [5, 'crit_chance'],
     [5, 'attack_speed'], [100, 'attack_speed'], [3, 'unknown_stat'], [0, 'unknown_stat'],
 ];
 
-// (elapsedSeconds, skillLevel, skillId?) — legacy (brak id), symulacja, cap 24h, chunk<60.
 const OFFLINE_CASES: Array<[number, number, string | null]> = [
     [0, 0, null], [3600, 0, null], [86400, 0, null],
     [3600, 5, 'sword_fighting'], [86400, 1, 'magic_level'], [90000, 10, 'crit_chance'],
@@ -103,24 +71,20 @@ const OFFLINE_CASES: Array<[number, number, string | null]> = [
     [1000000, 0, 'sword_fighting'], [30, 2, 'defense'],
 ];
 
-// (currentLevel, currentXp, xpGained) — w tym multi-levelup i xpGained=0.
 const PROCESS_CASES: Array<[number, number, number]> = [
     [0, 0, 100], [1, 0, 349], [1, 0, 1000], [1, 50, 300], [5, 0, 100000],
     [10, 0, 6310], [50, 0, 500000], [99, 0, 400000], [100, 0, 1000000],
     [1, 0, 0], [0, 50, 60], [10, 100, 0],
 ];
 
-// (currentXp, skillLevel)
 const DEATH_CASES: Array<[number, number]> = [
     [0, 1], [50, 1], [100, 5], [1000, 10], [500, 50], [0, 100], [10000, 100], [3, 0],
 ];
 
-// (skillLevel, damageBonus) — damageBonus z skills.json (weaponSkills[].damageBonus).
 const DAMAGE_BONUS_CASES: Array<[number, number]> = [
     [0, 0.05], [1, 0.05], [10, 0.06], [25, 0.07], [50, 0.08], [100, 0.04], [1000, 0.05], [-1, 0.05],
 ];
 
-// (currentXp, skillLevel)
 const PROGRESS_CASES: Array<[number, number]> = [
     [0, 1], [50, 1], [100, 1], [200, 2], [1000, 10], [0, 0], [50, 0], [500000, 1000],
 ];
@@ -129,11 +93,9 @@ const UNLOCK_LEVELS = [-1, 0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 100, 150, 300, 
 const UPGRADE_COST_TARGETS = [0, 1, 2, 3, 5, 7, 10, 11, 12, 15, 20, 30, 50];
 const UPGRADE_LEVELS = [-1, 0, 1, 2, 5, 9, 10, 11, 15, 20, 30, 50];
 
-// getSpellChestUpgradeCost: (targetLevel × skillUnlockLevel)
 const CHEST_UPGRADE_TARGETS = [0, 1, 2, 3, 5, 10, 11, 12, 15, 20];
 const CHEST_UNLOCK_LEVELS = [5, 50, 1000];
 
-// getTrainingBonuses: mapa skillLevels + opcjonalna klasa (null = brak → 0.1 regen).
 const TRAINING_CASES: Array<{ levels: Record<string, number>; cls: CharacterClass | 'UnknownClass' | null }> = [
     { levels: {}, cls: null },
     {
@@ -168,7 +130,6 @@ const buildGolden = (): Record<string, unknown> => ({
     system: 'skillSystem',
     note: 'Generowane z src/systems/skillSystem.ts. Funkcja RNG: seed + mulberry32. NIE edytuj ręcznie — regeneruj UPDATE_GOLDEN=1.',
 
-    // Stałe / tabele danych (parytet map i list)
     constants: {
         MLVL_FROM_ATTACKS_CLASSES,
         MAX_OFFLINE_TRAINING_SECONDS,
@@ -181,7 +142,6 @@ const buildGolden = (): Record<string, unknown> => ({
         SPELL_CHEST_LEVELS,
     },
 
-    // Deterministyczne (golden bit-exact)
     skillXpToNextLevel: SKILL_LEVELS.map((level) => ({ level, value: skillXpToNextLevel(level) })),
     skillXpPerHit: SKILL_LEVELS.map((level) => ({ level, value: skillXpPerHit(level) })),
     skillXpPerCast: SKILL_LEVELS.map((level) => ({ level, value: skillXpPerCast(level) })),
@@ -229,7 +189,6 @@ const buildGolden = (): Record<string, unknown> => ({
             targetLevel, unlockLevel, result: getSpellChestUpgradeCost(targetLevel, unlockLevel),
         }))),
 
-    // Losujące (seed → mulberry32): rollSkillUpgrade konsumuje 1× Math.random.
     rollSkillUpgrade: SEEDS.flatMap((seed) =>
         ROLL_TARGETS.map((targetLevel) => ({
             seed, targetLevel, value: withSeed(seed, () => rollSkillUpgrade(targetLevel)),
@@ -248,7 +207,6 @@ describe('skillSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current skillSystem output', () => {
         expect(existsSync(outPath), 'brak golden/skillSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON usuwa -0 (serializuje się i tak jako 0). Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

@@ -2,16 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Transform view — 12 transformation tiers, each a wave of bosses you
- * grind to unlock permanent stat bonuses + a per-tier avatar.
- *
- * 3181 lines. Phases:
- * 'list' | 'entering' | 'fighting' | 'allDefeated' | 'transforming' | 'complete'.
- *
- * Coverage: render contract + null-character path + list-phase chrome
- * (card-per-tier) + class variants (avatar lookup).
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -144,11 +134,6 @@ describe('Transform — smoke', () => {
     });
 
     it('renders the .transform--fighting modifier when phase==="fighting"', () => {
-        // We can't actually start a fight without driving the engine — but
-        // the root className is dictated purely by local `phase` state.
-        // Mount in list phase (initial state) and verify the modifier is
-        // NOT applied. Driving phase to 'fighting' would require a real
-        // monster/queue setup; covered in E2E.
         const { container } = renderTransform();
         const root = container.querySelector('.transform');
         expect(root?.className).not.toContain('transform--fighting');
@@ -164,7 +149,6 @@ describe('Transform — list phase chrome', () => {
     it('renders one card per transform tier (12 tiers total)', () => {
         const { container } = renderTransform();
         const cards = container.querySelectorAll('.transform__card');
-        // 12 transforms in the data file — see transformSystem.ts.
         expect(cards.length).toBeGreaterThanOrEqual(1);
         expect(cards.length).toBeLessThanOrEqual(20);
     });
@@ -228,7 +212,6 @@ describe('Transform — edge cases', () => {
         useCharacterStore.setState({ character: makeChar({ level: 5, max_hp: 100, hp: 100 }) });
         const { container } = renderTransform();
         expect(container.querySelector('.transform__list')).not.toBeNull();
-        // Locked cards should show the lock icon.
         const lockedCards = container.querySelectorAll('.transform__card--locked');
         expect(lockedCards.length).toBeGreaterThan(0);
     });
@@ -244,9 +227,3 @@ describe('Transform — edge cases', () => {
     });
 });
 
-// TODO: phase==='entering' / 'fighting' / 'allDefeated' / 'transforming'
-//       / 'complete' branches require driving the transform fight loop
-//       (per-monster spawn, last-kill auto-flip, claim flow). E2E
-//       happy-path covered by Playwright (tests/e2e/transform/).
-//       Pure transform mechanics (unlock order, reward computation,
-//       quest lifecycle) live in transformSystem unit tests.

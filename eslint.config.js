@@ -5,8 +5,26 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+const localPlugin = {
+  rules: {
+    'no-comments': {
+      meta: { type: 'problem', schema: [] },
+      create(context) {
+        const sc = context.sourceCode ?? context.getSourceCode()
+        return {
+          Program() {
+            for (const c of sc.getAllComments()) {
+              context.report({ loc: c.loc, message: 'Komentarze sa zabronione (zasada projektu).' })
+            }
+          },
+        }
+      },
+    },
+  },
+}
+
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'coverage']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -19,17 +37,36 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    plugins: {
+      local: localPlugin,
+    },
     rules: {
-      // 2026-06-23: eslint-plugin-react-hooks@7's flat.recommended turns on the
-      // React Compiler ruleset. This codebase does NOT use React Compiler, and
-      // those rules flag ~124 long-standing patterns as errors — pure noise that
-      // buries the actionable lint. Disabled so `npm run lint` surfaces only real
-      // problems. Re-enable per-rule if/when React Compiler is actually adopted.
+      '@typescript-eslint/no-explicit-any': 'error',
+      'local/no-comments': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'react-hooks/refs': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/purity': 'off',
       'react-hooks/immutability': 'off',
       'react-hooks/preserve-manual-memoization': 'off',
+    },
+  },
+  {
+    files: ['src/stores/**/*.{ts,tsx}', 'src/systems/**/*.{ts,tsx}'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
+  {
+    files: ['**/*.test.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ])

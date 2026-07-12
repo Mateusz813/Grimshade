@@ -1,13 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * CombatActionBar — bottom action bar with 4 skill slots + 1 exit button.
- * Skills accept null for empty placeholders. Exit can be either 'hunt-popup'
- * (opens dialog) or 'flee' (immediate flee).
- *
- * isImageUrl stubbed so we can predictably exercise the icon-URL branch.
- */
 vi.mock('../../../systems/spriteAssets', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../systems/spriteAssets')>();
     return {
@@ -47,7 +40,6 @@ describe('CombatActionBar — smoke', () => {
         const { container } = render(
             <CombatActionBar skills={[makeSkill()]} exit={{ kind: 'flee', onFlee: vi.fn() }} />,
         );
-        // 1 real skill + 3 empties + 1 exit.
         expect(container.querySelectorAll('.combat-ui__action-btn--empty').length).toBe(3);
         expect(container.querySelectorAll('.combat-ui__action-btn--skill').length).toBe(1);
     });
@@ -75,8 +67,6 @@ describe('CombatActionBar — skill rendering', () => {
                 exit={{ kind: 'flee', onFlee: vi.fn() }}
             />,
         );
-        // Non-URL emoji routes through TinyIcon -> <Emoji>, rendering a Twemoji
-        // <img> (not text) inside the .combat-ui__action-icon span.
         expect(
             container.querySelector('.combat-ui__action-icon svg.game-icon[data-icon="high-voltage"]'),
         ).toBeTruthy();
@@ -123,7 +113,6 @@ describe('CombatActionBar — skill rendering', () => {
         );
         expect(container.querySelector('.combat-ui__action-btn--cooldown')).toBeTruthy();
         expect(container.querySelector('.combat-ui__action-cd')).toBeTruthy();
-        // ≥ 1s rounds up to ceil.
         expect(screen.getByText('3s')).toBeTruthy();
     });
 

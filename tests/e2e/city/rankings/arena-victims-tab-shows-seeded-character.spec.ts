@@ -1,20 +1,3 @@
-/**
- * Atomic E2E — `/leaderboard` "Ofiary" (Arena Victims) tab pokazuje
- * naszą seedowaną postać z high `arena_deaths`.
- *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria". Rozszerzenie pokrycia
- * — Arena Victims tab (`arena_deaths` column ranking).
- *
- * Tab definition (Leaderboard.tsx linia 154):
- *   { key: 'arena_victims', label: 'Ofiary', icon: 'skull',
- *     source: 'characters', characterColumn: 'arena_deaths',
- *     order: 'desc', valueLabel: 'Śmierci' }
- *
- * Display format: fallback formatValue -> `Śmierci 999`. Sync-hook SAFE
- * (same as arena_kills — only arenaStore bumps this column).
- *
- * Cleanup: try/finally + cleanupCharacterById.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';

@@ -26,8 +26,6 @@ describe('CombatTaskBadge — visibility', () => {
 
     it('renders badge + count when items present', () => {
         render(<CombatTaskBadge items={[makeQuest(), makeQuest({ id: 'q-2' })]} />);
-        // Dropdown closed: only the trigger button's :scroll: is rendered, via
-        // <Emoji> as a Twemoji <img> (alt carries the glyph).
         expect(document.querySelector('svg.game-icon[data-icon="scroll"]')).toBeTruthy();
         expect(screen.getByText('2')).toBeTruthy();
     });
@@ -38,7 +36,6 @@ describe('CombatTaskBadge — interactions', () => {
         const { container } = render(
             <CombatTaskBadge items={[makeQuest({ label: 'Kill 5 orcs', progress: 2, goal: 5 })]} />,
         );
-        // Dropdown hidden initially.
         expect(container.querySelector('.combat-ui__task-badge-dropdown')).toBeNull();
         fireEvent.click(container.querySelector('.combat-ui__task-badge-btn')!);
         expect(container.querySelector('.combat-ui__task-badge-dropdown')).toBeTruthy();
@@ -67,9 +64,6 @@ describe('CombatTaskBadge — interactions', () => {
             />,
         );
         fireEvent.click(container.querySelector('.combat-ui__task-badge-btn')!);
-        // :clipboard: task icon, :scroll: quest icon — both rendered via <Emoji> as svg.game-icon
-        // in the rows. The trigger button also shows :scroll: via <Emoji>, so :scroll:
-        // appears twice (trigger + quest row); :clipboard: only in the task row.
         expect(document.querySelectorAll('svg.game-icon[data-icon="scroll"]').length).toBe(2);
         expect(document.querySelector('svg.game-icon[data-icon="clipboard"]')).toBeTruthy();
     });

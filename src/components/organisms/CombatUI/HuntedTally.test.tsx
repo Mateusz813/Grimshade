@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 
-/**
- * HuntedTally — "Upolowano" strip that reads sessionKills off the combat
- * store and shows one cell per rarity tier. Pure display.
- */
 import HuntedTally from './HuntedTally';
 import { useCombatStore } from '../../../stores/combatStore';
 
@@ -23,7 +19,6 @@ describe('HuntedTally — smoke', () => {
         const { container } = render(<HuntedTally />);
         const cells = container.querySelectorAll('.combat-ui__hunted-cell');
         expect(cells.length).toBe(5);
-        // 5 zero counts shown.
         const counts = container.querySelectorAll('.combat-ui__hunted-count');
         counts.forEach((c) => expect(c.textContent).toBe('0'));
     });
@@ -48,7 +43,6 @@ describe('HuntedTally — smoke', () => {
     });
 
     it('shows 0 for missing rarity keys (defensive default)', () => {
-        // Empty record: every tier should fall back to 0.
         useCombatStore.setState({ sessionKills: {} });
         const { container } = render(<HuntedTally />);
         const counts = container.querySelectorAll('.combat-ui__hunted-count');

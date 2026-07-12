@@ -1,46 +1,21 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
-/**
- * Lightweight cache: characterId -> "[XXX]" guild tag, used to render
- * the guild prefix in front of player names in chat / rankings / deaths
- * / town widgets without forcing every view to query `guild_members`
- * on its own.
- *
- * Lookups are batched + cached for 5 minutes; "no guild" results are
- * cached as an empty string so the negative case doesn't keep
- * re-fetching. The local player's tag still comes straight from
- * `useGuildStore` — this cache is for OTHER characters.
- *
- * The cache invalidates on every guild join/leave broadcast (via the
- * realtime channel subscribed in AppShell) — see `useGuildTagInvalidator`.
- */
 
 const TAG_TTL_MS = 5 * 60 * 1000;
 
 interface ITagEntry {
-    /** "[XXX]" prefix or empty string when the character isn't in any guild. */
     tag: string;
     fetchedAt: number;
 }
 
 interface IGuildTagsStore {
     tags: Record<string, ITagEntry>;
-    /** Parallel cache keyed by character NAME (chat / deaths /
-     *  leaderboard don't ship character ids). */
     tagsByName: Record<string, ITagEntry>;
-    /** Batched fetch — returns the tag map for every id requested. Hits
-     *  the local cache first, then queries Supabase for misses. */
     resolveTags: (characterIds: string[]) => Promise<Record<string, string>>;
-    /** Same as `resolveTags` but keys by character display name. */
     resolveTagsByName: (names: string[]) => Promise<Record<string, string>>;
-    /** Local tag for a single character (no fetch). */
     getTagSync: (characterId: string) => string;
-    /** Local tag by name (no fetch). */
     getTagByNameSync: (name: string) => string;
-    /** Force a refresh on the next read for the given ids (used after
-     *  the player's own guild membership changes — every other tag
-     *  could also have shifted). */
     invalidate: (characterIds?: string[]) => void;
 }
 
@@ -110,8 +85,6 @@ export const useGuildTagsStore = create<IGuildTagsStore>()((set, get) => ({
         }
         if (stale.length === 0) return fresh;
         try {
-            // Pull every membership for the stale ids; join with the
-            // guild's tag via a nested select.
             const { data, error } = await supabase
                 .from('guild_members')
                 .select('character_id, guilds:guild_id(tag)')
@@ -119,8 +92,6 @@ export const useGuildTagsStore = create<IGuildTagsStore>()((set, get) => ({
             if (error) throw error;
             const next: Record<string, ITagEntry> = { ...cache };
             const fetched: Record<string, string> = {};
-            // Seed every stale id with empty (no guild) — overwrite
-            // below if a membership row came back.
             for (const id of stale) {
                 next[id] = { tag: '', fetchedAt: now };
                 fetched[id] = '';
@@ -133,8 +104,6 @@ export const useGuildTagsStore = create<IGuildTagsStore>()((set, get) => ({
             set({ tags: next });
             return { ...fresh, ...fetched };
         } catch {
-            // Offline / table missing — return fresh subset only so the
-            // caller can fall back to bare names without exploding.
             return fresh;
         }
     },
@@ -157,7 +126,6 @@ export const useGuildTagsStore = create<IGuildTagsStore>()((set, get) => ({
     },
 }));
 
-/** Format a name with the cached tag (sync helper, no fetch). */
 export const formatNameWithTag = (name: string, characterId?: string | null): string => {
     if (!characterId) return name;
     const tag = useGuildTagsStore.getState().getTagSync(characterId);

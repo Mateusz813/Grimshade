@@ -28,22 +28,22 @@ describe('needsSync', () => {
   });
 
   it('returns true when interval has elapsed', () => {
-    const lastSynced = new Date('2025-01-01T11:50:00Z').toISOString(); // 10 min ago
+    const lastSynced = new Date('2025-01-01T11:50:00Z').toISOString();
     expect(needsSync(lastSynced, 5 * 60 * 1000)).toBe(true);
   });
 
   it('returns false when synced recently', () => {
-    const lastSynced = new Date('2025-01-01T11:58:00Z').toISOString(); // 2 min ago
+    const lastSynced = new Date('2025-01-01T11:58:00Z').toISOString();
     expect(needsSync(lastSynced, 5 * 60 * 1000)).toBe(false);
   });
 
   it('returns true exactly at the interval boundary', () => {
-    const lastSynced = new Date('2025-01-01T11:55:00Z').toISOString(); // exactly 5 min ago
+    const lastSynced = new Date('2025-01-01T11:55:00Z').toISOString();
     expect(needsSync(lastSynced, 5 * 60 * 1000)).toBe(true);
   });
 
   it('respects custom interval', () => {
-    const lastSynced = new Date('2025-01-01T11:59:30Z').toISOString(); // 30s ago
+    const lastSynced = new Date('2025-01-01T11:59:30Z').toISOString();
     expect(needsSync(lastSynced, 60_000)).toBe(false);
     expect(needsSync(lastSynced, 20_000)).toBe(true);
   });
@@ -69,9 +69,9 @@ describe('getNextSyncMs', () => {
   });
 
   it('returns remaining ms when sync is not yet due', () => {
-    const lastSynced = new Date('2025-01-01T11:57:00Z').toISOString(); // 3 min ago
+    const lastSynced = new Date('2025-01-01T11:57:00Z').toISOString();
     const remaining = getNextSyncMs(lastSynced);
-    expect(remaining).toBeCloseTo(2 * 60 * 1000, -100); // ~2 minutes left
+    expect(remaining).toBeCloseTo(2 * 60 * 1000, -100);
     expect(remaining).toBeGreaterThan(0);
   });
 });
@@ -91,22 +91,22 @@ describe('formatLastSynced', () => {
   });
 
   it('returns "przed chwilą" for very recent syncs', () => {
-    const ts = new Date('2025-01-01T11:59:58Z').toISOString(); // 2s ago
+    const ts = new Date('2025-01-01T11:59:58Z').toISOString();
     expect(formatLastSynced(ts)).toBe('przed chwilą');
   });
 
   it('returns seconds ago for recent syncs', () => {
-    const ts = new Date('2025-01-01T11:59:30Z').toISOString(); // 30s ago
+    const ts = new Date('2025-01-01T11:59:30Z').toISOString();
     expect(formatLastSynced(ts)).toContain('s temu');
   });
 
   it('returns minutes ago for older syncs', () => {
-    const ts = new Date('2025-01-01T11:57:00Z').toISOString(); // 3 min ago
+    const ts = new Date('2025-01-01T11:57:00Z').toISOString();
     expect(formatLastSynced(ts)).toContain('min temu');
   });
 
   it('returns hours ago for very old syncs', () => {
-    const ts = new Date('2025-01-01T10:00:00Z').toISOString(); // 2h ago
+    const ts = new Date('2025-01-01T10:00:00Z').toISOString();
     expect(formatLastSynced(ts)).toContain('godz. temu');
   });
 });
@@ -126,12 +126,12 @@ describe('shouldSyncOnReconnect', () => {
   });
 
   it('returns true when gap has elapsed', () => {
-    const ts = new Date('2025-01-01T11:59:00Z').toISOString(); // 60s ago
+    const ts = new Date('2025-01-01T11:59:00Z').toISOString();
     expect(shouldSyncOnReconnect(ts, 30_000)).toBe(true);
   });
 
   it('returns false when synced too recently', () => {
-    const ts = new Date('2025-01-01T11:59:50Z').toISOString(); // 10s ago
+    const ts = new Date('2025-01-01T11:59:50Z').toISOString();
     expect(shouldSyncOnReconnect(ts, 30_000)).toBe(false);
   });
 });

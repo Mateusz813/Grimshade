@@ -1,10 +1,3 @@
-/**
- * Arena season + ranking utilities.
- *
- * Pure functions only — no React, no Zustand, no DOM. Everything operates
- * on the data shapes from `types/arena.ts` so the store + view + bot
- * generator can share the rules without duplicating constants.
- */
 
 import {
     ARENA_LEAGUES,
@@ -15,106 +8,76 @@ import {
 import type { TCharacterClass } from '../types/character';
 import skillsData from '../data/skills.json';
 
-// -- League promotion / relegation thresholds --------------------------------
-//
-// `[promotedTop, relegatedBottom]` — both 1-based, inclusive, both clamped
-// to the 100-player arena. Bronze has no relegation (already lowest), Legend
-// has no promotion (already highest).
 
 interface ILeagueBoundary {
-    promotedTop: number | null;     // top N positions promote — null for Legend
-    relegatedBottom: number | null; // bottom N positions relegate — null for Bronze
+    promotedTop: number | null;
+    relegatedBottom: number | null;
 }
 
 export const LEAGUE_BOUNDARIES: Record<ArenaLeague, ILeagueBoundary> = {
     bronze:       { promotedTop: 40, relegatedBottom: null },
-    silver:       { promotedTop: 35, relegatedBottom: 20 },  // 81-100 (bottom 20)
-    gold:         { promotedTop: 33, relegatedBottom: 30 },  // 71-100 (bottom 30)
-    platinum:     { promotedTop: 20, relegatedBottom: 40 },  // 61-100 (bottom 40)
-    emerald:      { promotedTop: 17, relegatedBottom: 45 },  // interpolated — between platinum and diamond
-    diamond:      { promotedTop: 15, relegatedBottom: 50 },  // 51-100 (bottom 50)
-    master:       { promotedTop: 10, relegatedBottom: 60 },  // 41-100 (bottom 60)
-    grand_master: { promotedTop: 5,  relegatedBottom: 70 },  // 31-100 (bottom 70)
-    legend:       { promotedTop: null, relegatedBottom: null }, // top league — no promo, no relegation
+    silver:       { promotedTop: 35, relegatedBottom: 20 },
+    gold:         { promotedTop: 33, relegatedBottom: 30 },
+    platinum:     { promotedTop: 20, relegatedBottom: 40 },
+    emerald:      { promotedTop: 17, relegatedBottom: 45 },
+    diamond:      { promotedTop: 15, relegatedBottom: 50 },
+    master:       { promotedTop: 10, relegatedBottom: 60 },
+    grand_master: { promotedTop: 5,  relegatedBottom: 70 },
+    legend:       { promotedTop: null, relegatedBottom: null },
 };
 
-/** Reward multiplier = league index + 1 (bronze=1, ..., legend=9). */
 export const getLeagueMultiplier = (league: ArenaLeague): number =>
     ARENA_LEAGUES.indexOf(league) + 1;
 
-/** Next league up (or same when at top). */
 export const getNextLeague = (league: ArenaLeague): ArenaLeague => {
     const idx = ARENA_LEAGUES.indexOf(league);
     if (idx < 0) return league;
     return ARENA_LEAGUES[Math.min(ARENA_LEAGUES.length - 1, idx + 1)];
 };
 
-/** Previous league down (or same when at bottom). */
 export const getPreviousLeague = (league: ArenaLeague): ArenaLeague => {
     const idx = ARENA_LEAGUES.indexOf(league);
     if (idx < 0) return league;
     return ARENA_LEAGUES[Math.max(0, idx - 1)];
 };
 
-// -- Match reward math ------------------------------------------------------
 
 export interface IArenaMatchReward {
     arenaPoints: number;
     leaguePoints: number;
 }
 
-/**
- * Compute arena + league points awarded after a match. Loser of an attack
- * never loses points (per spec), so the negative side is always 0/0 — the
- * winner gets the full payout.
- *
- * @param won            true if `attacker` won
- * @param attackerHigher true if attacker's rank is BELOW (i.e. weaker rank
- *                       number) than defender's, meaning attacker is
- *                       reaching UP the table. Higher rank attacks UP.
- */
 export const getMatchReward = (won: boolean, attackerIsHigher: boolean): {
     attacker: IArenaMatchReward;
     defender: IArenaMatchReward;
 } => {
     if (won) {
         if (attackerIsHigher) {
-            // Attacking up + winning the match: classic upset — biggest payout.
             return {
                 attacker: { arenaPoints: 200, leaguePoints: 2 },
                 defender: { arenaPoints: 0,   leaguePoints: 0 },
             };
         }
-        // Attacking down + winning: smaller payout (favoured matchup).
         return {
             attacker: { arenaPoints: 100, leaguePoints: 1 },
             defender: { arenaPoints: 0,   leaguePoints: 0 },
         };
     }
-    // Lost match — defender pays out, attacker gets nothing.
     if (attackerIsHigher) {
-        // Defender held off an attack from below them: smaller bonus.
         return {
             attacker: { arenaPoints: 0,   leaguePoints: 0 },
             defender: { arenaPoints: 250, leaguePoints: 1 },
         };
     }
-    // Defender held off an attack from above them: bigger upset bonus.
     return {
         attacker: { arenaPoints: 0,   leaguePoints: 0 },
         defender: { arenaPoints: 250, leaguePoints: 2 },
     };
 };
 
-// -- Damage scaling ----------------------------------------------------------
 
-/** Arena attacks deal 80% LESS damage than the regular world combat
- *  formulas would produce. The earlier 0.4 (= -60%) still let crit-heavy
- *  duels finish in 2-3 swings; 0.2 stretches even the fastest match into
- *  ~10+ exchanges so the player gets to see the per-round visuals. */
 export const ARENA_DAMAGE_MULTIPLIER = 0.2;
 
-// -- Castable skills (equipped loadout only) --------------------------------
 
 export interface IArenaSkill {
     id: string;
@@ -125,19 +88,6 @@ export interface IArenaSkill {
     effect?: string;
 }
 
-/**
- * The active skills a combatant may cast in an arena match.
- *
- * 2026-06-21 bug fix: a combatant casts ONLY the skills currently EQUIPPED in
- * their skill slots — NOT every class skill they happen to be high enough level
- * to use. A brand-new character with empty slots has nothing to cast, so they
- * fall back to basic attacks (player report: "atakując kogoś uderzam go
- * skillami których nawet nie mam odblokowanych").
- *
- * Filters: equipped (id ∈ skillSlots) ∩ class-active catalog ∩ level-unlocked ∩
- * actually does something (damage or effect). MP / cooldown gating is applied
- * later per-tick by the caller.
- */
 export const getArenaCastableSkills = (
     characterClass: string,
     skillSlots: ReadonlyArray<string | null>,
@@ -152,14 +102,6 @@ export const getArenaCastableSkills = (
     );
 };
 
-/**
- * A sensible default equipped loadout for a generated arena BOT: up to 4 of its
- * class's active skills that are unlocked at the bot's level (strongest/highest-
- * tier first), padded to 4 slots. Because the arena now only casts EQUIPPED
- * skills (getArenaCastableSkills), bots need an actual loadout or they'd throw
- * nothing but basic attacks. A level-1 bot has no unlocked skills → empty slots
- * → basics only, exactly like a fresh human at that level.
- */
 export const getDefaultBotSkillSlots = (
     characterClass: string,
     level: number,
@@ -176,26 +118,13 @@ export const getDefaultBotSkillSlots = (
     return slots;
 };
 
-// -- Position computation ---------------------------------------------------
 
-/**
- * Strict total ordering — every competitor gets a UNIQUE 1-based rank.
- * Ties are impossible because the comparator chains three keys:
- *   1. League points (desc) — primary score
- *   2. Level (desc)         — higher-level character wins identical LP
- *   3. `leaguePointsAchievedAt` (asc) — whoever reached the LP total
- *      first ranks higher (rewards the early climber).
- * Dense / Olympic ranking is gone per the 2026-05 spec update: the
- * leaderboard is meant to feel like a competitive ladder, not a
- * tournament bracket.
- */
 export const rankCompetitors = (
     competitors: IArenaCompetitor[],
 ): Array<{ competitor: IArenaCompetitor; rank: number }> => {
     const sorted = [...competitors].sort((a, b) => {
         if (b.leaguePoints !== a.leaguePoints) return b.leaguePoints - a.leaguePoints;
         if (b.level !== a.level) return b.level - a.level;
-        // Earlier ISO timestamp ranks higher (whoever climbed first wins).
         const ta = Date.parse(a.leaguePointsAchievedAt) || 0;
         const tb = Date.parse(b.leaguePointsAchievedAt) || 0;
         return ta - tb;
@@ -203,11 +132,6 @@ export const rankCompetitors = (
     return sorted.map((c, idx) => ({ competitor: c, rank: idx + 1 }));
 };
 
-/**
- * Returns the indices that the player can attack (±2 ranks), filtering
- * out the player themselves. Uses the dense rank ordering so two-way ties
- * still let the player attack across them.
- */
 export const getAttackableIndices = (
     competitors: IArenaCompetitor[],
     myCompetitorId: string,
@@ -218,7 +142,6 @@ export const getAttackableIndices = (
     const out: number[] = [];
     for (let i = Math.max(0, meIdx - 2); i <= Math.min(ranked.length - 1, meIdx + 2); i++) {
         if (i === meIdx) continue;
-        // Map back to the original `competitors` array index.
         const c = ranked[i].competitor;
         const origIdx = competitors.findIndex((x) => x.id === c.id);
         if (origIdx >= 0) out.push(origIdx);
@@ -226,18 +149,12 @@ export const getAttackableIndices = (
     return out;
 };
 
-// -- Promotion / relegation --------------------------------------------------
 
 export type ArenaSeasonOutcome =
     | { type: 'promote'; toLeague: ArenaLeague }
     | { type: 'stay' }
     | { type: 'relegate'; toLeague: ArenaLeague };
 
-/**
- * Resolve a single competitor's end-of-season outcome based on their
- * final rank in the arena. Tied competitors at the boundary all receive
- * the same outcome (per-spec: "może awansować więcej osób niż przewidziane").
- */
 export const getSeasonOutcome = (
     league: ArenaLeague,
     finalRank: number,
@@ -247,7 +164,7 @@ export const getSeasonOutcome = (
         return { type: 'promote', toLeague: getNextLeague(league) };
     }
     if (b.relegatedBottom !== null) {
-        const lo = 100 - b.relegatedBottom + 1; // first relegated rank
+        const lo = 100 - b.relegatedBottom + 1;
         if (finalRank >= lo) {
             return { type: 'relegate', toLeague: getPreviousLeague(league) };
         }
@@ -255,7 +172,6 @@ export const getSeasonOutcome = (
     return { type: 'stay' };
 };
 
-// -- Reward table -----------------------------------------------------------
 
 const REWARD_BUCKETS: IArenaRewardBucket[] = [
     {
@@ -311,12 +227,10 @@ const REWARD_BUCKETS: IArenaRewardBucket[] = [
 
 export const getRewardBuckets = (): IArenaRewardBucket[] => [...REWARD_BUCKETS];
 
-/** Find the bucket that covers `rank` (1-based). null when out-of-range. */
 export const findRewardBucket = (rank: number): IArenaRewardBucket | null => {
     return REWARD_BUCKETS.find((b) => rank >= b.range[0] && rank <= b.range[1]) ?? null;
 };
 
-/** Apply the league multiplier to a bucket. All counts scale linearly. */
 export const applyLeagueMultiplier = (
     bucket: IArenaRewardBucket,
     league: ArenaLeague,
@@ -331,12 +245,11 @@ export const applyLeagueMultiplier = (
         epicStones:      bucket.epicStones      * m,
         rareStones:      bucket.rareStones      * m,
         commonStones:    bucket.commonStones    * m,
-        pctHpPotion:     bucket.pctHpPotion     * m, // count grant — see spec wording: "100% HP POTION × liga"
+        pctHpPotion:     bucket.pctHpPotion     * m,
         pctMpPotion:     bucket.pctMpPotion     * m,
     };
 };
 
-// -- Bot generation ---------------------------------------------------------
 
 const BOT_NAMES: string[] = [
     'Krwawy Cień', 'Ostry Pazur', 'Mroźna Strzała', 'Pieklny Kowal', 'Stalowy Łowca',
@@ -345,11 +258,9 @@ const BOT_NAMES: string[] = [
     'Rubin', 'Szafir', 'Diament', 'Perła', 'Kwarc',
 ];
 
-/** Pseudo-random (deterministic per seed) integer in [min, max]. */
 const randInRange = (rng: () => number, min: number, max: number): number =>
     Math.floor(min + rng() * (max - min + 1));
 
-/** Tiny seedable RNG (mulberry32) — one instance per arena gen. */
 const seededRng = (seed: number): (() => number) => {
     let a = seed >>> 0;
     return () => {
@@ -361,22 +272,10 @@ const seededRng = (seed: number): (() => number) => {
     };
 };
 
-/**
- * Build a roster of bots to fill an arena up to 100 slots. Stat scaling
- * roughly matches the league tier so bronze bots are easy and legend
- * bots are no-jokes. League points within the arena are spread between
- * 0 and `100 + leagueIdx * 25` so the leaderboard isn't a flat zero
- * band on day one.
- */
 export const generateBotsForArena = (
     league: ArenaLeague,
     count: number,
-    /** Seed for deterministic generation per arena id (so reloading
-     *  doesn't reroll the bot roster). */
     seed: number,
-    /** Player level reference (bots scale around the league + player tier
-     *  so low-level players in high leagues — rare but possible — still
-     *  see fightable opponents). */
     playerLevel: number,
 ): IArenaCompetitor[] => {
     const rng = seededRng(seed);
@@ -388,11 +287,6 @@ export const generateBotsForArena = (
     const baseLevel = Math.max(1, Math.floor(playerLevel + (leagueIdx - 4) * 8));
     const topLp = 100 + leagueIdx * 25;
 
-    // Bots get a synthetic "earlier-the-higher-LP" climb timestamp so
-    // that on identical-LP+level matchups they fall naturally beneath
-    // any human climber who hits the same score later. Spread between
-    // an hour ago and a week ago, biased so high-LP bots tend to have
-    // earlier timestamps (rewards the established veterans).
     const now = Date.now();
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     for (let i = 0; i < count; i++) {
@@ -404,7 +298,6 @@ export const generateBotsForArena = (
         const mp = 80 + lvl * 12 + leagueIdx * 10;
         const atk = 8 + lvl * 2 + leagueIdx * 3;
         const def = 4 + lvl * 1 + leagueIdx * 2;
-        // Higher LP -> older achievement timestamp.
         const lpFraction = topLp > 0 ? lp / topLp : 0;
         const ageMs = Math.floor(SEVEN_DAYS_MS * lpFraction * (0.6 + rng() * 0.8));
         const achievedAt = new Date(now - ageMs).toISOString();
@@ -423,10 +316,6 @@ export const generateBotsForArena = (
                 maxMp: mp,
                 attack: atk,
                 defense: def,
-                // 2026-06-21: give bots a real equipped loadout (their class's
-                // unlocked skills for their level) — the arena only casts
-                // EQUIPPED skills now, so empty slots would make bots throw only
-                // basic attacks.
                 skillSlots: getDefaultBotSkillSlots(cls, lvl),
                 snapshotAt: new Date().toISOString(),
             },
@@ -435,21 +324,15 @@ export const generateBotsForArena = (
     return out;
 };
 
-// -- Season clock -----------------------------------------------------------
 
-/**
- * Computes the start-of-week (Monday 00:00 UTC) for the week that
- * contains `now`. Seasons run Mon -> Sun; rewards are claimable Monday.
- */
 export const getSeasonStart = (now: Date = new Date()): Date => {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const dow = d.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-    const offsetToMonday = (dow + 6) % 7; // 0 = Mon, 6 = Sun
+    const dow = d.getUTCDay();
+    const offsetToMonday = (dow + 6) % 7;
     d.setUTCDate(d.getUTCDate() - offsetToMonday);
     return d;
 };
 
-/** End of current season (next Monday 00:00 UTC). */
 export const getSeasonEnd = (now: Date = new Date()): Date => {
     const start = getSeasonStart(now);
     const end = new Date(start);
@@ -457,11 +340,9 @@ export const getSeasonEnd = (now: Date = new Date()): Date => {
     return end;
 };
 
-/** ms remaining in the current season. */
 export const getSeasonMsRemaining = (now: Date = new Date()): number =>
     Math.max(0, getSeasonEnd(now).getTime() - now.getTime());
 
-/** Format ms as "Xd Yh" / "Yh Zm" — used for the countdown above the leaderboard. */
 export const formatSeasonRemaining = (ms: number): string => {
     if (ms <= 0) return 'Sezon zakończony';
     const totalMin = Math.floor(ms / 60_000);

@@ -1,13 +1,3 @@
-/**
- * Tests for authApi — thin wrapper over `supabase.auth.*`.
- *
- * Every method calls a supabase helper that the global setup
- * (`tests/vitest.setup.ts`) has already replaced with a vi.fn() returning
- * `{ data: null, error: null }`. We override per-test as needed.
- *
- * Coverage: login / register / logout / resetPassword / getSession /
- * onAuthStateChange — both success + error paths.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { supabase } from '../../lib/supabase';
@@ -20,7 +10,6 @@ beforeEach(() => {
 describe('authApi.login', () => {
     it('calls supabase.auth.signInWithPassword with the email + password', async () => {
         vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { user: { id: 'u1' }, session: { access_token: 't' } } as any,
             error: null,
         });
@@ -35,9 +24,7 @@ describe('authApi.login', () => {
     it('throws when supabase returns an error', async () => {
         const err = new Error('Invalid credentials');
         vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { user: null, session: null } as any,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             error: err as any,
         });
         await expect(
@@ -48,8 +35,6 @@ describe('authApi.login', () => {
 
 describe('authApi.register', () => {
     it('calls supabase.auth.signUp with the payload', async () => {
-        // The setup file doesn't pre-mock signUp; install it lazily.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.auth as any).signUp = vi.fn().mockResolvedValueOnce({
             data: { user: { id: 'u2' } },
             error: null,
@@ -64,7 +49,6 @@ describe('authApi.register', () => {
 
     it('throws when supabase signUp returns an error', async () => {
         const err = new Error('Email taken');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.auth as any).signUp = vi.fn().mockResolvedValueOnce({ data: null, error: err });
         await expect(authApi.register({ email: 'a@b.com', password: 'pw' })).rejects.toBe(err);
     });
@@ -79,7 +63,6 @@ describe('authApi.logout', () => {
 
     it('throws when signOut returns an error', async () => {
         const err = new Error('Network down');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         vi.mocked(supabase.auth.signOut).mockResolvedValueOnce({ error: err as any });
         await expect(authApi.logout()).rejects.toBe(err);
     });
@@ -87,7 +70,6 @@ describe('authApi.logout', () => {
 
 describe('authApi.resetPassword', () => {
     beforeEach(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.auth as any).resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
     });
 
@@ -98,7 +80,6 @@ describe('authApi.resetPassword', () => {
 
     it('throws when supabase returns an error', async () => {
         const err = new Error('Email not found');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.auth as any).resetPasswordForEmail = vi
             .fn()
             .mockResolvedValueOnce({ error: err });
@@ -108,7 +89,6 @@ describe('authApi.resetPassword', () => {
 
 describe('authApi.updatePassword', () => {
     beforeEach(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.auth as any).updateUser = vi.fn().mockResolvedValue({ data: {}, error: null });
     });
 
@@ -125,7 +105,6 @@ describe('authApi.updatePassword', () => {
 
     it('throws when supabase returns an error (weak pw / expired session)', async () => {
         const err = new Error('Password should be at least 6 characters');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.auth as any).updateUser = vi.fn().mockResolvedValueOnce({ data: {}, error: err });
         await expect(authApi.updatePassword('123')).rejects.toBe(err);
     });
@@ -134,12 +113,10 @@ describe('authApi.updatePassword', () => {
 describe('authApi.verifyCurrentPassword', () => {
     beforeEach(() => {
         vi.mocked(supabase.auth.getSession).mockResolvedValue({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { email: 'me@grimshade.pl' } } } as any,
             error: null,
         });
         vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { user: { id: 'u1' }, session: { access_token: 't' } } as any,
             error: null,
         });
@@ -159,7 +136,6 @@ describe('authApi.verifyCurrentPassword', () => {
 
     it('returns false when the password is wrong', async () => {
         vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: null as any,
             error: { message: 'Invalid login credentials' } as never,
         });
@@ -168,7 +144,6 @@ describe('authApi.verifyCurrentPassword', () => {
 
     it('returns false (no re-auth attempt) when there is no active session', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: null } as any,
             error: null,
         });
@@ -182,7 +157,6 @@ describe('authApi.getSession', () => {
     it('returns the session payload on success', async () => {
         const session = { access_token: 'abc', user: { id: 'u3' } };
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: session as any },
             error: null,
         });
@@ -202,9 +176,7 @@ describe('authApi.getSession', () => {
     it('throws when supabase getSession returns an error', async () => {
         const err = new Error('Network down');
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: null } as any,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             error: err as any,
         });
         await expect(authApi.getSession()).rejects.toBe(err);
@@ -215,7 +187,6 @@ describe('authApi.onAuthStateChange', () => {
     it('forwards the callback to supabase.auth.onAuthStateChange', () => {
         const callback = vi.fn();
         const subscription = { data: { subscription: { unsubscribe: vi.fn() } } };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         vi.mocked(supabase.auth.onAuthStateChange).mockReturnValueOnce(subscription as any);
         const result = authApi.onAuthStateChange(callback);
         expect(supabase.auth.onAuthStateChange).toHaveBeenCalledWith(callback);
@@ -223,7 +194,3 @@ describe('authApi.onAuthStateChange', () => {
     });
 });
 
-// TODO: a deeper test for `onAuthStateChange` could simulate dispatched
-// events (SIGNED_IN, SIGNED_OUT) and assert the callback receives them.
-// Left out — the wrapper is a pure pass-through and supabase-js owns the
-// event semantics.

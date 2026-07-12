@@ -4,11 +4,7 @@ import Icon from '../../atoms/Icon/Icon';
 import TinyIcon from '../../ui/TinyIcon/TinyIcon';
 
 interface IProps {
-    /** 4 active skill slots — pad with `null` for empty placeholders. */
     skills: Array<ICombatSkillSlot | null>;
-    /** Exit config — hunting popup OR straight flee with penalty. Both render
-     *  as the same red icon-only button; the kind only changes the click
-     *  handler under the hood. */
     exit: TExitConfig;
 }
 
@@ -33,10 +29,6 @@ const SkillButton = ({ s }: { s: ICombatSkillSlot | null }) => {
             {s.cooldownProgress < 1 && (
                 <>
                     <span className="combat-ui__action-cd" style={{ height: `${(1 - s.cooldownProgress) * 100}%` }} />
-                    {/* Numeric remaining timer overlay — pinned dead-centre so
-                        the player can read it through the dim sweep. Hides
-                        the MP / count badges visually because the sweep
-                        already covers them. */}
                     {typeof s.cooldownRemainingMs === 'number' && s.cooldownRemainingMs > 0 && (
                         <span className="combat-ui__action-cd-text">
                             {s.cooldownRemainingMs >= 1000
@@ -50,20 +42,7 @@ const SkillButton = ({ s }: { s: ICombatSkillSlot | null }) => {
     );
 };
 
-/**
- * Bottom action bar — fixed at the bottom of the viewport, replaces the
- * global BottomNav while a fight is active. Layout:
- *
- *   [Skill1] [Skill2] [Skill3] [Skill4] [<- exit]
- *
- * Potions live separately in the floating <CombatPotionDock /> so they
- * stay reachable on every screen size without competing with the skill
- * row for horizontal space. Exit is a single red icon-only circle (no
- * text) — both hunt-popup and flee modes look identical, only the click
- * handler differs.
- */
 const CombatActionBar = ({ skills, exit }: IProps) => {
-    // Pad skills to length 4
     const padSkills: Array<ICombatSkillSlot | null> = [...skills.slice(0, 4)];
     while (padSkills.length < 4) padSkills.push(null);
 

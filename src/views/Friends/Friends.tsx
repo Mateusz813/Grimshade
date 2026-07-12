@@ -9,7 +9,6 @@ import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
 import './Friends.scss';
 
-// -- Helpers -------------------------------------------------------------------
 
 const CLASS_ICONS: Record<string, string> = {
     Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
@@ -18,33 +17,12 @@ const CLASS_ICONS: Record<string, string> = {
 
 type TTab = 'friends' | 'blocked';
 
-/**
- * Confirmation popup spec — a single union shape so the modal can
- * render any of the 3 destructive flows (remove friend, block,
- * unblock from blocked tab) without juggling four separate `useState`
- * slots. `null` means no popup is open. The action labels live in
- * the popup itself so the open-site call stays one line.
- */
 type TConfirm =
     | { kind: 'remove'; name: string }
     | { kind: 'block'; name: string }
     | { kind: 'unblock'; name: string }
     | null;
 
-/**
- * Friends screen — social hub for each character.
- *
- * Features:
- *   - Add friend by exact character name (queries Supabase `characters`)
- *   - Friends list with live online status (character updated in last 5 min)
- *   - Favorite (pin) friends to the top
- *   - Block list with unblock flow
- *   - 1:1 private messages using a deterministic PM channel that both sides
- *     end up subscribed to (via buildPmChannel)
- *
- * The friends graph itself (names, favorites, blocked) is persisted locally
- * per character via characterScope. PM uses the real Supabase chat pipeline.
- */
 const Friends = () => {
     const navigate = useNavigate();
     const character = useCharacterStore((s) => s.character);
@@ -67,19 +45,13 @@ const Friends = () => {
     const [lookupError, setLookupError] = useState<string | null>(null);
     const [lookupResult, setLookupResult] = useState<IFriendCharacterInfo | null>(null);
     const [looking, setLooking] = useState(false);
-    // 2026-05-19 spec ("na błocka i kasowanie znajomego dodatkowy
-    // popup czy chcemy na pewno to zrobić"): one slot drives every
-    // destructive-confirmation modal in this view.
     const [confirm, setConfirm] = useState<TConfirm>(null);
 
     const [infoByName, setInfoByName] = useState<Record<string, IFriendCharacterInfo>>({});
     const [loadingInfo, setLoadingInfo] = useState(false);
 
-    // -- Load character info for all friends on mount / friends change ---------
 
     const refreshFriendsInfo = useCallback(async () => {
-        // Look up BOTH friends + blocked so we can hide names whose character
-        // no longer exists (deleted) from either list.
         const names = [...new Set([...friends, ...blocked])];
         if (!names.length) {
             setInfoByName({});
@@ -92,7 +64,6 @@ const Friends = () => {
             for (const row of rows) next[row.name] = row;
             setInfoByName(next);
         } catch {
-            /* swallow — stale info is fine */
         } finally {
             setLoadingInfo(false);
         }
@@ -100,12 +71,10 @@ const Friends = () => {
 
     useEffect(() => {
         void refreshFriendsInfo();
-        // Refresh online status every 60s while the screen is mounted.
         const id = setInterval(() => { void refreshFriendsInfo(); }, 60000);
         return () => clearInterval(id);
     }, [refreshFriendsInfo]);
 
-    // -- Actions ---------------------------------------------------------------
 
     const doLookup = async () => {
         const name = query.trim();
@@ -139,7 +108,6 @@ const Friends = () => {
         setQuery('');
     };
 
-    // 2026-05-19: remove-friend confirmation handler.
     const handleConfirmedRemove = (name: string) => {
         removeFriend(name);
         setInfoByName((prev) => {
@@ -166,10 +134,6 @@ const Friends = () => {
         navigate('/chat');
     };
 
-    // Case-insensitive view over infoByName: local friend/blocked names are
-    // stored as typed, but the API echoes the character's canonical casing, so
-    // a direct `infoByName[n]` lookup would miss (and wrongly hide) a LIVE
-    // friend added with different capitalisation. Look up by lowercase key.
     const infoIndex = useMemo(() => {
         const idx: Record<string, IFriendCharacterInfo> = {};
         for (const key of Object.keys(infoByName)) idx[key.toLowerCase()] = infoByName[key];
@@ -180,10 +144,6 @@ const Friends = () => {
         [infoByName, infoIndex],
     );
 
-    // After a successful lookup, hide names whose character no longer exists
-    // (deleted -> not returned by findManyByName). Guarded: while loading OR if
-    // the lookup returned nothing (offline / fetch error) we show everything,
-    // so a network blip never hides live friends.
     const lookupReady = !loadingInfo && Object.keys(infoByName).length > 0;
 
     const sortedFriends = useMemo(() => {
@@ -199,7 +159,6 @@ const Friends = () => {
         });
     }, [friends, favorites, infoFor, lookupReady]);
 
-    // Same deleted-character pruning for the blocked tab.
     const visibleBlocked = useMemo(
         () => (lookupReady ? blocked.filter((n) => infoFor(n)) : blocked),
         [blocked, infoFor, lookupReady],
@@ -213,9 +172,6 @@ const Friends = () => {
         );
     }
 
-    // -- Confirm-modal copy ---------------------------------------------------
-    // Resolves the modal's title / body / button label from the union shape.
-    // Keeps the JSX render-block free of switch-case sprawl.
     const confirmCopy = (() => {
         if (!confirm) return null;
         if (confirm.kind === 'remove') {
@@ -251,7 +207,6 @@ const Friends = () => {
         };
     })();
 
-    // -- Render ----------------------------------------------------------------
 
     return (
         <div className="friends">
@@ -336,11 +291,6 @@ const Friends = () => {
                         {sortedFriends.map((name) => {
                             const info = infoFor(name);
                             const fav = isFavorite(name);
-                            // 2026-05-19 spec ("Jak mam kogoś w liście znajomych
-                            // i zablokuje to jest na obu listach naraz"):
-                            // friend rows highlight when the same name also
-                            // sits on the block list, and the block button
-                            // flips to :unlocked: Odblokuj for one-tap recovery.
                             const blockedToo = isBlocked(name);
                             return (
                                 <div
@@ -473,11 +423,6 @@ const Friends = () => {
                 </section>
             )}
 
-            {/* 2026-05-19 spec ("dodatkowy popup czy chcemy na pewno
-                to zrobić"): one shared confirm dialog for remove /
-                block / unblock. Backdrop click + Anuluj button both
-                dismiss without acting; only the primary CTA fires
-                the underlying mutation. */}
             {confirmCopy && (
                 <div
                     className="friends__confirm-backdrop"

@@ -1,10 +1,6 @@
-// -- Sync system – pure functions ----------------------------------------------
 
-export const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+export const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
-/**
- * Returns true if a sync is overdue (never synced, or interval elapsed).
- */
 export const needsSync = (
   lastSynced: string | null,
   intervalMs: number = SYNC_INTERVAL_MS,
@@ -14,10 +10,6 @@ export const needsSync = (
   return elapsed >= intervalMs;
 };
 
-/**
- * Returns milliseconds until the next sync is due.
- * Returns 0 if sync is already overdue.
- */
 export const getNextSyncMs = (
   lastSynced: string | null,
   intervalMs: number = SYNC_INTERVAL_MS,
@@ -27,10 +19,6 @@ export const getNextSyncMs = (
   return Math.max(0, intervalMs - elapsed);
 };
 
-/**
- * Formats a UTC ISO timestamp into a human-readable relative string (PL/EN).
- * Returns 'never' equivalent when null.
- */
 export const formatLastSynced = (lastSynced: string | null): string => {
   if (!lastSynced) return '—';
   const diff = Date.now() - new Date(lastSynced).getTime();
@@ -43,10 +31,6 @@ export const formatLastSynced = (lastSynced: string | null): string => {
   return `${hrs} godz. temu`;
 };
 
-/**
- * Determines whether the online->sync should actually fire
- * (avoids hammering the server when coming back online repeatedly).
- */
 export const shouldSyncOnReconnect = (
   lastSynced: string | null,
   minGapMs: number = 30_000,

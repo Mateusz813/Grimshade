@@ -9,20 +9,8 @@ import { usePartyPresenceStore } from '../stores/partyPresenceStore';
 import type { ICharacter } from '../api/v1/characterApi';
 import type { IPartyInfo, IPartyMember } from '../systems/partySystem';
 
-/**
- * usePartyPresence broadcasts a heartbeat (every 2 s) plus on-change
- * publishes of the local player's HP/MP/route to the party channel.
- * The hook has 5+ effects; we cover the gate (no party / no character),
- * the initial publish, and the 2 s heartbeat. Combat-store-driven
- * re-publishes are exercised in the partyCombatSyncStore / partyDamage
- * suites — here we focus on what THIS hook owns.
- */
 
 vi.mock('../systems/combatEngine', () => ({
-    // The hook calls getEffectiveChar for max-HP/MP scaling. We return
-    // null so the fallback (character.max_hp / .max_mp) kicks in — the
-    // numbers themselves aren't asserted here, but the function must
-    // not throw.
     getEffectiveChar: vi.fn().mockReturnValue(null),
 }));
 
@@ -82,7 +70,6 @@ describe('usePartyPresence — gates', () => {
         const clearSpy = vi.spyOn(usePartyPresenceStore.getState(), 'clear');
         renderHook(() => usePartyPresence(), { wrapper });
         expect(subSpy).not.toHaveBeenCalled();
-        // The effect's else-branch calls clear() to flush any stale state.
         expect(clearSpy).toHaveBeenCalled();
     });
 
@@ -121,8 +108,6 @@ describe('usePartyPresence — initial publish', () => {
         const pubSpy = vi.spyOn(usePartyPresenceStore.getState(), 'publish');
         vi.spyOn(usePartyPresenceStore.getState(), 'subscribe').mockReturnValue(() => {});
         renderHook(() => usePartyPresence(), { wrapper });
-        // The hook fires sendNow() once on mount + the on-change effect
-        // also runs at mount. publish should be invoked at least once.
         expect(pubSpy).toHaveBeenCalled();
         const firstArg = pubSpy.mock.calls[0]![0];
         expect(firstArg.id).toBe('me-1');
@@ -139,17 +124,11 @@ describe('usePartyPresence — heartbeat', () => {
         const pubSpy = vi.spyOn(usePartyPresenceStore.getState(), 'publish');
         renderHook(() => usePartyPresence(), { wrapper });
         const initialCalls = pubSpy.mock.calls.length;
-        // Push past the 2 s heartbeat boundary.
         vi.advanceTimersByTime(2_000);
         expect(pubSpy.mock.calls.length).toBeGreaterThan(initialCalls);
     });
 
     it('calls the subscribe cleanup on unmount', () => {
-        // We can't reliably assert "publish is never called again" — happy-dom
-        // and React's commit ordering replay a publish or two when the effect
-        // tears down. What we CAN assert is that the channel cleanup (returned
-        // by subscribe) is invoked at least once, which is what actually closes
-        // the broadcast channel.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({ party: makeParty('me-1', [makeMember('me-1')]) });
         const cleanup = vi.fn();
@@ -160,9 +139,3 @@ describe('usePartyPresence — heartbeat', () => {
     });
 });
 
-// TODO: the Necromancer-specific summon re-publish effect and the
-// combatStore.subscribe HP/MP relay are exercised through their owning
-// stores. Adding hook-level assertions would require deeply wiring
-// necroSummonStore + combatStore mocks; the gate logic above already
-// catches the most common regression class (hook fires when it
-// shouldn't / fails to subscribe when it should).

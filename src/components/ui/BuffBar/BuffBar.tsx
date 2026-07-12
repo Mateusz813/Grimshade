@@ -9,7 +9,6 @@ import GameIcon from '../../atoms/Twemoji/GameIcon';
 import Icon from '../../atoms/Icon/Icon';
 import './BuffBar.scss';
 
-/** Routes where no character is active – never show buffs/protections here. */
 const CHARACTERLESS_ROUTES = [
     '/login',
     '/register',
@@ -29,7 +28,6 @@ const formatTimeLeft = (ms: number): string => {
     return `${s}s`;
 };
 
-/** Effects that only tick during active combat. */
 const COMBAT_ONLY_EFFECTS = new Set(['xp_boost', 'premium_xp_boost']);
 
 const BuffBar = () => {
@@ -48,14 +46,6 @@ const BuffBar = () => {
     const isCharacterless = CHARACTERLESS_ROUTES.some((r) => location.pathname.startsWith(r));
     const active = isCharacterless ? [] : getActiveBuffs();
 
-    // 2026-05 v6 NOTE: this component is currently NOT mounted in
-    // AppShell — the actual buff UI lives in <TopHeader> + <BuffPopover>.
-    // The single source of truth for `tickGameTimeBuffs` is the interval
-    // in TopHeader.tsx (always mounted). If you ever mount BuffBar in
-    // parallel with TopHeader, REMOVE the tick below or the drain rate
-    // doubles. Keeping the tick here as a fallback for any future
-    // standalone use of BuffBar; it's a no-op when TopHeader is absent
-    // and a wasted 250ms drain when both run.
     useEffect(() => {
         const TICK = 250;
         const interval = setInterval(() => {
@@ -76,7 +66,6 @@ const BuffBar = () => {
 
     return (
         <div className={`buff-bar${collapsed ? ' buff-bar--collapsed' : ''}`}>
-            {/* Toggle button */}
             <button
                 className="buff-bar__toggle"
                 onClick={() => setCollapsed((c) => !c)}
@@ -109,10 +98,6 @@ const BuffBar = () => {
                         const isCharge = (buff.charges ?? 0) > 0;
                         const isGame = buff.timerMode === 'game';
                         const isPausable = buff.timerMode === 'pausable';
-                        // Game-time buffs render their gameMsRemaining
-                        // (always shows in-game seconds, e.g. 20s -> 0s
-                        // regardless of speed). The actual rate is set
-                        // by tickGameTimeBuffs in combat views.
                         const remaining = isGame
                             ? (buff.gameMsRemaining ?? 0)
                             : (isPausable ? buff.remainingMs : (buff.expiresAt - now));

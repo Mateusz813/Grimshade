@@ -2,19 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Boss view — the boss-fight hub. 5507 lines, runs its own combat engine
- * tick loop, has phase: 'list' | 'fighting' | 'result'. Coverage here
- * sticks to render contract + phase-driven chrome — the actual fight
- * mechanics are covered by bossSystem.test.ts and Playwright E2E.
- *
- * What we cover:
- *   - Smoke render in list phase (boss picker).
- *   - Spinner fallback when character is missing.
- *   - Filter controls present + reactive to settings store.
- *   - Phase swap: list -> fighting hides the trophy header score badge.
- *   - Critical class variants render (Mage / Necromancer / Archer).
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -61,8 +48,6 @@ vi.mock('../../hooks/usePartyReadyCheck', () => ({
     triggerPartyCombatGo: vi.fn(),
 }));
 
-// deathsApi posts to Supabase — we mocked supabase globally in setup but
-// belt-and-braces here so a Boss mount on death never even queues.
 vi.mock('../../api/v1/deathsApi', () => ({
     deathsApi: {
         createDeath: vi.fn().mockResolvedValue(null),
@@ -155,24 +140,18 @@ describe('Boss — smoke', () => {
     it('renders a Spinner when character is missing (mount short-circuits)', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderBoss();
-        // The component returns `<div className="boss"><Spinner .../></div>`.
         expect(container.querySelector('.boss')).not.toBeNull();
         expect(container.querySelector('.spinner')).not.toBeNull();
     });
 
     it('renders the trophy/score badge in list phase', () => {
         const { container } = renderBoss();
-        // boss__score badge sits under boss__header--minimal when phase === 'list'.
         expect(container.querySelector('.boss__score')).not.toBeNull();
     });
 
     it('does NOT render trophy/score badge once phase is fighting (badge is list-only)', () => {
         const { container } = renderBoss();
-        // Verify in list state first.
         expect(container.querySelector('.boss__score')).not.toBeNull();
-        // The fighting/result chrome lives in deeper sub-trees that need a real
-        // activeBoss + combat session — covered in E2E. We just confirm the
-        // gating selector exists on the rendered output.
         expect(container.querySelector('.boss__header--minimal')).not.toBeNull();
     });
 });
@@ -182,7 +161,6 @@ describe('Boss — filter chrome', () => {
         const { container } = renderBoss();
         expect(container.querySelector('.boss__hub-filters')).not.toBeNull();
         expect(container.querySelector('.boss__filter-bar')).not.toBeNull();
-        // Two checkbox-style toggles + one number input.
         const toggles = container.querySelectorAll('.boss__filter-toggle');
         expect(toggles.length).toBeGreaterThanOrEqual(2);
         expect(container.querySelector('.boss__filter-input')).not.toBeNull();
@@ -192,7 +170,6 @@ describe('Boss — filter chrome', () => {
         useSettingsStore.setState({ bossFilterAvailableOnly: true });
         const { container } = renderBoss();
         const toggles = container.querySelectorAll('.boss__filter-toggle');
-        // First toggle = "Tylko dostępne" — sourced from the store.
         expect(toggles[0]?.className).toContain('boss__filter-toggle--active');
     });
 
@@ -238,9 +215,3 @@ describe('Boss — graceful with missing data', () => {
     });
 });
 
-// TODO: phase==='fighting' and phase==='result' branches require driving
-//       a real `beginBossFight` round-trip (boss aggro loop, scaled stats,
-//       Cleric heal pulse, party damage shipping). That's tested via the
-//       boss system module (`bossSystem.test.ts`) and Playwright E2E in
-//       tests/e2e/boss/. Wiring it through React tests would require an
-//       order of magnitude more setup than the value adds.

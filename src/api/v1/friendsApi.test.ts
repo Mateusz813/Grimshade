@@ -1,13 +1,3 @@
-/**
- * Tests for friendsApi — character lookups + PM channel builder.
- *
- * The class exposes `findByName` (ILIKE prefix match) and
- * `findManyByName` (IN(...) batch lookup). Both decorate raw rows with
- * an `online` heuristic (true if updated_at < 5 minutes ago).
- *
- * The free function `buildPmChannel` builds a deterministic channel id
- * for two character names.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -24,7 +14,6 @@ vi.mock('./axiosInstance', () => ({
 import api from './axiosInstance';
 import { friendsApi, buildPmChannel } from './friendsApi';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 const mkRes = <T>(data: T) => ({ data });
 
@@ -53,7 +42,6 @@ describe('friendsApi.findByName', () => {
         mockApi.get.mockResolvedValueOnce(mkRes([makeRow({ name: 'Knight' })]));
         await friendsApi.findByName('Knigh');
         const url = mockApi.get.mock.calls[0][0] as string;
-        // `clean+*` then encodeURIComponent — `*` survives, `Knigh*` becomes Knigh*
         expect(url).toContain('name=ilike.' + encodeURIComponent('Knigh*'));
         expect(url).toContain('limit=5');
         expect(url).toContain('order=name.asc');
@@ -66,18 +54,17 @@ describe('friendsApi.findByName', () => {
     });
 
     it('prefers an EXACT case-insensitive name match over the first alphabetical hit', async () => {
-        // Alphabetical first hit would be "Knight2", but query was "Knight"
         const rows = [makeRow({ id: 'b', name: 'Knight2' }), makeRow({ id: 'a', name: 'Knight' })];
         mockApi.get.mockResolvedValueOnce(mkRes(rows));
         const result = await friendsApi.findByName('Knight');
-        expect(result?.id).toBe('a'); // exact match wins
+        expect(result?.id).toBe('a');
     });
 
     it('falls back to first alphabetical when no exact match exists', async () => {
         const rows = [makeRow({ id: 'b', name: 'Knight2' }), makeRow({ id: 'c', name: 'Knight3' })];
         mockApi.get.mockResolvedValueOnce(mkRes(rows));
         const result = await friendsApi.findByName('Kn');
-        expect(result?.id).toBe('b'); // first in response
+        expect(result?.id).toBe('b');
     });
 
     it('marks a character as online when updated_at < 5 minutes ago', async () => {
@@ -112,8 +99,6 @@ describe('friendsApi.findManyByName', () => {
         mockApi.get.mockResolvedValueOnce(mkRes([]));
         await friendsApi.findManyByName(['Alice ', 'Bob', 'alice', 'Alice']);
         const url = mockApi.get.mock.calls[0][0] as string;
-        // Dedupe is case-sensitive on the raw value but trims whitespace.
-        // We expect "Alice", "Bob", "alice" in the IN list (3 distinct values).
         const inMatch = url.match(/name=in\.\(([^)]+)\)/);
         expect(inMatch).toBeTruthy();
         const inList = decodeURIComponent(inMatch![1]);
@@ -126,7 +111,6 @@ describe('friendsApi.findManyByName', () => {
         mockApi.get.mockResolvedValueOnce(mkRes([]));
         await friendsApi.findManyByName(['Knight"X']);
         const url = mockApi.get.mock.calls[0][0] as string;
-        // The internal quoting escapes "X with backslash before URL-encoding.
         expect(decodeURIComponent(url)).toContain('"Knight\\"X"');
     });
 
@@ -151,12 +135,10 @@ describe('buildPmChannel', () => {
     });
 
     it('sorts case-insensitively', () => {
-        // 'alice' < 'BOB' case-insensitively -> alice first.
         expect(buildPmChannel('BOB', 'alice')).toBe('pm_alice_BOB');
     });
 
     it('preserves original casing of names', () => {
-        // Order is decided by lower-case sort, but the strings keep their case.
         expect(buildPmChannel('Knight', 'Mage')).toBe('pm_Knight_Mage');
     });
 
@@ -165,8 +147,3 @@ describe('buildPmChannel', () => {
     });
 });
 
-// TODO: no test exercises the actual case-insensitive collator over
-// locale-specific characters (e.g. Polish ł). Left for an i18n pass —
-// the current implementation uses default `localeCompare` so it should
-// behave correctly for the small set of allowed characters in player
-// nicknames.

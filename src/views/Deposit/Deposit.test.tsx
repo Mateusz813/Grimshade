@@ -2,23 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Deposit view — bag <-> deposit bank. Two-panel layout with rarity +
- * slot filters, search, and bulk move actions. Lightweight (~250
- * lines).
- *
- * Coverage:
- *   - Smoke render (root + header + both panels).
- *   - Empty-state copy on both panels when bag + deposit are empty.
- *   - Rarity-filter toggle changes the `--active` modifier.
- *   - Search input controlled state echo.
- *   - Deposit tile click -> calls `depositItem` (item moves out of bag).
- *   - Withdraw tile click -> calls `withdrawItem` (item moves out of deposit).
- *   - "Wpłać wszystkie" bulk button disabled when filtered bag is empty.
- *   - Back button calls navigate('/').
- *
- * No need to mock framer-motion — Deposit doesn't use it.
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -29,9 +12,6 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-// Backend-authoritative branch mocks. Default OFF so the existing client-path
-// tests exercise the untouched `depositItem` / `withdrawItem` store calls; a
-// dedicated describe flips `backendFlag.on`.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({
     deposit: vi.fn(),
@@ -120,7 +100,6 @@ describe('Deposit — smoke', () => {
         const { container } = renderDeposit();
         const panels = container.querySelectorAll('.deposit__panel');
         expect(panels.length).toBe(2);
-        // Bag panel header
         const headers = Array.from(container.querySelectorAll('.deposit__panel-title'))
             .map((el) => el.textContent ?? '');
         expect(headers.some((h) => h.includes('Plecak'))).toBe(true);
@@ -147,7 +126,6 @@ describe('Deposit — smoke', () => {
 describe('Deposit — filters', () => {
     it('toggles the rarity filter --active modifier when a chip is clicked', () => {
         const { container } = renderDeposit();
-        // "Wszystkie" is the default active rarity filter.
         const rareBtn = Array.from(container.querySelectorAll('.deposit__filter'))
             .find((b) => b.textContent === 'Rare') as HTMLButtonElement | undefined;
         expect(rareBtn).toBeTruthy();
@@ -165,9 +143,6 @@ describe('Deposit — filters', () => {
     it('renders slot filter buttons for the 9 common slots', () => {
         const { container } = renderDeposit();
         const slotBtns = container.querySelectorAll('.deposit__filter--slot');
-        // 15 entries in SLOT_FILTERS (all, weapons, armor-group, jewelry,
-        // mainHand, offHand, helmet, shoulders, armor, gloves, pants,
-        // boots, necklace, earrings, ring1).
         expect(slotBtns.length).toBe(15);
     });
 });
@@ -311,9 +286,3 @@ describe('Deposit — backend-authoritative branch', () => {
     });
 });
 
-// TODO: Filter interaction beyond click-active is covered indirectly via
-//       the rendered tile count — full filter-matrix coverage (e.g.
-//       slot=weapons hides accessory items, search narrows by displayName)
-//       is straightforward but requires seeding multiple items + asserting
-//       on `.deposit__tile` counts after each filter toggle. Easy to add
-//       once the views are stable enough that BEM class names won't churn.

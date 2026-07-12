@@ -1,42 +1,16 @@
+@use 'sass:color';
 @use '../../styles/variables' as *;
 @use '../../styles/breakpoints' as *;
 
-// Re-use the standalone Tasks view's stylesheet so the inlined task list
-// inside Quests gets the same chrome (active banner, monster groups,
-// threshold buttons, mastery bars). Imported once at the top so the rules
-// merge into the cascade alongside the quests-specific rules below.
 @use '../Tasks/Tasks.scss';
 
 .quests {
-  // AppShell already enforces `min-height: calc(100dvh - chrome)` on
-  // every direct child of `.app-shell__main` (see AppShell.scss line 50)
-  // so the page is sized exactly to the visible content area. We
-  // intentionally don't add another `min-height` or a bottom padding
-  // here — both would stack on top of AppShell's value and push the
-  // document past the viewport, producing a scrollbar with nothing to
-  // scroll. The hub fills the same visible area via flex below.
   background: transparent;
   color: $color-text;
 
-  // -- Hub picker (3 image tiles — Taski / Questy / Dzienne) ----------
-  // 1:1 visual copy of the Battle hub. Vertically-stacked banner tiles
-  // with their own PNG background, a dark gradient veil for legibility,
-  // a transform-accent border, and the same hover wave + glow + press
-  // animations Battle uses. The accent vars (`--tile-accent`,
-  // `--tile-accent-rgb`) are set inline by Quests.tsx so a transformed
-  // player sees the row tinted in their tier colour.
   &__hub {
-    // No `min-height` here — `.quests` already inherits the correct
-    // visible-area height from AppShell. Adding another `100vh - 110px`
-    // on top stacked beyond the viewport and triggered the phantom
-    // scrollbar the player flagged. The flex shape still spreads the
-    // tiles vertically to fill whatever space is available.
     width: 100%;
     padding: 14px 12px 18px;
-    // Transparent so the global dragon backdrop (`body::before`) shows
-    // through behind the tile column — same pattern as the Battle hub
-    // and the Town view. Was `$color-bg` (opaque) which painted a flat
-    // dark wall in front of the dragon.
     background: transparent;
     display: flex;
     justify-content: center;
@@ -56,10 +30,6 @@
     }
   }
 
-  // -- Tile shell --------------------------------------------------------
-  // Banner button — bg image lives on a child layer so the dark gradient
-  // sits on top for legibility without dimming the border. Title pinned
-  // at the top, horizontally centered, like the Battle hub.
   &__hub-tile {
     position: relative;
     display: flex;
@@ -91,8 +61,6 @@
       outline-offset: 2px;
     }
 
-    // Resting glow + accent wave. The ::before is opacity:0 by default
-    // and animates to 1 on hover, sweeping the gradient across the tile.
     &::before {
       content: '';
       position: absolute;
@@ -131,11 +99,6 @@
     }
   }
 
-  // Claimable state — pulsing purple border + corner dot, same purple
-  // tone as the header status dot so the player reads them as the same
-  // semantic ("rewards waiting"). Overrides the resting border /
-  // box-shadow but the hover wave + scale animations still play
-  // normally on top.
   &__hub-tile--claimable {
     border-color: rgba(179, 136, 255, 0.85) !important;
     box-shadow:
@@ -154,12 +117,10 @@
     background: #b388ff;
     border: 2px solid rgba(15, 17, 28, 0.85);
     box-shadow: 0 0 8px #b388ff, 0 0 16px rgba(179, 136, 255, 0.7);
-    z-index: 4; // sits above the dark gradient veil + title
+    z-index: 4;
     animation: quests-tile-claim-blink 0.9s ease-in-out infinite;
   }
 
-  // Background-image layer — sits behind the dark gradient and zooms
-  // slightly on hover.
   &__hub-tile-bg {
     position: absolute;
     inset: 0;
@@ -175,8 +136,6 @@
     transform: scale(1.04);
   }
 
-  // Dark legibility veil — fades down from the top so the title stays
-  // crisp against any background image.
   &__hub-tile-shade {
     position: absolute;
     inset: 0;
@@ -202,8 +161,6 @@
     @include desktop { font-size: 1.25rem; }
   }
 
-  // Section back button — top-left " Wróć" that returns the player to
-  // the hub picker. Matches the global page-back-btn shape.
   &__section-back {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -216,17 +173,6 @@
     &:hover { background: rgba(255, 255, 255, 0.10); }
   }
 
-  // Filter row used by both the Tasks and Questy sub-views. The 12-px
-  // top margin gives a clear gap between the active-task banners above
-  // and the filter cluster — without it the two strips visually fused
-  // into one wall of chrome.
-  //
-  // Layout per the 2026-05 spec:
-  //   - mobile (<720px): meta counter ("X aktywne · Y potworów") drops
-  //     to its own row beneath the filter chips so it doesn't fight
-  //     them for horizontal space.
-  //   - desktop (≥720px): meta counter sits to the RIGHT of the chips
-  //     via `margin-left: auto`.
   &__sub-controls {
     display: flex;
     gap: 8px;
@@ -238,12 +184,12 @@
   &__sub-controls-meta {
     color: #aaa;
     font-size: 12px;
-    flex-basis: 100%;          // own row on mobile
+    flex-basis: 100%;
     text-align: left;
     margin-top: 4px;
     @media (min-width: 720px) {
-      flex-basis: auto;        // back into the row
-      margin-left: auto;       // push to the right
+      flex-basis: auto;
+      margin-left: auto;
       margin-top: 0;
     }
   }
@@ -256,10 +202,6 @@
     width: 120px;
     font-family: inherit;
   }
-  // Pill-style toggle button shared by the "Dostępne taski" and "Sortuj
-  // od najwyższego lvl" controls. `--on` modifier flips it to a tinted
-  // active state so the player can see at a glance which filters are
-  // engaged.
   &__filter-chip {
     background: rgba(15, 17, 28, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -287,18 +229,13 @@
     letter-spacing: 0.5px;
   }
 
-  // Pagination row — ` prev`  Strona X / Y  `next `. Extra bottom
-  // padding so the pager never collides with the global BottomNav on
-  // tall viewports where the list ends well above the fold (the
-  // pager would otherwise sit on the very bottom edge and visually
-  // merge with the nav bar's top border).
   &__pagination {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 12px;
     padding: 12px 12px 32px;
-    margin-bottom: env(safe-area-inset-bottom, 0); // iOS notch safety
+    margin-bottom: env(safe-area-inset-bottom, 0);
   }
   &__pagination-btn {
     background: rgba(255, 255, 255, 0.05);
@@ -318,8 +255,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  // Loader wrapper — centers the Spinner inside the available content
-  // area while the character store hydrates.
   &__loading {
     display: flex;
     align-items: center;
@@ -327,9 +262,6 @@
     min-height: calc(100dvh - 200px);
   }
 
-  // History trigger — small icon button that sits inline with the
-  // counter ("X aktywne · Y potworów") and opens the task-history
-  // modal. The badge counts completed tasks.
   &__history-btn {
     position: relative;
     display: inline-flex;
@@ -366,25 +298,15 @@
     text-align: center;
   }
 
-  // -- Task-history modal -----------------------------------------------
-  // Replaces the inline bottom history strip. Each row carries a green
-  // outline (the player's "win" colour), 30-px monster thumbnail, name,
-  // task descriptor, rewards, and the completion date on the right.
-  // The shared `quests__claim-modal` base ships with a red `$color-accent`
-  // border + `overflow: hidden` — both are overridden here so the
-  // history popup is borderless and scrolls internally.
   &__history-modal {
     max-width: 760px !important;
     max-height: 80vh;
     border: none !important;
-    overflow: hidden !important; // outer wrapper clips, inner list scrolls
+    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
     padding: 16px !important;
   }
-  // Inner scroll zone — the actual list of rows. Flex column so each
-  // row stacks vertically; `flex: 1 1 auto + min-height: 0` lets the
-  // scroll cap respect the modal's max-height instead of pushing past it.
   &__history-list {
     display: flex;
     flex-direction: column;
@@ -422,7 +344,7 @@
     gap: 12px;
     padding: 6px 10px;
     background: rgba(15, 17, 28, 0.6);
-    border: 1px solid #4caf50; // green outline per the 2026-05 spec
+    border: 1px solid #4caf50;
     border-radius: 8px;
     font-size: 12px;
 
@@ -432,7 +354,6 @@
       padding: 4px 8px;
       font-size: 11px;
 
-      // Hide the date column on phones — the rewards already wrap.
       > .quests__history-row-date { display: none; }
     }
   }
@@ -565,7 +486,6 @@
     50%      { transform: translateY(-2px); }
   }
 
-  // --- Daily quest styles ---
 
   &__daily-locked {
     align-items: center;
@@ -586,10 +506,6 @@
   }
 
   &__daily-list {
-    // 320-px tile grid — packs as many columns as the viewport fits
-    // (1 column on a narrow phone, 2/3/4+ as the screen grows).
-    // `justify-content: center` keeps a partial trailing row centered
-    // so the layout never pulls hard left on wide screens.
     display: grid;
     grid-template-columns: repeat(auto-fill, 320px);
     justify-content: center;
@@ -597,11 +513,6 @@
     padding: $spacing-md;
   }
 
-  // Daily quest tile — same wrapper shape as the regular quest cards
-  // (transparent shell, pergamin scroll inside). The completed/claimed
-  // states paint a glow under the parchment via the inner pergamin
-  // rules; the wrapper itself stays unstyled so the action button
-  // sits beneath the scroll without a stray border.
   &__daily-quest {
     position: relative;
     width: 100%;
@@ -614,42 +525,25 @@
     gap: 10px;
     transition: filter $transition-normal;
 
-    // Daily tiles need extra bottom padding inside the pergamin (76px
-    // vs 12px on regular quests) because the claim button sits at the
-    // very bottom of the parchment and the daily card's reward strip +
-    // progress bar are shorter — without the larger bottom band the
-    // claim button hugs the torn lower curl of the scroll art.
     .quests__card-pergamin {
       padding: 36px 48px 76px;
     }
 
-    // Daily-scoped override — pin the action row to the bottom-centre
-    // of the pergamin via absolute positioning so it always sits at
-    // a fixed y-offset regardless of how short the daily content is.
-    // `bottom: 13px` keeps it above the torn lower curl of the scroll.
     .quests__card-actions-row {
       position: absolute;
       bottom: 13px;
       left: 50%;
       transform: translateX(-50%);
-      margin: 0;            // override the inside-pergamin `margin: auto`
+      margin: 0;
       padding-top: 0;
       width: max-content;
       max-width: calc(100% - 32px);
       justify-content: center;
     }
-    // Spacer is meaningless when the row is absolute-positioned — collapse
-    // it so it doesn't push the claim button off-centre.
     .quests__card-actions-spacer {
       display: none;
     }
 
-    // When the daily card is "ready to claim" (purple claim button is
-    // rendered), paint a matching purple border around the pergamin so
-    // the whole tile reads as the same "rewards waiting" colour as the
-    // BottomNav / TaskBadge dot. Border colour matches the claim button
-    // (#b388ff) exactly. Border-radius keeps the corners from looking
-    // square against the curly parchment art.
     .quests__card-pergamin:has(.quests__action-btn--claim) {
       border: 2px solid #b388ff;
       border-radius: 12px;
@@ -668,10 +562,6 @@
     }
   }
 
-  // Daily-quest header — title centred at the top of the pergamin,
-  // status badge (Gotowe / Odebrane) pinned to the top-right corner
-  // of the pergamin via absolute positioning so the title stays
-  // dead-centre regardless of the badge's presence.
   &__daily-quest-header {
     position: relative;
     display: flex;
@@ -745,9 +635,6 @@
   }
 
   &__daily-progress-text {
-    // Same near-white tone + shadow as the rest of the parchment copy
-    // so the X / Y count reads with consistent contrast against the
-    // scroll art. Centred under the progress bar per spec.
     color: #f5f5f5;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     text-align: center;
@@ -755,11 +642,6 @@
     font-weight: 700;
   }
 
-  // Centred "Nagrody:" caption — sits just above the chip row so the
-  // daily card mirrors the regular quest cards' rewards heading.
-  // `margin-top: auto` is intentionally on this label (not the chip
-  // row below it) so the label + chips together hug the bottom of
-  // the parchment as one block.
   &__daily-rewards-label {
     margin-top: auto;
     text-align: center;
@@ -778,8 +660,6 @@
   }
 
   &__daily-reward {
-    // 2026-05: fully opaque black pill + gold outline (matches the
-    // regular reward chip 1:1).
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -809,7 +689,6 @@
     &:hover { opacity: 0.85; }
   }
 
-  // -- Bulk action buttons --
 
   &__bulk-actions {
     display: flex;
@@ -818,9 +697,6 @@
     padding: $spacing-sm $spacing-md;
     border-bottom: 1px solid $color-border;
   }
-  // 2026-05 redesign — bulk buttons sit on a centred row, each shrunk
-  // to its content width so the cluster reads as a balanced trio (claim
-  // / accept / abandon) anchored to the middle of the bar.
   &__bulk-actions--inline {
     justify-content: center;
   }
@@ -829,9 +705,6 @@
     min-width: 0;
   }
 
-  // Centred variant — used by the daily-tab "Odbierz wszystkie daily"
-  // CTA. Caps the button width so the green pill reads as a focused
-  // call-to-action instead of a viewport-spanning bar on wide screens.
   &__bulk-actions--center {
     justify-content: center;
   }
@@ -882,10 +755,6 @@
     scrollbar-width: none;
     &::-webkit-scrollbar { display: none; }
   }
-  // Single-line filter strip variant — flex row that lets the level
-  // input + meta counter live alongside the category chips. The level
-  // input matches the chip height (~28 px) so the row reads as one
-  // unified control bar instead of wrapping to two strips.
   &__filters--with-lvl {
     align-items: center;
     flex-wrap: wrap;
@@ -915,9 +784,6 @@
       border-color: $color-text-muted;
     }
   }
-  // Inline level-filter input — same height as the chips so the row
-  // sits on one line. Pushes the meta counter to the right via the
-  // existing `quests__sub-controls-meta` rule.
   &__lvl-filter--inline {
     height: 28px;
     width: 110px;
@@ -925,10 +791,6 @@
   }
 
   &__list {
-    // 320-px tile grid — same packing rule as the daily-list above so
-    // both sections feel like the same chrome family. Auto-fill packs
-    // columns as the viewport allows; `justify-content: center` keeps
-    // the row centred when the column count is odd.
     padding: $spacing-sm;
     display: grid;
     grid-template-columns: repeat(auto-fill, 320px);
@@ -942,12 +804,6 @@
     padding: $spacing-xl;
   }
 
-  // -- Quest card — outer wrapper -------------------------------------
-  // Transparent shell that holds two children: the pergamin scroll
-  // (with all the quest content on it) and an action row beneath. The
-  // wrapper itself is just layout glue — no background, no border —
-  // so the parchment art floats inside the grid cell with the action
-  // buttons sitting "below the scroll" as the spec asks for.
   &__card {
     position: relative;
     width: 100%;
@@ -965,20 +821,12 @@
     &--locked    { opacity: 0.5; }
   }
 
-  // The pergamin scroll itself — fixed 320×360 to mirror the screenshot
-  // proportions. The PNG fills the whole box (`background-size: cover`
-  // would crop the curls; `100% 100%` keeps the parchment intact).
-  // Padding is generous so text + chips never bleed onto the torn
-  // edges of the scroll art.
   &__card-pergamin {
     position: relative;
     background: var(--card-pergamin) center/100% 100% no-repeat;
     width: 100%;
     height: 360px;
     box-sizing: border-box;
-    // Wider horizontal padding (48px) so text never bleeds onto the
-    // torn edges of the parchment scroll art. Bottom is shrunk to 12px
-    // since the action row already pads itself away from the curl.
     padding: 36px 48px 12px;
     display: flex;
     flex-direction: column;
@@ -986,20 +834,10 @@
     overflow: hidden;
   }
 
-  // Active-quest accent — soft transform-coloured glow under the
-  // pergamin so the "this is yours" state reads even against the
-  // parchment art. The border lives on the outer wrapper so it doesn't
-  // clash with the scroll's torn edge.
   &__card--active &__card-pergamin {
     filter: drop-shadow(0 0 14px color-mix(in srgb, var(--card-accent, #{$color-accent}) 55%, transparent));
   }
 
-  // Bottom action row — lives INSIDE the pergamin (per the 2026-05
-  // spec) and is pinned to the bottom of the parchment via `margin: auto`
-  // (the auto-magic on all four sides plus the parent's flex-direction
-  // shoves the row to the bottom-right slot of the pergamin). The
-  // spacer keeps the start/claim item glued to the right edge whether
-  // or not the abandon button rendered.
   &__card-actions-row {
     display: flex;
     align-items: center;
@@ -1012,10 +850,6 @@
     flex: 1 1 auto;
   }
 
-  // Header — just the title row, dead-centred. The level chip used to
-  // live in here at top-right but it now floats above the pergamin
-  // (positioned on the outer wrapper) so the title gets the full
-  // header width without chip jitter.
   &__card-header {
     display: flex;
     align-items: center;
@@ -1051,11 +885,6 @@
     line-height: 1.2;
   }
 
-  // Level chip — pinned to the top-centre INSIDE the pergamin (top: 9px
-  // tucks it just under the scroll's top curl so it reads like a tag
-  // glued to the parchment header). Anchored to the outer card wrapper
-  // so it sits above the pergamin in z-order regardless of the
-  // pergamin's `overflow: hidden`.
   &__card-level {
     position: absolute;
     top: 9px;
@@ -1074,8 +903,6 @@
 
   &__card-desc {
     font-size: 12.5px;
-    // Same near-white tone as the title so all body copy reads with the
-    // same contrast against the parchment art (spec: "color bialy jak tytul").
     color: #f5f5f5;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     margin: 0 0 6px;
@@ -1089,19 +916,12 @@
     flex-direction: column;
     gap: $spacing-xs;
     margin-bottom: $spacing-sm;
-    // Goals zone soaks up the remaining height between the description
-    // and the rewards row. If a quest has more goals than fit, scroll
-    // INSIDE this band so the rewards/actions stay glued to their
-    // y-positions.
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
   }
 
-  // Goal row — pure text on parchment per the 2026-05 spec. No bg
-  // pill, no icons, just the description and the X/Y count, all in
-  // the same near-white tone as the title.
   &__goal {
     background: transparent;
     border-radius: 0;
@@ -1118,9 +938,6 @@
     align-items: center;
     gap: $spacing-xs;
     font-size: $font-sm;
-    // No wrap — the description sits on one line, the count on the
-    // right (margin-left: auto on `&__goal-count`). Keeps every goal
-    // row at the same predictable single-row height.
     color: #f5f5f5;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   }
@@ -1141,8 +958,6 @@
     font-size: $font-xs;
   }
 
-  // Legacy check-mark styling kept in case any view still renders it,
-  // but the quest-card goals row no longer paints icons (TSX strips it).
   &__goal-check {
     color: $color-rare;
     font-weight: 700;
@@ -1158,8 +973,6 @@
 
   &__goal-bar-fill {
     height: 100%;
-    // Transform-coloured fill per the 2026-05 spec — falls back to the
-    // legacy accent if no `--card-accent` is set on the parent.
     background: var(--card-accent, #{$color-accent});
     border-radius: 2px;
     transition: width $transition-normal;
@@ -1171,17 +984,11 @@
     flex-wrap: wrap;
     gap: $spacing-xs;
     margin-bottom: $spacing-sm;
-    // Reward chip row is always anchored just above the action row so
-    // every card's "rewards section" lives at the same predictable
-    // y-position. flex-shrink: 0 keeps it from collapsing if the
-    // goals scroll zone above is generous.
     flex-shrink: 0;
   }
 
   &__rewards-label {
     font-size: $font-xs;
-    // Same near-white tone as the title / desc / goals so every text
-    // node on the parchment reads with the same contrast.
     color: #f5f5f5;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     font-weight: 700;
@@ -1202,8 +1009,6 @@
     align-items: center;
     gap: 4px;
     padding: 3px 8px;
-    // 2026-05: fully opaque black pill + gold (legendary) outline so reward
-    // chips read as a tier-tagged badge on the parchment.
     background: #000;
     border: 1px solid #ffc107;
     border-radius: 999px;
@@ -1212,10 +1017,6 @@
     font-weight: 700;
     line-height: 1;
 
-    // 2026-05-08 v3 spec ("eliksiry maja taki sam border wszedzie")
-    // — utility-elixir reward chips get the goldpurple gradient
-    // border to match the Shop card / Market sell tile / Bag tile.
-    // The two-background trick keeps the pill's 999px corner radius.
     &--elixir {
       border-color: transparent;
       background:
@@ -1238,11 +1039,6 @@
     display: flex;
     align-items: center;
     gap: $spacing-sm;
-    // Action row pinned at the bottom of the card so the start/claim
-    // button and the bottom-left abandon-corner share the same
-    // baseline across cards. Right-align so the abandon-corner (which
-    // is absolute-positioned to the bottom-LEFT) doesn't collide with
-    // the active state's empty actions row.
     flex-shrink: 0;
     justify-content: flex-end;
     min-height: 32px;
@@ -1263,15 +1059,12 @@
       border: 1px solid $color-border;
 
       &:hover {
-        background: lighten(#0f3460, 5%);
+        background: color.adjust(#0f3460, $lightness: 5%);
         border-color: $color-text-muted;
       }
     }
 
     &--claim {
-      // Same purple as the claim-status dot (BottomNav + TaskBadge use
-      // #b388ff for the "rewards waiting" pulse) so every "claim me"
-      // signal across the UI reads as the same colour.
       background: #b388ff;
       color: #1a1530;
       animation: pulse 1.5s infinite;
@@ -1311,12 +1104,6 @@
     50% { opacity: 0.85; }
   }
 
-  // Bottom-left abandon corner — pinned to the corner of the quest
-  // card so the player can drop a quest from anywhere without hunting
-  // through the action row. The card reserves room (`padding-bottom`
-  // 56 px) so this button always lives in its own band below the
-  // rewards / actions stack. `z-index: 5` keeps it above the pergamin
-  // ::before overlay.
   &__action-btn--abandon-corner {
     position: absolute;
     left: 16px;
@@ -1326,18 +1113,12 @@
     font-size: 12px;
   }
 
-  // Legacy "W trakcie…" rule — kept for safety in case a stray markup
-  // path still renders the span; visual is now hidden so the active
-  // border alone signals the in-progress state.
   &__in-progress {
     display: none;
   }
 
   &__completed-label {
     font-size: $font-xs;
-    // Pulls from the live transform-tier accent set on the card via
-    // `--card-accent`, so a Mythic-tier player sees their own colour
-    // on every "v Ukończono" tag instead of the legacy rare blue.
     color: var(--card-accent, #{$color-rare});
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     font-weight: 700;
@@ -1348,7 +1129,6 @@
     color: $color-text-muted;
   }
 
-  // -- Claim summary modal --
 
   &__overlay {
     position: fixed;
@@ -1439,7 +1219,6 @@
     &:hover { opacity: 0.85; }
   }
 
-  // -- Abandon confirmation modal --
 
   &__abandon-modal {
     background: $color-bg-secondary;
@@ -1511,14 +1290,7 @@
   }
 }
 
-// Old per-breakpoint column-count overrides removed — the 2026-05 spec
-// uses `repeat(auto-fill, 320px)` on both lists so the grid grows
-// naturally with the viewport (1 col on phones, 2/3/4+ as the screen
-// widens) without hard-coding viewport breakpoints.
 
-// Hub tile animations — copied verbatim from Battle.scss so the two hubs
-// share the same hover wave + press feel. Renamed keyframe identifiers so
-// the rules can coexist if Battle is ever loaded on the same page.
 @keyframes quests-tile-wave {
   0%   { background-position: 100% 0%; }
   100% { background-position: 0% 100%; }
@@ -1542,8 +1314,6 @@
   }
 }
 
-// Claimable border pulse — gently grows + dims the purple glow so the
-// "rewards waiting" tile catches the eye without strobing aggressively.
 @keyframes quests-tile-claimable-pulse {
   0%, 100% {
     box-shadow:
@@ -1559,26 +1329,12 @@
   }
 }
 
-// Claim-dot blink — same cadence the header status dot uses so the
-// two indicators feel like part of the same alert system.
 @keyframes quests-tile-claim-blink {
   0%, 100% { opacity: 1;    transform: scale(1); }
   50%      { opacity: 0.45; transform: scale(0.85); }
 }
 
-// -- Tasks sub-view: transform-accent overrides + monster thumbnail -----
-// The standalone Tasks.scss uses the hard-coded `$color-accent` (red) for
-// active-task chrome. Inside the Quests inline view we override those
-// rules to read `--task-accent` (set inline by Quests.tsx on each
-// `.tasks__monster-group`) so the highlights match the player's current
-// transform tier.
 .tasks {
-  // Available-list row when the monster currently has an active task on
-  // it. Earlier I added a 2-px transform-color border + glow here — the
-  // player asked for the border to GO and only the text inside the
-  // group to read in the transform colour. So the rule is now a no-op
-  // (resets the inherited red border to nothing extra) and the badge
-  // alone carries the accent.
   &__monster-group--taken {
     border-color: $color-border !important;
     box-shadow: none !important;
@@ -1589,20 +1345,11 @@
     font-weight: 700;
   }
 
-  // Threshold button — when this kill-count is the player's active task
-  // the chip lights up. Was a hard-coded red (`$color-accent`); now
-  // reads from `--task-accent` so the highlight matches the player's
-  // transform tier.
   &__threshold-btn--active {
     background: color-mix(in srgb, var(--task-accent, #e94560) 18%, transparent) !important;
     border-left: 3px solid var(--task-accent, #e94560) !important;
   }
 
-  // Level badge — bold + transform-coloured. Was muted-grey before; the
-  // accent makes the level read as a "stat tag" matching the chrome.
-  // The `--corner` modifier pulls it out of the header row and pins it
-  // to the top-right of the whole monster card so the chip reads as
-  // a tag rather than being vertically aligned with the monster name.
   &__monster-level {
     color: var(--task-accent, #e94560) !important;
     font-weight: 800;
@@ -1615,16 +1362,10 @@
     right: 8px;
     z-index: 2;
   }
-  // The group root must be a positioning context for the corner chip.
   &__monster-group--with-corner-lvl {
     position: relative;
   }
 
-  // Mastery bar at MAX (25/25) — purple-themed pill, no progress bar,
-  // no kill counter, just the centered "crown Mastery 25/25" copy. The
-  // adjacent monster card border also flips purple via the existing
-  // Tasks.scss `--max + ` selector — that part already worked in the
-  // standalone view; we leave it untouched.
   &__inline-mastery--max-pill {
     background: linear-gradient(135deg, rgba(156, 39, 176, 0.30), rgba(123, 31, 162, 0.45)) !important;
     border: 1px solid #9c27b0 !important;
@@ -1640,9 +1381,6 @@
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
   }
 
-  // Inline monster thumbnail rendered in front of the monster name.
-  // Spec: every monster image is exactly 100 px wide so the row reads
-  // as a uniform card-strip regardless of which monster it represents.
   &__monster-name {
     display: inline-flex;
     align-items: center;
@@ -1655,18 +1393,10 @@
     overflow: hidden;
     flex-shrink: 0;
     object-fit: cover;
-    // The MonsterSprite component stamps `width: 100% / height: 100%`
-    // inline via `fill: true`. We pass `fill: false` from the Quests
-    // task list to disable that override so this class-based 100x100
-    // sizing wins. See Quests.tsx where the prop is set.
     display: block;
-    // Default 1-px translucent border so the thumb sits inside a card.
     border: 1px solid rgba(255, 255, 255, 0.10);
     transition: border-color 0.2s, box-shadow 0.2s;
   }
-  // When the parent monster card is the player's active task, the
-  // monster image gets a 2-px transform-coloured frame + soft glow so
-  // it visually pairs with the "Aktywny" badge in the same row.
   &__monster-group--taken &__monster-thumb {
     border: 2px solid var(--task-accent, #e94560);
     box-shadow: 0 0 12px color-mix(in srgb, var(--task-accent, #e94560) 35%, transparent);
@@ -1677,11 +1407,6 @@
     font-weight: 800;
   }
 
-  // -- Active-tasks box -----------------------------------------------
-  // Labeled wrapper that holds every active task. Phones cap the
-  // visible scroll area at 5 rows; desktops show 8. The transform
-  // accent paints the title underline so the box reads as the
-  // player's "live progress" zone.
   &__active-box {
     margin: 8px 12px 0;
     background: rgba(15, 17, 28, 0.78);
@@ -1715,11 +1440,6 @@
     margin-left: auto;
   }
 
-  // Scrollable list inside the box. Heights are exact multiples of
-  // the row height so the cap aligns with whole rows rather than
-  // cutting one off mid-paint. Mobile rows are ~66 px (60 min-height +
-  // 6 gap), desktop rows are ~78 px (72 min-height + 6 gap). 5 rows
-  // visible on phones, 8 on desktop.
   &__active-list--compact {
     display: flex;
     flex-direction: column;
@@ -1734,35 +1454,19 @@
   }
   &__active-row {
     display: grid;
-    // 3 columns: [name+thumb (intrinsic)] [bar+count wrapper (fills)]
-    // [cancel x]. Name column uses `auto` so it sizes to its content;
-    // the progress wrapper takes ALL remaining horizontal space via
-    // `1fr` so the bar stretches to fill the row on wide screens
-    // instead of leaving a big empty gap next to the count text.
     grid-template-columns: auto minmax(120px, 1fr) auto;
     gap: 10px;
     align-items: center;
     padding: 6px 10px;
     background: rgba(15, 17, 28, 0.65);
-    // Transform-coloured border per the 2026-05 spec — the row reads
-    // as "this task is yours" with the same accent the badge uses.
     border: 1px solid color-mix(in srgb, var(--task-accent, #e94560) 60%, transparent);
     border-radius: 8px;
     font-size: 13px;
-    // Auto height with a min so a sizing mismatch (e.g. the 60-px thumb)
-    // can't push the image past the row top/bottom edges. Earlier the
-    // row was a fixed 46-px height so the 60-px monster thumbnail
-    // visually overflowed the box — fixed by letting the row grow to
-    // contain the largest child while still capping the comfortable
-    // single-line look via the min-height + overflow rules.
     min-height: 72px;
     overflow: hidden;
     box-sizing: border-box;
 
     @media (max-width: 540px) {
-      // On phones the name still goes back to `1fr` so the title can
-      // shrink with ellipsis and leave room for the bar — `auto` would
-      // try to render the full name and shove the bar off-screen.
       grid-template-columns: minmax(0, 1fr) minmax(80px, auto) auto;
       gap: 6px;
       padding: 4px 8px;
@@ -1778,13 +1482,11 @@
       animation: tasks-active-pulse 1.6s ease-in-out infinite;
     }
   }
-  // Left zone holds the 60-px thumb + name + level chip stacked
-  // vertically next to it. Both grid items hug the left edge.
   &__active-row-left {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 0; // allow shrink so the name can truncate
+    min-width: 0;
   }
   &__active-row-thumb {
     width: 60px;
@@ -1823,11 +1525,6 @@
     align-self: flex-start;
     line-height: 1.4;
   }
-  // Progress wrapper — pairs the bar and the "X / Y" count text in
-  // one inline cluster. Fills the entire grid column (no `max-width`
-  // cap on desktop) so the bar grows to use any extra horizontal
-  // space the row has — `1fr` column + `flex: 1` on the bar inside
-  // means the wider the screen, the longer the bar.
   &__active-row-progress {
     display: flex;
     align-items: center;

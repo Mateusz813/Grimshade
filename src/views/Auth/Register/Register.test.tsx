@@ -2,18 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Register view — email/password sign-up via Supabase. Three fields
- * (email + password + confirmPassword) and a refine() rule that ensures
- * the two passwords match.
- *
- * Coverage:
- *   - Smoke render: root, 3 inputs, submit button, "back to login" link.
- *   - Form submit calls supabase.auth.signUp with email + password.
- *   - Successful signup navigates to `/`.
- *   - Server error renders as a root `.register__error`.
- *   - zod refine() flags a mismatch between the two passwords.
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -27,9 +15,6 @@ vi.mock('react-router-dom', async () => {
 import Register from './Register';
 import { supabase } from '../../../lib/supabase';
 
-// The global mock in tests/vitest.setup.ts only stubs signInWithPassword.
-// signUp / resetPasswordForEmail aren't in that stub so we add them per
-// describe / per test as needed using vi.spyOn.
 const signUpSpy = vi.fn();
 (supabase.auth as unknown as { signUp: typeof signUpSpy }).signUp = signUpSpy;
 
@@ -151,6 +136,3 @@ describe('Register — validation', () => {
     });
 });
 
-// TODO: Verify the disabled-while-submitting button label flip ("Rejestracja…")
-//       — same brittleness as Login.test.tsx because react-hook-form's
-//       isSubmitting state lives in a microtask cycle.

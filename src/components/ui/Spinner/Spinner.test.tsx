@@ -3,15 +3,6 @@ import { render, screen, cleanup } from '@testing-library/react';
 
 import Spinner from './Spinner';
 
-/**
- * Spinner smoke tests — pure presentational component.
- *
- * Behaviour:
- *   - default label "Ładowanie..." rendered under the ring
- *   - `silent` suppresses the label
- *   - `size` mutates the BEM modifier class (sm/md/lg)
- *   - root has role="status" and aria-live="polite"
- */
 
 afterEach(() => {
     cleanup();
@@ -22,7 +13,6 @@ describe('Spinner — smoke', () => {
         const { container } = render(<Spinner />);
         expect(screen.getByText('Ładowanie...')).toBeTruthy();
         expect(screen.getByRole('status')).toBeTruthy();
-        // Default size class is `--md`.
         expect(container.querySelector('.spinner--md')).toBeTruthy();
     });
 

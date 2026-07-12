@@ -1,29 +1,3 @@
-/**
- * Auto-potion threshold logic — integration tests for `tryAutoPotion`.
- *
- * Covers BACKLOG.md 11.x (Auto-potion threshold/trigger tests, classified as
- * U+I+E; the engine-side U+I subset is what lives here). The E2E counterpart
- * tests the UI threshold slider + persistence; this file tests the actual
- * decision logic the engine runs every combat tick.
- *
- * Decision matrix tested (per HP/MP, per slot kind flat/pct):
- *   1. enabled flag OFF              -> never fires
- *   2. threshold = 0                 -> never fires
- *   3. current >= max                -> never fires (safety: don't waste a potion)
- *   4. current% > threshold          -> never fires
- *   5. on cooldown                   -> never fires
- *   6. no potions owned              -> never fires
- *   7. heal amount > missing         -> never fires (anti-waste guard:
- *      "lost 1 HP, burned a 50 HP potion" — see comment in `useAutoPotionSlot`)
- *   8. healthy fire path             -> fires, decrements consumable, installs CD
- *
- * Why unit/integration: the matrix is enabled × threshold × current × cooldown
- * × potion-stock × slot-kind = thousands of states. Pure-function vitest tests
- * give μs-precision determinism that an in-browser timer can't match.
- *
- * The flat-potion fixtures use `hp_potion_sm` (heal_hp_50, FLAT_COOLDOWN_MS=1000)
- * and `mp_potion_sm` (heal_mp_30) so the missing-vs-heal math is easy to read.
- */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -42,7 +16,6 @@ import { useCharacterStore } from '../stores/characterStore';
 import { useDailyQuestStore } from '../stores/dailyQuestStore';
 import type { IMonster } from '../stores/combatStore';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const DEFAULT_SETTINGS = {
     autoPotionHpEnabled: false,
@@ -84,23 +57,15 @@ const setupStores = (settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}): 
         consumables: {},
     });
     useCooldownStore.getState().clearAll();
-    // Combat store needs to be in fighting phase so healPlayerHp / addLog
-    // don't no-op. We init a dummy fight so the store has a valid state.
     useCharacterStore.setState({
         character: {
             id: 'char-1', user_id: 'u-1', name: 'T', class: 'Knight',
-            // 2026-06-21: level 700 so the auto-potion gate (potionGating) lets
-            // EVERY tier fire — these tests exercise the auto-potion MECHANISM,
-            // not the level gate (covered in potionGating.test.ts). At a low
-            // level the % potions (great/super/ultimate/divine, req 200+) would
-            // be correctly skipped and the firing assertions would fail.
             level: 700, xp: 0, hp: 100, max_hp: 100, mp: 50, max_mp: 50,
             attack: 20, defense: 10, attack_speed: 2,
             crit_chance: 0.05, crit_damage: 2.0, magic_level: 0,
             hp_regen: 0, mp_regen: 0, gold: 0, stat_points: 0,
             highest_level: 700, equipment: {},
             created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
         isLoading: false,
     });
@@ -108,7 +73,6 @@ const setupStores = (settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}): 
     useDailyQuestStore.setState({ lastRefreshDate: null, activeQuests: [], todayQuestDefs: [] });
 };
 
-// -- Disabled / threshold-zero / threshold-respected (no-fire branches) ------
 
 describe('tryAutoPotion: no-fire when slot disabled', () => {
     beforeEach(() => setupStores());
@@ -166,7 +130,6 @@ describe('tryAutoPotion: no-fire when current% > threshold', () => {
     });
 
     it('does NOT fire HP slot at HP% exactly equal to threshold + 1', () => {
-        // 51 / 100 = 51% > 50% threshold -> no fire.
         useInventoryStore.setState({
             ...useInventoryStore.getState(),
             consumables: { hp_potion_sm: 5 },
@@ -197,7 +160,6 @@ describe('tryAutoPotion: no-fire when no potions owned', () => {
             autoPotionHpThreshold: 90,
         });
 
-        // Resolver returns null -> useAutoPotionSlot short-circuits.
         expect(() => tryAutoPotion(0, 100, 50, 50)).not.toThrow();
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(0);
     });
@@ -223,7 +185,6 @@ describe('tryAutoPotion: no-fire when current >= max (safety)', () => {
     });
 
     it('does NOT fire when current HP exceeds max (defensive)', () => {
-        // Edge case: stale state where stats decrease — should still no-op.
         useInventoryStore.setState({
             ...useInventoryStore.getState(),
             consumables: { hp_potion_sm: 5 },
@@ -257,20 +218,16 @@ describe('tryAutoPotion: no-fire when on cooldown', () => {
 
         tryAutoPotion(1, 100, 50, 50);
 
-        // Potion unspent, cooldown unchanged.
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(5);
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(500);
     });
 });
 
-// -- Heal-anti-waste guard (missing < healAmount -> don't fire) ---------------
 
 describe('tryAutoPotion: anti-waste guard (heal > missing -> no fire)', () => {
     beforeEach(() => setupStores());
 
     it('does NOT fire hp_potion_sm (50 HP heal) when only 10 HP is missing', () => {
-        // Spec comment: "no matter what the % threshold says, we will never
-        // fire a potion unless at least its heal amount of HP/MP is actually missing."
         useInventoryStore.setState({
             ...useInventoryStore.getState(),
             consumables: { hp_potion_sm: 5 },
@@ -278,10 +235,10 @@ describe('tryAutoPotion: anti-waste guard (heal > missing -> no fire)', () => {
         useSettingsStore.setState({
             ...useSettingsStore.getState(),
             autoPotionHpEnabled: true,
-            autoPotionHpThreshold: 100, // 100% — threshold won't block
+            autoPotionHpThreshold: 100,
         });
 
-        tryAutoPotion(90, 100, 50, 50); // 10 HP missing, 50 HP heal -> no fire
+        tryAutoPotion(90, 100, 50, 50);
 
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(5);
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(0);
@@ -298,7 +255,7 @@ describe('tryAutoPotion: anti-waste guard (heal > missing -> no fire)', () => {
             autoPotionHpThreshold: 100,
         });
 
-        tryAutoPotion(50, 100, 50, 50); // 50 missing, 50 heal -> fires.
+        tryAutoPotion(50, 100, 50, 50);
 
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(FLAT_POTION_COOLDOWN_MS);
@@ -315,13 +272,12 @@ describe('tryAutoPotion: anti-waste guard (heal > missing -> no fire)', () => {
             autoPotionHpThreshold: 100,
         });
 
-        tryAutoPotion(40, 100, 50, 50); // 60 missing, 50 heal -> fires.
+        tryAutoPotion(40, 100, 50, 50);
 
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
     });
 });
 
-// -- Healthy fire-path (decrement consumable + install CD + heal) ------------
 
 describe('tryAutoPotion: full fire path on threshold breach', () => {
     beforeEach(() => setupStores());
@@ -343,11 +299,8 @@ describe('tryAutoPotion: full fire path on threshold breach', () => {
 
         tryAutoPotion(40, 100, 50, 50);
 
-        // Decrement.
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
-        // Cooldown.
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(FLAT_POTION_COOLDOWN_MS);
-        // Heal landed: 40 + 50 = 90.
         expect(useCombatStore.getState().playerCurrentHp).toBe(90);
     });
 
@@ -366,7 +319,7 @@ describe('tryAutoPotion: full fire path on threshold breach', () => {
             playerCurrentMp: 10,
         });
 
-        tryAutoPotion(100, 100, 10, 50); // MP 10/50 = 20% < 50%, missing=40 > heal 30
+        tryAutoPotion(100, 100, 10, 50);
 
         expect(useInventoryStore.getState().consumables['mp_potion_sm']).toBe(2);
         expect(useCooldownStore.getState().mpPotionCooldown).toBe(FLAT_POTION_COOLDOWN_MS);
@@ -376,7 +329,7 @@ describe('tryAutoPotion: full fire path on threshold breach', () => {
     it('PCT HP slot fires with pct cooldown (500ms, half of flat)', () => {
         useInventoryStore.setState({
             ...useInventoryStore.getState(),
-            consumables: { hp_potion_great: 2 }, // 20% pct
+            consumables: { hp_potion_great: 2 },
         });
         useSettingsStore.setState({
             ...useSettingsStore.getState(),
@@ -388,7 +341,6 @@ describe('tryAutoPotion: full fire path on threshold breach', () => {
             playerCurrentHp: 30,
         });
 
-        // HP 30/100 = 30% < 50%. Heal 20% × 100 = 20. Missing = 70 ≥ 20. Fires.
         tryAutoPotion(30, 100, 50, 50);
 
         expect(useInventoryStore.getState().consumables['hp_potion_great']).toBe(1);
@@ -396,7 +348,6 @@ describe('tryAutoPotion: full fire path on threshold breach', () => {
     });
 });
 
-// -- Multiple slot interaction (flat + pct should both trigger if applicable) -
 
 describe('tryAutoPotion: independent flat + pct slot triggering', () => {
     beforeEach(() => setupStores());
@@ -420,7 +371,6 @@ describe('tryAutoPotion: independent flat + pct slot triggering', () => {
 
         tryAutoPotion(40, 100, 50, 50);
 
-        // Both slots fired in the same tick.
         expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
         expect(useInventoryStore.getState().consumables['hp_potion_great']).toBe(1);
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(FLAT_POTION_COOLDOWN_MS);
@@ -442,17 +392,16 @@ describe('tryAutoPotion: independent flat + pct slot triggering', () => {
         useCombatStore.setState({
             ...useCombatStore.getState(),
             playerCurrentHp: 30,
-            playerCurrentMp: 50, // 100% — no MP fire
+            playerCurrentMp: 50,
         });
 
         tryAutoPotion(30, 100, 50, 50);
 
-        expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4); // fired
-        expect(useInventoryStore.getState().consumables['mp_potion_sm']).toBe(5); // unfired
+        expect(useInventoryStore.getState().consumables['hp_potion_sm']).toBe(4);
+        expect(useInventoryStore.getState().consumables['mp_potion_sm']).toBe(5);
     });
 });
 
-// -- resolveAutoPotionElixir contract (re-verified with engine-flow context) -
 
 describe('resolveAutoPotionElixir contract under engine flow', () => {
     it('returns the preferred id when consumable count > 0', () => {
@@ -473,9 +422,8 @@ describe('resolveAutoPotionElixir contract under engine flow', () => {
     });
 
     it('respects slotKind partition — pct request cannot pick a flat potion', () => {
-        const inv = { hp_potion_sm: 5 }; // only flat owned
+        const inv = { hp_potion_sm: 5 };
         const e = resolveAutoPotionElixir(undefined, 'hp', 'pct', inv);
-        // Pct pool empty -> null even though flat HP is in stock.
         expect(e).toBeNull();
     });
 

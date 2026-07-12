@@ -1,24 +1,3 @@
-/**
- * Atomic E2E — `/leaderboard` "Ulepszenia" tab pokazuje naszą seedowaną
- * postać z high `item_upgrades_done`.
- *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria". Rozszerzenie pokrycia
- * — Item Upgrades Done tab.
- *
- * Tab definition (Leaderboard.tsx linia 168):
- *   { key: 'item_upgrades_done', label: 'Ulepszenia', icon: 'hammer',
- *     source: 'characters', characterColumn: 'item_upgrades_done',
- *     order: 'desc', valueLabel: 'Ulepsz' }
- *
- * Sort: `item_upgrades_done DESC, limit 100`. Format fallback formatValue
- * -> `Ulepsz 999`.
- *
- * **Sync-hook SAFE**: hook NIE dotyka `item_upgrades_done` — kolumna
- * jest bumpowana wyłącznie przez `characterApi.bumpStat('item_upgrades_done')`
- * po sukcesie upgrade w `inventoryStore.enhanceItem`.
- *
- * Cleanup: try/finally + cleanupCharacterById.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';

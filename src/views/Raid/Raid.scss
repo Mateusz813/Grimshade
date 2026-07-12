@@ -9,17 +9,6 @@
     display: flex;
     flex-direction: column;
 
-    // In-fight: drop the wrapper padding so the unified combat-ui chip
-    // strip (sticky `top: 0`) touches the underside of the fixed
-    // TopHeader instead of sitting under a 16px gap. Also relax
-    // `min-height` so the arena fits the visible viewport without
-    // forcing a scroll bar — same parity fix as the dungeon view.
-    //
-    // `max-width: none` so the ambient battle background (the dark
-    // gradient panel + arena bg) reaches the full viewport width, not
-    // the 1400 px lobby cap. Without this, on ultrawide / desktop screens
-    // the player saw a thin sliver of game-bg on each side that didn't
-    // match the centered combat panel.
     &--fighting {
         padding: 0;
         min-height: 100%;
@@ -27,7 +16,6 @@
         width: 100%;
     }
 
-    // -- Gates (no party / too small / not leader) -----------------------------
     &__gate {
         background: #1a1a28;
         border: 1px solid #2a2a3a;
@@ -47,7 +35,6 @@
         }
     }
 
-    // -- Hub panel: filters + raid cards (mirrors Dungeon hub) -----------------
     &__panel {
         padding: $spacing-md;
         display: flex;
@@ -55,12 +42,6 @@
         gap: $spacing-md;
     }
 
-    // Ultrawide: raid cards pack two per row at 1100px each. Filter rows,
-    // empty state and any non-card sibling stay full-width via
-    // `flex-basis: 100%`, so only `&__card` actually pair up. The wrapping
-    // `.raid` itself caps at 1400px in the base rule above — bump it to
-    // accommodate two cards (~2200px + gaps + padding) so the 2-up layout
-    // can actually breathe.
     @media (min-width: 2300px) {
         max-width: none;
 
@@ -117,8 +98,6 @@
         transition: all $transition-fast;
         user-select: none;
 
-        // Native checkbox stays for a11y but is visually hidden — the
-        // active state lives on the label via the `--active` modifier.
         input[type='checkbox'] {
             height: 0;
             margin: 0;
@@ -207,34 +186,15 @@
         border-radius: $radius-md;
     }
 
-    // -- Raid card (1:1 with dungeon card chrome) -----------------------------
-    // Visual language is intentionally identical to `.dungeon__card`: same
-    // image-driven background (`--card-image`), same hue gradient on the
-    // border + box-shadow, same shimmer ::before, same top glow ::after.
-    // The two list views must read interchangeably — only the corner labels
-    // ("4 fal × 4" vs. "4 fal") and reward callouts differ. Keep this rule
-    // in lock-step with Dungeon.scss `&__card` if anything changes there.
     &__card {
         --h: var(--card-hue, 220);
         --card-image: none;
-        // Tile cap: a single raid card never grows past 1100px. Parent
-        // `__panel` is flex-column by default so cards stack centred via
-        // `align-self`; the ultrawide block at the bottom flips the panel
-        // to a 2-up wrapping row.
         width: 100%;
         max-width: 1100px;
         align-self: center;
         position: relative;
         overflow: hidden;
-        // `min-height` matches Dungeon — the per-raid painting needs a
-        // minimum canvas to read as a "biome shot" rather than a thin strip.
         min-height: 240px;
-        // Image-driven background. The painting lives in the lowest layer;
-        // hue accents (border + box-shadow), shimmer (::before) and top glow
-        // (::after) all paint on top so the picture stays clean and the
-        // card still carries its level-coded identity. `background-color`
-        // is the fallback shown only when the art is missing
-        // (--card-image resolves to `none`).
         background-color: $color-bg-card;
         background-image: var(--card-image);
         background-size: cover;
@@ -253,7 +213,6 @@
             0 0 1px hsla(var(--h), 60%, 50%, 0.3),
             inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.1);
 
-        // Animated shimmer overlay — sweeps across the card every 6s.
         &::before {
             content: '';
             position: absolute;
@@ -272,7 +231,6 @@
             z-index: 0;
         }
 
-        // Top glow accent line.
         &::after {
             content: '';
             position: absolute;
@@ -303,10 +261,6 @@
 
         &--blocked { opacity: 0.6; }
 
-        // "All daily attempts used" — image stays clean (no green tint), state
-        // is signalled with a green border + reduced opacity so the card
-        // visibly recedes without obscuring the art. Mirrors dungeon's choice;
-        // the previous green-gradient overlay clobbered the whole picture.
         &--all-done {
             border-color: rgba(76, 175, 80, 0.5);
             border-left-color: rgba(76, 175, 80, 0.75);
@@ -322,7 +276,6 @@
         80% { left: 200%; opacity: 0; }
     }
 
-    // -- Corner badges --------------------------------------------------------
     &__corner {
         position: absolute;
         top: 8px;
@@ -342,12 +295,6 @@
         &--lvl   { left: 8px; }
         &--waves { right: 8px; }
 
-        // "Pokonany" — sits between the lvl & waves pills, signalling that
-        // the player has used all daily attempts (which, for raids, only
-        // increment on victory — so this implies a clear). Same visual
-        // grammar as the dungeon's `&--cleared`: bumped one size class
-        // above the metadata pills, saturated green, outer glow. Reads
-        // as a status, not as another corner chip.
         &--cleared {
             left: 50%;
             transform: translateX(-50%);
@@ -365,7 +312,6 @@
         }
     }
 
-    // -- Centred head (name + flavour) ----------------------------------------
     &__card-head {
         display: flex;
         flex-direction: column;
@@ -392,11 +338,6 @@
         line-height: 1.4;
     }
 
-    // Reward callout — gold + xp summary. Borders previously framed this
-    // strip top & bottom to separate it from the head and the drop button,
-    // but they competed visually with the dashed borders on neighbouring
-    // cards (the painting backgrounds carry their own framing). Removed
-    // per user direction; spacing alone now handles the rhythm.
     &__card-rewards {
         display: flex;
         justify-content: center;
@@ -408,10 +349,6 @@
         padding: $spacing-xs 0;
     }
 
-    // -- Drop popup trigger --------------------------------------------------
-    // Capped to 200px and centred so it visually pairs with the matching
-    // `__enter-btn--wide` below it instead of stretching across the whole
-    // tile — same shape both buttons now use.
     &__drop-btn {
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid hsla(var(--h, 220), 40%, 50%, 0.3);
@@ -434,7 +371,6 @@
         }
     }
 
-    // -- Drop-table modal -----------------------------------------------------
     &__modal-backdrop {
         position: fixed;
         inset: 0;
@@ -558,7 +494,6 @@
         color: rgba(255, 255, 255, 0.5);
     }
 
-    // -- Attempts strip ------------------------------------------------------
     &__attempts {
         font-size: 12px;
         color: rgba(255, 255, 255, 0.65);
@@ -594,13 +529,6 @@
         text-align: center;
     }
 
-    // -- Wide CTA button (1:1 with dungeon enter btn) ------------------------
-    // Hollow look (transparent fill + 2px hue-coloured border) capped at
-    // 200px wide and centred so it visually pairs with the matching
-    // `__drop-btn` above it instead of stretching across the whole tile.
-    // Previously this was a filled gradient bar — replaced to keep the
-    // raid list visually identical to the dungeon list per the parity
-    // spec; only the corner labels and combat path remain raid-specific.
     &__enter-btn {
         background: $color-accent;
         border: none;
@@ -636,12 +564,10 @@
         }
     }
 
-    // -- Fighting layout -----------------------------------------------------
     &--fighting {
         background: linear-gradient(180deg, #0d0d1a 0%, #1a1a28 100%);
     }
 
-    // Skill FX overlay (rendered inside the shared CombatArena overlay slot).
     &__fx {
         position: absolute;
         top: 10px;
@@ -657,7 +583,6 @@
         100% { transform: scale(1.1); opacity: 0; }
     }
 
-    // -- Result screen (per-member loot tiles) -------------------------------
     &__result-header {
         text-align: center;
         margin: 24px auto 12px;
@@ -747,10 +672,6 @@
     }
 
     &__result-drops {
-        // Icon grid — every drop kind (item / stone / chest / potion / xp / gold)
-        // renders as an <ItemIcon> tile, so the result list visually mirrors
-        // the dungeon win-screen instead of being a wall of text. Auto-fill
-        // wraps icons across rows so even members with 10+ drops stay tidy.
         margin: 0;
         padding: 0;
         list-style: none;
@@ -759,10 +680,6 @@
         gap: 6px;
     }
 
-    // Completion-roll bonus item — pulled out of the regular drop grid and
-    // rendered under its own "wrapped-gift Dodatkowy item:" header so the player can
-    // immediately see what they earned for clearing the whole raid (vs.
-    // getting lost in 20+ per-boss icons above).
     &__result-bonus {
         margin-top: $spacing-sm;
         padding-top: $spacing-sm;
@@ -794,11 +711,6 @@
 
     &__drop {
         font-size: $font-sm;
-        // Canonical rarity palette — matches RAID_RARITY_COLOR in Raid.tsx
-        // and the rarity dots in the drop modal so the win-screen list reads
-        // in the same palette as everything else in the app.
-        //   common = white, rare = blue, epic = green,
-        //   legendary = red, mythic = yellow, heroic = purple
         &--common    { color: #ffffff; }
         &--rare      { color: #2196f3; }
         &--epic      { color: #4caf50; }
@@ -807,10 +719,6 @@
         &--heroic    { color: #9c27b0; font-weight: bold; }
     }
 
-    // Result-screen footer — flex row that holds "Ponów" + "Powrót do lobby"
-    // (or just the lobby button on wipe). Centred, wraps on narrow screens.
-    // Both buttons stretch to share equal width so the shorter "Ponów"
-    // label doesn't render as a tiny chip next to "Powrót do lobby".
     &__result-actions {
         display: flex;
         flex-wrap: wrap;
@@ -820,8 +728,6 @@
         margin: $spacing-md auto 0;
 
         > .raid__primary {
-            // Each button takes an equal share of the row, capped at
-            // 220 px so on very wide screens they don't sprawl.
             flex: 1 1 0;
             min-width: 180px;
             max-width: 220px;
@@ -832,10 +738,6 @@
         background: $color-accent;
         color: white;
         border: none;
-        // Fixed line-height + box-sizing so the button height is identical
-        // regardless of label contents — emoji glyphs render taller than
-        // plain text otherwise, leaving "crossed-swords Ponów" 7 px shorter than
-        // "Powrót do lobby" with default `line-height: normal`.
         padding: 0 24px;
         height: 44px;
         line-height: 44px;
@@ -852,10 +754,6 @@
         white-space: nowrap;
         &:hover { background: $color-accent-hover; }
 
-        // Replay variant — vivid green (no level-hue tint) so the player can
-        // tell at a glance "this restarts the raid I just cleared". Fixed
-        // gradient, drops the hue var so it stands out next to the
-        // hue-tinted "Powrót do lobby" sibling regardless of raid level.
         &--retry {
             background: linear-gradient(135deg, #43a047, #2e7d32);
             box-shadow:
@@ -869,11 +767,6 @@
             }
         }
 
-        // Hued variant — picks up the raid card's level-coded hue (set via
-        // `--btn-hue` inline) so the "Powrót do lobby" button on the
-        // result screen matches the lobby card border the player came in
-        // from. Same hsl() ramp the card itself uses, just rendered as a
-        // subtle gradient instead of a flat fill.
         &--hued {
             --h: var(--btn-hue, 220);
             background: linear-gradient(

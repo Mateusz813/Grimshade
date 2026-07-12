@@ -1,13 +1,5 @@
 @use '../../styles/variables' as *;
 
-// -----------------------------------------------------------------------------
-// Market — 2026-05-08 v2 rewrite per spec.
-//
-// Three tabs (Przegląd / Sprzedawaj / Moje), shared filter bar, list-row layout
-// for browse + my listings, sell-tile grid for the sell tab, buy/sell/edit
-// modals, sale-notification button + popover. The legacy " Miasto" header
-// + duplicate gold chip are gone.
-// -----------------------------------------------------------------------------
 
 .market {
   min-height: 100vh;
@@ -48,7 +40,6 @@
     }
   }
 
-  // -- Top row: tabs + notification button -----------------------------------
   &__top-row {
     position: sticky;
     top: 0;
@@ -107,7 +98,6 @@
     opacity: 0.75;
   }
 
-  // -- Notification bell -----------------------------------------------------
   &__notify-btn {
     position: relative;
     background: rgba(255, 255, 255, 0.04);
@@ -151,9 +141,6 @@
     50%      { box-shadow: 0 0 12px rgba(255, 213, 79, 0.7); }
   }
 
-  // -- Filter bar ------------------------------------------------------------
-  // 2026-05-08 v3: tighter mobile layout — search spans the full row,
-  // the four selects fit two-up, and the level inputs share a row.
   &__filters {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
@@ -167,7 +154,6 @@
     }
     @media (max-width: 600px) {
       grid-template-columns: 1fr 1fr;
-      // Search spans both columns so it stays usable.
       > .market__search { grid-column: 1 / -1; }
     }
   }
@@ -191,7 +177,6 @@
 
   &__lvl-input { width: 100%; }
 
-  // -- Panels ----------------------------------------------------------------
   &__panel {
     padding: 8px 12px;
   }
@@ -202,20 +187,12 @@
     gap: 8px;
   }
 
-  // 2026-05-08 v3 spec: sell tiles are MUCH smaller — closer to bag
-  // tile dimensions so the player sees a dense grid of inventory at
-  // a glance. Tile size capped at 96px and rows pack as tightly as the
-  // viewport allows.
   &__panel--grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     gap: 6px;
   }
 
-  // -- Listing row (Browse + My) ---------------------------------------------
-  // 2026-05-08 v3 — at narrow viewports the 4-column grid (icon /
-  // info / price / cta) overflows. We collapse the cta into the
-  // price column under 600px so the row still fits a 320px screen.
   &__row {
     display: grid;
     grid-template-columns: 64px 1fr auto auto;
@@ -240,13 +217,9 @@
       grid-template-columns: 56px 1fr auto;
       gap: 8px;
       padding: 6px 8px;
-      // Hide the standalone CTA — clicking the whole row already
-      // opens the buy/edit popup, the cta is only visual chrome.
       .market__row-cta { display: none; }
     }
 
-    // Elixir / potion rows — same goldpurple gradient border as the
-    // sell tile so the family reads as one cohort across all tabs.
     &--elixir {
       border-color: transparent;
       background:
@@ -319,8 +292,6 @@
     letter-spacing: 0.04em;
   }
 
-  // 2026-05-08 v3: inline bonus chips on each listing row so the
-  // player can compare stats without opening the buy popup.
   &__row-stats {
     display: flex;
     flex-wrap: wrap;
@@ -391,14 +362,9 @@
     padding: 8px 14px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    pointer-events: none; // parent button handles click
+    pointer-events: none;
   }
 
-  // -- Sell tile (grid) ------------------------------------------------------
-  // 2026-05-08 v3: tiles are bag-sized (~96px). Lv badge top-left,
-  // upgrade badge top-right (corner with `+N`), qty badge bottom-right.
-  // Name renders as a thin caption underneath. No rarity caption — the
-  // border + name colour already convey it.
   &__sell-tile {
     background: #000;
     border: 2px solid var(--rarity-color, rgba(255, 255, 255, 0.1));
@@ -417,12 +383,6 @@
       box-shadow: 0 2px 10px color-mix(in srgb, var(--rarity-color, #fff) 30%, transparent);
     }
 
-    // 2026-05-08 v3 spec ("wszystkie eliksiry kolory borderow daj na
-    // zloty z fioletowym gradient borderu"): elixirs + potions get a
-    // unified gold-to-purple gradient border instead of the heuristic
-    // rarity colour, so the family reads as one visual cohort. Uses
-    // the background-clip trick (two backgrounds — solid for inside,
-    // gradient for the border slot) so the border-radius is preserved.
     &--elixir {
       border-color: transparent;
       background:
@@ -476,7 +436,6 @@
     -webkit-box-orient: vertical;
   }
 
-  // -- Pagination -----------------------------------------------------------
   &__pagination {
     display: flex;
     align-items: center;
@@ -504,7 +463,6 @@
     color: $color-text-muted;
   }
 
-  // -- Modals (buy / sell / edit / notifications) ---------------------------
   &__modal-backdrop {
     position: fixed;
     inset: 0;
@@ -559,8 +517,6 @@
     border: 1px solid;
     border-radius: $radius-md;
 
-    // Elixir / potion hero: goldpurple gradient border + tinted
-    // backdrop, matching the listing row + sell tile treatment.
     &--elixir {
       border-color: transparent;
       background:
@@ -581,7 +537,6 @@
     border-radius: $radius-sm;
   }
 
-  // Corner badges on the modal hero icon (Lv + upgrade).
   &__modal-icon-lvl,
   &__modal-icon-upgrade {
     position: absolute;
@@ -616,8 +571,6 @@
     color: $color-text-muted;
   }
 
-  // Stats list shared by buy / sell / edit modals — same row layout
-  // as the inline row stats so the visual treatment is consistent.
   &__modal-stats {
     list-style: none;
     margin: 0 0 12px;
@@ -780,7 +733,6 @@
     }
   }
 
-  // -- Notifications list inside the modal ---------------------------------
   &__notify-list {
     list-style: none;
     margin: 0;
@@ -847,7 +799,6 @@
     &:hover { background: rgba(76, 175, 80, 0.32); }
   }
 
-  // -- Toast ---------------------------------------------------------------
   &__toast {
     position: fixed;
     bottom: $spacing-lg;

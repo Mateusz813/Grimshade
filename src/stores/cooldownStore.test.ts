@@ -2,9 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useCooldownStore } from './cooldownStore';
 
 beforeEach(() => {
-    // Documented defaults — all cooldowns zeroed, no skills mid-CD. We bypass
-    // `clearAll()` here so the reset itself doesn't depend on the action under
-    // test (which we cover in its own describe block below).
     useCooldownStore.setState({
         hpPotionCooldown: 0,
         mpPotionCooldown: 0,
@@ -62,8 +59,6 @@ describe('setPctHpCooldown', () => {
     it('stores the value (separate slot from flat HP)', () => {
         useCooldownStore.getState().setPctHpCooldown(2000);
         expect(useCooldownStore.getState().pctHpCooldown).toBe(2000);
-        // Make sure the FLAT slot stayed untouched — they must run on
-        // independent timers (pct = 2s CD, flat = 5s CD).
         expect(useCooldownStore.getState().hpPotionCooldown).toBe(0);
     });
 
@@ -111,8 +106,6 @@ describe('setSkillCooldown', () => {
         const before = useCooldownStore.getState().skillCooldowns;
         useCooldownStore.getState().setSkillCooldown('fireball', 1000);
         const after = useCooldownStore.getState().skillCooldowns;
-        // Critical for React re-render correctness — every set produces a
-        // fresh object reference, never a mutated one.
         expect(after).not.toBe(before);
     });
 });
@@ -121,7 +114,6 @@ describe('setSkillCooldowns', () => {
     it('replaces the entire skill cooldown map in one shot', () => {
         useCooldownStore.getState().setSkillCooldown('old', 9000);
         useCooldownStore.getState().setSkillCooldowns({ a: 1000, b: 2000 });
-        // Bulk replace — old entries are gone, no merge.
         expect(useCooldownStore.getState().skillCooldowns).toEqual({ a: 1000, b: 2000 });
     });
 
@@ -189,8 +181,6 @@ describe('tick', () => {
             skillCooldowns: { ready: 500, busy: 5000 },
         });
         useCooldownStore.getState().tick(1000);
-        // `ready` (500ms left, ticked by 1000ms) drops to 0 and gets pruned;
-        // `busy` survives with 4000ms left.
         expect(useCooldownStore.getState().skillCooldowns).toEqual({ busy: 4000 });
     });
 
@@ -235,7 +225,6 @@ describe('tick', () => {
         expect(s.mpPotionCooldown).toBe(4500);
         expect(s.pctHpCooldown).toBe(1500);
         expect(s.pctMpCooldown).toBe(1500);
-        // `blink` (200ms) hits zero -> pruned. Others survive.
         expect(s.skillCooldowns).toEqual({ fireball: 5500, heal: 1000 });
     });
 });
@@ -265,5 +254,3 @@ describe('clearAll', () => {
     });
 });
 
-// TODO: timer integration (`useUnifiedTimer` driving `tick(decMs)` every frame)
-// belongs in a hook / view test — not in this slice-level unit suite.

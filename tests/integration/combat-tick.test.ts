@@ -1,30 +1,3 @@
-/**
- * Integration: combat kill propagation.
- *
- * When a monster dies in combat, the engine has to fan a single event out
- * to FIVE separate gameplay stores in one shot:
- *   1. characterStore  — XP gained (may level up, may grant stat points).
- *   2. inventoryStore  — gold credited + any rolled drops put into bag.
- *   3. taskStore       — kill count advanced for that monster, if a task
- *                        for it is active.
- *   4. masteryStore    — monster mastery kill counter bumped (and possibly
- *                        ticked over to next mastery level).
- *   5. questStore      — `kill` and `kill_rarity` goals advanced where
- *                        applicable.
- *
- * Unit tests cover each store in isolation; this suite exercises the
- * REAL chain — we let the actual store implementations talk to each
- * other instead of mocking the calls. The point is to catch regressions
- * where a refactor breaks one of the propagation hops (e.g. quest goals
- * stopped advancing because someone changed the `addProgress` signature).
- *
- * The combat engine itself drives a lot of UI / network plumbing we
- * don't want to spin up in a node test, so the suite simulates a
- * "monster died" event by calling the same store actions the engine
- * would (kept faithful to `combatEngine.handleMonsterDeath`). The
- * upshot is the SAME mutation graph hits the SAME stores — we just
- * skip the React + party-broadcast layers.
- */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useCharacterStore, type ICharacter } from '../../src/stores/characterStore';
@@ -34,7 +7,6 @@ import { useMasteryStore, MASTERY_KILL_THRESHOLD } from '../../src/stores/master
 import { useQuestStore, type IQuest } from '../../src/stores/questStore';
 import { EMPTY_EQUIPMENT } from '../../src/systems/itemSystem';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-int-1',
@@ -64,7 +36,6 @@ const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     ...overrides,
 } as ICharacter);
 
-/** Reset every store the propagation chain touches. */
 const resetStores = (): void => {
     useCharacterStore.setState({ character: null, isLoading: false });
     useInventoryStore.setState({
@@ -85,13 +56,6 @@ beforeEach(() => {
     resetStores();
 });
 
-/**
- * Reproduces the propagation steps `combatEngine.handleMonsterDeath` runs
- * for a SOLO kill (no party). We deliberately don't import combatEngine
- * itself — it pulls in dozens of subsystems (party sync, loot, save).
- * Instead, we replay the exact store calls the engine makes so we test
- * the SAME end-to-end chain on the SAME real store implementations.
- */
 const simulateMonsterKill = (params: {
     monsterId: string;
     monsterLevel: number;
@@ -101,17 +65,14 @@ const simulateMonsterKill = (params: {
     taskKills?: number;
 }): void => {
     const taskKills = params.taskKills ?? 1;
-    // Gold + XP (mirrors combatEngine line 1021 / 1080).
     useInventoryStore.getState().addGold(params.goldReward);
     useCharacterStore.getState().addXp(params.xpReward);
-    // Task / quest / mastery (mirrors combatEngine lines 1125–1134).
     useTaskStore.getState().addKill(params.monsterId, params.monsterLevel, taskKills);
     useQuestStore.getState().addProgress('kill', params.monsterId, taskKills);
     useQuestStore.getState().addProgress('kill_rarity', params.rarity, 1, params.monsterLevel);
     useMasteryStore.getState().addMasteryKills(params.monsterId, taskKills);
 };
 
-// -- Tests --------------------------------------------------------------------
 
 describe('combat tick: kill propagates to every collaborating store', () => {
     it('credits XP onto the character', () => {
@@ -125,10 +86,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             goldReward: 5,
         });
         const after = useCharacterStore.getState().character!.xp;
-        // XP either landed in current level's bucket, or rolled into a
-        // level-up. Either way the GAIN must be visible somewhere — for a
-        // lvl-50 character far from the next ding, +250 XP is well below
-        // the per-level threshold so it lands in `xp` directly.
         expect(after).toBe(before + 250);
     });
 
@@ -162,7 +119,7 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             rarity: 'normal',
             xpReward: 10,
             goldReward: 1,
-            taskKills: 3, // simulate three rats killed at once (wave)
+            taskKills: 3,
         });
         const active = useTaskStore.getState().activeTasks[0];
         expect(active.progress).toBe(3);
@@ -206,7 +163,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
 
     it('rolls mastery to level 1 when the kill threshold is crossed in one shot', () => {
         useCharacterStore.getState().setCharacter(makeChar());
-        // Seed kills 1 short of the threshold so a single kill flips it.
         useMasteryStore.setState({
             masteries: {},
             masteryKills: { rat: MASTERY_KILL_THRESHOLD - 1 },
@@ -219,8 +175,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             goldReward: 1,
         });
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(1);
-        // Overflow carries to the next level's bucket; one extra kill ->
-        // 0 overflow.
         expect(useMasteryStore.getState().getMasteryKills('rat')).toBe(0);
     });
 
@@ -251,7 +205,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
 
     it('advances a `kill_rarity` quest goal when the rarity tier matches', () => {
         useCharacterStore.getState().setCharacter(makeChar({ level: 50 }));
-        // Goal: kill 10 monsters of EPIC rarity or higher at lvl 30+.
         useQuestStore.getState().startQuest({
             id: 'q_epic_kills',
             name_pl: 'Epiczni',
@@ -261,7 +214,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             goals: [{ type: 'kill_rarity', rarity: 'epic', minMonsterLevel: 30, count: 10 }],
             rewards: [{ type: 'gold', amount: 1000 }],
         });
-        // Kill an EPIC rat at lvl 35 — qualifies (epic >= epic, 35 >= 30).
         simulateMonsterKill({
             monsterId: 'big_rat',
             monsterLevel: 35,
@@ -283,7 +235,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             goals: [{ type: 'kill_rarity', rarity: 'epic', minMonsterLevel: 100, count: 5 }],
             rewards: [{ type: 'gold', amount: 1000 }],
         });
-        // Epic but only lvl 35 — should NOT advance the goal.
         simulateMonsterKill({
             monsterId: 'rat',
             monsterLevel: 35,
@@ -329,18 +280,7 @@ describe('combat tick: kill propagates to every collaborating store', () => {
     });
 
     it('respects the quest minLevel gate when the quest is in quests.json', () => {
-        // The active quest is in the store but the player is BELOW minLevel
-        // (e.g. they activated it then leveled-down via death). Per the
-        // 2026-05 spec questStore.addProgress silently skips below-level
-        // quests so kills don't bleed into them.
-        //
-        // IMPORTANT: the gate inside addProgress runs `getQuestById` to fetch
-        // the canonical definition — if the quest id is NOT in quests.json
-        // the gate falls through (def is undefined). We use a REAL high-level
-        // quest from quests.json so the gate actually engages.
         useCharacterStore.getState().setCharacter(makeChar({ level: 5 }));
-        // `quest_void_crisis` is a lvl-200 quest targeting `void_behemoth`.
-        // The player is lvl 5 so kills must NOT register.
         useQuestStore.setState({
             activeQuests: [{
                 questId: 'quest_void_crisis',
@@ -360,11 +300,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
     });
 
     it('falls through the gate for quests not in quests.json (current behavior)', () => {
-        // TODO: verify behavior — `getQuestById` returning undefined causes
-        // the level-gate inside `addProgress` to bypass. Today this only
-        // matters for tests / sandbox-injected quests; real player-facing
-        // quests are always in quests.json. Documented here so a future
-        // refactor that tightens the gate makes this assertion flip.
         useCharacterStore.getState().setCharacter(makeChar({ level: 5 }));
         useQuestStore.getState().startQuest({
             id: 'q_synthetic_high',
@@ -381,7 +316,6 @@ describe('combat tick: kill propagates to every collaborating store', () => {
             xpReward: 10,
             goldReward: 1,
         });
-        // Today: gate bypassed -> progress IS recorded.
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(1);
     });
 });

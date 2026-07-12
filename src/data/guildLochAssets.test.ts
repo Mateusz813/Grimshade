@@ -1,23 +1,7 @@
-/**
- * Tests for the loch (guild boss) artwork registry.
- *
- * The module ships two parallel maps keyed by tier (1..50):
- *   - LOCH_BACKGROUNDS  — full-bleed arena backgrounds (loch{N}.png).
- *   - LOCH_BOSS_IMAGES  — boss portraits (loch-{N}.png).
- *
- * Public resolvers:
- *   - getLochBackground(tier)  — looks up tier, falls back to tier 1.
- *   - getLochBossImage(tier)   — same shape.
- *
- * As with `spriteAssets.test.ts` we don't assert exact URL strings
- * (Vite hashes them). We assert presence, identity (fallback returns
- * the SAME url as tier 1), and out-of-range behaviour.
- */
 
 import { describe, it, expect } from 'vitest';
 import { getLochBackground, getLochBossImage } from './guildLochAssets';
 
-// -- getLochBackground -------------------------------------------------------
 
 describe('getLochBackground', () => {
     it('returns a URL for every tier in 1..50', () => {
@@ -50,7 +34,6 @@ describe('getLochBackground', () => {
     });
 });
 
-// -- getLochBossImage --------------------------------------------------------
 
 describe('getLochBossImage', () => {
     it('returns a URL for every tier in 1..50', () => {
@@ -79,12 +62,9 @@ describe('getLochBossImage', () => {
     });
 });
 
-// -- parallel maps -----------------------------------------------------------
 
 describe('background vs boss image parallelism', () => {
     it('returns DIFFERENT urls for background vs portrait at the same tier', () => {
-        // bg{N}.png and boss{N}.png are distinct files — they shouldn't
-        // alias to the same hashed URL.
         for (const tier of [1, 10, 25, 50]) {
             expect(getLochBackground(tier)).not.toBe(getLochBossImage(tier));
         }

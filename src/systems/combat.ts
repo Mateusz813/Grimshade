@@ -1,14 +1,11 @@
 import skillsData from '../data/skills.json';
 
-// -- Helpers -------------------------------------------------------------------
 
-/** Coerces any value to a finite number, returning `fallback` for NaN/Infinity/null/undefined. */
 const safeN = (v: number | null | undefined, fallback = 0): number => {
     const n = Number(v ?? fallback);
     return isFinite(n) ? n : fallback;
 };
 
-// -- Interfaces ----------------------------------------------------------------
 
 export interface ICombatParams {
     baseAtk: number;
@@ -24,10 +21,6 @@ export interface ICombatParams {
     blockChance?: number;
     dodgeChance?: number;
     maxCritChance?: number;
-    /**
-     * Final damage multiplier applied after base / crit / block calculations.
-     * Used by combat elixirs (attack damage, spell damage). Defaults to 1.0.
-     */
     damageMultiplier?: number;
 }
 
@@ -39,21 +32,6 @@ export interface ICombatResult {
     finalDamage: number;
 }
 
-export interface ISkillEffect {
-    skillId: string;
-    damage: number;
-    mpCost: number;
-    cooldown: number;
-    effect: string | null;
-    mlvlBonus?: number;
-}
-
-export interface IAutoAttackParams {
-    attackSpeed: number;
-    baseInterval: number;
-}
-
-// -- Dual Wield result (Rogue) -------------------------------------------------
 
 export interface IDualWieldResult {
     hit1: ICombatResult;
@@ -61,7 +39,6 @@ export interface IDualWieldResult {
     totalDamage: number;
 }
 
-// -- Core calculations ---------------------------------------------------------
 
 export const calculateDamage = (params: ICombatParams): ICombatResult => {
     const baseAtk      = safeN(params.baseAtk);
@@ -75,13 +52,11 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     const dodgeChance  = safeN(params.dodgeChance, 0);
     const maxCrit      = safeN(params.maxCritChance, 1.0);
 
-    // Cap crit chance at class maximum
     const effectiveCritChance = Math.min(critChance, maxCrit);
 
     const baseDamage = (baseAtk + weaponAtk + skillBonus) * classMod;
     let finalDamage  = Math.max(1, baseDamage - enemyDef);
 
-    // Roll dodge first (complete miss)
     const isDodged = params.isDodged ?? Math.random() < dodgeChance;
     if (isDodged) {
         return {
@@ -99,7 +74,6 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     if (isCrit)    finalDamage *= critDmgMult;
     if (isBlocked) finalDamage  = Math.floor(finalDamage * 0.5);
 
-    // Elixir / buff damage multiplier (attack damage, spell damage, etc.)
     const dmgMult = safeN(params.damageMultiplier, 1);
     if (dmgMult !== 1) finalDamage *= dmgMult;
 
@@ -112,15 +86,7 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     };
 };
 
-// -- Dual Wield calculation (Rogue) --------------------------------------------
-// Each dagger does 60% of normal DMG, 2 separate attacks per turn
 
-/**
- * Dual wield: two fully independent hits.
- * Each hand rolls its own weapon damage and has its own crit chance.
- * `weaponAtk` = mainHand roll, `offHandAtk` = offHand roll.
- * Each hit does 60% of its respective weapon damage.
- */
 export const calculateDualWieldDamage = (
     params: ICombatParams & { offHandAtk: number },
 ): IDualWieldResult => {
@@ -137,32 +103,26 @@ export const calculateDualWieldDamage = (
     };
 };
 
-// -- Block chance calculation (Knight) -----------------------------------------
-// Base 5%, scales with Shielding skill up to max 25%
 
 export const calculateBlockChance = (
     shieldingLevel: number,
     isPhysicalAttack: boolean = true,
 ): number => {
-    // Block only works against physical attacks (not from Mage/Cleric spells)
     if (!isPhysicalAttack) return 0;
 
     const base = 0.05;
-    const perLevel = 0.005; // +0.5% per shielding level
+    const perLevel = 0.005;
     const max = 0.25;
 
     return Math.min(max, base + safeN(shieldingLevel) * perLevel);
 };
 
-// -- Dodge chance calculation (Archer/Rogue/Bard) ------------------------------
-// Base 5%, scales with agility-related stats up to max 20-25%
 
 export const calculateDodgeChance = (
     characterClass: string,
     agilityLevel: number = 0,
     isPhysicalAttack: boolean = true,
 ): number => {
-    // Dodge doesn't work against Mage/Cleric attacks
     if (!isPhysicalAttack) return 0;
 
     const classConfig: Record<string, { base: number; perLevel: number; max: number }> = {
@@ -177,8 +137,6 @@ export const calculateDodgeChance = (
     return Math.min(config.max, config.base + safeN(agilityLevel) * config.perLevel);
 };
 
-// -- MLVL bonus to skill damage ------------------------------------------------
-// Skill damage = baseSkillDmg * (1 + MLVL * 0.02)
 
 export const calculateSkillDamageWithMlvl = (
     baseSkillDmg: number,
@@ -201,16 +159,11 @@ export const calculateSkillDamage = (
     return Math.max(1, Math.floor(raw - safeN(enemyDefense)));
 };
 
-/**
- * Returns the base auto-attack interval in ms.
- * speed 1 -> 2000 ms  |  speed 4+ -> 500 ms minimum.
- */
 export const calculateAttackInterval = (attackSpeed: number): number => {
     const BASE_INTERVAL = 2000;
     return Math.max(500, Math.floor(BASE_INTERVAL / Math.max(1, safeN(attackSpeed, 1))));
 };
 
-// -- Death penalty (NEW - can lose levels!) ------------------------------------
 
 export interface IDeathPenaltyResult {
     newLevel: number;
@@ -220,14 +173,6 @@ export interface IDeathPenaltyResult {
     skillXpLoss: number;
 }
 
-/**
- * Calculates death penalty – scales heavily with level.
- * Low levels: lose 1 level. High levels: lose ~5% of levels.
- * Skill XP loss is proportionally much smaller (1-3%).
- *
- * Level loss formula: max(1, floor(level * (0.03 + level * 0.00002)))
- *   lvl 50:  1-2 levels  |  lvl 100: 3 levels  |  lvl 500: 20  |  lvl 1000: 50
- */
 export const calculateDeathPenalty = (
     currentLevel: number,
     currentXp: number,
@@ -236,7 +181,6 @@ export const calculateDeathPenalty = (
 ): IDeathPenaltyResult => {
     const level = safeN(currentLevel, 1);
 
-    // Can't lose level at level 1
     if (level <= 1) {
         return {
             newLevel: 1,
@@ -247,7 +191,6 @@ export const calculateDeathPenalty = (
         };
     }
 
-    // Calculate levels lost (scales with level)
     let levelsLost: number;
     if (level <= 10) {
         levelsLost = 1;
@@ -257,7 +200,6 @@ export const calculateDeathPenalty = (
     }
     const newLevel = Math.max(1, level - levelsLost);
 
-    // XP percent to keep on the new level
     let xpPercent: number;
     if (level <= 5)        xpPercent = 75;
     else if (level <= 20)  xpPercent = 50;
@@ -268,7 +210,6 @@ export const calculateDeathPenalty = (
 
     const newXp = Math.floor(safeN(xpToNext) * (xpPercent / 100));
 
-    // Skill XP loss: 1-3% (much smaller than level loss)
     const skillLossPct = Math.min(0.03, 0.01 + level * 0.00002);
     const skillLoss = Math.floor(safeN(skillXp) * skillLossPct);
 
@@ -281,7 +222,6 @@ export const calculateDeathPenalty = (
     };
 };
 
-// -- Legacy death penalty (kept for backwards compat) --------------------------
 
 export const applyDeathPenalty = (
     currentXp: number,
@@ -303,12 +243,7 @@ export const getSpeedMultiplier = (speed: CombatSpeed): number => {
     return multipliers[speed];
 };
 
-// -- Monster damage helpers ----------------------------------------------------
 
-/**
- * Returns min/max attack range for a monster.
- * Falls back to floor(attack * 0.8) / floor(attack * 1.2) when not defined.
- */
 export const getMonsterAttackRange = (monster: {
     attack: number;
     attack_min?: number;
@@ -320,9 +255,6 @@ export const getMonsterAttackRange = (monster: {
     return { min, max };
 };
 
-/**
- * Rolls a random attack damage in the monster's min..max range.
- */
 export const rollMonsterDamage = (monster: {
     attack: number;
     attack_min?: number;
@@ -333,7 +265,6 @@ export const rollMonsterDamage = (monster: {
     return min + Math.floor(Math.random() * (max - min + 1));
 };
 
-// -- Monster rarity stat scaling -----------------------------------------------
 
 export interface IMonsterCombatStats {
     hp: number;
@@ -384,35 +315,11 @@ export const applyMonsterRarity = (
     };
 };
 
-// -- Combat-speed cooldown scaling -------------------------------------------
 
-/**
- * Scale a base cooldown (ms) by the combat-speed multiplier so an auto/manual
- * skill becomes recastable as soon as its SPEED-SCALED cooldown bar empties.
- *
- * 2026-06-21 bug fix: several views (Transform / Boss / Dungeon / Guild boss)
- * gated the recast on a FIXED wall-clock window (`now - lastUsed < cooldownMs`)
- * even though the cooldown bar drained at the speed-scaled rate — so on x2/x4
- * the bar showed ready but the skill only fired every full base-cooldown
- * (~5s). The gate must use this scaled value: x1 → full, x2 → half, x4 → quarter.
- *
- * The hunt engine (combatEngine.ts) achieves the same by multiplying elapsed by
- * speedMult; this is the equivalent "shrink the window" form used by the view
- * loops. `speedMult` is clamped to ≥1 so a bad value never lengthens the CD.
- */
 export const getSpeedScaledCooldownMs = (cooldownMs: number, speedMult: number): number =>
     Math.floor(Math.max(0, cooldownMs) / Math.max(1, speedMult));
 
-// -- Per-skill recast override -------------------------------------------------
-//
-// The flat-cooldown combat views (hunt / boss / dungeon / transform) give EVERY
-// spell a uniform fast recast (5-8s) and ignore each skill's own cooldown. A
-// few powerful utility spells should NOT be spammable, so they keep their real
-// `skills.json` cooldown even in those views. 2026-06-24: Krok Cienia
-// (`shadow_step`, 20s) — a 100%-dodge-next-3-attacks buff — was castable every
-// ~5s; the owner wants its real 20s leash to apply everywhere.
 
-/** skillId -> real cooldown (ms), read from skills.json active skills. */
 const SKILL_REAL_COOLDOWN_MS: Record<string, number> = (() => {
     const map: Record<string, number> = {};
     const active = (skillsData as {
@@ -428,19 +335,8 @@ const SKILL_REAL_COOLDOWN_MS: Record<string, number> = (() => {
     return map;
 })();
 
-/**
- * Skills whose real (skills.json) cooldown is honored even in the flat-cooldown
- * views, instead of the uniform fast recast.
- */
 export const REAL_COOLDOWN_SKILL_IDS = new Set<string>(['shadow_step']);
 
-/**
- * The recast (ms) a flat-cooldown view should use for `skillId`. Almost every
- * skill returns `flatMs` (the view's uniform recast). Skills in
- * `REAL_COOLDOWN_SKILL_IDS` return the LONGER of `flatMs` and their real
- * skills.json cooldown, so a deliberately-long-CD utility spell keeps its leash.
- * (Wrap in `getSpeedScaledCooldownMs` at gate sites, exactly like the flat value.)
- */
 export const resolveSkillRecastMs = (skillId: string, flatMs: number): number =>
     REAL_COOLDOWN_SKILL_IDS.has(skillId)
         ? Math.max(flatMs, SKILL_REAL_COOLDOWN_MS[skillId] ?? flatMs)

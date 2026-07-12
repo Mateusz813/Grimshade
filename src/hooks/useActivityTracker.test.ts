@@ -3,17 +3,6 @@ import { renderHook, act, cleanup } from '@testing-library/react';
 import { useActivityTracker } from './useActivityTracker';
 import { useSkillStore } from '../stores/skillStore';
 
-/**
- * useActivityTracker tests
- *
- * The hook attaches global activity / visibility listeners and an
- * inactivity timer. We control the skillStore directly because the hook
- * delegates speed-multiplier writes to `onActivityChange` and
- * `collectOfflineTraining` — both of which we observe via spies.
- *
- * Timing: the inactivity timeout is 10 min and the collect interval is
- * 30 s. We use fake timers throughout.
- */
 
 const SKILL_INITIAL_STATE = {
     skillLevels: {},
@@ -34,9 +23,6 @@ let collectOfflineTrainingSpy: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
     vi.useFakeTimers();
-    // Reset store to the active-speed baseline and stub the methods
-    // the hook calls so we can assert on calls without running the
-    // full speed-segment math.
     onActivityChangeSpy = vi.fn();
     collectOfflineTrainingSpy = vi.fn();
     useSkillStore.setState({
@@ -47,11 +33,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // Unmount every `renderHook` from the previous test so the
-    // hook's `removeEventListener` / `clearInterval` cleanup fires.
-    // Otherwise prior listeners remain wired to window/document and
-    // a later test's `dispatchEvent` triggers spies from every test
-    // accumulated in the run.
     cleanup();
     vi.useRealTimers();
 });
@@ -59,14 +40,12 @@ afterEach(() => {
 describe('useActivityTracker', () => {
     it('flips training to active (2x) on mount', () => {
         renderHook(() => useActivityTracker());
-        // Initial mount call: hook ALWAYS forces 2x at boot.
         expect(onActivityChangeSpy).toHaveBeenCalledWith(true);
     });
 
     it('marks training inactive (1x) after 10 minutes of no activity', () => {
         renderHook(() => useActivityTracker());
         onActivityChangeSpy.mockClear();
-        // 10 min + a tick to fire the setTimeout callback.
         act(() => {
             vi.advanceTimersByTime(10 * 60 * 1000 + 100);
         });
@@ -75,20 +54,16 @@ describe('useActivityTracker', () => {
 
     it('does NOT spam onActivityChange on every mousemove when already at 2x', () => {
         renderHook(() => useActivityTracker());
-        // Mount call accounted for; clear and check no additional
-        // writes happen for events while the store already reads 2x.
         onActivityChangeSpy.mockClear();
         act(() => {
             window.dispatchEvent(new Event('mousemove'));
             window.dispatchEvent(new Event('mousemove'));
             window.dispatchEvent(new Event('mousemove'));
         });
-        // Store reports 2x in our beforeEach baseline -> no write.
         expect(onActivityChangeSpy).not.toHaveBeenCalled();
     });
 
     it('re-asserts 2x on activity when current multiplier is 1', () => {
-        // Pre-set inactive state so the next event triggers a write.
         useSkillStore.setState({ trainingCurrentSpeedMultiplier: 1 });
         renderHook(() => useActivityTracker());
         onActivityChangeSpy.mockClear();
@@ -115,7 +90,6 @@ describe('useActivityTracker', () => {
     });
 
     it('does NOT collect XP when no skill is being trained', () => {
-        // offlineTrainingSkillId stays null
         renderHook(() => useActivityTracker());
         act(() => {
             vi.advanceTimersByTime(30_000 * 3);
@@ -176,20 +150,15 @@ describe('useActivityTracker', () => {
     it('inactivity timer is reset whenever activity is detected', () => {
         renderHook(() => useActivityTracker());
         onActivityChangeSpy.mockClear();
-        // Advance ALMOST to the inactivity threshold then ping.
         act(() => {
             vi.advanceTimersByTime(9 * 60 * 1000);
-            // Mark inactive in the store so the activity ping forces a write.
             useSkillStore.setState({ trainingCurrentSpeedMultiplier: 1 });
             window.dispatchEvent(new Event('keydown'));
         });
-        // Activity should have reset the timer; another 5 min stays
-        // inside the new 10-min window so no inactive flip yet.
         onActivityChangeSpy.mockClear();
         act(() => {
             vi.advanceTimersByTime(5 * 60 * 1000);
         });
-        // No `false` writes since the timer was reset by keydown.
         const calledFalse = onActivityChangeSpy.mock.calls.some((c) => c[0] === false);
         expect(calledFalse).toBe(false);
     });

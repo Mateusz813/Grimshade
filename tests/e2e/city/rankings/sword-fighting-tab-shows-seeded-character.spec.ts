@@ -1,31 +1,3 @@
-/**
- * Atomic E2E — `/leaderboard` "Sword" tab pokazuje naszą seedowaną
- * postać z high `sword_fighting` weapon skill.
- *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria". Rozszerzenie pokrycia
- * — Sword Fighting ranking (weapon_skill source).
- *
- * Tab definition (Leaderboard.tsx linia 136):
- *   { key: 'sword_fighting', label: 'Sword', icon: 'crossed-swords',
- *     source: 'weapon_skill', skillName: 'sword_fighting',
- *     valueLabel: 'Sword' }
- *
- * **weapon_skill source path** (Leaderboard.tsx linia 315-348):
- *  1. GET `character_weapon_skills?skill_name=eq.sword_fighting
- *     &order=skill_level.desc,skill_xp.desc&limit=100`
- *  2. GET `characters?id=in.(...)` żeby zmatchować names+class
- *  3. Build entries: `{ id, name, class, value: skill_level,
- *     secondaryValue: skill_xp }`
- *  4. Display via formatValue fallback -> `Sword 999`.
- *
- * Seed: `seedWeaponSkill({ skillName: 'sword_fighting', skillLevel: 999 })`
- * + matching `skills.skillLevels.sword_fighting=999` w game_save żeby
- * defensywnie przeżyć stray sync.
- *
- * Cleanup: try/finally + cleanupCharacterById. `character_weapon_skills`
- * jest w `CHARACTER_CHILD_TABLES` (cleanup.ts linia 84) -> wipe razem
- * z postacią.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
@@ -53,10 +25,6 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             });
             createdId = created.id;
 
-            // Defensywnie seedujemy też `skills.skillLevels` w game_save —
-            // gdyby stray `syncWeaponSkillsToSupabase` odpalił się po
-            // wejściu na /leaderboard (np. przy character switch), DELETE+
-            // INSERT przepisze tę samą wartość 999, nie blanknie 0.
             const userId = await findUserIdByEmail(testUsers.secondary.email);
             await seedGameSave({
                 characterId: created.id,
@@ -64,9 +32,6 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
                 skills: { skillLevels: { sword_fighting: 999 } },
             });
 
-            // Insert weapon_skill row PO seedGameSave — to ta wartość którą
-            // czyta Leaderboard. game_save seed służy tylko jako defense
-            // w razie stray sync.
             await seedWeaponSkill({
                 characterId: created.id,
                 skillName: 'sword_fighting',

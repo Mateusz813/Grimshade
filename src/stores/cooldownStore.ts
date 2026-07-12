@@ -1,16 +1,10 @@
 import { create } from 'zustand';
 
-/**
- * Persists potion + skill cooldowns across fights so a skill used at the end
- * of fight N is still on cooldown at the start of fight N+1. Cooldowns tick
- * down on real time (the Combat view advances them via the unified timer).
- */
 interface ICooldownStore {
     hpPotionCooldown: number;
     mpPotionCooldown: number;
     pctHpCooldown: number;
     pctMpCooldown: number;
-    /** skillId -> ms remaining */
     skillCooldowns: Record<string, number>;
 
     setHpPotionCooldown: (ms: number) => void;
@@ -18,9 +12,7 @@ interface ICooldownStore {
     setPctHpCooldown: (ms: number) => void;
     setPctMpCooldown: (ms: number) => void;
     setSkillCooldown: (skillId: string, ms: number) => void;
-    /** Bulk-update skill cooldowns map (used by tick reducers). */
     setSkillCooldowns: (next: Record<string, number>) => void;
-    /** Tick all cooldowns down by `decMs` (clamped at 0). */
     tick: (decMs: number) => void;
     clearAll: () => void;
 }

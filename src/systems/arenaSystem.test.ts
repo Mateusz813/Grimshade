@@ -27,7 +27,6 @@ import {
     type IArenaRewardBucket,
 } from '../types/arena';
 
-// -- Helpers ------------------------------------------------------------------
 
 const makeCompetitor = (
     id: string,
@@ -55,7 +54,6 @@ const makeCompetitor = (
     },
 });
 
-// -- LEAGUE_BOUNDARIES --------------------------------------------------------
 
 describe('LEAGUE_BOUNDARIES', () => {
     it('bronze has no relegation (lowest league)', () => {
@@ -77,13 +75,11 @@ describe('LEAGUE_BOUNDARIES', () => {
     });
 
     it('promotion thresholds shrink as leagues climb', () => {
-        // Bronze=40, silver=35, gold=33, platinum=20, ..., grand_master=5.
         expect(LEAGUE_BOUNDARIES.bronze.promotedTop).toBeGreaterThan(LEAGUE_BOUNDARIES.silver.promotedTop ?? 0);
         expect(LEAGUE_BOUNDARIES.master.promotedTop).toBeGreaterThan(LEAGUE_BOUNDARIES.grand_master.promotedTop ?? 0);
     });
 });
 
-// -- getLeagueMultiplier ------------------------------------------------------
 
 describe('getLeagueMultiplier', () => {
     it('returns 1 for bronze (index 0 + 1)', () => {
@@ -108,7 +104,6 @@ describe('getLeagueMultiplier', () => {
     });
 });
 
-// -- getNextLeague / getPreviousLeague ----------------------------------------
 
 describe('getNextLeague', () => {
     it('returns silver from bronze', () => {
@@ -124,8 +119,6 @@ describe('getNextLeague', () => {
     });
 
     it('returns input league when league not found (defensive)', () => {
-        // Cast through unknown to bypass strict ArenaLeague type — testing
-        // defensive idx<0 branch.
         const out = getNextLeague('unknown_league' as unknown as ArenaLeague);
         expect(out).toBe('unknown_league');
     });
@@ -150,7 +143,6 @@ describe('getPreviousLeague', () => {
     });
 });
 
-// -- getMatchReward -----------------------------------------------------------
 
 describe('getMatchReward', () => {
     it('attacker wins attacking up: 200 AP / 2 LP, defender 0/0', () => {
@@ -203,7 +195,6 @@ describe('getMatchReward', () => {
     });
 });
 
-// -- ARENA_DAMAGE_MULTIPLIER --------------------------------------------------
 
 describe('ARENA_DAMAGE_MULTIPLIER', () => {
     it('is 0.2 (= -80% damage vs world combat)', () => {
@@ -215,7 +206,6 @@ describe('ARENA_DAMAGE_MULTIPLIER', () => {
     });
 });
 
-// -- rankCompetitors ----------------------------------------------------------
 
 describe('rankCompetitors', () => {
     it('returns empty list for empty input', () => {
@@ -259,7 +249,6 @@ describe('rankCompetitors', () => {
     });
 
     it('assigns unique ranks even when all primary keys tie', () => {
-        // Deliberately identical LP+level — only timestamp differentiates.
         const competitors = [
             makeCompetitor('a', 50, 5, '2026-03-01T00:00:00.000Z'),
             makeCompetitor('b', 50, 5, '2026-02-01T00:00:00.000Z'),
@@ -267,7 +256,6 @@ describe('rankCompetitors', () => {
         ];
         const ranked = rankCompetitors(competitors);
         const ranks = ranked.map((r) => r.rank);
-        // Every rank is unique (strict total ordering, no dense ranking).
         expect(new Set(ranks).size).toBe(competitors.length);
     });
 
@@ -279,7 +267,6 @@ describe('rankCompetitors', () => {
     });
 });
 
-// -- getAttackableIndices -----------------------------------------------------
 
 describe('getAttackableIndices', () => {
     it('returns empty list when self id not found', () => {
@@ -288,7 +275,6 @@ describe('getAttackableIndices', () => {
     });
 
     it('returns ±2 rank window excluding self', () => {
-        // Ranks (by LP DESC): a(100)=1, b(80)=2, c(60)=3, d(40)=4, e(20)=5.
         const competitors = [
             makeCompetitor('a', 100, 10),
             makeCompetitor('b', 80,  10),
@@ -297,9 +283,7 @@ describe('getAttackableIndices', () => {
             makeCompetitor('e', 20,  10),
         ];
         const indices = getAttackableIndices(competitors, 'c');
-        // Player 'c' is at rank 3 — attackable ranks: 1,2,4,5 (so all others).
         expect(indices).toHaveLength(4);
-        // Indices into ORIGINAL array — every id except 'c'.
         const ids = indices.map((i) => competitors[i].id).sort();
         expect(ids).toEqual(['a', 'b', 'd', 'e']);
     });
@@ -338,7 +322,6 @@ describe('getAttackableIndices', () => {
     });
 });
 
-// -- getSeasonOutcome ---------------------------------------------------------
 
 describe('getSeasonOutcome', () => {
     it('rank 1 in bronze promotes to silver', () => {
@@ -348,24 +331,23 @@ describe('getSeasonOutcome', () => {
     });
 
     it('rank at promotedTop boundary promotes (inclusive)', () => {
-        const out = getSeasonOutcome('bronze', 40); // boundary = 40
+        const out = getSeasonOutcome('bronze', 40);
         expect(out.type).toBe('promote');
     });
 
     it('rank just past promotion boundary stays', () => {
-        const out = getSeasonOutcome('bronze', 41); // boundary = 40
+        const out = getSeasonOutcome('bronze', 41);
         expect(out.type).toBe('stay');
     });
 
     it('rank 100 in silver relegates to bronze', () => {
-        // silver relegatedBottom = 20 (ranks 81-100).
         const out = getSeasonOutcome('silver', 100);
         expect(out.type).toBe('relegate');
         if (out.type === 'relegate') expect(out.toLeague).toBe('bronze');
     });
 
     it('rank in middle of silver stays', () => {
-        const out = getSeasonOutcome('silver', 50); // not top 35, not bottom 20.
+        const out = getSeasonOutcome('silver', 50);
         expect(out.type).toBe('stay');
     });
 
@@ -385,7 +367,6 @@ describe('getSeasonOutcome', () => {
     });
 });
 
-// -- getRewardBuckets / findRewardBucket --------------------------------------
 
 describe('getRewardBuckets', () => {
     it('returns 7 buckets (1, 2, 3, 4-5, 6-10, 11-50, 51-100)', () => {
@@ -457,7 +438,6 @@ describe('findRewardBucket', () => {
     });
 });
 
-// -- applyLeagueMultiplier ----------------------------------------------------
 
 describe('applyLeagueMultiplier', () => {
     const baseBucket: IArenaRewardBucket = {
@@ -475,11 +455,11 @@ describe('applyLeagueMultiplier', () => {
     };
 
     it('multiplies every counter by league index + 1', () => {
-        const bronze = applyLeagueMultiplier(baseBucket, 'bronze'); // mult = 1
+        const bronze = applyLeagueMultiplier(baseBucket, 'bronze');
         expect(bronze.arenaPoints).toBe(1000);
         expect(bronze.gold).toBe(100_000);
 
-        const gold = applyLeagueMultiplier(baseBucket, 'gold'); // mult = 3
+        const gold = applyLeagueMultiplier(baseBucket, 'gold');
         expect(gold.arenaPoints).toBe(3000);
         expect(gold.gold).toBe(300_000);
         expect(gold.mythicStones).toBe(30);
@@ -506,7 +486,6 @@ describe('applyLeagueMultiplier', () => {
     });
 });
 
-// -- generateBotsForArena -----------------------------------------------------
 
 describe('generateBotsForArena', () => {
     it('returns the requested number of bots', () => {
@@ -540,8 +519,6 @@ describe('generateBotsForArena', () => {
     it('deterministic by seed (same seed -> same roster)', () => {
         const a = generateBotsForArena('platinum', 8, 999, 30);
         const b = generateBotsForArena('platinum', 8, 999, 30);
-        // Compare keys that don't depend on Date.now (so id/achievedAt may
-        // differ slightly across runs but class/level/lp are seed-driven).
         const aStats = a.map((x) => ({ cls: x.class, lvl: x.level, lp: x.leaguePoints }));
         const bStats = b.map((x) => ({ cls: x.class, lvl: x.level, lp: x.leaguePoints }));
         expect(aStats).toEqual(bStats);
@@ -564,8 +541,6 @@ describe('generateBotsForArena', () => {
     });
 
     it('every bot level is at least 1', () => {
-        // Player level 1 in master league would push baseLevel below 1
-        // without the Math.max clamp — verify it doesn't go negative.
         const bots = generateBotsForArena('master', 50, 1, 1);
         for (const b of bots) {
             expect(b.level).toBeGreaterThanOrEqual(1);
@@ -573,7 +548,7 @@ describe('generateBotsForArena', () => {
     });
 
     it('LP stays in [0, 100 + leagueIdx*25]', () => {
-        const bots = generateBotsForArena('legend', 30, 7, 50); // top LP = 100 + 8*25 = 300
+        const bots = generateBotsForArena('legend', 30, 7, 50);
         for (const b of bots) {
             expect(b.leaguePoints).toBeGreaterThanOrEqual(0);
             expect(b.leaguePoints).toBeLessThanOrEqual(300);
@@ -596,24 +571,20 @@ describe('generateBotsForArena', () => {
     });
 });
 
-// -- Season clock -------------------------------------------------------------
 
 describe('getSeasonStart', () => {
     it('returns the most recent Monday 00:00 UTC for a Wednesday', () => {
-        // 2026-05-20 is a Wednesday.
         const ref = new Date('2026-05-20T14:30:00.000Z');
         const start = getSeasonStart(ref);
         expect(start.toISOString()).toBe('2026-05-18T00:00:00.000Z');
     });
 
     it('returns same day for a Monday', () => {
-        // 2026-05-18 is a Monday.
         const monday = new Date('2026-05-18T08:00:00.000Z');
         expect(getSeasonStart(monday).toISOString()).toBe('2026-05-18T00:00:00.000Z');
     });
 
     it('returns previous Monday for a Sunday', () => {
-        // 2026-05-24 is a Sunday — same week as 2026-05-18 Monday.
         const sunday = new Date('2026-05-24T23:59:59.000Z');
         expect(getSeasonStart(sunday).toISOString()).toBe('2026-05-18T00:00:00.000Z');
     });
@@ -646,10 +617,7 @@ describe('getSeasonMsRemaining', () => {
     });
 
     it('clamps at 0 for far-future dates', () => {
-        // getSeasonEnd uses the same reference, so this should never return
-        // negative under any non-mocked scenario — but the Math.max(0, ...)
-        // is defensive: verify it's there.
-        const ref = new Date('2026-05-18T00:00:00.000Z'); // exactly season start
+        const ref = new Date('2026-05-18T00:00:00.000Z');
         const ms = getSeasonMsRemaining(ref);
         expect(ms).toBeGreaterThanOrEqual(0);
     });
@@ -662,13 +630,11 @@ describe('formatSeasonRemaining', () => {
     });
 
     it('formats hours for sub-day intervals', () => {
-        // 3h 25m -> "3h 25m".
         const ms = 3 * 3600_000 + 25 * 60_000;
         expect(formatSeasonRemaining(ms)).toBe('3h 25m');
     });
 
     it('formats days for multi-day intervals', () => {
-        // 2d 5h.
         const ms = 2 * 86400_000 + 5 * 3600_000;
         expect(formatSeasonRemaining(ms)).toBe('2d 5h');
     });
@@ -679,12 +645,10 @@ describe('formatSeasonRemaining', () => {
     });
 
     it('rounds down to the floor minute', () => {
-        // 59 seconds -> 0m.
         expect(formatSeasonRemaining(59 * 1000)).toBe('0m');
     });
 });
 
-// -- Deterministic random tests -----------------------------------------------
 
 describe('arenaSystem with mocked Math.random', () => {
     let randomSpy: ReturnType<typeof vi.spyOn>;
@@ -698,8 +662,6 @@ describe('arenaSystem with mocked Math.random', () => {
     });
 
     it('does not consume Math.random (uses internal seeded RNG)', () => {
-        // generateBotsForArena uses its own seeded RNG, not Math.random,
-        // so spying on Math.random shouldn't see any calls here.
         const before = randomSpy.mock.calls.length;
         generateBotsForArena('bronze', 5, 12345, 10);
         const after = randomSpy.mock.calls.length;
@@ -707,21 +669,16 @@ describe('arenaSystem with mocked Math.random', () => {
     });
 });
 
-// -- getArenaCastableSkills (2026-06-21 bug fix) -----------------------------
 
 describe('getArenaCastableSkills', () => {
     const EMPTY: Array<string | null> = [null, null, null, null];
 
     it('returns NOTHING for a new character with empty skill slots', () => {
-        // The reported bug: a skill-less new char still cast skills. With empty
-        // slots they must cast nothing (basic attacks only).
         expect(getArenaCastableSkills('Knight', EMPTY, 1)).toEqual([]);
-        expect(getArenaCastableSkills('Mage', EMPTY, 50)).toEqual([]); // even at high level
+        expect(getArenaCastableSkills('Mage', EMPTY, 50)).toEqual([]);
     });
 
     it('returns ONLY the equipped skill, not every class skill', () => {
-        // Knight has shield_bash (lvl 5), battle_cry (lvl 10), whirlwind (lvl 20)…
-        // Equip ONLY shield_bash — the others must NOT be castable.
         const slots = ['shield_bash', null, null, null];
         const out = getArenaCastableSkills('Knight', slots, 30);
         const ids = out.map((s) => s.id);
@@ -732,10 +689,7 @@ describe('getArenaCastableSkills', () => {
     });
 
     it('excludes an equipped skill the character has not yet level-unlocked', () => {
-        // shield_bash unlocks at lvl 5 — at lvl 1 it is not castable even if the
-        // slot somehow holds it.
         expect(getArenaCastableSkills('Knight', ['shield_bash', null, null, null], 1)).toEqual([]);
-        // …and becomes castable once the level is reached.
         expect(getArenaCastableSkills('Knight', ['shield_bash', null, null, null], 5).map((s) => s.id))
             .toEqual(['shield_bash']);
     });
@@ -759,7 +713,6 @@ describe('getDefaultBotSkillSlots', () => {
         const slots = getDefaultBotSkillSlots('Knight', 60);
         const ids = slots.filter((s): s is string => s !== null);
         expect(ids.length).toBeGreaterThan(0);
-        // Every equipped id is a real Knight skill that this loadout can cast.
         const castable = getArenaCastableSkills('Knight', slots, 60).map((s) => s.id);
         expect(castable.sort()).toEqual([...ids].sort());
     });

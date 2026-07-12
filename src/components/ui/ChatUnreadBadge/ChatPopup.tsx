@@ -6,22 +6,6 @@ import GameIcon from '../../atoms/Twemoji/GameIcon';
 import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './ChatPopup.scss';
 
-/**
- * Floating mini chat popup — opens from the bottom-right chat icon
- * (`ChatUnreadBadge`) and mirrors the layout of the full
- * `/chat` screen at a compact size so the player can read and
- * reply without leaving whatever screen they're on.
- *
- * 2026-05-19 v2 spec ("Brakuje ikonki chatu do odpalania malego
- * chatu na popupie jak w party"): the party widget already does
- * this for `Chat party`; the dedicated chat icon now matches with
- * its own popover for global / guild / party / system / PM tabs.
- *
- * Re-uses the shared `chatTabsStore` so opening the popup, focusing
- * a tab here, and later opening the full `/chat` route all show
- * the same active tab and unread counts. Closes on Escape and on
- * backdrop click.
- */
 interface IProps {
     open: boolean;
     onClose: () => void;
@@ -52,14 +36,6 @@ const ChatPopup = ({ open, onClose }: IProps) => {
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose]);
 
-    // 2026-05-19 v9 spec ("Click poza chat powinien tez go zamykac"):
-    // close the popup when the user mousedowns anywhere outside its
-    // panel. The chat-icon itself toggles the popup, so we skip
-    // clicks that originate on `.chat-unread-badge` — otherwise the
-    // toggle would race with this listener and immediately reopen.
-    // We also skip clicks on `.chat__menu` (the portal-rendered nick
-    // context menu) so opening "Wyślij PM" / "Zablokuj" etc. doesn't
-    // close the popup mid-interaction.
     const panelRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (!open) return;
@@ -139,16 +115,6 @@ const ChatPopup = ({ open, onClose }: IProps) => {
                         disableContextMenu={t.type === 'pm'}
                         active={t.id === activeId}
                         fillHeight
-                        // 2026-05-19 v11 spec ("Jak na chacie w popupie
-                        // klikam kogos nick i napisz prywatna
-                        // wiadomosc to nie rob wtedy zadnego redirecta,
-                        // bo moge byc na widoku walki z bossem"):
-                        // every non-PM tab gets `onOpenPm` so the nick
-                        // context menu opens the PM as a new tab IN
-                        // THE POPUP instead of falling back to the
-                        // default `navigate('/chat?pm=…')`. The player
-                        // can stay on Boss / Raid / Dungeon while
-                        // firing off a private reply.
                         onOpenPm={t.type !== 'pm' ? (target) => openPm(character.name, target) : undefined}
                     />
                 ))}

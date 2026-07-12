@@ -1,16 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
-/**
- * ReadyCheckModal — global "Gotowy?" popup. Mounted in AppShell. Reads
- * party + ready-check state from stores; renders nothing without a party
- * or when the check is closed. Local "Gotowy" button confirms; Anuluj
- * cancels for everyone.
- *
- * BossSprite / MonsterSprite are stubbed so we don't pull in the live
- * asset registry. raidSystem.getAllRaids() is stubbed to return the
- * minimum surface used by `resolveTarget`.
- */
 
 vi.mock('../Sprite/MonsterSprite', () => ({
     BossSprite: ({ name }: { name?: string }) => <div data-testid="boss-sprite">{name}</div>,
@@ -115,9 +105,7 @@ describe('ReadyCheckModal — visibility', () => {
             payload: null,
         });
         render(<ReadyCheckModal />);
-        // :crossed-swords: is now an <Emoji> img, so match the text portion only.
         expect(screen.getByText(/Gotowość do walki/)).toBeTruthy();
-        // Trainer label.
         expect(screen.getByText('Trainer')).toBeTruthy();
     });
 });
@@ -134,7 +122,6 @@ describe('ReadyCheckModal — destination preview', () => {
         });
         render(<ReadyCheckModal />);
         expect(screen.getByText('Polowanie')).toBeTruthy();
-        // Goblin renders in both the preview meta and the sprite stub.
         expect(screen.getAllByText('Goblin').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('Lvl 5')).toBeTruthy();
         expect(screen.getByTestId('monster-sprite')).toBeTruthy();
@@ -147,7 +134,7 @@ describe('ReadyCheckModal — destination preview', () => {
             requesterId: 'char-1',
             requiredIds: ['char-1'],
             readyIds: [],
-            payload: { bossId: 'troll_king' }, // may not exist; component renders with undefined name
+            payload: { bossId: 'troll_king' },
         });
         render(<ReadyCheckModal />);
         expect(screen.getByText('Boss')).toBeTruthy();
@@ -212,9 +199,6 @@ describe('ReadyCheckModal — interactions', () => {
             payload: null,
         });
         render(<ReadyCheckModal />);
-        // The label sits inside a fragment with an <Emoji> now, so target the
-        // button by role (accessible name still contains "Gotowy") rather than
-        // getByText, which would return the inner text node.
         const btn = screen.getByRole('button', { name: /Gotowy/ }) as HTMLButtonElement;
         expect(btn.disabled).toBe(true);
     });
@@ -229,10 +213,8 @@ describe('ReadyCheckModal — interactions', () => {
             payload: null,
         });
         render(<ReadyCheckModal />);
-        // Names of both members.
         expect(screen.getByText('Hero')).toBeTruthy();
         expect(screen.getByText('Buddy')).toBeTruthy();
-        // (Ty) suffix on the local player.
         expect(screen.getByText(/\(Ty\)/)).toBeTruthy();
     });
 });

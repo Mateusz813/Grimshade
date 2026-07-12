@@ -2,22 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * CharacterCreate view — class picker + name field + create flow.
- * 7 class buttons, animated detail panel on the right (framer-motion
- * AnimatePresence), submit calls characterApi.createCharacter + grants
- * starter weapon + navigates to /.
- *
- * Coverage:
- *   - Smoke: root + name input + class grid mount.
- *   - Class detail panel hidden until a class is picked.
- *   - Clicking a class makes the detail panel mount with the right text.
- *   - Submit blocked while no class is selected.
- *   - zod name validation: too short / illegal chars.
- *   - Successful submit calls characterApi.createCharacter + navigates.
- *   - Hitting the 7-character cap surfaces an error.
- *   - Back button navigates to /character-select.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -59,9 +43,6 @@ vi.mock('../../api/v1/axiosInstance', () => ({
     },
 }));
 
-// Backend-authoritative branch mocks. Default OFF so the existing client-path
-// tests exercise the untouched CLASS_BASE_STATS payload + starter grants; a
-// dedicated describe flips `backendFlag.on`.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const syncFromBackendMock = vi.hoisted(() => vi.fn());
 
@@ -156,7 +137,6 @@ describe('CharacterCreate — class picker', () => {
     it('shows the class detail panel after clicking a class', () => {
         const { container } = renderCreate();
         const classBtns = container.querySelectorAll('.character-create__class-btn');
-        // Knight is index 0 in classes.json — first button.
         fireEvent.click(classBtns[0]);
         expect(container.querySelector('.character-create__detail-inner')).not.toBeNull();
         expect(container.querySelector('.character-create__detail--active')).not.toBeNull();
@@ -165,16 +145,15 @@ describe('CharacterCreate — class picker', () => {
     it('renders starting weapon copy in the detail panel', () => {
         const { container } = renderCreate();
         const classBtns = container.querySelectorAll('.character-create__class-btn');
-        fireEvent.click(classBtns[0]); // Knight
+        fireEvent.click(classBtns[0]);
         expect(container.textContent).toContain('Startowa broń');
-        // Knight gets "Sword of Beginnings".
         expect(container.textContent).toContain('Sword of Beginnings');
     });
 
     it('marks the active class with the --selected modifier', () => {
         const { container } = renderCreate();
         const classBtns = container.querySelectorAll('.character-create__class-btn');
-        fireEvent.click(classBtns[2]); // Cleric (index 2 in classes.json)
+        fireEvent.click(classBtns[2]);
         const selected = container.querySelectorAll('.character-create__class-btn--selected');
         expect(selected.length).toBe(1);
     });
@@ -194,7 +173,6 @@ describe('CharacterCreate — submit', () => {
         fireEvent.change(container.querySelector('.character-create__input') as HTMLInputElement, {
             target: { value: 'HeroOne' },
         });
-        // Click first class (Knight).
         const classBtns = container.querySelectorAll('.character-create__class-btn');
         fireEvent.click(classBtns[0]);
         fireEvent.submit(container.querySelector('form') as HTMLFormElement);
@@ -274,7 +252,7 @@ describe('CharacterCreate — backend-authoritative branch', () => {
         fireEvent.change(container.querySelector('.character-create__input') as HTMLInputElement, {
             target: { value: 'HeroOne' },
         });
-        fireEvent.click(container.querySelectorAll('.character-create__class-btn')[0]); // Knight
+        fireEvent.click(container.querySelectorAll('.character-create__class-btn')[0]);
         fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     };
 
@@ -288,7 +266,6 @@ describe('CharacterCreate — backend-authoritative branch', () => {
         });
         const call = vi.mocked(characterApi.createCharacter).mock.calls[0];
         expect(call[1]).toEqual({ name: 'HeroOne', class: 'Knight' });
-        // No client base-stats leaking into the backend payload.
         expect(call[1]).not.toHaveProperty('hp');
         expect(call[1]).not.toHaveProperty('attack');
         expect(call[1]).not.toHaveProperty('gold');
@@ -346,7 +323,6 @@ describe('CharacterCreate — backend-authoritative branch', () => {
             expect(characterApi.createCharacter).toHaveBeenCalled();
         });
         const call = vi.mocked(characterApi.createCharacter).mock.calls[0];
-        // Client path forwards the full CLASS_BASE_STATS payload.
         expect(call[1]).toHaveProperty('hp');
         expect(call[1]).toHaveProperty('attack_speed');
         expect(syncFromBackendMock).not.toHaveBeenCalled();
@@ -361,14 +337,3 @@ describe('CharacterCreate — back button', () => {
     });
 });
 
-// TODO: Cover the inventory-store side effects (starter weapon added +
-//       equipped to mainHand). Asserting on useInventoryStore.getState()
-//       after a successful create works but requires loading items.json
-//       which the buildItem call needs — easier handled by the
-//       inventoryStore tests. The view-level happy path here already
-//       asserts characterApi.createCharacter was hit with the right class
-//       which is the contract that triggers the gear chain.
-// TODO: Auth missing-session branch (redirect to /login when session is
-//       null). Easy to add but the global supabase mock already returns a
-//       null session in some isolation contexts; current test fixtures
-//       use a populated session to keep the happy path clean.

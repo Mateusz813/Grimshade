@@ -2,24 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * ArenaMatch view — the 1v1 combat scene reached from Arena.tsx by
- * pressing the "Atak" button. ~700 lines, runs a setInterval combat
- * tick + drives ICombatant refs + skill effects engine. We DON'T want
- * to assert on combat outcomes — that's effectsHelpers / skillEffectsV2
- * territory.
- *
- * What we DO cover:
- *   - Smoke render once character + currentArena + sessionStorage ctx
- *     are seeded — the .arena.arena--match root mounts.
- *   - Fallback render (the "Brak kontekstu walki" guard) when any of
- *     ctx / character / currentArena is missing.
- *   - The combat HUD shell mounts (the `.combat-ui` from CombatHudHost).
- *
- * Mocks: framer-motion + useCombatFx (same pattern as Combat / Trainer
- * tests) so happy-dom doesn't choke on the animation library and the
- * tick interval doesn't try to draw spell glyphs.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -147,7 +129,6 @@ describe('ArenaMatch — smoke', () => {
         seedMatchCtx();
         seedArenaWithOpponent();
         const { container } = renderMatch();
-        // Root has both `.arena` and `.arena--match` modifiers per JSX.
         expect(container.querySelector('.arena--match')).not.toBeNull();
     });
 
@@ -161,10 +142,8 @@ describe('ArenaMatch — smoke', () => {
 
 describe('ArenaMatch — fallback "Brak kontekstu walki"', () => {
     it('renders the fallback when sessionStorage ctx is missing', () => {
-        // Don't seed sessionStorage — `ctx` will be null.
         seedArenaWithOpponent();
         const { container } = renderMatch();
-        // Fallback uses plain .arena (no --match modifier) + the "Wróć" CTA.
         expect(container.querySelector('.arena--match')).toBeNull();
         expect(container.textContent).toMatch(/Brak kontekstu walki/i);
     });
@@ -213,8 +192,3 @@ describe('ArenaMatch — class variants', () => {
     });
 });
 
-// TODO: Driving the combat tick — assertions on win/lose phase, reward
-//       summary modal, finalizeMatch dispatch — requires `vi.useFakeTimers`
-//       + careful interval advancement. Skipped for the smoke pass; the
-//       combat math itself lives in arenaSystem.test.ts +
-//       skillEffectsV2.test.ts.

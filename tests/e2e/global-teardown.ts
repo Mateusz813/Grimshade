@@ -1,21 +1,3 @@
-/**
- * Playwright globalTeardown — runs ONCE after the entire test suite.
- *
- * Purpose: hard-delete any stale `e2e-register-*@grimshade-test.local`
- * test users left over from registration tests where `afterEach`
- * cleanup failed (e.g., test killed mid-flow, network blip, agent
- * timeout). This is a safety-net — per-test try/finally cleanup
- * SHOULD handle this, but Supabase Auth doesn't have FK cascade to
- * auth.users so failures here would leak forever otherwise.
- *
- * Also wipes any leftover CHARACTERS on stable accounts
- * (`test@grimshade.pl`, `test2@grimshade.pl`, `e2e-admin@grimshade-test.local`)
- * — same safety-net rationale.
- *
- * Runs even when tests fail (Playwright config option). Logs counts
- * for observability but does NOT fail the suite if cleanup hits errors
- * (no point — suite is already done).
- */
 
 import { createClient } from '@supabase/supabase-js';
 import { existsSync, readFileSync } from 'node:fs';
@@ -46,8 +28,6 @@ const CHARACTER_CHILD_TABLES = [
     'market_sale_notifications',
 ] as const;
 
-// Inline .env.test loader (Playwright's `loadEnvFile` in playwright.config.ts
-// runs BEFORE globalTeardown but in separate process — env not inherited).
 const loadEnvFile = (path: string): void => {
     const abs = resolve(process.cwd(), path);
     if (!existsSync(abs)) return;
@@ -84,7 +64,6 @@ const globalTeardown = async (): Promise<void> => {
             return;
         }
 
-        // 1. Hard-delete stale e2e-register-* users (failed afterEach left them behind)
         let staleUsers = 0;
         for (const user of list.users) {
             if (!user.email || !REGISTRATION_PATTERN.test(user.email)) continue;
@@ -99,7 +78,6 @@ const globalTeardown = async (): Promise<void> => {
             console.log(`[globalTeardown] Deleted ${staleUsers} stale e2e-register-* users`);
         }
 
-        // 2. Wipe leftover characters on stable accounts
         let staleChars = 0;
         for (const user of list.users) {
             if (!user.email || !STABLE_TEST_ACCOUNTS.has(user.email.toLowerCase())) continue;
@@ -109,10 +87,8 @@ const globalTeardown = async (): Promise<void> => {
                 .eq('user_id', user.id);
             const ids = (chars ?? []).map((c: { id: string }) => c.id);
             if (ids.length === 0) continue;
-            // Wipe parties + guilds (leader_id refs)
             await admin.from('parties').delete().in('leader_id', ids);
             await admin.from('guilds').delete().in('leader_id', ids);
-            // Child tables
             for (const table of CHARACTER_CHILD_TABLES) {
                 const key = (table === 'market_listings' || table === 'market_sale_notifications')
                     ? 'seller_id'

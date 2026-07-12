@@ -3,7 +3,6 @@ import { RARITY_BONUS_SLOTS, getBaseStatKeysForSlot } from './itemSystem';
 import { getItemImage } from './spriteAssets';
 import itemTemplates from '../data/itemTemplates.json';
 
-// -- Types ---------------------------------------------------------------------
 
 interface IItemTemplate {
     type: string;
@@ -36,7 +35,6 @@ interface IRarityMultiplier {
     priceMultiplier: number;
 }
 
-// -- Bonus stat pool -----------------------------------------------------------
 
 const BONUS_STAT_POOL = ['hp', 'mp', 'attack', 'defense', 'speed', 'critChance', 'critDmg'];
 
@@ -49,12 +47,10 @@ const BONUS_STAT_RANGES: Record<Rarity, { min: number; max: number }> = {
     heroic:    { min: 40, max: 100 },
 };
 
-// -- Helper: random int in range -----------------------------------------------
 
 const randInt = (min: number, max: number): number =>
     min + Math.floor(Math.random() * (max - min + 1));
 
-// -- Generate base stat value for an item --------------------------------------
 
 const calculateBaseStat = (
     scaling: { baseMin: number; baseMax: number; perLevel: number },
@@ -71,25 +67,15 @@ const calculateBaseStat = (
     return Math.max(1, total);
 };
 
-// -- Generate bonus stats ------------------------------------------------------
 
-/**
- * Stat-specific multipliers applied on top of BONUS_STAT_RANGES.
- * critDmg uses values * 0.01 in display, so raw values of 5-100 translate to
- * +0.05–1.00 multiplier. We keep the same raw ranges but these multipliers
- * let us fine-tune each stat independently.
- *
- * critChance values map to raw % points added, so we scale them down a bit
- * to avoid giving +60% crit chance from a single mythic item.
- */
 const STAT_RANGE_MULTIPLIER: Record<string, number> = {
     hp:        1.0,
     mp:        1.0,
     attack:    1.0,
     defense:   1.0,
     speed:     1.0,
-    critChance: 0.3,  // e.g. mythic: 20-60 * 0.3 = 6-18% crit chance
-    critDmg:   1.5,   // e.g. mythic: 20-60 * 1.5 = 30-90 (-> +0.30-0.90 multiplier)
+    critChance: 0.3,
+    critDmg:   1.5,
 };
 
 const generateBonusStats = (rarity: Rarity, excludeStats: string[] = []): Record<string, number> => {
@@ -98,7 +84,6 @@ const generateBonusStats = (rarity: Rarity, excludeStats: string[] = []): Record
 
     const range = BONUS_STAT_RANGES[rarity];
     const bonuses: Record<string, number> = {};
-    // Filter out stats that are already used as base stats to avoid inflated counts
     const pool = BONUS_STAT_POOL.filter((s) => !excludeStats.includes(s));
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, numBonuses);
@@ -111,8 +96,6 @@ const generateBonusStats = (rarity: Rarity, excludeStats: string[] = []): Record
     return bonuses;
 };
 
-// -- Weapon base damage scaling ------------------------------------------------
-// Spec: weapons use dmg_min / dmg_max range; values scale ~20-30x by level 100.
 
 interface IWeaponDamageScaling {
     min: number;
@@ -127,7 +110,6 @@ const getWeaponBaseDamage = (
     const rarityMult = (itemTemplates.rarityMultipliers as Record<string, IRarityMultiplier>)[rarity];
     const mult = rarityMult?.statMultiplier ?? 1.0;
 
-    // Level scaling: ~20-30x at level 100
     const baseMin = scaling.baseMin;
     const baseMax = scaling.baseMax;
     const levelBonus = level * scaling.perLevel;
@@ -138,7 +120,6 @@ const getWeaponBaseDamage = (
     return { min: rolledMin, max: rolledMax };
 };
 
-// -- Generate weapon item ------------------------------------------------------
 
 export const generateWeapon = (
     weaponType: string,
@@ -151,10 +132,8 @@ export const generateWeapon = (
     if (!template) return null;
 
     const dmg = getWeaponBaseDamage(template.scaling, level, rarity);
-    // Exclude attack from bonus pool so random bonus doesn't double-count with dmg range
     const bonuses = generateBonusStats(rarity, ['attack']);
 
-    // Weapons write dmg_min / dmg_max (NOT attack) so rollWeaponDamage reads range
     bonuses['dmg_min'] = dmg.min;
     bonuses['dmg_max'] = dmg.max;
 
@@ -170,7 +149,6 @@ export const generateWeapon = (
     };
 };
 
-// -- Generate offhand item -----------------------------------------------------
 
 export const generateOffhand = (
     offhandType: string,
@@ -182,7 +160,6 @@ export const generateOffhand = (
     );
     if (!template) return null;
 
-    // Rogue dual-wield offhand (dagger) behaves as weapon
     const isRogueDualWield = template.type === 'dagger' || template.slot === 'offHand' && template.baseStatType === 'attack' && template.allowedClasses.includes('Rogue');
     if (isRogueDualWield) {
         const dmg = getWeaponBaseDamage(template.scaling, level, rarity);
@@ -200,7 +177,6 @@ export const generateOffhand = (
         };
     }
 
-    // Non-weapon offhand: primarily defense, with small attack for caster books
     const baseStat = calculateBaseStat(template.scaling, level, rarity);
     const baseKey = template.baseStatType === 'defense' ? 'defense' : 'attack';
     const bonuses = generateBonusStats(rarity, [baseKey]);
@@ -218,9 +194,6 @@ export const generateOffhand = (
     };
 };
 
-// -- Armor slot base stat mapping (per spec) -----------------------------------
-// helmet/armor/pants/shoulders/boots -> +HP (primary)
-// gloves -> +attack (flat)
 
 const ARMOR_SLOT_BASE_STAT: Record<string, 'hp' | 'attack'> = {
     helmet:    'hp',
@@ -231,11 +204,8 @@ const ARMOR_SLOT_BASE_STAT: Record<string, 'hp' | 'attack'> = {
     gloves:    'attack',
 };
 
-// HP scaling factor for armor pieces (defense scaling * this = base HP)
-// At level 100 armor slot 'baseMin*perLevel' ~ 100, multiplied by 5-8 -> 500-800 HP per piece
 const ARMOR_HP_MULTIPLIER = 6;
 
-// -- Generate armor item -------------------------------------------------------
 
 export const generateArmor = (
     armorPrefix: string,
@@ -257,7 +227,6 @@ export const generateArmor = (
     if (baseStatKey === 'hp') {
         bonuses['hp'] = (bonuses['hp'] ?? 0) + rawBase * ARMOR_HP_MULTIPLIER;
     } else {
-        // gloves -> flat attack
         bonuses['attack'] = (bonuses['attack'] ?? 0) + rawBase;
     }
 
@@ -273,10 +242,6 @@ export const generateArmor = (
     };
 };
 
-// -- Accessory slot base stat mapping (per spec) -------------------------------
-// ring1/ring2  -> small +attack
-// necklace     -> +DEF
-// earrings     -> +DEF
 
 const ACCESSORY_SLOT_BASE_STAT: Record<string, 'attack' | 'defense'> = {
     ring1:    'attack',
@@ -285,7 +250,6 @@ const ACCESSORY_SLOT_BASE_STAT: Record<string, 'attack' | 'defense'> = {
     earrings: 'defense',
 };
 
-// -- Generate accessory --------------------------------------------------------
 
 export const generateAccessory = (
     accessoryType: string,
@@ -299,7 +263,6 @@ export const generateAccessory = (
 
     const baseStat = calculateBaseStat(template.scaling, level, rarity);
 
-    // Map accessory type -> canonical slot key for base stat mapping
     const slotKey = template.type === 'ring' ? 'ring1' : template.slot;
     const baseStatKey = ACCESSORY_SLOT_BASE_STAT[slotKey] ?? 'defense';
 
@@ -318,7 +281,6 @@ export const generateAccessory = (
     };
 };
 
-// -- Generate random item for a class at a given level -------------------------
 
 export type TItemCategory = 'weapon' | 'offhand' | 'armor' | 'accessory';
 
@@ -336,7 +298,6 @@ export const generateRandomItemForClass = (
     level: number,
     rarity: Rarity,
 ): IInventoryItem | null => {
-    // Roll item category
     const roll = Math.random();
     let cumulative = 0;
     let category: TItemCategory = 'armor';
@@ -365,7 +326,6 @@ export const generateRandomItemForClass = (
             return generateOffhand(offhandTemplate.type, level, rarity);
         }
         case 'armor': {
-            // Find which armor prefix this class uses
             const armorEntries = Object.entries(itemTemplates.armor as Record<string, IArmorCategory>);
             const armorMatch = armorEntries.find(([_, cat]) =>
                 cat.allowedClasses.includes(characterClass),
@@ -385,7 +345,6 @@ export const generateRandomItemForClass = (
     return null;
 };
 
-// -- Generate random item for ANY class (drops from monsters) ------------------
 
 export const generateRandomItem = (
     level: number,
@@ -396,7 +355,6 @@ export const generateRandomItem = (
     return generateRandomItemForClass(randomClass, level, rarity);
 };
 
-// -- Get item display info from itemId -----------------------------------------
 
 export interface IItemDisplayInfo {
     name_pl: string;
@@ -407,16 +365,13 @@ export interface IItemDisplayInfo {
 }
 
 export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
-    // Parse itemId format: type_lvlX_rarity
     const parts = itemId.split('_lvl');
     if (parts.length < 2) {
-        // Try legacy item IDs
         return resolveImageIcon(itemId, getLegacyItemInfo(itemId));
     }
 
     const typePart = parts[0];
 
-    // Check weapons
     for (const w of itemTemplates.weapons as IItemTemplate[]) {
         if (w.type === typePart) {
             return resolveImageIcon(itemId, {
@@ -429,7 +384,6 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
         }
     }
 
-    // Check offhands
     for (const o of itemTemplates.offhands as IItemTemplate[]) {
         if (o.type === typePart) {
             return resolveImageIcon(itemId, {
@@ -442,7 +396,6 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
         }
     }
 
-    // Check armor (format: prefix_slot_lvlX_rarity)
     for (const [prefix, category] of Object.entries(itemTemplates.armor as Record<string, IArmorCategory>)) {
         for (const piece of category.pieces) {
             const armorType = `${prefix}_${piece.slot}`;
@@ -458,7 +411,6 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
         }
     }
 
-    // Check accessories
     for (const a of itemTemplates.accessories as IItemTemplate[]) {
         if (a.type === typePart) {
             return resolveImageIcon(itemId, {
@@ -474,11 +426,6 @@ export const getItemDisplayInfo = (itemId: string): IItemDisplayInfo | null => {
     return null;
 };
 
-/**
- * Substitute the legacy emoji `icon` with a Vite-served PNG URL when one exists
- * in /assets/images/items. Falls back to the original emoji so items without
- * art continue to render.
- */
 const resolveImageIcon = (itemId: string, info: IItemDisplayInfo | null): IItemDisplayInfo | null => {
     if (!info) return null;
     const img = getItemImage(itemId, info.slot, info.type);
@@ -486,7 +433,6 @@ const resolveImageIcon = (itemId: string, info: IItemDisplayInfo | null): IItemD
     return info;
 };
 
-// -- Legacy item ID support ----------------------------------------------------
 
 const getLegacyItemInfo = (itemId: string): IItemDisplayInfo | null => {
     const legacyMap: Record<string, IItemDisplayInfo> = {
@@ -502,7 +448,6 @@ const getLegacyItemInfo = (itemId: string): IItemDisplayInfo | null => {
     return legacyMap[itemId] ?? null;
 };
 
-// -- Generate starter weapon for a class ---------------------------------------
 
 export const generateStarterWeapon = (characterClass: string): IInventoryItem | null => {
     const starterData = (itemTemplates.starterWeapons as Record<string, {
@@ -516,7 +461,6 @@ export const generateStarterWeapon = (characterClass: string): IInventoryItem | 
 
     const itemId = `starter_${starterData.type}`;
 
-    // Starter weapons use dmg_min/dmg_max range (80% - 120% of baseAtk)
     const dmgMin = Math.max(1, Math.floor(starterData.baseAtk * 0.8));
     const dmgMax = Math.max(dmgMin + 1, Math.floor(starterData.baseAtk * 1.2));
 
@@ -530,12 +474,6 @@ export const generateStarterWeapon = (characterClass: string): IInventoryItem | 
     };
 };
 
-// -- Reroll bonus stats (Bonus Change) ----------------------------------------
-/**
- * Generates new random bonuses for an item while preserving its base stats.
- * Base stats are identified by the item's equipment slot.
- * Returns ONLY the new bonuses — caller decides whether to apply them.
- */
 export const rerollItemBonuses = (
     item: IInventoryItem,
     slot: EquipmentSlot | null,
@@ -544,7 +482,6 @@ export const rerollItemBonuses = (
 
     const baseKeys = getBaseStatKeysForSlot(slot);
 
-    // Preserve base stat values
     const baseStats: Record<string, number> = {};
     for (const key of baseKeys) {
         if (key in item.bonuses) {
@@ -552,9 +489,7 @@ export const rerollItemBonuses = (
         }
     }
 
-    // Generate fresh random bonuses (excluding base stat keys)
     const newRandomBonuses = generateBonusStats(item.rarity, [...baseKeys]);
 
-    // Merge: base stats + new random bonuses
     return { ...baseStats, ...newRandomBonuses };
 };

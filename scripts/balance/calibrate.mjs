@@ -1,12 +1,3 @@
-// ============================================================================
-// Grimshade — kill-RATE calibration (spec 2026-06-20, Option A).
-// With potions you don't die, so "how many you kill" = KILL RATE (speed):
-//   killsWithPotion = BUDGET / TTK ,  TTK = monsterHP / playerBasicDPS
-// DPS classes kill more; gear (rarity/upgrade) raises DPS -> more kills.
-// Also reports killsNoPotion = min(rate, survival) for the early-game floor.
-// Run: node scripts/balance/calibrate.mjs            (dry)
-//      node scripts/balance/calibrate.mjs --apply    (writes monsters.json + gear consts note)
-// ============================================================================
 import { createRequire } from 'module';
 import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
@@ -27,9 +18,8 @@ const WEAPON={Knight:'sword',Mage:'staff',Cleric:'holy_wand',Archer:'bow',Rogue:
 const OFFH={Knight:'shield',Mage:'spellbook',Cleric:'holy_cross',Archer:'quiver',Rogue:'dagger',Necromancer:'voodoo_doll',Bard:'talisman'};
 const CLASSES=Object.keys(CBS);
 
-// GEAR scaling tuned to the spec: +15% kills/rarity, heroic +105%, +10% kills/upgrade
 const RMULT={common:1.0,rare:1.15,epic:1.30,legendary:1.45,mythic:1.60,heroic:2.05};
-const enh=(U)=>U<=0?1:1+U*0.10; // +10% DPS per upgrade -> +10% kills
+const enh=(U)=>U<=0?1:1+U*0.10;
 const RSLOTS={common:0,rare:1,epic:1,legendary:2,mythic:3,heroic:5};
 const BRANGE={common:[1,5],rare:[3,12],epic:[5,18],legendary:[10,35],mythic:[20,60],heroic:[40,100]};
 const SRM={hp:1,mp:1,attack:1,defense:1,speed:1,critChance:0.3,critDmg:1.5};
@@ -62,22 +52,17 @@ function basicHit(p,enemyDef){
 }
 const playerDPS=(p,enemyDef)=>basicHit(p,enemyDef)/(getAttackMs(p.as)/1000);
 
-// ---- MONSTER calibration (kill-RATE model) ----
-const MON_SPEED=2.0, MON_INT=getAttackMs(MON_SPEED)/1000; // 1.5s
-const TTK_REF=4.0;              // common+0 avg class kills a normal in ~4s
-const BUDGET=28;                // farm window -> ref kills = 28/4 = 7
-const SURV_HITS=18;            // monster attack tuned so player survives ~18 hits (no-potion floor / no one-shot)
-// monster rarity HP multipliers tuned for the kill ranges (normal 5-10, strong 3-8, epic 2-5, legend 1-3, boss 0-1)
+const MON_SPEED=2.0, MON_INT=getAttackMs(MON_SPEED)/1000;
+const TTK_REF=4.0;
+const BUDGET=28;
+const SURV_HITS=18;
 const MONR={normal:{hp:1.0,atk:1.0},strong:{hp:1.4,atk:1.1},epic:{hp:2.0,atk:1.25},legendary:{hp:3.5,atk:1.4},boss:{hp:14,atk:1.6}};
-// L<=10 = starter zone: calibrate to the NO-GEAR fresh player so a brand-new
-// character (no drops yet) can farm the first monsters. L>10 assumes common+0 gear.
 function ref(L){const ng=L<=10;const ps=CLASSES.map(c=>player(c,L,L,'common',0,ng));return{dps:ps.reduce((s,p)=>s+playerDPS(p,0),0)/7,maxHp:ps.reduce((s,p)=>s+p.maxHp,0)/7,def:ps.reduce((s,p)=>s+p.defense,0)/7};}
 function calibMonster(L){const r=ref(L);return{hp:max(8,round(r.dps*TTK_REF)),attack:max(1,round(r.maxHp/SURV_HITS+r.def)),defense:max(1,round(r.def*0.15)),speed:MON_SPEED};}
 function enemyAt(L,rarity){const b=calibMonster(L),R=MONR[rarity];return{hp:floor(b.hp*R.hp),attack:floor(b.attack*R.atk),defense:b.defense};}
 function killsRate(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);return ttk>0?round(BUDGET/ttk):0;}
 function killsNoPotion(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);const monHit=max(1,e.attack-p.defense)*1.05;if(monHit>=p.maxHp)return 0;const monDPS=monHit/MON_INT;const surv=p.maxHp/monDPS;return min(round(BUDGET/ttk),floor(surv/ttk));}
 
-// ============================================================================
 console.log('=== common+0, char=item=lvl — kills WITH potions (rate) per class/monster-rarity ===');
 console.log('lvl | class       | normal strong epic legend boss');
 for(const L of [10,100,500,1000]){for(const cls of CLASSES){const p=player(cls,L,L,'common',0);console.log(`${String(L).padStart(4)}| ${cls.padEnd(11)}| ${['normal','strong','epic','legendary','boss'].map(r=>String(killsRate(p,L,r)).padStart(5)).join(' ')}`);}console.log('');}
@@ -106,7 +91,6 @@ console.log(`  one-shot cells: ${os} (want 0)`);
 if(APPLY){for(const m of monsters){const c=calibMonster(m.level);m.hp=c.hp;m.attack=c.attack;m.defense=c.defense;m.speed=c.speed;}writeFileSync(P('monsters.json'),JSON.stringify(monsters,null,2)+'\n');console.log('\nAPPLIED monsters.json. NOTE: also set itemTemplates rarityMultipliers + itemSystem enh to match (see RMULT/enh above).');}
 else console.log('\n(dry run — --apply to write monsters.json)');
 
-// ---- KILL TABLES (for review) ----
 if(process.argv.includes('--table')){
   const gears=[['common',0],['common',5],['rare',3],['epic',5],['legendary',7],['mythic',7],['heroic',7]];
   console.log('\n\n############ ILE ZABIĆ — klasa × EQ (potwór NORMAL na swój poziom, z potionami) ############');

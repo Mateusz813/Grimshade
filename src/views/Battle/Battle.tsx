@@ -13,7 +13,6 @@ import bgArena from '../../assets/images/battle/battle-arena.png';
 import bgTrainer from '../../assets/images/battle/battle-trainer.png';
 import './Battle.scss';
 
-/** Same per-class fallback used by Town.tsx so the accent never looks foreign. */
 const CLASS_COLORS: Record<string, string> = {
   Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
   Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
@@ -29,44 +28,19 @@ const hexToRgb = (hex: string): string => {
 };
 
 interface IBattleTile {
-  /** Stable id used for class modifier. */
   id: 'polowanie' | 'dungeon' | 'boss' | 'transform' | 'raid' | 'arena' | 'trainer';
-  /** Polish label rendered as the tile's heading at the top of the banner. */
   label: string;
-  /** Route navigated to on click. */
   path: string;
-  /** Bundled URL of the tile's background image (Vite hashes it for us). */
   bg: string;
 }
 
-/**
- * Battle hub. Reached from BottomNav -> Walka. Six vertically-stacked tiles
- * (one per battle mode) presented as banner-style buttons with a custom
- * background image and a border tinted by the player's current transform.
- *
- * Layout is always a single column (mobile-first). On larger screens the
- * column is centered with a comfortable max-width so the banners stay
- * readable without becoming awkwardly wide.
- *
- * Background images live in /public/images/ as battle-<id>.png and are loaded
- * lazily by the browser. If a file is missing the tile still renders with the
- * accent gradient fallback.
- */
 const Battle = () => {
   const navigate = useNavigate();
   const character = useCharacterStore((s) => s.character);
   const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
   const transformColor = getHighestTransformColor();
-  // 2026-05-12 spec ("nie rob redirectow, zablokuj kliki"): non-leader
-  // members in a multi-human party are locked out of leader-only
-  // instances (/boss, /raid, /trainer, /combat). Disabled tiles
-  // silently no-op on click — no navigation, no popups.
   const isMemberLocked = useIsPartyMemberLocked();
   const MEMBER_LOCKED_ROUTES = new Set<string>(['/boss', '/raid', '/trainer', '/combat']);
-  // 2026-05-20 spec ("wyszarz, spolecznosc, arene, raidy"): Arena + Raid
-  // are multiplayer-only — when the player is in offline mode the tiles
-  // grey out and become unclickable. Same visual treatment the Town
-  // tiles use so the gating reads consistently across the chrome.
   const playMode = useConnectivityStore((s) => s.mode);
   const isOffline = playMode === 'offline';
   const OFFLINE_LOCKED_PATHS = new Set<string>(['/raid', '/arena']);
@@ -109,22 +83,14 @@ const Battle = () => {
               type="button"
               className={`battle__tile battle__tile--${tile.id}${locked ? ' battle__tile--locked' : ''}${offlineLocked ? ' battle__tile--offline-locked' : ''}`}
               onClick={() => {
-                if (locked) return; // silent no-op for party members / offline players
-                // 2026-05-15 spec ("Brakuje popupu do przyzywania na
-                // trainery jak lider wchodzi do trainera"): when the
-                // leader clicks Trainer in a multi-human party, fire
-                // the ready-check so every member gets the same
-                // "Gotowy?" popup boss/raid use. Solo players (or
-                // bots-only) navigate directly via the
-                // onConfirmed callback — `requestPartyCombatStart`
-                // handles both paths.
+                if (locked) return;
                 if (tile.path === '/trainer') {
                     const triggered = requestPartyCombatStart({
                         destination: '/trainer',
                         label: 'Trainer',
                         onConfirmed: () => navigate('/trainer'),
                     });
-                    if (!triggered) return; // non-leader fallback (shouldn't hit, locked above)
+                    if (!triggered) return;
                     return;
                 }
                 navigate(tile.path);

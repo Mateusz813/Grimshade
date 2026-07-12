@@ -18,12 +18,6 @@ import { useBuffStore } from './buffStore';
 import skillsData from '../data/skills.json';
 import type { CharacterClass } from '../api/v1/characterApi';
 
-/**
- * Probe whether an offline hunt is currently active. Uses a late dynamic
- * lookup against globalThis to avoid a circular import with offlineHuntStore
- * (which itself imports skillStore). The offlineHuntStore registers itself
- * on globalThis at module load time.
- */
 const isOfflineHuntActive = (): boolean => {
     const mod = (globalThis as unknown as {
         __offlineHuntStore?: { getState: () => { isActive: boolean } };
@@ -31,7 +25,6 @@ const isOfflineHuntActive = (): boolean => {
     return mod?.getState().isActive === true;
 };
 
-// -- Types ---------------------------------------------------------------------
 
 export interface ISkillUpgradeResult {
     success: boolean;
@@ -41,107 +34,41 @@ export interface ISkillUpgradeResult {
 }
 
 export interface ISkillState {
-    /** weapon/magic skill id -> level (0–∞) */
     skillLevels: Record<string, number>;
-    /** weapon/magic skill id -> current XP towards next level */
     skillXp: Record<string, number>;
-    /** active skill slot ids (max 4) – ordered array of active skill IDs */
     activeSkillSlots: [string | null, string | null, string | null, string | null];
-    /** active skill id -> upgrade level (0+) */
     skillUpgradeLevels: Record<string, number>;
-    /** Set of active skill IDs that have been purchased/unlocked with gold */
     unlockedSkills: Record<string, boolean>;
-    /** id of skill chosen for always-on training (trains continuously when set) */
     offlineTrainingSkillId: string | null;
-    /** ISO timestamp of when the current speed segment started */
     trainingSegmentStartedAt: string | null;
-    /** Accumulated effective training seconds (segments × their speed multiplier) */
     trainingAccumulatedEffectiveSeconds: number;
-    /** Current training speed: 2 = active play, 1 = inactive/background */
     trainingCurrentSpeedMultiplier: number;
 }
 
 interface ISkillStore extends ISkillState {
-    /** Init skill levels for all weapon skills of the given class (sets to 0 if missing) */
     initSkills: (cls: CharacterClass) => void;
-    /** Add XP to a weapon/magic skill; returns levelsGained */
     addSkillXp: (skillId: string, xp: number) => number;
-    /**
-     * Apply a percentage XP loss to every trainable skill (weapon skills
-     * for the class + magic_level + GENERAL_TRAINABLE_STATS).
-     *
-     * lossPct is the % of TOTAL banked XP to remove. The result is
-     * re-normalized back into (level, currentXp) — so a level-50 skill
-     * with half-XP toward 51, hit by lossPct=25, lands a bit lower.
-     *
-     * Defaults to 25 (the death penalty) so old callers keep working.
-     * Pass 2.5 for the flee penalty.
-     */
     applyDeathPenalty: (cls: CharacterClass, lossPct?: number) => void;
-    /** Set active skill in a slot (0-3); pass null to clear the slot */
     setActiveSkillSlot: (slot: 0 | 1 | 2 | 3, skillId: string | null) => void;
-    /**
-     * Walk the 4 active skill slots and clear any whose `unlockLevel` is
-     * higher than `currentLevel`. Used after a death-penalty level drop so
-     * a slotted lvl-100 spell on a lvl-92 character doesn't sit there
-     * permanently disabled and confusing the player. Returns the number
-     * of slots cleared.
-     */
     purgeLockedSkillSlots: (cls: CharacterClass, currentLevel: number) => number;
-    /** Start always-on training for a skill (begins at given speed multiplier) */
     startOfflineTraining: (skillId: string, speedMultiplier?: number) => void;
-    /**
-     * Select a training stat. Immediately starts training at 2x (active) speed.
-     * Training runs ALWAYS — 2x when active, 1x when inactive.
-     */
     selectTrainingStat: (skillId: string | null) => void;
-    /** Collect XP accumulated during training, reset counters, restart segment */
     collectOfflineTraining: () => number;
-    /** Called when player activity state changes. Flushes current segment and sets new speed. */
     onActivityChange: (isActive: boolean) => void;
-    /**
-     * Pause the always-on training WITHOUT forgetting the selected skill.
-     * Flushes the current segment's XP into accumulated bucket and clears
-     * the segment timestamp so no new seconds accrue until resumeTraining()
-     * is called. Used by offline hunt for mutual exclusion.
-     */
     pauseTraining: () => void;
-    /**
-     * Resume always-on training after a pause. No-op if no skill is selected
-     * or the training is already running. Starts a fresh segment at 2x
-     * (assumes the player is now active — the activity tracker will throttle
-     * it back to 1x after the inactivity timeout).
-     */
     resumeTraining: () => void;
-    /** Add Shielding XP when a block occurs (Knight only) */
     addShieldingXpOnBlock: () => number;
-    /** Add MLVL XP from an auto-attack (magic classes only) */
     addMlvlXpFromAttack: (cls: CharacterClass) => number;
-    /** Add weapon skill XP from an auto-attack (1 XP per hit; skips magic classes to avoid double-dipping MLVL) */
     addWeaponSkillXpFromAttack: (cls: CharacterClass) => number;
-    /** Add MLVL XP from using a skill (all classes, slower for non-magic) */
     addMlvlXpFromSkill: (cls: CharacterClass) => number;
-    /** Attempt to unlock (purchase) an active skill. Requires spell chest + gold. Returns true if purchased. */
     unlockSkill: (skillId: string, goldCost: number, spendGoldFn: (amount: number) => boolean, chestLevel: number, useChestsFn: (level: number, count: number) => boolean) => boolean;
-    /**
-     * Dev/sandbox: unlock every active skill for the given list of ids
-     * (typically all class skills for the active character). Free — no
-     * gold or chest cost. Used by the Postać view's "Odblokuj wszystkie"
-     * button so a tester can hop between class characters and immediately
-     * try every spell without grinding through chest unlocks.
-     */
     unlockAllActiveSkills: (skillIds: string[]) => void;
-    /** Check if a skill has been unlocked/purchased */
     isSkillUnlocked: (skillId: string) => boolean;
-    /** Attempt to upgrade an active skill. Returns result with success/fail, gold + chests spent. */
     upgradeActiveSkill: (skillId: string, playerGold: number, spendGoldFn: (amount: number) => boolean, skillUnlockLevel: number, useChestsFn: (level: number, count: number) => boolean, getChestCountFn: (level: number) => number) => ISkillUpgradeResult;
-    /** Get current upgrade level for a skill */
     getSkillUpgradeLevel: (skillId: string) => number;
-    /** Clear all skill data (on character reset) */
     resetSkills: () => void;
 }
 
-// -- Store ---------------------------------------------------------------------
 
 const INITIAL_STATE: ISkillState = {
     skillLevels: {},
@@ -152,7 +79,7 @@ const INITIAL_STATE: ISkillState = {
     offlineTrainingSkillId: null,
     trainingSegmentStartedAt: null,
     trainingAccumulatedEffectiveSeconds: 0,
-    trainingCurrentSpeedMultiplier: 2, // Default to active speed; useActivityTracker manages this at runtime
+    trainingCurrentSpeedMultiplier: 2,
 };
 
 export const useSkillStore = create<ISkillStore>()(
@@ -168,7 +95,6 @@ export const useSkillStore = create<ISkillStore>()(
                         if (levels[id] === undefined) levels[id] = 0;
                         if (xp[id] === undefined) xp[id] = 0;
                     }
-                    // Always init magic_level for all classes (MLVL for everyone)
                     if (levels['magic_level'] === undefined) levels['magic_level'] = 0;
                     if (xp['magic_level'] === undefined) xp['magic_level'] = 0;
                     return { skillLevels: levels, skillXp: xp };
@@ -189,7 +115,6 @@ export const useSkillStore = create<ISkillStore>()(
 
             applyDeathPenalty: (cls, lossPct = 25) => {
                 const skillIds = getClassWeaponSkills(cls);
-                // Apply to weapon skills + magic_level + ALL general trainable stats
                 const allIds = [...new Set([...skillIds, 'magic_level', ...GENERAL_TRAINABLE_STATS])];
                 const fraction = Math.max(0, Math.min(100, lossPct)) / 100;
                 if (fraction <= 0) return;
@@ -200,17 +125,9 @@ export const useSkillStore = create<ISkillStore>()(
                         const lvl = levels[id] ?? 0;
                         const cur = xp[id] ?? 0;
                         if (lvl <= 0 && cur <= 0) continue;
-                        // Step 1: total banked XP across all completed
-                        // skill levels + the in-progress XP toward the
-                        // next level.
                         let total = cur;
                         for (let i = 0; i < lvl; i++) total += skillXpToNextLevel(i);
-                        // Step 2: shave the loss percentage off.
                         total = Math.max(0, Math.floor(total * (1 - fraction)));
-                        // Step 3: re-derive (level, currentXp). Walk the
-                        // skill XP curve from 0 and "spend" total until
-                        // we run out — what's left is the new current
-                        // XP toward the next level.
                         let newLvl = 0;
                         while (total >= skillXpToNextLevel(newLvl)) {
                             total -= skillXpToNextLevel(newLvl);
@@ -268,15 +185,10 @@ export const useSkillStore = create<ISkillStore>()(
 
             selectTrainingStat: (skillId) => {
                 const state = get();
-                // Collect XP from previous skill if training was active
                 if (state.offlineTrainingSkillId && state.trainingSegmentStartedAt) {
                     get().collectOfflineTraining();
                 }
 
-                // Offline hunt pauses always-on training. If a hunt is running
-                // we still let the player PICK a skill for later, but we keep
-                // the segment paused (segmentStartedAt stays null) so no XP
-                // accrues until the hunt ends.
                 const huntActive = isOfflineHuntActive();
 
                 set({
@@ -289,16 +201,11 @@ export const useSkillStore = create<ISkillStore>()(
 
             onActivityChange: (isActive) => {
                 const { trainingSegmentStartedAt, trainingCurrentSpeedMultiplier, trainingAccumulatedEffectiveSeconds, offlineTrainingSkillId } = get();
-                // If training paused (segmentStartedAt null) or no skill selected,
-                // just remember the speed for when training resumes — do NOT start
-                // a new segment here, because offline hunt relies on paused state
-                // meaning zero accrual.
                 if (!offlineTrainingSkillId || !trainingSegmentStartedAt) {
                     set({ trainingCurrentSpeedMultiplier: isActive ? 2 : 1 });
                     return;
                 }
 
-                // Flush current segment: elapsed real seconds × current multiplier
                 const now = Date.now();
                 const segmentSeconds = Math.max(0, (now - new Date(trainingSegmentStartedAt).getTime()) / 1000);
                 const effectiveSeconds = segmentSeconds * trainingCurrentSpeedMultiplier;
@@ -313,20 +220,20 @@ export const useSkillStore = create<ISkillStore>()(
             pauseTraining: () => {
                 const { offlineTrainingSkillId, trainingSegmentStartedAt, trainingCurrentSpeedMultiplier, trainingAccumulatedEffectiveSeconds } = get();
                 if (!offlineTrainingSkillId) return;
-                if (!trainingSegmentStartedAt) return; // already paused
+                if (!trainingSegmentStartedAt) return;
                 const now = Date.now();
                 const segmentSeconds = Math.max(0, (now - new Date(trainingSegmentStartedAt).getTime()) / 1000);
                 const effectiveSeconds = segmentSeconds * trainingCurrentSpeedMultiplier;
                 set({
                     trainingAccumulatedEffectiveSeconds: trainingAccumulatedEffectiveSeconds + effectiveSeconds,
-                    trainingSegmentStartedAt: null, // pause: no new seconds accrue
+                    trainingSegmentStartedAt: null,
                 });
             },
 
             resumeTraining: () => {
                 const { offlineTrainingSkillId, trainingSegmentStartedAt } = get();
                 if (!offlineTrainingSkillId) return;
-                if (trainingSegmentStartedAt) return; // already running
+                if (trainingSegmentStartedAt) return;
                 set({
                     trainingSegmentStartedAt: new Date().toISOString(),
                     trainingCurrentSpeedMultiplier: 2,
@@ -337,7 +244,6 @@ export const useSkillStore = create<ISkillStore>()(
                 const { offlineTrainingSkillId, trainingSegmentStartedAt, trainingAccumulatedEffectiveSeconds, trainingCurrentSpeedMultiplier } = get();
                 if (!offlineTrainingSkillId) return 0;
 
-                // Flush current segment (only if running — segmentStartedAt null means paused)
                 let effectiveSeconds = 0;
                 if (trainingSegmentStartedAt) {
                     const now = Date.now();
@@ -346,13 +252,11 @@ export const useSkillStore = create<ISkillStore>()(
                 }
                 let totalEffective = trainingAccumulatedEffectiveSeconds + effectiveSeconds;
 
-                // Cap at 24 hours of effective time
                 totalEffective = Math.min(totalEffective, MAX_OFFLINE_TRAINING_SECONDS);
 
                 const currentLevel = get().skillLevels[offlineTrainingSkillId] ?? 0;
                 let xpEarned = calculateOfflineSkillXp(totalEffective, currentLevel, offlineTrainingSkillId);
 
-                // Apply Training Elixir x2 buff (pausable – consume training time from buff)
                 const buffStore = useBuffStore.getState();
                 if (buffStore.hasBuff('offline_training_boost')) {
                     const trainingMs = totalEffective * 1000;
@@ -367,7 +271,6 @@ export const useSkillStore = create<ISkillStore>()(
                     get().addSkillXp(offlineTrainingSkillId, xpEarned);
                 }
 
-                // Reset counters, restart segment
                 set({
                     trainingSegmentStartedAt: new Date().toISOString(),
                     trainingAccumulatedEffectiveSeconds: 0,
@@ -376,7 +279,6 @@ export const useSkillStore = create<ISkillStore>()(
                 return xpEarned;
             },
 
-            // -- Shielding XP on block (Knight) -------------------------------
             addShieldingXpOnBlock: () => {
                 const state = get();
                 const shieldingLevel = state.skillLevels['shielding'] ?? 0;
@@ -384,7 +286,6 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp('shielding', xpGain);
             },
 
-            // -- MLVL from auto-attack (magic classes only) -------------------
             addMlvlXpFromAttack: (cls) => {
                 if (!doesClassGainMlvlFromAttacks(cls)) return 0;
                 const state = get();
@@ -393,16 +294,13 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp('magic_level', xpGain);
             },
 
-            // -- Weapon skill XP from auto-attack (all classes, 1 XP per hit) --
             addWeaponSkillXpFromAttack: (cls) => {
                 const skillId = CLASS_WEAPON_SKILL[cls];
                 if (!skillId) return 0;
-                // Magic classes already gain magic_level XP via addMlvlXpFromAttack; skip to avoid double-dipping
                 if (doesClassGainMlvlFromAttacks(cls) && skillId === 'magic_level') return 0;
                 return get().addSkillXp(skillId, 1);
             },
 
-            // -- MLVL from skill use (all classes, slower for non-magic) ------
             addMlvlXpFromSkill: (cls) => {
                 const state = get();
                 const mlvl = state.skillLevels['magic_level'] ?? 0;
@@ -410,16 +308,13 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().addSkillXp('magic_level', xpGain);
             },
 
-            // -- Active skill unlock (purchase) -------------------------------
             unlockSkill: (skillId, goldCost, spendGoldFn, chestLevel, useChestsFn) => {
                 const state = get();
-                if (state.unlockedSkills[skillId]) return true; // already unlocked
-                // Require 1 spell chest of the skill's unlock level
+                if (state.unlockedSkills[skillId]) return true;
                 const chestsUsed = useChestsFn(chestLevel, 1);
                 if (!chestsUsed) return false;
                 const spent = spendGoldFn(goldCost);
                 if (!spent) {
-                    // Refund chest if gold spend failed (should not happen normally)
                     return false;
                 }
                 set((s) => ({
@@ -443,14 +338,12 @@ export const useSkillStore = create<ISkillStore>()(
                 return get().unlockedSkills[skillId] === true;
             },
 
-            // -- Active skill upgrade ------------------------------------------
             upgradeActiveSkill: (skillId, playerGold, spendGoldFn, skillUnlockLevel, useChestsFn, getChestCountFn) => {
                 const state = get();
                 const currentLevel = state.skillUpgradeLevels[skillId] ?? 0;
                 const targetLevel = currentLevel + 1;
                 const chestCost = getSpellChestUpgradeCost(targetLevel, skillUnlockLevel);
 
-                // Check resources
                 if (playerGold < chestCost.gold) {
                     return { success: false, newLevel: currentLevel, goldSpent: 0, chestsSpent: 0 };
                 }
@@ -458,7 +351,6 @@ export const useSkillStore = create<ISkillStore>()(
                     return { success: false, newLevel: currentLevel, goldSpent: 0, chestsSpent: 0 };
                 }
 
-                // Consume spell chests first
                 if (chestCost.chests > 0) {
                     const chestsUsed = useChestsFn(chestCost.chestLevel, chestCost.chests);
                     if (!chestsUsed) {
@@ -466,7 +358,6 @@ export const useSkillStore = create<ISkillStore>()(
                     }
                 }
 
-                // Spend gold (fail = chests + gold lost)
                 const spent = spendGoldFn(chestCost.gold);
                 if (!spent) {
                     return { success: false, newLevel: currentLevel, goldSpent: 0, chestsSpent: chestCost.chests };
@@ -478,10 +369,6 @@ export const useSkillStore = create<ISkillStore>()(
                     set((s) => ({
                         skillUpgradeLevels: { ...s.skillUpgradeLevels, [skillId]: targetLevel },
                     }));
-                    // 2026-05-19 v16 spec ("ulepszenie skilla tak samo
-                    // jedno ulepszenie to jeden punkt"): bump the
-                    // skill-upgrade counter on the character row for
-                    // the leaderboard ranking.
                     void Promise.all([
                         import('./characterStore'),
                         import('../api/v1/characterApi'),
@@ -494,11 +381,10 @@ export const useSkillStore = create<ISkillStore>()(
                             value: 1,
                             mode: 'add',
                         });
-                    }).catch(() => { /* offline */ });
+                    }).catch(() => { });
                     return { success: true, newLevel: targetLevel, goldSpent: chestCost.gold, chestsSpent: chestCost.chests };
                 }
 
-                // Fail = chests + gold lost, skill level stays
                 return { success: false, newLevel: currentLevel, goldSpent: chestCost.gold, chestsSpent: chestCost.chests };
             },
 

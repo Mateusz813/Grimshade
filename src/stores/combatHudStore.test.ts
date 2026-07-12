@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useCombatHudStore } from './combatHudStore';
 
 beforeEach(() => {
-    // Mirror the documented defaults — every test starts with the nav visible
-    // and the layout NOT in compact mode (the hunting Combat view's baseline).
     useCombatHudStore.setState({ active: false, compact: false });
 });
 
@@ -40,8 +38,6 @@ describe('setActive', () => {
         useCombatHudStore.getState().setActive(true);
         const state = useCombatHudStore.getState();
         expect(state.active).toBe(true);
-        // `compact` must survive — Dungeon/Boss views set it before they set
-        // active, and we don't want one to clobber the other.
         expect(state.compact).toBe(true);
     });
 
@@ -75,8 +71,6 @@ describe('setCompact', () => {
 
 describe('combined transitions (Dungeon-like lifecycle)', () => {
     it('view enter: set active+compact true, then leave: both false', () => {
-        // Simulates AppShell + Dungeon view lifecycle: mount sets both, unmount
-        // (or route change) flips both back to false.
         useCombatHudStore.getState().setActive(true);
         useCombatHudStore.getState().setCompact(true);
         expect(useCombatHudStore.getState()).toMatchObject({ active: true, compact: true });
@@ -92,6 +86,3 @@ describe('combined transitions (Dungeon-like lifecycle)', () => {
     });
 });
 
-// TODO: AppShell defensively resets the store on every route change. A higher
-// level test (component / integration) would assert that contract — out of
-// scope for this unit test which only verifies the setter atoms.

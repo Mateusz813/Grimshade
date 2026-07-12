@@ -3,14 +3,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * useGlobalChatNotifications tests
- *
- * Wires a single global subscriber for the city channel + a route-watch
- * effect that clears unread / dot when the player navigates to `/chat`.
- * We mock chatApi.subscribeAll to capture the callback so we can inject
- * inbound messages directly.
- */
 
 vi.mock('../api/v1/chatApi', () => ({
     chatApi: {
@@ -51,7 +43,6 @@ const makeMsg = (overrides: Partial<IMessage> = {}): IMessage => ({
     ...overrides,
 });
 
-// Helper to render a hook inside a MemoryRouter so useLocation works.
 const renderWithRouter = (initialPath: string) =>
     renderHook(() => useGlobalChatNotifications(), {
         wrapper: ({ children }) =>
@@ -120,7 +111,6 @@ describe('useGlobalChatNotifications', () => {
     });
 
     it('clears unread and the floating chat dot when on /chat route', () => {
-        // Pre-seed both indicators.
         useChatNotificationsStore.setState({ unreadCount: 5 });
         useChatTabsStore.setState({ hasNotification: true });
         renderWithRouter('/chat');
@@ -129,11 +119,6 @@ describe('useGlobalChatNotifications', () => {
     });
 
     it('does NOT bump unread when on /chat (the mount effect markAllRead has run)', () => {
-        // Bumping unread before mount, then mounting on /chat — the
-        // route-effect resets it back to zero. Subsequent foreign
-        // messages would re-bump it (the in-subscriber guard checks
-        // window.location, which we don't override here), so this
-        // test focuses on the deterministic markAllRead-on-mount path.
         useChatNotificationsStore.setState({ unreadCount: 7 });
         renderWithRouter('/chat');
         expect(useChatNotificationsStore.getState().unreadCount).toBe(0);

@@ -24,8 +24,6 @@ import {
     getGuildIcon,
 } from '../../data/guildIcons';
 
-// -- Authoritative-backend response shapes (server = source of truth). Only
-//    used inside the isBackendMode() branches; the client path is untouched. --
 interface IBackendGuildCreateResponse {
     guild: IGuildRow;
     gold: number;
@@ -103,10 +101,6 @@ interface IGuildPlayerSkill {
     unlockLevel: number;
 }
 
-/** Pull the player's slotted active skills, filtered by their current
- *  level. Mirrors the helper from Raid/Boss views — guild boss combat
- *  reuses the same per-class skill table so the player's slots line up
- *  with everything else they fight. */
 const getGuildPlayerSkills = (cls: string): IGuildPlayerSkill[] => {
     const key = cls.toLowerCase() as keyof typeof skillsData.activeSkills;
     const list = (skillsData.activeSkills[key] ?? []) as Array<{
@@ -143,22 +137,12 @@ import './Guild.scss';
 
 const ALL_ITEMS_FLAT = flattenItemsData(itemsRaw);
 
-// 2026-05-18 spec ("Kolory filtrow bledne, kolor ma odpowiadac rarity
-// czyli legendary czerwony heroic fiolet"): use the SHARED palette
-// from itemSystem instead of a local divergent copy. Legendary=red,
-// heroic=purple, epic=green, mythic=yellow — matches every other
-// rarity display in the app (inventory grid, market, drops popups).
 const RARITY_COLORS: Record<TRarity, string> = CANONICAL_RARITY_COLORS;
 const RARITY_LABELS: Record<TRarity, string> = CANONICAL_RARITY_LABELS;
 
 type TRarityFilter = 'all' | TRarity;
 const RARITY_FILTERS: TRarityFilter[] = ['all', 'common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 
-// 2026-05-18 spec ("brakuje filtra ikonkami jak w plecaku pancerz,
-// bron 1 bron 2, spodnie buty itp."): mirror the inventory's full
-// per-slot filter set. Pills render the item's PNG icon when
-// available, with an emoji fallback when the asset hasn't been
-// bundled yet (same fallback strategy as Inventory.tsx).
 type TSlotFilter =
     | 'all'
     | 'weapons' | 'jewelry'
@@ -197,9 +181,6 @@ const SLOT_FILTERS: ISlotFilterDef[] = [
     { id: 'ring1',      label: 'Pierścienie',  icon: ICON_RING },
 ];
 
-/** Mirror the inventory's slot-filter logic — same buckets so a player
- *  who knows the bag filters can find their items the same way in the
- *  guild treasury. */
 const itemMatchesSlotFilter = (itemId: string, filter: TSlotFilter): boolean => {
     if (filter === 'all') return true;
     const slot = getItemSlotSafe(itemId, ALL_ITEMS_FLAT) as TEquipmentSlot | null;
@@ -208,15 +189,10 @@ const itemMatchesSlotFilter = (itemId: string, filter: TSlotFilter): boolean => 
     if (filter === 'jewelry') {
         return slot === 'ring1' || slot === 'ring2' || slot === 'necklace' || slot === 'earrings';
     }
-    // ring1 pill covers BOTH ring slots so a player who only knows about
-    // "rings" doesn't have to think about ring1 vs ring2 separately.
     if (filter === 'ring1') return slot === 'ring1' || slot === 'ring2';
     return slot === filter;
 };
 
-// 2026-05-18 spec ("oraz sortowanie od lvl w gore lub w dol"): per-
-// column sort order — inventory uses level desc by default, we mirror
-// that and let the player toggle to ascending.
 type TSortOrder = 'level-desc' | 'level-asc';
 const SORT_LABELS: Record<TSortOrder, string> = {
     'level-desc': 'Lvl',
@@ -242,17 +218,6 @@ type ScreenKey =
     | 'treasury'
     | 'requests';
 
-/**
- * Guild view — single entry point at `/guild`. Routes between an
- * unaffiliated player's guild browser and a member's guild home + sub
- * screens (boss, treasury, requests) via internal state instead of
- * extra react-router entries.
- *
- * Sub-screens collapse back to the entry view with the leading nav
- * button so the URL bar stays at `/guild` throughout. Players hitting
- * F5 always land on the right screen because membership is hydrated
- * from `useGuildStore` on mount.
- */
 const Guild = () => {
     const navigate = useNavigate();
     const character = useCharacterStore((s) => s.character);
@@ -260,26 +225,19 @@ const Guild = () => {
     const [screen, setScreen] = useState<ScreenKey>('list');
     const lastCharacterRef = useRef<string | null>(null);
 
-    // Hydrate the player's guild row whenever the active character
-    // changes. The store keys per-character so switching characters
-    // mid-session updates membership without a page refresh.
     useEffect(() => {
         if (!character?.id) return;
         if (lastCharacterRef.current === character.id) return;
         lastCharacterRef.current = character.id;
         void guildState.hydrateForCharacter(character.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [character?.id]);
 
-    // Whenever we have a guild -> default screen is home; if we
-    // dropped the guild while inside a sub-screen, snap back to list.
     useEffect(() => {
         if (guildState.guild) {
             if (screen === 'list') setScreen('home');
         } else {
             if (screen !== 'list') setScreen('list');
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [guildState.guild?.id]);
 
     if (!character) {
@@ -297,7 +255,7 @@ const Guild = () => {
         <div className="guild">
             {screen === 'list' && (
                 <GuildList
-                    onPickGuildToApply={() => { /* handled inline */ }}
+                    onPickGuildToApply={() => { }}
                     onEnterMine={() => setScreen('home')}
                 />
             )}
@@ -322,11 +280,6 @@ const Guild = () => {
     );
 };
 
-// =============================================================================
-// GUILD LIST — paginated browser + create button.
-// Spec items 1–5: header, search, paginated rows (logo · name · :handshake:),
-// "Stwórz gildię" button at the bottom.
-// =============================================================================
 
 interface IGuildListProps {
     onPickGuildToApply: (g: IGuildRow) => void;
@@ -350,8 +303,6 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
     const fetchPage = useCallback(async () => {
         setLoading(true);
         try {
-            // Backend-authoritative browse: ONE call returns the page rows,
-            // per-guild summaries and the total count together.
             if (isBackendMode()) {
                 const res = await backendApi.guildsBrowse({
                     offset: page * PAGE_SIZE,
@@ -373,8 +324,6 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
             ]);
             setRows(list);
             setTotal(count);
-            // Side-load member count + leader name for the visible page
-            // so each row shows "1/20 · Lider Krasek".
             if (list.length > 0) {
                 const summary = await guildApi.listGuildSummaries(list.map((g) => g.id));
                 setSummaries(summary);
@@ -388,11 +337,8 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
 
     useEffect(() => { void fetchPage(); }, [fetchPage]);
 
-    // Refresh when the player creates a guild so the new row pops up
-    // top of list before they navigate into it.
     useEffect(() => {
         if (guildState.guild) onEnterMine();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [guildState.guild?.id]);
 
     const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -401,8 +347,6 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
         if (!applyTarget || !character) return;
         setApplyBusy(true);
         try {
-            // Backend-authoritative join request — the server files the
-            // request from the character's DB snapshot; no Supabase write.
             if (isBackendMode()) {
                 try {
                     await backendApi.joinGuild(character.id, applyTarget.id);
@@ -535,10 +479,6 @@ const GuildList = ({ onEnterMine }: IGuildListProps) => {
     );
 };
 
-// =============================================================================
-// CREATE DIALOG — pick logo + color + name + tag, pay 10cc gold.
-// Spec items 4–5.
-// =============================================================================
 
 interface IGuildCreateDialogProps {
     onClose: () => void;
@@ -571,10 +511,6 @@ const GuildCreateDialog = ({ onClose, onCreated }: IGuildCreateDialogProps) => {
         if (!canAfford) { setError(`Brak gotówki — koszt to ${formatGoldShort(GUILD_CREATE_COST_GOLD)}.`); return; }
 
         setBusy(true);
-        // Backend-authoritative create: the server charges the founder's
-        // gold (from the authoritative blob) and creates the guild + leader
-        // membership atomically. We DON'T spend gold client-side —
-        // syncFromBackend re-hydrates the real balance afterwards.
         if (isBackendMode()) {
             try {
                 const res = await backendApi.createGuild(character.id, {
@@ -612,8 +548,7 @@ const GuildCreateDialog = ({ onClose, onCreated }: IGuildCreateDialogProps) => {
                 leaderTransformTier: useTransformStore.getState().getHighestCompletedTransform?.() ?? 0,
             });
             useGuildStore.getState().setGuild(guild);
-            // Drop the founder from every other guild's pending requests.
-            await guildApi.purgeRequestsForCharacter(character.id).catch(() => { /* offline */ });
+            await guildApi.purgeRequestsForCharacter(character.id).catch(() => { });
             onCreated();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Tworzenie gildii nie powiodło się.');
@@ -700,10 +635,6 @@ const GuildCreateDialog = ({ onClose, onCreated }: IGuildCreateDialogProps) => {
     );
 };
 
-// =============================================================================
-// GUILD HOME — logo, name, level + xp, members list, nav to sub-screens.
-// Spec items 7–11, 13–17.
-// =============================================================================
 
 interface IGuildHomeProps {
     onBack: () => void;
@@ -722,19 +653,11 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
     const [confirmLeave, setConfirmLeave] = useState(false);
     const [confirmDisband, setConfirmDisband] = useState(false);
 
-    // 2026-05-18 spec ("Przed ikonkami akcji kazdej postaci napisz ile
-    // XP dla gildii dodali poprzez atak bossa"): pull this week's
-    // boss contribution map so every member row shows their personal
-    // damage-dealt next to the kick/leave buttons. Refresh on a 5 s
-    // poll so the live counter ticks up while the boss is being
-    // pummeled.
     const [contribMap, setContribMap] = useState<Record<string, number>>({});
     useEffect(() => {
         if (!guild) return;
         const refresh = async () => {
             try {
-                // Backend mode: read this week's contributions from the
-                // authoritative boss view instead of Supabase.
                 if (isBackendMode() && character) {
                     const res = await backendApi.guildBossState(character.id, guild.id) as IBackendBossStateResponse;
                     const out: Record<string, number> = {};
@@ -749,18 +672,13 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                 const out: Record<string, number> = {};
                 for (const r of rows) out[r.character_id] = r.total_damage;
                 setContribMap(out);
-            } catch { /* offline */ }
+            } catch { }
         };
         void refresh();
         const t = setInterval(refresh, 5000);
         return () => clearInterval(t);
     }, [guild, character]);
 
-    // Push our latest character snapshot to the guild row so the
-    // member list reflects level/class changes (e.g. after death
-    // penalty or class transform). Includes the highest-completed
-    // transform tier so other guild mates immediately see the new
-    // avatar art on the roster.
     useEffect(() => {
         if (!character || !guild) return;
         const me = members.find((m) => m.character_id === character.id);
@@ -770,27 +688,23 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
             me.character_level !== character.level
             || me.character_class !== character.class
             || (me.character_transform_tier ?? 0) !== myTier;
-        // Backend mode: the server owns member snapshots (refreshed on
-        // accept + showGuild) — never push a client stat update to Supabase.
         if (stale && !isBackendMode()) {
             void guildApi.updateMemberStats({
                 characterId: character.id,
                 level: character.level,
                 characterClass: character.class,
                 transformTier: myTier,
-            }).catch(() => { /* offline */ });
+            }).catch(() => { });
         }
     }, [character, guild, members]);
 
     const handleKickConfirm = async () => {
         if (!confirmKick) return;
-        // Backend-authoritative kick — server removes the member row +
-        // re-hydrate the roster from showGuild. No Supabase write.
         if (isBackendMode() && character) {
             try {
                 await backendApi.kickGuildMember(character.id, guild.id, confirmKick.character_id);
                 await useGuildStore.getState().hydrateForCharacter(character.id);
-            } catch { /* surfaced elsewhere; keep UI responsive */ }
+            } catch { }
             setConfirmKick(null);
             return;
         }
@@ -800,13 +714,10 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
 
     const handleLeaveConfirm = async () => {
         if (!character) return;
-        // Backend-authoritative leave — server drops the membership (and
-        // disbands when the last member leaves). Forget the guild id so a
-        // re-hydrate doesn't resurrect it (showGuild isn't member-gated).
         if (isBackendMode()) {
             try {
                 await backendApi.leaveGuild(character.id, guild.id);
-            } catch { /* keep teardown regardless */ }
+            } catch { }
             useGuildStore.getState().clear();
             useGuildStore.setState((s) => ({
                 guildIdByCharacter: { ...s.guildIdByCharacter, [character.id]: null },
@@ -815,19 +726,18 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
             return;
         }
         const { disbanded } = await guildApi.leaveGuild({ guildId: guild.id, characterId: character.id });
-        void disbanded; // disbanded flag isn't surfaced — store hydrate handles teardown.
+        void disbanded;
         useGuildStore.getState().clear();
         await useGuildStore.getState().hydrateForCharacter(character.id);
         setConfirmLeave(false);
     };
 
-    // Leader-only: blow the whole guild away (all members + the guild row).
     const handleDisbandConfirm = async () => {
         if (!character) return;
         if (isBackendMode()) {
             try {
                 await backendApi.disbandGuild(character.id, guild.id);
-            } catch { /* keep teardown regardless */ }
+            } catch { }
             useGuildStore.getState().clear();
             useGuildStore.setState((s) => ({
                 guildIdByCharacter: { ...s.guildIdByCharacter, [character.id]: null },
@@ -846,10 +756,6 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
         ? Math.min(1, guild.xp / xpToNext)
         : 1;
 
-    // 2026-05-18 spec ("Kasujemy caly ten header wroc"): no top bar
-    // on guild home — the bottom nav (Społeczność) already gates the
-    // section, so the duplicate "<- Miasto" button just stole vertical
-    // space. Banner sits flush with the top of the screen instead.
     void onBack;
 
     return (
@@ -870,12 +776,6 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                         {' · '}
                         Członkowie {members.length}/{guild.member_cap}
                     </div>
-                    {/* 2026-05-18 spec ("Poziom gildi na srodku napisz
-                        ile % poziomu jest wbite oraz ile XP / ile do
-                        kolejnego poziomu"): xp bar gets a centred
-                        readout — "37 % · 372 / 1 000 XP" — so the
-                        player sees both the percentage and the raw
-                        ratio at a glance. */}
                     <div
                         className="guild__home-xpbar"
                         title={`${guild.xp.toLocaleString('pl-PL')} / ${xpToNext === Infinity ? '∞' : xpToNext.toLocaleString('pl-PL')} XP`}
@@ -888,15 +788,6 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                 </div>
             </div>
 
-            {/* 2026-05-18 spec ("Kafelki Loch skarbiec prosby nad lista
-                czlonkow gildii"): nav row moved ABOVE the member list so
-                the player's primary actions are the first thing they
-                see; member roster scrolls below.
-                2026-05-18 v2 ("Zamiast ikonek do nawigacji ... uzyj
-                zdjec w pliku guild/ tak samo jak te kafelki sa w
-                miescie, napis na dole i zdjecie jako tlo"): each tile
-                is a full-bleed <img> with a frosted-glass label glued
-                to the bottom — mirrors the town tile layout exactly. */}
             <nav className="guild__nav">
                 <button className="guild__nav-tile" onClick={onOpenBoss}>
                     <img className="guild__nav-tile-img" src={imgLoch} alt="" draggable={false} />
@@ -930,12 +821,6 @@ const GuildHome = ({ onBack, onOpenBoss, onOpenTreasury, onOpenRequests }: IGuil
                 ))}
             </ul>
 
-            {/* 2026-05-18 spec ("Pod lista graczy dodaj jeszcze chat
-                gildyjny i trzymaj ostatnie 500 wiadomosci"): per-guild
-                chat channel `guild_{guildId}` mounted right under the
-                member roster. Reuses the shared Chat component with a
-                `messageCap={500}` override so historic messages survive
-                past the default 100-cap PM trim. */}
             {character && (
                 <div className="guild__chat">
                     <Chat
@@ -1007,13 +892,6 @@ interface IMemberRowProps {
 }
 
 const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick, onLeave, onDisband }: IMemberRowProps) => {
-    // 2026-05-18 spec ("avatary powinny byc aktualnych transformow
-    // tych postaci"): every member ships their `character_transform_tier`
-    // in the row, so we feed that single tier into getCharacterAvatar
-    // (the helper iterates 1..tier and picks the highest tier avatar
-    // PNG present in classAvatars). For me we still prefer the live
-    // store value so a transform completed THIS SESSION renders before
-    // the next server-side sync lands.
     const character = useCharacterStore((s) => s.character);
     let avatarUrl: string | null = null;
     let transformCss: string | null = null;
@@ -1023,9 +901,6 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
         const tColor = useTransformStore.getState().getHighestTransformColor();
         transformCss = tColor?.css ?? null;
     } else {
-        // Reconstruct an "all tiers up to my level completed" array
-        // from the stored highest tier — getCharacterAvatar picks the
-        // top match, so we don't need the exact per-tier history.
         const tier = member.character_transform_tier ?? 0;
         const completed = tier > 0
             ? Array.from({ length: tier }, (_, i) => i + 1)
@@ -1064,11 +939,6 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
                     {member.character_class} · Lvl {member.character_level}
                 </div>
             </div>
-            {/* 2026-05-18 v2 spec ("Na mobilce ile XP pod nickiem i
-                avatarem a akcje ponizej XP"): XP chip + action buttons
-                share a single `__member-actions` cell that wraps to
-                its own row on mobile (grid template-area) and aligns
-                inline at the end on desktop. */}
             <div className="guild__member-actions">
                 <span
                     className="guild__member-contrib"
@@ -1096,10 +966,6 @@ const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick,
     );
 };
 
-// =============================================================================
-// GUILD BOSS — weekly raid: 1 attack/day/member, 10% block gate,
-// no potions, Sunday claim popup. Spec item 12.
-// =============================================================================
 
 interface IGuildBossProps { onBack: () => void; }
 
@@ -1114,75 +980,32 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     const [busy, setBusy] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [claimResult, setClaimResult] = useState<IRolledReward[] | null>(null);
-    // Legacy per-engagement state retained as refs only — visuals
-    // now come from useCombatFx, but boss damage sync still needs
-    // engagementDmgRef tracking.
     const floatIdRef = useRef(0);
     const isSunday = isGuildBossClaimDay();
-    // 2026-05-18 spec ("Zrob animacje wejscia do walki z bossem
-    // przyciemnianie ekranu itp"): combat phase machine. 'arena' is
-    // the standby/info screen; 'entry' fades a black overlay in/out
-    // before flipping to 'fighting' which runs the auto-attack loop.
     const [phase, setPhase] = useState<'arena' | 'entry' | 'fighting'>('arena');
     const [engagementDmg, setEngagementDmg] = useState(0);
     const [bossHitPulse, setBossHitPulse] = useState(0);
-    // Speed multiplier for the auto-attack tick — spec: X1 / X2 / X4.
     const [speedMult, setSpeedMult] = useState<1 | 2 | 4>(1);
     const engagementDmgRef = useRef(0);
     const liveBossHpRef = useRef(0);
-    // Backend mode only: the ONE authoritative damage response for the
-    // current engagement (server already applied hp/contribution/attempt/xp)
-    // and the boss hp the optimistic animation should drain toward.
     const backendDamageRef = useRef<IBackendBossDamageResponse | null>(null);
     const backendTargetHpRef = useRef<number | null>(null);
-    // 2026-05-18 spec ("kazdy boss uzywa swoich specyficznych spelli i
-    // widzimy ich animacje ataku"): the boss casts spells from a tier-
-    // specific pool. Each cast pushes onto these queues:
-    //   - `bossCastFx` — the cast-overlay (themed glow) layered over
-    //     the boss sprite for ~700ms
-    //   - `playerHits` — damage floats on the player's avatar
-    // Player HP tracks the engagement-local pool so a near-death
-    // doesn't actually kill the character (no death penalty from the
-    // guild boss — engagement just ends when HP hits 0).
     const [playerHp, setPlayerHp] = useState(0);
     const [playerMaxHp, setPlayerMaxHp] = useState(0);
     const [playerMp, setPlayerMp] = useState(0);
     const [playerMaxMp, setPlayerMaxMp] = useState(0);
     const [playerHitPulse, setPlayerHitPulse] = useState(0);
-    // bossCastFx kept only for the boss-name banner that highlights
-    // the currently-casting spell. Pure visual.
     const [, setBossCastFx] = useState<{ id: number; spell: IGuildBossSpell } | null>(null);
-    // 2026-05-18 v6 spec ("Walka ma wygladac i animacje identycznie
-    // jak na widoku pojedynku albo raidu albo areny"): reuse the
-    // shared `useCombatFx` hook so the boss tile + player avatar use
-    // the SAME floats / skill-anim / hit-pulse system as hunt/boss/
-    // raid views. Slot 0 = boss, slot 0 = player.
     const fx = useCombatFx();
-    // 2026-05-18 v10 spec ("Dalej nie widze animacji podstawowego ataku
-    // danej klasy na bossie"): the class swing animation belongs on the
-    // BOSS tile (it's the target getting hit) — we drive it via
-    // `bossAttackingPulse`, set to `attack-${character.class}` on every
-    // basic-attack tick. The old `attackingClassName` state was never
-    // read anywhere (orphan setter) so it's gone.
     const [bossAttackingPulse, setBossAttackingPulse] = useState<string | null>(null);
     const playerHpRef = useRef(0);
     const playerMpRef = useRef(0);
     const playerMaxMpRef = useRef(0);
     const skillCooldownsRef = useRef<Record<string, number>>({});
     const lastSkillCastRef = useRef(0);
-    // 2026-05-18 v5 spec ("w logach dalej nic sie tez nie zapisuje"):
-    // the previous throttle (sync every 3s) missed the kill tick when
-    // damage spiked. Now we upsert the attempt row on EVERY tick —
-    // idempotent, cheap, and the log row always reflects the latest
-    // engagement total.
 
     const refresh = useCallback(async () => {
         if (!guild || !character) return;
-        // Backend-authoritative boss view — ONE GET returns the weekly boss
-        // (fetch-or-create server-side), my contribution, all contributions,
-        // today's attempts and the weekly attempt log. No arena-lock dance:
-        // the server has no client-held arena; damage is serialised by a DB
-        // lock inside POST /boss/damage.
         if (isBackendMode()) {
             try {
                 const res = await backendApi.guildBossState(character.id, guild.id) as IBackendBossStateResponse;
@@ -1198,25 +1021,17 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             return;
         }
         try {
-            // Clamp the tier server-side — even if the guild row drifts
-            // past tier 10 we cap to the highest shipped art tier.
             let bossRow = await guildApi.fetchOrCreateWeeklyBoss({
                 guildId: guild.id,
                 bossTier: clampGuildBossTier(guild.boss_tier),
             });
-            // 2026-05-18 spec ("Nikt nie walczy a nie moge zaatakowac
-            // bossa"): if `current_attacker_id` is set but the lock
-            // hasn't been touched in >60s (engagement crashed, tab
-            // closed mid-fight, etc.) it's stale — any client may
-            // release it so the next attacker isn't blocked
-            // indefinitely. We then re-fetch once to confirm.
             if (bossRow.current_attacker_id) {
                 const ageMs = Date.now() - new Date(bossRow.updated_at).getTime();
                 if (ageMs > 60_000) {
                     await guildApi.releaseBossArena({
                         guildId: guild.id,
                         weekStart: bossRow.week_start,
-                    }).catch(() => { /* best effort */ });
+                    }).catch(() => { });
                     bossRow = await guildApi.fetchOrCreateWeeklyBoss({
                         guildId: guild.id,
                         bossTier: clampGuildBossTier(guild.boss_tier),
@@ -1233,14 +1048,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 guildApi.listAttemptsToday({ guildId: guild.id, characterId: character.id }),
                 guildApi.listWeeklyAttempts({ guildId: guild.id, weekStart: bossRow.week_start }),
             ]);
-            // 2026-06-24 EXPLOIT FIX: set boss + attemptedToday in the SAME batch,
-            // AFTER the attempts resolve. Previously setBoss ran BEFORE this await,
-            // so the boss UI (incl. the "Atakuj bossa" button) rendered while
-            // attemptedToday was still its initial `false` — canAttackToday was
-            // briefly `true`, letting a player who had ALREADY used today's attempt
-            // click through and enter combat again (up to 6×/day, dealing boss
-            // damage each time). Now the button never renders until the real
-            // daily-attempt count is known, so there is no clickable window.
             setBoss(bossRow);
             liveBossHpRef.current = bossRow.boss_current_hp;
             setContribution(contrib);
@@ -1254,22 +1061,13 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
 
     useEffect(() => { void refresh(); }, [refresh]);
 
-    // Realtime subscription on the boss row so HP changes from other
-    // members land instantly. Cheap polling fallback every 4 s in
-    // case the realtime channel drops.
     useEffect(() => {
         const t = setInterval(() => { void refresh(); }, 4000);
         return () => clearInterval(t);
     }, [refresh]);
 
-    // 2026-05-18: defensive arena release on unmount. If the user
-    // navigates away mid-engagement (closes the boss view, F5,
-    // bottom-nav out, etc.) we drop the lock so the next attacker
-    // isn't blocked. Idempotent — server treats a re-release as
-    // no-op when the lock was already null.
     useEffect(() => {
         return () => {
-            // Backend mode has no client-held arena lock — nothing to release.
             if (isBackendMode()) return;
             const g = useGuildStore.getState().guild;
             const c = useCharacterStore.getState().character;
@@ -1282,18 +1080,12 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     void guildApi.releaseBossArena({
                         guildId: g.id,
                         weekStart: row.week_start,
-                    }).catch(() => { /* offline */ });
+                    }).catch(() => { });
                 }
-            }).catch(() => { /* offline */ });
+            }).catch(() => { });
         };
     }, []);
 
-    // 2026-05-18 spec ("Walka z bossem gildyjnym ma byc jak walka z
-    // bossem, normalnie widok walki animacje ataku itp"): clicking
-    // Atakuj enters the fight phase (entry overlay -> fighting). The
-    // combat loop in the next useEffect drives basic-attack auto-fire
-    // on every speed-scaled tick. Engagement ends when the player
-    // deals their daily 10 % HP block OR the boss dies.
     const startEngagement = async () => {
         if (!canAttackToday || busy || !character || !boss) return;
         if (someoneElseHolds) {
@@ -1304,13 +1096,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         setErrorMsg(null);
         try {
             if (isBackendMode()) {
-                // ONE authoritative damage call per engagement. The server
-                // computes THIS character's damage from the DB (attack/level/
-                // tier) and updates boss hp + contribution + attempt + guild
-                // xp/tier atomically. We keep the pre-attack hp in
-                // liveBossHpRef and drain it optimistically toward the
-                // returned (post-attack) hp during the animation. NO Supabase
-                // arena claim / applyBossDamage / logAttempt streaming.
                 const res = await backendApi.guildBossDamage(character.id, guild.id) as IBackendBossDamageResponse;
                 backendDamageRef.current = res;
                 backendTargetHpRef.current = res.boss.boss_current_hp;
@@ -1330,9 +1115,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             }
             engagementDmgRef.current = 0;
             setEngagementDmg(0);
-            // Reset player HP + MP to their effective max — engagement
-            // damage is sandboxed (no real death penalty), so a 0-HP
-            // exit just ends the fight early.
             const eff = getEffectiveChar(character);
             const maxHp = eff?.max_hp ?? character.max_hp ?? 1000;
             const maxMp = eff?.max_mp ?? character.max_mp ?? 100;
@@ -1343,21 +1125,11 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             setPlayerMaxHp(maxHp);
             setPlayerMp(maxMp);
             setPlayerMaxMp(maxMp);
-            // Clear stale skill cooldowns + cast fx from any prior
-            // engagement so the first tick can fire spells right away.
             skillCooldownsRef.current = {};
             lastSkillCastRef.current = 0;
             setBossCastFx(null);
-            // 2026-05-18 v7: clear the shared combat-fx queues so
-            // leftover floats / skill anims from a previous engagement
-            // don't replay on the new fight's first tick.
             fx.resetFx();
             setPhase('entry');
-            // 2026-05-18 v9: bumped from 1200 -> 1700ms to give the new
-            // door-opening intro time to: doors slide off (200–1000ms),
-            // seam glow (200–1100ms), boss reveal punch-in
-            // (400–1500ms), and overlay fade (1500–1700ms) before
-            // the fighting phase mounts the CombatArena.
             window.setTimeout(() => {
                 setPhase('fighting');
             }, 1700);
@@ -1368,16 +1140,8 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         }
     };
 
-    // End the engagement: release arena, log attempt + contribution +
-    // guild XP, refresh from server, then exit back to the arena
-    // standby screen.
     const finishEngagement = useCallback(async () => {
         if (!character || !boss) return;
-        // Backend-authoritative finish — the server already applied the whole
-        // attack's damage (+ contribution + attempt + guild xp/tier) at
-        // engagement start. Reconcile the animated hp to the returned truth,
-        // then re-hydrate from the server. SKIP the Supabase logAttempt /
-        // addContribution / updateGuildLevelXp / releaseBossArena entirely.
         if (isBackendMode()) {
             const res = backendDamageRef.current;
             if (res) {
@@ -1390,19 +1154,10 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             setPhase('arena');
             try {
                 await syncFromBackend(character.id);
-            } catch { /* offline */ }
+            } catch { }
             await refresh();
             return;
         }
-        // 2026-05-18 v10 spec ("Zadalem wiecej obrazen niz ma HP Boss,
-        // zalicz to do XP jako nie wiecej niz maks HP Bossa"): cap the
-        // engagement total at the boss's max HP. The local
-        // `engagementDmgRef` can balloon past max HP when a `refresh()`
-        // mid-fight resets `liveBossHpRef` from a stale server value
-        // (apply-damage calls still in flight), so all subsequent
-        // ticks credit "extra" damage that the boss never actually
-        // had. Clamp before we write to the log, contribution, and
-        // guild XP.
         const totalDmg = Math.min(engagementDmgRef.current, boss.boss_max_hp);
         try {
             if (totalDmg > 0) {
@@ -1414,10 +1169,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                         damageDealt: totalDmg,
                     });
                 } catch (logErr: unknown) {
-                    // 2026-05-18 v6: don't let log failure break the
-                    // whole finish flow — contribution + XP still
-                    // sync below. Surface to console so missing-
-                    // column / RLS errors are visible.
                     console.warn('[guildBoss] final logAttempt failed:', logErr);
                 }
                 await guildApi.addContribution({
@@ -1449,25 +1200,11 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         }
     }, [character, boss, guild, refresh]);
 
-    // 2026-05-18 v8 spec ("podstawowy atak ma atakowac w rownych
-    // odstepach czasu zaleznie od AS a nie czy uzylem spella"): basic
-    // attacks and spell casts run in PARALLEL loops, not one-action-
-    // per-tick. Basic loop fires every 1500ms (×speedMult) regardless
-    // of whether a spell just went off; spell loop independently picks
-    // an off-cooldown skill and casts it. The two loops can fire on
-    // the same frame (basic + spell in the same tick) — feels much
-    // more responsive than the previous "either-or" model.
     useEffect(() => {
         if (phase !== 'fighting' || !character || !boss) return;
         const tier = clampGuildBossTier(guild.boss_tier);
-        // Basic-attack cadence — character attack-speed scaled by the
-        // user's speed mult. 1500ms is the baseline; faster classes
-        // shave time, slower ones lose some (still capped at 150ms).
         const basicInterval = Math.max(120, Math.floor(1500 / speedMult));
         const basicTick = () => {
-            // In backend mode the optimistic animation drains toward the
-            // server's post-attack hp (backendTargetHpRef), never below it.
-            // Client path: floor is 0 (unchanged behaviour).
             const backendFloor = isBackendMode() && backendTargetHpRef.current !== null
                 ? backendTargetHpRef.current
                 : 0;
@@ -1481,11 +1218,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             const isCrit = Math.random() < 0.2;
             const dmgVal = Math.max(1, Math.floor(rawDmg * (isCrit ? 1.7 : 1)));
             const cappedDmg = Math.min(dmgVal, liveBossHpRef.current - backendFloor);
-            // 2026-05-18 v10: also clamp the engagement counter at
-            // boss_max_hp — see finishEngagement note. The same
-            // refresh-mid-fight race that bloats the total here is
-            // also what would make the live "obrażenia tej tury"
-            // display read past the boss's max HP.
             engagementDmgRef.current = Math.min(
                 engagementDmgRef.current + cappedDmg,
                 boss.boss_max_hp,
@@ -1494,25 +1226,15 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             liveBossHpRef.current = Math.max(backendFloor, liveBossHpRef.current - cappedDmg);
             setBoss((b) => (b ? { ...b, boss_current_hp: liveBossHpRef.current } : b));
             setBossHitPulse((p) => p + 1);
-            // 2026-05-18 v10 spec ("Podstawowy atak ma swoja unikalna
-            // animacje"): drive the per-class swing animation on the
-            // BOSS tile (the target). This puts the `attack-Warrior` /
-            // `attack-Mage` / etc. modifier on the enemy card, which
-            // triggers the CombatUI keyframes that ship with the
-            // shared arena. The previous setter wrote to a dead state
-            // slot so no animation was ever painted.
             setBossAttackingPulse(`attack-${character.class}`);
             window.setTimeout(() => setBossAttackingPulse(null), 320);
             fx.pushEnemyFloat(0, cappedDmg, 'basic', { isCrit });
-            // Backend mode: purely optimistic — the server already booked the
-            // damage in ONE POST at engagement start. No per-tick Supabase
-            // applyBossDamage / logAttempt streaming.
             if (!isBackendMode()) {
                 void guildApi.applyBossDamage({
                     guildId: guild.id,
                     weekStart: boss.week_start,
                     damage: cappedDmg,
-                }).catch(() => { /* offline */ });
+                }).catch(() => { });
                 if (engagementDmgRef.current > 0) {
                     void guildApi.logAttempt({
                         guildId: guild.id,
@@ -1527,20 +1249,11 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         };
         const id = window.setInterval(basicTick, basicInterval);
         return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [phase, speedMult, character?.id, boss?.id, guild?.id]);
 
-    // 2026-05-18 v8: PARALLEL spell-cast loop. Independent of basic
-    // attacks — fires whenever the next slotted skill is off cooldown
-    // and MP allows. Spell casts can happen on the same frame as a
-    // basic attack (player's level / spec lets them deal both at
-    // once), making the fight feel snappy.
     useEffect(() => {
         if (phase !== 'fighting' || !character || !boss) return;
         const tier = clampGuildBossTier(guild.boss_tier);
-        // Spell-check cadence — 600ms baseline. Faster checks mean a
-        // skill that comes off cooldown fires sooner than the next
-        // basic-attack tick.
         const spellCheckInterval = Math.max(80, Math.floor(600 / speedMult));
         const spellTick = () => {
             const backendFloor = isBackendMode() && backendTargetHpRef.current !== null
@@ -1550,9 +1263,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             const eff = getEffectiveChar(character);
             const charAtk = eff?.attack ?? character.attack ?? 100;
             const now = Date.now();
-            // 2026-06-21: min gap between consecutive spell casts now SCALES with
-            // combat speed (1.2s @x1 → 0.6s @x2 → 0.3s @x4) so skills actually
-            // fire faster on x2/x4 instead of staying throttled to the x1 cadence.
             if (now - lastSkillCastRef.current < getSpeedScaledCooldownMs(1200, speedMult)) return;
             const slots = useSkillStore.getState().activeSkillSlots;
             const skills = getGuildPlayerSkills(character.class);
@@ -1564,18 +1274,13 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 const cdExpiry = skillCooldownsRef.current[def.id] ?? 0;
                 if (cdExpiry > now) continue;
                 if (playerMpRef.current < def.mpCost) continue;
-                // Cast!
                 const baseDmg = computeGuildBossDamage(charAtk, character.level, tier);
                 const skillDmg = Math.max(1, Math.floor(baseDmg * def.damage));
                 const cappedDmg = Math.min(skillDmg, liveBossHpRef.current - backendFloor);
                 playerMpRef.current = Math.max(0, playerMpRef.current - def.mpCost);
                 setPlayerMp(playerMpRef.current);
-                // 2026-06-21: per-skill cooldown window scales with combat speed
-                // so the recast gate matches the speed-scaled cooldown display.
                 skillCooldownsRef.current[def.id] = now + getSpeedScaledCooldownMs(def.cooldown, speedMult);
                 lastSkillCastRef.current = now;
-                // 2026-05-18 v10: clamp at boss_max_hp (see basic-tick
-                // note above for the refresh-race rationale).
                 engagementDmgRef.current = Math.min(
                     engagementDmgRef.current + cappedDmg,
                     boss.boss_max_hp,
@@ -1588,34 +1293,23 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 fx.pushEnemyFloat(0, cappedDmg, 'spell', {
                     icon: getSkillIcon(def.id),
                 });
-                // Backend mode: optimistic only — no per-tick Supabase write.
                 if (!isBackendMode()) {
                     void guildApi.applyBossDamage({
                         guildId: guild.id,
                         weekStart: boss.week_start,
                         damage: cappedDmg,
-                    }).catch(() => { /* offline */ });
+                    }).catch(() => { });
                 }
                 break;
             }
         };
         const id = window.setInterval(spellTick, spellCheckInterval);
         return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [phase, speedMult, character?.id, boss?.id, guild?.id]);
 
-    // 2026-05-18 v7 spec ("potwor bije mnie x4 a ja go X1 tak nie
-    // moze nigdy byc"): boss now attacks ONCE per player tick — same
-    // 1500ms baseline. Every boss tick rolls 70% basic / 30% spell
-    // (or basic if the spell's cooldown isn't ready). Single loop
-    // means parity with the player's attack cadence at every speed
-    // mult.
     useEffect(() => {
         if (phase !== 'fighting' || !character || !boss) return;
         const tier = clampGuildBossTier(boss.boss_tier);
-        // Same cadence as the player tick — boss + player swap blows
-        // 1-for-1 instead of the boss firing 2-3 attacks per
-        // player swing.
         const bossInterval = Math.max(150, Math.floor(1500 / speedMult));
         const lastSpellCastRef = { current: 0 };
         const bossTick = () => {
@@ -1626,17 +1320,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             const spellCooldown = getBossCastIntervalMs(tier, speedMult);
             const wantsSpell = Math.random() < 0.3 && (now - lastSpellCastRef.current) >= spellCooldown;
             if (wantsSpell) {
-                // Spell — themed float + cast overlay + on-player
-                // animation overlay (fire burst, poison cloud, ice
-                // shards, etc.). 2026-05-18 v11 spec ("Nie widze
-                // animacji spelli typu DOT"): the float / cast banner
-                // alone wasn't enough — we now fire
-                // `triggerAllySkillAnim` against the player tile so
-                // each boss spell drops its themed CombatUI keyframe
-                // overlay (skill-anim--poison for krwawienie,
-                // skill-anim--fire for pożoga / eksplozja, etc.). The
-                // ally slot is 0 since the player is the only ally
-                // in the guild boss arena.
                 const spell = pickGuildBossSpell(tier);
                 const dmg = computeBossSpellDamage(spell, tier, maxHp);
                 playerHpRef.current = Math.max(0, playerHpRef.current - dmg);
@@ -1651,13 +1334,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 window.setTimeout(() => setBossCastFx(null), 700);
                 lastSpellCastRef.current = now;
             } else {
-                // Basic — physical chip + swing flash.
-                // 2026-05-18 v10 spec ("Bossy sa troche za slabe"):
-                // basic-attack damage bumped from 2.5% -> 4.5% of
-                // player max HP. Combined with the tier kit's
-                // damageMult buff in guildBossSpells.ts, even a tier-1
-                // boss now eats ~5–6 % of a player's HP per swing,
-                // pressuring positioning + heal cycles.
                 const basicSpell = {
                     id: 'basic',
                     name: 'Cios',
@@ -1671,12 +1347,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 setPlayerHp(playerHpRef.current);
                 setPlayerHitPulse((p) => p + 1);
                 fx.pushAllyFloat(0, dmg, 'monster');
-                // 2026-05-18 v10: boss's own basic attack — visual
-                // feedback is the player tile's red hit pulse + the
-                // floating damage number. No `attackingClassName` to
-                // set: the `boss-attack` class never had keyframes
-                // attached, so the previous setter was a no-op that
-                // also stomped on the player's class-swing slot.
             }
         };
         const firstTimeout = window.setTimeout(() => {
@@ -1689,17 +1359,12 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             window.clearTimeout(firstTimeout);
             if (stored) window.clearInterval(stored);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [phase, speedMult, character?.id, boss?.id]);
 
     const handleClaim = async () => {
         if (!contribution || contribution.rewards_claimed || !boss) return;
         setBusy(true);
         setErrorMsg(null);
-        // Backend-authoritative claim — the SERVER rolls the rewards, credits
-        // gold/stones/potions/xp to the authoritative blob and marks the
-        // contribution claimed. We DROP the client rollGuildBossRewards /
-        // applyRolledRewards path and just render the returned reward list.
         if (isBackendMode()) {
             try {
                 const res = await backendApi.guildBossClaim(character.id, guild.id) as IBackendBossClaimResponse;
@@ -1720,28 +1385,11 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 level: character.level,
                 contribution: mult,
             });
-            // Apply rewards to the local inventory + character store.
             applyRolledRewards(rolled);
             await guildApi.markContributionClaimed({
                 contributionId: contribution.id,
                 rewardsJson: JSON.stringify(rolled),
             });
-            // 2026-05-18 spec ("Boss w lochu gildii po zabiciu wbija
-            // poziom na kolejny tydzień i zwiększa się jego poziom
-            // zaczynając od 1 co tydzień jeżeli go pokonamy"): on the
-            // first successful claim of a KILLED boss this week, bump
-            // the guild's `boss_tier` by 1 so next Monday's spawn is
-            // harder + drops better loot. Idempotent — every other
-            // member's claim runs the same update but the value is
-            // already the bumped one so it's a no-op.
-            //
-            // 2026-05-19 spec ("chyba ze to 20LVL to powtarzany jest
-            // boss 20 LVL"): clamp the bump at GUILD_BOSS_MAX_TIER
-            // (20) so a guild that beats tier-20 keeps re-fighting
-            // tier-20 every week instead of silently rolling the DB
-            // field to 21, 22, 23 … (the spawn already clamped via
-            // `clampGuildBossTier` so it FELT capped, but the stored
-            // value kept climbing).
             if (boss.boss_killed && guild.boss_tier === boss.boss_tier) {
                 const cap = guildMemberCap(guild.level);
                 const nextTier = Math.min(GUILD_BOSS_MAX_TIER, guild.boss_tier + 1);
@@ -1762,12 +1410,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         }
     };
 
-    // 2026-05-18 v2 ("Nie widac nic jak sie przechodzi do lochu" —
-    // Hooks ordering crash): the loading/early-return MUST sit
-    // AFTER every useState / useEffect / useCallback above so React
-    // sees the same hook order on every render. When `boss` arrives
-    // the next render passes this gate and continues into the JSX
-    // that depends on it; before that we render the skeleton.
     if (!boss) {
         return (
             <>
@@ -1786,13 +1428,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     const bossImg = getLochBossImage(renderTier);
     const bgImg = getLochBackground(renderTier);
 
-    // 2026-05-19 spec ("kolor guzika do ataku bossa w kolorze naszego
-    // transformu"): paint the "Atakuj bossa" CTA in the player's
-    // highest-transform colour. `getHighestTransformColor` returns
-    // a solid + optional gradient + a pre-built `css` string ready
-    // for `background`. Border colour falls back to the solid so the
-    // outline isn't a gradient strip. Null transform (no transforms
-    // claimed yet) leaves the orange default untouched.
     const transformColor = useTransformStore.getState().getHighestTransformColor();
     const attackBtnStyle = transformColor
         ? ({
@@ -1810,27 +1445,11 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 </h2>
             </header>
 
-            {/* 2026-05-18 spec ("Zamiast obecnego tla uzywamy tla dla
-                danego poziomu lochu"): full-bleed dungeon background.
-                The arena card sits on top with a translucent dark
-                veneer so the art bleeds through but the HP bar /
-                buttons stay legible. 2026-05-18 v14: the panel now
-                holds ONLY the boss portrait + HP bar — name banner,
-                action row, status banners, engagement readout, and
-                error message all moved below ("moga byc tez pod tym
-                zdjeciem … w srodku zostaw tylko HP"). */}
             <div
                 className={`guild__boss-stage${phase === 'arena' ? '' : ' is-fighting'}`}
                 style={{ backgroundImage: `url("${bgImg}")` }}
             >
                 <div className={`guild__boss-card${phase === 'fighting' ? ' is-fighting' : ''}`}>
-                    {/* 2026-05-18 v7 spec ("Najpierw niech sie
-                        pokazuje sam obrazek bossa z tlem bossa na
-                        srodku, i po kliknieciu walcz dopiero plansza
-                        do walki i nasz avatar"): two-phase layout —
-                        arena phase shows ONLY a centred boss portrait
-                        with HP bar; fighting phase swaps to the full
-                        CombatArena (hunt-grade visuals). */}
                     {phase !== 'fighting' ? (
                         <div className="guild__boss-preview">
                             <img
@@ -1839,13 +1458,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                                 className="guild__boss-preview-img"
                                 draggable={false}
                             />
-                            {/* 2026-05-18 v13 spec ("Pokaz na progress
-                                barze aktualny poziom hp bossa zeby bylo
-                                widac ile %HP mu zostalo"): live HP bar
-                                with fill width set inline from the
-                                current / max HP ratio. Centred numeric
-                                label sits on top so the player still
-                                sees the exact tally. */}
                             {(() => {
                                 const maxHp = Math.max(1, boss.boss_max_hp);
                                 const curHp = Math.max(0, Math.min(boss.boss_current_hp, maxHp));
@@ -1874,9 +1486,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                             })()}
                         </div>
                     ) : (() => {
-                        // Build ICombatEnemy + ICombatAlly from live
-                        // engagement state, hand to CombatArena (same
-                        // component hunt/raid/boss use).
                         const completedTiers = useTransformStore.getState().completedTransforms ?? [];
                         const tColor = useTransformStore.getState().getHighestTransformColor();
                         const accent = tColor?.solid ?? tColor?.gradient?.[0] ?? CLASS_COLORS[character.class] ?? '#888';
@@ -1913,13 +1522,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                             level: character.level,
                             aggroCount: 1,
                             hitPulse: playerHitPulse,
-                            // 2026-05-18 v8 spec ("animacja ataku jest
-                            // na mojej postaci a nie na bossie"): the
-                            // attacking-class swing belongs to the
-                            // TARGET (boss) per hunt's convention, not
-                            // the attacker's own avatar. Pass null so
-                            // the player tile doesn't flash with its
-                            // own class animation.
                             attackingClassName: null,
                             skillAnim: fx.allySkill[0] ?? null,
                             floats: fx.allyFloats[0] ?? [],
@@ -1934,16 +1536,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     })()}
                 </div>
 
-                {/* 2026-05-18 v9 spec ("zrob jakas epicka fajna animacje
-                    startu walki z bossem a nie ta co jest obecnie"):
-                    door-opening sequence ported from Boss.tsx. Two iron
-                    doors slide off to the sides, a vertical seam of
-                    light crackles down the middle, a shockwave ring
-                    pulses outward, and the boss portrait + name punch
-                    into view in the centre. Plain CSS keyframes so we
-                    don't need to pull in framer-motion here. The
-                    timings line up with the 1600ms hold in
-                    `attemptAttackNow` (entry -> fighting). */}
                 {phase === 'entry' && (
                     <div className="guild__boss-entry-overlay">
                         <div className="guild__boss-entry-bg" aria-hidden="true" />
@@ -1976,12 +1568,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 )}
             </div>
 
-            {/* 2026-05-18 v14 spec ("poukladaj tam buttony i wszystkie
-                informacje zeby sie zmiescily, moga byc tez pod tym
-                zdjeciem"): boss name + status banners + engagement
-                readout + speed picker + Atakuj/Zakończ/Odbierz buttons
-                live BELOW the stage panel now, freeing the dungeon
-                art to read at native resolution. */}
             <div className="guild__boss-controls">
                 <div className="guild__boss-name guild__boss-name--ext">
                     {getGuildBossLabel(renderTier)}
@@ -2077,9 +1663,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 </p>
             </div>
 
-            {/* 2026-05-18 spec ("na dole daj liste na scroolu z data
-                nickiem postaci kto atakowal ile zabral HP bossowi"):
-                weekly attack log — newest first, scrollable. */}
             <div className="guild__boss-log">
                 <h3 className="guild__boss-log-title"><GameIcon name="scroll" /> Log ataków (tydzień)</h3>
                 {attempts.length === 0 ? (
@@ -2125,11 +1708,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     );
 };
 
-// =============================================================================
-// REWARD ROLLER — random + percentage rewards (gold/xp/stones/potions/items)
-// scaling by tier × contribution share. Heroic capped at 1 %. Spec items
-// 21–25.
-// =============================================================================
 
 interface IRolledReward { kind: string; label: string; icon: string; }
 
@@ -2141,20 +1719,17 @@ interface IRollGuildRewardsParams {
 
 const rollGuildBossRewards = ({ tier, level, contribution }: IRollGuildRewardsParams): IRolledReward[] => {
     const out: IRolledReward[] = [];
-    // Gold — always granted. Scales with tier × contribution × level.
     const goldBase = 1_000_000 * tier * contribution * (1 + level / 50);
     const goldAmount = Math.floor(goldBase * (0.8 + Math.random() * 0.4));
     if (goldAmount > 0) {
         useInventoryStore.getState().addGold(goldAmount);
         out.push({ kind: 'gold', icon: 'money-bag', label: `${formatGoldShort(goldAmount)} golda` });
     }
-    // XP — granted to character.
     const xpAmount = Math.floor(50_000 * tier * contribution * (1 + level / 30));
     if (xpAmount > 0) {
         useCharacterStore.getState().addXp(xpAmount);
         out.push({ kind: 'xp', icon: 'star', label: `+${xpAmount.toLocaleString('pl-PL')} XP` });
     }
-    // Stones — common always, rare/epic with rising probability.
     const stones = useInventoryStore.getState();
     const commonStones = Math.max(1, Math.floor(5 * tier * contribution));
     stones.addStones('common_stone', commonStones);
@@ -2169,15 +1744,12 @@ const rollGuildBossRewards = ({ tier, level, contribution }: IRollGuildRewardsPa
         stones.addStones('epic_stone', epicStones);
         out.push({ kind: 'stones', icon: 'large-blue-diamond', label: `+${epicStones}× Kamień epicki` });
     }
-    // Potions — small flat HP/MP every claim.
     const potionCount = Math.max(1, Math.floor(3 * contribution));
     stones.addConsumable('hp_potion_small', potionCount);
     stones.addConsumable('mp_potion_small', potionCount);
     out.push({ kind: 'potion', icon: 'test-tube', label: `+${potionCount}× Mała mikstura HP + MP` });
-    // Item drop chance scales by tier × contribution. Heroic capped at 1%.
     const itemChance = Math.min(0.95, 0.4 + tier * 0.04);
     if (Math.random() < itemChance) {
-        // Roll rarity: contribution biases towards higher tiers.
         const r = Math.random();
         let rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'heroic' = 'common';
         const heroicChance = Math.min(GUILD_BOSS_HEROIC_MAX_CHANCE, contribution * 0.01);
@@ -2185,28 +1757,15 @@ const rollGuildBossRewards = ({ tier, level, contribution }: IRollGuildRewardsPa
         else if (r < 0.05) rarity = 'legendary';
         else if (r < 0.2) rarity = 'epic';
         else if (r < 0.5) rarity = 'rare';
-        // Build a minimal placeholder item — full procedural generation
-        // happens via itemGenerator when wired against a specific
-        // template. For now we add a representative "guild reward
-        // stash" line that the player sees in the popup; loot grants
-        // happen via gold/stones above. Items can be expanded later
-        // when a guild-loot table is curated.
         out.push({ kind: 'item', icon: 'wrapped-gift', label: `Przedmiot ${rarity.toUpperCase()} (lvl ${level})` });
     }
     return out;
 };
 
 const applyRolledRewards = (rolled: IRolledReward[]): void => {
-    // Apply-side effects already ran in rollGuildBossRewards (gold,
-    // xp, stones, consumables). This helper is kept so future
-    // rewards that should ONLY be granted on claim (e.g. items into
-    // bag) can be split off cleanly without changing call sites.
     void rolled;
 };
 
-// =============================================================================
-// GUILD TREASURY — shared bag, deposit/withdraw, logs. Spec item 26.
-// =============================================================================
 
 interface IGuildTreasuryProps { onBack: () => void; }
 
@@ -2219,10 +1778,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
     const [showLogs, setShowLogs] = useState(false);
     const [busy, setBusy] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    // 2026-05-18 spec ("Dodaj filtry do Twojego plecaka oraz skarbca
-    // gildii, takie jak w plecaku sa"): per-column filters mirror the
-    // inventory bag's rarity + slot pills. Each column owns its own
-    // filter state so the player can independently narrow each side.
     const [bagRarity, setBagRarity] = useState<TRarityFilter>('all');
     const [bagSlot, setBagSlot] = useState<TSlotFilter>('all');
     const [bagSort, setBagSort] = useState<TSortOrder>('level-desc');
@@ -2232,13 +1787,12 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
 
     const refresh = useCallback(async () => {
         if (!guild) return;
-        // Backend-authoritative treasury view — ONE call returns items + logs.
         if (isBackendMode() && character) {
             try {
                 const res = await backendApi.guildTreasury(character.id, guild.id) as IBackendTreasuryViewResponse;
                 setTreasury(res.items ?? []);
                 setLogs(res.logs ?? []);
-            } catch { /* offline */ }
+            } catch { }
             return;
         }
         const [items, allLogs] = await Promise.all([
@@ -2249,9 +1803,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
         setLogs(allLogs);
     }, [guild, character]);
 
-    // Cached parse of every vault row's item snapshot so the filter
-    // logic + render can read rarity / itemLevel without re-parsing
-    // on every keystroke.
     const treasuryParsed = useMemo(() => {
         return treasury.map((row) => {
             let parsed: IInventoryItem | null = null;
@@ -2303,9 +1854,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
         }
         setBusy(true);
         setErrorMsg(null);
-        // Backend-authoritative deposit — server escrows the item out of the
-        // bag and returns the authoritative inventory via syncFromBackend.
-        // NO client removeItem in backend mode (server owns the bag).
         if (isBackendMode()) {
             try {
                 await backendApi.guildTreasuryDeposit(character.id, guild.id, item.uuid);
@@ -2339,9 +1887,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
     const handleWithdraw = async (row: IGuildTreasuryItemRow) => {
         setBusy(true);
         setErrorMsg(null);
-        // Backend-authoritative withdraw — server moves the item into the
-        // caller's bag and returns the authoritative inventory via
-        // syncFromBackend. NO client restoreItem in backend mode.
         if (isBackendMode()) {
             try {
                 await backendApi.guildTreasuryWithdraw(character.id, guild.id, row.id);
@@ -2410,10 +1955,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
                             const upgrade = (item as IInventoryItem & { upgradeLevel?: number }).upgradeLevel ?? 0;
                             return (
                                 <li key={item.uuid} className="guild__treasury-row">
-                                    {/* 2026-05-18 spec ("Skarbiec problem
-                                        ze zdjeciami"): use ItemIcon so
-                                        Vite-served PNG paths render as
-                                        <img>, emoji fallback as text. */}
                                     <ItemIcon
                                         icon={info?.icon ?? 'package'}
                                         rarity={item.rarity}
@@ -2517,13 +2058,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
                 <Modal onClose={() => setShowLogs(false)} title=":scroll: Historia skarbca" wide>
                     <ul className="guild__log-list">
                         {logs.length === 0 && <li>Brak operacji.</li>}
-                        {/* 2026-05-18 spec ("Kolor przedmiotu powinien
-                            byc w kolorze rarity ... oraz na koncu poziom
-                            tego przedmiotu i ulepszenie +1 +2 jezeli
-                            posiada jak nie to +0"): each log line parses
-                            its embedded `item_data` (when present) so the
-                            item name renders in its rarity colour with
-                            "+N" upgrade tag and "Lvl X" at the end. */}
                         {logs.map((l) => {
                             let parsed: IInventoryItem | null = null;
                             if (l.item_data) {
@@ -2566,7 +2100,6 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
     );
 };
 
-// -- Treasury filter pills (rarity + slot + sort) --------------------------
 interface ITreasuryFiltersProps {
     rarity: TRarityFilter;
     slot: TSlotFilter;
@@ -2580,9 +2113,6 @@ const isImageSrc = (s: string): boolean => s.startsWith('/') || s.startsWith('ht
 
 const TreasuryFilters = ({ rarity, slot, sort, onRarity, onSlot, onSort }: ITreasuryFiltersProps) => (
     <div className="guild__treasury-filters">
-        {/* Rarity pills — each in its own rarity colour so the player
-            can pick by the same colour-coding used everywhere else
-            (legendary RED, heroic PURPLE, etc.). */}
         <div className="guild__treasury-filter-row">
             {RARITY_FILTERS.map((r) => {
                 const isAll = r === 'all';
@@ -2603,7 +2133,6 @@ const TreasuryFilters = ({ rarity, slot, sort, onRarity, onSlot, onSort }: ITrea
                 );
             })}
         </div>
-        {/* Slot pills with item PNG icons (mirrors the inventory bar). */}
         <div className="guild__treasury-filter-row">
             {SLOT_FILTERS.map((s) => (
                 <button
@@ -2621,7 +2150,6 @@ const TreasuryFilters = ({ rarity, slot, sort, onRarity, onSlot, onSort }: ITrea
                 </button>
             ))}
         </div>
-        {/* Sort toggle. */}
         <div className="guild__treasury-filter-row">
             <button
                 className={`guild__treasury-filter-pill${sort === 'level-desc' ? ' is-active' : ''}`}
@@ -2639,10 +2167,6 @@ const TreasuryFilters = ({ rarity, slot, sort, onRarity, onSlot, onSort }: ITrea
     </div>
 );
 
-// =============================================================================
-// JOIN REQUESTS — visible to all members, accept-only by leader.
-// Spec items 27–28.
-// =============================================================================
 
 interface IGuildRequestsProps { onBack: () => void; }
 
@@ -2663,8 +2187,6 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
         }
         setBusyId(req.id);
         setErrorMsg(null);
-        // Backend-authoritative accept — server promotes the requester to a
-        // member + clears the request; re-hydrate roster from showGuild.
         if (isBackendMode()) {
             try {
                 await backendApi.acceptRequest(character.id, guild.id, req.character_id);
@@ -2684,9 +2206,6 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
                 characterName: req.character_name,
                 characterClass: req.character_class,
                 characterLevel: req.character_level,
-                // Transform tier isn't stored on the request row; we
-                // default to 0 here and the member's next visit to
-                // /guild syncs their actual tier via updateMemberStats.
                 characterTransformTier: 0,
             });
             await useGuildStore.getState().refreshMembers();
@@ -2701,8 +2220,6 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
     const handleReject = async (req: IGuildJoinRequestRow) => {
         if (!isLeader) return;
         setBusyId(req.id);
-        // Backend-authoritative reject — server deletes the request row;
-        // re-hydrate the pending list from showGuild.
         if (isBackendMode()) {
             try {
                 await backendApi.rejectRequest(character.id, guild.id, req.character_id);
@@ -2729,13 +2246,6 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
             {errorMsg && <div className="guild__create-error">{errorMsg}</div>}
             <ul className="guild__requests">
                 {requests.length === 0 && <li className="guild__list-empty">Brak nowych próśb.</li>}
-                {/* 2026-05-18 spec ("guziki na mobilce pod nazwa gracza
-                    i guzik przyjmij na zielono, nazwa gracza i guziki
-                    wysrodkowane"): each row collapses to a column on
-                    narrow viewports — class icon + name + class on top,
-                    reject/accept stacked beneath, everything centred.
-                    Accept button uses the dedicated "ok" variant for
-                    the green hue (instead of the orange primary). */}
                 {requests.map((req) => (
                     <li key={req.id} className="guild__request-row">
                         <div className="guild__request-header">
@@ -2779,10 +2289,6 @@ const GuildRequests = ({ onBack }: IGuildRequestsProps) => {
     );
 };
 
-// =============================================================================
-// MODAL — local reusable popup. Not extracted to a shared component since
-// the project doesn't have one yet — keeping the styling local for now.
-// =============================================================================
 
 interface IModalProps {
     onClose: () => void;

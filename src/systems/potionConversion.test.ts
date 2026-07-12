@@ -1,11 +1,3 @@
-/**
- * Tests for the potion-conversion (Alchemy) helpers.
- *
- * The data table `POTION_CONVERSIONS` ships verbatim from the spec
- * (5×sm -> 1×md, 4×md -> 1×lg, …) — the tests assert the canonical recipe
- * shape AND that the helpers (`getMaxConversions`, `checkConversionAvailability`)
- * report the right batch counts for various inventory sizes.
- */
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -17,13 +9,8 @@ import {
 import { getPotionMinLevel } from './potionGating';
 import { ELIXIRS } from '../stores/shopStore';
 
-// Shop buy-price per potion id — the economic source of truth the conversion
-// counts must respect (craft cost >= buy cost).
 const SHOP_PRICE: Map<string, number> = new Map(ELIXIRS.map((e) => [e.id, e.price]));
 
-// 2026-06-24: alchemy craft level MUST equal the shop/drink gate for every
-// recipe — they're all derived from getPotionMinLevel now, so this guards
-// against the old stale-hardcoded-level drift ever coming back.
 describe('alchemy levels match the shop/drink gate (potionGating)', () => {
     for (const conv of POTION_CONVERSIONS) {
         it(`${conv.outputId}: outputMinLevel === getPotionMinLevel`, () => {
@@ -41,7 +28,6 @@ const findConv = (
         (c) => c.family === family && c.inputId === inputId && c.outputId === outputId,
     );
 
-// -- POTION_CONVERSIONS table ------------------------------------------------
 
 describe('POTION_CONVERSIONS table', () => {
     it('lists 14 conversions total (6 main HP + 1 mega HP + 6 main MP + 1 mega MP)', () => {
@@ -107,8 +93,6 @@ describe('POTION_CONVERSIONS table', () => {
     });
 
     it('matches the canonical shop level gates: 20 / 50 / 200 / 350 / 500 / 700', () => {
-        // 2026-06-24: md/lg/great/super/ultimate/divine — derived from potionGating
-        // (same as the shop buy + drink gates). Old stale 100/200/400/600 removed.
         const expected = [20, 50, 200, 350, 500, 700];
         const hpMain = POTION_CONVERSIONS.filter((c) => c.family === 'hp' && c.tier <= 6)
             .sort((a, b) => a.tier - b.tier)
@@ -130,10 +114,6 @@ describe('POTION_CONVERSIONS table', () => {
     });
 });
 
-// -- BUG 3 (2026-06-24): anti-exploit economics ------------------------------
-// Crafting up via alchemy must cost the SAME or MORE gold than buying the
-// output in the shop, otherwise players buy the cheapest potion and convert up
-// below shop price. inputCount must equal ceil(price_out / price_in).
 describe('alchemy is not cheaper than buying (price-driven invariant)', () => {
     it('shop prices exist for every conversion input + output', () => {
         for (const c of POTION_CONVERSIONS) {
@@ -164,9 +144,6 @@ describe('alchemy is not cheaper than buying (price-driven invariant)', () => {
     });
 });
 
-// -- BUG 4 (2026-06-24): Alchemia display order ------------------------------
-// HP family first, then MP; within each family ordered by output unlock level
-// ascending (so mega L100 sits after lg, not dead-last after divine L700).
 describe('alchemy display order (HP-first, output-level-ascending)', () => {
     it('all HP recipes precede all MP recipes', () => {
         const families = POTION_CONVERSIONS.map((c) => c.family);
@@ -198,7 +175,6 @@ describe('alchemy display order (HP-first, output-level-ascending)', () => {
     });
 });
 
-// -- getMaxConversions -------------------------------------------------------
 
 describe('getMaxConversions', () => {
     const conv5 = findConv('hp', 'hp_potion_sm', 'hp_potion_md')!;
@@ -224,7 +200,6 @@ describe('getMaxConversions', () => {
     });
 });
 
-// -- checkConversionAvailability ---------------------------------------------
 
 describe('checkConversionAvailability', () => {
     const conv = findConv('hp', 'hp_potion_sm', 'hp_potion_md')!;
@@ -242,8 +217,6 @@ describe('checkConversionAvailability', () => {
     });
 
     it('returns canConvert=false with maxBatches=0 for empty inventory', () => {
-        // 2026-06-21: the availability shape gained levelLocked/requiredLevel.
-        // With no level passed (default Infinity) it is not level-locked.
         expect(checkConversionAvailability(conv, 0)).toMatchObject({
             canConvert: false,
             maxBatches: 0,
@@ -251,13 +224,10 @@ describe('checkConversionAvailability', () => {
         });
     });
 
-    // 2026-06-21: alchemy is now level-gated — crafting UP into a tier above
-    // the character's level is blocked (spec: "nie mozna ... przetworzyc w
-    // alchemii z mniejszego na wiekszy jezeli nie mamy tego poziomu").
     it('blocks the conversion when character level is below the output unlock level', () => {
         const a = checkConversionAvailability(conv, 100, conv.outputMinLevel - 1);
         expect(a.levelLocked).toBe(true);
-        expect(a.canConvert).toBe(false);     // owns plenty of input, but too low level
+        expect(a.canConvert).toBe(false);
         expect(a.maxBatches).toBeGreaterThan(0);
         expect(a.requiredLevel).toBeGreaterThan(0);
     });

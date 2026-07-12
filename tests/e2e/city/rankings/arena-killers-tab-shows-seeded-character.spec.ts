@@ -1,30 +1,3 @@
-/**
- * Atomic E2E — `/leaderboard` "Zabójcy" (Arena Killers) tab pokazuje
- * naszą seedowaną postać z high `arena_kills`.
- *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria". Rozszerzenie pokrycia
- * — Arena Killers tab (`arena_kills` column ranking).
- *
- * Tab definition (Leaderboard.tsx linia 153):
- *   { key: 'arena_killers', label: 'Zabójcy', icon: 'dagger',
- *     source: 'characters', characterColumn: 'arena_kills',
- *     order: 'desc', valueLabel: 'Zabicia' }
- *
- * Sort: `arena_kills DESC, limit 100`. Format `valueOverride` brak ->
- * fallback `formatValue` -> `Zabicia 999` (Leaderboard.tsx linia 404).
- *
- * **Sync-hook SAFE**: `useLeaderboardStatSync` (src/hooks/useLeaderboardStatSync.ts)
- * NIE dotyka `arena_kills` — column jest bumpowana wyłącznie przez
- * `arenaStore.bumpArenaStats` po victory w arenie. Pre-seed via column
- * override przetrwa character switch.
- *
- * Test flow:
- *   1. Seed Knight z arena_kills=999.
- *   2. Login + select character + /leaderboard.
- *   3. Tap tab "Zabójcy" -> assert wiersz `.leaderboard__row--me` z "Zabicia 999".
- *
- * Cleanup: try/finally + cleanupCharacterById.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
@@ -68,8 +41,6 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await page.goto('/leaderboard');
             await waitForAppReady(page);
 
-            // valueLabel='Zabicia' + value=999 -> "Zabicia 999". Re-fetch poll
-            // helper absorbs full-suite DB contention (stale first read).
             await assertSeededRankingRow(page, {
                 tabLabel: /^Zabójcy$/,
                 nick,

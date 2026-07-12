@@ -1,19 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-/**
- * useChatUnreadSubscription tests
- *
- * The hook wires up four subscription paths (system + guild + party + PMs)
- * and a global PM auto-open path. Each wire combines:
- *   1. initial backfill via chatApi.getMessages
- *   2. realtime subscription via chatApi.subscribe
- *   3. 4s polling fallback via chatApi.getMessages
- *
- * We mock chatApi entirely so we can capture the realtime callbacks and
- * inject messages, then verify the chatTabsStore unread counts + the
- * notification dot fire correctly.
- */
 
 vi.mock('../api/v1/chatApi', () => {
     const subscribe = vi.fn();
@@ -66,12 +53,10 @@ const makeMsg = (overrides: Partial<IMessage> = {}): IMessage => ({
 beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-    // chatApi mocks default to: no backfill, no realtime msgs, no-op unsub.
     (chatApi.getMessages as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (chatApi.subscribe as ReturnType<typeof vi.fn>).mockReturnValue(() => undefined);
     (chatApi.subscribeAll as ReturnType<typeof vi.fn>).mockReturnValue(() => undefined);
 
-    // Reset the chat tabs store to its base shape.
     useChatTabsStore.setState({
         tabs: [
             { id: 'city', type: 'city', channel: 'city', title: 'Miasto', unread: 0, closable: false },
@@ -90,7 +75,6 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-// Helper: pull the callback registered with `chatApi.subscribe` for a channel.
 const getRealtimeCallback = (channel: string): ((msg: IMessage) => void) | null => {
     const call = (chatApi.subscribe as ReturnType<typeof vi.fn>).mock.calls.find(
         (c) => c[0] === channel,
@@ -200,12 +184,6 @@ describe('useChatUnreadSubscription — global PM catch-all', () => {
                 character_name: 'Stranger',
             }));
         });
-        // The hub uses `buildPmChannel(myName, other)` to (re-)derive
-        // the canonical channel id — see ensurePmTab. Names are sorted
-        // case-insensitively and joined verbatim, so 'Hero' + 'Stranger'
-        // resolves to `pm_Hero_Stranger`. The incoming message's literal
-        // channel string (`pm_hero_stranger`) is NOT what ends up on
-        // the new tab record.
         const tabs = useChatTabsStore.getState().tabs;
         const pm = tabs.find((t) => t.type === 'pm');
         expect(pm).toBeDefined();
@@ -226,16 +204,10 @@ describe('useChatUnreadSubscription — global PM catch-all', () => {
                 character_name: 'Alice',
             }));
         });
-        // No new tab created.
         expect(useChatTabsStore.getState().tabs.length).toBe(beforeTabs);
     });
 
     it('drops messages from blocked senders without raising the dot', () => {
-        // `friendsStore.isBlocked` compares the message's
-        // `character_name` against the `blocked` list verbatim (only
-        // `.trim()` normalisation, no lowercasing). Stash the same
-        // casing here so the guard actually fires for the incoming
-        // message body.
         useFriendsStore.setState({
             friends: [],
             favorites: [],
@@ -263,8 +235,6 @@ describe('useChatUnreadSubscription — global PM catch-all', () => {
         act(() => {
             allCb!(makeMsg({ id: 'sys-msg', channel: 'system', character_name: 'Stranger' }));
         });
-        // The catch-all only handles pm_* — the dot stays off (the
-        // dedicated `system` wire above is what bumps that channel).
         expect(useChatTabsStore.getState().hasNotification).toBe(false);
     });
 });
@@ -275,7 +245,6 @@ describe('useChatUnreadSubscription — initial backfill', () => {
             makeMsg({ id: 'pre1', channel: 'system', character_name: 'Stranger' }),
         ]);
         renderHook(() => useChatUnreadSubscription());
-        // Let the async backfill settle.
         await act(async () => {
             await Promise.resolve();
         });

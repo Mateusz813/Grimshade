@@ -13,26 +13,18 @@ import {
 import { RARITY_BONUS_SLOTS } from './itemSystem';
 import type { IInventoryItem, Rarity, EquipmentSlot } from './itemSystem';
 
-// -- Helpers ------------------------------------------------------------------
 
-/**
- * Pin Math.random() to a deterministic value so every test sees the same roll.
- * Tests that need a different value override with `mockReturnValueOnce`.
- */
 const lockRandom = (value = 0.5): void => {
     vi.spyOn(Math, 'random').mockReturnValue(value);
 };
 
 const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 
-// ARMOR_SLOTS removed — agent zostawił niewykorzystany import. Jeśli
-// w przyszłości będziemy iterować po slotach armor — odtworzyć tu.
 
 afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// -- generateWeapon -----------------------------------------------------------
 
 describe('generateWeapon', () => {
     beforeEach(() => {
@@ -59,7 +51,6 @@ describe('generateWeapon', () => {
         const item = generateWeapon('dagger', 10, 'rare')!;
         expect(item.bonuses['dmg_min']).toBeGreaterThanOrEqual(1);
         expect(item.bonuses['dmg_max']).toBeGreaterThan(item.bonuses['dmg_min']);
-        // Weapons must NOT include a flat 'attack' bonus — it is excluded by design.
         expect(item.bonuses['attack']).toBeUndefined();
     });
 
@@ -85,8 +76,6 @@ describe('generateWeapon', () => {
     it('rarity -> bonus count: heroic should add up to 5 random bonuses', () => {
         const item = generateWeapon('sword', 5, 'heroic')!;
         const bonusKeys = Object.keys(item.bonuses).filter((k) => k !== 'dmg_min' && k !== 'dmg_max');
-        // Pool excludes 'attack' so max possible bonuses = pool size (6). For
-        // heroic that means we expect exactly 5 bonus keys to be picked.
         expect(bonusKeys.length).toBe(RARITY_BONUS_SLOTS.heroic);
     });
 
@@ -104,7 +93,6 @@ describe('generateWeapon', () => {
     });
 });
 
-// -- generateOffhand ----------------------------------------------------------
 
 describe('generateOffhand', () => {
     beforeEach(() => {
@@ -128,12 +116,6 @@ describe('generateOffhand', () => {
     });
 
     it('dagger is not a valid offhand type in current data (Rogue dual-wields via mainHand alias)', () => {
-        // The dual-wield branch in generateOffhand checks for `template.type
-        // === 'dagger'`, but the offhands list in itemTemplates.json doesn't
-        // expose a dagger entry — so the lookup returns null and the
-        // function returns null. Locking this in so a future data change
-        // that adds a dagger offhand will fail this test and force the
-        // dual-wield path to be re-evaluated.
         expect(generateOffhand('dagger', 5, 'rare')).toBeNull();
     });
 
@@ -145,7 +127,6 @@ describe('generateOffhand', () => {
     });
 });
 
-// -- generateArmor ------------------------------------------------------------
 
 describe('generateArmor', () => {
     beforeEach(() => {
@@ -157,7 +138,6 @@ describe('generateArmor', () => {
     });
 
     it('returns null for valid prefix but missing slot in pieces', () => {
-        // 'ring1' is an equipment slot but armor categories don't define it
         expect(generateArmor('heavy', 'ring1', 1, 'common')).toBeNull();
     });
 
@@ -172,15 +152,10 @@ describe('generateArmor', () => {
     it('gloves add a flat attack bonus instead of HP', () => {
         const item = generateArmor('heavy', 'gloves', 10, 'rare')!;
         expect(item.bonuses['attack']).toBeGreaterThanOrEqual(1);
-        // Gloves should NOT receive an HP-from-armor bump.
-        // (A random bonus might still roll into hp — that's fine — but the
-        // base stat path is attack-only for gloves.)
         expect(item.itemId).toBe('heavy_gloves_lvl10_rare');
     });
 
     it('HP scaling on armor uses the multiplier (raw armor base * 6)', () => {
-        // At level 100, raw 'baseMin + perLevel*100' yields ~100 raw points
-        // which then gets x6 for HP — much bigger than the raw number.
         const lowLevel = generateArmor('heavy', 'armor', 1, 'common')!;
         const highLevel = generateArmor('heavy', 'armor', 100, 'common')!;
         expect(highLevel.bonuses['hp']).toBeGreaterThan(lowLevel.bonuses['hp']);
@@ -193,7 +168,6 @@ describe('generateArmor', () => {
     });
 });
 
-// -- generateAccessory --------------------------------------------------------
 
 describe('generateAccessory', () => {
     beforeEach(() => {
@@ -220,7 +194,6 @@ describe('generateAccessory', () => {
     });
 });
 
-// -- generateRandomItem / generateRandomItemForClass --------------------------
 
 describe('generateRandomItemForClass', () => {
     afterEach(() => {
@@ -228,8 +201,6 @@ describe('generateRandomItemForClass', () => {
     });
 
     it('returns a valid item shape for each class', () => {
-        // Use a Math.random value of 0.5 so we land in the "armor" category
-        // (weights: 0.20 + 0.15 + 0.45 -> cumulative through 0.80 covers armor).
         lockRandom(0.5);
         for (const cls of ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard']) {
             const item = generateRandomItemForClass(cls, 10, 'common');
@@ -240,32 +211,24 @@ describe('generateRandomItemForClass', () => {
     });
 
     it('class restriction: routes to weapon category and respects allowedClasses', () => {
-        // First Math.random() call picks the category (0.1 -> 'weapon')
-        // Subsequent calls used internally by generateWeapon — all kept at 0.5.
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.1)
             .mockReturnValue(0.5);
         const item = generateRandomItemForClass('Knight', 10, 'common');
         expect(item).not.toBeNull();
-        // Knight's only allowed weapon type is sword.
         expect(item!.itemId.startsWith('sword_')).toBe(true);
     });
 
     it('class restriction: armor prefix matches CLASS_ARMOR_TYPES mapping', () => {
-        // 0.5 -> armor category (after cumulative weapon+offhand+armor -> 0.80).
-        // Then 0 -> first armor slot in ARMOR_SLOTS = 'helmet'.
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.5)
             .mockReturnValueOnce(0)
             .mockReturnValue(0.5);
         const item = generateRandomItemForClass('Mage', 5, 'common')!;
-        // Mage uses 'magic' armor prefix.
         expect(item.itemId.startsWith('magic_')).toBe(true);
     });
 
     it('returns null when no armor category matches the class', () => {
-        // Force 'armor' category (0.5 within 0.35-0.80 window) but pass a
-        // class that no armor category accepts -> should be null.
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.5)
             .mockReturnValue(0.5);
@@ -293,7 +256,6 @@ describe('generateRandomItem', () => {
     });
 });
 
-// -- generateStarterWeapon ----------------------------------------------------
 
 describe('generateStarterWeapon', () => {
     beforeEach(() => {
@@ -318,7 +280,6 @@ describe('generateStarterWeapon', () => {
     });
 
     it('Knight starter weapon = sword_of_beginnings-equivalent DMG range', () => {
-        // baseAtk=11 -> dmg_min = floor(11 * 0.8) = 8 ; dmg_max = floor(11 * 1.2) = 13.
         const w = generateStarterWeapon('Knight')!;
         expect(w.bonuses['dmg_min']).toBe(8);
         expect(w.bonuses['dmg_max']).toBe(13);
@@ -331,7 +292,6 @@ describe('generateStarterWeapon', () => {
     });
 });
 
-// -- getItemDisplayInfo -------------------------------------------------------
 
 describe('getItemDisplayInfo', () => {
     it('returns weapon display info for a generated itemId', () => {
@@ -372,13 +332,10 @@ describe('getItemDisplayInfo', () => {
 
     it('returns null for an unknown / malformed item id', () => {
         expect(getItemDisplayInfo('total_garbage_id')).toBeNull();
-        // The lvl-format requires a real type prefix; unknown types should
-        // still resolve to null even when the format looks superficially valid.
         expect(getItemDisplayInfo('not_a_type_lvl5_common')).toBeNull();
     });
 });
 
-// -- rerollItemBonuses --------------------------------------------------------
 
 describe('rerollItemBonuses', () => {
     beforeEach(() => {
@@ -409,13 +366,8 @@ describe('rerollItemBonuses', () => {
     });
 
     it('drops random bonuses that are no longer in the new pool', () => {
-        // 'hp' on a sword is a random bonus; after reroll, the original 50
-        // must NOT be carried over unless the new roll happens to pick it.
         const item = baseItem();
         const result = rerollItemBonuses(item, 'mainHand');
-        // The exact new bonuses depend on Math.random, so just assert the
-        // result is a fresh object without inheriting the OLD hp value
-        // verbatim (50 specifically).
         if ('hp' in result) {
             expect(result['hp']).not.toBe(50);
         }
@@ -439,7 +391,6 @@ describe('rerollItemBonuses', () => {
             bonuses: { dmg_min: 10, dmg_max: 20, hp: 50 },
         });
         const result = rerollItemBonuses(item, 'mainHand');
-        // common has 0 bonus slots -> only base keys remain
         const nonBaseKeys = Object.keys(result).filter(
             (k) => !['dmg_min', 'dmg_max', 'attack', 'defense'].includes(k),
         );
@@ -447,42 +398,20 @@ describe('rerollItemBonuses', () => {
     });
 });
 
-// -- Cross-cutting: rarity -> bonus count mapping ------------------------------
 
 describe('rarity -> bonus count mapping', () => {
     afterEach(() => {
         vi.restoreAllMocks();
     });
 
-    /**
-     * For each rarity, ensure an armor item carries the expected number of
-     * non-base bonuses. We use armor for this because its base stat is a
-     * single key (hp or attack), making it easy to count "extras".
-     */
     it.each(RARITIES)('%s rarity produces RARITY_BONUS_SLOTS random bonuses', (rarity) => {
         lockRandom(0.5);
         const slot: EquipmentSlot = 'armor';
         const item = generateArmor('heavy', slot, 5, rarity)!;
         const nonBase = Object.entries(item.bonuses)
-            // Strip the base stat (hp on body armor) — only count extras.
             .filter(([k]) => k !== 'hp')
             .length;
-        // generateBonusStats picks up to RARITY_BONUS_SLOTS[rarity] keys from
-        // a 6-stat pool minus exclusions, so the actual count can equal the
-        // expected slot count (when pool >= slot count).
         expect(nonBase).toBeLessThanOrEqual(RARITY_BONUS_SLOTS[rarity]);
     });
 });
 
-// -- TODO ---------------------------------------------------------------------
-// TODO(line ~340): cross-check upgrade bonus scaling formula. CLAUDE.md says
-// "each +1 = ~8% per CLAUDE.md" but the codebase actually uses an exponential
-// curve in `getEnhancementMultiplier` (1.15^level for +1..+10). Tests for
-// that live in itemSystem.test.ts; itemGenerator does not apply upgrades
-// directly — items always come out at upgradeLevel: 0 from this module.
-//
-// TODO(line ~250): generateRandomItemForClass branch coverage. The exact
-// roll values for 'offhand' vs 'accessory' depend on the mock sequence;
-// a follow-up could pin each window precisely with `mockReturnValueOnce`
-// chains. Current tests cover weapon + armor explicitly which are the two
-// most common drop categories.

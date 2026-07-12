@@ -27,15 +27,6 @@ const RARITY_BG: Record<string, string> = {
     heroic:    '#9c27b0',
 };
 
-/**
- * Enhancement glow tiers:
- *  +5  -> red
- *  +7  -> yellow
- *  +9  -> blue
- *  +12 -> purple
- *  +15 black
- *  +20 gold-black
- */
 const getEnhancementGlowTier = (level: number): string | null => {
     if (level >= 20) return 'goldblack';
     if (level >= 15) return 'black';
@@ -72,10 +63,6 @@ const ItemIcon = ({ icon, rarity, upgradeLevel, itemLevel, size = 'md', onClick,
             onMouseEnter={() => tooltip && showTooltip && setShowTip(true)}
             onMouseLeave={() => setShowTip(false)}
         >
-            {/* The `icon` prop now carries either a Vite-served image URL (when
-                `getItemIcon` resolved a real PNG via spriteAssets) or the
-                legacy emoji string. We branch on that here so callers don't
-                have to know which they got. */}
             {isImageUrl(icon) ? (
                 <img className="item-icon__image" src={icon} alt="" draggable={false} />
             ) : (

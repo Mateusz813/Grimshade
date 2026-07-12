@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 
-/**
- * CombatHudHost — toggles the global HUD's `active` + `compact` flags via
- * effect, applies `--combat-accent` CSS var. Tests verify the store is
- * updated correctly, including the unmount cleanup that always resets
- * both flags to false.
- */
 import { CombatHudHost } from './CombatHudHost';
 import { useCombatHudStore } from '../../../stores/combatHudStore';
 

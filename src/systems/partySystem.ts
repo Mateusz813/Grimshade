@@ -1,10 +1,8 @@
 import type { CharacterClass } from '../api/v1/characterApi';
 
-// -- Constants -----------------------------------------------------------------
 
 export const MAX_PARTY_SIZE = 4;
 
-// -- Types ---------------------------------------------------------------------
 
 export interface IPartyMember {
   id: string;
@@ -22,45 +20,30 @@ export interface IPartyInfo {
   leaderId: string;
   members: IPartyMember[];
   createdAt: string;
-  /** Display name chosen by the leader at creation time. */
   name?: string;
-  /** Short free-form description (e.g. "looking for tank"). */
   description?: string;
-  /** True if the party is password-gated. Plain-text password is server-side only. */
   hasPassword?: boolean;
-  /** True if the party should appear in the public browser feed. */
   isPublic?: boolean;
-  /** Capacity — defaults to `MAX_PARTY_SIZE` when not synced from server. */
   maxMembers?: number;
-  /** 2026-05-13: minimum character level a joiner must meet. 1 (or
-   *  undefined) = open to anyone. Enforced both client-side (Dołącz
-   *  button disabled below the floor) and server-side (partyApi join). */
   minJoinLevel?: number;
 }
 
-// -- Multipliers --------------------------------------------------------------
-// 2026-05-09 spec ("nie wiele wiekszy 0.5% za kazdego czlonka i 6.5% XP za
-// kazdego czlonka party"): the bonus per extra ally is small but real.
 
-/** Drop rate multiplier for a given party size — +0.5% per extra ally. */
 export const calculateDropMultiplier = (partySize: number): number => {
   const size = Math.max(1, Math.min(partySize, MAX_PARTY_SIZE));
   return 1 + (size - 1) * 0.005;
 };
 
-/** XP multiplier for a given party size — +6.5% per extra ally. */
 export const calculateXpMultiplier = (partySize: number): number => {
   const size = Math.max(1, Math.min(partySize, MAX_PARTY_SIZE));
   return 1 + (size - 1) * 0.065;
 };
 
-/** Monster difficulty multiplier for a given party size. */
 export const calculateDifficultyMultiplier = (partySize: number): number => {
   const size = Math.max(1, Math.min(partySize, MAX_PARTY_SIZE));
   return 1 + (size - 1) * 0.2;
 };
 
-// -- Capacity helpers ----------------------------------------------------------
 
 export const canJoinParty = (currentSize: number): boolean =>
   currentSize < MAX_PARTY_SIZE;
@@ -74,20 +57,10 @@ export const getHumanCount = (members: IPartyMember[]): number =>
 export const getBotCount = (members: IPartyMember[]): number =>
   members.filter((m) => !!m.isBot).length;
 
-/** Suggest adding a bot when fewer than 2 human players are present. */
 export const shouldSuggestBot = (members: IPartyMember[]): boolean =>
   getHumanCount(members) < 2;
 
-// -- Bot helper factory --------------------------------------------------------
 
-// Bot display names — matched to the bot's class (createBotHelper only ever
-// picks Knight/Cleric/Mage/Archer). 2026-06-21: names are PLAIN TEXT — they no
-// longer embed `:robot::class-icon:` emoji shortcodes. Baking presentation into
-// a data string meant the shortcodes leaked as literal text ("Bot Lecznik
-// :robot::latin-cross:") anywhere the name rendered without <EmojiText> (combat
-// logs, presence, chat). Icons are now a UI concern: the in-combat AllyCard
-// shows a robot badge for `isBot` members and combat logs prefix a
-// `:robot::class:` shortcode (see getBotLogIcon in botSystem.ts).
 const BOT_NAMES: Partial<Record<CharacterClass, string>> = {
   Knight: 'Bot Pancerny',
   Cleric: 'Bot Lecznik',
@@ -95,7 +68,6 @@ const BOT_NAMES: Partial<Record<CharacterClass, string>> = {
   Mage: 'Bot Mag',
 };
 
-/** Creates a bot helper tuned to fill the party's weakest role. */
 export const createBotHelper = (partyMembers: IPartyMember[]): IPartyMember => {
   const classes = partyMembers.map((m) => m.class);
   let botClass: CharacterClass = 'Knight';
@@ -128,17 +100,13 @@ export const createBotHelper = (partyMembers: IPartyMember[]): IPartyMember => {
   };
 };
 
-// -- XP / loot sharing ---------------------------------------------------------
 
-/** XP each member receives when split equally. */
 export const getXpShare = (totalXp: number, partySize: number): number =>
   Math.floor(totalXp / Math.max(1, partySize));
 
-/** Gold each member receives when split equally. */
 export const getGoldShare = (totalGold: number, partySize: number): number =>
   Math.floor(totalGold / Math.max(1, partySize));
 
-// -- Party stats summary -------------------------------------------------------
 
 export interface IPartySummary {
   totalMembers: number;
@@ -165,32 +133,26 @@ export const getPartySummary = (members: IPartyMember[]): IPartySummary => {
   };
 };
 
-// -- Party ID generator ---------------------------------------------------------
 
 export const generatePartyId = (): string =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
 
-// -- Party combat & buffs -----------------------------------------------------
 
 import type { IPartyBuff } from '../types/party';
 
-/** Class buffs available in party */
 export const CLASS_PARTY_BUFFS: Record<string, IPartyBuff> = {
   Cleric: { id: 'cleric_heal', name: 'Holy Light', sourceClass: 'Cleric', effect: 'heal', value: 0.15, duration: 3 },
   Bard: { id: 'bard_atk', name: 'Inspiring Melody', sourceClass: 'Bard', effect: 'atk_boost', value: 0.10, duration: 5 },
   Knight: { id: 'knight_def', name: 'Battle Cry', sourceClass: 'Knight', effect: 'def_boost', value: 0.10, duration: 5 },
 };
 
-/** Calculate party combat efficiency (how much help from finished members) */
 export const calculateHelpDamage = (
   finishedMemberAttack: number,
   _remainingMonsterHp: number,
 ): number => {
-  // Helper deals 50% of their attack to assist
   return Math.floor(finishedMemberAttack * 0.5);
 };
 
-/** Get active party buffs based on party member classes */
 export const getPartyBuffs = (memberClasses: string[]): IPartyBuff[] => {
   const buffs: IPartyBuff[] = [];
   for (const cls of memberClasses) {
@@ -200,7 +162,6 @@ export const getPartyBuffs = (memberClasses: string[]): IPartyBuff[] => {
   return buffs;
 };
 
-/** Apply buff effects to stats */
 export const applyPartyBuffs = (
   baseAttack: number,
   baseDefense: number,
@@ -228,37 +189,19 @@ export const applyPartyBuffs = (
   return { attack, defense, healPerRound };
 };
 
-/** Check if party has optimal composition for a buff bonus */
 export const hasOptimalComposition = (memberClasses: string[]): boolean => {
   const uniqueClasses = new Set(memberClasses);
-  // Optimal = at least 3 different classes
   return uniqueClasses.size >= 3;
 };
 
-/** Composition bonus multiplier (extra XP/gold for diverse parties) */
 export const getCompositionBonus = (memberClasses: string[]): number => {
   const uniqueClasses = new Set(memberClasses);
-  if (uniqueClasses.size >= 4) return 1.20; // +20% for 4 unique classes
-  if (uniqueClasses.size >= 3) return 1.10; // +10% for 3 unique classes
+  if (uniqueClasses.size >= 4) return 1.20;
+  if (uniqueClasses.size >= 3) return 1.10;
   return 1.0;
 };
 
-// -- Level gating --------------------------------------------------------------
 
-/**
- * Effective party level for content gating (dungeons / bosses / monsters).
- *
- * When the player is in a party we want the group to be blocked by the
- * WEAKEST member — otherwise a level-100 leader could drag a level-10
- * teammate into a level-80 boss fight and trivially carry them.
- *
- * Bots are excluded because they auto-scale to the average of human
- * members (see `createBotHelper`), so counting them would hide the real
- * low-level human that should be blocking access.
- *
- * Returns `character.level` (the solo case) when there is no party or
- * the only member is the caller.
- */
 export const getPartyGateLevel = (
   myLevel: number,
   members: IPartyMember[] | null | undefined,
@@ -271,25 +214,6 @@ export const getPartyGateLevel = (
   return Math.min(myLevel, lowest);
 };
 
-/**
- * 2026-05-11 spec ("lider party powinien widziec tylko te potwory ktore
- * sa dostepne przez party"): the party's effective monster-unlock cap.
- *
- * Each member's client computes their own `maxUnlockedMonsterLevel`
- * (highest monster level they have unlocked — level gate + mastery
- * prereq on previous monster) and broadcasts it via party presence.
- * This helper takes the local player's value plus the presence map
- * and returns the MIN across all human members. Any monster above
- * this cap should be hidden from the leader's picker — the party
- * can't all fight it.
- *
- * Bots are excluded (they auto-scale, see createBotHelper). Members
- * with no presence snapshot yet are skipped — they can't block a
- * fight until we know what they have. This is intentional: a member
- * who just joined sees a 1-2 s window where the cap reflects existing
- * presence, then their snapshot lands and the cap snaps to the real
- * min.
- */
 export const getPartyMaxUnlockedMonsterLevel = (
   myMaxUnlockedLevel: number,
   members: IPartyMember[] | null | undefined,
@@ -308,9 +232,6 @@ export const getPartyMaxUnlockedMonsterLevel = (
   return cap;
 };
 
-// -- Aggro class weights -------------------------------------------------------
-// Higher weight = more likely to be picked as the monster's target.
-// Knights tank most aggro; Cleric/Bard are the "backline" and rarely get hit.
 
 export const AGGRO_CLASS_WEIGHTS: Record<CharacterClass, number> = {
   Knight:      80,
@@ -322,15 +243,9 @@ export const AGGRO_CLASS_WEIGHTS: Record<CharacterClass, number> = {
   Bard:        20,
 };
 
-/** Get the aggro weight for a class (defaults to 30 for unknown). */
 export const getAggroWeight = (cls: CharacterClass): number =>
   AGGRO_CLASS_WEIGHTS[cls] ?? 30;
 
-/**
- * Pick a target from a weighted list based on class.
- * Accepts entries like `{ id, class }` (id can be 'player', bot id, etc.)
- * Returns the id of the selected target, or null if list is empty.
- */
 export const pickWeightedAggroTarget = (
   targets: Array<{ id: string; class: CharacterClass }>,
 ): string | null => {

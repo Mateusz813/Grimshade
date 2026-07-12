@@ -11,45 +11,23 @@
     flex-direction: column;
     gap: $spacing-md;
 
-    // On phones the rigid leaderboard grid (60px 56px 1fr auto auto) plus the
-    // 16px page padding overflowed ~375px viewports and forced a horizontal
-    // scroll (BUG #7). Clip any residual overflow and trim the page padding so
-    // the rows have more room.
     @include mobile-only {
         padding: 10px;
         overflow-x: hidden;
     }
 
-    // Match view drops the page constraints — the speed-bar strip and the
-    // combat arena both want to span full viewport width and sit flush
-    // against the global header (no 16px padding gap, no 1200px cap).
-    // The result modal still uses the .arena root for centering.
     &--match {
         padding: 0;
         max-width: none;
         gap: 0;
     }
 
-    // Entry transition — full-viewport black wash. Comes in two flavours:
-    //   - base (fade-out, on the Arena view)  : 0  1, ease-in
-    //   - `--in` (fade-in, on the Match view) : 1  0, ease-out
-    //
-    // Both use `animation-fill-mode: both` so the `from` value applies
-    // during the render-paint frame BEFORE the animation actually
-    // starts — without it, the new view briefly flashed at opacity 0
-    // (defaulting to the rule's `opacity: 0`) between route swap and
-    // first animation frame, which is the "dziwny przeskok" the player
-    // saw. ease-in on the way out + ease-out on the way back keeps the
-    // transition perceived-symmetric (slow at the black hand-off, snappy
-    // through the in-and-out edges).
     &__entry-overlay {
         position: fixed;
         inset: 0;
         background: #000;
         z-index: 9999;
         cursor: pointer;
-        // Fade-out path. `--in` modifier swaps both the keyframe name
-        // and the timing function below.
         animation: arena-entry-fade 1.5s ease-in both;
     }
     @keyframes arena-entry-fade {
@@ -57,10 +35,6 @@
         to   { opacity: 1; }
     }
     &__entry-overlay--in {
-        // Fade-in starts at fully-black and clears to transparent. The
-        // `both` fill-mode locks opacity at 1 on the first paint frame
-        // so the new view is never visible behind the overlay before
-        // the keyframe's `from` value kicks in.
         animation: arena-entry-fade-in 1.5s ease-out both;
     }
     @keyframes arena-entry-fade-in {
@@ -91,7 +65,6 @@
         flex: 1;
     }
 
-    // -- League header strip ------------------------------------------
     &__league-strip {
         --h: 0;
         background: rgba(0, 0, 0, 0.30);
@@ -103,8 +76,6 @@
         flex-direction: column;
         gap: 4px;
 
-        // Pull league hex via inline `--league-color` set in Arena.tsx; the
-        // hsl() values above are unused fallback when the var is missing.
         &--with-color {
             border-color: var(--league-color, rgba(255,255,255,0.10));
             border-left-color: var(--league-color, rgba(255,255,255,0.40));
@@ -121,9 +92,6 @@
         font-weight: 800;
         color: var(--league-color, #fff);
     }
-    // Inline AP badge — sits right after the league label per the new
-    // header design. Right-aligned via margin-left: auto so it docks to
-    // the strip's right edge regardless of label length.
     &__league-ap {
         margin-left: auto;
         font-weight: 800;
@@ -131,8 +99,6 @@
         font-size: $font-md;
         white-space: nowrap;
     }
-    // Two-line meta block: the underscore-prefixed full id ("Arena
-    // bronze_578656609") on top, the numeric-only "Liga nr: …" below.
     &__league-meta-block {
         display: flex;
         flex-direction: column;
@@ -156,10 +122,6 @@
         gap: $spacing-sm;
         margin-top: $spacing-sm;
         flex-wrap: wrap;
-        // 2026-06-24: on mobile the 2-3 action chips (incl. the long "Odbierz
-        // nagrody" claim) didn't fit one line and wrapped mid-text, jumbling the
-        // row ("rozjeżdżają się i przeskakują do wiersza poniżej"). Stack them
-        // full-width so they line up cleanly one per row instead.
         @include mobile-only {
             .arena__action-chip { flex: 1 1 100%; }
         }
@@ -173,7 +135,7 @@
         cursor: pointer;
         font-size: $font-xs;
         font-weight: 600;
-        white-space: nowrap;   // never wrap mid-text -> even chip heights
+        white-space: nowrap;
         text-align: center;
         &:hover { background: rgba(255, 255, 255, 0.10); }
         &--claim {
@@ -183,7 +145,6 @@
         }
     }
 
-    // -- Defense snapshot card ---------------------------------------
     &__defense {
         background: rgba(20, 30, 50, 0.6);
         border: 1px solid rgba(120, 160, 220, 0.30);
@@ -230,9 +191,6 @@
         }
     }
 
-    // crossed-swords Walcz CTA — replaces the dropped defense title and is the player's
-    // single-click entry point into a fight. Red gradient mirrors the
-    // attack chips on the leaderboard rows so it reads as the same action.
     &__defense-fight {
         background: linear-gradient(135deg, #e53935, #b71c1c);
         color: white;
@@ -258,7 +216,6 @@
         }
     }
 
-    // -- My-position summary ----------------------------------------
     &__pos-strip {
         display: flex;
         align-items: center;
@@ -280,20 +237,12 @@
         color: $color-text-muted;
     }
 
-    // -- Leaderboard ------------------------------------------------
-    // Capped at 60vh with internal scroll so the league strip + defense
-    // card stay visible while the player browses 100 rows. On mount the
-    // view auto-scrolls to centre the player's row inside this box (see
-    // the `me-row` ref in Arena.tsx) — without the cap the page-level
-    // scroll position would jump and the chrome above would disappear.
     &__list {
         display: flex;
         flex-direction: column;
         gap: 4px;
         max-height: 60vh;
         overflow-y: auto;
-        // Subtle frame so the scroll boundary reads — matches the
-        // league/defense card chrome.
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: $radius-sm;
         padding: 6px;
@@ -301,9 +250,6 @@
     }
     &__row {
         display: grid;
-        // Columns: rank (with optional medal), avatar, name+meta, LP, attack-button.
-        // The AP column was removed per the 2026-05 redesign — AP totals
-        // live in the league strip header now, not on every leaderboard row.
         grid-template-columns: 60px 56px 1fr auto auto;
         align-items: center;
         gap: $spacing-sm;
@@ -326,10 +272,6 @@
             }
         }
 
-        // Phone layout — the desktop grid (60px 56px 1fr auto auto) is too wide
-        // for ~375px screens. Shrink the rank + avatar columns, drop the trailing
-        // `auto` (LP folds into the name/meta block visually) and tighten gap,
-        // padding and font so the whole row fits without horizontal scroll.
         @include mobile-only {
             grid-template-columns: 48px 40px 1fr auto;
             gap: 6px;
@@ -347,7 +289,6 @@
         gap: 4px;
         justify-content: flex-end;
     }
-    // Top-3 medal glyph — sits inline before the #N rank chip.
     &__row-medal {
         font-size: 18px;
         line-height: 1;
@@ -400,7 +341,6 @@
         background: rgba(255, 255, 255, 0.08);
     }
 
-    // -- Promotion / relegation dividers ----------------------------
     &__divider {
         display: flex;
         align-items: center;
@@ -422,7 +362,6 @@
         }
     }
 
-    // -- Modal popups (rewards / log) -------------------------------
     &__modal-bg {
         position: fixed;
         inset: 0;
@@ -489,11 +428,6 @@
         gap: 6px;
         align-items: center;
     }
-    // Per-reward chip pill. Default = neutral white-ish; rarity / kind
-    // modifiers below override the colour family so the player can scan
-    // each row by colour. Stones use the same hue scale as item rarity in
-    // the inventory; AP uses the gold accent; gold uses warm-gold; HP/MP
-    // potions use the standard red/blue.
     &__reward-chip {
         display: inline-flex;
         align-items: center;
@@ -507,19 +441,13 @@
         color: #ddd;
         white-space: nowrap;
 
-        // AP — yellow medal accent.
         &--ap        { color: #ffd54f; border-color: rgba(255, 213, 79, 0.45); background: rgba(255, 213, 79, 0.10); }
-        // Gold — warm orange.
         &--gold      { color: #ffb74d; border-color: rgba(255, 183, 77, 0.45); background: rgba(255, 183, 77, 0.10); }
-        // Spec 7 (2026-05): rarity colour mapping aligned with the rest
-        // of the app — mythic = yellow, legendary = red, epic = green,
-        // rare = blue, common = gray.
         &--mythic    { color: #ffc107; border-color: rgba(255, 193, 7, 0.55);   background: rgba(255, 193, 7, 0.12); }
         &--legendary { color: #f44336; border-color: rgba(244, 67, 54, 0.55);   background: rgba(244, 67, 54, 0.12); }
         &--epic      { color: #4caf50; border-color: rgba(76, 175, 80, 0.55);   background: rgba(76, 175, 80, 0.12); }
         &--rare      { color: #2196f3; border-color: rgba(33, 150, 243, 0.55);  background: rgba(33, 150, 243, 0.12); }
         &--common    { color: #b0bec5; border-color: rgba(176, 190, 197, 0.55); background: rgba(176, 190, 197, 0.12); }
-        // Potions.
         &--hp        { color: #ef5350; border-color: rgba(239, 83, 80, 0.45); background: rgba(239, 83, 80, 0.10); }
         &--mp        { color: #42a5f5; border-color: rgba(66, 165, 245, 0.45); background: rgba(66, 165, 245, 0.10); }
     }

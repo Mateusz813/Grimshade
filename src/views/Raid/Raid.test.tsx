@@ -2,17 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Raid view — 8-wave boss train, party-only. 4358 lines. Phases:
- * 'lobby' | 'fighting' | 'victory' | 'wipe'. Mount has multiple gate
- * screens before showing the actual raid list:
- *   - noParty           -> "Potrzebujesz Party"
- *   - partyTooSmall     -> "Za mało osób" (less than 2 humans)
- *   - notLeader         -> "Tylko lider"
- *   - showList          -> the actual raid hub
- *
- * Coverage: render + each of the four gates + the leader's list view.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -55,12 +44,8 @@ vi.mock('../../hooks/usePartyReadyCheck', () => ({
     triggerPartyCombatGo: vi.fn(),
 }));
 
-// Backend-mode (opt-in) glue. isBackendMode defaults to false so every
-// existing default-path test renders the legacy client flow unchanged; the
-// dedicated backend test flips it on per-call via mockReturnValueOnce.
 vi.mock('../../config/backendMode', () => ({
     isBackendMode: vi.fn(() => false),
-    // Walka jest client-authoritative (od 1.10.0) — serwer NIE liczy rajdu.
     isBackendCombatDelegated: vi.fn(() => false),
 }));
 vi.mock('../../api/backend/backendApi', () => ({
@@ -122,7 +107,6 @@ const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     ...overrides,
 } as ICharacter);
 
-// Helper: build a 2-human party where the test character is the leader.
 const makeLeaderParty = (characterId: string): IPartyInfo => ({
     id: 'party-1',
     leaderId: characterId,
@@ -133,7 +117,6 @@ const makeLeaderParty = (characterId: string): IPartyInfo => ({
     ],
 });
 
-// Helper: 2-human party where the test character is NOT the leader.
 const makeNonLeaderParty = (characterId: string): IPartyInfo => ({
     id: 'party-1',
     leaderId: 'other-leader',
@@ -190,10 +173,7 @@ describe('Raid — smoke', () => {
 
     it('handles null character gracefully', () => {
         useCharacterStore.setState({ character: null });
-        // Raid uses character with optional chaining in most places — should
-        // not crash even when null on mount.
         const { container } = renderRaid();
-        // The component may render nothing or a gate; either way no throw.
         expect(container).toBeTruthy();
     });
 });
@@ -202,7 +182,6 @@ describe('Raid — gating screens', () => {
     it('shows the noParty gate when party is null', () => {
         usePartyStore.setState({ party: null });
         renderRaid();
-        // "Potrzebujesz Party" headline gates raids without a party at all.
         expect(screen.getByText(/Potrzebujesz Party/i)).toBeTruthy();
     });
 
@@ -232,7 +211,6 @@ describe('Raid — gating screens', () => {
         useCharacterStore.setState({ character: makeChar({ id: charId }) });
         usePartyStore.setState({ party: makeLeaderParty(charId) });
         const { container } = renderRaid();
-        // Leader list = .raid__panel mount, filter bar present.
         expect(container.querySelector('.raid__panel')).not.toBeNull();
         expect(container.querySelector('.raid__hub-filters')).not.toBeNull();
     });
@@ -294,10 +272,6 @@ describe('Raid — backend mode (opt-in)', () => {
     });
 
     it('does NOT delegate raid combat to the server — runs the client flow (client-authoritative)', async () => {
-        // Od 1.10.0 walka liczy się po stronie klienta (identyczna rozgrywka +
-        // realne staty z gearu), a stan utrwala autorytatywny commit. Nawet gdy
-        // tryb backendu jest AKTYWNY (isBackendMode=true), rajd NIE woła
-        // serwerowego resolvera — bo isBackendCombatDelegated() === false.
         vi.mocked(isBackendMode).mockReturnValue(true);
 
         const { container } = renderRaid();
@@ -306,21 +280,12 @@ describe('Raid — backend mode (opt-in)', () => {
 
         fireEvent.click(enterBtn as HTMLElement);
 
-        // Client-authoritative: serwerowy resolver rajdu NIGDY nie jest wołany,
-        // a syncFromBackend nie nadpisuje lokalnego stanu walki.
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(backendApi.raidResolve).not.toHaveBeenCalled();
         expect(syncFromBackend).not.toHaveBeenCalled();
-        // Brak serwerowego bannera feedbacku — to była ścieżka delegacji.
         expect(container.querySelector('.raid__backend-feedback')).toBeNull();
 
         vi.mocked(isBackendMode).mockReturnValue(false);
     });
 });
 
-// TODO: phase==='fighting' / 'victory' / 'wipe' require driving
-//       `startRaid` + the per-wave boss train + member damage shipping.
-//       That's exclusively Playwright territory (requires real Supabase
-//       Realtime channels for cross-client sync). Raid combat mechanics
-//       (boss generation, completion rolls, drop tiers) are covered in
-//       `raidSystem` unit tests.

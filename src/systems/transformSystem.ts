@@ -1,9 +1,3 @@
-/**
- * Transform System – logic for the character transformation progression.
- *
- * Players complete difficult quests (defeating ALL monsters in a level range
- * as BOSS rarity x8) to permanently upgrade their character.
- */
 
 import type { IMonster } from '../types/monster';
 import type { IInventoryItem } from './itemSystem';
@@ -14,7 +8,6 @@ import { SPELL_CHEST_LEVELS } from './skillSystem';
 import monstersData from '../data/monsters.json';
 import transformsData from '../data/transforms.json';
 
-// -- Types ---------------------------------------------------------------------
 
 export interface ITransformData {
   id: number;
@@ -41,44 +34,25 @@ export interface ITransformRewardsConfig {
 }
 
 export interface ITransformPermanentBonuses {
-  /** Percent bonus to max HP, applied live via getTransformHpPctMultiplier. */
   hpPercent: number;
-  /** Percent bonus to max MP, applied live. */
   mpPercent: number;
-  /** Percent bonus to defense, applied live. */
   defPercent: number;
-  /**
-   * Percent bonus to outgoing player damage. NOT baked at completion –
-   * applied live via getTransformDmgMultiplier() in transformBonuses.ts.
-   * All completed transforms stack additively (Σ dmgPercent / 100).
-   */
   dmgPercent: number;
-  /** Point N5: percent bonus to flat attack, applied live on top of base+eq. */
   atkPercent: number;
-  /** Flat bonus to max HP. */
   flatHp: number;
-  /** Flat bonus to max MP. */
   flatMp: number;
-  /** Flat bonus to attack stat. */
   attack: number;
-  /** Flat bonus to defense stat. */
   defense: number;
-  /** Legacy: flat hp regen per second bonus (currently not wired into combat). */
   hpRegen: number;
-  /** Legacy: flat mp regen per second bonus (currently not wired into combat). */
   mpRegen: number;
-  /** Flat HP/s bonus live-applied in getEffectiveChar. */
   hpRegenFlat: number;
-  /** Flat MP/s bonus live-applied in getEffectiveChar. */
   mpRegenFlat: number;
-  /** Legacy: class skill bonus marker (unused in combat). */
   classSkillBonus: number;
 }
 
 export interface ITransformColor {
   solid: string | null;
   gradient: [string, string] | null;
-  /** CSS value ready to use (either solid color or linear-gradient). */
   css: string;
 }
 
@@ -88,7 +62,6 @@ export interface ITransformRewards {
   permanentBonuses: ITransformPermanentBonuses;
 }
 
-/** Cumulative permanent bonuses from all completed transforms. */
 export interface ICumulativeTransformBonuses {
   hpPercent: number;
   mpPercent: number;
@@ -106,19 +79,7 @@ export interface ICumulativeTransformBonuses {
   classSkillBonus: number;
 }
 
-// -- Class-specific per-transform permanent bonuses ---------------------------
-// These OVERRIDE the permanentBonuses block in transforms.json so that every
-// transform grants the same class-specific reward. With 11 transforms the
-// totals are designed to be strong but not broken:
-//   Mage      ≈ +88% dmg, +22% HP, +33% MP, +770 HP, +2200 MP, +143 ATK
-//   Knight    ≈ +33% dmg, +44% HP, +33% DEF, +2200 HP, +99 ATK, +176 DEF
-//   (etc.)
-// hpRegen / mpRegen / classSkillBonus are kept at 0 – they were never wired
-// into combat in the old system and this rebalance keeps that behaviour.
 
-// Baseline (tier 1) per-class bonuses. Later transforms scale these up via
-// getTransformTierMultiplier() so that completing T11 grants a dramatically
-// larger reward than T1 (~4x by default).
 const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuses> = {
   Mage: {
     dmgPercent: 8,
@@ -169,9 +130,6 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Archer: {
-    // Point N5: Archer's attack bonus is now percent-based so it scales with
-    // the player's live ATK (base + equip + training + elixirs). Flat attack
-    // is zeroed out — the +7% multiplier replaces it at every transform tier.
     dmgPercent: 7,
     hpPercent: 2,
     mpPercent: 1,
@@ -237,23 +195,11 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
   },
 };
 
-/**
- * Tier multiplier for a given transform id. Later transforms grant larger
- * flat rewards (HP/MP/ATK/DEF/regen) while percent bonuses remain unchanged.
- *   T1 -> 1.0x · T6 -> 2.5x · T11 -> 4.0x
- */
 export const getTransformTierMultiplier = (transformId: number): number => {
   if (!transformId || transformId < 1) return 1.0;
   return 1 + (transformId - 1) * 0.3;
 };
 
-/**
- * Get the per-transform permanent bonuses for a given class. If a transformId
- * is provided, flat rewards (HP/MP/ATK/DEF/regen) are scaled by the tier
- * multiplier so that later transforms grant dramatically larger bonuses.
- * Percent bonuses (hpPercent/mpPercent/defPercent/dmgPercent) are kept flat
- * per tier – they stack naturally across transforms already.
- */
 export const getClassTransformBonuses = (
   characterClass: TCharacterClass,
   transformId?: number,
@@ -289,7 +235,6 @@ const EMPTY_BONUSES: ITransformPermanentBonuses = {
   classSkillBonus: 0,
 };
 
-// -- Weapon type per class -----------------------------------------------------
 
 const CLASS_WEAPON_TYPE: Record<TCharacterClass, string> = {
   Knight: 'sword',
@@ -301,29 +246,13 @@ const CLASS_WEAPON_TYPE: Record<TCharacterClass, string> = {
   Bard: 'harp',
 };
 
-// -- Boss multiplier for transform quest monsters ------------------------------
 
-// 2026-06-20 balance pass (kill-rate spec): boss HP ×5 (tankiest slot, above the
-// Epic escort's ×4) so it's the real gate, but atk/def ×3 (kept modest so it
-// never one-shots — potions handle survival). Tuned with scaleMonsterStats so a
-// transform is solo-clearable at the intended gear (L50 ≈ legendary+5 / mythic+2,
-// final L1000 ≈ mythic+7 very hard).
 export const TRANSFORM_BOSS_MULTIPLIER = {
   hp: 5.0,
   atk: 3.0,
   def: 3.0,
 };
 
-// -- Per-tier multipliers for the 4-slot transform wave lineup ----------------
-// Each transform fight now spawns FOUR enemies in the arena instead of one:
-//   slot 0 (top-left)     — Normal (light escort)
-//   slot 1 (top-right)    — Strong (medium escort)
-//   slot 2 (bottom-left)  — Epic   (heavy escort)
-//   slot 3 (bottom-right) — Boss   (the existing transform boss, 8x)
-// The boss tier reuses TRANSFORM_BOSS_MULTIPLIER so its HP/ATK/DEF stay
-// identical to the pre-rework single-enemy fight. The other tiers are
-// scaled relative to base monster stats — meaningfully threatening but
-// dispatch-able while the player chips at the boss.
 export type TTransformTier = 'Normal' | 'Strong' | 'Epic' | 'Boss';
 
 export const TRANSFORM_TIER_MULTIPLIERS: Record<TTransformTier, { hp: number; atk: number; def: number }> = {
@@ -333,20 +262,8 @@ export const TRANSFORM_TIER_MULTIPLIERS: Record<TTransformTier, { hp: number; at
   Boss:   { hp: TRANSFORM_BOSS_MULTIPLIER.hp, atk: TRANSFORM_BOSS_MULTIPLIER.atk, def: TRANSFORM_BOSS_MULTIPLIER.def },
 };
 
-/** Slot index -> tier. Stable across waves — UI can rely on these positions. */
 export const TRANSFORM_SLOT_TIERS: readonly TTransformTier[] = ['Normal', 'Strong', 'Epic', 'Boss'];
 
-/**
- * Transform wave targeting: escorts (slots 0-2) are cleared before the boss
- * (slot 3). Returns the slot of the first ALIVE escort, or 3 (boss) when every
- * escort is dead.
- *
- * Used by BOTH the basic-attack resolver and the DOT tick so damage-over-time
- * lands on whatever the player is currently fighting. Before 2026-06-23 the DOT
- * tick always drained the boss slot, which made the boss "leak HP by itself"
- * while escorts were still alive (the reported Transform bug). A nullable slot
- * (already-cleared escort) is skipped.
- */
 export const resolveActiveOpponentSlot = (
   escorts: ReadonlyArray<{ currentHp: number } | null>,
 ): 0 | 1 | 2 | 3 => {
@@ -357,33 +274,23 @@ export const resolveActiveOpponentSlot = (
   return 3;
 };
 
-// -- Data access helpers -------------------------------------------------------
 
 const allTransforms: ITransformData[] = transformsData as ITransformData[];
 const allMonsters: IMonster[] = monstersData as unknown as IMonster[];
 
-/** Total number of transforms in the game. */
 export const TRANSFORM_COUNT = allTransforms.length;
 
-/** Get all transform definitions. */
 export const getAllTransforms = (): ITransformData[] => {
   return allTransforms;
 };
 
-/** Get a single transform by ID (1-11). Returns undefined if not found. */
 export const getTransformById = (transformId: number): ITransformData | undefined => {
   return allTransforms.find((t) => t.id === transformId);
 };
 
-// -- Monster generation helpers -----------------------------------------------
 
-/** Sort monsters by level ascending for binary-search-like lookup. */
 const sortedMonsters = [...allMonsters].sort((a, b) => a.level - b.level);
 
-/**
- * Find the closest monster from monsters.json at or below the given level.
- * Falls back to the lowest-level monster if none is at or below.
- */
 const findClosestMonster = (level: number): IMonster => {
   let best: IMonster = sortedMonsters[0];
   for (const m of sortedMonsters) {
@@ -396,22 +303,12 @@ const findClosestMonster = (level: number): IMonster => {
   return best;
 };
 
-/**
- * Scale monster stats using the standard formulas from CLAUDE.md.
- * These are the BASE stats (before boss multiplier).
- */
 const scaleMonsterStats = (
   level: number,
 ): { hp: number; attack: number; attack_min: number; attack_max: number; defense: number; xp: number } => {
-  // 2026-06-20 balance pass (kill-rate spec): recalibrated to the new player
-  // power so a transform is solo-clearable (with potions) at the intended gear
-  // threshold — L50 ≈ legendary+5 / mythic+2, the final (L1000) ≈ mythic+7
-  // (very hard). Boss-slot HP = scaleMonsterStats.hp × TRANSFORM_BOSS_MULTIPLIER.hp(5).
-  // CAPSTONE: the final transform (T11, levels 901-1000) gets a ×3.5 HP spike so
-  // it genuinely requires ~mythic+7 and is the hardest fight in the game.
   const capstone = level >= 901 ? 3.5 : 1;
   const hp = Math.floor((95 * Math.pow(level, 1.1) + 30) * capstone);
-  const dmgBase = 8 + level * 1.0; // boss-slot atk ×3 stays well below player maxHp (no one-shot; potions handle survival)
+  const dmgBase = 8 + level * 1.0;
   const attack = Math.floor(dmgBase);
   const attack_min = Math.max(1, Math.floor(dmgBase * 0.8));
   const attack_max = Math.max(attack_min, Math.floor(dmgBase * 1.2));
@@ -420,10 +317,6 @@ const scaleMonsterStats = (
   return { hp, attack, attack_min, attack_max, defense, xp };
 };
 
-/**
- * Generate a transform boss monster for a specific level.
- * Finds the closest real monster for name/sprite, then scales stats to the target level.
- */
 const generateTransformBossMonster = (level: number): IMonster => {
   const template = findClosestMonster(level);
   const stats = scaleMonsterStats(level);
@@ -449,21 +342,13 @@ const generateTransformBossMonster = (level: number): IMonster => {
   };
 };
 
-/** Cache generated monsters per transform to avoid regenerating every call. */
 const transformMonsterCache = new Map<number, IMonster[]>();
 
-// -- Core logic ----------------------------------------------------------------
 
-/**
- * Get the list of monsters that must be defeated for a given transform.
- * Generates one boss monster for EVERY level in the range (inclusive).
- * For example, T1 with range [1, 30] produces 30 monsters (levels 1-30).
- */
 export const getTransformMonsters = (transformId: number): IMonster[] => {
   const transform = getTransformById(transformId);
   if (!transform) return [];
 
-  // Return from cache if available
   const cached = transformMonsterCache.get(transformId);
   if (cached) return cached;
 
@@ -478,18 +363,10 @@ export const getTransformMonsters = (transformId: number): IMonster[] => {
   return monsters;
 };
 
-/**
- * Get the total number of monsters required for a transform quest.
- */
 export const getTransformMonsterCount = (transformId: number): number => {
   return getTransformMonsters(transformId).length;
 };
 
-/**
- * Calculate the full rewards for completing a transform.
- * Generates a mythic weapon for the player's class at the transform's level,
- * plus consumable rewards (elixirs, potions).
- */
 export const calculateTransformRewards = (
   transformId: number,
   characterClass: TCharacterClass,
@@ -508,7 +385,6 @@ export const calculateTransformRewards = (
 
   const consumables: Array<{ id: string; count: number }> = [];
 
-  // Premium XP Elixirs
   if (transform.rewards.premiumXpElixirCount > 0) {
     consumables.push({
       id: 'premium_xp_elixir',
@@ -516,7 +392,6 @@ export const calculateTransformRewards = (
     });
   }
 
-  // HP Potions
   if (transform.rewards.hpPotionCount > 0) {
     consumables.push({
       id: transform.rewards.hpPotionId,
@@ -524,7 +399,6 @@ export const calculateTransformRewards = (
     });
   }
 
-  // MP Potions
   if (transform.rewards.mpPotionCount > 0) {
     consumables.push({
       id: transform.rewards.mpPotionId,
@@ -532,14 +406,6 @@ export const calculateTransformRewards = (
     });
   }
 
-  // Spell Chest (guaranteed). 2026-06-24 fix: the configured `spellChestLevel`
-  // equals the transform's OWN level, but several transforms (200/500/700/900)
-  // sit on levels where NO spell unlocks — there is no `spell_chest_200`, the
-  // next real spell is at 300 (and 600/800/1000). Minting `spell_chest_200`
-  // produced a dead, unspendable item that also rendered as the top-tier purple
-  // chest. Snap UP to the next VALID spell-chest level so the chest always maps
-  // to a real spell (200 -> 300); suppress the drop entirely if nothing valid
-  // is at-or-above the configured level (never drop a non-existent chest).
   if (transform.rewards.spellChestCount > 0) {
     const chestLevel = SPELL_CHEST_LEVELS.find(
       (l) => l >= transform.rewards.spellChestLevel,
@@ -552,7 +418,6 @@ export const calculateTransformRewards = (
     }
   }
 
-  // Mythic Enhancement Stone
   if (transform.rewards.mythicStoneCount > 0) {
     consumables.push({
       id: 'mythic_stone',
@@ -567,10 +432,6 @@ export const calculateTransformRewards = (
   };
 };
 
-/**
- * Get the color/gradient info for a transform.
- * Returns a ready-to-use CSS value.
- */
 export const getTransformColor = (transformId: number): ITransformColor => {
   const transform = getTransformById(transformId);
   if (!transform) {
@@ -594,12 +455,6 @@ export const getTransformColor = (transformId: number): ITransformColor => {
   };
 };
 
-/**
- * Get the permanent stat bonuses for a specific transform. Bonuses are now
- * class-specific – every transform grants the same per-class reward, strength
- * comes from stacking across all completed transforms. The transformId is
- * kept for API compatibility but the reward table is not transform-indexed.
- */
 export const getTransformBonuses = (
   transformId: number,
   characterClass?: TCharacterClass,
@@ -610,10 +465,6 @@ export const getTransformBonuses = (
   return getClassTransformBonuses(characterClass, transformId);
 };
 
-/**
- * Calculate cumulative bonuses from all completed transforms for a class.
- * Used to apply permanent stat bonuses to the character.
- */
 export const getCumulativeTransformBonuses = (
   completedTransformIds: number[],
   characterClass?: TCharacterClass,
@@ -659,54 +510,35 @@ export const getCumulativeTransformBonuses = (
   return result;
 };
 
-/**
- * Check if a character level is high enough for a specific transform.
- */
 export const isLevelSufficient = (characterLevel: number, transformId: number): boolean => {
   const transform = getTransformById(transformId);
   if (!transform) return false;
   return characterLevel >= transform.level;
 };
 
-/**
- * Get the next transform a character should do, given their completed transforms
- * and current level. Returns null if all transforms are done or character level
- * is too low for the next one.
- */
 export const getNextAvailableTransform = (
   completedTransformIds: number[],
   characterLevel: number,
 ): ITransformData | null => {
   const completedSet = new Set(completedTransformIds);
 
-  // Transforms must be done in order
   for (const transform of allTransforms) {
     if (!completedSet.has(transform.id)) {
-      // This is the next one; check if level is sufficient
       if (characterLevel >= transform.level) {
         return transform;
       }
-      // Level too low for the next required transform
       return null;
     }
   }
 
-  // All transforms completed
   return null;
 };
 
-/**
- * Get the highest completed transform number (0 if none completed).
- */
 export const getHighestCompletedTransform = (completedTransformIds: number[]): number => {
   if (completedTransformIds.length === 0) return 0;
   return Math.max(...completedTransformIds);
 };
 
-/**
- * Get the avatar filename for a character based on their class and highest
- * completed transform. Returns null if no transform is completed.
- */
 export const getActiveAvatar = (
   characterClass: TCharacterClass,
   completedTransformIds: number[],
@@ -721,10 +553,6 @@ export const getActiveAvatar = (
   return `${classKey}${transform.avatarSuffix}.png`;
 };
 
-/**
- * Apply BOSS multipliers to a monster for the transform quest.
- * Returns a copy of the monster with scaled stats.
- */
 export const applyTransformBossStats = (monster: IMonster): IMonster => {
   const atkMin = monster.attack_min ?? Math.floor(monster.attack * 0.8);
   const atkMax = monster.attack_max ?? Math.floor(monster.attack * 1.2);
@@ -738,12 +566,6 @@ export const applyTransformBossStats = (monster: IMonster): IMonster => {
   };
 };
 
-/**
- * Apply a tier-specific multiplier to a base monster. Used for the three
- * escort slots in a transform wave (Normal / Strong / Epic) — the boss slot
- * keeps its existing `applyTransformBossStats` path so balance there is
- * unchanged from pre-rework.
- */
 export const applyTransformTierStats = (
   monster: IMonster,
   tier: TTransformTier,
@@ -761,42 +583,19 @@ export const applyTransformTierStats = (
   };
 };
 
-/**
- * Build the 4-slot wave lineup for a single transform fight.
- *
- * Slot 0 (Normal), 1 (Strong), 2 (Epic) are escort monsters at the same level
- * as the boss, drawn from the bestiary so each tile shows a different sprite.
- * Slot 3 (Boss) is the canonical transform boss the caller passes in (already
- * `applyTransformBossStats`-scaled if it came from the existing path).
- *
- * Picks 4 distinct nearby-level monsters from `monsters.json` so the row
- * reads as a varied raid encounter rather than four copies of the same
- * sprite. Falls back to repeating the boss template if the bestiary near
- * `bossLevel` is too thin.
- */
 export const getTransformWaveLineup = (
   bossMonster: IMonster,
   bossLevel: number,
 ): Array<{ slot: 0 | 1 | 2 | 3; tier: TTransformTier; monster: IMonster; spriteImageUrl: string | null }> => {
-  // Pool of bestiary monsters sorted by level distance to the wave level,
-  // boss template excluded so slot 3's sprite isn't duplicated in slot 0/1/2.
   const pool = [...allMonsters]
     .filter((m) => m.id !== bossMonster.id)
     .sort((a, b) => Math.abs(a.level - bossLevel) - Math.abs(b.level - bossLevel));
 
-  // Pull 3 escort templates. If the bestiary is empty or only one monster
-  // matches, repeat the closest fallback so we never serve up a null slot.
   const fallback = pool[0] ?? bossMonster;
   const tplNormal = pool[0] ?? fallback;
   const tplStrong = pool[1] ?? fallback;
   const tplEpic   = pool[2] ?? fallback;
 
-  // Stamp each escort with a per-slot id prefix so the React keys are stable
-  // and don't collide with the boss id (which the existing defeat-tracking
-  // logic compares against). Re-scales the escort's raw bestiary stats to
-  // the wave level so a low-level template (e.g., id `slime` at lvl 1)
-  // doesn't show up as a 1 HP joke against a level-30 boss — `scaleMonsterStats`
-  // is the canonical formula used for all transform-quest monsters.
   const stamp = (tpl: IMonster, slot: number): IMonster => {
     const scaled = scaleMonsterStats(bossLevel);
     return {
@@ -812,15 +611,6 @@ export const getTransformWaveLineup = (
     };
   };
 
-  // Capture each escort's original-template sprite URL BEFORE the stamp
-  // overwrites `level` with `bossLevel`. The sprite registry (spriteAssets)
-  // is keyed by `monster-{level}.png` and only spans levels 1-60 — a T2/T3
-  // transform (boss at level 60+) would miss every lookup if we used the
-  // post-stamp level, leaving the cards on emoji fallback. Using the original
-  // template's level guarantees the same monster art the player sees in the
-  // bestiary and other combat views (hunting/boss/dungeon). Falls back to
-  // null when no PNG exists for that level — the consumer renders the emoji
-  // glyph from `tpl.sprite` instead, identical to MonsterSprite's behaviour.
   const lookupSprite = (tpl: IMonster) => getMonsterImage(tpl.level);
 
   return [

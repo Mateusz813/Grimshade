@@ -1,15 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
-/**
- * ItemIcon tests — renders an item tile with rarity-tinted frame, optional
- * upgrade badge, item level, quantity, enhancement glow tier, and a tooltip
- * that toggles on hover / click.
- *
- * `isImageUrl` is stubbed so we don't depend on Vite-resolved asset URLs:
- *   - strings starting with "/" or "http" -> render as <img>
- *   - anything else -> render the emoji span
- */
 vi.mock('../../../systems/spriteAssets', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../systems/spriteAssets')>();
     return {
@@ -30,11 +21,9 @@ describe('ItemIcon — smoke', () => {
             <ItemIcon icon="crossed-swords" rarity="common" />,
         );
         expect(container.querySelector('.item-icon')).toBeTruthy();
-        // The emoji glyph renders as an inline <svg> (via <GameIcon>), not text.
         expect(
             container.querySelector('.item-icon__emoji svg.game-icon')?.getAttribute('data-icon'),
         ).toBe('crossed-swords');
-        // No image element when icon is not a URL (it's an svg, not an img).
         expect(container.querySelector('img')).toBeNull();
     });
 
@@ -119,7 +108,6 @@ describe('ItemIcon — interactions', () => {
         const { container } = render(
             <ItemIcon icon="crossed-swords" rarity="legendary" tooltip="Excalibur" />,
         );
-        // Tooltip hidden by default.
         expect(container.querySelector('.item-icon__tooltip')).toBeNull();
         fireEvent.mouseEnter(container.querySelector('.item-icon')!);
         expect(screen.getByText('Excalibur')).toBeTruthy();

@@ -2,14 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Dungeon view — multi-wave fights inside a tier. 3322 lines, lots of
- * combat-loop machinery. We test the same surface area as Boss: render
- * contract + phase chrome + class variants.
- *
- * Phases: 'list' | 'entering' | 'running' | 'result'. The cinematic
- * `entering` phase is timer-driven and not viable to verify here.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -139,7 +131,6 @@ describe('Dungeon — smoke', () => {
     it('renders a Spinner when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderDungeon();
-        // Component short-circuits with `<div className="dungeon"><Spinner/></div>`.
         expect(container.querySelector('.dungeon')).not.toBeNull();
         expect(container.querySelector('.spinner')).not.toBeNull();
     });
@@ -177,7 +168,6 @@ describe('Dungeon — filter chrome', () => {
     it('shows the Wyczyść (clear) button when any filter is active', () => {
         useSettingsStore.setState({ dungeonFilterMinLevel: 5 });
         const { container } = renderDungeon();
-        // Clear button only renders when anyFilterActive is true (see source).
         expect(container.querySelector('.dungeon__filter-clear')).not.toBeNull();
     });
 });
@@ -216,9 +206,6 @@ describe('Dungeon — graceful with edge inputs', () => {
     });
 
     it('still renders the filter bar even when settings store is missing optional flags', () => {
-        // settingsStore still drives the filter values; setting only the
-        // required dungeon-filter keys (no auto-potion etc.) must not break
-        // the mount.
         useSettingsStore.setState({
             dungeonFilterAvailableOnly: false,
             dungeonFilterMinLevel: 0,
@@ -229,9 +216,3 @@ describe('Dungeon — graceful with edge inputs', () => {
     });
 });
 
-// TODO: phase==='entering' / 'running' / 'result' branches are timer-
-//       driven (ENTRY_ANIM_TOTAL_MS = 2000) and require driving the
-//       dungeon entry flow, the per-wave combat tick, and the
-//       per-monster aggro split. End-to-end happy-path coverage lives in
-//       Playwright (tests/e2e/dungeon/). The pure mechanics (waveroll,
-//       drop tables, loss penalty) are covered by dungeonSystem.test.ts.

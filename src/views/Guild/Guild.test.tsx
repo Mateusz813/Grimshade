@@ -2,31 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Guild view — single-entry-point view with internal screens
- * (list / home / boss / treasury / requests) routed by local state.
- * Hits guildApi for list rendering + member ops. The view is large
- * (~2500 lines) but most of it is sub-screens that only render when
- * the player is already in a guild.
- *
- * Coverage targets the unaffiliated-player branch (screen === 'list',
- * guild === null) because that's what every new character lands on:
- *   - Smoke render: .guild root + top bar.
- *   - "Zaloguj się" empty state when character is null.
- *   - List of guilds renders from a fixture rows[] (after the
- *     guildApi mock resolves).
- *   - Empty-list message renders when listGuilds returns [].
- *   - "Stwórz gildię" button visible at the bottom of the list.
- *   - Pagination buttons only render when total > PAGE_SIZE.
- *   - Apply modal opens when :handshake: is clicked + closes on Anuluj.
- *
- * Heavy dependencies (Modal, GuildHome, GuildBoss arena, etc.) are
- * exercised by Playwright e2e tests with a real Supabase backend.
- *
- * Mocks: guildApi (deterministic resolved values), framer-motion, the
- * inner Chat component used by GuildHome — although we never reach
- * the home screen here.
- */
 
 vi.mock('../../api/v1/guildApi', () => ({
     guildApi: {
@@ -65,9 +40,6 @@ vi.mock('../../api/v1/guildApi', () => ({
     },
 }));
 
-// Backend-authoritative branch mocks. Default OFF so the existing client-path
-// tests exercise the untouched guildApi paths; the dedicated describe flips
-// `backendFlag.on`.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const sundayFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({
@@ -101,8 +73,6 @@ vi.mock('../../api/backend/syncState', () => ({
     syncIfBackend: vi.fn().mockResolvedValue(undefined),
 }));
 
-// Control isGuildBossClaimDay (Sunday gate) deterministically so the boss
-// tests don't depend on the real calendar day.
 vi.mock('../../systems/guildSystem', async () => {
     const actual = await vi.importActual<typeof import('../../systems/guildSystem')>('../../systems/guildSystem');
     return {
@@ -262,7 +232,7 @@ beforeEach(() => {
         loading: false,
         guildIdByCharacter: {},
         channel: null,
-        hydrateForCharacter: async () => { /* noop */ },
+        hydrateForCharacter: async () => { },
     } as never);
     useInventoryStore.setState({
         bag: [],
@@ -279,8 +249,6 @@ beforeEach(() => {
     sundayFlag.on = false;
     Object.values(backendApiMock).forEach((fn) => fn.mockReset().mockResolvedValue(undefined));
     syncFromBackendMock.mockReset().mockResolvedValue(undefined);
-    // Sensible defaults for the read endpoints so sub-screens hydrate
-    // without throwing; individual tests override where they assert.
     backendApiMock.guildsBrowse.mockResolvedValue({ guilds: [], summaries: {}, total: 0 });
     backendApiMock.showGuild.mockResolvedValue({ guild: makeGuild(), members: [], requests: [] });
     backendApiMock.guildBossState.mockResolvedValue({
@@ -326,8 +294,6 @@ describe('Guild — list screen (no membership)', () => {
     });
 
     it('shows the "Ładowanie…" empty message while the fetch is pending', () => {
-        // Initial render fires the fetchPage useEffect; before the
-        // promise resolves the loading flag is true.
         const { container } = renderGuild();
         expect(container.querySelector('.guild__list-empty')).not.toBeNull();
     });
@@ -340,7 +306,6 @@ describe('Guild — list screen (no membership)', () => {
 
     it('renders the empty-list copy when listGuilds returns []', async () => {
         const { container, findByText } = renderGuild();
-        // Wait for the resolved listGuilds promise.
         await findByText(/Brak gildii/);
         expect(container.querySelector('.guild__list-empty')?.textContent).toContain('Brak gildii');
     });
@@ -390,8 +355,6 @@ describe('Guild — list rows', () => {
         await findByText('Iron Wolves');
         const applyBtn = container.querySelector('.guild__list-apply') as HTMLButtonElement;
         fireEvent.click(applyBtn);
-        // Apply modal renders a paragraph containing the guild name.
-        // The modal mounts at body, so use screen rather than container.
         expect(screen.getByText(/Czy chcesz aplikować/i)).toBeTruthy();
     });
 });
@@ -401,9 +364,6 @@ describe('Guild — search filter', () => {
         const { container } = renderGuild();
         const input = container.querySelector('.guild__list-search input') as HTMLInputElement;
         fireEvent.change(input, { target: { value: 'iron' } });
-        // The first useEffect-driven call ran with search='', then the
-        // re-render fires another with search='iron'. We only assert
-        // that listGuilds was called with the new search at least once.
         await Promise.resolve();
         const calls = vi.mocked(guildApi.listGuilds).mock.calls;
         const sawSearch = calls.some(([params]) => (params as { search: string }).search === 'iron');
@@ -411,11 +371,6 @@ describe('Guild — search filter', () => {
     });
 });
 
-// =============================================================================
-// BACKEND-AUTHORITATIVE BRANCH — every mutating guild action routes through
-// backendApi when isBackendMode() is ON, and the direct guildApi Supabase
-// write is SKIPPED. Flag OFF = the client path is untouched.
-// =============================================================================
 
 const seatInGuild = (over: Record<string, unknown> = {}, members = [makeMember()]) => {
     useGuildStore.setState({
@@ -425,7 +380,7 @@ const seatInGuild = (over: Record<string, unknown> = {}, members = [makeMember()
         loading: false,
         guildIdByCharacter: { 'char-1': 'g1' },
         channel: null,
-        hydrateForCharacter: async () => { /* noop — store state is set directly */ },
+        hydrateForCharacter: async () => { },
     } as never);
 };
 
@@ -517,8 +472,6 @@ describe('Guild — backend-authoritative branch', () => {
         seatInGuild({}, [makeMember()]);
         renderGuild();
         fireEvent.click(await screen.findByRole('button', { name: /Rozwiąż gildię/ }));
-        // Both the roster row (title) and the modal (text) read "Rozwiąż
-        // gildię"; the modal is rendered last, so click the trailing match.
         await waitFor(() => expect(screen.getAllByRole('button', { name: /^Rozwiąż gildię$/ }).length).toBeGreaterThan(1));
         fireEvent.click(screen.getAllByRole('button', { name: /^Rozwiąż gildię$/ }).at(-1)!);
         await waitFor(() => expect(backendApiMock.disbandGuild).toHaveBeenCalledWith('char-1', 'g1'));
@@ -599,15 +552,3 @@ describe('Guild — backend-authoritative branch', () => {
     });
 });
 
-// TODO: Apply confirm submit (handleApplyConfirm) routes through
-//       guildApi.requestJoin + setApplyMsg toast. Easy follow-up, but
-//       the toast text comes from a server-roundtrip path that's better
-//       tested in the guildApi unit + Playwright e2e.
-// TODO: "Stwórz gildię" CTA opens GuildCreateDialog which mounts inline
-//       guildIcons + color picker; not covered here. Live coverage in
-//       the guildIcons.test.ts + the create-flow Playwright spec.
-// TODO: All five `screen` sub-views (list / home / boss / treasury /
-//       requests) — only `list` is exercised here. The other four only
-//       mount when `guildState.guild` is set + the player is a member,
-//       which collapses into hydrated server state — out of vitest's
-//       reasonable scope.

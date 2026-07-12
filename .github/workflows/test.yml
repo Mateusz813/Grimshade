@@ -21,23 +21,22 @@ jobs:
     name: Typecheck + Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run lint
-        continue-on-error: true  # lint warningi nie blokują (na razie)
+      - run: npm run lint -- --quiet
 
   unit:
     name: Vitest (unit + integration)
     runs-on: ubuntu-latest
     needs: static
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
@@ -45,7 +44,7 @@ jobs:
       - run: npm run test:coverage
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report
           path: coverage/
@@ -64,8 +63,8 @@ jobs:
     # abort far sooner — this is just the ceiling).
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
@@ -82,7 +81,7 @@ jobs:
       # Cache browsers — pierwszy run zainstaluje, kolejne biorą z cache.
       - name: Cache Playwright browsers
         if: steps.e2eguard.outputs.ready == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -114,14 +113,14 @@ jobs:
         run: echo "::notice::E2E secrets not set — skipping Playwright in CI. Add them (see .github/DEPLOY.md) to activate; point VITE_SUPABASE_URL at a TEST Supabase project, not prod."
       - name: Upload Playwright report
         if: always() && steps.e2eguard.outputs.ready == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
       - name: Upload Playwright traces (on failure)
         if: failure() && steps.e2eguard.outputs.ready == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-traces
           path: test-results/
@@ -158,9 +157,9 @@ jobs:
       - name: Check deploy secrets present
         id: guard
         run: echo "ready=${{ secrets.VERCEL_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.guard.outputs.ready == 'true'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: steps.guard.outputs.ready == 'true'
         with:
           node-version: '22'

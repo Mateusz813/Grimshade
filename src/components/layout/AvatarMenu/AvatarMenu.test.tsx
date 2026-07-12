@@ -3,21 +3,6 @@ import { useRef } from 'react';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * AvatarMenu tests — the dropdown anchored to the avatar button in
- * TopHeader. It owns: change-character, language toggle, play-mode toggle,
- * manual sync, admin entry (gated by email), logout, and renders the
- * APP_VERSION stripe at the bottom.
- *
- * Mocks:
- *   - useNavigate captured so we can assert character-switch / logout nav.
- *   - useSync's doSync captured to assert manual sync invocations.
- *   - AdminPanel stubbed so we can assert it mounts without dragging in
- *     the heavy real implementation.
- *   - characterScope.saveCurrentCharacterStores stubbed (no-op promise).
- *   - connectivityTransitions stubbed — toggling play mode dispatches a
- *     dynamic import we don't care about resolving in tests.
- */
 
 const navigateMock = vi.fn();
 const doSyncMock = vi.fn().mockResolvedValue(undefined);
@@ -43,9 +28,6 @@ vi.mock('../../../stores/characterScope', () => ({
     saveCurrentCharacterStores: vi.fn().mockResolvedValue(undefined),
 }));
 
-// AdminPanel is render-only here — we just need to verify it mounts when
-// the admin email is detected. Real AdminPanel imports huge swathes of
-// game data and would slow tests significantly.
 vi.mock('../../ui/AdminPanel/AdminPanel', () => ({
     __esModule: true,
     default: ({ onClose }: { onClose: () => void }) => (
@@ -53,9 +35,6 @@ vi.mock('../../ui/AdminPanel/AdminPanel', () => ({
             <button onClick={onClose}>close-admin</button>
         </div>
     ),
-    // 2026-05-26 refactor: AvatarMenu imports `isAdminEmail` helper now,
-    // not the old `ADMIN_EMAIL` constant. Keep ADMIN_EMAIL exported for
-    // backward compat but the gate logic now uses ADMIN_EMAILS set.
     ADMIN_EMAIL: 'krasek39@gmail.com',
     ADMIN_EMAILS: new Set<string>(['krasek39@gmail.com', 'e2e-admin@grimshade-test.local']),
     isAdminEmail: (email: string | null | undefined): boolean => {
@@ -121,7 +100,6 @@ beforeEach(() => {
     useConnectivityStore.setState({ mode: 'online', userExplicitlyOffline: false });
     useSyncStore.setState({ isOnline: true, isSyncing: false, lastSynced: null });
     usePartyStore.setState({ party: null });
-    // Reset session getter to a non-admin email by default.
     (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { session: { user: { email: 'someone@example.com' } } },
         error: null,
@@ -139,13 +117,11 @@ describe('AvatarMenu — smoke', () => {
         expect(screen.getByText('Język')).toBeTruthy();
         expect(screen.getByText('Tryb gry')).toBeTruthy();
         expect(screen.getByText('Wyloguj')).toBeTruthy();
-        // Menu role is set on the wrapper.
         expect(screen.getByRole('menu')).toBeTruthy();
     });
 
     it('renders the APP_VERSION stripe', () => {
         render(<Harness />);
-        // vitest.config.ts defines __APP_VERSION__ as "test".
         expect(screen.getByLabelText(/Grimshade v/)).toBeTruthy();
     });
 });
@@ -180,7 +156,6 @@ describe('AvatarMenu — sync button', () => {
 describe('AvatarMenu — admin gating', () => {
     it('does NOT render admin entry for a non-admin email', async () => {
         render(<Harness />);
-        // Let the async getSession effect resolve.
         await Promise.resolve();
         await Promise.resolve();
         expect(screen.queryByText('Panel admina')).toBeNull();
@@ -226,7 +201,6 @@ describe('AvatarMenu — close interactions', () => {
         render(<Harness onClose={onClose} />);
         const adminBtn = await screen.findByText('Panel admina');
         fireEvent.click(adminBtn);
-        // Simulate the admin-panel backdrop existing in the DOM.
         const backdrop = document.createElement('div');
         backdrop.className = 'admin-panel__backdrop';
         document.body.appendChild(backdrop);

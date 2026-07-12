@@ -18,45 +18,15 @@ import { useSettingsStore } from './settingsStore';
 import { isHpMpPotionId, getPotionMinLevel } from '../systems/potionGating';
 import { losesItemsOnDeath } from '../systems/levelSystem';
 
-// 2026-06-21: live character-level getter used by `useConsumable` to
-// level-gate HP/MP potions. `characterStore` imports `inventoryStore` (NOT the
-// reverse), so to read the current level synchronously without a circular
-// import, characterStore registers a closure here at module init. Defaults to
-// 1 until registered (app bootstrap), which is safe — it only ever under-reports
-// the level for the brief window before characterStore loads.
 let getCurrentCharacterLevel: () => number = () => 1;
 export const registerCharacterLevelGetter = (fn: () => number): void => {
   getCurrentCharacterLevel = fn;
 };
 
-// 2026-05-21: items.json baseline cache used by `equipItem` /
-// `unequipItem` to compute the HP/MP delta a gear change produces. The
-// flattened list is shared with the Inventory view + offline hunt
-// reward path so memoising it once at module load is essentially free.
 const ALL_ITEMS_FOR_STATS = flattenItemsData(
   itemsRaw as Parameters<typeof flattenItemsData>[0],
 );
 
-/**
- * 2026-05-21 spec ("Jezeli zaloze eq ktore dodaje HP lub MP ... to tam
- * mam mniej HP niz powinienem miec"): equipping HP / MP gear used to
- * bump effective `max_hp` / `max_mp` but leave `character.hp` /
- * `character.mp` untouched. The bar then read at less than 100% (e.g.
- * 4000 / 5000) right after equipping and stayed there indefinitely —
- * the player perceived this as "missing HP" and got even more confused
- * when leaving + re-entering the character (the value persisted, but
- * the chrome on character-select made it look like progress was lost).
- *
- * Fix: every equip / unequip recomputes the equipment HP/MP delta and
- * adjusts `character.hp` / `character.mp` by the SAME amount, clamped
- * to the post-change base + equip range. Net effect:
- *   - Equip +1000 HP gear -> current HP jumps by +1000 (bar fills).
- *   - Unequip the gear -> current HP drops by 1000 (bar shrinks).
- *   - Swapping a +500 for a +1000 -> current HP goes up by +500.
- *
- * Uses a deferred microtask + lazy `import('./characterStore')` to
- * break the import cycle (`characterStore` imports `inventoryStore`).
- */
 const applyEquipmentHpMpDelta = (
   oldEquipment: Partial<IEquipment>,
   newEquipment: Partial<IEquipment>,
@@ -72,17 +42,9 @@ const applyEquipmentHpMpDelta = (
   const deltaHp = (newStats.hp ?? 0) - (oldStats.hp ?? 0);
   const deltaMp = (newStats.mp ?? 0) - (oldStats.mp ?? 0);
   if (deltaHp === 0 && deltaMp === 0) return;
-  // Lazy import — characterStore imports inventoryStore, so a static
-  // import here would create a cycle. The deferred resolve happens on
-  // the next microtask, after the inventory `set()` lands.
   void import('./characterStore').then(({ useCharacterStore }) => {
     const ch = useCharacterStore.getState().character;
     if (!ch) return;
-    // Cap at (base + new equip) so a player who just swapped to a
-    // weaker piece can never exceed the new headroom. Elixir /
-    // transform multipliers are intentionally NOT folded in — the
-    // delta we apply is in raw equip space, so the upper clamp is
-    // also in raw equip space.
     const newMaxHp = (ch.max_hp ?? 0) + (newStats.hp ?? 0);
     const newMaxMp = (ch.max_mp ?? 0) + (newStats.mp ?? 0);
     const nextHp = Math.max(0, Math.min(newMaxHp, (ch.hp ?? 0) + deltaHp));
@@ -92,14 +54,9 @@ const applyEquipmentHpMpDelta = (
       hp: nextHp,
       mp: nextMp,
     });
-  }).catch(() => { /* characterStore not yet loaded — fine */ });
+  }).catch(() => { });
 };
 
-// Maps a rarity to the matching auto-sell flag in settingsStore.
-// 2026-05 spec: every code path that adds an item to the bag must run
-// it through this filter so the player's auto-sell preference applies
-// universally — task drops, dungeon loot, boss rewards, transform
-// rewards, raid loot, offline-hunt rewards, etc.
 const isAutoSellRarity = (rarity: Rarity): boolean => {
   const s = useSettingsStore.getState();
   switch (rarity) {
@@ -112,7 +69,6 @@ const isAutoSellRarity = (rarity: Rarity): boolean => {
   }
 };
 
-/** Max inventory bag slots. */
 export const MAX_BAG_SIZE = 1000;
 export const MAX_DEPOSIT_SIZE = 10000;
 
@@ -125,9 +81,6 @@ const RARITY_RANK: Record<string, number> = {
   heroic: 5,
 };
 
-/** Basic fallback sell price used when the bag overflows and we must make
- *  room without access to itemSystem's full price table. Keeps things cheap
- *  but non-zero so the player at least gets something back. */
 const OVERFLOW_SELL_PRICE: Record<string, number> = {
   common: 5,
   rare: 25,
@@ -136,16 +89,13 @@ const OVERFLOW_SELL_PRICE: Record<string, number> = {
   mythic: 1500,
 };
 
-/** Picks the lowest-value item in the bag that is still eligible for
- *  auto-sell (not heroic). Compares rarity first (lowest sells first),
- *  then item level as tiebreaker (lowest level sells first). */
 const pickOverflowVictim = (bag: IInventoryItem[]): IInventoryItem | null => {
   let worst: IInventoryItem | null = null;
   let worstRank = Infinity;
   let worstLevel = Infinity;
   for (const item of bag) {
     const rank = RARITY_RANK[item.rarity ?? 'common'] ?? 0;
-    if (rank >= 5) continue; // heroic – never auto-sell
+    if (rank >= 5) continue;
     const lvl = item.itemLevel ?? 1;
     if (rank < worstRank || (rank === worstRank && lvl < worstLevel)) {
       worst = item;
@@ -159,74 +109,37 @@ const pickOverflowVictim = (bag: IInventoryItem[]): IInventoryItem | null => {
 interface IInventoryStore {
   bag: IInventoryItem[];
   equipment: IEquipment;
-  /** Per-character bank storage (max 10000 slots). Items here are NEVER lost on death. */
   deposit: IInventoryItem[];
   gold: number;
-  /** Arena points — PvP currency, separate from gold. Spent in arena shop / pool. */
   arenaPoints: number;
-  /** consumable id -> count owned */
   consumables: Record<string, number>;
-  /** stone id -> count owned (stackable enhancement stones) */
   stones: Record<string, number>;
 
-  /** Returns false when bag is full. */
   addItem: (item: IInventoryItem) => boolean;
-  /**
-   * Place an item into the bag bypassing auto-sell. Used by code paths
-   * where the player EXPLICITLY wants the item (market cancel, market
-   * buy, equip-revert), so a stale "auto-sell rare" toggle never
-   * silently converts the item back to gold. Returns false when the
-   * bag is full — caller should show "Plecak pełny" before calling.
-   */
   restoreItem: (item: IInventoryItem) => boolean;
   removeItem: (uuid: string) => void;
-  /** Moves item from bag into the given equipment slot, swapping if occupied. */
   equipItem: (uuid: string, slot: EquipmentSlot) => void;
-  /** Moves equipped item back into bag. No-op when bag is full. */
   unequipItem: (slot: EquipmentSlot) => void;
-  /** Removes item from bag and adds `gold` amount to gold pool. */
   sellItem: (uuid: string, goldAmount: number) => void;
-  /** Removes multiple items from bag and adds total gold. Returns total gold earned. */
   sellMultiple: (uuids: string[], getSellPriceFn: (item: IInventoryItem) => number) => number;
   addGold: (amount: number) => void;
   spendGold: (amount: number) => boolean;
-  /** Add arena points (separate currency from gold; earned in PvP arena). */
   addArenaPoints: (amount: number) => void;
-  /** Spend arena points; returns false when balance is too low. */
   spendArenaPoints: (amount: number) => boolean;
-  /** Increases the upgrade level of an item by 1 (in bag or equipment). */
   upgradeItem: (uuid: string) => void;
-  /** Replace an item's bonuses with new ones (used by bonus reroll). */
   updateItemBonuses: (uuid: string, newBonuses: Record<string, number>) => void;
   addConsumable: (id: string, amount?: number) => void;
   useConsumable: (id: string) => boolean;
-  /** Add enhancement stones (stackable). */
   addStones: (stoneId: string, amount?: number) => void;
-  /** Get how many of a specific stone the player has. */
   getStoneCount: (stoneId: string) => number;
-  /** Consume N stones of a specific type. Returns false if not enough. */
   useStones: (stoneId: string, amount: number) => boolean;
-  /** Removes multiple items from bag and adds corresponding stones. Returns stones earned map. */
   disassembleMultiple: (uuids: string[], getRarityFn: (item: IInventoryItem) => string) => Record<string, number>;
-  /** Convert 100 stones of a type into 1 stone of the next higher rarity. Costs 1000 gold. Returns false if not enough resources or no higher tier. */
   convertStones: (stoneId: string) => boolean;
-  /** Add spell chests to consumables inventory. */
   addSpellChest: (level: number, count: number) => void;
-  /** Use (consume) spell chests. Returns false if not enough. */
   useSpellChests: (level: number, count: number) => boolean;
-  /** Get current count of spell chests at a specific level. */
   getSpellChestCount: (level: number) => number;
-  /** Move an item from bag -> deposit. Returns false if deposit full. */
   depositItem: (uuid: string) => boolean;
-  /** Move an item from deposit -> bag. Returns false if bag full. */
   withdrawItem: (uuid: string) => boolean;
-  /**
-   * Apply 5% random item loss across bag + equipped items (deposit untouched).
-   * No items are lost when `protectedByAol` is true (caller consumed an AOL) OR
-   * when `deathLevel` is within the beginner grace period (lvl 1-50) — see
-   * `losesItemsOnDeath`. `deathLevel` must be the character's level AT DEATH
-   * (before the death penalty reduces it). Returns the number of items destroyed.
-   */
   applyDeathItemLoss: (protectedByAol: boolean, deathLevel: number) => number;
 }
 
@@ -242,34 +155,25 @@ export const useInventoryStore = create<IInventoryStore>()(
 
       addItem: (item) => {
         const { bag, gold } = get();
-        // 2026-05 spec 4: universal auto-sell hook. Every incoming item
-        // (drops, quest rewards, dungeon/boss/raid/transform/arena loot,
-        // offline-hunt) flows through here, so a single rarity-flag flip
-        // in settingsStore controls auto-sell across the whole app.
         if (isAutoSellRarity(item.rarity)) {
           const price = getSellPrice(item);
           set({ gold: gold + price });
-          return true; // treated as "added" — caller doesn't need to know it was sold
+          return true;
         }
         if (bag.length < MAX_BAG_SIZE) {
           set({ bag: [...bag, item] });
           return true;
         }
-        // Bag full -> auto-sell lowest-rarity (then lowest-level) item to
-        // make room. Incoming item must be strictly "better" than the
-        // victim (higher rarity, or same rarity with higher level).
         const incomingRank = RARITY_RANK[item.rarity ?? 'common'] ?? 0;
         const incomingLevel = item.itemLevel ?? 1;
         const victim = pickOverflowVictim(bag);
         if (!victim) {
-          // Bag is entirely heroic — cannot auto-sell anything, drop the item.
           return false;
         }
         const victimRank = RARITY_RANK[victim.rarity ?? 'common'] ?? 0;
         const victimLevel = victim.itemLevel ?? 1;
         const isBetter = incomingRank > victimRank || (incomingRank === victimRank && incomingLevel > victimLevel);
         if (!isBetter) {
-          // Nothing to gain — drop the incoming item.
           return false;
         }
         const victimPrice = OVERFLOW_SELL_PRICE[victim.rarity ?? 'common'] ?? 0;
@@ -280,11 +184,6 @@ export const useInventoryStore = create<IInventoryStore>()(
         return true;
       },
 
-      // 2026-05-08: paired with addItem but skips the auto-sell hook.
-      // Caller asserts the player WANTS this item in their bag (e.g.
-      // market cancel returning escrowed loot, market buy, raid kick
-      // refund). If the bag is full we return false — caller is
-      // responsible for surfacing that to the player.
       restoreItem: (item) => {
         const { bag } = get();
         if (bag.length >= MAX_BAG_SIZE) return false;
@@ -300,7 +199,6 @@ export const useInventoryStore = create<IInventoryStore>()(
         const item = bag.find((i) => i.uuid === uuid);
         if (!item) return;
 
-        // Remove from bag; put currently-equipped item (if any) back in bag
         const newBag = bag.filter((i) => i.uuid !== uuid);
         const displaced = equipment[slot];
         if (displaced) newBag.push(displaced);
@@ -308,9 +206,6 @@ export const useInventoryStore = create<IInventoryStore>()(
         const oldEquipment = { ...equipment };
         const newEquipment = { ...equipment, [slot]: item };
         set({ bag: newBag, equipment: newEquipment });
-        // 2026-05-21: bump character.hp / .mp by the equipment HP / MP
-        // delta so equipping +1000 HP gear visibly raises current HP,
-        // not just the cap. See `applyEquipmentHpMpDelta` for the why.
         applyEquipmentHpMpDelta(oldEquipment, newEquipment);
       },
 
@@ -322,9 +217,6 @@ export const useInventoryStore = create<IInventoryStore>()(
         const oldEquipment = { ...equipment };
         const newEquipment = { ...equipment, [slot]: null };
         set({ bag: [...bag, item], equipment: newEquipment });
-        // Symmetric to equipItem — unequipping HP / MP gear drops the
-        // current value by the same amount it just gave (clamped to
-        // the new ceiling so the bar can never go above max).
         applyEquipmentHpMpDelta(oldEquipment, newEquipment);
       },
 
@@ -368,7 +260,6 @@ export const useInventoryStore = create<IInventoryStore>()(
 
       upgradeItem: (uuid) => {
         const { bag, equipment } = get();
-        // Check bag first
         const bagIdx = bag.findIndex((i) => i.uuid === uuid);
         if (bagIdx >= 0) {
           const newBag = [...bag];
@@ -376,7 +267,6 @@ export const useInventoryStore = create<IInventoryStore>()(
           set({ bag: newBag });
           return;
         }
-        // Check equipment
         const newEquipment = { ...equipment };
         for (const slot of Object.keys(newEquipment) as EquipmentSlot[]) {
           const item = newEquipment[slot];
@@ -414,11 +304,6 @@ export const useInventoryStore = create<IInventoryStore>()(
         })),
 
       useConsumable: (id) => {
-        // 2026-06-21 level gate: HP/MP potions cannot be drunk below their
-        // unlock level (the hard guarantee behind "nie mozna ich wczesniej
-        // uzyc"). Covers EVERY drink path — manual dock, auto-potion engine,
-        // bag use — because they all funnel through here. Returns false WITHOUT
-        // consuming, exactly like an empty stack.
         if (isHpMpPotionId(id) && getCurrentCharacterLevel() < getPotionMinLevel(id)) {
           return false;
         }
@@ -454,14 +339,12 @@ export const useInventoryStore = create<IInventoryStore>()(
         const toDisassemble = bag.filter((i) => uuidSet.has(i.uuid));
         const stonesEarned: Record<string, number> = {};
 
-        // 20% chance per item to produce a stone (matches single-item flow).
         for (const item of toDisassemble) {
           if (Math.random() >= 0.20) continue;
           const stoneId = STONE_FOR_RARITY[item.rarity as Rarity] ?? 'common_stone';
           stonesEarned[stoneId] = (stonesEarned[stoneId] ?? 0) + 1;
         }
 
-        // Apply all at once: remove items, add stones
         set((s) => {
           const newStones = { ...s.stones };
           for (const [stoneId, count] of Object.entries(stonesEarned)) {
@@ -479,7 +362,7 @@ export const useInventoryStore = create<IInventoryStore>()(
       convertStones: (stoneId) => {
         const { stones, gold } = get();
         const higherStone = STONE_CONVERSION_CHAIN[stoneId];
-        if (!higherStone) return false; // heroic_stone has no higher tier
+        if (!higherStone) return false;
         const currentCount = stones[stoneId] ?? 0;
         if (currentCount < STONE_CONVERSION_COST) return false;
         if (gold < STONE_CONVERSION_GOLD) return false;
@@ -542,13 +425,9 @@ export const useInventoryStore = create<IInventoryStore>()(
       },
 
       applyDeathItemLoss: (protectedByAol, deathLevel) => {
-        // 2026-06-24: no item loss when AOL-protected OR within the lvl 1-50
-        // beginner grace period. Single enforcement point for every death path
-        // (hunt / boss / dungeon / raid / transform / combat-leave).
         if (protectedByAol || !losesItemsOnDeath(deathLevel)) return 0;
         const { bag, equipment } = get();
 
-        // Build pool of all "at risk" items (bag + equipped). Deposit excluded.
         type Source = { kind: 'bag'; uuid: string } | { kind: 'equip'; slot: EquipmentSlot };
         const pool: Source[] = [];
         for (const it of bag) pool.push({ kind: 'bag', uuid: it.uuid });
@@ -558,10 +437,8 @@ export const useInventoryStore = create<IInventoryStore>()(
 
         if (pool.length === 0) return 0;
 
-        // Lose 5% of items, minimum 1 if pool is non-empty
         const lossCount = Math.max(1, Math.floor(pool.length * 0.05));
 
-        // Shuffle and pick lossCount
         for (let i = pool.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [pool[i], pool[j]] = [pool[j], pool[i]];

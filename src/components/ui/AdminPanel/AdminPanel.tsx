@@ -1,19 +1,3 @@
-/**
- * Admin Panel — hard-gated debug overlay (krasek39@gmail.com only).
- *
- * 2026-05-21 v2 spec: massive expansion so every gameplay system can
- * be poked at from one place. Each tab targets a single concern + the
- * full set of admin-y knobs we have for it.
- *
- * 2026-05-21 layout fix: rendered via `createPortal(…, document.body)`
- * because the AvatarMenu's `backdrop-filter` creates a new containing
- * block for `position: fixed`. Without the portal the panel anchors
- * inside the menu's bounds and gets clipped at the top.
- *
- * Defense in depth: the button is gated in AvatarMenu, but this
- * component RE-checks the session email + bails out if it doesn't
- * match `ADMIN_EMAIL`.
- */
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -47,29 +31,13 @@ import Icon from '../../atoms/Icon/Icon';
 import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './AdminPanel.scss';
 
-/**
- * Set of email addresses authorized to open the Admin Panel.
- *
- * Includes:
- *  - Production owner (`krasek39@gmail.com`) — primary admin
- *  - E2E test admin (`e2e-admin@grimshade-test.local`) — only used by Playwright
- *    full 9-tab admin smoke tests; populated via `seedTestAdminAccount.ts`
- *    helper when missing. Has zero impact on production users because it lives
- *    in fake-TLD domain that Supabase can't deliver mail to + isn't shared
- *    with anyone in real onboarding flows.
- *
- * `ADMIN_EMAIL` kept as legacy named export pointing at production owner so
- * existing imports keep working (AvatarMenu re-exports for backward compat).
- */
 export const ADMIN_EMAILS = new Set<string>([
     'krasek39@gmail.com',
     'e2e-admin@grimshade-test.local',
 ]);
 
-/** Legacy single-email export — points at primary production owner. */
 export const ADMIN_EMAIL = 'krasek39@gmail.com';
 
-/** Returns true if email matches ANY entry in ADMIN_EMAILS (case-insensitive). */
 export const isAdminEmail = (email: string | null | undefined): boolean => {
     if (!email) return false;
     return ADMIN_EMAILS.has(email.toLowerCase());
@@ -89,7 +57,6 @@ interface IDungeonRow { id: string; name_pl: string; level?: number; }
 interface IMonsterRow { id: string; name_pl: string; level?: number; }
 interface IQuestRow { id: string; name_pl?: string; }
 
-// -- Game data lookups --------------------------------------------------------
 const ALL_SKILLS: ISkillRow[] = (() => {
     const raw = skillsRaw as unknown as {
         weaponSkills?: Array<{ id: string; name_pl: string; class?: string }>;
@@ -139,9 +106,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
 
     const character = useCharacterStore((s) => s.character);
 
-    // ====================================================================
-    // POSTAĆ
-    // ====================================================================
     const updateCharacter = useCharacterStore((s) => s.updateCharacter);
     const fullHealEffective = useCharacterStore((s) => s.fullHealEffective);
 
@@ -231,9 +195,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash(`HP/MP = ${hp}/${mp}`);
     };
 
-    // ====================================================================
-    // INVENTORY
-    // ====================================================================
     const [itemRarity, setItemRarity] = useState<typeof RARITIES[number]>('legendary');
     const [itemLevel, setItemLevel] = useState('500');
     const [itemCount, setItemCount] = useState('1');
@@ -273,9 +234,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     const addSpellChest = () => {
         const lvl = Math.max(1, Math.min(1000, parseInt(spellChestLevel, 10) || 1));
         const n = Math.max(1, parseInt(spellChestCount, 10) || 1);
-        // Spell chests are stored as consumables keyed `spell_chest_${level}`
-        // (see inventoryStore lines 481+). Use the consumable API so the
-        // bookkeeping (counts, sync) goes through the canonical path.
         useInventoryStore.getState().addConsumable(`spell_chest_${lvl}`, n);
         flash(`+${n}× Spell Chest Lv${lvl}`);
     };
@@ -289,9 +247,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Plecak wyczyszczony');
     };
 
-    // ====================================================================
-    // SKILLE
-    // ====================================================================
     const [skillId, setSkillId] = useState<string>(ALL_SKILLS[0]?.id ?? '');
     const [skillLevel, setSkillLevel] = useState('100');
     const [skillUpgradeLvl, setSkillUpgradeLvl] = useState('30');
@@ -352,9 +307,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Wszystkie skille -> +30');
     };
 
-    // ====================================================================
-    // TASKS
-    // ====================================================================
     const [killMonsterId, setKillMonsterId] = useState('');
     const [killMonsterLevel, setKillMonsterLevel] = useState('1');
     const [killCount, setKillCount] = useState('5000');
@@ -392,9 +344,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Taski wyczyszczone');
     };
 
-    // ====================================================================
-    // QUESTS
-    // ====================================================================
     const [questIdInput, setQuestIdInput] = useState<string>(ALL_QUESTS[0]?.id ?? '');
 
     const completeQuest = () => {
@@ -433,8 +382,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     };
 
     const completeAllDaily = () => {
-        // Daily quests gate on `completed: true` — that's enough for the
-        // claim UI; the progress bar will read as full from this flag.
         useDailyQuestStore.setState((s) => ({
             activeQuests: s.activeQuests.map((q) => ({ ...q, progress: 99999, completed: true })),
         }));
@@ -451,9 +398,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Daily zresetowane');
     };
 
-    // ====================================================================
-    // WALKI — bossy / lochy / transformy / mastery / raidy
-    // ====================================================================
     const [bossId, setBossId] = useState<string>(ALL_BOSSES[0]?.id ?? '');
     const [dungeonId, setDungeonId] = useState<string>(ALL_DUNGEONS[0]?.id ?? '');
     const [transformTier, setTransformTier] = useState('1');
@@ -474,7 +418,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     };
     const setBossKills = () => {
         const n = Math.max(0, parseInt(bossKillsInput, 10) || 0);
-        // bossScoreStore stores per-boss kill entries as `bossKills[id] = { count, lastKill }`.
         useBossScoreStore.setState((s) => ({
             bossKills: {
                 ...s.bossKills,
@@ -540,9 +483,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Transformy zresetowane');
     };
 
-    // ====================================================================
-    // SOCIAL — party / arena / guild / market
-    // ====================================================================
     const [arenaKills, setArenaKills] = useState('100');
     const [arenaDeaths, setArenaDeaths] = useState('0');
     const [arenaLeague, setArenaLeague] = useState<typeof ARENA_LEAGUES[number]>('Diamond');
@@ -553,10 +493,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         const ak = Math.max(0, parseInt(arenaKills, 10) || 0);
         const ad = Math.max(0, parseInt(arenaDeaths, 10) || 0);
         const lp = Math.max(0, parseInt(arenaLP, 10) || 0);
-        // `updateCharacter` is typed against the narrow API ICharacter
-        // (no arena fields). The DB row + the extended `types/character.ts`
-        // ICharacter both include them — cast to `Record<string, unknown>`
-        // so TypeScript stops gating on the narrow type.
         updateCharacter({
             arena_kills: ak,
             arena_deaths: ad,
@@ -573,16 +509,12 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     };
 
     const clearMarketState = () => {
-        // Best-effort — market store isn't loaded if user never opened Market.
         void import('../../../stores/marketStore').then(({ useMarketStore }) => {
             useMarketStore.setState({ saleNotifications: [] });
             flash('Powiadomienia market wyczyszczone');
         }).catch(() => { flash('Market store niedostępny'); });
     };
 
-    // ====================================================================
-    // SYSTEM — connectivity / combat / buffs / death / offline hunt
-    // ====================================================================
     const playMode = useConnectivityStore((s) => s.mode);
     const [buffId, setBuffId] = useState('hp_boost_pct');
     const [buffDuration, setBuffDuration] = useState('3600');
@@ -616,8 +548,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     };
     const addBuff = () => {
         const dur = Math.max(60, parseInt(buffDuration, 10) || 60);
-        // Use the typed `addBuff` action — fills in characterId / timer
-        // mode / remainingMs for us.
         useBuffStore.getState().addBuff(
             {
                 id: `admin_${buffId}_${Date.now()}`,
@@ -630,7 +560,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash(`Buff ${buffId} +${dur}s`);
     };
     const clearAllBuffs = () => {
-        // No public reset action — the canonical store key is `allBuffs`.
         useBuffStore.setState({ allBuffs: [] });
         flash('Buffy wyczyszczone');
     };
@@ -662,9 +591,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash('Arena state wyczyszczony');
     };
 
-    // ====================================================================
-    // NUKE
-    // ====================================================================
     const [confirmNuke, setConfirmNuke] = useState(false);
     const nuke = () => {
         if (!confirmNuke) {
@@ -1127,9 +1053,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         </div>
     );
 
-    // 2026-05-21 layout fix: render through a portal to document.body so
-    // the AvatarMenu's backdrop-filter (which creates a new containing
-    // block for `position: fixed`) can no longer clip us.
     return createPortal(panelNode, document.body);
 };
 

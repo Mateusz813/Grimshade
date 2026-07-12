@@ -4,7 +4,6 @@ import type { IBoss } from './bossSystem';
 import classesData from '../data/classes.json';
 import skillsData from '../data/skills.json';
 
-// -- Class base stats from classes.json ---------------------------------------
 
 interface IClassData {
     id: string;
@@ -22,11 +21,9 @@ for (const cls of classesData as IClassData[]) {
     CLASS_DATA[cls.id as TCharacterClass] = cls;
 }
 
-// -- All character classes ----------------------------------------------------
 
 const ALL_CLASSES: TCharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'];
 
-// -- Bot name pools -----------------------------------------------------------
 
 const BOT_NAMES: Record<TCharacterClass, string[]> = {
     Knight:      ['Sir Aldric', 'Sir Gavain', 'Dame Irina', 'Sir Borin', 'Dame Elsa', 'Sir Tormund', 'Dame Kira'],
@@ -38,7 +35,6 @@ const BOT_NAMES: Record<TCharacterClass, string[]> = {
     Bard:        ['Melody Aria', 'Minstrel Jay', 'Troubadour Lute', 'Songbird Faye', 'Rhymer Cal', 'Harmony Sage', 'Balladeer Tine'],
 };
 
-// -- Class icons (same as Boss.tsx) -------------------------------------------
 
 export const BOT_CLASS_ICONS: Record<TCharacterClass, string> = {
     Knight: 'crossed-swords',
@@ -50,23 +46,9 @@ export const BOT_CLASS_ICONS: Record<TCharacterClass, string> = {
     Bard: 'musical-note',
 };
 
-/**
- * Shortcode form of a bot's icon for use INSIDE combat-log strings.
- *
- * Combat logs are rendered through <EmojiText>, which only turns `:name:`
- * shortcodes into <GameIcon>s — a bare icon name like `bow-and-arrow` would
- * show up as literal text. So anywhere a bot icon is interpolated into a log
- * line we must emit the colon-wrapped form. We prefix `:robot:` so bots stay
- * visually distinct from human party members in the log.
- *
- *   getBotLogIcon('Archer')  ->  ':robot::bow-and-arrow:'
- *
- * (For JSX, keep using the bare `BOT_CLASS_ICONS[cls]` with <GameIcon name=…>.)
- */
 export const getBotLogIcon = (cls: TCharacterClass): string =>
     `:robot::${BOT_CLASS_ICONS[cls] ?? 'robot'}:`;
 
-// -- First available skill per class ------------------------------------------
 
 interface ISkillInfo {
     id: string;
@@ -111,8 +93,6 @@ for (const cls of ALL_CLASSES) {
     }
 }
 
-// -- Bot stat calculation -----------------------------------------------------
-// Bot stats are 80% of what a player of that level/class would have.
 
 const BOT_STAT_MULTIPLIER = 0.8;
 
@@ -133,7 +113,6 @@ const calculateBotStats = (level: number, cls: TCharacterClass) => {
     return { hp, mp, attack, defense, speed, magicLevel };
 };
 
-// -- Generate a single bot ----------------------------------------------------
 
 let botIdCounter = 0;
 
@@ -142,20 +121,17 @@ export const generateBot = (
     playerClass: TCharacterClass,
     existingClasses: TCharacterClass[],
 ): IBot => {
-    // Pick a random class different from the player and other bots
     const excluded = new Set<TCharacterClass>([playerClass, ...existingClasses]);
     const available = ALL_CLASSES.filter((c) => !excluded.has(c));
     const botClass = available.length > 0
         ? available[Math.floor(Math.random() * available.length)]
         : ALL_CLASSES[Math.floor(Math.random() * ALL_CLASSES.length)];
 
-    // Level = player level +/- 2
-    const levelOffset = Math.floor(Math.random() * 5) - 2; // -2 to +2
+    const levelOffset = Math.floor(Math.random() * 5) - 2;
     const botLevel = Math.max(1, playerLevel + levelOffset);
 
     const stats = calculateBotStats(botLevel, botClass);
 
-    // Pick a random name for the class
     const names = BOT_NAMES[botClass];
     const name = names[Math.floor(Math.random() * names.length)];
 
@@ -184,8 +160,6 @@ export const generateBot = (
     };
 };
 
-// -- Generate a bot with an explicit class -----------------------------------
-// Used when the player manually selects which class a companion should be.
 
 export const generateBotWithClass = (
     playerLevel: number,
@@ -221,7 +195,6 @@ export const generateBotWithClass = (
     };
 };
 
-// -- Generate a full bot party ------------------------------------------------
 
 export const generateBotParty = (
     playerLevel: number,
@@ -238,7 +211,6 @@ export const generateBotParty = (
     return bots;
 };
 
-// -- Calculate bot action -----------------------------------------------------
 
 export const calculateBotAction = (
     bot: IBot,
@@ -249,7 +221,6 @@ export const calculateBotAction = (
     const variance = Math.floor(baseDmg * 0.2);
     const finalBaseDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
 
-    // Try to use skill if available and bot has enough MP
     if (canUseSkill && bot.skillId && bot.mp >= bot.skillMpCost && bot.skillDamageMultiplier > 0) {
         const skillDmg = Math.max(1, Math.floor(bot.attack * bot.skillDamageMultiplier * 0.15));
         const skillInfo = FIRST_SKILLS[bot.class];
@@ -270,9 +241,6 @@ export const calculateBotAction = (
     };
 };
 
-// -- Boss aggro target selection ----------------------------------------------
-// Boss switches target every 3-5 turns. Uses class-weighted selection so
-// Knights tank most aggro, while Cleric/Bard are least likely to be targeted.
 
 import { pickWeightedAggroTarget } from './partySystem';
 import type { CharacterClass } from '../api/v1/characterApi';
@@ -282,20 +250,10 @@ export interface IAggroCandidate {
     class: CharacterClass;
 }
 
-/**
- * Pick the boss's next aggro target.
- *
- * Overloads:
- *  - Legacy: `pickAggroTarget(aliveBotIds: string[])` -> random uniform over
- *    `['player', ...aliveBotIds]` (kept for backward compat with old tests).
- *  - New:    `pickAggroTarget(candidates: IAggroCandidate[])` -> class-weighted
- *    selection using `AGGRO_CLASS_WEIGHTS`.
- */
 export function pickAggroTarget(aliveBotIds: string[]): string;
 export function pickAggroTarget(candidates: IAggroCandidate[]): string;
 export function pickAggroTarget(arg: string[] | IAggroCandidate[]): string {
     if (arg.length === 0) return 'player';
-    // Detect legacy string[] call
     if (typeof arg[0] === 'string') {
         const targets = ['player', ...(arg as string[])];
         return targets[Math.floor(Math.random() * targets.length)];
@@ -304,7 +262,6 @@ export function pickAggroTarget(arg: string[] | IAggroCandidate[]): string {
     return pickWeightedAggroTarget(candidates) ?? 'player';
 }
 
-// -- AOE damage calculation (every 5th attack, 50% damage) --------------------
 
 export const calculateAoeDamage = (
     bossAttack: number,
@@ -314,12 +271,10 @@ export const calculateAoeDamage = (
     return Math.max(1, Math.floor(baseDmg * 0.5));
 };
 
-// -- Check if boss turn is AOE (every 5th attack) ----------------------------
 
 export const isBossAoeTurn = (turnCounter: number): boolean =>
     turnCounter > 0 && turnCounter % 5 === 0;
 
-// -- Get aggro switch interval (3-5 turns) ------------------------------------
 
 export const getAggroSwitchInterval = (): number =>
-    3 + Math.floor(Math.random() * 3); // 3, 4, or 5
+    3 + Math.floor(Math.random() * 3);

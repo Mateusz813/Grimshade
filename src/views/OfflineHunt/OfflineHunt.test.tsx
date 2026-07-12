@@ -2,24 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * OfflineHunt view — passive kill grinder setup + claim flow. Steps:
- *   1. Pick a trainable skill (class-gated).
- *   2. Pick an unlocked monster (level + mastery-gated).
- *   3. Start hunt -> captures startedAt in offlineHuntStore.
- *   4. Claim -> reward modal mounts with XP + drops.
- *
- * Coverage:
- *   - Smoke: setup card mounts when no hunt is active.
- *   - Char-less branch renders the "Brak aktywnej postaci" empty state.
- *   - Step 1 lists trainable skills for the player's class.
- *   - Step 2 lists at least one unlocked monster (level 1 default).
- *   - Sort buttons mount + toggle the active modifier.
- *   - Start button disabled until both skill + monster picked.
- *   - Active hunt card mounts when isActive flips true.
- *   - Reward modal exposes a tappable top-right close (X) button (BUG #3
- *     mobile fix) wired to the same onClose handler as the OK button.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -125,14 +107,13 @@ describe('OfflineHunt — setup steps', () => {
         expect(sortBtns.length).toBe(2);
         const active = container.querySelector('.oh__sort-chip--active');
         expect(active).not.toBeNull();
-        // Default sort is "level"; first chip should be active.
         expect(active?.textContent).toMatch(/Lvl/);
     });
 
     it('toggles the active sort modifier when the other button is clicked', () => {
         const { container } = renderOfflineHunt();
         const sortBtns = container.querySelectorAll('.oh__sort-chip');
-        fireEvent.click(sortBtns[1]); // Mastery
+        fireEvent.click(sortBtns[1]);
         expect(sortBtns[1].className).toContain('oh__sort-chip--active');
         expect(sortBtns[0].className).not.toContain('oh__sort-chip--active');
     });
@@ -144,10 +125,8 @@ describe('OfflineHunt — start CTA', () => {
         const startBtn = container.querySelector('.oh__btn--start') as HTMLButtonElement;
         expect(startBtn.disabled).toBe(true);
 
-        // Pick a skill first.
         const skillChip = container.querySelector('.oh__skill-chip') as HTMLButtonElement;
         fireEvent.click(skillChip);
-        // Still disabled — no monster.
         expect(startBtn.disabled).toBe(true);
 
         const monsterRow = container.querySelector('.oh__monster-row') as HTMLButtonElement;
@@ -268,12 +247,3 @@ describe('OfflineHunt — class variants', () => {
     });
 });
 
-// TODO: Cover the start-hunt happy path end-to-end (pick skill + monster -> click
-//       Start -> store flips isActive=true -> claim renders modal). The store
-//       action `startHunt` mutates skillStore/combatStore — easier to assert
-//       via the offlineHuntStore unit tests rather than driving the chain
-//       through React + happy-dom.
-// TODO: Reward modal on claim — claimOfflineHunt() reads dozens of subsystem
-//       outputs (item drops, potions, chests, stones) and the modal renders a
-//       lot of art via getConsumableImage / getSpellChestImage etc. Skipped;
-//       offlineHuntSystem.test.ts already covers the reward math.

@@ -3,17 +3,6 @@ import { renderHook, act } from '@testing-library/react';
 import { useCombatFx } from './useCombatFx';
 import skillsData from '../data/skills.json';
 
-/**
- * useCombatFx — pure local hook with per-slot float / skill / summon
- * state and timeout-based cleanup. We test the public surface end-to-end
- * with fake timers so the auto-expiry of floats and skill anims is
- * deterministic.
- *
- * Note: `triggerEnemySkillAnim` / `triggerAllySkillAnim` resolve the
- * animation through `getSkillAnimation`. Unknown skill IDs return
- * undefined -> the hook silently no-ops, so we use real skill IDs
- * (e.g. `fireball`) for those tests.
- */
 
 beforeEach(() => {
     vi.useFakeTimers();
@@ -126,13 +115,12 @@ describe('useCombatFx — skill anims', () => {
     it('expires the anim entry after the configured duration', () => {
         const { result } = renderHook(() => useCombatFx());
         act(() => {
-            result.current.triggerEnemySkillAnim(0, 'fireball'); // 900ms
+            result.current.triggerEnemySkillAnim(0, 'fireball');
         });
         expect(result.current.enemySkill[0]).toBeDefined();
         act(() => {
             vi.advanceTimersByTime(1000);
         });
-        // After expiry, slot is cleared to undefined.
         expect(result.current.enemySkill[0]).toBeUndefined();
     });
 });
@@ -183,26 +171,13 @@ describe('useCombatFx — reset helpers', () => {
         act(() => {
             result.current.resetAllyFx();
         });
-        // Enemy untouched
         expect(result.current.enemyFloats[0]).toHaveLength(1);
-        // Ally-side cleared
         expect(result.current.allyFloats).toEqual({});
         expect(result.current.allySkill).toEqual({});
         expect(result.current.allySummonSpawn).toEqual({});
     });
 });
 
-// -- #14 — EXHAUSTIVE: every skill renders on own + ally screen ---------------
-//
-// The data-completeness guard lives in `src/data/skillVisualMatrix.test.ts`
-// (every skill resolves to valid anim + icon). This proves the actual render
-// PRIMITIVE both combat-view screens use:
-//   - triggerEnemySkillAnim -> MY cast painted on the target card = MY screen
-//   - triggerAllySkillAnim  -> an ally's cast painted on the ally card = the
-//                             ally-screen path (same data the Realtime
-//                             broadcast drives in a real party)
-// Looping all 105 active skills through both proves none silently no-ops
-// (the `if (!animData) return` branch) on either screen.
 const ALL_ACTIVE_SKILL_IDS: string[] = Object.values(
     skillsData.activeSkills as Record<string, Array<{ id: string }>>,
 ).flat().map((s) => s.id);

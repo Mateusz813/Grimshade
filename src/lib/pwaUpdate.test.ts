@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock the build-time virtual module so we can capture the options
-// `initPwaAutoUpdate` passes to `registerSW`.
 const { registerSWMock } = vi.hoisted(() => ({ registerSWMock: vi.fn() }));
 vi.mock('virtual:pwa-register', () => ({ registerSW: registerSWMock }));
 
@@ -76,10 +74,8 @@ describe('pwaUpdate › initPwaAutoUpdate', () => {
 
   it('does nothing extra when registration is undefined (e.g. dev / unsupported)', () => {
     initPwaAutoUpdate();
-    // Must not throw when there is no registration object.
     expect(() => getOnRegisteredSW()('/sw.js', undefined)).not.toThrow();
     window.dispatchEvent(new Event('online'));
-    // No registration -> no listeners wired, nothing to assert beyond no-throw.
   });
 
   it('swallows update() rejections (offline / mid-install)', async () => {

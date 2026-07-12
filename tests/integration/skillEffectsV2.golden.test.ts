@@ -20,35 +20,6 @@ import {
     type IStatusState,
 } from '../../src/systems/skillEffectsV2';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla skillEffectsV2 (matematyka efektów skilli).
-//
-// Rola (jak levelSystem/lootSystem):
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/skillEffectsV2.json z realnych funkcji.
-//  2. Normalnie → GUARD: asertuje, że commitowany fixture == aktualny output TS.
-//
-// Fixture kopiowany do backendu (grimshade-backend/tests/Golden/fixtures/
-// skillEffectsV2.json), gdzie Pest odtwarza go w PHP → parytet TS↔PHP.
-//
-// FUNKCJE MUTUJĄCE STAN: większość efektów mutuje IStatusState w miejscu. Dla
-// każdego przypadku zapisujemy `before` (klon stanu SPRZED wywołania), `result`
-// (zwrotka) oraz `after` (stan PO mutacji). PHP odtwarza `before`, woła funkcję
-// (stan przez referencję) i asertuje result + zmutowany stan == fixture.
-//
-// FUNKCJE RNG (applyEffects: stun_chance/instant_kill_chance; resolveBasicHit:
-// dodge_buff/crit_buff_next/party-IK; consumeCasterBasicHitMods: crit_next
-// ułamkowy) konsumują Math.random w STAŁEJ kolejności → podmieniamy Math.random
-// na mulberry32(seed) (withSeed) i zapisujemy seed. Backend replay z tym samym
-// seedem (Mulberry32Rng) konsumuje RngInterface identycznie → bit-parity.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/skillEffectsV2.golden.test.ts
-//   cp golden/skillEffectsV2.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// UWAGA PARYTET ALIASINGU: golden-vectory NIE współdzielą tożsamości obiektów
-// (caster nie jest jednocześnie elementem party). PHP tablice są kopiowane przez
-// wartość, więc niezależne obiekty gwarantują ten sam wynik po obu stronach.
-// ============================================================================
 
 const withSeed = <T>(seed: number, fn: () => T): T => {
     const rng = new Mulberry32(seed);
@@ -61,15 +32,12 @@ const withSeed = <T>(seed: number, fn: () => T): T => {
     }
 };
 
-/** Normalizacja przez JSON — usuwa -0 i undefined (wzór lootSystem guard). */
 const j = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
-/** Pełny stan z nadpisaniami — punkt wyjścia dla wektorów. */
 const st = (partial: Partial<IStatusState>): IStatusState => ({ ...newStatusState(), ...partial });
 
 const SEEDS = [1, 2, 3, 7, 13, 42, 99, 777];
 
-// -- parseEffects ------------------------------------------------------------
 
 const PARSE_CASES: Array<string | null> = [
     null,
@@ -95,7 +63,6 @@ const PARSE_CASES: Array<string | null> = [
     'party_as_up:1.5:5000',
 ];
 
-// -- hasEffect / findEffect --------------------------------------------------
 
 const HAS_CASES: Array<{ effect: string; key: string }> = [
     { effect: 'aoe;dot:1000:5', key: 'aoe' },
@@ -109,11 +76,9 @@ const FIND_CASES: Array<{ effect: string; key: string }> = [
     { effect: 'summon:skeleton:3', key: 'summon' },
 ];
 
-// -- isStunned ---------------------------------------------------------------
 
 const IS_STUNNED_CASES = [0, 1, 100, -50];
 
-// -- skillTargetsEnemy -------------------------------------------------------
 
 const TARGETS_ENEMY_CASES: Array<string | null> = [
     null,
@@ -133,7 +98,6 @@ const TARGETS_ENEMY_CASES: Array<string | null> = [
     'party_immortal:4000',
 ];
 
-// -- applyIncomingDamage -----------------------------------------------------
 
 const INCOMING_DMG_CASES: Array<{ immortalMs: number; cannotDieMs: number; targetCurrentHp: number; rawDamage: number }> = [
     { immortalMs: 2000, cannotDieMs: 0, targetCurrentHp: 100, rawDamage: 500 },
@@ -144,7 +108,6 @@ const INCOMING_DMG_CASES: Array<{ immortalMs: number; cannotDieMs: number; targe
     { immortalMs: 0, cannotDieMs: 0, targetCurrentHp: 0, rawDamage: 0 },
 ];
 
-// -- applyManaShieldRedirect -------------------------------------------------
 
 const MANA_SHIELD_CASES: Array<{ manaShieldMs: number | null; currentMp: number; rawDmg: number }> = [
     { manaShieldMs: null, currentMp: 100, rawDmg: 50 },
@@ -156,7 +119,6 @@ const MANA_SHIELD_CASES: Array<{ manaShieldMs: number | null; currentMp: number;
     { manaShieldMs: 5000, currentMp: -20, rawDmg: 50 },
 ];
 
-// -- applyIncomingHeal -------------------------------------------------------
 
 const INCOMING_HEAL_CASES: Array<{ enemyNoHealMs: number; markNoHealMs: number; rawHeal: number }> = [
     { enemyNoHealMs: 5000, markNoHealMs: 0, rawHeal: 100 },
@@ -166,7 +128,6 @@ const INCOMING_HEAL_CASES: Array<{ enemyNoHealMs: number; markNoHealMs: number; 
     { enemyNoHealMs: 5000, markNoHealMs: 6000, rawHeal: 300 },
 ];
 
-// -- tickStatus --------------------------------------------------------------
 
 const tickCase = (state: Partial<IStatusState>, deltaMs: number, targetMaxHp: number) => {
     const s = st(state);
@@ -175,7 +136,6 @@ const tickCase = (state: Partial<IStatusState>, deltaMs: number, targetMaxHp: nu
     return { deltaMs, targetMaxHp, before, result, after: j(s) };
 };
 
-// -- consumeTargetMarkAmp ----------------------------------------------------
 
 const consumeTargetCase = (state: Partial<IStatusState> | null) => {
     const s = state === null ? undefined : st(state);
@@ -184,7 +144,6 @@ const consumeTargetCase = (state: Partial<IStatusState> | null) => {
     return { before, result, after: s === undefined ? null : j(s) };
 };
 
-// -- consumeCasterBasicHitMods -----------------------------------------------
 
 const consumeCasterCase = (state: Partial<IStatusState> | null, seed: number) => {
     const s = state === null ? undefined : st(state);
@@ -193,7 +152,6 @@ const consumeCasterCase = (state: Partial<IStatusState> | null, seed: number) =>
     return { seed, before, result, after: s === undefined ? null : j(s) };
 };
 
-// -- resolveBasicHit ---------------------------------------------------------
 
 const resolveCase = (opts: {
     attacker?: Partial<IStatusState>;
@@ -220,7 +178,6 @@ const resolveCase = (opts: {
     };
 };
 
-// -- applyEffects ------------------------------------------------------------
 
 const applyCase = (opts: {
     effect: string;
@@ -267,7 +224,6 @@ const buildGolden = (): Record<string, unknown> => ({
     system: 'skillEffectsV2',
     note: 'Generowane z src/systems/skillEffectsV2.ts. Funkcje RNG: seed + mulberry32. NIE edytuj ręcznie — regeneruj UPDATE_GOLDEN=1.',
 
-    // Czyste (deterministyczne) --------------------------------------------
     newStatusState: j(newStatusState()),
     parseEffects: PARSE_CASES.map((effect) => ({ effect, result: parseEffects(effect) })),
     hasEffect: HAS_CASES.map(({ effect, key }) => ({
@@ -295,7 +251,6 @@ const buildGolden = (): Record<string, unknown> => ({
         result: applyIncomingHeal(st({ enemyNoHealMs: c.enemyNoHealMs, markNoHealMs: c.markNoHealMs }), c.rawHeal),
     })),
 
-    // tickStatus (mutuje) --------------------------------------------------
     tickStatus: [
         tickCase({ dots: [{ remainingMs: 1000, pctPerSec: 10 }] }, 1000, 100),
         tickCase({ dots: [{ remainingMs: 3000, pctPerSec: 5 }] }, 500, 200),
@@ -318,7 +273,6 @@ const buildGolden = (): Record<string, unknown> => ({
         tickCase({}, 500, 1000),
     ],
 
-    // consumeTargetMarkAmp (mutuje) ----------------------------------------
     consumeTargetMarkAmp: [
         consumeTargetCase(null),
         consumeTargetCase({}),
@@ -330,7 +284,6 @@ const buildGolden = (): Record<string, unknown> => ({
         consumeTargetCase({ markAmp: [{ mult: 9, count: 2, remainingMs: 0 }] }),
     ],
 
-    // consumeCasterBasicHitMods (mutuje + RNG crit_next ułamkowy) ----------
     consumeCasterBasicHitMods: [
         consumeCasterCase(null, 1),
         consumeCasterCase({ critNext: [{ count: 1, mult: 1 }] }, 1),
@@ -348,7 +301,6 @@ const buildGolden = (): Record<string, unknown> => ({
         }, 1),
     ],
 
-    // resolveBasicHit (mutuje + RNG dodge_buff / crit_buff_next / party-IK)
     resolveBasicHit: [
         resolveCase({ attackerClass: 'Knight', baseDmg: 100 }),
         resolveCase({ attackerClass: null, baseDmg: 100 }),
@@ -381,7 +333,6 @@ const buildGolden = (): Record<string, unknown> => ({
         }),
     ],
 
-    // applyEffects (mutuje wiele stanów + RNG stun_chance/instant_kill) ----
     applyEffects: [
         applyCase({ effect: 'aoe' }),
         applyCase({ effect: 'def_pen:50' }),
@@ -468,8 +419,6 @@ describe('skillEffectsV2 golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current skillEffectsV2 output', () => {
         expect(existsSync(outPath), 'brak golden/skillEffectsV2.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON — usuwa -0 (np. applyIncomingHeal na heal 0),
-        // które i tak serializuje się jako 0. Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

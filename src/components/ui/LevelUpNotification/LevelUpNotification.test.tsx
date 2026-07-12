@@ -4,11 +4,6 @@ import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import LevelUpNotification from './LevelUpNotification';
 import { useLevelUpStore } from '../../../stores/levelUpStore';
 
-/**
- * LevelUpNotification — reads from useLevelUpStore. Renders nothing when
- * `event` is null. Two variants: subtle (in-combat) and epic (out of combat).
- * Auto-dismisses via timer; click dismisses too.
- */
 
 beforeEach(() => {
     useLevelUpStore.setState({ event: null });
@@ -40,7 +35,6 @@ describe('LevelUpNotification — visibility', () => {
         expect(screen.getByText('LEVEL UP!')).toBeTruthy();
         expect(screen.getByText('10')).toBeTruthy();
         expect(screen.getByText(/\+5 punktów statystyk/)).toBeTruthy();
-        // Epic variant marker.
         expect(document.querySelector('.lvlup--epic')).toBeTruthy();
         expect(document.querySelector('.lvlup--subtle')).toBeNull();
     });
@@ -72,7 +66,6 @@ describe('LevelUpNotification — visibility', () => {
             },
         });
         render(<LevelUpNotification />);
-        // Anchor on the milestone-detail copy — it only appears when gold+milestones present.
         expect(screen.getByText(/milestone lvl 25/)).toBeTruthy();
     });
 });
@@ -119,7 +112,6 @@ describe('LevelUpNotification — dismissal', () => {
             },
         });
         render(<LevelUpNotification />);
-        // 3.1s should NOT yet have dismissed the epic variant.
         act(() => {
             vi.advanceTimersByTime(3100);
         });

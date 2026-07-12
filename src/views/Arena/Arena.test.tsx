@@ -2,9 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-// Backend-mode glue (opt-in). Mocked so the season-claim branch can be
-// exercised without a real backend / axios client. Default off -> the old
-// client `claimSeasonRewards` path is unchanged.
 const backendHoisted = vi.hoisted(() => ({
     claimArenaSeasonMock: vi.fn(),
     syncFromBackendMock: vi.fn(),
@@ -21,25 +18,6 @@ vi.mock('../../api/backend/syncState', () => ({
     syncFromBackend: backendHoisted.syncFromBackendMock,
 }));
 
-/**
- * Arena view — PvP leaderboard hub (~560 lines). The bulk of the file
- * draws a 100-row leaderboard + a defense snapshot card + three modal
- * popups (rewards / log / fight). We're not testing the season /
- * promotion math (that's covered by `arenaSystem.test.ts`) — only the
- * render contract:
- *
- *   - Smoke render once a character + currentArena are seeded.
- *   - Spinner fallback when character is missing.
- *   - Spinner fallback when currentArena is missing (post-character).
- *   - League strip, defense snapshot card, leaderboard list, my-position
- *     summary all mount.
- *   - Rewards / Log / Fight modal buttons open + close the popups.
- *   - Disabled "Walcz" button when daily attempts are exhausted.
- *
- * We mock framer-motion (Arena does NOT import it directly, but the
- * Spinner / TinyIcon dependencies might) and stub characterApi so the
- * "inject other alts" effect doesn't fire a real Supabase call.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -55,9 +33,6 @@ vi.mock('framer-motion', async () => {
     };
 });
 
-// characterApi.getCharacters is called inside an effect to inject the
-// player's alts into the bot roster. We stub it as a no-op so the test
-// doesn't try to reach Supabase.
 vi.mock('../../api/v1/characterApi', () => ({
     characterApi: {
         getCharacters: vi.fn().mockResolvedValue([]),
@@ -127,8 +102,6 @@ const makeMe = (id: string, lp: number): IArenaCompetitor => ({
 });
 
 const makeArena = (myLp: number = 500): IArenaInstance => {
-    // Player + 4 bots flanking the player so the ±2 attackable window has
-    // candidates. Higher LP = lower rank in `rankCompetitors`.
     const competitors: IArenaCompetitor[] = [
         makeBot(1, myLp + 200),
         makeBot(2, myLp + 100),
@@ -157,9 +130,6 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar() });
     useArenaStore.setState({
         currentArena: makeArena(500),
-        // Must match getSeasonStart() exactly so the mount-time
-        // `refreshIfNeeded` call short-circuits — otherwise the store
-        // rebuilds the arena with 100 bots and our 5-row seed is lost.
         seasonStartIso: getSeasonStart().toISOString(),
         dailyAttempts: { day: new Date().toISOString().slice(0, 10), count: 0 },
         defenseSnapshot: {
@@ -188,16 +158,11 @@ describe('Arena — smoke', () => {
     it('shows a spinner inside .arena when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderArena();
-        // Spec: `if (!character) return <div className="arena"><Spinner /></div>`.
-        // The .arena root still mounts, but the league strip does not.
         expect(container.querySelector('.arena')).not.toBeNull();
         expect(container.querySelector('.arena__league-strip')).toBeNull();
     });
 
     it('shows the "Inicjalizuję arenę…" spinner when currentArena is null', () => {
-        // Stub `refreshIfNeeded` so the mount effect can't rebuild the
-        // arena from scratch — we want to assert the null-state spinner
-        // path, which would otherwise be a single-tick race.
         useArenaStore.setState({
             currentArena: null,
             refreshIfNeeded: () => {},
@@ -211,7 +176,6 @@ describe('Arena — chrome renders', () => {
     it('renders the league strip with the arena points chip', () => {
         const { container } = renderArena();
         expect(container.querySelector('.arena__league-strip')).not.toBeNull();
-        // 1234 AP is seeded in inventoryStore — verify it surfaces.
         expect(container.querySelector('.arena__league-ap')?.textContent).toMatch(/1.234|1234/);
     });
 
@@ -220,7 +184,6 @@ describe('Arena — chrome renders', () => {
         expect(container.querySelector('.arena__defense')).not.toBeNull();
         expect(container.querySelector('.arena__defense-avatar')).not.toBeNull();
         expect(container.querySelector('.arena__defense-fight')).not.toBeNull();
-        // Stats line contains the snapshot values we seeded.
         const stats = container.querySelector('.arena__defense-stats')?.textContent ?? '';
         expect(stats).toMatch(/HP|ATK|DEF/);
     });
@@ -228,7 +191,6 @@ describe('Arena — chrome renders', () => {
     it('renders the leaderboard list with one .arena__row per competitor', () => {
         const { container } = renderArena();
         const rows = container.querySelectorAll('.arena__row');
-        // 5 competitors seeded.
         expect(rows.length).toBe(5);
     });
 
@@ -253,7 +215,6 @@ describe('Arena — modals open and close', () => {
             .find((b) => b.textContent?.includes('Nagrody'));
         expect(rewardsBtn).toBeTruthy();
         fireEvent.click(rewardsBtn!);
-        // Modal mounts and a reward row is rendered.
         expect(container.querySelector('.arena__modal')).not.toBeNull();
         expect(container.querySelector('.arena__reward-row')).not.toBeNull();
     });
@@ -263,7 +224,6 @@ describe('Arena — modals open and close', () => {
         const historyBtn = Array.from(container.querySelectorAll('.arena__action-chip'))
             .find((b) => b.textContent?.includes('Historia'));
         fireEvent.click(historyBtn!);
-        // Empty-state copy lives inside the modal.
         expect(screen.getByText(/Brak walk/i)).toBeTruthy();
     });
 
@@ -271,7 +231,6 @@ describe('Arena — modals open and close', () => {
         const { container } = renderArena();
         const fightBtn = container.querySelector('.arena__defense-fight') as HTMLButtonElement;
         fireEvent.click(fightBtn);
-        // Modal title.
         expect(screen.getByText(/Wybierz przeciwnika/i)).toBeTruthy();
     });
 
@@ -299,13 +258,7 @@ describe('Arena — daily-attempts edge case', () => {
 });
 
 describe('Arena — backend mode season claim', () => {
-    // The claim chip only renders on Mondays with a pending reward. We pin
-    // the clock to a Monday (2026-07-06 is a Monday, UTC getUTCDay() === 1)
-    // and re-align seasonStartIso so the mount-time refreshIfNeeded still
-    // short-circuits instead of rebuilding the arena.
     const seedClaimable = () => {
-        // Fake ONLY Date — leaves setTimeout/setInterval real so waitFor +
-        // the view's rAF centering / countdown tick behave normally.
         vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date('2026-07-06T12:00:00.000Z'));
         useArenaStore.setState({
@@ -334,7 +287,6 @@ describe('Arena — backend mode season claim', () => {
             expect(backendHoisted.claimArenaSeasonMock).toHaveBeenCalledWith('char-1'),
         );
         expect(backendHoisted.syncFromBackendMock).toHaveBeenCalledWith('char-1');
-        // Backend is authoritative — the client claimSeasonRewards is skipped.
         expect(claimSeasonRewards).not.toHaveBeenCalled();
     });
 
@@ -352,12 +304,3 @@ describe('Arena — backend mode season claim', () => {
     });
 });
 
-// TODO: Driving `handleAttack` (the attack-row click) involves the entry
-//       fade overlay + sessionStorage + 1.5s setTimeout chain before
-//       navigation lands. We'd need to advance fake timers + assert
-//       navigate(). Out of scope for smoke — covered by Playwright in
-//       tests/e2e/arena/ once that suite exists.
-// TODO: Rewards-claim path (Monday + pendingRewards present) is a
-//       date-dependent branch — testing it cleanly needs `vi.useFakeTimers`
-//       + a stubbed Date constructor; left for a dedicated unit test on
-//       `claimSeasonRewards` itself in arenaStore.test.ts.

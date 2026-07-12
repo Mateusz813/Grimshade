@@ -1,9 +1,4 @@
-/**
- * Emoji icons for every active skill and weapon skill.
- * Import this map wherever you need to display skill icons.
- */
 export const SKILL_ICONS: Record<string, string> = {
-  // -- Weapon / utility skills ------------------------------------------------
   sword_fighting: 'crossed-swords',
   distance_fighting: 'bow-and-arrow',
   dagger_fighting: 'dagger',
@@ -11,7 +6,6 @@ export const SKILL_ICONS: Record<string, string> = {
   bard_level: 'musical-note',
   shielding: 'shield',
 
-  // -- Knight -----------------------------------------------------------------
   shield_bash: ':crossed-swords::shield:',
   battle_cry: ':loudspeaker::red-circle:',
   whirlwind: ':cyclone::crossed-swords:',
@@ -28,7 +22,6 @@ export const SKILL_ICONS: Record<string, string> = {
   god_slash: ':crown::crossed-swords:',
   absolute_cleave: ':collision::glowing-star:',
 
-  // -- Mage -------------------------------------------------------------------
   fireball: 'fire',
   ice_lance: 'snowflake',
   thunder_strike: 'high-voltage',
@@ -45,7 +38,6 @@ export const SKILL_ICONS: Record<string, string> = {
   god_nova: ':crown::purple-heart:',
   big_bang: ':collision::milky-way:',
 
-  // -- Cleric -----------------------------------------------------------------
   holy_strike: ':high-voltage::latin-cross:',
   heal: 'green-heart',
   divine_shield: ':shield::sparkles:',
@@ -62,7 +54,6 @@ export const SKILL_ICONS: Record<string, string> = {
   divine_pillar: ':latin-cross::gem-stone:',
   holy_apocalypse: ':latin-cross::glowing-star:',
 
-  // -- Archer -----------------------------------------------------------------
   precise_shot: ':bow-and-arrow::bullseye:',
   poison_arrow: ':bow-and-arrow::skull-and-crossbones:',
   eagle_eye: ':eye::bullseye:',
@@ -79,7 +70,6 @@ export const SKILL_ICONS: Record<string, string> = {
   destiny_shot: ':bow-and-arrow::crystal-ball:',
   universe_arrow: ':bow-and-arrow::milky-way:',
 
-  // -- Rogue ------------------------------------------------------------------
   backstab: ':dagger::dashing-away:',
   poison_blade: ':dagger::skull-and-crossbones:',
   evasion: ':dashing-away::bust-in-silhouette:',
@@ -96,7 +86,6 @@ export const SKILL_ICONS: Record<string, string> = {
   god_assassin: ':crown::dagger:',
   absolute_death: ':skull::glowing-star:',
 
-  // -- Necromancer ------------------------------------------------------------
   life_drain: 'heart-on-fire',
   summon_skeleton: ':skull::bone:',
   death_curse: ':skull-and-crossbones::purple-heart:',
@@ -113,7 +102,6 @@ export const SKILL_ICONS: Record<string, string> = {
   lich_transformation: ':skull::crown:',
   death_apocalypse: ':skull-and-crossbones::glowing-star:',
 
-  // -- Bard -------------------------------------------------------------------
   battle_hymn: ':musical-note::crossed-swords:',
   lullaby: ':musical-note::zzz:',
   ballad_of_heroes: ':musical-note::superhero:',
@@ -131,14 +119,6 @@ export const SKILL_ICONS: Record<string, string> = {
   universe_song: ':musical-note::glowing-star:',
 };
 
-/**
- * Get the icon for a skill by its id.
- *
- * Now resolves to the per-class artwork at
- * `assets/images/spells/{class}-{index}.png` when available — falls back
- * to the historic emoji map (and finally a generic sparkle) so legacy
- * call sites don't break while the artwork registry is being populated.
- */
 import skillsData from './skills.json';
 import { getSpellImage } from '../systems/spriteAssets';
 

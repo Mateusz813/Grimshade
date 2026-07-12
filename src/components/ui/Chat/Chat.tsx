@@ -19,7 +19,6 @@ import GameIcon from '../../atoms/Twemoji/GameIcon';
 import Icon from '../../atoms/Icon/Icon';
 import './Chat.scss';
 
-// -- Types ---------------------------------------------------------------------
 
 const CLASS_ICONS: Record<string, string> = {
     Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
@@ -33,40 +32,15 @@ interface IChatProps {
     characterLevel: number;
     title?: string;
     maxHeight?: number;
-    /**
-     * When true the message row context menu is disabled (used for PM tabs
-     * and other places where the extra actions don't make sense).
-     */
     disableContextMenu?: boolean;
-    /**
-     * Optional override for "Wyślij prywatną wiadomość". When provided it's
-     * called with the target character name instead of navigating away.
-     * GlobalChat passes this to open a new PM tab in place.
-     */
     onOpenPm?: (targetName: string) => void;
-    /**
-     * Fired every time a NEW message arrives via subscription/polling (not
-     * historical messages loaded on mount, and not the player's own sends).
-     * Used by multi-tab hosts to increment unread counters.
-     */
     onMessageReceived?: (msg: IMessage) => void;
-    /**
-     * When false, the chat is kept mounted but hidden via CSS. Multi-tab
-     * containers use this to keep every tab's state (scroll, input, live
-     * subscriptions) alive while only displaying the selected one.
-     */
     active?: boolean;
-    /** When true the chat stretches to fill its parent's available height. */
     fillHeight?: boolean;
-    /** Maximum historical messages to fetch on mount. Defaults to
-     *  chatApi's own default (100). Guild chat overrides to 500. */
     messageCap?: number;
 }
 
 interface IContextMenuState {
-    // Viewport coordinates — the menu is rendered through a portal at
-    // document.body with position:fixed so it can't be clipped by the scroll
-    // container around the message list.
     x: number;
     y: number;
     targetName: string;
@@ -74,7 +48,6 @@ interface IContextMenuState {
     targetLevel: number | null;
 }
 
-// -- Helpers -------------------------------------------------------------------
 
 const formatTime = (iso: string): string => {
     const d = new Date(iso);
@@ -86,7 +59,6 @@ const getClassIcon = (cls?: string | null): string => {
     return CLASS_ICONS[cls] ?? 'bust-in-silhouette';
 };
 
-// -- Component -----------------------------------------------------------------
 
 const Chat = ({
     channel,
@@ -107,21 +79,7 @@ const Chat = ({
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    // 2026-05-19 v3 spec ("Te expandy jak napis Gildia Druzyna itp
-    // nie powinny byc klikalne to nie powinien byc expand nigdy na
-    // zadnym widoku"): collapse / expand toggle removed entirely.
-    // The chat header is now a static label so accidental taps on a
-    // narrow phone don't fold the log out from under the player.
     const [menu, setMenu] = useState<IContextMenuState | null>(null);
-    // 2026-05-18 v12 spec ("Samo mi caly czas scrolluje na sam dol
-    // widoku gildi tam gdzie jest chat, napraw to"): scroll the
-    // chat's own `.chat__messages` container directly rather than
-    // calling `bottomRef.scrollIntoView` on an anchor div. The
-    // previous approach climbed every scrollable ancestor, so when
-    // the chat sat inside the long guild detail page the whole page
-    // lurched to the bottom on every new message. A direct
-    // `scrollTop = scrollHeight` on the container scrolls only the
-    // chat, leaving the page anchored where the player left it.
     const messagesRef = useRef<HTMLDivElement>(null);
 
     const isFriend = useFriendsStore((s) => s.isFriend);
@@ -131,11 +89,6 @@ const Chat = ({
     const blockUser = useFriendsStore((s) => s.blockUser);
     const unblockUser = useFriendsStore((s) => s.unblockUser);
 
-    // 2026-05-18 spec ("przed naszym nickiem wszedzie dodaje sie tag
-    // gildii w nawiasach [XXX] Krasek"): for the LOCAL player pull the
-    // tag straight from their own guild; for OTHER message authors look
-    // up the cached name->tag map, refilling it whenever the visible
-    // message list changes.
     const ownGuildTag = useGuildStore((s) => s.guild?.tag ?? '');
     const tagsByName = useGuildTagsStore((s) => s.tagsByName);
     const resolveTagsByName = useGuildTagsStore((s) => s.resolveTagsByName);
@@ -149,16 +102,12 @@ const Chat = ({
         if (names.length > 0) void resolveTagsByName(names);
     }, [messages, characterName, resolveTagsByName]);
 
-    // Load initial messages
     useEffect(() => {
         chatApi.getMessages(channel, messageCap)
             .then(setMessages)
             .catch(() => setError('Błąd ładowania wiadomości.'));
     }, [channel, messageCap]);
 
-    // Subscribe to Realtime + poll as a fallback in case the `messages` table
-    // isn't in the supabase_realtime publication on this instance. Both paths
-    // dedupe by id, so having them run together is safe.
     useEffect(() => {
         const notifyIfNew = (msg: IMessage) => {
             if (msg.character_name === characterName) return;
@@ -186,18 +135,11 @@ const Chat = ({
                         return merged;
                     });
                 })
-                .catch(() => { /* offline – skip tick */ });
+                .catch(() => { });
         }, 4000);
         return () => { unsub(); clearInterval(pollId); };
     }, [channel, characterName, onMessageReceived]);
 
-    // Auto-scroll to bottom — only when active so hidden tabs don't thrash
-    // scrollTop on every background message. We update the chat's own
-    // scroll position rather than calling `bottomRef.scrollIntoView`,
-    // which would also tug every scrollable ancestor (including the
-    // host page) toward the bottom — that was the bug in the guild
-    // detail view where the whole page kept lurching to the chat
-    // every time a new message arrived (2026-05-18 v12).
     useEffect(() => {
         if (!active) return;
         const el = messagesRef.current;
@@ -205,7 +147,6 @@ const Chat = ({
         el.scrollTop = el.scrollHeight;
     }, [messages, active]);
 
-    // Close context menu on outside click / Escape
     useEffect(() => {
         if (!menu) return;
         const onClick = (e: MouseEvent) => {
@@ -230,10 +171,6 @@ const Chat = ({
         setSending(true);
         setError(null);
         try {
-            // Backend-authoritative branch (opt-in). The server inserts the row
-            // and returns it (same IMessage shape) so we can push it
-            // optimistically. The Realtime subscribe + getMessages READS stay on
-            // Supabase — only the WRITE is gated behind the backend here.
             if (isBackendMode()) {
                 const activeCharId = useCharacterStore.getState().character?.id;
                 if (activeCharId) {
@@ -280,9 +217,6 @@ const Chat = ({
         if (disableContextMenu) return;
         if (msg.character_name === characterName) return;
         e.preventDefault();
-        // Anchor to the clicked target — coordinates are viewport-relative and
-        // consumed by the portal-rendered menu (position:fixed), so the menu
-        // never gets clipped by the message list's scroll container.
         const clientX = 'touches' in e
             ? (e.touches[0]?.clientX ?? 40)
             : e.clientX;
@@ -309,7 +243,6 @@ const Chat = ({
         navigate(`/chat?pm=${encodeURIComponent(target)}`);
     };
 
-    // -- Render ----------------------------------------------------------------
 
     const rootStyle: React.CSSProperties = {};
     if (!active) rootStyle.display = 'none';
@@ -362,9 +295,6 @@ const Chat = ({
                                     >
                                         {friend && !isMe && <span className="chat__msg-name-star"><GameIcon name="star" /></span>}
                                         {(() => {
-                                            // Prefix guild tag if the sender belongs to one.
-                                            // For me, read from my own guild store; for others
-                                            // use the cached lookup populated by the effect.
                                             const tag = isMe
                                                 ? (ownGuildTag ? `[${ownGuildTag}]` : '')
                                                 : (tagsByName[msg.character_name]?.tag ?? '');
@@ -372,24 +302,8 @@ const Chat = ({
                                         })()}
                                     </button>
                                     {(() => {
-                                        // 2026-05-19 v14 spec ("Chat
-                                        // system brak zdjecia
-                                        // przedmiotu oraz dodawaj
-                                        // odpowiednie tlo z rarity"):
-                                        // structured system-channel
-                                        // payloads render with an
-                                        // ItemIcon (rarity-tinted
-                                        // frame + upgrade glow);
-                                        // anything else falls back
-                                        // to plain text.
                                         const sys = parseSystemMessage(msg.content);
                                         if (sys && sys.type === 'skillUpgrade') {
-                                            // 2026-05-20 spec: render skill
-                                            // upgrades with the spell icon
-                                            // resolved at display time (the
-                                            // icon URL is not baked into the
-                                            // payload because Vite-hashed
-                                            // URLs change per build).
                                             const icon = getSkillIcon(sys.skillId);
                                             return (
                                                 <span className="chat__msg-text chat__msg-text--system chat__msg-text--skill">
@@ -409,18 +323,6 @@ const Chat = ({
                                         if (sys && sys.type === 'upgrade') {
                                             const info = getItemDisplayInfo(sys.itemId);
                                             const icon = info?.icon ?? 'crossed-swords';
-                                            // 2026-05-19 v15 spec ("zrob
-                                            // tak zeby ten tekst sie
-                                            // zawijal w dol a nie tak ze
-                                            // nie da sie tego
-                                            // przeczytac"): keep the
-                                            // text as a SINGLE inline
-                                            // block (not per-word flex
-                                            // children) so it wraps
-                                            // line-by-line instead of
-                                            // splitting each word into
-                                            // a vertical character
-                                            // stack on narrow popups.
                                             return (
                                                 <span className={`chat__msg-text chat__msg-text--system chat__msg-text--rarity-${sys.rarity}`}>
                                                     <span className="chat__msg-sys-icon">

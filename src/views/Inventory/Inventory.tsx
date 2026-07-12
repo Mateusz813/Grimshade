@@ -1,4 +1,5 @@
 import { memo, useRef, useState, useMemo, useCallback, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useInventoryStore, MAX_DEPOSIT_SIZE } from '../../stores/inventoryStore';
 import { useCharacterStore } from '../../stores/characterStore';
@@ -61,9 +62,7 @@ import skillsRaw from '../../data/skills.json';
 import { getItemFile, getStoneImage, getSpellChestImage, getPotionImage, getElixirImage } from '../../systems/spriteAssets';
 import { resolveSkillRecastMs } from '../../systems/combat';
 import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combatEngine';
-import { useCombatStore } from '../../stores/combatStore';
 import { statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
-// TCharacterClass used for class-based filtering
 import type { Rarity } from '../../systems/lootSystem';
 import { getSpellChestIcon, getSpellChestDisplayName } from '../../systems/lootSystem';
 import itemsRaw from '../../data/items.json';
@@ -92,7 +91,6 @@ import './Inventory.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-// -- Stat display names (Polish) ----------------------------------------------
 const STAT_DISPLAY_NAMES: Record<string, string> = {
   hp: 'HP',
   mp: 'MP',
@@ -105,15 +103,9 @@ const STAT_DISPLAY_NAMES: Record<string, string> = {
   dmg_max: 'DMG Max',
 };
 
-// -- Upgrade indicator logic ------------------------------------------------
 
 type UpgradeIndicator = 'upgrade' | 'equal' | 'maybe' | null;
 
-/**
- * Returns the slot an inventory item belongs to (checking both base items and generated items).
- * Local helper that accepts an IInventoryItem directly (vs. the exported `getItemSlotSafe`
- * from itemSystem which takes an itemId + items list).
- */
 const getInventoryItemSlot = (item: IInventoryItem): EquipmentSlot | null => {
   const base = findBaseItem(item.itemId, ALL_ITEMS);
   if (base) return base.slot;
@@ -122,14 +114,6 @@ const getInventoryItemSlot = (item: IInventoryItem): EquipmentSlot | null => {
   return null;
 };
 
-// -- Backend-mode helper (opt-in via isBackendMode) --------------------------
-/**
- * Reads an item's current upgrade level from the live inventory store (bag or
- * equipped), matched by uuid. Used ONLY in backend mode: after `syncFromBackend`
- * hydrates the authoritative server state we compare the new level against the
- * pre-upgrade level to decide whether the server-resolved enhancement succeeded
- * (level rose) or failed (unchanged). Returns null when the item can't be found.
- */
 const readItemUpgradeLevel = (uuid: string): number | null => {
   const inv = useInventoryStore.getState();
   const bagItem = inv.bag.find((i) => i.uuid === uuid);
@@ -140,13 +124,6 @@ const readItemUpgradeLevel = (uuid: string): number | null => {
   return equipped ? equipped.upgradeLevel ?? 0 : null;
 };
 
-/**
- * Determines the upgrade indicator badge for a backpack item.
- * - 'upgrade': item is better (higher level or rarity) than equipped, or slot is empty
- * - 'equal': same level and rarity as equipped
- * - 'maybe': equippable by class but not clearly better
- * - null: not equippable by this class (no indicator shown)
- */
 const getUpgradeIndicator = (
   item: IInventoryItem,
   characterClass: string,
@@ -155,14 +132,11 @@ const getUpgradeIndicator = (
   const itemSlot = getInventoryItemSlot(item);
   if (!itemSlot) return null;
 
-  // Check if the character class can equip this item
   if (!canClassEquip(item.itemId, itemSlot, characterClass, ALL_ITEMS)) return null;
 
-  // For ring items, compare against both ring slots and pick the best comparison
   const slotsToCompare: EquipmentSlot[] =
     (itemSlot === 'ring1' || itemSlot === 'ring2') ? ['ring1', 'ring2'] : [itemSlot];
 
-  // For Rogue daggers, also compare against offHand
   if (characterClass === 'Rogue') {
     const iType = getItemType(item.itemId, ALL_ITEMS);
     if (iType === 'dagger' && itemSlot === 'mainHand' && !slotsToCompare.includes('offHand')) {
@@ -170,12 +144,9 @@ const getUpgradeIndicator = (
     }
   }
 
-  // Check if any of the comparable slots is empty
   const hasEmptySlot = slotsToCompare.some((s) => !equipment[s]);
   if (hasEmptySlot) return 'upgrade';
 
-  // Score an item by summing weighted stat values, so comparisons reflect
-  // actual power rather than just itemLevel/rarity tier.
   const scoreItem = (it: IInventoryItem): number => {
     const s = getItemStatValues(it);
     return (
@@ -206,7 +177,6 @@ const getUpgradeIndicator = (
     if (Math.abs(itemScore - equippedScore) <= 0.01) {
       bestResult = 'equal';
     }
-    // If itemScore < equippedScore in this slot, keep looking (ring1 vs ring2).
   }
 
   return bestResult;
@@ -229,9 +199,6 @@ const hexToRgbAvatar = (hex: string): string => {
 const RARITY_FILTERS: RarityFilter[] = ['all', 'common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 const RARITY_SELECT_FILTERS: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 
-// -- Slot filter ------------------------------------------------------------
-// "all" = no slot filter, otherwise filter by specific equipment slot.
-// Spec 4: extra filter targets for stackable items in the bag.
 type TSlotFilter =
     | 'all'
     | 'weapons' | 'armor' | 'jewelry'
@@ -240,10 +207,6 @@ type TSlotFilter =
 
 interface ISlotFilterDef { id: TSlotFilter; label: string; icon: string }
 
-// Spec 3: slot-filter row uses the in-app PNG icons (light variants are the
-// most universal-looking) instead of the legacy emoji ladder. The "icon"
-// field accepts either a URL (rendered as <img>) or an emoji glyph
-// (rendered as text) — see the JSX below for the branch.
 const ICON_HELMET   = getItemFile('helmet-lekki') ?? 'rescue-worker-s-helmet';
 const ICON_ARMOR    = getItemFile('armor-lekki') ?? 'safety-vest';
 const ICON_PANTS    = getItemFile('legs-lekki') ?? 'jeans';
@@ -256,13 +219,6 @@ const ICON_RING     = getItemFile('ring') ?? 'ring';
 const ICON_NECK     = getItemFile('nackle') ?? 'prayer-beads';
 const ICON_EARRINGS = getItemFile('earrings') ?? 'sparkles';
 
-// 2026-05-08: per spec ("Sortowanie po zbroi nie dziala, filtruje tez
-// helmy itp") the broad `armor` group filter that bundled helmet +
-// chest + pants + gloves + shoulders + boots is GONE — it shadowed
-// the per-slot Napierśnik filter via dedup so "Zbroja" was actually
-// "any armor piece". Now `id: 'armor'` is exclusively the chest-slot
-// filter labelled "Zbroja". The remaining slot pills (Hełm, Spodnie,
-// Buty, etc.) handle the other armor types one-for-one.
 const SLOT_FILTERS: ISlotFilterDef[] = [
     { id: 'all',        label: 'Wszystkie',    icon: 'backpack' },
     { id: 'weapons',    label: 'Bronie',       icon: ICON_SWORD },
@@ -278,20 +234,11 @@ const SLOT_FILTERS: ISlotFilterDef[] = [
     { id: 'necklace',   label: 'Naszyjnik',    icon: ICON_NECK },
     { id: 'earrings',   label: 'Kolczyki',     icon: ICON_EARRINGS },
     { id: 'ring1',      label: 'Pierścienie',  icon: ICON_RING },
-    // Spec 4: stackable filters for items now living in the bag grid.
-    // 2026-05: icons swapped from emoji glyphs to the player's PNG art so
-    // these three pills match the gear-filter pills next to them. Generic
-    // tier picks (universal +50 HP potion / level-15 chest / generic
-    // stone-7) keep them representative without committing to a specific
-    // sub-tier when the filter spans many items.
     { id: 'potions',    label: 'Potiony',      icon: getPotionImage(null) ?? 'test-tube' },
     { id: 'chests',     label: 'Spell Chesty', icon: getSpellChestImage(1000) ?? 'package' },
     { id: 'stones',     label: 'Kamienie',     icon: getStoneImage(null) ?? 'gem-stone' },
 ];
 
-// De-duplicated by id to avoid duplicate keys (the "armor" id overlaps between
-// the coarse "armor" group and the specific chest-slot entry). The group
-// wins because it comes first.
 const SLOT_FILTER_BUTTONS: ISlotFilterDef[] = (() => {
     const seen = new Set<string>();
     return SLOT_FILTERS.filter((f) => {
@@ -301,12 +248,8 @@ const SLOT_FILTER_BUTTONS: ISlotFilterDef[] = (() => {
     });
 })();
 
-// Postać-spec item 14 + later revision: 50 items per page (was 100, was 500).
-// Tighter pages = shorter scroll on mobile + faster filtered re-renders for
-// players carrying near-1000 items.
 const PAGE_SIZE = 50;
 
-// -- Helpers ------------------------------------------------------------------
 
 const getItemDisplayName = (item: IInventoryItem): string => {
   const base = findBaseItem(item.itemId, ALL_ITEMS);
@@ -317,13 +260,10 @@ const getItemDisplayName = (item: IInventoryItem): string => {
 };
 
 const slotEmoji = (itemId: string, slot?: string): string => {
-  // 1) Generated items (gen_xxx) – use display info from itemGenerator
   const genInfo = getItemDisplayInfo(itemId);
   if (genInfo) return genInfo.icon;
-  // 2) Base items from items.json
   const base = findBaseItem(itemId, ALL_ITEMS);
   if (base) return getItemIcon(itemId, base.slot, ALL_ITEMS);
-  // 3) Name-based resolution (starter weapons, etc.)
   return getItemIcon(itemId, slot ?? 'mainHand', ALL_ITEMS);
 };
 
@@ -350,10 +290,8 @@ const getItemStatValues = (item: IInventoryItem): IStatValues => {
   const base = findBaseItem(item.itemId, ALL_ITEMS);
   const upgradeLevel = item.upgradeLevel ?? 0;
   if (base) {
-    // Legacy item: getItemStats already applies the upgrade to base stats only.
     const s = getItemStats(item, base);
     const result = s ? { ...EMPTY_STATS, ...s } : { ...EMPTY_STATS };
-    // Starter weapons store dmg_min/dmg_max in bonuses — treat these as the base stat.
     if (item.bonuses['dmg_min'] !== undefined) {
       result.dmgMin = getUpgradedBaseStat(item.bonuses['dmg_min'] ?? 0, upgradeLevel);
     }
@@ -382,7 +320,6 @@ const getItemStatValues = (item: IInventoryItem): IStatValues => {
   return { ...EMPTY_STATS };
 };
 
-/** Returns the effective damage range for a weapon item, or null if not a weapon. */
 const getWeaponDmgRange = (item: IInventoryItem): { min: number; max: number } | null => {
   const upgradeLevel = item.upgradeLevel ?? 0;
   const rawMin = item.bonuses['dmg_min'];
@@ -394,11 +331,6 @@ const getWeaponDmgRange = (item: IInventoryItem): { min: number; max: number } |
   };
 };
 
-// -- Memoized bag tile --------------------------------------------------------
-// Point 3: Each bag tile does non-trivial work (icon lookup, dmg range calc,
-// upgrade indicator). With 3500 items, re-running that on every parent render
-// (e.g. opening the DetailPanel) made the slide-up animation stutter. Wrapping
-// in `memo` + stable prop identity keeps the grid still during panel opens.
 interface IBagTileProps {
   item: IInventoryItem;
   isChecked: boolean;
@@ -459,7 +391,6 @@ const STAT_LABELS: Record<keyof IStatValues, string> = {
   dmgMax: 'Atak max',
 };
 
-/** For each equipment slot, which stat is considered the "base" stat (shown in header, hidden from the extras grid). */
 const BASE_STAT_BY_SLOT: Partial<Record<EquipmentSlot, keyof IStatValues>> = {
   mainHand: 'attack',
   offHand: 'attack',
@@ -487,7 +418,6 @@ const BASE_STAT_META: Record<keyof IStatValues, { icon: string; label: string; c
   dmgMax:     { icon: 'crossed-swords', label: 'DMG',  color: '#ffc107' },
 };
 
-// Base stats per class (for stat reset calculation)
 const CLASS_BASE_STATS: Record<string, { attack: number; defense: number; max_hp: number; max_mp: number }> = {
   Knight:      { attack: 10, defense: 5,  max_hp: 120, max_mp: 30 },
   Mage:        { attack: 6,  defense: 2,  max_hp: 80,  max_mp: 200 },
@@ -502,10 +432,6 @@ const handleStatReset = () => {
   const char = useCharacterStore.getState().character;
   if (!char) return;
 
-  // Backend-authoritative branch (opt-in). The server recomputes base stats +
-  // stat_points and consumes the stat_reset elixir; resync re-hydrates the
-  // character/inventory stores. Fire-and-forget so this stays synchronously
-  // callable from the elixir-dose loops.
   if (isBackendMode()) {
     void backendApi
       .statReset(char.id, 'stat_reset')
@@ -520,13 +446,11 @@ const handleStatReset = () => {
   const hpPerLevel = BASE_HP_PER_LEVEL[char.class] ?? 4;
   const mpPerLevel = BASE_MP_PER_LEVEL[char.class] ?? 3;
 
-  // Calculate total stat points ever earned (levels 1 -> highest_level)
   const highestLevel = char.highest_level ?? char.level;
   const levelsGained = Math.max(0, highestLevel - 1);
   const pointsPerLevel = statPointsForLevelUp(char.class);
   const totalEarned = levelsGained * pointsPerLevel;
 
-  // Calculate base stats at current level (base + level-up HP/MP gains)
   const levelHpGain = levelsGained * hpPerLevel;
   const levelMpGain = levelsGained * mpPerLevel;
   const resetMaxHp = base.max_hp + levelHpGain;
@@ -545,7 +469,6 @@ const handleStatReset = () => {
   useInventoryStore.getState().useConsumable('stat_reset');
 };
 
-// -- Detail panel ------------------------------------------------------------
 interface IDetailPanelProps {
   item: IInventoryItem;
   isEquipped: boolean;
@@ -564,7 +487,7 @@ const RARITY_STONE_MAP: Record<string, string> = {
 };
 
 const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleStateChange }: IDetailPanelProps) => {
-  const { equipItem, unequipItem, sellItem, removeItem, upgradeItem, updateItemBonuses, gold, spendGold, useStones, addStones, depositItem } = useInventoryStore();
+  const { equipItem, unequipItem, sellItem, removeItem, upgradeItem, updateItemBonuses, gold, spendGold, useStones: spendStones, addStones, depositItem } = useInventoryStore();
   const stones = useInventoryStore((s) => s.stones);
   const depositLength = useInventoryStore((s) => s.deposit.length);
   const character = useCharacterStore((s) => s.character);
@@ -573,17 +496,10 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   const [disassembleResult, setDisassembleResult] = useState<'success' | 'fail' | null>(null);
   const [disassembling, setDisassembling] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(false);
-  // 2026-05 v2 spec: per-action "skip animation" toggles. When checked,
-  // Ulepsz / Zmiana Bonusu resolve INSTANTLY instead of running the
-  // 1.8s / 2s progress-bar animation. Saved per-DetailPanel-instance
-  // (resets when the popup closes — fine for now).
   const [skipEnhanceAnim, setSkipEnhanceAnim] = useState(false);
   const [skipRerollAnim, setSkipRerollAnim] = useState(false);
-  // Spec 15: feedback toast for the "Do depozytu" button — shows brief
-  // success ("Wpłacono!") or failure ("Depozyt pełny") message after click.
   const [depositToast, setDepositToast] = useState<'ok' | 'full' | null>(null);
 
-  // -- Bonus Reroll state ------------------------------------------------------
   const [rerollPhase, setRerollPhase] = useState<'idle' | 'rolling' | 'preview'>('idle');
   const [rerolledBonuses, setRerolledBonuses] = useState<Record<string, number> | null>(null);
 
@@ -593,7 +509,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   const isWeapon = itemSlot === 'mainHand' || itemSlot === 'offHand';
   const weaponDmg = isWeapon ? getWeaponDmgRange(item) : null;
   const stats = base ? getItemStats(item, base) : null;
-  // For generated items, build stats from bonuses
   const genStats = !base && genInfo ? (() => {
     const upgradeLevel = item.upgradeLevel ?? 0;
     const upgradeMult = getEnhancementMultiplier(upgradeLevel);
@@ -617,7 +532,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const equipment = useInventoryStore.getState().equipment;
 
-  // Check if item needs slot selection (rings or Rogue daggers)
   const needsSlotChoice = (() => {
     if (!itemSlot || !character) return false;
     if (itemSlot === 'ring1' || itemSlot === 'ring2') return true;
@@ -633,7 +547,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   const handleEquip = async () => {
     if (!character || !itemSlot) return;
     const targetSlot = getEquipTargetSlot(itemSlot, item.itemId, character.class, equipment, ALL_ITEMS);
-    // Backend-authoritative branch (opt-in). Server equips + we re-hydrate.
     if (isBackendMode()) {
       try {
         await backendApi.equip(character.id, item.uuid, targetSlot);
@@ -690,8 +603,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const handleSell = async () => {
     if (actionInProgress) return;
-    // Backend-authoritative branch (opt-in). Server computes gold + stone
-    // refund; we just re-hydrate the store from the returned state.
     if (isBackendMode() && character) {
       setActionInProgress(true);
       try {
@@ -707,20 +618,14 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     }
     setActionInProgress(true);
     sellItem(item.uuid, sellPrice);
-    // Return stones from enhancement refund
     if (enhanceRefund.stones > 0 && enhanceRefund.stoneType) {
       addStones(enhanceRefund.stoneType, enhanceRefund.stones);
     }
     onClose();
   };
 
-  // Spec 15: send the item straight to the deposit (warehouse) without
-  // having to walk to /deposit. Closes the panel on success; flashes a
-  // "Depozyt pełny" toast for ~1.4s if it failed (deposit is at MAX_DEPOSIT_SIZE).
   const handleDeposit = async () => {
     if (actionInProgress) return;
-    // Backend-authoritative branch (opt-in). Server moves the item into the
-    // warehouse; a rejection (e.g. deposit full) surfaces as a caught error.
     if (isBackendMode() && character) {
       setActionInProgress(true);
       try {
@@ -754,9 +659,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const handleDisassemble = () => {
     if (actionInProgress || disassembling) return;
-    // Backend-authoritative branch (opt-in). Server rolls the stone drop and
-    // removes the item; we mirror the same animation shell + close flow and
-    // resync so the bag/stones re-hydrate from the server result.
     if (isBackendMode() && character) {
       setActionInProgress(true);
       setDisassembling(true);
@@ -785,7 +687,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     setDisassembleResult(null);
     onDisassembleStateChange?.(true);
 
-    // After progress bar animation (1.5s), determine result
     setTimeout(() => {
       const gotStone = Math.random() < 0.20;
       removeItem(item.uuid);
@@ -797,7 +698,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
       }
       setDisassembling(false);
 
-      // Close panel after 2.5s showing the result
       setTimeout(() => {
         setDisassembleResult(null);
         onDisassembleStateChange?.(false);
@@ -806,7 +706,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     }, 1500);
   };
 
-  // -- Bonus Reroll logic ----------------------------------------------------
   const rerollStoneType = RARITY_STONE_MAP[item.rarity] ?? 'common_stone';
   const rerollStoneName = STONE_NAMES[rerollStoneType] ?? rerollStoneType;
   const rerollStoneCount = stones[rerollStoneType] ?? 0;
@@ -816,7 +715,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     && rerollStoneCount >= REROLL_STONE_COST
     && rerollPhase === 'idle';
 
-  // Determine slot for this item
   const rerollSlot: EquipmentSlot | null = (() => {
     if (equippedSlot) return equippedSlot;
     const base = findBaseItem(item.itemId, ALL_ITEMS);
@@ -827,16 +725,11 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
   const baseKeys = rerollSlot ? getBaseStatKeysForSlot(rerollSlot) : [];
 
-  // Get only the random bonus keys (not base stats)
   const getRandomBonusKeys = (bonuses: Record<string, number>) =>
     Object.keys(bonuses).filter((k) => !baseKeys.includes(k));
 
   const handleStartReroll = () => {
     if (!rerollSlot) return;
-    // Backend-authoritative branch (opt-in). The server reroll is ATOMIC:
-    // one call debits the stones AND commits the new bonuses, so we skip the
-    // client preview/accept two-step entirely and just reroll + resync in
-    // place. The "rolling" phase is shown briefly for continuity.
     if (isBackendMode() && character) {
       setRerollPhase('rolling');
       void (async () => {
@@ -853,14 +746,12 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     }
     const currentStones = useInventoryStore.getState().stones[rerollStoneType] ?? 0;
     if (currentStones < REROLL_STONE_COST) return;
-    if (!useStones(rerollStoneType, REROLL_STONE_COST)) return;
+    if (!spendStones(rerollStoneType, REROLL_STONE_COST)) return;
     const finishReroll = () => {
       const newBonuses = rerollItemBonuses(item, rerollSlot);
       setRerolledBonuses(newBonuses);
       setRerollPhase('preview');
     };
-    // Spec 3 (2026-05 v2): skip the 2s rolling animation when the
-    // checkbox is on and jump straight to the preview phase.
     if (skipRerollAnim) {
       setRerollPhase('preview');
       finishReroll();
@@ -871,8 +762,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   };
 
   const handleAcceptReroll = () => {
-    // Backend mode never reaches the preview/accept step (the atomic reroll
-    // already committed in handleStartReroll); just reset the phase defensively.
     if (isBackendMode() && character) {
       setRerollPhase('idle');
       setRerolledBonuses(null);
@@ -889,10 +778,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     setRerolledBonuses(null);
   };
 
-  // Spec 12: pick the currently-equipped item to compare the clicked item
-  // against. For rings + Rogue dual-wield daggers we pick the FIRST relevant
-  // slot's occupant (ring1 / mainHand) as a sensible default; the player can
-  // see at-a-glance what they'd be swapping out.
   const compareSlot: EquipmentSlot | null = (() => {
     if (!itemSlot || isEquipped) return null;
     if (itemSlot === 'ring1' || itemSlot === 'ring2') {
@@ -924,9 +809,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           onClick={() => { if (!disassembling && !disassembleResult) onClose(); }}
         ><Icon name="x" /></button>
 
-        {/* Spec 12: when an equipped item exists for the same slot, the panel
-            splits into two columns — NEW (left, the clicked item) vs
-            EQUIPPED (right). Body markup below stays in the LEFT column. */}
         <div className="inventory__detail-cols">
           <div className="inventory__detail-col inventory__detail-col--new">
             {equippedToCompare && <div className="inventory__detail-col-tag">Nowy</div>}
@@ -944,7 +826,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               {getItemDisplayName(item)}
             </h2>
             {(() => {
-              // Show base stat next to item name based on slot
               if (weaponDmg) {
                 return (
                   <span className="inventory__detail-dmg-range" style={{ color: '#ffc107' }}>
@@ -982,7 +863,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
         </div>
 
         {displayStats && (() => {
-          // Base stat already displayed in header – filter it out here
           const baseKey = itemSlot ? BASE_STAT_BY_SLOT[itemSlot] ?? null : null;
           const isWeaponSlot = itemSlot === 'mainHand' || itemSlot === 'offHand';
           const skipKeys = new Set<keyof IStatValues>();
@@ -1019,7 +899,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           );
         })()}
 
-        {/* -- Item comparison with equipped item ------------------------ */}
         {!isEquipped && itemSlot && (() => {
           const resolvedSlots: EquipmentSlot[] = (() => {
             if (itemSlot === 'ring1' || itemSlot === 'ring2') return ['ring1', 'ring2'] as EquipmentSlot[];
@@ -1056,10 +935,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                     </div>
                   )}
                   <div className="inventory__comparison-grid">
-                    {/* Spec 4 (2026-05 v2): explicit header row + raw values
-                        in the Założony / Nowy columns (no +/- prefix).
-                        Porównanie column keeps the sign so the change
-                        direction reads at a glance. */}
                     <div className="inventory__comparison-row inventory__comparison-row--head">
                       <span className="inventory__comparison-stat-name">&nbsp;</span>
                       <span className="inventory__comparison-old">Założony</span>
@@ -1100,7 +975,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           )}
         </div>
 
-        {/* Enhancement section */}
         {(base || genInfo) && (() => {
           const currentLevel = item.upgradeLevel ?? 0;
           const nextLevel = currentLevel + 1;
@@ -1113,9 +987,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
 
           const handleEnhance = async () => {
             if (!canEnhance) return;
-            // Backend-authoritative branch (opt-in). Server rolls the upgrade
-            // and debits gold/stones; after sync we read the item's level back
-            // to drive the success/fail glow (backend is the source of truth).
             if (isBackendMode() && character) {
               setEnhancing(true);
               setEnhanceResult(null);
@@ -1125,10 +996,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 const newLevel = readItemUpgradeLevel(item.uuid);
                 const succeeded = newLevel === null ? true : newLevel > currentLevel;
                 setEnhanceResult(succeeded ? 'success' : 'fail');
-                // System-tab broadcast — in backend mode the SERVER formats the
-                // message and gates the milestone rule, so we just hand it the
-                // structured payload (no client formatSystemMessage / postSystemEvent
-                // / isUpgradeMilestone check here). Fire-and-forget.
                 if (succeeded) {
                   const info = getItemDisplayInfo(item.itemId);
                   const itemName = info?.name_pl ?? item.itemId;
@@ -1138,7 +1005,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                     rarity: item.rarity,
                     upgradeLevel: nextLevel,
                     itemName,
-                  }).catch(() => { /* offline — fine */ });
+                  }).catch(() => { });
                 }
                 setEnhancing(false);
                 setTimeout(() => setEnhanceResult(null), 3000);
@@ -1149,20 +1016,10 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 return;
               }
             }
-            // 2026-05-26 bug fix (caught przez E2E inventory/upgrade test
-            // flake gdzie success animation pokazywała się ale gold/stones
-            // nie były odjęte): canEnhance check używa wartości z React
-            // render-time, ale rapid-tap lub state race może spowodować
-            // że gold/stones się zmienią między render a spend.
-            // spendGold + useStones zwracają boolean — POPRZEDNIO ignorowane.
-            // Teraz: jeśli któryś zwróci false -> bail bez success animation
-            // + bez upgrade itemu. Zapobiega "darmowemu" upgrade'owi gdy
-            // race condition zostawi dane niespójne.
             const goldOk = spendGold(cost.gold);
             if (!goldOk) return;
-            const stonesOk = useStones(cost.stoneType, cost.stones);
+            const stonesOk = spendStones(cost.stoneType, cost.stones);
             if (!stonesOk) {
-              // Rollback gold spend — nie było stones, więc gold MUSI wrócić.
               const inv = useInventoryStore.getState();
               inv.addGold(cost.gold);
               return;
@@ -1172,10 +1029,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               if (success) {
                 upgradeItem(item.uuid);
                 setEnhanceResult('success');
-                // 2026-05-19 v16 spec ("ile razy zrobilem ulepszenie
-                // przedmiotu ktore sie udalo nie wazne czy na +1 czy
-                // wiecej kazde wbicie na +1 to jeden punkt"): bump
-                // the global item-upgrade counter for the leaderboard.
                 if (character) {
                   void import('../../api/v1/characterApi').then(({ characterApi }) => {
                     void characterApi.bumpStat({
@@ -1184,21 +1037,8 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                       value: 1,
                       mode: 'add',
                     });
-                  }).catch(() => { /* offline */ });
+                  }).catch(() => { });
                 }
-                // 2026-05-19 v14 spec ("Chat system brak zdjecia
-                // przedmiotu oraz dodawaj odpowiednie tlo z rarity"):
-                // post a STRUCTURED payload so the System tab can
-                // render the item icon + rarity-coloured frame. The
-                // old plain-text version leaked the raw `/src/.../luk.png`
-                // path into chat. Fire-and-forget — chat outage
-                // shouldn't crash the upgrade flow.
-                //
-                // 2026-05-20 spec ("pokazywalo jak ktos wbije +5, +7,
-                // +10 i potem co jeden kazdy w nieskonczonosc"): the
-                // fixed `[5,7,10,15,20,25,30]` list is replaced with
-                // `isUpgradeMilestone` so every level from +10 onward
-                // posts (+11, +12, …) — see the helper for the rule.
                 if (character && isUpgradeMilestone(nextLevel)) {
                   const info = getItemDisplayInfo(item.itemId);
                   const itemName = info?.name_pl ?? item.itemId;
@@ -1218,8 +1058,8 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                       character.class,
                       character.level,
                       content,
-                    ).catch(() => { /* offline — fine */ });
-                  }).catch(() => { /* offline */ });
+                    ).catch(() => { });
+                  }).catch(() => { });
                 }
               } else {
                 setEnhanceResult('fail');
@@ -1227,8 +1067,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               setEnhancing(false);
               setTimeout(() => setEnhanceResult(null), 3000);
             };
-            // Spec 2 (2026-05 v2): when "Wylacz animacje" is on, skip the
-            // 1.8s progress bar and resolve the upgrade instantly.
             if (skipEnhanceAnim) {
               setEnhancing(false);
               setEnhanceResult(null);
@@ -1253,8 +1091,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                     {ownedStones}/{cost.stones}
                   </strong>
                 </span>
-                {/* Spec 2 (2026-05 v2): skip-animation toggle for impatient
-                    spam-upgrade sessions. */}
                 <label className="inventory__skip-anim-toggle">
                   <input
                     type="checkbox"
@@ -1265,7 +1101,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                 </label>
               </div>
 
-              {/* Progress bar during enhancement */}
               {enhancing && (
                 <div className="inventory__enhance-progress">
                   <div className="inventory__enhance-progress-bar" />
@@ -1311,10 +1146,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           );
         })()}
 
-        {/* Spec 1 (2026-05 v2): action buttons split into 2 rows.
-            ROW 1: Zaloz / Do depozytu (or Zdejmij when equipped).
-            ROW 2: Sprzedaj / Rozloz (only when not equipped). Each row
-            uses a 2-col grid so the buttons stay balanced. */}
         <div className="inventory__detail-actions-block">
           <div className="inventory__detail-actions">
             {isEquipped ? (
@@ -1386,8 +1217,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           )}
         </div>
 
-        {/* Toast row for the deposit action — green tick on success,
-            red badge on failure. AnimatePresence so it slides in/out. */}
         <AnimatePresence>
           {depositToast === 'ok' && (
             <motion.div
@@ -1413,7 +1242,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           )}
         </AnimatePresence>
 
-        {/* Disassemble progress bar */}
         {disassembling && (
           <div className="inventory__disassemble-progress">
             <div className="inventory__disassemble-progress-bar" />
@@ -1448,11 +1276,8 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           )}
         </AnimatePresence>
 
-        {/* -- Bonus Reroll Section ----------------------------------- */}
         {item.rarity !== 'common' && RARITY_BONUS_SLOTS[item.rarity] > 0 && rerollPhase === 'idle' && !disassembling && !disassembleResult && (
           <div className="inventory__reroll-section">
-            {/* Spec 3 (2026-05 v2): skip-animation toggle for the bonus
-                reroll — same UX as the Ulepsz checkbox above. */}
             <label className="inventory__skip-anim-toggle">
               <input
                 type="checkbox"
@@ -1474,7 +1299,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           </div>
         )}
 
-        {/* Reroll rolling animation */}
         <AnimatePresence>
           {rerollPhase === 'rolling' && (
             <motion.div
@@ -1507,7 +1331,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           )}
         </AnimatePresence>
 
-        {/* Reroll preview — compare old vs new */}
         <AnimatePresence>
           {rerollPhase === 'preview' && rerolledBonuses && (
             <motion.div
@@ -1524,7 +1347,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               >
                 <div className="inventory__reroll-preview-title"><GameIcon name="game-die" /> Nowe Bonusy</div>
                 <div className="inventory__reroll-compare">
-                  {/* Old bonuses */}
                   <div className="inventory__reroll-col inventory__reroll-col--old">
                     <span className="inventory__reroll-col-title">Obecne</span>
                     {getRandomBonusKeys(item.bonuses).length > 0 ? (
@@ -1539,7 +1361,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                     )}
                   </div>
                   <span className="inventory__reroll-vs"><Icon name="arrowRight" /></span>
-                  {/* New bonuses */}
                   <div className="inventory__reroll-col inventory__reroll-col--new">
                     <span className="inventory__reroll-col-title">Nowe</span>
                     {getRandomBonusKeys(rerolledBonuses).length > 0 ? (
@@ -1591,27 +1412,17 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
             </motion.div>
           )}
         </AnimatePresence>
-          </div>{/* /inventory__detail-col--new */}
+          </div>
 
-          {/* Spec 12: comparison column — shows the currently equipped item
-              for the same slot so the player can see exactly what they'd
-              swap out. Stat diffs use ^/v arrows + green/red colours so
-              "is this an upgrade?" reads at a glance. */}
           {equippedToCompare && (
             <EquippedComparisonColumn newItem={item} equippedItem={equippedToCompare} />
           )}
-        </div>{/* /inventory__detail-cols */}
+        </div>
       </motion.div>
     </motion.div>
   );
 };
 
-// -- Spec 12: equipped-item comparison column --------------------------------
-//
-// Renders inside the DetailPanel's right column whenever a non-equipped item
-// is being viewed AND the player has something equipped in the same slot.
-// Shows the equipped item's icon, rarity, base stat, and a stat-by-stat
-// diff (^ green = upgrade, v red = downgrade) against the clicked item.
 
 interface IEquippedComparisonProps {
   newItem: IInventoryItem;
@@ -1643,7 +1454,6 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
   const eqStats = buildItemStats(equippedItem);
   const allKeys = Array.from(new Set([...Object.keys(newStats), ...Object.keys(eqStats)]));
 
-  // Stat-key ordering — keep main combat stats first.
   const STAT_ORDER = ['attack', 'defense', 'hp', 'mp', 'speed', 'critChance', 'critDmg', 'dmg_min', 'dmg_max'];
   const sortedKeys = allKeys.sort((a, b) => {
     const ai = STAT_ORDER.indexOf(a); const bi = STAT_ORDER.indexOf(b);
@@ -1701,8 +1511,6 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
         )}
       </div>
 
-      {/* Stat diff list — each row shows the stat name, equipped value,
-          and the delta. Green ^ = better, red v = worse. */}
       <div className="inventory__compare-stats">
         {sortedKeys.map((key) => {
           const newVal = newStats[key] ?? 0;
@@ -1728,18 +1536,6 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
   );
 };
 
-// -- Postać popup bodies (specs 7, 8, 10) ------------------------------------
-//
-// Each body is a self-contained sub-component rendered inside the shared
-// `inventory__popup` shell. They subscribe to their own stores so the main
-// Inventory component stays slim. Memoised with `memo` because the parent
-// re-renders every time the bag changes — we don't need to recompute stats
-// just because a goblin dropped a sword.
-//
-// Stats popup (spec 7) — same combat-stats grid + damage estimates + weapon
-// skill XP bar that lives in CharacterStats today, repackaged for the popup
-// surface. We call the same getEffectiveChar / getTrainingBonuses / transform
-// breakdown helpers so numbers stay 1:1 with the legacy /stats route.
 
 const CLASS_MODIFIER_INV: Record<string, number> = {
   Knight: 1.0, Mage: 1.3, Cleric: 1.0,
@@ -1784,9 +1580,6 @@ const StatsPopupBody = memo(() => {
 
   const eqStats = getTotalEquipmentStats(equipment, ALL_ITEMS);
   const tb = getTrainingBonuses(skillLevels, character.class);
-  // LIVE breakdown drives the math (values added on top of base+equip). For
-  // legacy baked saves this is intentionally all-zero (`active:false`) so the
-  // headline stat is NEVER double-counted — the bonus is already in base.
   const tBreakdown = getLiveTransformBreakdown();
   const tfActive = tBreakdown.active;
   const tfFlatHp  = tfActive ? tBreakdown.flatHp      : 0;
@@ -1801,17 +1594,8 @@ const StatsPopupBody = memo(() => {
   const tfMpRegen = tfActive ? tBreakdown.mpRegenFlat : 0;
   const tfDmgPct  = tfActive ? tBreakdown.dmgPercent  : 0;
 
-  // Bug 8 (2026-06-23): DISPLAY-ONLY attribution for LEGACY BAKED saves. The
-  // bonuses are already inside base stats, so we add an informational
-  // "Transform (zapieczone)" line per stat WITHOUT touching any headline value
-  // — no unbake, no double-count, zero corruption risk (Approach B). Live
-  // saves keep `bakedView` inactive and use the tf* values above for the math.
   const dBreakdown = getDisplayTransformBreakdown();
-  // 2026-06-24: transform bonuses now ALWAYS apply LIVE (see transformBonuses.ts),
-  // so the LIVE breakdown (tf* above) is the real, applied "Transform" line. The
-  // legacy "Transform (w bazie)" attribution is obsolete and disabled — showing it
-  // alongside the live line would double the displayed contribution.
-  const bakedView = false && dBreakdown.active && dBreakdown.baked;
+  const bakedView = false;
   const bfFlatHp  = bakedView ? dBreakdown.flatHp      : 0;
   const bfFlatMp  = bakedView ? dBreakdown.flatMp      : 0;
   const bfFlatAtk = bakedView ? dBreakdown.flatAttack  : 0;
@@ -1824,17 +1608,10 @@ const StatsPopupBody = memo(() => {
   const bfMpRegen = bakedView ? dBreakdown.mpRegenFlat : 0;
   const bfDmgPct  = bakedView ? dBreakdown.dmgPercent  : 0;
 
-  // raw* lines below are kept ONLY for the per-source breakdown display.
   const rawAtk = character.attack + eqStats.attack + tfFlatAtk;
   const rawDef = character.defense + eqStats.defense + tb.defense + tfFlatDef;
   const rawHp  = character.max_hp + eqStats.hp + tb.max_hp + getElixirHpBonus() + tfFlatHp;
   const rawMp  = character.max_mp + eqStats.mp + tb.max_mp + getElixirMpBonus() + tfFlatMp;
-  // 2026-06-24: the DISPLAYED TOTALS now come straight from getEffectiveChar —
-  // the SAME single source of truth combat uses — so the Postać panel ALWAYS
-  // matches: base + EQ + transform (flat + %) + ALL elixir buffs (flat + %).
-  // Previously these were re-derived here and silently dropped the elixir %
-  // multipliers / elixir flat ATK·DEF / elixir attack-speed mult, so the panel
-  // showed less than the player actually had.
   const eff = engineGetEffectiveChar(character);
   const effAtk = eff ? eff.attack : Math.floor(rawAtk * (1 + tfAtkPct / 100));
   const effDef = eff ? eff.defense : Math.floor(rawDef * (1 + tfDefPct / 100));
@@ -1854,7 +1631,6 @@ const StatsPopupBody = memo(() => {
   const xpToNext = skillXpToNextLevel(weaponSkillLevel);
   const skillPct = xpToNext > 0 ? (weaponSkillXp / xpToNext) * 100 : 0;
 
-  // Damage estimates
   const classMod = CLASS_MODIFIER_INV[character.class] ?? 1.0;
   const classBonus = getClassSkillBonus(character.class, skillLevels);
   const mainHandItem = equipment.mainHand;
@@ -1885,28 +1661,19 @@ const StatsPopupBody = memo(() => {
 
   return (
     <div className="inventory__stats-popup-body">
-      {/* Combat stats grid */}
       <div className="inventory__stats-section">
         <h3 className="inventory__stats-section-title"><GameIcon name="crossed-swords" /> Statystyki Walki</h3>
-        {/* Spec 4 (2026-05 v3): every combat stat shows its full
-            contribution breakdown so the player can see exactly
-            where each number comes from. Helper builds a non-zero
-            contribution list per stat. */}
         {(() => {
           const elixirHp = getElixirHpBonus();
           const elixirMp = getElixirMpBonus();
-          // Compact "+N" line (skipped when contribution = 0).
           const line = (label: string, val: number, fmt?: (v: number) => string): IStatBreakdownLine | null =>
             val === 0 ? null : { label, value: fmt ? fmt(val) : (val > 0 ? `+${val}` : `${val}`) };
           const buildLines = (...lines: (IStatBreakdownLine | null)[]): IStatBreakdownLine[] =>
             lines.filter((l): l is IStatBreakdownLine => l !== null);
-          // Bug 8: informational "baked" Transform line — already inside Baza,
-          // shown so the player can see the contribution. NOT added to value.
           const bakedLine = (val: number): IStatBreakdownLine | null =>
             val === 0 ? null : { label: 'Transform (w bazie)', value: `~+${val}` };
           const bakedPctLine = (pct: number): IStatBreakdownLine | null =>
             pct === 0 ? null : { label: 'Transform (w bazie)', value: `~+${pct}%` };
-          // Atak: base + eq + tf flat + tf %
           const atkLines = buildLines(
             { label: 'Baza', value: `${character.attack}` },
             line('Eq', eqStats.attack),
@@ -1915,7 +1682,6 @@ const StatsPopupBody = memo(() => {
             bakedLine(bfFlatAtk),
             bakedPctLine(bfAtkPct),
           );
-          // Obrona: base + eq + train + tf flat + tf %
           const defLines = buildLines(
             { label: 'Baza', value: `${character.defense}` },
             line('Eq', eqStats.defense),
@@ -1925,14 +1691,12 @@ const StatsPopupBody = memo(() => {
             bakedLine(bfFlatDef),
             bakedPctLine(bfDefPct),
           );
-          // Attack speed
           const asBase = character.attack_speed ?? 10;
           const asLines = buildLines(
             { label: 'Baza', value: `${asBase.toFixed(1)}` },
             eqStats.speed > 0 ? { label: 'Eq', value: `+${(eqStats.speed * 0.01).toFixed(2)}` } : null,
             tb.attack_speed > 0 ? { label: 'Trening', value: `+${tb.attack_speed.toFixed(2)}` } : null,
           );
-          // Max HP
           const hpLines = buildLines(
             { label: 'Baza', value: `${character.max_hp}` },
             line('Eq', eqStats.hp),
@@ -1943,7 +1707,6 @@ const StatsPopupBody = memo(() => {
             bakedLine(bfFlatHp),
             bakedPctLine(bfHpPct),
           );
-          // Max MP
           const mpLines = buildLines(
             { label: 'Baza', value: `${character.max_mp}` },
             line('Eq', eqStats.mp),
@@ -1954,21 +1717,18 @@ const StatsPopupBody = memo(() => {
             bakedLine(bfFlatMp),
             bakedPctLine(bfMpPct),
           );
-          // Crit %
           const baseCritPct = Math.round((character.crit_chance ?? 0.05) * 100);
           const critLines = buildLines(
             { label: 'Baza', value: `${baseCritPct}%` },
             eqStats.critChance > 0 ? { label: 'Eq', value: `+${eqStats.critChance}%` } : null,
             tb.crit_chance > 0 ? { label: 'Trening', value: `+${(tb.crit_chance * 100).toFixed(1)}%` } : null,
           );
-          // Crit DMG
           const baseCritDmg = character.crit_damage ?? 2.0;
           const critDmgLines = buildLines(
             { label: 'Baza', value: `x${baseCritDmg.toFixed(1)}` },
             eqStats.critDmg > 0 ? { label: 'Eq', value: `+${(eqStats.critDmg * 0.01).toFixed(2)}` } : null,
             tb.crit_dmg > 0 ? { label: 'Trening', value: `+${tb.crit_dmg.toFixed(2)}` } : null,
           );
-          // HP/MP regen
           const hpRegenLines = buildLines(
             { label: 'Baza', value: `${(character.hp_regen ?? 0).toFixed(1)}/s` },
             tb.hp_regen > 0 ? { label: 'Trening', value: `+${tb.hp_regen.toFixed(1)}/s` } : null,
@@ -1992,9 +1752,6 @@ const StatsPopupBody = memo(() => {
               <StatBox label="Kryty DMG"      value={`x${effCritDmg.toFixed(1)}`} breakdown={critDmgLines} />
               <StatBox label="HP Regen"       value={`${effHpRegen.toFixed(1)}/s`} breakdown={hpRegenLines} />
               <StatBox label="MP Regen"       value={`${effMpRegen.toFixed(1)}/s`} breakdown={mpRegenLines} />
-              {/* dmgPercent was never baked into stats (combat applies it live
-                  regardless of bakedBonusesApplied), so show it for both live
-                  and legacy baked saves using whichever breakdown is active. */}
               {(tfDmgPct > 0 || bfDmgPct > 0) && (
                 <StatBox label="DMG Transform" value={`+${tfDmgPct > 0 ? tfDmgPct : bfDmgPct}%`} breakdown={[
                   { label: 'Mnoznik', value: 'Caly DMG' },
@@ -2005,7 +1762,6 @@ const StatsPopupBody = memo(() => {
         })()}
       </div>
 
-      {/* Damage estimates */}
       <div className="inventory__stats-section">
         <h3 className="inventory__stats-section-title"><GameIcon name="collision" /> Obrazenia w Walce</h3>
         <div className="inventory__stats-dmg">
@@ -2040,7 +1796,6 @@ const StatsPopupBody = memo(() => {
         <div className="inventory__stats-dmg-note">Przed redukcja obrony wroga</div>
       </div>
 
-      {/* Weapon skill XP */}
       <div className="inventory__stats-section">
         <h3 className="inventory__stats-section-title"><GameIcon name="bullseye" /> Skill Bojowy</h3>
         <div className="inventory__stats-skill-row">
@@ -2057,14 +1812,8 @@ const StatsPopupBody = memo(() => {
 });
 StatsPopupBody.displayName = 'StatsPopupBody';
 
-// Spec 4 (2026-05 v3): every combat stat shows its full breakdown
-// underneath the headline value — base / eq / training / transform /
-// elixir / attribute contributions, each on its own line so the
-// player can audit "where does my 6260 HP come from".
 interface IStatBreakdownLine {
-  /** Short label — "Baza" / "Eq" / "TF" / "Trening" / "Eliksir" / "Atrybuty" */
   label: string;
-  /** Already-formatted contribution string, e.g. "+200" / "+25% (320)" */
   value: string;
 }
 const StatBox = ({ label, value, breakdown }: {
@@ -2088,13 +1837,7 @@ const StatBox = ({ label, value, breakdown }: {
   </div>
 );
 
-// Training popup (spec 8) — replicates Skills' "offline" tab. Shows every
-// trainable stat for the player's class with a click-to-train button. Each
-// row shows the per-level bonus (e.g. "+0.1 attack speed / level") in the
-// bottom-right per the spec's "ile + nam daje ten poziom skilla" ask.
 
-// Per-level bonus formulas — read from getTrainingBonuses by simulating
-// "what would my bonus be at level (current+1) minus my current bonus".
 const trainingPerLevelLabel = (skillId: string, currentLevel: number, characterClass: string): string => {
   const cur = getTrainingBonuses({ [skillId]: currentLevel }, characterClass);
   const next = getTrainingBonuses({ [skillId]: currentLevel + 1 }, characterClass);
@@ -2128,10 +1871,6 @@ const TrainingPopupBody = memo(() => {
   const trainingCurrentSpeedMultiplier = useSkillStore((s) => s.trainingCurrentSpeedMultiplier);
   const selectTrainingStat = useSkillStore((s) => s.selectTrainingStat);
   const huntIsActive = useOfflineHuntStore((s) => s.isActive);
-  // Spec 3 (2026-05 v4): tick once a second so the in-progress XP bar
-  // for the active training stat updates LIVE while the popup is open.
-  // Engine commits XP only on segment-end / claim, so we compute the
-  // pending segment XP locally from elapsed seconds × xp-rate.
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (!offlineTrainingSkillId || !trainingSegmentStartedAt) return;
@@ -2144,15 +1883,10 @@ const TrainingPopupBody = memo(() => {
   const isPausedByHunt = !!offlineTrainingSkillId && huntIsActive && !trainingSegmentStartedAt;
   const isActiveSpeed = trainingCurrentSpeedMultiplier === 2;
 
-  // Combine class-specific weapon-skill list + general trainable stats
   const classStats = getTrainableStatsForClass(character.class as Parameters<typeof getTrainableStatsForClass>[0]);
   const allStats = [...classStats, ...GENERAL_TRAINABLE_STATS];
   const uniqueStats = Array.from(new Set(allStats));
 
-  // Backend-authoritative branch (opt-in). Selecting a NEW stat starts offline
-  // training on the server; tapping the already-active stat collects/stops it.
-  // Either way we re-hydrate from the returned state. Client toggle is untouched
-  // in default mode.
   const handleSelectTraining = async (skillId: string, isSelected: boolean): Promise<void> => {
     if (isBackendMode() && character) {
       try {
@@ -2195,9 +1929,6 @@ const TrainingPopupBody = memo(() => {
           const baseXp = skillXp[skillId] ?? 0;
           const xpNext = skillXpToNextLevel(level);
           const isSelected = offlineTrainingSkillId === skillId;
-          // Spec 3 (2026-05 v4): for the actively-trained skill, add the
-          // pending segment XP (elapsed seconds × xp-rate × speed) on
-          // top of the stored XP so the bar fills LIVE every second.
           const isLiveTraining = isSelected && !!trainingSegmentStartedAt;
           let xp = baseXp;
           if (isLiveTraining) {
@@ -2235,40 +1966,13 @@ const TrainingPopupBody = memo(() => {
 });
 TrainingPopupBody.displayName = 'TrainingPopupBody';
 
-// Active skills popup (spec 10) — slot grid + skill cards from Skills' "active"
-// tab. Click a skill icon to assign / unassign it to the next free slot.
 
-// Spec 5/6 (2026-05 v4): plain-Polish translator for the skill `effect`
-// vocabulary. Mirrors `describeSkillEffect` from Skills.tsx in compact
-// form — covers the most-frequent stun / DOT / heal / buff tags.
-/**
- * Render a skill's `effect` string as one or more plain-Polish sentences.
- *
- * Supports the v2 colon-separated tag set used in `skills.json` and
- * combines multiple tags (joined by `;` in the JSON) into a single line
- * separated by " · ".  Returns `null` when the effect is empty so the
- * caller can suppress the row.
- *
- * Examples:
- *   "stun:3000"                  -> "Ogłusza wroga na 3s"
- *   "dot:5000:5"                 -> "Trucizna przez 5s (5 ticków)"
- *   "aoe;def_pen:80;heal_party_pct:30"
- *                                -> "Atak obszarowy · Ignoruje 80% obrony · Leczy drużynę o 30% maks. HP"
- *   "summon:skeleton:5"          -> "Przyzywa 5 szkieletów"
- *
- * Quick fix (2026-05): old impl used outdated underscore tags
- * (`stun_3000`, `burn_chance_…`) which never matched the actual
- * `effect` strings in skills.json — so almost every spell card
- * silently rendered with NO effect description. This rewrite walks the
- * actual tag set we ship.
- */
 const describeSkillEffectInv = (effect: string | null): string | null => {
   if (!effect) return null;
   const sec = (ms: number): string => (ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1) + 's';
   const pct = (raw: number): string => `${raw.toFixed(0)}%`;
   const summonName = (type: string, count: number): string => {
     const map: Record<string, [string, string, string]> = {
-      // [1, few (2-4), many (5+)]
       skeleton: ['szkieleta',    'szkielety',    'szkieletów'],
       ghost:    ['ducha',        'duchy',        'duchów'],
       demon:    ['demona',       'demony',       'demonów'],
@@ -2346,8 +2050,6 @@ const describeSkillEffectInv = (effect: string | null): string | null => {
       default: return null;
     }
   };
-  // Tags are joined with `;` in JSON. Render each piece, drop empties,
-  // and join with " · " for a clean inline read.
   const pieces = effect.split(';').map(describeOne).filter((p): p is string => p !== null);
   if (pieces.length === 0) return null;
   return pieces.join(' · ');
@@ -2365,62 +2067,35 @@ const ActiveSkillsPopupBody = memo(() => {
   const spendGold = useInventoryStore((s) => s.spendGold);
   const useSpellChests = useInventoryStore((s) => s.useSpellChests);
   const getSpellChestCount = useInventoryStore((s) => s.getSpellChestCount);
-  // Quick fix 2 (2026-05 v6): pull the equipped main-hand so we can show
-  // the SAME damage estimate the stats popup shows. The previous
-  // formula (`attack × skill.damage`) ignored weapon DMG + class
-  // modifier and produced a number ~5× lower than the in-combat reality.
   const equipment = useInventoryStore((s) => s.equipment);
-  // Spec 4 (2026-05 v5): clicking ANY skill (even with empty slots) opens
-  // the slot picker so the player always controls the destination.
   const [swapTarget, setSwapTarget] = useState<string | null>(null);
-  // Spec 5/6: per-action modal state — `upgrade` shows the Ulepsz flow
-  // for the picked skill, `unlock` shows the Odblokuj flow.
   const [upgradeTarget, setUpgradeTarget] = useState<string | null>(null);
   const [unlockTarget, setUnlockTarget] = useState<string | null>(null);
-  // Result toast after upgrade/unlock attempt — auto-clears after 2.5s.
   const [actionResult, setActionResult] = useState<{ skillId: string; ok: boolean; msg: string } | null>(null);
-  // Spec 2 (2026-05 v6): in-popup animation state for the Ulepsz flow.
-  // 'idle' -> ready, 'rolling' -> progress bar filling, 'done' -> result
-  // panel (success / fail) shown until the player closes the modal.
   const [upgradePhase, setUpgradePhase] = useState<'idle' | 'rolling' | 'done'>('idle');
   const [upgradeOutcome, setUpgradeOutcome] = useState<{ ok: boolean; newLevel: number } | null>(null);
-  // Spec 3: skip-animation toggle for the upgrade popup. Stored across
-  // attempts so the player can spam-upgrade with the same setting.
   const [skipUpgradeAnim, setSkipUpgradeAnim] = useState(false);
   if (!character) return null;
 
   const classKey = character.class.toLowerCase();
   const myActiveSkills = ACTIVE_SKILLS_BY_CLASS_INV[classKey] ?? [];
 
-  // Quick fix 2: per-skill DMG estimate that matches the stats popup +
-  // engine. Engine uses `(atk + weapon + 0.5×atk) × classMod` for the
-  // base hit; we additionally fold in `skill.damage` and the upgrade
-  // bonus so the player can see how much the skill scales the basic
-  // hit. Same formula as `activeSkillDamages` in StatsPopupBody.
   const classModForSkill = CLASS_MODIFIER_INV[character.class] ?? 1.0;
   const mainHandForSkill = equipment.mainHand;
   const wepMinForSkill = mainHandForSkill ? (mainHandForSkill.bonuses.dmg_min ?? mainHandForSkill.bonuses.attack ?? 0) : 0;
   const wepMaxForSkill = mainHandForSkill ? (mainHandForSkill.bonuses.dmg_max ?? wepMinForSkill) : 0;
   const innateSkillBonus = Math.floor((character.attack ?? 0) * 0.5);
 
-  // Spec 4 (2026-05 v5): clicking anywhere on an unlocked skill ALWAYS
-  // opens the slot picker — even if a slot is empty. Player chooses
-  // exactly which slot the skill lands in (or which one it replaces).
   const openSlotPicker = (skillId: string) => {
     if (!unlockedSkills[skillId]) return;
     setSwapTarget(skillId);
   };
   const resolveSwap = (slotIdx: 0 | 1 | 2 | 3) => {
     if (!swapTarget) return;
-    // Backend-authoritative branch (opt-in). The server owns the active-skill
-    // slot layout (incl. clearing any other slot that held the skill). We
-    // compute the target skillId (null = unequip when the slot already holds
-    // it) and push it, then resync.
     if (isBackendMode() && character) {
       const nextSkillId: string | null = activeSkillSlots[slotIdx] === swapTarget ? null : swapTarget;
       void (async () => {
         try {
-          // `null` clears the slot server-side (the documented clear signal).
           await backendApi.setSkillSlot(character.id, slotIdx, nextSkillId);
           await syncFromBackend(character.id);
         } catch (e) {
@@ -2430,12 +2105,9 @@ const ActiveSkillsPopupBody = memo(() => {
       setSwapTarget(null);
       return;
     }
-    // If clicking the slot already holding the same skill -> unequip.
     if (activeSkillSlots[slotIdx] === swapTarget) {
       setActiveSkillSlot(slotIdx, null);
     } else {
-      // Clear any other slot holding this skill (so a skill can't occupy
-      // two slots at once) then place it on the chosen slot.
       const existingIdx = activeSkillSlots.indexOf(swapTarget);
       if (existingIdx !== -1) setActiveSkillSlot(existingIdx as 0 | 1 | 2 | 3, null);
       setActiveSkillSlot(slotIdx, swapTarget);
@@ -2443,13 +2115,9 @@ const ActiveSkillsPopupBody = memo(() => {
     setSwapTarget(null);
   };
 
-  // Spec 5/6/7: confirm + apply for upgrade / unlock.
   const confirmUnlock = (skillId: string) => {
     const skill = myActiveSkills.find((s) => s.id === skillId);
     if (!skill) return;
-    // Backend-authoritative branch (opt-in). Server debits gold + spell-chest
-    // and unlocks the skill; after sync we read the store back to drive the
-    // same success/fail toast the client path uses.
     if (isBackendMode() && character) {
       void (async () => {
         try {
@@ -2472,22 +2140,14 @@ const ActiveSkillsPopupBody = memo(() => {
     setUnlockTarget(null);
     setTimeout(() => setActionResult(null), 2500);
   };
-  // Spec 2/3 (2026-05 v6): upgrade triggers an inline progress-bar
-  // animation INSIDE the popup (it stays open). Skip-animation
-  // checkbox jumps straight to the result. Player closes the popup
-  // manually via Anuluj / Zamknij after each attempt.
   const confirmUpgrade = async (skillId: string) => {
     const skill = myActiveSkills.find((s) => s.id === skillId);
     if (!skill) return;
-    // Spec 7: post-death rollback guard.
     if (character.level < skill.unlockLevel) {
       setActionResult({ skillId, ok: false, msg: `Wymagany poziom ${skill.unlockLevel} (masz ${character.level}).` });
       setTimeout(() => setActionResult(null), 2500);
       return;
     }
-    // Backend-authoritative branch (opt-in). Server rolls the upgrade + debits
-    // gold/spell-chests; after sync we read the new level back from the store
-    // to drive the same done/outcome panel the client path uses.
     if (isBackendMode() && character) {
       const prevLevel = skillUpgradeLevels[skillId] ?? 0;
       if (!skipUpgradeAnim) setUpgradePhase('rolling');
@@ -2498,16 +2158,13 @@ const ActiveSkillsPopupBody = memo(() => {
         const ok = newLevel > prevLevel;
         setUpgradeOutcome({ ok, newLevel });
         setUpgradePhase('done');
-        // System-tab broadcast — backend formats + gates the milestone, so we
-        // just send the structured payload (no client formatSystemMessage /
-        // postSystemEvent / isUpgradeMilestone check). Fire-and-forget.
         if (ok) {
           void backendApi.chatSystemEvent(character.id, {
             type: 'skillUpgrade',
             skillId,
             skillName: skill.name_pl,
             upgradeLevel: newLevel,
-          }).catch(() => { /* offline — fine */ });
+          }).catch(() => { });
         }
         return;
       } catch (e) {
@@ -2521,11 +2178,6 @@ const ActiveSkillsPopupBody = memo(() => {
       const result = upgradeActiveSkillFn(skillId, gold, spendGold, skill.unlockLevel, useSpellChests, getSpellChestCount);
       setUpgradeOutcome({ ok: result.success, newLevel: result.newLevel });
       setUpgradePhase('done');
-      // 2026-05-20 spec ("pokazywalo jak ktos wbije +5, +7, +10 i potem
-      // co jeden kazdy w nieskonczonosc i skille i przedmioty"): mirror
-      // the item-upgrade System broadcast for active-skill upgrades.
-      // Same milestone rule, same payload shape (different type so the
-      // renderer picks the spell icon via getSkillIcon). Fire-and-forget.
       if (result.success && isUpgradeMilestone(result.newLevel)) {
         void Promise.all([
           import('../../api/v1/chatApi'),
@@ -2542,19 +2194,17 @@ const ActiveSkillsPopupBody = memo(() => {
             character.class,
             character.level,
             content,
-          ).catch(() => { /* offline — fine */ });
-        }).catch(() => { /* offline */ });
+          ).catch(() => { });
+        }).catch(() => { });
       }
     };
     if (skipUpgradeAnim) {
       runAttempt();
     } else {
       setUpgradePhase('rolling');
-      // Match the item-enhance progress-bar duration (1.8s).
       setTimeout(runAttempt, 1800);
     }
   };
-  // Reset upgrade modal state when target changes / closes.
   const closeUpgradeModal = () => {
     setUpgradeTarget(null);
     setUpgradePhase('idle');
@@ -2563,7 +2213,6 @@ const ActiveSkillsPopupBody = memo(() => {
 
   return (
     <div className="inventory__skills-popup-body">
-      {/* Slot overview — Spec 7: all 4 slots same width via grid 1fr×4. */}
       <div className="inventory__skills-slots">
         {activeSkillSlots.map((slotId, i) => {
           const skill = myActiveSkills.find((s) => s.id === slotId);
@@ -2582,11 +2231,7 @@ const ActiveSkillsPopupBody = memo(() => {
         })}
       </div>
 
-      {/* Spec 8: removed the "Pełna sekcja skilli..." hint. */}
 
-      {/* Skill cards — Spec 5+6: vertical layout (icon+name+stats top,
-          description middle, action buttons bottom). Spec 4: clicking
-          anywhere on the card opens the slot picker. */}
       <div className="inventory__skills-list">
         {myActiveSkills.map((skill) => {
           const isEquipped = activeSkillSlots.includes(skill.id);
@@ -2598,15 +2243,6 @@ const ActiveSkillsPopupBody = memo(() => {
           const chestUnlockCost = getSpellChestUnlockCost(skill.unlockLevel);
           const icon = getSkillIcon(skill.id);
           const effectDesc = describeSkillEffectInv(skill.effect);
-          // Spec 8: rich description shown above the action buttons.
-          // Combines damage line ("Zadaje obrażenia ~XYZ dmg") + the
-          // effect description so the player knows exactly what fires.
-          // Quick fix 2 (2026-05 v6): mirror the formula used in
-          // StatsPopupBody.activeSkillDamages so the number a player
-          // sees here matches the per-skill DMG box on the stats
-          // popup (and the actual in-combat hit). Old formula
-          // (attack × skill.damage) ignored weapon DMG + classMod and
-          // under-reported by 4-5×.
           const upgradeMult = 1 + currentBonus;
           const dmgMinEst = Math.max(1, Math.floor((character.attack + wepMinForSkill + innateSkillBonus) * classModForSkill * skill.damage * upgradeMult));
           const dmgMaxEst = Math.max(1, Math.floor((character.attack + wepMaxForSkill + innateSkillBonus) * classModForSkill * skill.damage * upgradeMult));
@@ -2623,7 +2259,6 @@ const ActiveSkillsPopupBody = memo(() => {
               onClick={() => isPurchased && openSlotPicker(skill.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' && isPurchased) openSlotPicker(skill.id); }}
             >
-              {/* Top row — icon + name + status badges + stats. */}
               <div className="inventory__skills-card-top">
                 <div className="inventory__skills-card-icon">
                   <TinyIcon icon={icon} size={40} />
@@ -2632,11 +2267,6 @@ const ActiveSkillsPopupBody = memo(() => {
                 <div className="inventory__skills-card-details">
                   <div className="inventory__skills-card-head">
                     <span className="inventory__skills-card-name">{skill.name_pl}</span>
-                    {/* Spec 5 (2026-05 v6): always show the unlock-level
-                        chip next to the name, tinted with the live
-                        transform colour so it reads as a tier marker.
-                        When the player is below that level the chip
-                        also gets a :locked: prefix. */}
                     <span className={`inventory__skills-card-lvl${isLevelLocked ? ' inventory__skills-card-lvl--locked' : ''}`}>
                       {isLevelLocked ? <><GameIcon name="locked" /> </> : ''}Lv {skill.unlockLevel}
                     </span>
@@ -2645,19 +2275,12 @@ const ActiveSkillsPopupBody = memo(() => {
                   </div>
                   <div className="inventory__skills-card-stats">
                     <span>MP {skill.mpCost}</span>
-                    {/* 2026-06-24: show the EFFECTIVE combat recast, not the raw
-                        skills.json cooldown. In the main combat (hunt/boss/dungeon/
-                        transform) every spell recasts at the flat rate (~8s hunt);
-                        only a few utility spells keep their real cooldown (Krok
-                        Cienia 20s). Showing the raw 30-300s value misrepresented
-                        how often a spell actually fires. */}
                     <span>CD {(resolveSkillRecastMs(skill.id, 8000) / 1000).toFixed(1)}s</span>
                     {skill.damage > 0 && <span>×{(skill.damage * (1 + currentBonus)).toFixed(2)} DMG{upgradeLevel > 0 && <span className="inventory__skills-card-bonus"> +{(currentBonus * 100).toFixed(0)}%</span>}</span>}
                   </div>
                 </div>
               </div>
 
-              {/* Spec 5+8: damage + effect description above the buttons. */}
               <div className="inventory__skills-card-desc">
                 <div className="inventory__skills-card-desc-line"><GameIcon name="crossed-swords" /> {dmgLine}</div>
                 {effectDesc && (
@@ -2665,11 +2288,7 @@ const ActiveSkillsPopupBody = memo(() => {
                 )}
               </div>
 
-              {/* Spec 6: action buttons row. */}
               <div className="inventory__skills-card-actions" onClick={(e) => e.stopPropagation()}>
-                {/* Spec 4 (2026-05 v6): equipped -> "Zdejmij" (unequips
-                    immediately from the slot the skill currently sits in);
-                    not equipped -> "Załóż" (opens the slot picker). */}
                 {isPurchased && isEquipped && (
                   <button
                     type="button"
@@ -2697,8 +2316,6 @@ const ActiveSkillsPopupBody = memo(() => {
                     type="button"
                     className="inventory__skills-card-btn inventory__skills-card-btn--upgrade"
                     onClick={() => setUpgradeTarget(skill.id)}
-                    /* Spec 7: lock upgrade when the player is below the
-                       skill's unlock level (post-death rollback). */
                     disabled={isLevelLocked}
                     title={isLevelLocked ? `Wymagany poziom ${skill.unlockLevel}` : 'Ulepsz skill'}
                   >
@@ -2716,7 +2333,6 @@ const ActiveSkillsPopupBody = memo(() => {
                 )}
               </div>
 
-              {/* Result toast (per-skill) — fades in after upgrade/unlock. */}
               {showResult && (
                 <div className={`inventory__skills-card-toast inventory__skills-card-toast--${actionResult.ok ? 'ok' : 'fail'}`}>
                   {actionResult.msg}
@@ -2727,10 +2343,6 @@ const ActiveSkillsPopupBody = memo(() => {
         })}
       </div>
 
-      {/* Spec 5: Ulepsz modal — chest + gold cost preview, success-rate,
-          confirm button. Spec 2: in-popup progress animation. Spec 3:
-          skip-animation checkbox. Popup stays open until player closes
-          it manually (Anuluj / Zamknij). */}
       {upgradeTarget && (() => {
         const skill = myActiveSkills.find((s) => s.id === upgradeTarget);
         if (!skill) return null;
@@ -2741,10 +2353,6 @@ const ActiveSkillsPopupBody = memo(() => {
         const enoughChests = cost.chests === 0 || playerChests >= cost.chests;
         const enoughGold = gold >= cost.gold;
         const levelOk = character.level >= skill.unlockLevel;
-        // canUpgrade is true in both 'idle' and 'done' phases — that
-        // way the "done" state acts as a one-click "try again" button
-        // (player no longer has to click "Ulepsz ponownie" to arm the
-        // attempt + click again to fire it).
         const canUpgrade = enoughChests && enoughGold && levelOk && upgradePhase !== 'rolling';
         return (
           <div className="inventory__skills-swap" onClick={() => upgradePhase !== 'rolling' && closeUpgradeModal()}>
@@ -2767,7 +2375,6 @@ const ActiveSkillsPopupBody = memo(() => {
                 )}
               </ul>
 
-              {/* Spec 3: skip-animation toggle. */}
               <label className="inventory__skip-anim-toggle">
                 <input
                   type="checkbox"
@@ -2777,7 +2384,6 @@ const ActiveSkillsPopupBody = memo(() => {
                 <span>Wyłącz animację</span>
               </label>
 
-              {/* Spec 2: rolling progress bar (1.8s). */}
               {upgradePhase === 'rolling' && (
                 <div className="inventory__enhance-progress">
                   <div className="inventory__enhance-progress-bar" />
@@ -2785,9 +2391,6 @@ const ActiveSkillsPopupBody = memo(() => {
                 </div>
               )}
 
-              {/* Spec 2: result panel — stays visible until the player
-                  closes the modal. "Próbuj ponownie" lets them spam
-                  attempts without re-opening from the card. */}
               {upgradePhase === 'done' && upgradeOutcome && (
                 <div className={`inventory__skills-result inventory__skills-result--${upgradeOutcome.ok ? 'ok' : 'fail'}`}>
                   {upgradeOutcome.ok
@@ -2811,10 +2414,6 @@ const ActiveSkillsPopupBody = memo(() => {
                   className="inventory__skills-swap-confirm"
                   disabled={!canUpgrade}
                   onClick={() => {
-                    // One-click upgrade — even from the 'done' phase
-                    // we kick off another attempt directly. confirmUpgrade
-                    // overwrites phase ('rolling' or jumps to 'done' if
-                    // skipUpgradeAnim is on) so no manual reset needed.
                     void confirmUpgrade(skill.id);
                   }}
                 >
@@ -2828,7 +2427,6 @@ const ActiveSkillsPopupBody = memo(() => {
         );
       })()}
 
-      {/* Spec 6: Odblokuj modal — same shape as Ulepsz. */}
       {unlockTarget && (() => {
         const skill = myActiveSkills.find((s) => s.id === unlockTarget);
         if (!skill) return null;
@@ -2874,8 +2472,6 @@ const ActiveSkillsPopupBody = memo(() => {
         );
       })()}
 
-      {/* Spec 4: slot-swap modal — opened when player clicks an unequipped
-          skill while all 4 slots are full. Pick a slot to replace. */}
       {swapTarget && (() => {
         const incoming = myActiveSkills.find((s) => s.id === swapTarget);
         if (!incoming) return null;
@@ -2928,9 +2524,6 @@ const ActiveSkillsPopupBody = memo(() => {
 });
 ActiveSkillsPopupBody.displayName = 'ActiveSkillsPopupBody';
 
-// -- Spec 2: BUFF_CONFIG + isBuffEffect (module-level so the use-popup can
-// reach them without recreating the table per render). Maps an elixir's
-// `effect` field to the buff data the buffStore needs to spawn it.
 interface IBuffConfig {
   id: string;
   name: string;
@@ -2978,12 +2571,11 @@ const isBuffEffect = (effect: string): boolean => (
     || effect.startsWith('mp_boost_')
     || effect.startsWith('atk_boost_')
     || effect.startsWith('def_boost_')
-    || effect === 'atk_def_boost_50_15m' // 2026-06-24 #1: Eliksir Siły (handler at applyElixirDose ~2804)
+    || effect === 'atk_def_boost_50_15m'
     || effect.startsWith('hp_pct_')
     || effect.startsWith('mp_pct_')
 );
 
-// -- Main screen -------------------------------------------------------------
 type BulkMode = 'none' | 'sell' | 'disassemble';
 
 const Inventory = () => {
@@ -2991,10 +2583,6 @@ const Inventory = () => {
   const {
     autoSellCommon, autoSellRare, autoSellEpic, autoSellLegendary, autoSellMythic,
     setAutoSellCommon, setAutoSellRare, setAutoSellEpic, setAutoSellLegendary, setAutoSellMythic,
-    // Postać-spec item 9: auto-potion config now also lives in the merged
-    // Postać view via the potion-icon popup. Pulled in here so the new
-    // popup body can render the existing 4-slot panel without owning its
-    // own store wiring.
     autoPotionHpEnabled, autoPotionMpEnabled,
     autoPotionHpThreshold, autoPotionMpThreshold,
     autoPotionHpId, autoPotionMpId,
@@ -3007,16 +2595,8 @@ const Inventory = () => {
     setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled,
     setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold,
     setAutoPotionPctHpId, setAutoPotionPctMpId,
-  } = useSettingsStore();
+  } = useSettingsStore(useShallow((s) => ({ autoSellCommon: s.autoSellCommon, autoSellRare: s.autoSellRare, autoSellEpic: s.autoSellEpic, autoSellLegendary: s.autoSellLegendary, autoSellMythic: s.autoSellMythic, setAutoSellCommon: s.setAutoSellCommon, setAutoSellRare: s.setAutoSellRare, setAutoSellEpic: s.setAutoSellEpic, setAutoSellLegendary: s.setAutoSellLegendary, setAutoSellMythic: s.setAutoSellMythic, autoPotionHpEnabled: s.autoPotionHpEnabled, autoPotionMpEnabled: s.autoPotionMpEnabled, autoPotionHpThreshold: s.autoPotionHpThreshold, autoPotionMpThreshold: s.autoPotionMpThreshold, autoPotionHpId: s.autoPotionHpId, autoPotionMpId: s.autoPotionMpId, setAutoPotionHpEnabled: s.setAutoPotionHpEnabled, setAutoPotionMpEnabled: s.setAutoPotionMpEnabled, setAutoPotionHpThreshold: s.setAutoPotionHpThreshold, setAutoPotionMpThreshold: s.setAutoPotionMpThreshold, setAutoPotionHpId: s.setAutoPotionHpId, setAutoPotionMpId: s.setAutoPotionMpId, autoPotionPctHpEnabled: s.autoPotionPctHpEnabled, autoPotionPctMpEnabled: s.autoPotionPctMpEnabled, autoPotionPctHpThreshold: s.autoPotionPctHpThreshold, autoPotionPctMpThreshold: s.autoPotionPctMpThreshold, autoPotionPctHpId: s.autoPotionPctHpId, autoPotionPctMpId: s.autoPotionPctMpId, setAutoPotionPctHpEnabled: s.setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled: s.setAutoPotionPctMpEnabled, setAutoPotionPctHpThreshold: s.setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold: s.setAutoPotionPctMpThreshold, setAutoPotionPctHpId: s.setAutoPotionPctHpId, setAutoPotionPctMpId: s.setAutoPotionPctMpId })));
   const character = useCharacterStore((s) => s.character);
-  // 2026-05 v6: Postać view now hosts the stat-point distribution tiles
-  // (above the Skille/Potion/Trening/Stats action row). The legacy /stats
-  // page has been retired so every "+N statystyk do rozdania" call-to-action
-  // lands here instead.
-  // 2026-05 v6: stat-point spending — default is 1-pt per click; the
-  // "wszystkie naraz" toggle below the tiles flips the click handler to
-  // dump EVERY available point in one shot. Lets a careful player pace
-  // their build but a power-leveler can clear hundreds of points fast.
   const spendStatPoint = useCharacterStore((s) => s.spendStatPoint);
   const spendAllStatPoints = useCharacterStore((s) => s.spendAllStatPoints);
   const [statAllocAllAtOnce, setStatAllocAllAtOnce] = useState(false);
@@ -3024,8 +2604,6 @@ const Inventory = () => {
   const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
   const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
 
-  // Transform color replaces class color everywhere the avatar accent appears
-  // once the player completes their first transform tier.
   const transformColor = getHighestTransformColor();
   const classFallback = character ? (CLASS_AVATAR_COLORS[character.class] ?? '#e94560') : '#e94560';
   const accentColor = (() => {
@@ -3044,34 +2622,15 @@ const Inventory = () => {
     slot: EquipmentSlot | null;
   } | null>(null);
 
-  // -- Stone conversion popup state ------------------------------------------
   const [stoneConvertId, setStoneConvertId] = useState<string | null>(null);
-  // Postać-spec items 4, 5, 7-10: single state machine for the row of icons
-  // under the paperdoll. Only one popup is open at a time; null = closed.
-  // 'avatar' is opened by clicking the avatar itself (item 4); the other
-  // four are the icon row (item 5).
   const [popupKey, setPopupKey] = useState<
     null | 'avatar' | 'stats' | 'training' | 'potion' | 'skills'
   >(null);
-  // Spec 13c: Auto-potion popup gets a 2-tab layout — Auto (the existing
-  // 4-slot threshold panel) and Alchemia (potion conversion). Tab state
-  // lives outside `popupKey` so we can deep-open the alchemia tab from a
-  // potion-tile click in the consumables grid (spec 13b).
   const [potionTab, setPotionTab] = useState<'auto' | 'alchemy'>('auto');
   const closePopup = () => setPopupKey(null);
-  // Helper used by the consumables grid to deep-link a potion click
-  // straight into the alchemia tab so the player lands where they can
-  // convert/use the stack.
-  const openPotionAlchemy = useCallback(() => {
-    setPotionTab('alchemy');
-    setPopupKey('potion');
-  }, []);
   const [stoneConvertResult, setStoneConvertResult] = useState<'success' | 'fail' | null>(null);
 
   const handleStoneConvert = useCallback((stoneId: string) => {
-    // Backend-authoritative branch (opt-in). Server merges the lower-tier
-    // stones into the next tier and returns the new balances via resync; we
-    // show a neutral success glow (the server rejects on shortage -> fail).
     if (isBackendMode()) {
       const char = useCharacterStore.getState().character;
       if (char) {
@@ -3094,20 +2653,10 @@ const Inventory = () => {
     setTimeout(() => setStoneConvertResult(null), 2000);
   }, [convertStones]);
 
-  // -- Alchemy (potion conversion) state -------------------------------------
-  // `alchemyOpen` retired — the Alchemia surface now lives inside the
-  // Potion popup (spec 13c) so it doesn't need its own collapsed/open
-  // state in the main view.
   const [alchemyToast, setAlchemyToast] = useState<string | null>(null);
-  // Spec 2 (2026-05): per-potion use popup. When `usePotionId` is set we
-  // render a confirm-modal asking how many doses to drink (1, 5, MAX, or
-  // "auto-fill HP/MP up to max") before actually consuming the stack.
   const [usePotionId, setUsePotionId] = useState<string | null>(null);
   const [usePotionAmount, setUsePotionAmount] = useState<number>(1);
 
-  // Spec 2: applies one dose of the elixir, mirroring the legacy
-  // consumables-section logic (heal HP/MP, activate buff, stat reset).
-  // Returns true on success so the popup can decide whether to close.
   const applyElixirDose = useCallback((elixirId: string): boolean => {
     const elixir = ELIXIRS.find((e) => e.id === elixirId);
     if (!elixir) return false;
@@ -3115,12 +2664,6 @@ const Inventory = () => {
     if (currentCount <= 0) return false;
     const effect = elixir.effect;
 
-    // Backend-authoritative branch (opt-in). The server owns the consumable
-    // debit; the buff/heal VISUAL stays client-side (backend doesn't model
-    // transient buffs), so for non-stat_reset elixirs we fire the backend
-    // useConsumable + resync and then fall through to the client visual — sync
-    // reconciles the stack count. stat_reset falls through to handleStatReset
-    // below (itself backend-wired) so we don't double-hit the server.
     if (isBackendMode() && effect !== 'stat_reset') {
       const char = useCharacterStore.getState().character;
       if (char) {
@@ -3131,20 +2674,12 @@ const Inventory = () => {
       }
     }
 
-    // 1. Stat reset (special: confirm + reset stat points)
     if (effect === 'stat_reset') {
       handleStatReset();
       return true;
     }
-    // 2026-05-08: Eliksir Siły — combined +50 ATK + +50 DEF buff. Spec
-    // says "+50 atk DEF koszt 80k" -> one purchase, two buffs. The
-    // BUFF_CONFIG can't model a one-effect->two-buffs relation cleanly,
-    // so we fan out manually here before the generic isBuffEffect path.
     if (effect === 'atk_def_boost_50_15m') {
-      const dur = 900000; // 15 min
-      // 2026-05-08: prefer the new elixir art (eliksir-sily.png) for
-      // both halves of this combined buff. Falls back to emoji when
-      // no PNG exists in the registry.
+      const dur = 900000;
       const sily = getElixirImage('atk_boost_50') ?? getElixirImage('atk_boost_elixir');
       useBuffStore.getState().addPausableBuff(
         { id: 'atk_boost_50', name: '+50 ATK', icon: sily ?? 'flexed-biceps', effect: 'atk_boost_50' },
@@ -3157,14 +2692,9 @@ const Inventory = () => {
       useInventoryStore.getState().addConsumable(elixirId, -1);
       return true;
     }
-    // 2. Buff elixirs (XP, AS, premium, etc)
     if (isBuffEffect(effect)) {
       const cfg = BUFF_CONFIG[effect];
       if (!cfg) return false;
-      // 2026-05-08: lift the active-buff icon to the new PNG when
-      // available — the BuffBar / BuffPopover both render via
-      // <TinyIcon> which understands URL icons. Fall back to the
-      // emoji declared in BUFF_CONFIG when no art is registered.
       const artIcon = getElixirImage(cfg.effect) ?? getElixirImage(elixirId) ?? cfg.icon;
       const buffData = { id: cfg.id, name: cfg.name, icon: artIcon, effect: cfg.effect };
       if (cfg.pausable) {
@@ -3173,7 +2703,6 @@ const Inventory = () => {
         useBuffStore.getState().addBuff(buffData, cfg.durationMs);
       }
       useInventoryStore.getState().addConsumable(elixirId, -1);
-      // Max HP/MP elixirs: heal up to the new effective cap.
       if (cfg.effect === 'hp_boost_500' || cfg.effect === 'hp_pct_25'
           || cfg.effect === 'mp_boost_500' || cfg.effect === 'mp_pct_25') {
         const freshChar = useCharacterStore.getState().character;
@@ -3186,7 +2715,6 @@ const Inventory = () => {
       }
       return true;
     }
-    // 3. HP/MP heal potions (heal_hp_X, heal_mp_X, heal_hp_pct_X, heal_mp_pct_X)
     const isHp = effect.startsWith('heal_hp');
     const isMp = effect.startsWith('heal_mp');
     if (isHp || isMp) {
@@ -3195,7 +2723,6 @@ const Inventory = () => {
       const eff = engineGetEffectiveChar(freshChar);
       const curMaxHp = eff?.max_hp ?? freshChar.max_hp;
       const curMaxMp = eff?.max_mp ?? freshChar.max_mp;
-      // Refuse if already full (avoid wasting a potion)
       if (isHp && freshChar.hp >= curMaxHp) return false;
       if (isMp && freshChar.mp >= curMaxMp) return false;
       let healAmount = 0;
@@ -3218,11 +2745,9 @@ const Inventory = () => {
       return true;
     }
     return false;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Apply N doses sequentially. Stops early if a dose fails (e.g. HP full).
-  const useElixirN = useCallback((elixirId: string, n: number): number => {
+  const applyElixirN = useCallback((elixirId: string, n: number): number => {
     let used = 0;
     for (let i = 0; i < n; i++) {
       if (!applyElixirDose(elixirId)) break;
@@ -3231,8 +2756,7 @@ const Inventory = () => {
     return used;
   }, [applyElixirDose]);
 
-  // For HP/MP potions: drink as many as needed to fill HP (or until empty).
-  const useElixirToFull = useCallback((elixirId: string): number => {
+  const applyElixirToFull = useCallback((elixirId: string): number => {
     const elixir = ELIXIRS.find((e) => e.id === elixirId);
     if (!elixir) return 0;
     const isHp = elixir.effect.startsWith('heal_hp');
@@ -3251,7 +2775,7 @@ const Inventory = () => {
       if (isMp && ch.mp >= maxMp) break;
       if (!applyElixirDose(elixirId)) break;
       used++;
-      if (used > 999) break; // safety
+      if (used > 999) break;
     }
     return used;
   }, [applyElixirDose]);
@@ -3261,8 +2785,6 @@ const Inventory = () => {
 
   const handlePotionConvert = useCallback((inputId: string, outputId: string, outputName: string, inputCount: number, batches: number) => {
       if (batches <= 0) return;
-      // 2026-06-21 defense-in-depth: never craft UP into a potion tier the
-      // character can't use yet, even if the disabled button is bypassed.
       const lvl = useCharacterStore.getState().character?.level ?? 1;
       const reqLvl = getPotionMinLevel(outputId);
       if (lvl < reqLvl) {
@@ -3270,9 +2792,6 @@ const Inventory = () => {
           setTimeout(() => setAlchemyToast(null), 2200);
           return;
       }
-      // Backend-authoritative branch (opt-in). Server resolves the recipe by
-      // (inputId, outputId) — passing outputId is what disambiguates recipes
-      // that share an inputId — debits inputs, credits outputs, and resyncs.
       if (isBackendMode()) {
         const char = useCharacterStore.getState().character;
         if (char) {
@@ -3299,25 +2818,15 @@ const Inventory = () => {
       setTimeout(() => setAlchemyToast(null), 2200);
   }, []);
 
-  // -- Multi-sell / disassemble state -----------------------------------------
   const [bulkMode, setBulkMode] = useState<BulkMode>('none');
   const multiSellMode = bulkMode !== 'none';
   const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set());
 
-  // -- Disassemble animation state --------------------------------------------
   const [disassembleAnimating, setDisassembleAnimating] = useState(false);
   const [disassembleProgress, setDisassembleProgress] = useState(0);
   const [disassembleTotalItems, setDisassembleTotalItems] = useState(0);
   const [disassembleCurrentItem, setDisassembleCurrentItem] = useState<string | null>(null);
 
-  // Point 3: stable reference so memoized BagTile doesn't re-render when
-  // unrelated parent state (DetailPanel open, stone popup, etc.) changes.
-  // The ref pattern keeps the callback identity stable across bulkMode changes
-  // — only re-renders of BagTile will be driven by its own props (isChecked /
-  // multiSellMode), not by callback identity churn.
-  // NOTE: the selection-toggle logic is inlined here (rather than extracted
-  // into a separate callback declared later in the component) so the deps
-  // array never references a not-yet-initialised binding (TDZ at mount).
   const bulkModeRef = useRef(bulkMode);
   bulkModeRef.current = bulkMode;
   const selectBagItem = useCallback((item: IInventoryItem) => {
@@ -3339,8 +2848,6 @@ const Inventory = () => {
   const selectEquippedItem = (item: IInventoryItem, slot: EquipmentSlot) =>
     setSelected({ item, isEquipped: true, slot });
 
-  // Keep selected item in sync with store (after upgrade, sell, etc.)
-  // Track whether disassemble is active to prevent premature panel close
   const [disassembleActive, setDisassembleActive] = useState(false);
 
   const freshSelected = useMemo(() => {
@@ -3351,14 +2858,12 @@ const Inventory = () => {
       if (eqItem && eqItem.uuid === uuid) {
         return { ...selected, item: eqItem };
       }
-      // Item was unequipped or replaced
       return null;
     }
     const bagItem = bag.find((i) => i.uuid === uuid);
     if (bagItem) {
       return { ...selected, item: bagItem };
     }
-    // Item was sold or removed — but keep panel open during disassemble
     if (disassembleActive) return selected;
     return null;
   }, [selected, bag, equipment, disassembleActive]);
@@ -3369,14 +2874,12 @@ const Inventory = () => {
   const sortedBag = useMemo(() => {
     const copy = [...bag];
     copy.sort((a, b) => {
-      // Sort by item level DESC first
       const lvlDiff = (b.itemLevel || 1) - (a.itemLevel || 1);
       if (lvlDiff !== 0) return lvlDiff;
-      // Then by rarity DESC
       return (RARITY_SORT_ORDER[b.rarity] ?? 0) - (RARITY_SORT_ORDER[a.rarity] ?? 0);
     });
     return copy;
-  }, [bag]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bag]);
   const filteredBag = useMemo(() => {
     let out = sortedBag;
     if (rarityFilter !== 'all') {
@@ -3386,12 +2889,8 @@ const Inventory = () => {
       out = out.filter((i) => {
         const slot = getItemSlotSafe(i.itemId, ALL_ITEMS);
         if (!slot) return false;
-        // 2026-05-08: `armor` is now ONLY the chest-armor slot per
-        // spec — no longer a coarse "any armor piece" group. Helmet,
-        // pants, gloves, etc. each have their own pill.
         if (slotFilter === 'weapons') return slot === 'mainHand' || slot === 'offHand';
         if (slotFilter === 'jewelry') return slot === 'ring1' || slot === 'ring2' || slot === 'necklace' || slot === 'earrings';
-        // ring1 filter matches both ring1 and ring2
         if (slotFilter === 'ring1')   return slot === 'ring1' || slot === 'ring2';
         return slot === slotFilter;
       });
@@ -3399,13 +2898,6 @@ const Inventory = () => {
     return out;
   }, [sortedBag, rarityFilter, slotFilter]);
 
-  // -- Spec 4: stackable items as bag tiles ----------------------------------
-  // Potions, spell chests and enhancement stones used to live in their own
-  // sections (Potiony i Eliksiry / Spell Chesty / Kamienie). The 2026-05
-  // spec folds them into the bag grid as "stack tiles" — one tile per
-  // distinct stack with a count badge. Each click opens the appropriate
-  // popup (potion -> potion popup -> alchemia tab; chest -> skills popup;
-  // stone -> stone conversion popup).
   interface IStackTile {
     id: string;
     icon: string;
@@ -3417,31 +2909,18 @@ const Inventory = () => {
   }
   const stackTiles = useMemo<IStackTile[]>(() => {
     const tiles: IStackTile[] = [];
-    // Potion / elixir stacks — every owned consumable from ELIXIRS list.
     for (const elixir of ELIXIRS) {
       const count = consumables[elixir.id] ?? 0;
       if (count <= 0) continue;
-      // 2026-05 spec: HP/MP potion tiers cycle the rarity ladder so the
-      // bag visually scales with the potion's strength:
-      //   - sm  / md       -> common  (gray)
-      //   - lg  / great    -> rare    (blue)
-      //   - super          -> epic    (green)
-      //   - ultimate       -> legendary (red)
-      //   - divine         -> mythic  (yellow)
-      //   - mega           -> heroic  (purple)
-      // Buff elixirs keep the legacy "epic by default, legendary for
-      // premium / +100% combat boosts" rule.
       const fx = elixir.effect ?? '';
       const id = elixir.id;
       const POTION_TIER_RARITY: Record<string, Rarity> = {
-        // HP
         hp_potion_sm: 'common', hp_potion_md: 'common',
         hp_potion_lg: 'rare',   hp_potion_great: 'rare',
         hp_potion_super: 'epic',
         hp_potion_ultimate: 'legendary',
         hp_potion_divine: 'mythic',
         hp_potion_mega: 'heroic',
-        // MP — same ladder
         mp_potion_sm: 'common', mp_potion_md: 'common',
         mp_potion_lg: 'rare',   mp_potion_great: 'rare',
         mp_potion_super: 'epic',
@@ -3464,17 +2943,9 @@ const Inventory = () => {
         count,
         rarity,
         type: 'potion',
-        // Spec 2: click pops the per-potion use confirm modal first
-        // (rather than activating immediately) so the player can pick
-        // how many doses to drink, or fill to max HP/MP.
         onClick: () => { setUsePotionId(elixir.id); setUsePotionAmount(1); },
       });
     }
-    // Spell chest stacks — keys like `spell_chest_1`, `spell_chest_2`...
-    // 2026-05 spec: chest rarity follows the 15-tier art ladder so the
-    // border colour matches the chest art itself (1-4 gray / 5-8 blue /
-    // 9-10 green / 11-12 red / 13-14 yellow / 15 purple). Mapping uses
-    // the game's chest-level -> art-tier table from spriteAssets.
     const CHEST_LEVEL_TO_TIER_INV: Record<number, number> = {
       5: 1, 10: 2, 20: 3, 30: 4, 40: 5, 50: 6, 60: 7, 70: 8,
       80: 9, 100: 10, 150: 11, 300: 12, 600: 13, 800: 14, 1000: 15,
@@ -3504,7 +2975,6 @@ const Inventory = () => {
         onClick: () => setPopupKey('skills'),
       });
     }
-    // Stone stacks — one per rarity tier (only show non-zero stacks).
     for (const rarity of RARITY_ORDER) {
       const stoneId = STONE_FOR_RARITY[rarity];
       const count = stones[stoneId] ?? 0;
@@ -3520,51 +2990,33 @@ const Inventory = () => {
       });
     }
     return tiles;
-  }, [consumables, stones]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [consumables, stones]);
 
-  // Filter stack tiles based on the active slotFilter. 'all' shows all,
-  // 'potions'/'chests'/'stones' shows only that type, any other slot
-  // filter hides them entirely (the player narrowed to gear-only).
   const filteredStackTiles = useMemo<IStackTile[]>(() => {
-    // 2026-06-21 fix: when the player EXPLICITLY selects a stack slot filter
-    // (Potiony / Spell Chesty / Kamienie), show those stacks even if a rarity
-    // filter happens to be active — narrow them BY rarity instead of hiding
-    // them. Previously any active rarity filter blanket-hid all stacks, so
-    // tapping "Spell Chesty" while a rarity pill was selected showed nothing
-    // ("mam spell chesty a jak odfiltruje to nie widze nic"). Stack tiles carry
-    // a rarity (chests by tier, potions by tier, stones by tier) so this is
-    // meaningful.
     const byRarity = (tiles: IStackTile[]): IStackTile[] =>
       rarityFilter === 'all' ? tiles : tiles.filter((t) => t.rarity === rarityFilter);
     if (slotFilter === 'potions') return byRarity(stackTiles.filter((t) => t.type === 'potion'));
     if (slotFilter === 'chests') return byRarity(stackTiles.filter((t) => t.type === 'chest'));
     if (slotFilter === 'stones') return byRarity(stackTiles.filter((t) => t.type === 'stone'));
-    // 'all' slot: stacks mix in with gear, so a rarity filter (a gear-focused
-    // action) still hides them — unchanged behavior.
     if (rarityFilter !== 'all') return [];
     if (slotFilter === 'all') return stackTiles;
-    return []; // a gear slot filter (helmet, weapons, …) → no stacks
+    return [];
   }, [stackTiles, slotFilter, rarityFilter]);
 
-  // -- Pagination -------------------------------------------------------------
   const totalPages = Math.max(1, Math.ceil(filteredBag.length / PAGE_SIZE));
-  // Clamp current page when filters shrink the list
   const safePage = Math.min(currentPage, totalPages - 1);
   const pagedBag = useMemo(
     () => filteredBag.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE),
     [filteredBag, safePage],
   );
-  // Reset to page 0 whenever filters change
   const prevFilterKey = useRef(`${rarityFilter}:${slotFilter}`);
   if (prevFilterKey.current !== `${rarityFilter}:${slotFilter}`) {
     prevFilterKey.current = `${rarityFilter}:${slotFilter}`;
     if (currentPage !== 0) {
-      // Defer state update so React doesn't complain about setting during render
       queueMicrotask(() => setCurrentPage(0));
     }
   }
 
-  // -- Multi-sell helpers ------------------------------------------------------
 
   const selectAll = useCallback(() => {
     setSelectedUuids(new Set(filteredBag.map((i) => i.uuid)));
@@ -3593,10 +3045,6 @@ const Inventory = () => {
 
   const handleMultiSell = async () => {
     if (selectedUuids.size === 0) return;
-    // Backend-authoritative branch (opt-in). The server exposes only a
-    // single-item sell endpoint, so we sell each selected uuid sequentially
-    // and re-hydrate once at the end. On partial failure we still sync so the
-    // store reflects whatever the server actually processed.
     if (isBackendMode() && character) {
       const uuids = Array.from(selectedUuids);
       try {
@@ -3606,7 +3054,7 @@ const Inventory = () => {
         await syncFromBackend(character.id);
       } catch (e) {
         console.warn('[backend] multi-sell failed', e);
-        await syncFromBackend(character.id).catch(() => { /* keep UI alive */ });
+        await syncFromBackend(character.id).catch(() => { });
       }
       setSelectedUuids(new Set());
       setBulkMode('none');
@@ -3617,7 +3065,6 @@ const Inventory = () => {
     setBulkMode('none');
   };
 
-  // -- Mass Disassemble (dedicated mode with animation) -----------------------
   const [bulkDisassembleResult, setBulkDisassembleResult] = useState<{
     total: number; stones: Record<string, number>;
   } | null>(null);
@@ -3628,10 +3075,6 @@ const Inventory = () => {
     const totalCount = itemsToDisassemble.length;
     if (totalCount === 0) return;
 
-    // Backend-authoritative branch (opt-in). The server disassembles the whole
-    // batch in one call and returns the earned stones via resync. We keep the
-    // rAF progress animation for UX, then reconcile from the server result
-    // instead of computing stones client-side.
     if (isBackendMode() && character) {
       const uuids = Array.from(selectedUuids);
       setDisassembleAnimating(true);
@@ -3656,7 +3099,7 @@ const Inventory = () => {
             await syncFromBackend(character.id);
           } catch (e) {
             console.warn('[backend] mass disassemble failed', e);
-            await syncFromBackend(character.id).catch(() => { /* keep UI alive */ });
+            await syncFromBackend(character.id).catch(() => { });
           }
           setDisassembleAnimating(false);
           setDisassembleProgress(0);
@@ -3675,11 +3118,6 @@ const Inventory = () => {
     setDisassembleProgress(0);
     setDisassembleTotalItems(totalCount);
 
-    // Point 4: fixed ~1200ms total animation driven by requestAnimationFrame.
-    // The previous impl used per-item setTimeout chains — browsers clamp nested
-    // timers to ~4ms so 500+ item batches took 10s+, and every tick re-rendered
-    // the whole 3500-tile grid. rAF syncs to the display's refresh rate, caps
-    // the render spam at ~60 updates/s, and finishes in a predictable window.
     const TOTAL_ANIM_MS = 1200;
     const startTime = performance.now();
 
@@ -3688,8 +3126,6 @@ const Inventory = () => {
       const progress = Math.min(1, elapsed / TOTAL_ANIM_MS);
       const processed = Math.min(totalCount, Math.ceil(progress * totalCount));
       setDisassembleProgress(processed);
-      // Cycle the "current item" label at ~6 steps/s so it reads as motion
-      // rather than an unreadable blur.
       const stepIdx = Math.min(
         totalCount - 1,
         Math.floor((elapsed / 160) % Math.max(1, totalCount)),
@@ -3702,7 +3138,6 @@ const Inventory = () => {
         return;
       }
 
-      // Animation complete — do the actual disassemble in ONE store update.
       const stonesEarned = disassembleMultiple(
         Array.from(selectedUuids),
         (item: IInventoryItem) => item.rarity,
@@ -3721,7 +3156,6 @@ const Inventory = () => {
     requestAnimationFrame(tick);
   };
 
-  // -- Disassemble summary for footer -----------------------------------------
   const disassembleSummary = useMemo(() => {
     if (bulkMode !== 'disassemble') return { count: 0, stonesByRarity: {} as Record<string, number> };
     const items = bag.filter((i) => selectedUuids.has(i.uuid));
@@ -3738,10 +3172,6 @@ const Inventory = () => {
     setSelectedUuids(new Set());
   };
 
-  // Postać-spec item 9: derived helpers for the auto-potion popup body.
-  // Same shape CharacterStats uses — kept inline (rather than in a hook)
-  // because it's a few cheap finds/divisions and avoids cross-file churn
-  // until the dedicated AutoPotionPanel component lands.
   const flatHpSliderPct = (autoPotionHpThreshold / 99) * 100;
   const flatMpSliderPct = (autoPotionMpThreshold / 99) * 100;
   const pctHpSliderPct = (autoPotionPctHpThreshold / 99) * 100;
@@ -3759,21 +3189,11 @@ const Inventory = () => {
     <div
       className="inventory"
       style={{
-        // Spec 2: every "selected" surface in this view (multi-select tiles,
-        // slot filter active state, "Zaznacz wszystkie" pill, etc.) reads in
-        // the player's live transform colour. Dropping the var on the root
-        // means every nested rule can pick it up via `var(--tx-accent)`.
         '--tx-accent': accentColor,
         '--tx-accent-rgb': accentColorRgb,
       } as React.CSSProperties}
     >
-      {/* Postać-spec items 1 + 3: the old page header (back button + ":backpack:
-          Ekwipunek" title + gold pill) is gone. The Postać tab now lands
-          straight on this view, so a redundant header would just push the
-          paperdoll down. Gold and navigation live in the bottom nav and
-          the paperdoll chrome. */}
 
-      {/* -- Paperdoll: avatar + equipment overlay ----------------------- */}
       {character && (() => {
           const eff = engineGetEffectiveChar(character);
           const effMaxHp = eff?.max_hp ?? character.max_hp;
@@ -3806,9 +3226,6 @@ const Inventory = () => {
                   </div>
 
                   <div className="inventory__paperdoll-stage">
-                      {/* Postać-spec item 4: avatar is now a button —
-                          clicking opens the zoom popup with the enlarged
-                          portrait + name + class + level. */}
                       <button
                           type="button"
                           className="inventory__paperdoll-avatar inventory__paperdoll-avatar--clickable"
@@ -3837,11 +3254,6 @@ const Inventory = () => {
                                   onClick={() => item && selectEquippedItem(item, slot)}
                                   aria-label={SLOT_LABELS[slot]}
                               >
-                                  {/* Spec 1 (2026-05): empty slots render nothing —
-                                      no fallback emoji glyph. The slot frame still
-                                      reserves space so the paperdoll grid stays
-                                      stable, but the dimmed icon placeholder is
-                                      gone per the cleaner-look spec. */}
                                   {item && (
                                       <ItemIcon
                                           icon={slotEmoji(item.itemId)}
@@ -3857,20 +3269,8 @@ const Inventory = () => {
                       })}
                   </div>
 
-                  {/* 2026-05 v6: stat-point distribution tiles. Visible
-                      ONLY when `character.stat_points > 0`. By default a
-                      click spends ONE point (matching the legacy /stats
-                      flow so a careful player can split the build). The
-                      "wszystkie naraz" checkbox flips the click handler
-                      to `spendAllStatPoints` so a power-leveler can dump
-                      hundreds of points in 4 clicks. The four stats
-                      mirror `STAT_POINT_BONUSES` in characterStore:
-                      HP/MP +5 each, ATK/DEF +1 each. */}
                   {character && (character.stat_points ?? 0) > 0 && (() => {
                       const pts = character.stat_points ?? 0;
-                      // When the toggle is on the tile bonus shows the
-                      // FULL spend (×N); otherwise just the per-click
-                      // increment so the number matches what one tap does.
                       const hpBonus = statAllocAllAtOnce ? pts * 5 : 5;
                       const mpBonus = statAllocAllAtOnce ? pts * 5 : 5;
                       const atkBonus = statAllocAllAtOnce ? pts : 1;
@@ -3941,11 +3341,6 @@ const Inventory = () => {
                       );
                   })()}
 
-                  {/* Postać-spec item 5: four-icon action row under the
-                      paperdoll. Stats / Training / Skills currently route
-                      to the existing pages — they'll convert to in-place
-                      popups once the derivation hook lands. The Potion
-                      icon already opens its dedicated popup right here. */}
                   <div className="inventory__paperdoll-actions">
                       <button
                           type="button"
@@ -3994,10 +3389,6 @@ const Inventory = () => {
           );
       })()}
 
-      {/* -- Postać popups: avatar zoom + auto-potion config -------------
-          Single AnimatePresence stack — only one popup is open at a time
-          (see `popupKey` state). Backdrop click closes; modal content
-          stops propagation so an inner click doesn't dismiss. */}
       {character && (
           <AnimatePresence>
               {popupKey === 'avatar' && (
@@ -4073,9 +3464,6 @@ const Inventory = () => {
                               </button>
                           </header>
 
-                          {/* Spec 13c: tab strip lets the popup host both the
-                              auto-potion config AND the alchemia conversion
-                              UI without doubling the surface chrome. */}
                           <div className="inventory__popup-tabs">
                               <button
                                   type="button"
@@ -4095,7 +3483,6 @@ const Inventory = () => {
 
                           <div className="inventory__popup-body">
                               {potionTab === 'auto' && <>
-                              {/* Block 1: Flat HP */}
                               <div className={`inventory__potion-setting${!autoPotionHpEnabled ? ' inventory__potion-setting--disabled' : ''}`}>
                                   <div className="inventory__potion-row">
                                       <label className="inventory__potion-toggle">
@@ -4144,7 +3531,6 @@ const Inventory = () => {
                                   </div>
                               </div>
 
-                              {/* Block 2: Flat MP */}
                               <div className={`inventory__potion-setting${!autoPotionMpEnabled ? ' inventory__potion-setting--disabled' : ''}`}>
                                   <div className="inventory__potion-row">
                                       <label className="inventory__potion-toggle">
@@ -4193,7 +3579,6 @@ const Inventory = () => {
                                   </div>
                               </div>
 
-                              {/* Block 3: Percentage HP */}
                               <div className={`inventory__potion-setting${!autoPotionPctHpEnabled ? ' inventory__potion-setting--disabled' : ''}`}>
                                   <div className="inventory__potion-row">
                                       <label className="inventory__potion-toggle">
@@ -4242,7 +3627,6 @@ const Inventory = () => {
                                   </div>
                               </div>
 
-                              {/* Block 4: Percentage MP */}
                               <div className={`inventory__potion-setting${!autoPotionPctMpEnabled ? ' inventory__potion-setting--disabled' : ''}`}>
                                   <div className="inventory__potion-row">
                                       <label className="inventory__potion-toggle">
@@ -4292,10 +3676,6 @@ const Inventory = () => {
                               </div>
                               </>}
 
-                              {/* Spec 13c: Alchemia tab — full conversion grid
-                                  moved into the popup. Same handler / same
-                                  state as the standalone panel, just rendered
-                                  inside the popup body. */}
                               {potionTab === 'alchemy' && (
                                 <div className="inventory__alchemy-tab">
                                   <p className="inventory__alchemy-hint">
@@ -4309,9 +3689,6 @@ const Inventory = () => {
                                       const key = getAlchemyKey(conv);
                                       const owned = consumables[conv.inputId] ?? 0;
                                       const outputOwned = consumables[conv.outputId] ?? 0;
-                                      // 2026-06-21: level gate is authoritative via potionGating
-                                      // (matches shop buy + drink gates). conv.outputMinLevel is
-                                      // legacy/display-only — `requiredLevel` is the source of truth.
                                       const { canConvert, maxBatches, levelLocked, requiredLevel } =
                                         checkConversionAvailability(conv, owned, character?.level ?? 1);
                                       const levelTooLow = levelLocked;
@@ -4330,9 +3707,6 @@ const Inventory = () => {
                                               <span className="inventory__alchemy-owned">Posiadasz: {owned}</span>
                                             </div>
                                           </div>
-                                          {/* Spec 2 (2026-05 v3): arrow direction set via SCSS
-                                              `::before` (v on mobile, -> on desktop) so the layout
-                                              swaps cleanly between vertical and horizontal flow. */}
                                           <span className="inventory__alchemy-arrow" aria-hidden="true" />
                                           <div className="inventory__alchemy-output">
                                             <span className="inventory__alchemy-icon"><TinyIcon icon={conv.outputIcon} size="md" /></span>
@@ -4386,7 +3760,6 @@ const Inventory = () => {
                   </motion.div>
               )}
 
-              {/* Spec 7: combat stats popup */}
               {popupKey === 'stats' && (
                   <motion.div
                       key="stats-pop"
@@ -4416,7 +3789,6 @@ const Inventory = () => {
                   </motion.div>
               )}
 
-              {/* Spec 8: training popup */}
               {popupKey === 'training' && (
                   <motion.div
                       key="training-pop"
@@ -4446,7 +3818,6 @@ const Inventory = () => {
                   </motion.div>
               )}
 
-              {/* Spec 10: active skills popup */}
               {popupKey === 'skills' && (
                   <motion.div
                       key="skills-pop"
@@ -4478,9 +3849,6 @@ const Inventory = () => {
           </AnimatePresence>
       )}
 
-      {/* Spec 2: per-potion use popup — confirms how many doses to drink
-          (or auto-fill HP/MP) before consuming the stack. Lives in its
-          own AnimatePresence so it can layer above the other popups. */}
       <AnimatePresence>
         {usePotionId && (() => {
           const elixir = ELIXIRS.find((e) => e.id === usePotionId);
@@ -4521,7 +3889,6 @@ const Inventory = () => {
                   <p className="inventory__use-potion-desc">{elixir.description_pl}</p>
                   <p className="inventory__use-potion-stock">Posiadasz: <strong>×{stack}</strong></p>
 
-                  {/* Heal potions: amount + auto-fill row */}
                   {isHeal && (
                     <>
                       <div className="inventory__use-potion-amount">
@@ -4545,8 +3912,6 @@ const Inventory = () => {
                           >MAX ({max})</button>
                         </div>
                       </div>
-                      {/* Spec 5 (2026-05): show why a heal might no-op so the
-                          user understands the silent-fail when HP/MP is full. */}
                       {(() => {
                         const ch = character;
                         if (!ch) return null;
@@ -4564,14 +3929,14 @@ const Inventory = () => {
                         <button
                           className="inventory__use-potion-btn inventory__use-potion-btn--use"
                           disabled={amount <= 0}
-                          onClick={() => { useElixirN(usePotionId, amount); close(); }}
+                          onClick={() => { applyElixirN(usePotionId, amount); close(); }}
                         >
                           <TinyIcon icon={elixir.icon} size="sm" /> Uzyj ×{amount}
                         </button>
                         <button
                           className="inventory__use-potion-btn inventory__use-potion-btn--fill"
                           disabled={max <= 0}
-                          onClick={() => { useElixirToFull(usePotionId); close(); }}
+                          onClick={() => { applyElixirToFull(usePotionId); close(); }}
                         >
                           <GameIcon name="up-arrow" /> Uzyj do max {isHp ? 'HP' : 'MP'}
                         </button>
@@ -4579,12 +3944,6 @@ const Inventory = () => {
                     </>
                   )}
 
-                  {/* Buff elixirs: amount selector + activate N at once.
-                      2026-06-24 BUG 2: buffs only had a single "Aktywuj buff"
-                      button. Reuse the SAME amount selector + batch handler the
-                      heal potions use (useElixirN loops applyElixirDose N times).
-                      Buff durations STACK (buffStore), so N activations extend the
-                      buff by N × its base duration. */}
                   {isBuff && (
                     <>
                       <div className="inventory__use-potion-amount">
@@ -4612,7 +3971,7 @@ const Inventory = () => {
                         <button
                           className="inventory__use-potion-btn inventory__use-potion-btn--use"
                           disabled={amount <= 0}
-                          onClick={() => { useElixirN(usePotionId, amount); close(); }}
+                          onClick={() => { applyElixirN(usePotionId, amount); close(); }}
                         >
                           <GameIcon name="sparkles" /> {amount > 1 ? `Aktywuj ×${amount}` : 'Aktywuj buff'}
                         </button>
@@ -4620,7 +3979,6 @@ const Inventory = () => {
                     </>
                   )}
 
-                  {/* Stat reset */}
                   {isReset && (
                     <div className="inventory__use-potion-actions">
                       <button
@@ -4638,15 +3996,6 @@ const Inventory = () => {
                     </div>
                   )}
 
-                  {/* Spec 1 (2026-05 v3): protection-style elixirs (AOL,
-                      death-protection) and reset elixirs (dungeon/boss)
-                      are CHARGE-BASED — every item in your bag is one
-                      "use", consumed automatically by the engine when
-                      the trigger fires (death / dungeon defeat / boss
-                      defeat). No timer, no manual activation needed —
-                      just keep them in the bag.
-                      The popup explains this so the player knows their
-                      protection counter equals their stack count. */}
                   {!isHeal && !isBuff && !isReset && (() => {
                     let infoLabel = '';
                     if (fx === 'amulet_of_loss') {
@@ -4675,12 +4024,7 @@ const Inventory = () => {
 
       <hr className="inventory__separator" />
 
-      {/* Spec 4: standalone "Kamienie ulepszenia" panel removed — every
-          stone now appears as its own bag tile (one per rarity, with a
-          stack count) inside the bag grid below. Click a stone tile to
-          open the same conversion popup as before. */}
 
-      {/* -- Stone Conversion Popup ----------------------------------------- */}
       <AnimatePresence>
         {stoneConvertId && (() => {
           const higherStone = STONE_CONVERSION_CHAIN[stoneConvertId];
@@ -4691,7 +4035,6 @@ const Inventory = () => {
           const canConvert = !!higherStone && currentCount >= STONE_CONVERSION_COST && gold >= STONE_CONVERSION_GOLD;
           const isMaxTier = !higherStone;
 
-          // Find rarity for colors
           const currentRarity = RARITY_ORDER.find((r) => STONE_FOR_RARITY[r] === stoneConvertId);
           const higherRarity = higherStone ? RARITY_ORDER.find((r) => STONE_FOR_RARITY[r] === higherStone) : null;
           const currentColor = currentRarity ? RARITY_COLORS[currentRarity] : '#fff';
@@ -4705,13 +4048,6 @@ const Inventory = () => {
               exit={{ opacity: 0 }}
               onClick={() => { setStoneConvertId(null); setStoneConvertResult(null); }}
             >
-              {/* 2026-06-24 BUG 1: the popup is now a CHILD of the flex-centered
-                  overlay (position:fixed; inset:0; flex center) instead of a
-                  sibling that self-centered via CSS transform:translate(-50%,-50%).
-                  framer-motion writes its own `transform` for the scale animation,
-                  which used to ERASE the CSS translate and push the popup
-                  off-screen on mobile. Centering is now the overlay's job, so the
-                  scale animation is harmless and the card stays 100% on-screen. */}
               <motion.div
                 className="inventory__stone-popup"
                 initial={{ opacity: 0, scale: 0.85 }}
@@ -4796,7 +4132,6 @@ const Inventory = () => {
         })()}
       </AnimatePresence>
 
-      {/* -- Bag section ----------------------------------------------------- */}
       <div className="inventory__bag-header">
         <span className="inventory__bag-count">Plecak: {bag.length} / 1000</span>
         {bulkMode !== 'none' ? (
@@ -4862,7 +4197,6 @@ const Inventory = () => {
         </div>
       </div>
 
-      {/* Rarity filters */}
       <div className="inventory__filter-row">
         {RARITY_FILTERS.map((r) => (
           <button
@@ -4880,12 +4214,8 @@ const Inventory = () => {
         ))}
       </div>
 
-      {/* Slot filters */}
       <div className="inventory__filter-row inventory__filter-row--slots">
         {SLOT_FILTER_BUTTONS.map((f) => {
-          /* Spec 3: icons can be either a PNG URL (slot variants) or an
-             emoji glyph (potions / chests / stones). Render as <img>
-             when the value looks like a URL, otherwise inline text. */
           const isImg = typeof f.icon === 'string' && (f.icon.startsWith('/') || f.icon.startsWith('http') || f.icon.includes('.png'));
           return (
             <button
@@ -4903,16 +4233,11 @@ const Inventory = () => {
         })}
       </div>
 
-      {/* Multi-sell / disassemble controls */}
       {bulkMode !== 'none' && (
         <div className="inventory__multi-controls">
           <span className={`inventory__bulk-mode-label${bulkMode === 'disassemble' ? ' inventory__bulk-mode-label--disassemble' : ''}`}>
             {bulkMode === 'sell' ? <><GameIcon name="money-bag" /> Tryb sprzedazy</> : <><GameIcon name="hammer" /> Tryb rozkladania</>}
           </span>
-          {/* Spec 2: select-all / deselect-all read in the live transform
-              colour (not the legacy red) so the action chrome matches the
-              player's tier. The rarity-coloured buttons below stay in
-              their per-rarity hue. */}
           <button className="inventory__multi-btn inventory__multi-btn--tx" onClick={selectAll}>Zaznacz wszystkie</button>
           <button className="inventory__multi-btn inventory__multi-btn--tx" onClick={deselectAll}>Odznacz wszystkie</button>
           {RARITY_SELECT_FILTERS.map((r) => (
@@ -4928,241 +4253,6 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* Spec 4: standalone Consumables section removed — all potions /
-          elixirs are now rendered as `stackTiles` inside the bag grid
-          below. Click a potion tile in the bag to open the Potion popup
-          (Alchemia tab) for conversion. */}
-      {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions, no-constant-binary-expression */}
-      {false && !multiSellMode && (() => {
-        const ownedConsumables = ELIXIRS.filter((e) => (consumables[e.id] ?? 0) > 0);
-        if (ownedConsumables.length === 0) return null;
-        const BUFF_CONFIG: Record<string, { id: string; name: string; icon: string; effect: string; durationMs: number; pausable?: boolean }> = {
-            'xp_boost_1h': { id: 'xp_boost', name: 'XP +50%', icon: 'star', effect: 'xp_boost', durationMs: 3600000, pausable: true },
-            'skill_xp_boost_1h': { id: 'skill_xp_boost', name: 'Skill XP +50%', icon: 'sparkles', effect: 'skill_xp_boost', durationMs: 3600000, pausable: true },
-            'attack_speed_0.20_15m_pausable': { id: 'attack_speed', name: 'AS +20%', icon: 'high-voltage', effect: 'attack_speed', durationMs: 900000, pausable: true },
-            'cooldown_reduction_0.20_30m': { id: 'cooldown_reduction', name: 'CD -20%', icon: 'cyclone', effect: 'cooldown_reduction', durationMs: 1800000 },
-            'hp_pct_25_15m': { id: 'hp_pct_25', name: 'Max HP +25%', icon: 'heart-on-fire', effect: 'hp_pct_25', durationMs: 900000, pausable: true },
-            'mp_pct_25_15m': { id: 'mp_pct_25', name: 'Max MP +25%', icon: 'diamond-with-a-dot', effect: 'mp_pct_25', durationMs: 900000, pausable: true },
-            'offline_training_boost': { id: 'offline_training_boost', name: 'Trening x2', icon: 'person-lifting-weights', effect: 'offline_training_boost', durationMs: 3600000, pausable: true },
-            'utamo_vita': { id: 'utamo_vita', name: 'Utamo Vita', icon: 'blue-circle', effect: 'utamo_vita', durationMs: 600000 },
-            'premium_xp_boost': { id: 'premium_xp_boost', name: 'Premium XP x2', icon: 'gem-stone', effect: 'premium_xp_boost', durationMs: 43200000, pausable: true },
-            'atk_dmg_25_15m': { id: 'atk_dmg_25', name: 'ATK DMG +25%', icon: 'crossed-swords', effect: 'atk_dmg_25', durationMs: 900000, pausable: true },
-            'atk_dmg_50_15m': { id: 'atk_dmg_50', name: 'ATK DMG +50%', icon: 'crossed-swords', effect: 'atk_dmg_50', durationMs: 900000, pausable: true },
-            'atk_dmg_100_15m': { id: 'atk_dmg_100', name: 'ATK DMG +100%', icon: 'crossed-swords', effect: 'atk_dmg_100', durationMs: 900000, pausable: true },
-            'spell_dmg_25_15m': { id: 'spell_dmg_25', name: 'SPELL DMG +25%', icon: 'crystal-ball', effect: 'spell_dmg_25', durationMs: 900000, pausable: true },
-            'spell_dmg_50_15m': { id: 'spell_dmg_50', name: 'SPELL DMG +50%', icon: 'crystal-ball', effect: 'spell_dmg_50', durationMs: 900000, pausable: true },
-            'spell_dmg_100_15m': { id: 'spell_dmg_100', name: 'SPELL DMG +100%', icon: 'crystal-ball', effect: 'spell_dmg_100', durationMs: 900000, pausable: true },
-            'hp_boost_500_15m': { id: 'hp_boost_500', name: '+500 Max HP', icon: 'drop-of-blood', effect: 'hp_boost_500', durationMs: 900000, pausable: true },
-            'mp_boost_500_15m': { id: 'mp_boost_500', name: '+500 Max MP', icon: 'large-blue-diamond', effect: 'mp_boost_500', durationMs: 900000, pausable: true },
-            'atk_boost_50_15m': { id: 'atk_boost_50', name: '+50 ATK', icon: 'flexed-biceps', effect: 'atk_boost_50', durationMs: 900000, pausable: true },
-            'def_boost_50_15m': { id: 'def_boost_50', name: '+50 DEF', icon: 'shield', effect: 'def_boost_50', durationMs: 900000, pausable: true },
-        };
-        const isBuffEffect = (effect: string): boolean => (
-          effect === 'xp_boost_1h'
-            || effect === 'skill_xp_boost_1h'
-            || effect.startsWith('attack_speed_')
-            || effect.startsWith('cooldown_reduction_')
-            || effect === 'offline_training_boost'
-            || effect === 'utamo_vita'
-            || effect === 'premium_xp_boost'
-            || effect.startsWith('atk_dmg_')
-            || effect.startsWith('spell_dmg_')
-            || effect.startsWith('hp_boost_')
-            || effect.startsWith('mp_boost_')
-            || effect.startsWith('atk_boost_')
-            || effect.startsWith('def_boost_')
-            || effect === 'atk_def_boost_50_15m' // 2026-06-24 #1: Eliksir Siły
-            || effect.startsWith('hp_pct_')
-            || effect.startsWith('mp_pct_')
-        );
-        return (
-          <div className="inventory__consumables">
-            <div className="inventory__consumables-title">
-              Potiony i Eliksiry
-              {/* Spec 13c: quick link to the Alchemia tab in the Potion popup
-                  for one-click access to the conversion grid. */}
-              <button
-                type="button"
-                className="inventory__consumables-alchemy-link"
-                onClick={openPotionAlchemy}
-                title="Otwórz Alchemię (zamiana eliksirów)"
-              >
-                <GameIcon name="test-tube" /> Alchemia <Icon name="arrowRight" />
-              </button>
-            </div>
-            <div className="inventory__consumables-grid">
-              {ownedConsumables.map((elixir) => {
-                const count = consumables[elixir.id] ?? 0;
-                const effect = elixir.effect;
-                // 2026-05-08 v3 spec ("eliksiry maja taki sam border
-                // wszedzie") — utility / buff elixirs (anything that's
-                // NOT an HP/MP heal potion) gets the gold->purple
-                // gradient border. HP/MP potions keep their normal
-                // tile chrome since they live in the "Potiony" family.
-                const isHealPotion = effect.startsWith('heal_hp') || effect.startsWith('heal_mp');
-                let tileClass = 'inventory__consumable-tile';
-                if (!isHealPotion) tileClass += ' inventory__consumable-tile--elixir';
-                let disabled = count <= 0;
-                let title = `Uzyj ${elixir.name_pl}`;
-                let onUse: (() => void) | null = null;
-
-                if (effect === 'stat_reset') {
-                  tileClass += ' inventory__consumable-tile--reset';
-                  title = 'Resetuje wszystkie rozdane punkty statystyk';
-                  onUse = () => {
-                    if (window.confirm('Na pewno chcesz zresetowac wszystkie rozdane statystyki? Punkty wroca do puli.')) {
-                      handleStatReset();
-                    }
-                  };
-                } else if (isBuffEffect(effect)) {
-                  const cfg = BUFF_CONFIG[effect];
-                  if (cfg) {
-                    const alreadyActive = useBuffStore.getState().hasBuff(cfg.effect);
-                    tileClass += ' inventory__consumable-tile--buff';
-                    title = alreadyActive ? 'Buff juz aktywny (nadpisze czas)' : `Aktywuj ${elixir.name_pl}`;
-                    onUse = () => {
-                      // 2026-05-08: same URL-icon lift as the popup-handler
-                      // path so consumables used from the grid carry PNG
-                      // art into the BuffBar / BuffPopover.
-                      const artIcon = getElixirImage(cfg.effect) ?? getElixirImage(elixir.id) ?? cfg.icon;
-                      const buffData = { id: cfg.id, name: cfg.name, icon: artIcon, effect: cfg.effect };
-                      if (cfg.pausable) {
-                        useBuffStore.getState().addPausableBuff(buffData, cfg.durationMs);
-                      } else {
-                        useBuffStore.getState().addBuff(buffData, cfg.durationMs);
-                      }
-                      useInventoryStore.getState().addConsumable(elixir.id, -1);
-                      // Max HP/MP elixirs raise effective cap — heal up to new effMax
-                      // so HP bar and auto-potion treat the player as "full" rather
-                      // than permanently sub-max until the next heal.
-                      if (cfg.effect === 'hp_boost_500' || cfg.effect === 'hp_pct_25'
-                          || cfg.effect === 'mp_boost_500' || cfg.effect === 'mp_pct_25') {
-                        const freshChar = useCharacterStore.getState().character;
-                        if (freshChar) {
-                          const eff = engineGetEffectiveChar(freshChar);
-                          const newMaxHp = eff?.max_hp ?? freshChar.max_hp;
-                          const newMaxMp = eff?.max_mp ?? freshChar.max_mp;
-                          useCharacterStore.getState().updateCharacter({ hp: newMaxHp, mp: newMaxMp });
-                          const cs = useCombatStore.getState();
-                          if (cs.phase === 'fighting') {
-                            cs.setHps(cs.monsterCurrentHp, newMaxHp);
-                            cs.healPlayerMp(newMaxMp, newMaxMp);
-                          }
-                        }
-                      }
-                    };
-                  }
-                } else {
-                  const isHpPotion = effect.startsWith('heal_hp');
-                  const isMpPotion = effect.startsWith('heal_mp');
-                  if (isHpPotion || isMpPotion) {
-                    const char = useCharacterStore.getState().character;
-                    if (char) {
-                      const eff = engineGetEffectiveChar(char);
-                      const effMaxHp = eff?.max_hp ?? char.max_hp;
-                      const effMaxMp = eff?.max_mp ?? char.max_mp;
-                      const isFull = isHpPotion ? char.hp >= effMaxHp : char.mp >= effMaxMp;
-                      disabled = isFull || count <= 0;
-                      title = isFull
-                        ? (isHpPotion ? 'HP jest pelne' : 'MP jest pelne')
-                        : `Uzyj ${elixir.name_pl}`;
-                      onUse = () => {
-                        const freshChar = useCharacterStore.getState().character;
-                        if (!freshChar) return;
-                        const eff2 = engineGetEffectiveChar(freshChar);
-                        const curMaxHp = eff2?.max_hp ?? freshChar.max_hp;
-                        const curMaxMp = eff2?.max_mp ?? freshChar.max_mp;
-                        if (isHpPotion) {
-                          const flatMatch = effect.match(/^heal_hp_(\d+)$/);
-                          const pctMatch = effect.match(/^heal_hp_pct_(\d+)$/);
-                          let healAmount = 0;
-                          if (flatMatch) healAmount = parseInt(flatMatch[1], 10);
-                          else if (pctMatch) healAmount = Math.floor(curMaxHp * parseInt(pctMatch[1], 10) / 100);
-                          const newHp = Math.min(curMaxHp, freshChar.hp + healAmount);
-                          useCharacterStore.getState().updateCharacter({ hp: newHp });
-                        } else {
-                          const flatMatch = effect.match(/^heal_mp_(\d+)$/);
-                          const pctMatch = effect.match(/^heal_mp_pct_(\d+)$/);
-                          let healAmount = 0;
-                          if (flatMatch) healAmount = parseInt(flatMatch[1], 10);
-                          else if (pctMatch) healAmount = Math.floor(curMaxMp * parseInt(pctMatch[1], 10) / 100);
-                          const newMp = Math.min(curMaxMp, freshChar.mp + healAmount);
-                          useCharacterStore.getState().updateCharacter({ mp: newMp });
-                        }
-                        useInventoryStore.getState().addConsumable(elixir.id, -1);
-                      };
-                    }
-                  }
-                }
-
-                return (
-                  <button
-                    key={elixir.id}
-                    type="button"
-                    className={tileClass}
-                    disabled={disabled || !onUse}
-                    title={`${elixir.name_pl} — ${elixir.description_pl}\n${title}`}
-                    onClick={() => onUse?.()}
-                  >
-                    <span className="inventory__consumable-tile-count">×{count}</span>
-                    <span className="inventory__consumable-tile-icon">
-                      <TinyIcon icon={elixir.icon} size={32} />
-                    </span>
-                    <span className="inventory__consumable-tile-name">{elixir.name_pl}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Spec 4: standalone Spell Chests section removed — every chest
-          is now a stack tile in the bag grid below; click opens the
-          Skills popup so the chest can be spent on unlocks/upgrades. */}
-      {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions, no-constant-binary-expression */}
-      {false && !multiSellMode && (() => {
-        const chestEntries = Object.entries(consumables)
-          .filter(([key, count]) => key.startsWith('spell_chest_') && (count ?? 0) > 0)
-          .map(([key, count]) => {
-            const level = parseInt(key.replace('spell_chest_', ''), 10) || 0;
-            return { key, level, count: count ?? 0 };
-          })
-          .sort((a, b) => a.level - b.level);
-        if (chestEntries.length === 0) return null;
-        return (
-          <div className="inventory__consumables">
-            <div className="inventory__consumables-title">Spell Chesty (kliknij aby otworzyc skille)</div>
-            <div className="inventory__consumables-grid">
-              {chestEntries.map(({ key, level, count }) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="inventory__consumable-tile inventory__consumable-tile--chest"
-                  /* Spec 13b: clicking a chest deep-links into the active
-                     skills popup so the player can spend the chest on
-                     unlocking / upgrading the skill that needs it. */
-                  onClick={() => setPopupKey('skills')}
-                  title={`${getSpellChestDisplayName(level)} — kliknij aby otworzyc skille (uzywany do odblokowywania i ulepszania skilli Lvl ${level}+)`}
-                >
-                  <span className="inventory__consumable-tile-count">×{count}</span>
-                  <span className="inventory__consumable-tile-icon"><TinyIcon icon={getSpellChestIcon(level)} /></span>
-                  <span className="inventory__consumable-tile-name">{getSpellChestDisplayName(level)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Spec 13c: standalone alchemia panel removed — moved into the
-          Auto-potion popup as the "Alchemia" tab. Click :test-tube: Potion in
-          the action row, or click any potion tile in the consumables
-          grid above, to deep-link there. */}
-
-      {/* Spec 3 (2026-05): pagination strip is ALWAYS visible — even
-          for a single page, even for an empty bag. Shows "Strona 1/1"
-          and disables both arrows when there's no other page to fly to. */}
       <div className="inventory__pagination">
         <button
           className="inventory__pagination-btn"
@@ -5197,12 +4287,6 @@ const Inventory = () => {
       ) : (
         <>
           <div className="inventory__bag-grid">
-            {/* Spec 4 + spec 1: stackable items (potions / chests / stones)
-                sit BEFORE the unique gear items, only on page 0 (subsequent
-                pages just show paged gear). Use the SAME `ItemIcon`
-                component + `inventory__bag-tile` shell as gear tiles so
-                they read as one continuous grid — only the count badge
-                (via ItemIcon's `quantity` prop) tells you it's a stack. */}
             {safePage === 0 && filteredStackTiles.map((t) => (
               <div key={t.id} className="inventory__bag-tile">
                 <ItemIcon
@@ -5231,8 +4315,6 @@ const Inventory = () => {
               );
             })}
           </div>
-          {/* Pagination bottom bar — only when more than 1 page (avoids
-              duplicating the always-on top strip on a single-page list). */}
           {totalPages > 1 && (
             <div className="inventory__pagination">
               <button
@@ -5257,7 +4339,6 @@ const Inventory = () => {
         </>
       )}
 
-      {/* Multi-sell footer */}
       {bulkMode === 'sell' && multiSellSummary.count > 0 && (
         <div className="inventory__multi-footer">
           <button className="inventory__multi-sell-btn" onClick={handleMultiSell}>
@@ -5266,7 +4347,6 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* Mass disassemble footer */}
       {bulkMode === 'disassemble' && disassembleSummary.count > 0 && !disassembleAnimating && (
         <div className="inventory__multi-footer">
           <div className="inventory__disassemble-preview">
@@ -5282,7 +4362,6 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* Disassemble progress overlay */}
       {disassembleAnimating && (
         <div className="inventory__disassemble-anim-overlay">
           <div className="inventory__disassemble-anim-box">
@@ -5321,7 +4400,6 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* Disassemble result popup */}
       {bulkDisassembleResult && (
         <div className="inventory__bulk-result-overlay" onClick={() => setBulkDisassembleResult(null)}>
           <motion.div
@@ -5352,7 +4430,6 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* -- Detail panel ---------------------------------------------------- */}
       <AnimatePresence>
         {freshSelected && (
           <DetailPanel

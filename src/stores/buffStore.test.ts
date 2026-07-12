@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBuffStore, getBuffTierGroup, type IActiveBuff } from './buffStore';
 import { useCharacterStore, type ICharacter } from './characterStore';
 
-// -- Helpers ------------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -47,7 +46,6 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar(), isLoading: false });
 });
 
-// -- addBuff (realtime) -------------------------------------------------------
 
 describe('addBuff', () => {
     it('adds a realtime buff with expiresAt = now + durationMs', () => {
@@ -76,14 +74,11 @@ describe('addBuff', () => {
         useBuffStore.getState().addBuff(makeBuff(), 5000);
         const stacked = useBuffStore.getState().allBuffs;
         expect(stacked).toHaveLength(1);
-        // Stacked duration should be roughly 10s from now (or +5s on top of first).
         expect(stacked[0].expiresAt).toBeGreaterThanOrEqual(firstExpiry);
     });
 
     it('only stacks for the active character — other characters are untouched', () => {
-        // Buff for char-1
         useBuffStore.getState().addBuff(makeBuff(), 5000);
-        // Switch character — buff for char-2 should be totally separate.
         useCharacterStore.setState({ character: makeChar({ id: 'char-2' }) });
         useBuffStore.getState().addBuff(makeBuff({ id: 'buff-2' }), 1000);
         const all = useBuffStore.getState().allBuffs;
@@ -95,7 +90,6 @@ describe('addBuff', () => {
     });
 });
 
-// -- addPausableBuff ----------------------------------------------------------
 
 describe('addPausableBuff', () => {
     it('stores remainingMs and timerMode=pausable', () => {
@@ -118,7 +112,6 @@ describe('addPausableBuff', () => {
     });
 });
 
-// -- addBuffGameTime ----------------------------------------------------------
 
 describe('addBuffGameTime', () => {
     it('stores game-time buff with gameMsRemaining', () => {
@@ -136,7 +129,7 @@ describe('addBuffGameTime', () => {
         useBuffStore.getState().addBuffGameTime(makeBuff({ effect: 'mana_shield' }), 5_000);
         const buffs = useBuffStore.getState().allBuffs;
         expect(buffs).toHaveLength(1);
-        expect(buffs[0].gameMsRemaining).toBe(20_000); // kept the longer one
+        expect(buffs[0].gameMsRemaining).toBe(20_000);
     });
 
     it('no-op when gameDurationMs <= 0', () => {
@@ -155,12 +148,10 @@ describe('addBuffGameTime', () => {
     });
 });
 
-// -- tickGameTimeBuffs --------------------------------------------------------
 
 describe('tickGameTimeBuffs', () => {
     it('drains gameMsRemaining at speed-scaled rate', () => {
         useBuffStore.getState().addBuffGameTime(makeBuff({ effect: 'mana_shield' }), 20_000);
-        // 1s wall × 4x speed = 4000ms drained
         useBuffStore.getState().tickGameTimeBuffs(1_000, 4);
         const b = useBuffStore.getState().allBuffs[0];
         expect(b.gameMsRemaining).toBe(16_000);
@@ -179,14 +170,12 @@ describe('tickGameTimeBuffs', () => {
     });
 });
 
-// -- addChargeBuff / consumeBuffCharge ----------------------------------------
 
 describe('addChargeBuff / consumeBuffCharge', () => {
     it('adds charges up to maxCharges', () => {
         useBuffStore.getState().addChargeBuff(makeBuff({ effect: 'shadow_step' }), 3, 6);
         expect(useBuffStore.getState().getBuffCharges('shadow_step')).toBe(3);
         useBuffStore.getState().addChargeBuff(makeBuff({ effect: 'shadow_step' }), 5, 6);
-        // capped at 6
         expect(useBuffStore.getState().getBuffCharges('shadow_step')).toBe(6);
     });
 
@@ -215,7 +204,6 @@ describe('addChargeBuff / consumeBuffCharge', () => {
     });
 });
 
-// -- removeBuff / removeBuffByEffect ------------------------------------------
 
 describe('removeBuff / removeBuffByEffect', () => {
     it('removeBuff strips by buff id', () => {
@@ -234,7 +222,6 @@ describe('removeBuff / removeBuffByEffect', () => {
     });
 });
 
-// -- cleanExpired -------------------------------------------------------------
 
 describe('cleanExpired', () => {
     it('removes realtime buffs whose expiresAt is in the past', () => {
@@ -273,7 +260,6 @@ describe('cleanExpired', () => {
     });
 });
 
-// -- hasBuff ------------------------------------------------------------------
 
 describe('hasBuff', () => {
     it('returns true for active realtime buff', () => {
@@ -309,7 +295,6 @@ describe('hasBuff', () => {
     });
 });
 
-// -- getBuffMultiplier --------------------------------------------------------
 
 describe('getBuffMultiplier', () => {
     it('returns 1 when the buff is not active', () => {
@@ -337,7 +322,6 @@ describe('getBuffMultiplier', () => {
     });
 });
 
-// -- consumePausableTime / getPausableRemaining -------------------------------
 
 describe('consumePausableTime', () => {
     it('consumes the requested ms when buff has enough remaining', () => {
@@ -351,7 +335,6 @@ describe('consumePausableTime', () => {
         useBuffStore.getState().addPausableBuff(makeBuff({ effect: 'xp_boost' }), 1_000);
         const consumed = useBuffStore.getState().consumePausableTime('xp_boost', 5_000);
         expect(consumed).toBe(1_000);
-        // Buff was fully consumed and removed.
         expect(useBuffStore.getState().getPausableRemaining('xp_boost')).toBe(0);
         expect(useBuffStore.getState().allBuffs).toHaveLength(0);
     });
@@ -362,20 +345,16 @@ describe('consumePausableTime', () => {
     });
 
     it('does NOT consume from a realtime buff (timerMode mismatch)', () => {
-        // realtime buffs use expiresAt, not remainingMs. consumePausableTime
-        // only matches timerMode='pausable'.
         useBuffStore.getState().addBuff(makeBuff({ effect: 'xp_boost' }), 5_000);
         const consumed = useBuffStore.getState().consumePausableTime('xp_boost', 1_000);
         expect(consumed).toBe(0);
     });
 });
 
-// -- getActiveBuffs / clearCharacterBuffs -------------------------------------
 
 describe('getActiveBuffs', () => {
     it('returns only active buffs for the current character', () => {
         useBuffStore.getState().addBuff(makeBuff(), 5_000);
-        // Switch character — old buff stays in store but is not active for new char.
         useCharacterStore.setState({ character: makeChar({ id: 'char-2' }) });
         expect(useBuffStore.getState().getActiveBuffs()).toHaveLength(0);
     });
@@ -406,17 +385,16 @@ describe('clearCharacterBuffs', () => {
     });
 
     it('leaves other characters\' buffs alone', () => {
-        useBuffStore.getState().addBuff(makeBuff(), 5_000); // char-1
+        useBuffStore.getState().addBuff(makeBuff(), 5_000);
         useCharacterStore.setState({ character: makeChar({ id: 'char-2' }) });
-        useBuffStore.getState().addBuff(makeBuff({ id: 'b2' }), 5_000); // char-2
-        useBuffStore.getState().clearCharacterBuffs(); // clears char-2
+        useBuffStore.getState().addBuff(makeBuff({ id: 'b2' }), 5_000);
+        useBuffStore.getState().clearCharacterBuffs();
         const remaining = useBuffStore.getState().allBuffs;
         expect(remaining).toHaveLength(1);
         expect(remaining[0].characterId).toBe('char-1');
     });
 });
 
-// -- combat speed mult + rebase -----------------------------------------------
 
 describe('setCombatSpeedMult', () => {
     it('clamps to a minimum of 1', () => {
@@ -455,7 +433,6 @@ describe('rebaseRealtimeBuffsSpeed', () => {
     });
 });
 
-// -- getBuffTierGroup helper (exported) ---------------------------------------
 
 describe('getBuffTierGroup', () => {
     it('groups atk_dmg tiers together', () => {
@@ -469,7 +446,6 @@ describe('getBuffTierGroup', () => {
     });
 });
 
-// -- getPartyHealDotPctPerSec / getPartyHealDotSkillId ------------------------
 
 describe('party heal dot helpers', () => {
     it('returns the strongest healPctPerSec across game-time buffs', () => {

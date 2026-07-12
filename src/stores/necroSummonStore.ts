@@ -1,22 +1,5 @@
 import { create } from 'zustand';
 
-/**
- * In-memory bookkeeping for necromancer summons during a combat session.
- *
- * Summons stack on top of the necromancer's avatar — they don't get their
- * own ally slot. The store keeps a list per necro id; the view renders a
- * count badge + iterates the list when applying damage so:
- *
- *   - Single-target hits on the necro consume the FIRST summon's HP first.
- *     When the summon dies it's spliced out and the next one becomes the
- *     active "shield". Once all summons are dead, the necro takes hits.
- *   - AOE hits split across every summon AND the necro (each takes the
- *     full hit, like normal AOE — summons are independent entities under
- *     the same icon).
- *   - On the attack tick, summons swing alongside the necro — each summon
- *     deals a fraction of the necro's attack (skeleton 25%, ghost 50%,
- *     demon 120%, lich 200%).
- */
 export type NecroSummonType = 'skeleton' | 'ghost' | 'demon' | 'lich';
 
 export interface INecroSummon {
@@ -26,21 +9,14 @@ export interface INecroSummon {
     maxHp: number;
     mp: number;
     maxMp: number;
-    /** Damage as a multiplier of the necro's `attack` stat. */
     dmgMult: number;
 }
 
 interface IState {
-    /** necro-id -> ordered list of live summons (head = oldest). */
     summons: Record<string, INecroSummon[]>;
 }
 
 interface IActions {
-    /**
-     * Spawn `count` summons of `type` for the given necro. Honours per-type
-     * caps (skeleton 10, ghost 6, demon 2, lich 2). Returns how many were
-     * actually spawned.
-     */
     spawn: (
         necroId: string,
         type: NecroSummonType,
@@ -49,29 +25,13 @@ interface IActions {
         necroMaxHp: number,
         necroMaxMp?: number,
     ) => number;
-    /** Heal every alive summon by `pct%` of their own maxHp. Used by
-     *  Cleric heal_party_pct / Niebiańskie Leczenie etc. so summons
-     *  benefit from party-wide heals just like real allies. */
     healAllPct: (necroId: string, pct: number) => void;
-    /** Apply damage to the front-of-queue summon. Returns the actual HP
-     *  consumed and a flag for whether the queue is now empty (so the
-     *  caller forwards the leftover damage to the necro). */
     damageFirst: (necroId: string, dmg: number) => { dmgConsumed: number; queueEmpty: boolean };
-    /** Apply AOE damage across every summon in the queue. */
     damageAll: (necroId: string, dmg: number) => void;
-    /** Number of live summons for this necro. */
     count: (necroId: string) => number;
-    /** Total bonus damage every tick from the summons (for display). */
     totalAttackBonus: (necroId: string, necroAttack: number) => number;
-    /** Wipe all summons for one necro (e.g. raid wipe / scene reset). */
     clear: (necroId: string) => void;
-    /** Wipe everything. */
     clearAll: () => void;
-    /** 2026-05 v7: dismiss one summon of `type` (head-of-queue —
-     *  oldest first). Used by the AllyCard's per-type badge click
-     *  handler so the player can manually free up summon slots
-     *  before re-summoning. Returns true if a summon was actually
-     *  despawned. */
     despawnOne: (necroId: string, type: NecroSummonType) => boolean;
 }
 
@@ -89,9 +49,6 @@ const DMG_MULT: Record<NecroSummonType, number> = {
     lich:     2.00,
 };
 
-// Per-spec HP/MP fractions of the necromancer's own pool. Skeletons
-// are throwaway meat shields, lich is a heavy-hitter so gets MORE
-// HP than the necro herself.
 const HP_FRAC_OF_NECRO: Record<NecroSummonType, number> = {
     skeleton: 0.25,
     ghost:    0.50,
@@ -146,13 +103,6 @@ export const useNecroSummonStore = create<IState & IActions>()((set, get) => ({
     damageFirst: (necroId, dmg) => {
         const cur = get().summons[necroId] ?? [];
         if (cur.length === 0) return { dmgConsumed: 0, queueEmpty: true };
-        // 2026-05 v6: damage-soak order is TYPE-prioritised, not
-        // chronological — the user's spec "zawsze jako pierwszy
-        // dostaje dmg szkielet, potem duch, potem demon, na koncu
-        // lisz". Skeletons are cheap meat shields, lich is the big
-        // bad we want to keep alive longest. Within the same type
-        // the oldest summon dies first (FIFO), so a fresh re-summon
-        // doesn't immediately tank the next hit.
         const TYPE_ORDER: Record<NecroSummonType, number> = {
             skeleton: 0, ghost: 1, demon: 2, lich: 3,
         };
@@ -204,7 +154,6 @@ export const useNecroSummonStore = create<IState & IActions>()((set, get) => ({
 
     despawnOne: (necroId, type) => {
         const cur = get().summons[necroId] ?? [];
-        // Find the oldest summon of the requested type (FIFO = head of queue).
         const idx = cur.findIndex((sm) => sm.type === type);
         if (idx === -1) return false;
         const next = [...cur];

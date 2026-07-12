@@ -5,18 +5,6 @@ import { useCharacterStore } from '../stores/characterStore';
 import { useTransformStore } from '../stores/transformStore';
 import type { ICharacter, CharacterClass } from '../api/v1/characterApi';
 
-/**
- * useTransformAccent picks the dominant accent color shown in the
- * top-header and bottom-nav chrome. Resolution order:
- *
- *   1. If a transform with `solid` is unlocked -> use solid hex.
- *   2. Else if a transform with `gradient` is unlocked -> use gradient[0].
- *   3. Else -> class-specific fallback color (Knight=red, Mage=purple…).
- *   4. Else (no character at all) -> hardcoded FALLBACK_HEX (#e94560).
- *
- * The hook also mirrors the resolved values onto `:root` CSS vars
- * (--nav-accent / --nav-accent-rgb) for global rules like the scrollbar.
- */
 
 const makeCharacter = (cls: CharacterClass): ICharacter => ({
     id: 'me-1',
@@ -44,9 +32,7 @@ const makeCharacter = (cls: CharacterClass): ICharacter => ({
 
 beforeEach(() => {
     useCharacterStore.setState({ character: null });
-    // Default: no transform color.
     vi.spyOn(useTransformStore.getState(), 'getHighestTransformColor').mockReturnValue(null);
-    // Wipe whatever CSS the previous test bled onto :root.
     document.documentElement.style.removeProperty('--nav-accent');
     document.documentElement.style.removeProperty('--nav-accent-rgb');
 });
@@ -56,7 +42,6 @@ describe('useTransformAccent — class fallbacks', () => {
         useCharacterStore.setState({ character: makeCharacter('Knight') });
         const { result } = renderHook(() => useTransformAccent());
         expect(result.current.accent).toBe('#e53935');
-        // hexToRgb('#e53935') => '229, 57, 53'
         expect(result.current.accentRgb).toBe('229, 57, 53');
     });
 
@@ -106,9 +91,6 @@ describe('useTransformAccent — defensive fallback', () => {
     });
 
     it('returns the hardcoded fallback for an unknown class string', () => {
-        // Class is typed CharacterClass at the source, but defensively the
-        // hook resolves via Record lookup — pass an unknown string to
-        // ensure it doesn't crash and uses FALLBACK_HEX.
         useCharacterStore.setState({
             character: { ...makeCharacter('Knight'), class: 'NotAClass' as unknown as CharacterClass },
         });
@@ -148,7 +130,6 @@ describe('useTransformAccent — transform color overrides class color', () => {
             css: '',
         });
         const { result } = renderHook(() => useTransformAccent());
-        // No solid, no gradient -> Knight class color.
         expect(result.current.accent).toBe('#e53935');
     });
 });
@@ -173,16 +154,14 @@ describe('useTransformAccent — :root CSS variables', () => {
 
 describe('useTransformAccent — hexToRgb conversion', () => {
     it('handles a malformed hex by returning the FALLBACK_RGB triplet', () => {
-        // If a transform somehow returns a non-6-char hex, the conversion
-        // falls back to the hardcoded RGB instead of throwing.
         useCharacterStore.setState({ character: makeCharacter('Knight') });
         vi.spyOn(useTransformStore.getState(), 'getHighestTransformColor').mockReturnValue({
-            solid: '#abc', // 3-char shorthand — hook's parser only accepts 6.
+            solid: '#abc',
             gradient: null,
             css: '#abc',
         });
         const { result } = renderHook(() => useTransformAccent());
         expect(result.current.accent).toBe('#abc');
-        expect(result.current.accentRgb).toBe('233, 69, 96'); // FALLBACK_RGB
+        expect(result.current.accentRgb).toBe('233, 69, 96');
     });
 });

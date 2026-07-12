@@ -2,29 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Battle hub tests — the simple view from BottomNav -> Walka.
- *
- * Battle.tsx renders 7 banner tiles (one per battle mode) and decides
- * which are locked (party-member-locked = leader-only routes; offline-
- * locked = raid + arena unavailable offline). It also intercepts the
- * Trainer tile click to fire the party ready-check.
- *
- * What we cover:
- *   - Smoke render with a character loaded.
- *   - All 7 tiles appear.
- *   - Clicking a normal tile navigates to its path.
- *   - Trainer click fires `requestPartyCombatStart` instead of direct nav.
- *   - Offline lock: raid + arena tiles become non-clickable when the
- *     connectivity store reports offline.
- *   - Party-member lock: leader-only routes (boss/raid/trainer/combat)
- *     are silent no-ops for non-leader members.
- *   - Null character: still renders without crashing.
- */
 
-// -- Mock the dynamic transform color hook so we don't have to drive
-//    transformStore from outside. Battle just calls `getHighestTransformColor`
-//    once for its accent — return null = fall back to class color.
 vi.mock('../../hooks/usePartyMemberRouteGate', () => ({
     useIsPartyMemberLocked: vi.fn(() => false),
 }));
@@ -34,9 +12,6 @@ vi.mock('../../hooks/usePartyReadyCheck', () => ({
     requestPartyCombatStart: (...args: unknown[]) => requestPartyCombatStartMock(...args),
 }));
 
-// Battle.tsx imports a handful of background images via Vite. happy-dom
-// can't resolve those — vitest typically transforms them to a stub URL,
-// but we explicitly mock here in case the alias plugin doesn't kick in.
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -98,7 +73,6 @@ describe('Battle — smoke', () => {
 
     it('renders all 7 battle-mode tiles', () => {
         renderBattle();
-        // Each tile has the Polish label as visible text + as aria-label.
         expect(screen.getByLabelText('Polowanie')).toBeTruthy();
         expect(screen.getByLabelText('Dungeon')).toBeTruthy();
         expect(screen.getByLabelText('Boss')).toBeTruthy();
@@ -112,7 +86,6 @@ describe('Battle — smoke', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderBattle();
         expect(container.querySelector('.battle')).not.toBeNull();
-        // All 7 tiles still mount — they just use the fallback accent.
         expect(screen.getByLabelText('Polowanie')).toBeTruthy();
     });
 });
@@ -137,14 +110,10 @@ describe('Battle — navigation', () => {
     });
 
     it('routes the Trainer click through requestPartyCombatStart, not a direct navigate', () => {
-        // Simulate the helper returning true (leader / solo path -> fires
-        // onConfirmed which would navigate). Battle's own onClick should NOT
-        // call navigate directly for /trainer — only via the helper.
         requestPartyCombatStartMock.mockReturnValue(true);
         renderBattle();
         fireEvent.click(screen.getByLabelText('Trainer'));
         expect(requestPartyCombatStartMock).toHaveBeenCalledTimes(1);
-        // The helper was called with destination='/trainer' + a callback.
         const call = requestPartyCombatStartMock.mock.calls[0][0] as {
             destination: string;
             label: string;
@@ -153,8 +122,6 @@ describe('Battle — navigation', () => {
         expect(call.destination).toBe('/trainer');
         expect(call.label).toBe('Trainer');
         expect(typeof call.onConfirmed).toBe('function');
-        // The direct navigate path is NOT taken — Battle's own click handler
-        // returns after invoking the helper.
         expect(navigateMock).not.toHaveBeenCalled();
     });
 });
@@ -191,7 +158,6 @@ describe('Battle — party-member lock', () => {
     it('marks leader-only routes as locked when isMemberLocked is true', () => {
         vi.mocked(useIsPartyMemberLocked).mockReturnValue(true);
         renderBattle();
-        // /boss /raid /trainer /combat -> all locked for non-leader members.
         expect(screen.getByLabelText('Polowanie').className).toContain('battle__tile--locked');
         expect(screen.getByLabelText('Boss').className).toContain('battle__tile--locked');
         expect(screen.getByLabelText('Raid').className).toContain('battle__tile--locked');
@@ -200,7 +166,6 @@ describe('Battle — party-member lock', () => {
 
     it('does NOT lock arena/dungeon/transform for party members (those routes are member-allowed)', () => {
         vi.mocked(useIsPartyMemberLocked).mockReturnValue(true);
-        // Force online so arena isn't offline-locked
         useConnectivityStore.setState({ mode: 'online', userExplicitlyOffline: false });
         renderBattle();
         expect(screen.getByLabelText('Arena').className).not.toContain('battle__tile--locked');

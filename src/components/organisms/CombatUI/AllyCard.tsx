@@ -8,18 +8,6 @@ interface IProps {
     ally: ICombatAlly | null;
 }
 
-/**
- * One slot in the 4-slot allies column. Mirrors EnemyCard's layout so the
- * whole arena reads as a clean 4×2 grid:
- *   - avatar (with transform-tier border, lvl badge top-left)
- *   - thin HP bar
- *   - thin MP bar
- *   - name + aggro badge (X mobs targeting me)
- *
- * Bars sit BELOW the avatar so the portrait is never visually shoved down by
- * the bars rounding/padding. Empty slots render as transparent placeholders
- * to lock layout.
- */
 const AllyCard = ({ ally }: IProps) => {
     if (!ally) {
         return <div className="combat-ui__ally combat-ui__ally--empty" aria-hidden="true" />;
@@ -28,16 +16,6 @@ const AllyCard = ({ ally }: IProps) => {
     const hpPct = ally.maxHp > 0 ? Math.max(0, Math.min(100, (ally.currentHp / ally.maxHp) * 100)) : 0;
     const mpPct = ally.maxMp > 0 ? Math.max(0, Math.min(100, (ally.currentMp / ally.maxMp) * 100)) : 0;
 
-    // Per-hit shake — alternates between TWO modifier classes based on
-    // `hitPulse % 2` parity. Each class binds to its own keyframes name
-    // (`combat-ui-ally-shake-a` / `…-b`) but the keyframes are identical.
-    // This is the well-known "dual-keyframe parity trick" for restarting
-    // a CSS animation without unmounting the element: when the class flips
-    // from `--shake-a` -> `--shake-b`, the browser sees a NEW animation name
-    // and starts it from frame 0. So each individual hit replays the shake
-    // even when the previous hasn't finished yet (e.g. 4 monsters hitting
-    // the same ally back-to-back). When `hitPulse` is undefined / 0 we
-    // apply no class at all so the card sits perfectly still while idle.
     const shakeClass =
         typeof ally.hitPulse === 'number' && ally.hitPulse > 0
             ? (ally.hitPulse % 2 === 0
@@ -49,9 +27,6 @@ const AllyCard = ({ ally }: IProps) => {
         'combat-ui__ally',
         ally.isPlayer ? 'combat-ui__ally--player' : 'combat-ui__ally--bot',
         ally.isDead ? 'combat-ui__ally--dead' : '',
-        // Legacy boolean still honoured so views that haven't migrated to
-        // `hitPulse` keep flashing. New code should pass `hitPulse` so each
-        // individual hit re-triggers the keyed overlay below.
         ally.isHit ? 'combat-ui__ally--hit' : '',
         ally.attackingClassName ? `combat-ui__ally--${ally.attackingClassName}` : '',
         ally.transformTier ? `combat-ui__ally--t${ally.transformTier}` : '',
@@ -64,9 +39,6 @@ const AllyCard = ({ ally }: IProps) => {
             style={{ '--ally-accent': ally.accentColor } as React.CSSProperties}
             aria-label={`${ally.name} (${ally.className})`}
         >
-            {/* Level + aggro badges live on the CARD (not on the avatar) so
-                their presence never shrinks the portrait — they overlay the
-                top corners of the whole tile via absolute positioning. */}
             {typeof ally.level === 'number' && ally.level > 0 && (
                 <span className="combat-ui__ally-level" aria-label={`Poziom ${ally.level}`}>
                     Lv {ally.level}
@@ -83,11 +55,6 @@ const AllyCard = ({ ally }: IProps) => {
                 {ally.isDead && (
                     <span className="combat-ui__ally-skull" aria-hidden="true"><GameIcon name="skull" /></span>
                 )}
-                {/* 2026-05 v7: Necromancer summon-spawn overlay. Each type
-                    plays its own 2s keyframe animation when the caster
-                    raises a new minion. `key` = anim id forces React to
-                    re-mount the div so back-to-back spawns of the same
-                    type each replay the keyframe from frame 0. */}
                 {ally.summonSpawn && (
                     <div
                         key={`spawn-${ally.summonSpawn.id}`}
@@ -103,13 +70,6 @@ const AllyCard = ({ ally }: IProps) => {
                         <span className="combat-ui__summon-spawn-aura" />
                     </div>
                 )}
-                {/* 2026-05 v7: per-type summon badges (:skull:×N :ghost:×M :smiling-face-with-horns:×K :crown:×L)
-                    so the player can see the breakdown at a glance instead of
-                    one combined ×N count. Each badge is clickable (when
-                    `onSummonClick` is provided — i.e. on the player's own
-                    card) and despawns the oldest summon of that type. Bots'
-                    cards still render the badges but without click handlers,
-                    so the player only manages their own summon queue. */}
                 {(ally.summonsByType && (
                     (ally.summonsByType.skeleton ?? 0) +
                     (ally.summonsByType.ghost ?? 0) +
@@ -165,12 +125,6 @@ const AllyCard = ({ ally }: IProps) => {
                 </span>
             </div>
 
-            {/* Per-attack hit pulse — keyed by `hitPulse` so each distinct
-                hit re-mounts a fresh overlay element and the CSS animation
-                replays from frame 0. Critical for multi-mob solo combat
-                (4 monsters with different attack speeds): without this the
-                second hit landing inside the same 300ms window would be
-                visually invisible because the shake class was already on. */}
             {typeof ally.hitPulse === 'number' && ally.hitPulse > 0 && (
                 <span
                     key={`hit-${ally.hitPulse}`}
@@ -179,11 +133,6 @@ const AllyCard = ({ ally }: IProps) => {
                 />
             )}
 
-            {/* Per-slot skill animation overlay — fired when THIS ally casts
-                (e.g. a self-buff or a heal landing on themselves). Same
-                `cssClass`-driven render as EnemyCard. When the icon resolved
-                to a spell PNG, render the <img> so the artwork shows during
-                the cast — otherwise fall back to the emoji string. */}
             {ally.skillAnim && (
                 <span
                     key={`skill-${ally.skillAnim.id}`}
@@ -198,8 +147,6 @@ const AllyCard = ({ ally }: IProps) => {
                 </span>
             )}
 
-            {/* Floating numbers stack — monster-attack damage in red, heals
-                in green. Same lifecycle/keying as the enemy floats. */}
             {ally.floats && ally.floats.length > 0 && (
                 <div className="combat-ui__floats" aria-hidden="true">
                     {ally.floats.map((f) => (

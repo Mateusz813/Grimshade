@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useBossStore } from './bossStore';
 
-// -- Initial state helper -----------------------------------------------------
-// `bossStore` doesn't export its initial values, so we mirror the literal
-// shape declared in the create() body. Keep this in sync with bossStore.ts.
 
 const resetStore = (): void => {
     useBossStore.setState({
@@ -16,7 +13,6 @@ beforeEach(() => {
     resetStore();
 });
 
-// -- setBossDefeated ----------------------------------------------------------
 
 describe('setBossDefeated', () => {
     it('records the first attempt with count = 1 + today as date', () => {
@@ -24,7 +20,6 @@ describe('setBossDefeated', () => {
         const entry = useBossStore.getState().dailyAttempts['boss_25'];
         expect(entry).toBeDefined();
         expect(entry.used).toBe(1);
-        // YYYY-MM-DD shape — explicit assertion that the helper used local date.
         expect(entry.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
@@ -37,7 +32,6 @@ describe('setBossDefeated', () => {
     });
 
     it('resets `used` back to 1 when the previous entry is from a different day', () => {
-        // Seed with a stale entry from "yesterday".
         useBossStore.setState({
             dailyAttempts: {
                 boss_50: { used: 7, date: '1999-01-01' },
@@ -60,11 +54,9 @@ describe('setBossDefeated', () => {
     });
 });
 
-// -- setLastResult ------------------------------------------------------------
 
 describe('setLastResult', () => {
     it('stores the result object as-is', () => {
-        // bossResult shape is not asserted here — the store treats it opaquely.
         const dummy = { victory: true, gold: 123 } as unknown as Parameters<
             ReturnType<typeof useBossStore.getState>['setLastResult']
         >[0];
@@ -79,7 +71,6 @@ describe('setLastResult', () => {
     });
 });
 
-// -- getAttemptsUsed ----------------------------------------------------------
 
 describe('getAttemptsUsed', () => {
     it('returns 0 when no entry exists for the boss', () => {
@@ -102,7 +93,6 @@ describe('getAttemptsUsed', () => {
     });
 });
 
-// -- getAttemptsMax -----------------------------------------------------------
 
 describe('getAttemptsMax', () => {
     it('returns the hard cap (3) — boss daily limit per CLAUDE.md', () => {
@@ -110,7 +100,6 @@ describe('getAttemptsMax', () => {
     });
 });
 
-// -- canChallenge -------------------------------------------------------------
 
 describe('canChallenge', () => {
     it('returns true when the boss has not been challenged today', () => {
@@ -136,7 +125,6 @@ describe('canChallenge', () => {
 
     it('returns false once the daily cap is reached', () => {
         const store = useBossStore.getState();
-        // 3 = MAX_DAILY_ATTEMPTS in the source.
         store.setBossDefeated('boss_25');
         store.setBossDefeated('boss_25');
         store.setBossDefeated('boss_25');

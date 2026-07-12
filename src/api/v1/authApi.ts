@@ -34,26 +34,11 @@ class AuthApi extends BaseApi {
         if (error) throw error;
     };
 
-    /**
-     * Change the password of the CURRENTLY signed-in user. Supabase derives
-     * the user from the active session token, so no current-password / email
-     * is required — only a valid session. Throws the Supabase AuthError on
-     * failure (weak password, expired session, …) so callers can surface it.
-     */
     updatePassword = async (password: string) => {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
     };
 
-    /**
-     * Verify the CURRENT user's password by re-authenticating with the
-     * session email + the supplied password. Returns `true` when the password
-     * is correct, `false` otherwise (wrong password OR no active session).
-     *
-     * Used as a security gate before `updatePassword` so a hijacked open
-     * session can't silently change the password without knowing the old one.
-     * A successful check refreshes the session (same user) — harmless.
-     */
     verifyCurrentPassword = async (password: string): Promise<boolean> => {
         const { data } = await supabase.auth.getSession();
         const email = data.session?.user?.email;

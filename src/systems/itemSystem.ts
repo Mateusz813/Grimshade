@@ -1,36 +1,25 @@
 import itemTemplates from '../data/itemTemplates.json';
 import { getItemImage, getStoneImage } from './spriteAssets';
 
-// -- Generated-item info (parsed from itemId, avoids circular import with itemGenerator) --
 
 interface IGenItemInfo {
     type: string;
     slot: EquipmentSlot;
-    /** Parsed item level from the "_lvlN_" part of the id; undefined for starters / no level part. */
     itemLevel?: number;
 }
 
 const _genInfoCache = new Map<string, IGenItemInfo | null>();
 
-/** Clear the generated item info cache (useful after hot-reloading data) */
 export const clearGenInfoCache = (): void => {
     _genInfoCache.clear();
 };
 
-/**
- * Parse a generated item ID like "sword_lvl5_rare" or "heavy_helmet_lvl3_epic"
- * and return the item type and equipment slot.  Works for weapons, offhands,
- * armor, accessories and starter weapons.  Returns null for legacy IDs that
- * don't follow the generated format.
- */
 export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     if (_genInfoCache.has(itemId)) return _genInfoCache.get(itemId)!;
 
     const parts = itemId.split('_lvl');
-    // Starter weapons: "starter_sword" (no _lvl part)
     const isStarter = itemId.startsWith('starter_') && parts.length < 2;
     const typePart = isStarter ? itemId.replace('starter_', '') : (parts.length >= 2 ? parts[0] : null);
-    // Level lives in the "_lvlN_rarity" tail (parts[1] === "N_rarity").
     const parsedLevel = parts.length >= 2 ? parseInt(parts[1], 10) : NaN;
     const itemLevel = Number.isFinite(parsedLevel) && parsedLevel > 0 ? parsedLevel : undefined;
 
@@ -39,7 +28,6 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
         return null;
     }
 
-    // Weapons
     for (const w of (itemTemplates.weapons as { type: string; slot: string }[])) {
         if (w.type === typePart) {
             const info: IGenItemInfo = { type: w.type, slot: w.slot as EquipmentSlot, itemLevel };
@@ -48,7 +36,6 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
         }
     }
 
-    // Offhands
     for (const o of (itemTemplates.offhands as { type: string; slot: string }[])) {
         if (o.type === typePart) {
             const info: IGenItemInfo = { type: o.type, slot: o.slot as EquipmentSlot, itemLevel };
@@ -57,7 +44,6 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
         }
     }
 
-    // Armor (format: prefix_slot)
     for (const [prefix, category] of Object.entries(itemTemplates.armor as Record<string, { pieces: { slot: string }[] }>)) {
         for (const piece of category.pieces) {
             const armorType = `${prefix}_${piece.slot}`;
@@ -69,7 +55,6 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
         }
     }
 
-    // Accessories
     for (const a of (itemTemplates.accessories as { type: string; slot: string }[])) {
         if (a.type === typePart) {
             const info: IGenItemInfo = { type: a.type, slot: a.slot as EquipmentSlot, itemLevel };
@@ -82,7 +67,6 @@ export const getGeneratedItemInfo = (itemId: string): IGenItemInfo | null => {
     return null;
 };
 
-// -- Types ---------------------------------------------------------------------
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'heroic';
 
@@ -100,13 +84,6 @@ export type EquipmentSlot =
     | 'earrings'
     | 'necklace';
 
-// Order matters – rendered in a 2-column grid, row by row:
-// Row 1: mainHand   | offHand
-// Row 2: helmet     | shoulders
-// Row 3: armor      | gloves
-// Row 4: pants      | boots
-// Row 5: ring1      | ring2
-// Row 6: necklace   | earrings
 export const EQUIPMENT_SLOTS: EquipmentSlot[] = [
     'mainHand',  'offHand',
     'helmet',    'shoulders',
@@ -146,10 +123,7 @@ export const SLOT_ICONS: Record<EquipmentSlot, string> = {
     necklace:  'prayer-beads',
 };
 
-/** Maps item `type` field to a specific emoji icon.
- *  Use this for more precise icons (e.g. staff vs sword vs bow). */
 export const ITEM_TYPE_ICONS: Record<string, string> = {
-    // Weapons (mainHand)
     sword:      'crossed-swords',
     staff:      'magic-wand',
     mace:       'hammer',
@@ -160,7 +134,6 @@ export const ITEM_TYPE_ICONS: Record<string, string> = {
     club:       'cricket-game',
     dead_staff: 'skull',
     holy_wand:  'sparkles',
-    // Offhands
     shield:     'shield',
     magic_book: 'closed-book',
     spellbook:  'closed-book',
@@ -170,34 +143,28 @@ export const ITEM_TYPE_ICONS: Record<string, string> = {
     tome:       'green-book',
     voodoo_doll:'skull',
     talisman:   'crystal-ball',
-    // Heavy armor (Knight)
     heavy_helmet:    'rescue-worker-s-helmet',
     heavy_armor:     'safety-vest',
     heavy_pants:     'jeans',
     heavy_boots:     'woman-s-boot',
     heavy_shoulders: 'military-medal',
     heavy_gloves:    'gloves',
-    // Magic armor (Mage, Cleric, Necromancer)
     magic_helmet:    'top-hat',
     magic_armor:     'mage',
     magic_pants:     'jeans',
     magic_boots:     'hiking-boot',
     magic_shoulders: 'reminder-ribbon',
     magic_gloves:    'gloves',
-    // Light armor (Archer, Rogue, Bard)
     light_helmet:    'military-helmet',
     light_armor:     'kimono',
     light_pants:     'jeans',
     light_boots:     'running-shoe',
     light_shoulders: 'military-medal',
     light_gloves:    'gloves',
-    // Accessories
     ring:       'ring',
     necklace:   'prayer-beads',
     earrings:   'sparkles',
-    // Stones
     stone:      'gem-stone',
-    // Consumables
     heal_hp:    'red-heart',
     heal_mp:    'droplet',
     xp_boost:   'alembic',
@@ -245,7 +212,6 @@ export const EMPTY_EQUIPMENT: IEquipment = {
     earrings: null, necklace: null,
 };
 
-// -- Rarity helpers -------------------------------------------------------------
 
 export const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 
@@ -258,15 +224,6 @@ export const RARITY_COLORS: Record<Rarity, string> = {
     heroic:    '#9c27b0',
 };
 
-export const RARITY_BG_COLORS: Record<Rarity, string> = {
-    common:    'rgba(255,255,255,0.08)',
-    rare:      'rgba(33,150,243,0.08)',
-    epic:      'rgba(76,175,80,0.08)',
-    legendary: 'rgba(244,67,54,0.08)',
-    mythic:    'rgba(255,193,7,0.08)',
-    heroic:    'rgba(156,39,176,0.08)',
-};
-
 export const RARITY_LABELS: Record<Rarity, string> = {
     common:    'Zwykly',
     rare:      'Rzadki',
@@ -276,7 +233,6 @@ export const RARITY_LABELS: Record<Rarity, string> = {
     heroic:    'Heroiczny',
 };
 
-// Number of bonus stats per rarity
 export const RARITY_BONUS_SLOTS: Record<Rarity, number> = {
     common:    0,
     rare:      1,
@@ -286,49 +242,7 @@ export const RARITY_BONUS_SLOTS: Record<Rarity, number> = {
     heroic:    5,
 };
 
-// -- Weapon type icons ----------------------------------------------------------
 
-export const WEAPON_TYPE_ICONS: Record<string, string> = {
-    sword:       'crossed-swords',
-    staff:       'magic-wand',
-    holy_wand:   'sparkles',
-    bow:         'bow-and-arrow',
-    dagger:      'dagger',
-    dead_staff:  'skull',
-    harp:        'musical-note',
-    shield:      'shield',
-    spellbook:   'closed-book',
-    holy_cross:  'latin-cross',
-    quiver:      'bow-and-arrow',
-    voodoo_doll: 'nesting-dolls',
-    talisman:    'crystal-ball',
-};
-
-export const ARMOR_TYPE_ICONS: Record<string, string> = {
-    heavy_helmet:    'rescue-worker-s-helmet',
-    heavy_armor:     'safety-vest',
-    heavy_legs:      'jeans',
-    heavy_boots:     'woman-s-boot',
-    heavy_shoulders: 'military-medal',
-    heavy_gloves:    'gloves',
-    magic_helmet:    'top-hat',
-    magic_armor:     'mage',
-    magic_legs:      'jeans',
-    magic_boots:     'hiking-boot',
-    magic_shoulders: 'reminder-ribbon',
-    magic_gloves:    'gloves',
-    light_helmet:    'military-helmet',
-    light_armor:     'kimono',
-    light_legs:      'jeans',
-    light_boots:     'running-shoe',
-    light_shoulders: 'military-medal',
-    light_gloves:    'gloves',
-    ring:            'ring',
-    necklace:        'prayer-beads',
-    earrings:        'sparkles',
-};
-
-// -- Class weapon restrictions -------------------------------------------------
 
 export const CLASS_WEAPON_TYPES: Record<string, string[]> = {
     Knight:      ['sword'],
@@ -350,7 +264,6 @@ export const CLASS_OFFHAND_TYPES: Record<string, string[]> = {
     Bard:        ['talisman'],
 };
 
-// Maps character class -> allowed armor prefix
 export const CLASS_ARMOR_TYPES: Record<string, string> = {
     Knight:      'heavy',
     Mage:        'magic',
@@ -361,7 +274,6 @@ export const CLASS_ARMOR_TYPES: Record<string, string> = {
     Bard:        'light',
 };
 
-// -- Class colors --------------------------------------------------------------
 
 export const CLASS_COLORS: Record<string, string> = {
     Knight:      '#e53935',
@@ -373,7 +285,6 @@ export const CLASS_COLORS: Record<string, string> = {
     Bard:        '#ff9800',
 };
 
-// -- Sell prices ---------------------------------------------------------------
 
 const RARITY_SELL_MULTIPLIER: Record<Rarity, number> = {
     common:    0.20,
@@ -393,7 +304,6 @@ const SELL_PRICES: Record<string, (lvl: number) => number> = {
     heroic:    (lvl) => Math.floor(lvl * 800 + 5000),
 };
 
-// -- Enhancement system --------------------------------------------------------
 
 export interface IEnhancementCost {
     stones: number;
@@ -402,10 +312,6 @@ export interface IEnhancementCost {
     stoneType: string;
 }
 
-/**
- * Returns the required stone type for enhancing an item of the given rarity.
- * Common items need Common Stones, Rare items need Rare Stones, etc.
- */
 export const getRequiredStoneType = (itemRarity: Rarity): string => {
     return STONE_FOR_RARITY[itemRarity];
 };
@@ -441,7 +347,6 @@ export const getEnhancementCost = (targetLevel: number, itemRarity: Rarity = 'co
         return { ...entry, stoneType };
     }
 
-    // Formula for +21 and beyond
     const prevCost = table[20];
     const levelsAbove20 = targetLevel - 20;
     return {
@@ -452,21 +357,11 @@ export const getEnhancementCost = (targetLevel: number, itemRarity: Rarity = 'co
     };
 };
 
-/**
- * Enhancement multiplier curve.
- * 2026-06-20 balance pass (kill-rate spec): each +1 upgrade ≈ +10% effective
- * power → ≈ +10% kills, per design ("z każdym ulepszeniem +1 ≈ +10% potworów").
- * Linear: +U → ×(1 + 0.10·U).  +3 = 1.30, +5 = 1.50, +7 = 1.70, +30 = 4.0.
- * Combined with rarity (heroic 2.05), heroic+30 ≈ 8.2× a common+0 — strong
- * investment payoff by design (rzadszy/mocniejszy gear = znacznie więcej zabić).
- */
 export const getEnhancementMultiplier = (upgradeLevel: number): number => {
     if (upgradeLevel <= 0) return 1;
     return 1 + upgradeLevel * 0.10;
 };
 
-// Enhancement boosts base stats along the curve above AND guarantees at least +1 per level
-// (otherwise a small base like 2 ATK could round down and show no progression)
 export const getUpgradedBaseStat = (baseValue: number, upgradeLevel: number): number => {
     if (baseValue <= 0 || upgradeLevel <= 0) return baseValue;
     const multiplied = Math.round(baseValue * getEnhancementMultiplier(upgradeLevel));
@@ -474,22 +369,9 @@ export const getUpgradedBaseStat = (baseValue: number, upgradeLevel: number): nu
     return Math.max(multiplied, flatFloor);
 };
 
-// Legacy alias – kept so existing callers still work
 export const getEnhancedBaseStats = (baseValue: number, upgradeLevel: number): number =>
     getUpgradedBaseStat(baseValue, upgradeLevel);
 
-/**
- * Returns the bonus keys that represent the "base" stat for a given equipment slot.
- * Only these keys are scaled by upgradeLevel; random bonuses (extra HP on a ring,
- * crit on pants, etc.) are NOT scaled.
- *
- * Per spec:
- *   - mainHand / offHand  -> weapons scale dmg_min / dmg_max
- *   - helmet/armor/pants/shoulders/boots -> hp
- *   - gloves -> attack
- *   - ring1 / ring2 -> attack
- *   - necklace / earrings -> defense
- */
 export const getBaseStatKeysForSlot = (slot: EquipmentSlot): readonly string[] => {
     switch (slot) {
         case 'mainHand':
@@ -514,16 +396,11 @@ export const getBaseStatKeysForSlot = (slot: EquipmentSlot): readonly string[] =
     }
 };
 
-/**
- * Returns true if `key` is the base stat for an item equipped in `slot`.
- * Used to decide whether the upgrade multiplier should apply to a given bonus.
- */
 export const isBaseStatKey = (slot: EquipmentSlot | null, key: string): boolean => {
     if (!slot) return false;
     return getBaseStatKeysForSlot(slot).includes(key);
 };
 
-// -- Enhancement stone types ---------------------------------------------------
 
 export const STONE_FOR_RARITY: Record<Rarity, string> = {
     common:    'common_stone',
@@ -534,11 +411,6 @@ export const STONE_FOR_RARITY: Record<Rarity, string> = {
     heroic:    'heroic_stone',
 };
 
-// 2026-05: stone icons swapped from the legacy :gem-stone: emoji to the player's
-// PNG art (`/assets/images/upgrade-stone/stone-{1..6}.png`). The values
-// below are URLs when art is available, falling back to the emoji for
-// safety. Consumers that render via <ItemIcon> auto-detect the URL via
-// `isImageUrl()`; raw `<span>` consumers should also branch on URL.
 export const STONE_ICONS: Record<string, string> = {
     common_stone:    getStoneImage('common_stone')    ?? 'gem-stone',
     rare_stone:      getStoneImage('rare_stone')      ?? 'gem-stone',
@@ -548,8 +420,6 @@ export const STONE_ICONS: Record<string, string> = {
     heroic_stone:    getStoneImage('heroic_stone')    ?? 'gem-stone',
 };
 
-/** Generic "any stone" art (stone-7) — used by drop summaries / chest
- *  rewards / enhancement-cost rows that don't carry a specific stone tier. */
 export const STONE_GENERIC_ICON: string = getStoneImage(null) ?? 'gem-stone';
 
 export const STONE_NAMES: Record<string, string> = {
@@ -561,7 +431,6 @@ export const STONE_NAMES: Record<string, string> = {
     heroic_stone:    'Heroiczny Kamien',
 };
 
-// -- Stone conversion chain (100 lower -> 1 higher, cost 1000g) ----------------
 
 export const STONE_CONVERSION_CHAIN: Record<string, string> = {
     common_stone:    'rare_stone',
@@ -571,10 +440,9 @@ export const STONE_CONVERSION_CHAIN: Record<string, string> = {
     mythic_stone:    'heroic_stone',
 };
 
-export const STONE_CONVERSION_COST = 100; // stones needed
-export const STONE_CONVERSION_GOLD = 1000; // gold needed
+export const STONE_CONVERSION_COST = 100;
+export const STONE_CONVERSION_GOLD = 1000;
 
-// -- Core functions -------------------------------------------------------------
 
 export const buildItem = (generated: {
     itemId: string;
@@ -598,11 +466,6 @@ export const getItemSlot = (itemId: string, allItems: IBaseItem[]): EquipmentSlo
     return base ? base.slot : null;
 };
 
-/**
- * Resolve an item's slot using both the static base-items list and the
- * generated-item encoder. Returns null for items we truly can't classify.
- * Used by inventory/deposit slot filters.
- */
 export const getItemSlotSafe = (itemId: string, allItems: IBaseItem[]): EquipmentSlot | null => {
     const baseSlot = getItemSlot(itemId, allItems);
     if (baseSlot) return baseSlot;
@@ -610,7 +473,6 @@ export const getItemSlotSafe = (itemId: string, allItems: IBaseItem[]): Equipmen
     return gen?.slot ?? null;
 };
 
-/** Coarse item-type groups used by the inventory / deposit slot filters. */
 export type TSlotGroup = 'weapon' | 'armor' | 'jewelry' | 'unknown';
 
 export const getItemSlotGroup = (slot: EquipmentSlot | null): TSlotGroup => {
@@ -624,7 +486,6 @@ export const getItemSlotGroup = (slot: EquipmentSlot | null): TSlotGroup => {
 
 export const getItemStats = (item: IInventoryItem, baseData: IBaseItem): IItemStats => {
     const upgradeLevel = item.upgradeLevel ?? 0;
-    // Legacy items: baseAtk/baseDef are the base stat for that slot, so they scale.
     const stats: IItemStats = {
         attack:    getUpgradedBaseStat(baseData.baseAtk ?? 0, upgradeLevel),
         defense:   getUpgradedBaseStat(baseData.baseDef ?? 0, upgradeLevel),
@@ -634,7 +495,6 @@ export const getItemStats = (item: IInventoryItem, baseData: IBaseItem): IItemSt
         critChance: 0,
         critDmg:   0,
     };
-    // Random bonuses on legacy items are NOT scaled by upgrade.
     for (const [key, val] of Object.entries(item.bonuses)) {
         if (key in stats) {
             (stats as unknown as Record<string, number>)[key] += val;
@@ -659,9 +519,6 @@ export const getTotalEquipmentStats = (
             continue;
         }
 
-        // Generated item – stats come from bonuses only (no base item entry).
-        // Upgrade ONLY scales the base stat for that slot (e.g. hp on armor,
-        // attack on ring, dmg_min/dmg_max on weapon). Random extras stay flat.
         const upgradeLevel = item.upgradeLevel ?? 0;
         const genInfo = getGeneratedItemInfo(item.itemId);
         const slot = genInfo?.slot ?? null;
@@ -675,7 +532,6 @@ export const getTotalEquipmentStats = (
     return total;
 };
 
-/** Average level of equipped GENERATED items (parsed from "type_lvlN_rarity" via getGeneratedItemInfo). Fresh/empty → 1. */
 export const getEquippedGearLevel = (equipment: Partial<IEquipment>): number => {
     const lv: number[] = [];
     for (const item of Object.values(equipment)) {
@@ -686,18 +542,11 @@ export const getEquippedGearLevel = (equipment: Partial<IEquipment>): number => 
     return lv.length ? Math.round(lv.reduce((a, b) => a + b, 0) / lv.length) : 1;
 };
 
-/** Outgoing-damage multiplier when under-geared for the content level. dmg × (gearLvl/contentLvl)², floor 0.05. */
 export const getGearGapMultiplier = (gearLevel: number, contentLevel: number): number => {
     if (contentLevel <= 0 || gearLevel >= contentLevel) return 1;
     return Math.max(0.05, Math.pow(gearLevel / contentLevel, 2));
 };
 
-/**
- * Calculate the total gold & stones invested in enhancements from +0 to given level.
- * Returns 100% of stones AND 100% of gold invested — when selling or
- * disassembling, the player gets back everything they put in on top of the
- * item's base value. This guarantees upgrades never make the item a net loss.
- */
 export const getEnhancementRefund = (enhanceLevel: number, itemRarity: Rarity = 'common'): { gold: number; stones: number; stoneType: string } => {
     if (!enhanceLevel || enhanceLevel <= 0) return { gold: 0, stones: 0, stoneType: '' };
     let totalGold = 0;
@@ -710,8 +559,8 @@ export const getEnhancementRefund = (enhanceLevel: number, itemRarity: Rarity = 
         stoneType = cost.stoneType;
     }
     return {
-        gold: totalGold,     // 100% gold refund – upgrades must not be a trap
-        stones: totalStones, // 100% stone refund – stones are valuable
+        gold: totalGold,
+        stones: totalStones,
         stoneType,
     };
 };
@@ -730,9 +579,6 @@ export const getSellPrice = (item: IInventoryItem, baseData?: IBaseItem): number
         const priceFunc = SELL_PRICES[item.rarity];
         basePrice = priceFunc ? priceFunc(level) : Math.max(1, level * 5 + 10);
     }
-    // Add enhancement refund (100% of invested gold + 100% of stones).
-    // Stones are converted to gold value here for the sell price; the
-    // inventory sell flow also returns the raw stones via the item drop.
     const enhanceRefund = getEnhancementRefund(item.upgradeLevel ?? 0, item.rarity);
     return basePrice + enhanceRefund.gold;
 };
@@ -743,7 +589,6 @@ export const canEquip = (
     allItems: IBaseItem[],
     characterClass?: string,
 ): boolean => {
-    // Try legacy items first
     const base = findBaseItem(item.itemId, allItems);
     if (base) {
         if (characterLevel < base.minLevel) return false;
@@ -751,12 +596,9 @@ export const canEquip = (
         return true;
     }
 
-    // Try generated items (from itemGenerator)
     const genInfo = getGeneratedItemInfo(item.itemId);
     if (genInfo) {
-        // Item level check
         if (characterLevel < (item.itemLevel || 1)) return false;
-        // Class restriction check for generated items
         if (characterClass && !canClassEquip(item.itemId, genInfo.slot, characterClass, allItems)) return false;
         return true;
     }
@@ -764,16 +606,13 @@ export const canEquip = (
     return false;
 };
 
-// Helper to get item type - checks base item type field, generated items, then derives from itemId
 export const getItemType = (itemId: string, allItems: IBaseItem[]): string | null => {
     const base = findBaseItem(itemId, allItems);
     if (base && base.type) return base.type;
 
-    // Check generated item format (e.g. "sword_lvl5_rare", "starter_dagger")
     const genInfo = getGeneratedItemInfo(itemId);
     if (genInfo) return genInfo.type;
 
-    // Derive from known item IDs (legacy fallback)
     if (itemId.includes('sword') || itemId === 'sword_of_beginnings') return 'sword';
     if (itemId.includes('dead_staff') || itemId === 'dead_staff') return 'dead_staff';
     if (itemId.includes('staff') || itemId === 'apprentice_staff') return 'staff';
@@ -788,7 +627,6 @@ export const getItemType = (itemId: string, allItems: IBaseItem[]): string | nul
     if (itemId.includes('voodoo') || itemId === 'voodoo_doll') return 'voodoo_doll';
     if (itemId.includes('talisman')) return 'talisman';
 
-    // Armor type detection
     if (itemId.startsWith('heavy_')) return itemId;
     if (itemId.startsWith('magic_')) return itemId;
     if (itemId.startsWith('light_')) return itemId;
@@ -796,39 +634,23 @@ export const getItemType = (itemId: string, allItems: IBaseItem[]): string | nul
     return null;
 };
 
-/**
- * Returns the best icon for an item — preferring the real PNG art when one
- * exists for this item's type/slot, falling back to the legacy emoji glyph
- * for anything we don't have art for yet (potions, stones, exotic accessories).
- *
- * The return value is either a Vite-served image URL or an emoji string.
- * `ItemIcon` detects which it got via `isImageUrl` and renders the right
- * element. Callers that already pipe the result through `ItemIcon` get the
- * upgrade for free.
- */
 export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[]): string => {
     const itemType = getItemType(itemId, allItems);
 
-    // 1. Prefer the real PNG when we have one for this item's type/slot.
     const imageUrl = getItemImage(itemId, slot, itemType ?? undefined);
     if (imageUrl) return imageUrl;
 
-    // 2. Otherwise fall back to the original emoji ladder so consumables /
-    //    exotic accessories (with no art) still render the legacy glyph.
     if (itemType && ITEM_TYPE_ICONS[itemType]) {
         return ITEM_TYPE_ICONS[itemType];
     }
 
-    // Name-based detection for items without a type field (e.g. items.json armor)
     const id = itemId.toLowerCase();
 
-    // Consumables / potions / stones
     if (id.includes('hp_potion') || id.includes('health_potion') || id.includes('heal_hp')) return 'red-heart';
     if (id.includes('mp_potion') || id.includes('mana_potion') || id.includes('heal_mp')) return 'droplet';
     if (id.includes('elixir') || id.includes('boost') || id.includes('eliksir')) return 'alembic';
     if (id.includes('enhancement_stone') || (id.includes('_stone') && !id.includes('stone_sword') && !id.includes('stone_armor'))) return 'gem-stone';
 
-    // Weapon name detection (for legacy items without type)
     if (id.includes('sword') || id.includes('blade') || id.includes('saber') || id.includes('claymore')) return 'crossed-swords';
     if (id.includes('staff') || id.includes('wand') || id.includes('rod')) return 'magic-wand';
     if (id.includes('mace') || id.includes('hammer') || id.includes('flail')) return 'hammer';
@@ -838,7 +660,6 @@ export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[])
     if (id.includes('axe') || id.includes('hatchet')) return 'axe';
     if (id.includes('club') || id.includes('cudgel')) return 'cricket-game';
 
-    // Offhand name detection
     if (id.includes('shield') || id.includes('buckler')) return 'shield';
     if (id.includes('spellbook') || id.includes('magic_book') || id.includes('grimoire')) return 'closed-book';
     if (id.includes('holy_cross') || id.includes('crucifix')) return 'latin-cross';
@@ -847,7 +668,6 @@ export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[])
     if (id.includes('voodoo')) return 'skull';
     if (id.includes('talisman')) return 'crystal-ball';
 
-    // Armor name detection (for items.json armor entries like leather_cap, iron_helmet)
     if (slot === 'helmet' || id.includes('helmet') || id.includes('cap') || id.includes('hat') || id.includes('hood') || id.includes('crown')) return 'rescue-worker-s-helmet';
     if (slot === 'armor' || id.includes('armor') || id.includes('plate') || id.includes('robe') || id.includes('cloak') || (id.includes('leather') && !id.includes('pants') && !id.includes('glove') && !id.includes('boot') && !id.includes('pauldron'))) return 'safety-vest';
     if (slot === 'pants' || id.includes('pants') || id.includes('legs') || id.includes('legguard') || id.includes('greaves')) return 'jeans';
@@ -855,7 +675,6 @@ export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[])
     if (slot === 'boots' || id.includes('boot') || id.includes('sandal') || id.includes('shoe')) return 'woman-s-boot';
     if (slot === 'shoulders' || id.includes('shoulder') || id.includes('pauldron') || id.includes('epaulet')) return 'military-medal';
 
-    // Accessory detection
     if (slot === 'ring1' || slot === 'ring2' || id.includes('ring') || id.includes('band')) return 'ring';
     if (slot === 'necklace' || id.includes('necklace') || id.includes('amulet') || id.includes('pendant') || id.includes('chain')) return 'prayer-beads';
     if (slot === 'earrings' || id.includes('earring')) return 'sparkles';
@@ -863,38 +682,32 @@ export const getItemIcon = (itemId: string, slot: string, allItems: IBaseItem[])
     return SLOT_ICONS[slot as EquipmentSlot] ?? 'package';
 };
 
-/** Check if a character class can use a specific item */
 export const canClassEquip = (
     itemId: string,
     slot: EquipmentSlot,
     characterClass: string,
     allItems: IBaseItem[],
 ): boolean => {
-    // Only restrict mainHand, offHand, and armor slots
     const itemType = getItemType(itemId, allItems);
     if (!itemType) return true;
 
-    // Weapon restrictions
     if (slot === 'mainHand') {
         const allowed = CLASS_WEAPON_TYPES[characterClass];
         if (!allowed) return true;
         return allowed.includes(itemType);
     }
 
-    // Offhand restrictions
     if (slot === 'offHand') {
         const allowed = CLASS_OFFHAND_TYPES[characterClass];
         if (!allowed) return true;
         return allowed.includes(itemType);
     }
 
-    // Armor restrictions (helmet, armor, pants, gloves, shoulders, boots)
     const armorSlots: EquipmentSlot[] = ['helmet', 'armor', 'pants', 'gloves', 'shoulders', 'boots'];
     if (armorSlots.includes(slot)) {
         const allowedPrefix = CLASS_ARMOR_TYPES[characterClass];
         if (!allowedPrefix) return true;
 
-        // For generated items, also check allowedClasses from itemTemplates directly
         const genInfo = getGeneratedItemInfo(itemId);
         if (genInfo) {
             const armorCategories = itemTemplates.armor as Record<string, { allowedClasses?: string[]; pieces: { slot: string }[] }>;
@@ -906,28 +719,16 @@ export const canClassEquip = (
             }
         }
 
-        // Check if item type starts with any armor prefix
         if (itemType.startsWith('heavy_') || itemType.startsWith('magic_') || itemType.startsWith('light_')) {
             return itemType.startsWith(allowedPrefix + '_');
         }
-        // Legacy armor items (leather_armor, etc.) without heavy/magic/light prefix
-        // -> reject unless the item has no known armor prefix (truly generic)
         return false;
     }
 
-    // Accessories (rings, necklace, earrings) - all classes
     return true;
 };
 
-// -- Smart slot resolution (rings -> ring1/ring2, Rogue daggers -> mainHand/offHand) --
 
-/**
- * Determines the best equipment slot for an item, considering what is already equipped.
- * - Rings (slot ring1 or ring2) can go in either ring slot; prefers the item's native slot,
- *   falls back to the other ring slot if the native one is occupied.
- * - Daggers for Rogue can go in both mainHand and offHand (dual wield).
- *   If base slot (mainHand) is occupied, tries offHand.
- */
 export const getEquipTargetSlot = (
     baseSlot: EquipmentSlot,
     itemId: string,
@@ -935,22 +736,20 @@ export const getEquipTargetSlot = (
     equipment: IEquipment,
     allItems: IBaseItem[],
 ): EquipmentSlot => {
-    // Ring logic: ring1 <-> ring2
     if (baseSlot === 'ring1' || baseSlot === 'ring2') {
         if (!equipment[baseSlot]) return baseSlot;
         const otherRing: EquipmentSlot = baseSlot === 'ring1' ? 'ring2' : 'ring1';
         if (!equipment[otherRing]) return otherRing;
-        return baseSlot; // both occupied – swap the native slot
+        return baseSlot;
     }
 
-    // Rogue dagger dual-wield: mainHand <-> offHand
     if (characterClass === 'Rogue') {
         const itemType = getItemType(itemId, allItems);
         if (itemType === 'dagger') {
             if (baseSlot === 'mainHand') {
                 if (!equipment.mainHand) return 'mainHand';
                 if (!equipment.offHand) return 'offHand';
-                return 'mainHand'; // both occupied – swap mainHand
+                return 'mainHand';
             }
             if (baseSlot === 'offHand') {
                 if (!equipment.offHand) return 'offHand';
@@ -963,12 +762,7 @@ export const getEquipTargetSlot = (
     return baseSlot;
 };
 
-// -- Slot compatibility check --------------------------------------------------
 
-/**
- * Checks if an item with the given base slot can validly be placed in a target slot.
- * Allows ring1 <-> ring2, and dagger mainHand <-> offHand for Rogue.
- */
 export const isSlotCompatible = (
     baseSlot: EquipmentSlot,
     targetSlot: EquipmentSlot,
@@ -978,12 +772,10 @@ export const isSlotCompatible = (
 ): boolean => {
     if (baseSlot === targetSlot) return true;
 
-    // Rings are interchangeable between ring1 and ring2
     if ((baseSlot === 'ring1' || baseSlot === 'ring2') && (targetSlot === 'ring1' || targetSlot === 'ring2')) {
         return true;
     }
 
-    // Rogue daggers can go in mainHand or offHand
     if (characterClass === 'Rogue') {
         const itemType = getItemType(itemId, allItems);
         if (itemType === 'dagger' && (targetSlot === 'mainHand' || targetSlot === 'offHand')) {
@@ -994,7 +786,6 @@ export const isSlotCompatible = (
     return false;
 };
 
-// -- Class-based damage scaling -------------------------------------------------
 
 export const getClassSkillBonus = (
     characterClass: string,
@@ -1042,12 +833,10 @@ export const getClassSkillBonus = (
     return { skillBonus, extraCritChance };
 };
 
-// -- Format item ID from snake_case to Title Case ------------------------------
 
 export const formatItemName = (key: string): string =>
     key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-// -- Flatten items.json into a single lookup array -----------------------------
 
 export const flattenItemsData = (itemsJson: {
     weapons?: unknown[];

@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { useCharacterStore } from '../stores/characterStore';
@@ -9,44 +11,39 @@ import { useGlobalChatNotifications } from '../hooks/useGlobalChatNotifications'
 import AppShell from '../components/layout/AppShell/AppShell';
 import DeathNotification from '../components/ui/DeathNotification/DeathNotification';
 import ChatUnreadBadge from '../components/ui/ChatUnreadBadge/ChatUnreadBadge';
-import Login from '../views/Auth/Login/Login';
-import Register from '../views/Auth/Register/Register';
-import ForgotPassword from '../views/Auth/ForgotPassword/ForgotPassword';
-import CharacterSelect from '../views/CharacterSelect/CharacterSelect';
-import CharacterCreate from '../views/CharacterCreate/CharacterCreate';
-import Town from '../views/Town/Town';
-import Battle from '../views/Battle/Battle';
-import Combat from '../views/Combat/Combat';
-import Dungeon from '../views/Dungeon/Dungeon';
-import Boss from '../views/Boss/Boss';
-import Inventory from '../views/Inventory/Inventory';
-import Deposit from '../views/Deposit/Deposit';
-// Skills view retired (2026-05 v5) — its content lives inside the
-// Postać section's popups (Active Skills + Training popups) so the
-// dedicated `/skills` route is no longer needed.
-import Leaderboard from '../views/Leaderboard/Leaderboard';
-import Shop from '../views/Shop/Shop';
-import Party from '../views/Party/Party';
-import Tasks from '../views/Tasks/Tasks';
-import Quests from '../views/Quests/Quests';
-// CharacterStats view retired (2026-05 v6) — stat-point distribution moved
-// into the Postać section (/inventory). Combat HUD's "+N statystyk" badge
-// also gone in this pass; players see the unspent-points hint on the Postać
-// tab and the 4-tile distributor on the /inventory view itself.
-import MonsterList from '../views/MonsterList/MonsterList';
-import Market from '../views/Market/Market';
-import Transform from '../views/Transform/Transform';
-import Deaths from '../views/Deaths/Deaths';
-import OfflineHunt from '../views/OfflineHunt/OfflineHunt';
-import Guild from '../views/Guild/Guild';
-import GlobalChat from '../views/GlobalChat/GlobalChat';
-import Friends from '../views/Friends/Friends';
-import Social from '../views/Social/Social';
-import Raid from '../views/Raid/Raid';
-import Arena from '../views/Arena/Arena';
-import ArenaMatch from '../views/Arena/ArenaMatch';
-import Trainer from '../views/Trainer/Trainer';
+import Spinner from '../components/ui/Spinner/Spinner';
 import OnlineOnlyGuard from './OnlineOnlyGuard';
+
+const Login = lazy(() => import('../views/Auth/Login/Login'));
+const Register = lazy(() => import('../views/Auth/Register/Register'));
+const ForgotPassword = lazy(() => import('../views/Auth/ForgotPassword/ForgotPassword'));
+const CharacterSelect = lazy(() => import('../views/CharacterSelect/CharacterSelect'));
+const CharacterCreate = lazy(() => import('../views/CharacterCreate/CharacterCreate'));
+const Town = lazy(() => import('../views/Town/Town'));
+const Battle = lazy(() => import('../views/Battle/Battle'));
+const Combat = lazy(() => import('../views/Combat/Combat'));
+const Dungeon = lazy(() => import('../views/Dungeon/Dungeon'));
+const Boss = lazy(() => import('../views/Boss/Boss'));
+const Inventory = lazy(() => import('../views/Inventory/Inventory'));
+const Deposit = lazy(() => import('../views/Deposit/Deposit'));
+const Leaderboard = lazy(() => import('../views/Leaderboard/Leaderboard'));
+const Shop = lazy(() => import('../views/Shop/Shop'));
+const Party = lazy(() => import('../views/Party/Party'));
+const Tasks = lazy(() => import('../views/Tasks/Tasks'));
+const Quests = lazy(() => import('../views/Quests/Quests'));
+const MonsterList = lazy(() => import('../views/MonsterList/MonsterList'));
+const Market = lazy(() => import('../views/Market/Market'));
+const Transform = lazy(() => import('../views/Transform/Transform'));
+const Deaths = lazy(() => import('../views/Deaths/Deaths'));
+const OfflineHunt = lazy(() => import('../views/OfflineHunt/OfflineHunt'));
+const Guild = lazy(() => import('../views/Guild/Guild'));
+const GlobalChat = lazy(() => import('../views/GlobalChat/GlobalChat'));
+const Friends = lazy(() => import('../views/Friends/Friends'));
+const Social = lazy(() => import('../views/Social/Social'));
+const Raid = lazy(() => import('../views/Raid/Raid'));
+const Arena = lazy(() => import('../views/Arena/Arena'));
+const ArenaMatch = lazy(() => import('../views/Arena/ArenaMatch'));
+const Trainer = lazy(() => import('../views/Trainer/Trainer'));
 
 interface IAppRouterProps {
     session: Session | null;
@@ -64,12 +61,6 @@ const ProtectedRoute = ({ session, children }: IProtectedRouteProps) => {
     return <>{children}</>;
 };
 
-/**
- * Blocks access to dungeon/boss/transform while a live fight is in progress.
- * Offline hunt does NOT block dungeons/bosses/transforms — the hunt keeps
- * rolling kills in the background and the player can jump into a dungeon or
- * boss fight in parallel.
- */
 const CombatGuard = ({ children }: { children: React.ReactNode }) => {
     const phase = useCombatStore((s) => s.phase);
     if (phase === 'fighting' || phase === 'victory') {
@@ -78,7 +69,6 @@ const CombatGuard = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
 };
 
-/** Blocks /combat route while an offline hunt is running. */
 const HuntGuard = ({ children }: { children: React.ReactNode }) => {
     const huntActive = useOfflineHuntStore((s) => s.isActive);
     if (huntActive) {
@@ -87,9 +77,8 @@ const HuntGuard = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
 };
 
-/** Inner component that lives inside <BrowserRouter> so hooks like useLocation work. */
 const AppRouterInner = ({ session }: IAppRouterProps) => {
-    const { character } = useCharacterStore();
+    const { character } = useCharacterStore(useShallow((s) => ({ character: s.character })));
     useActivityTracker();
     useGlobalChatNotifications();
 
@@ -97,8 +86,8 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
         <>
             <DeathNotification />
             <AppShell>
+            <Suspense fallback={<Spinner />}>
             <Routes>
-                {/* Public routes */}
                 <Route
                     path="/login"
                     element={!session ? <Login /> : <Navigate to="/" replace />}
@@ -109,7 +98,6 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                 />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
 
-                {/* Character selection – shown after login if no character selected */}
                 <Route
                     path="/character-select"
                     element={
@@ -119,7 +107,6 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     }
                 />
 
-                {/* Home – redirects based on auth and character state */}
                 <Route
                     path="/"
                     element={
@@ -133,7 +120,6 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     }
                 />
 
-                {/* Character creation */}
                 <Route
                     path="/create-character"
                     element={
@@ -143,7 +129,6 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     }
                 />
 
-                {/* Game routes – all protected */}
                 <Route
                     path="/battle"
                     element={
@@ -232,9 +217,6 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                         </ProtectedRoute>
                     }
                 />
-                {/* /stats retired — every reference now redirects to /inventory
-                    where the Postać view hosts the 4-tile stat-point distributor
-                    above the action row. */}
                 <Route path="/stats" element={<Navigate to="/inventory" replace />} />
                 <Route
                     path="/monsters"
@@ -345,14 +327,10 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     }
                 />
 
-                {/* Catch-all */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
             </AppShell>
-            {/* 2026-05-19 v5: floating chat icon lives INSIDE the
-                Router so Chat's `useNavigate` works when the popup
-                mounts. The badge itself gates on character presence
-                so it stays hidden on /login / /character-select. */}
             <ChatUnreadBadge />
         </>
     );

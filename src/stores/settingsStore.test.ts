@@ -1,17 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock i18n BEFORE the store is imported. The store calls
-// `i18n.changeLanguage()` inside its `setLanguage` action; we don't want
-// that to actually trigger a language switch (and don't want to depend on
-// i18next's init promise either).
 vi.mock('../i18n/index', () => ({
     default: { changeLanguage: vi.fn() },
 }));
 
-// Import AFTER the mock so the module factory above intercepts the import.
 import { useSettingsStore } from './settingsStore';
 
-// Snapshot of the documented defaults — kept in sync with settingsStore.ts.
 const DEFAULTS = {
     language: 'pl' as const,
     combatSpeed: 'x1' as const,
@@ -57,7 +51,6 @@ beforeEach(() => {
     useSettingsStore.setState(DEFAULTS);
 });
 
-// -- language -----------------------------------------------------------------
 
 describe('setLanguage', () => {
     it('flips language between pl and en', () => {
@@ -68,7 +61,6 @@ describe('setLanguage', () => {
     });
 });
 
-// -- combat speed / skill mode ------------------------------------------------
 
 describe('setCombatSpeed', () => {
     it('cycles through allowed speeds', () => {
@@ -89,7 +81,6 @@ describe('setSkillMode', () => {
     });
 });
 
-// -- flat auto-potion (slot 1) ------------------------------------------------
 
 describe('flat auto-potion setters', () => {
     it('toggles HP/MP enabled flags', () => {
@@ -101,7 +92,6 @@ describe('flat auto-potion setters', () => {
     });
 
     it('stores HP/MP thresholds verbatim (no clamping in the setter)', () => {
-        // The store currently does NOT clamp; documenting the contract.
         useSettingsStore.getState().setAutoPotionHpThreshold(35);
         useSettingsStore.getState().setAutoPotionMpThreshold(80);
         expect(useSettingsStore.getState().autoPotionHpThreshold).toBe(35);
@@ -116,7 +106,6 @@ describe('flat auto-potion setters', () => {
     });
 });
 
-// -- pct auto-potion (slot 2) -------------------------------------------------
 
 describe('pct auto-potion setters', () => {
     it('toggles pct HP/MP enabled flags', () => {
@@ -141,7 +130,6 @@ describe('pct auto-potion setters', () => {
     });
 });
 
-// -- auto-sell flags ----------------------------------------------------------
 
 describe('auto-sell setters', () => {
     it('flips each rarity flag independently', () => {
@@ -166,7 +154,6 @@ describe('auto-sell setters', () => {
     });
 });
 
-// -- combat XP bar (uses localStorage side effect) -----------------------------
 
 describe('setShowCombatXpBar', () => {
     it('persists the value to localStorage and updates state', () => {
@@ -179,11 +166,6 @@ describe('setShowCombatXpBar', () => {
     });
 });
 
-// -- hunt / dungeon / raid / boss filters -------------------------------------
-//
-// All four filter blocks expose the same shape: availableOnly + minLevel +
-// sortDesc, with the minLevel setter clamping negatives to 0 and flooring
-// fractions. Group them under a single describe to keep noise low.
 
 describe('list filter setters', () => {
     it('hunt filters: toggle + clamp', () => {
@@ -195,7 +177,6 @@ describe('list filter setters', () => {
         expect(useSettingsStore.getState().huntFilterAvailableOnly).toBe(true);
         expect(useSettingsStore.getState().huntFilterTaskedOnly).toBe(true);
         expect(useSettingsStore.getState().huntFilterSortDesc).toBe(true);
-        // Negative input clamped to 0.
         expect(useSettingsStore.getState().huntFilterMinLevel).toBe(0);
     });
 
@@ -236,16 +217,11 @@ describe('list filter setters', () => {
     });
 
     it('any filter: passing NaN/undefined-coerced 0 falls back to 0 (|| 0 guard)', () => {
-        // Math.floor(NaN || 0) -> 0; pinning the documented behaviour here so
-        // a stray bad number doesn't blow up the hub.
         useSettingsStore.getState().setHuntFilterMinLevel(Number.NaN);
         expect(useSettingsStore.getState().huntFilterMinLevel).toBe(0);
     });
 });
 
-// 2026-06-24: Quests "taski" filters/sort — persisted per-character so they
-// survive reloads (registered in characterScope stateKeys alongside the other
-// *Filter* controls).
 describe('task filter/sort setters (persisted)', () => {
     it('default to show-everything / ascending / no level floor', () => {
         const s = useSettingsStore.getState();

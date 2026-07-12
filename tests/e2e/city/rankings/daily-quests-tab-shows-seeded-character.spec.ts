@@ -1,28 +1,3 @@
-/**
- * Atomic E2E — `/leaderboard` "Daily" tab pokazuje naszą seedowaną
- * postać z high `quests_daily_done`.
- *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria". Rozszerzenie pokrycia
- * — Daily Quests Done tab.
- *
- * Tab definition (Leaderboard.tsx linia 165):
- *   { key: 'quests_daily_done', label: 'Daily', icon: 'spiral-calendar',
- *     source: 'characters', characterColumn: 'quests_daily_done',
- *     order: 'desc', valueLabel: 'Daily' }
- *
- * Sort: `quests_daily_done DESC, limit 100`. Format fallback formatValue
- * -> `Daily 999`.
- *
- * **Sync-hook SAFE (max mode)**: `useLeaderboardStatSync` (linia 79-87
- * src/hooks/useLeaderboardStatSync.ts) używa `mode: 'max'` dla tej
- * kolumny (komentarz: "Daily resets each day; this back-fill captures
- * TODAY's claimed count. The per-claim hook keeps the lifetime total
- * ticking up across days. ... never overwrite a higher lifetime total").
- * Pre-seed wysoką wartością (999) PRZETRWA character switch bo lokalna
- * `dailyClaimed` jest 0 -> 0 < 999, NIE nadpisze.
- *
- * Cleanup: try/finally + cleanupCharacterById.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';

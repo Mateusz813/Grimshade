@@ -1,22 +1,11 @@
 @use '../../styles/variables' as *;
 @use '../../styles/breakpoints' as *;
 
-// Battle hub: six vertically-stacked banner tiles. Each tile mirrors the
-// hover/active animation used by the Town nav tiles (gradient wave + glow)
-// but uses a custom background image instead of emoji particles. The tile
-// border + glow color is driven by the player's current transform tier via
-// the same --tile-accent / --tile-accent-rgb CSS vars Town uses.
 
 .battle {
-  // Take the visible viewport between TopHeader (50px) and BottomNav (60px)
-  // so the column has enough room to look full-screen on tablets+. Smaller
-  // screens just scroll naturally — the inner gap keeps things breathable.
   min-height: calc(100vh - 50px - 60px);
   width: 100%;
   padding: 14px 12px 18px;
-  // Transparent so the global dragon backdrop (`body::before` set in
-  // src/index.css) shows through behind the tile column. Other hub-style
-  // views (Town, Quests) follow the same rule for visual consistency.
   background: transparent;
   display: flex;
   justify-content: center;
@@ -35,10 +24,6 @@
     }
   }
 
-  // -- Tile shell -----------------------------------------------------------
-  // Banner-style button. The background image lives on a child layer so we
-  // can sit a dark gradient on top for legibility without dimming the border.
-  // Title sits horizontally centered at the very top of the banner.
   &__tile {
     position: relative;
     display: flex;
@@ -70,7 +55,6 @@
       outline-offset: 2px;
     }
 
-    // Resting glow + accent wave (matches Town tile-particles mixin)
     &::before {
       content: '';
       position: absolute;
@@ -108,10 +92,6 @@
       animation: battle-tile-press 0.55s ease-out;
     }
 
-    // 2026-05-20 spec ("wyszarz, spolecznosc, arene, raidy"): tiles
-    // disabled because the player is in offline mode. Grayscale,
-    // dimmer, no hover wave, no transform tint — matches the lock
-    // treatment on Town tiles + BottomNav.
     &--offline-locked {
       filter: grayscale(0.85) brightness(0.55) !important;
       opacity: 0.55;
@@ -148,8 +128,6 @@
     }
   }
 
-  // Background-image layer (sits behind the dark gradient). If the image
-  // file is missing the layer simply shows the accent fallback gradient.
   &__tile-bg {
     position: absolute;
     inset: 0;
@@ -166,8 +144,6 @@
     transform: scale(1.04);
   }
 
-  // Dark legibility veil over the bg image — fades down from the top so
-  // the title sitting at the top of the banner stays crisp.
   &__tile-shade {
     position: absolute;
     inset: 0;
@@ -193,13 +169,8 @@
     @include desktop { font-size: 1.25rem; }
   }
 
-  // Per-tile background image is set inline by Battle.tsx (Vite imports
-  // bundle the assets and hand us hashed URLs). The CSS just provides the
-  // covering / centering layout above.
 }
 
-// Animations are a copy of Town's tile-gradient-wave / town-tile-press feel
-// so the two screens move identically.
 @keyframes battle-tile-wave {
   0%   { background-position: 100% 0%; }
   100% { background-position: 0% 100%; }

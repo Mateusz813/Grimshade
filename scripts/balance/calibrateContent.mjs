@@ -1,10 +1,3 @@
-// ============================================================================
-// Grimshade — BOSS/DUNGEON/TRANSFORM/RAID calibration (spec 2026-06-20).
-// With potions you don't die, so "can solo" = TTK reasonable + no one-shot.
-// Thresholds: boss solo = legendary+3 (DPS) / mythic+3 (support); dungeon = rare+3.
-// Run: node scripts/balance/calibrateContent.mjs            (dry)
-//      node scripts/balance/calibrateContent.mjs --apply    (writes bosses.json)
-// ============================================================================
 import { createRequire } from 'module';
 import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
@@ -25,7 +18,7 @@ const OFFH={Knight:'shield',Mage:'spellbook',Cleric:'holy_cross',Archer:'quiver'
 const CLASSES=Object.keys(CBS);
 const RMULT={common:1.0,rare:1.15,epic:1.30,legendary:1.45,mythic:1.60,heroic:2.05};
 const enh=(U)=>U<=0?1:1+U*0.10;
-const spUp=(U)=>U<=0?1:1+min(U,10)*0.02+max(0,U-10)*0.01; // combat skill-upgrade mult
+const spUp=(U)=>U<=0?1:1+min(U,10)*0.02+max(0,U-10)*0.01;
 const RSLOTS={common:0,rare:1,epic:1,legendary:2,mythic:3,heroic:5};
 const BRANGE={common:[1,5],rare:[3,12],epic:[5,18],legendary:[10,35],mythic:[20,60],heroic:[40,100]};
 const SRM={hp:1,mp:1,attack:1,defense:1,speed:1,critChance:0.3,critDmg:1.5};
@@ -49,25 +42,22 @@ function player(cls,L,G,R,U){
 const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
 const defPenOf=(sk)=>{const m=((sk&&sk.effect)||'').match(/(?:^|;)def_pen:(\d+)/);return m?min(0.6,+m[1]/100):0;};
 function bestSkill(cls,L){let best=null,bv=-1;for(const sk of(skills.activeSkills[cls.toLowerCase()]||[])){if((sk.damage||0)<=0||((sk.unlockLevel||0)>L))continue;const v=sk.damage*(1+defPenOf(sk));if(v>bv){bv=v;best=sk;}}return best;}
-// BOSS-view DPS: skill = charAtk*0.15*skillMult*(1+defPen)*spUp every 5s; basic = charAtk - bossDef every interval
 function bossDPS(p,L,bossDef){
   const sk=bestSkill(p.cls,L); const skMult=sk?sk.damage:0; const dp=sk?defPenOf(sk):0;
   const skillHit=floor(p.attack*0.15*skMult*(1+dp)*spUp(p.U));
   const basic=max(1,(p.dual?p.attack+0.6*p.wRoll:p.attack)-bossDef)*(p.dual?2:1);
   return basic/(getAttackMs(p.as)/1000) + (skillHit>0?skillHit/5:0);
 }
-// ---- BOSS calibration: legendary+3 Mage (DPS ref) clears in ~BOSS_TTK; squishiest survives 7 hits ----
-const BOSS_TTK=180; // s (with potions)
+const BOSS_TTK=180;
 function calibBoss(L){
-  const refDef=round(player('Mage',L,L,'legendary',3).attack*0.10); // modest boss def
+  const refDef=round(player('Mage',L,L,'legendary',3).attack*0.10);
   const ref=player('Mage',L,L,'legendary',3);
   const scaledHP=round(bossDPS(ref,L,refDef)*BOSS_TTK);
-  const squishHp=player('Mage',L,L,'legendary',3).maxHp; // Mage squishiest
+  const squishHp=player('Mage',L,L,'legendary',3).maxHp;
   const scaledHit=round(squishHp/7);
-  // back out raw fields (engine ×3.5 hp / ×1.75 atk / ×1.3 def)
   return{hp:max(1,round(scaledHP/3.5)),attack:max(1,round((scaledHit+ref.defense)/1.75)),defense:max(1,round(refDef/1.3))};
 }
-function bossSolo(cls,L,R,U){ // TTK solo with potions vs the calibrated boss
+function bossSolo(cls,L,R,U){
   const p=player(cls,L,L,R,U); const c=calibBoss(L);
   const e={hp:c.hp*3.5,defense:c.defense*1.3};
   const ttk=e.hp/bossDPS(p,L,e.defense); return ttk;
@@ -89,7 +79,6 @@ if(APPLY){
   console.log('\nAPPLIED bosses.json ('+bosses.length+' bosses recalibrated).');
 } else console.log('\n(dry — --apply writes bosses.json)');
 
-// ---- DUNGEON + RAID TTK tables (for review) ----
 if(process.argv.includes('--table')){
   const monsters=require(P('monsters.json'));
   const monByLvl=[...monsters].sort((a,b)=>a.level-b.level);
@@ -97,7 +86,6 @@ if(process.argv.includes('--table')){
   const highestMonLE=(L)=>{let r=monByLvl[0];for(const m of monByLvl)if(m.level<=L)r=m;return r;};
   function dungeonBossWave(L){const m=nearestMon(L),wp=1;let hs,as_,ds;if(L<=8){hs=1;as_=.9;ds=.9;}else if(L<=18){hs=1.2;as_=1.1;ds=1.1;}else{const lb=min(1,(L-20)/200);const bs=1.2+lb*.5;hs=bs+wp*(.3+lb*.5);as_=(1.1+lb*.4)+wp*(.3+lb*.4);ds=bs+wp*(.2+lb*.3);}const TM={h:5,a:2.5,d:2};return{hp:max(1,floor(m.hp*hs*TM.h)),defense:max(0,floor(m.defense*ds*TM.d))};}
   function raidWave(L){const base=highestMonLE(L);const gap=max(1,L-base.level);const wIdx=(L<=10?1:L<=50?2:L<=200?3:L<=500?4:5)-1;const mult=(1+gap*.05)*(1+wIdx*.15);return{hp:floor(base.hp*10*mult)*4,defense:floor(base.defense*2*mult)};}
-  // dungeon-view DPS (skills ignore def, ×0.15) ; raid-view DPS (no 0.15, -0.3def)
   function dungDPS(p,L,def){const sk=bestSkill(p.cls,L);const dp=sk?defPenOf(sk):0;const sh=sk?floor(p.attack*0.15*sk.damage*(1+dp)*spUp(p.U)):0;const basic=max(1,(p.dual?p.attack+0.6*p.wRoll:p.attack)-def)*(p.dual?2:1);return basic/(getAttackMs(p.as)/1000)+(sh>0?sh/5:0);}
   function raidDPS(p,L,def){const sk=bestSkill(p.cls,L);const sh=sk?max(1,floor(p.attack*sk.damage*spUp(p.U))-floor(def*0.3)):0;const basic=max(1,(p.dual?floor(p.attack*0.6)*2:p.attack)-floor(def*0.5));return basic/(getAttackMs(p.as)*2/1000)+(sh>0?sh/5:0);}
   const gears=[['common',0],['rare',3],['epic',5],['legendary',3],['legendary',7],['mythic',3],['heroic',7]];
@@ -113,15 +101,14 @@ if(process.argv.includes('--table')){
   }
 }
 
-// ---- TRANSFORM table + UNDER-LEVELED boss scenario ----
 if(process.argv.includes('--extra')){
   const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
   const CRIT={Knight:0.03,Mage:0.05,Cleric:0.03,Archer:0.10,Rogue:0.15,Necromancer:0.05,Bard:0.07};
-  const tfBossHP=(L)=>Math.floor(95*Math.pow(L,1.1)+30)*5;       // scaleMonsterStats.hp × bossMult.hp(5)
-  const tfBossDef=(L)=>Math.floor(L*0.4)*3;                       // def × bossMult.def(3)
+  const tfBossHP=(L)=>Math.floor(95*Math.pow(L,1.1)+30)*5;
+  const tfBossDef=(L)=>Math.floor(L*0.4)*3;
   function tfDPS(p,L){const csb=floor(min(100,L)*SKILLCOEF[p.cls]);const cm=CLASSMOD[p.cls];const cr=min(MAXCRIT[p.cls],CRIT[p.cls]);
     const basic=(p.dual?2*max(1,(p.attack+0.6*p.wRoll+csb)*cm-tfBossDef(L)):max(1,(p.attack+p.wRoll+csb)*cm-tfBossDef(L)))*(1+cr);
-    const sk=bestSkill(p.cls,L);const sh=sk?floor(p.attack*0.15*sk.damage*spUp(p.U)):0; // transform skill ignores def & def_pen
+    const sk=bestSkill(p.cls,L);const sh=sk?floor(p.attack*0.15*sk.damage*spUp(p.U)):0;
     return basic/(getAttackMs(p.as)/1000)+(sh>0?sh/5:0);}
   const fmt=(t)=>!isFinite(t)?'INF':t>9999?'>9999':t<1?'<1':t.toFixed(0);
   const TIERS=[[1,30],[2,50],[3,100],[4,150],[5,200],[6,300],[7,500],[8,700],[9,800],[10,900],[11,1000]];
@@ -143,7 +130,6 @@ if(process.argv.includes('--extra')){
   }
 }
 
-// ---- Q&A: under-leveled transform (Q1) + proposed gear-gap penalty (Q2) ----
 if(process.argv.includes('--qa')){
   const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
   const CRIT={Knight:0.03,Mage:0.05,Cleric:0.03,Archer:0.10,Rogue:0.15,Necromancer:0.05,Bard:0.07};
@@ -156,7 +142,6 @@ if(process.argv.includes('--qa')){
   console.log('Klasa'.padEnd(12)+'TTK(s) z potionami'.padStart(20));
   for(const cls of CLASSES) console.log(cls.padEnd(12)+fmt(tfBossHP(50)/tfDPS(player(cls,50,30,'common',0),50,30)).padStart(20));
 
-  // Q2 PROPOSED gear-gap penalty: outgoing dmg × (gearLevel/contentLevel)^GAP_POW when gear < content
   const GAP_POW=2.0;
   const gapMult=(G,L)=>G>=L?1:Math.max(0.02,Math.pow(G/L,GAP_POW));
   const e200=calibBoss(200),boss={hp:e200.hp*3.5,defense:e200.defense*1.3};

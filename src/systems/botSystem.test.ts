@@ -101,7 +101,6 @@ describe('calculateBotAction', () => {
 
     it('should return skill action when canUseSkill is true and bot has MP', () => {
         const bot = generateBot(25, 'Knight', []);
-        // Ensure bot has a skill and enough MP
         if (bot.skillId && bot.mp >= bot.skillMpCost && bot.skillDamageMultiplier > 0) {
             const action = calculateBotAction(bot, mockBoss, true);
             expect(action.type).toBe('skill');
@@ -128,7 +127,6 @@ describe('pickAggroTarget', () => {
         for (let i = 0; i < 100; i++) {
             targets.add(pickAggroTarget(['bot_1', 'bot_2']));
         }
-        // With 100 attempts, all options should appear
         expect(targets.has('player')).toBe(true);
         expect(targets.size).toBeGreaterThan(1);
     });
@@ -137,7 +135,7 @@ describe('pickAggroTarget', () => {
 describe('calculateAoeDamage', () => {
     it('should return 50% of base damage', () => {
         const dmg = calculateAoeDamage(100, 20);
-        expect(dmg).toBe(40); // (100 - 20) * 0.5 = 40
+        expect(dmg).toBe(40);
     });
 
     it('should return minimum 1 damage', () => {
@@ -177,10 +175,6 @@ describe('getAggroSwitchInterval', () => {
 });
 
 describe('getBotLogIcon', () => {
-    // 2026-06-21 regression: combat logs render via <EmojiText>, which only
-    // converts `:name:` SHORTCODES into icons. A bare icon name like
-    // `bow-and-arrow` printed as literal text in the log — exactly what the
-    // player reported. getBotLogIcon must emit the colon-wrapped form.
     it('wraps the class icon in a :robot::class: shortcode (EmojiText-renderable)', () => {
         expect(getBotLogIcon('Archer')).toBe(':robot::bow-and-arrow:');
         expect(getBotLogIcon('Cleric')).toBe(':robot::sparkles:');
@@ -190,9 +184,7 @@ describe('getBotLogIcon', () => {
     it('never returns a bare (colon-less) icon name', () => {
         (Object.keys(BOT_CLASS_ICONS) as Array<keyof typeof BOT_CLASS_ICONS>).forEach((cls) => {
             const out = getBotLogIcon(cls);
-            // Must be a shortcode pair, e.g. :robot::dagger:
             expect(out).toMatch(/^:robot::[a-z0-9-]+:$/);
-            // The bare name must NOT appear unwrapped (would render as text).
             expect(out.startsWith(BOT_CLASS_ICONS[cls])).toBe(false);
         });
     });

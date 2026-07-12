@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// -- Hoisted mocks ------------------------------------------------------------
-// partyStore wraps `partyApi` end-to-end; we mock every method it calls so
-// no real Supabase round-trip happens. `vi.hoisted` ensures the spies are
-// defined BEFORE `vi.mock` factories run (those factories are hoisted to
-// the top of the file by the vitest transformer).
 
 const {
     createPartyApi,
@@ -45,8 +40,6 @@ const {
     extractApiErrorMock: vi.fn((err: unknown) => (err instanceof Error ? err.message : 'API error')),
     offlineHuntIsActive: { value: false },
     isOfflineModeMock: vi.fn(() => false),
-    // Backend-mode glue (opt-in). Default OFF so every legacy test above
-    // runs the unchanged Supabase path.
     backendState: { on: false },
     backendCreateParty: vi.fn(),
     backendJoinParty: vi.fn(),
@@ -75,7 +68,6 @@ vi.mock('../api/v1/partyApi', () => ({
     extractApiError: extractApiErrorMock,
 }));
 
-// Block offline-hunt guard inside createParty / joinParty.
 vi.mock('./offlineHuntStore', () => ({
     useOfflineHuntStore: {
         getState: () => ({ isActive: offlineHuntIsActive.value }),
@@ -86,8 +78,6 @@ vi.mock('./connectivityStore', () => ({
     isOfflineMode: isOfflineModeMock,
 }));
 
-// Backend-mode glue — mocked so the opt-in branch can be exercised without
-// a real axios client. `backendState.on` flips the flag per-test.
 vi.mock('../config/backendMode', () => ({
     isBackendMode: () => backendState.on,
 }));
@@ -103,8 +93,6 @@ vi.mock('../api/backend/backendApi', () => ({
         listPublicParties: backendListPublicParties,
     },
 }));
-// The active-party poller lazily imports characterStore — stub it so the
-// dynamic import resolves in the test environment.
 vi.mock('./characterStore', () => ({
     useCharacterStore: {
         getState: () => ({ character: { id: 'char-1' } }),
@@ -186,7 +174,6 @@ beforeEach(() => {
     backendLeaveParty.mockResolvedValue({ ok: true, dissolved: true, party: null });
 });
 
-// -- createParty --------------------------------------------------------------
 
 describe('createParty', () => {
     it('round-trips through partyApi and stores the adapted party on success', async () => {
@@ -212,7 +199,6 @@ describe('createParty', () => {
         await usePartyStore.getState().createParty(SELF, {
             name: 'x', description: '', password: null, isPublic: true,
         });
-        // Guard removed — creation now proceeds despite the running offline hunt.
         expect(createPartyApi).toHaveBeenCalled();
         const state = usePartyStore.getState();
         expect(state.party!.id).toBe('party-oh');
@@ -241,7 +227,6 @@ describe('createParty', () => {
     });
 });
 
-// -- joinPartyById ------------------------------------------------------------
 
 describe('joinPartyById', () => {
     it('stores the party on a successful join', async () => {
@@ -254,7 +239,6 @@ describe('joinPartyById', () => {
         offlineHuntIsActive.value = true;
         joinPartyApi.mockResolvedValueOnce(makeServerParty({ id: 'party-2' }));
         await usePartyStore.getState().joinPartyById('party-2', SELF);
-        // Guard removed — join now proceeds despite the running offline hunt.
         expect(joinPartyApi).toHaveBeenCalled();
         expect(usePartyStore.getState().party!.id).toBe('party-2');
     });
@@ -276,7 +260,6 @@ describe('joinPartyById', () => {
     });
 });
 
-// -- leaveParty ---------------------------------------------------------------
 
 describe('leaveParty', () => {
     it('is a no-op when no party is loaded', async () => {
@@ -296,7 +279,6 @@ describe('leaveParty', () => {
             partyDuringApiCall = usePartyStore.getState().party;
         });
         await usePartyStore.getState().leaveParty('char-1');
-        // By the time the API fires, the local store should already be null.
         expect(partyDuringApiCall).toBeNull();
         expect(usePartyStore.getState().party).toBeNull();
     });
@@ -310,12 +292,10 @@ describe('leaveParty', () => {
         });
         leavePartyApi.mockRejectedValueOnce(new Error('rls denied'));
         await usePartyStore.getState().leaveParty('char-1');
-        // Defensive: UI must NOT get stuck on a stale party row.
         expect(usePartyStore.getState().party).toBeNull();
     });
 });
 
-// -- transferLeadership -------------------------------------------------------
 
 describe('transferLeadership', () => {
     it('optimistically updates leaderId locally then commits via partyApi', async () => {
@@ -365,7 +345,6 @@ describe('transferLeadership', () => {
     });
 });
 
-// -- kickByRowId --------------------------------------------------------------
 
 describe('kickByRowId', () => {
     it('calls partyApi.kickMember when a party is loaded', async () => {
@@ -397,7 +376,6 @@ describe('kickByRowId', () => {
     });
 });
 
-// -- removeMember (local-only, bot path) --------------------------------------
 
 describe('removeMember', () => {
     it('drops the member by id from the local roster', () => {
@@ -445,7 +423,6 @@ describe('removeMember', () => {
     });
 });
 
-// -- hydrateActiveParty -------------------------------------------------------
 
 describe('hydrateActiveParty', () => {
     it('adopts a server-side party when one is found', async () => {
@@ -491,12 +468,10 @@ describe('hydrateActiveParty', () => {
         });
         getMyActivePartyApi.mockRejectedValueOnce(new Error('offline'));
         await usePartyStore.getState().hydrateActiveParty('char-1');
-        // Non-fatal: keeps whatever we had.
         expect(usePartyStore.getState().party!.id).toBe('local-party');
     });
 });
 
-// -- refreshPublicParties -----------------------------------------------------
 
 describe('refreshPublicParties', () => {
     it('fills publicParties on success', async () => {
@@ -518,22 +493,14 @@ describe('refreshPublicParties', () => {
     });
 });
 
-// -- addBotHelper -------------------------------------------------------------
 
 describe('addBotHelper', () => {
     it('is a no-op when no party is loaded', () => {
         usePartyStore.getState().addBotHelper();
-        // No party means no bot — nothing to assert on the store other than
-        // it didn't throw. isOfflineMode shouldn't be invoked either (early
-        // return triggers before the import).
         expect(usePartyStore.getState().party).toBeNull();
     });
 });
 
-// -- Backend mode (opt-in) ----------------------------------------------------
-// With isBackendMode() ON every mutating action routes through backendApi and
-// the direct Supabase (partyApi) write is SKIPPED. With it OFF the legacy path
-// runs unchanged (asserted implicitly by every test above + the OFF cases here).
 
 describe('backend mode', () => {
     const setActiveParty = (overrides?: Parameters<typeof makeServerParty>[0]) => {
@@ -544,7 +511,6 @@ describe('backend mode', () => {
             publicParties: [],
         });
     };
-    // Minimal in-store party shape mirroring adaptToPartyInfo output.
     const adaptForStore = (raw: IPartyWithMembers) => ({
         id: raw.id,
         leaderId: raw.leader_id,
@@ -588,7 +554,6 @@ describe('backend mode', () => {
             await usePartyStore.getState().createParty(SELF, {
                 name: 'x', description: '', password: null, isPublic: true,
             });
-            // Guard removed — backend creation proceeds despite the running offline hunt.
             expect(backendCreateParty).toHaveBeenCalled();
             expect(usePartyStore.getState().party!.id).toBe('be-oh');
         });
@@ -701,7 +666,6 @@ describe('backend mode', () => {
             setActiveParty();
             backendHandoverParty.mockResolvedValueOnce(makeServerParty({ id: 'party-1', leader_id: 'char-2' }));
             await usePartyStore.getState().transferLeadership('char-2');
-            // acting id = the ORIGINAL leader captured before the optimistic flip
             expect(backendHandoverParty).toHaveBeenCalledWith('char-1', 'party-1', 'char-2');
             expect(transferLeadershipApi).not.toHaveBeenCalled();
             expect(usePartyStore.getState().party!.leaderId).toBe('char-2');
@@ -775,13 +739,3 @@ describe('backend mode', () => {
     });
 });
 
-// TODO: subscribePublicFeed / subscribeToActiveParty wire Supabase Realtime
-// callbacks; covered indirectly via the mocked partyApi factories. A direct
-// test would need to capture the callbacks passed in and replay them, which
-// is best done in an integration test with the real realtime layer (out
-// of scope for the store unit test).
-//
-// TODO: addBotHelper happy path needs a partial dynamic-import await on
-// './connectivityStore', and the test framework's microtask scheduling
-// makes that flaky here. The no-party guard above is the most valuable
-// branch to lock down at unit level.

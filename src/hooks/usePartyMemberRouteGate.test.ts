@@ -6,17 +6,6 @@ import { usePartyStore } from '../stores/partyStore';
 import type { ICharacter } from '../api/v1/characterApi';
 import type { IPartyInfo, IPartyMember } from '../systems/partySystem';
 
-/**
- * Two exports here:
- *
- *   - `usePartyMemberRouteGate` is the legacy no-op kept for AppShell —
- *     just verify it returns void and doesn't blow up.
- *
- *   - `useIsPartyMemberLocked` is the real predicate, returning true
- *     when the local player is a non-leader member of a multi-human
- *     party. Boss/raid/trainer tiles use this to disable click on
- *     non-leader members per the 2026-05-12 spec.
- */
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'me-1',
@@ -70,7 +59,6 @@ describe('useIsPartyMemberLocked', () => {
     });
 
     it('returns false when the party only has the local player', () => {
-        // Single-member party — no other humans -> no lock.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({ party: makeParty('me-1', [makeMember('me-1')]) });
         const { result } = renderHook(() => useIsPartyMemberLocked());
@@ -78,7 +66,6 @@ describe('useIsPartyMemberLocked', () => {
     });
 
     it('returns false when the party has only bots besides me', () => {
-        // Bots don't count as "other humans" — lock stays off.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({
             party: makeParty('me-1', [makeMember('me-1'), makeMember('bot-1', true), makeMember('bot-2', true)]),
@@ -88,7 +75,6 @@ describe('useIsPartyMemberLocked', () => {
     });
 
     it('returns false when I am the leader of a multi-human party', () => {
-        // Leaders pick the fight — they're never locked out.
         useCharacterStore.setState({ character: makeCharacter({ id: 'leader-1' }) });
         usePartyStore.setState({
             party: makeParty('leader-1', [makeMember('leader-1'), makeMember('other-human')]),
@@ -98,7 +84,6 @@ describe('useIsPartyMemberLocked', () => {
     });
 
     it('returns TRUE when I am a non-leader member of a multi-human party', () => {
-        // The whole point of the hook — disable the click.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({
             party: makeParty('leader-1', [makeMember('leader-1'), makeMember('me-1')]),
@@ -108,7 +93,6 @@ describe('useIsPartyMemberLocked', () => {
     });
 
     it('returns false when a multi-human party includes me as leader plus a bot', () => {
-        // Mixed humans+bots case: there's another HUMAN, but I'm the leader.
         useCharacterStore.setState({ character: makeCharacter({ id: 'leader-1' }) });
         usePartyStore.setState({
             party: makeParty('leader-1', [makeMember('leader-1'), makeMember('other-human'), makeMember('bot-1', true)]),
@@ -138,7 +122,6 @@ describe('useIsPartyMemberLocked', () => {
         });
         const { result, rerender } = renderHook(() => useIsPartyMemberLocked());
         expect(result.current).toBe(true);
-        // Promote me to leader.
         usePartyStore.setState({
             party: makeParty('me-1', [makeMember('leader-1'), makeMember('me-1')]),
         });
@@ -149,8 +132,6 @@ describe('useIsPartyMemberLocked', () => {
 
 describe('usePartyMemberRouteGate (legacy no-op)', () => {
     it('returns void and does not throw', () => {
-        // Sanity: the legacy export is intentionally empty per the
-        // 2026-05-12 spec switch from redirect-on-enter to disable-on-click.
         const { result } = renderHook(() => usePartyMemberRouteGate());
         expect(result.current).toBeUndefined();
     });

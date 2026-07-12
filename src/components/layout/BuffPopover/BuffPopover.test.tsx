@@ -2,15 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useRef } from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
-/**
- * BuffPopover tests — lists active buffs for the current character with
- * a live countdown. Returns null when there is no character. Closes on
- * Escape and on outside click.
- *
- * Mocks:
- *   - TinyIcon -> trivial passthrough so we don't need to load actual sprite
- *     assets / Vite asset URLs in tests.
- */
 
 vi.mock('../../ui/TinyIcon/TinyIcon', () => ({
     default: ({ icon }: { icon: string }) => (
@@ -62,10 +53,6 @@ const makeBuff = (overrides: Partial<IActiveBuff> = {}): IActiveBuff => ({
     ...overrides,
 });
 
-/**
- * Test harness — BuffPopover needs an anchorRef; rendering it through this
- * wrapper supplies one without forcing each test to bring its own.
- */
 const Harness = ({ onClose = () => undefined }: { onClose?: () => void }) => {
     const anchorRef = useRef<HTMLButtonElement>(null);
     return (
@@ -91,7 +78,6 @@ describe('BuffPopover — smoke', () => {
     it('renders nothing when there is no character (returns null)', () => {
         useCharacterStore.setState({ character: null });
         const { container } = render(<Harness />);
-        // Only the anchor wrapper renders; the popover itself bails to null.
         expect(container.querySelector('.buff-popover')).toBeNull();
     });
 
@@ -113,7 +99,6 @@ describe('BuffPopover — buff list', () => {
         render(<Harness />);
         expect(screen.getByText('Tarcza Many')).toBeTruthy();
         expect(screen.getByText('Berserk')).toBeTruthy();
-        // Empty state should NOT be visible.
         expect(screen.queryByText('Brak aktywnych buffów.')).toBeNull();
     });
 
@@ -167,7 +152,6 @@ describe('BuffPopover — buff list', () => {
         render(<Harness />);
         const row = screen.getByText('XP Boost').closest('.buff-popover__row');
         expect(row?.className.includes('buff-popover__row--paused')).toBe(true);
-        // The pause indicator is prepended to the time display.
         expect((row as Element).querySelector('svg.game-icon[data-icon="pause-button"]')).toBeTruthy();
     });
 });
@@ -183,7 +167,6 @@ describe('BuffPopover — close interactions', () => {
     it('calls onClose on outside pointer down (not on anchor / popover)', () => {
         const onClose = vi.fn();
         const { container } = render(<Harness onClose={onClose} />);
-        // Synthesise an outside pointerdown.
         const outside = document.createElement('div');
         document.body.appendChild(outside);
         const evt = new Event('pointerdown', { bubbles: true });

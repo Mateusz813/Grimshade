@@ -6,7 +6,7 @@ interface IOfflineRewardModalProps {
   show: boolean;
   skillName: string;
   earnedXp: number;
-  timeElapsed: number; // seconds
+  timeElapsed: number;
   onClose: () => void;
 }
 

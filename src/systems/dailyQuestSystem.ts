@@ -1,4 +1,3 @@
-// Daily quest system - resets at midnight, 12 quests per day
 
 export type DailyQuestGoalType = 'kill_any' | 'earn_gold' | 'complete_dungeon' | 'kill_boss' | 'use_potion' | 'deal_damage';
 
@@ -30,25 +29,18 @@ export interface IActiveDailyQuest {
     claimed: boolean;
 }
 
-/** Number of daily quests assigned each day */
 export const DAILY_QUEST_COUNT = 12;
 
-/** Get today's date as YYYY-MM-DD string */
 export const getTodayKey = (): string => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
-/** Check if daily quests need to be refreshed (new day) */
 export const needsRefresh = (lastRefreshDate: string | null): boolean => {
     if (!lastRefreshDate) return true;
     return lastRefreshDate !== getTodayKey();
 };
 
-/**
- * Select DAILY_QUEST_COUNT random daily quests appropriate for player level.
- * Uses a seeded approach based on date for consistency within the same day.
- */
 export const selectDailyQuests = (
     allQuests: IDailyQuestDef[],
     playerLevel: number,
@@ -56,14 +48,12 @@ export const selectDailyQuests = (
     const eligible = allQuests.filter((q) => playerLevel >= q.minLevel);
     if (eligible.length <= DAILY_QUEST_COUNT) return eligible;
 
-    // Simple date-based seed for deterministic selection per day
     const today = getTodayKey();
     let seed = 0;
     for (let i = 0; i < today.length; i++) {
         seed = ((seed << 5) - seed + today.charCodeAt(i)) | 0;
     }
 
-    // Fisher-Yates shuffle with seed
     const shuffled = [...eligible];
     const pseudoRandom = (max: number): number => {
         seed = (seed * 1103515245 + 12345) & 0x7fffffff;
@@ -78,10 +68,6 @@ export const selectDailyQuests = (
     return shuffled.slice(0, DAILY_QUEST_COUNT);
 };
 
-/**
- * Calculate scaled rewards based on player level.
- * Formula: base_gold * (1 + playerLevel * 0.25), base_xp * (1 + playerLevel * 0.3)
- */
 export const scaleRewards = (
     base: IDailyQuestRewards,
     playerLevel: number,

@@ -2,11 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * ChatPopup — floating mini-chat dialog driven by useChatTabsStore.
- * The heavy Chat child is stubbed so we focus on tab management:
- * close button, tab switching, Escape, outside click, no-character bail.
- */
 
 vi.mock('../Chat/Chat', () => ({
     __esModule: true,
@@ -50,7 +45,6 @@ const renderOpen = (onClose = () => undefined) =>
 
 beforeEach(() => {
     useCharacterStore.setState({ character: makeChar() });
-    // Reset to the two default tabs (city + system) and the city tab active.
     useChatTabsStore.setState({
         tabs: [
             { id: 'city', type: 'city', channel: 'city', title: ':cityscape-at-dusk: Miasto', unread: 0, closable: false },
@@ -84,8 +78,6 @@ describe('ChatPopup — visibility', () => {
     it('renders the dialog header and city + system tabs', () => {
         renderOpen();
         expect(screen.getByRole('dialog', { name: 'Czat' })).toBeTruthy();
-        // Tabs render the title text — Chat stub also echoes it inside the
-        // body, so use the role=tab anchor to disambiguate.
         const tabs = screen.getAllByRole('tab');
         expect(tabs.length).toBe(2);
         expect(tabs.some((t) => t.textContent?.includes('Miasto'))).toBe(true);
@@ -123,7 +115,6 @@ describe('ChatPopup — interactions', () => {
         renderOpen();
         const systemTab = screen.getAllByRole('tab').find((t) => t.textContent?.includes('System'))!;
         fireEvent.click(systemTab);
-        // The store's setActive marks the clicked tab active + zeros unread.
         expect(useChatTabsStore.getState().activeId).toBe('system');
     });
 
@@ -160,7 +151,6 @@ describe('ChatPopup — interactions', () => {
             activeId: 'city',
         });
         renderOpen();
-        // Only the PM tab gets the close-rozmowę button.
         const closeButtons = document.querySelectorAll('.chat-popup__tab-close');
         expect(closeButtons.length).toBe(1);
     });

@@ -11,26 +11,6 @@ import type { IMonster } from '../../../types/monster';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './ReadyCheckModal.scss';
 
-/**
- * Renders the "Gotowy?" popup whenever a party ready-check is in
- * flight. Mounted globally in AppShell so it sits on top of every
- * screen — a member could be browsing the inventory when the leader
- * fires the check.
- *
- * Behaviour:
- *   - The local player sees a Gotowy / Anuluj button until they click
- *     Gotowy (then their card becomes a green check).
- *   - The leader's modal also auto-fires the `go` broadcast once
- *     everyone is ready, sending all members to the destination route.
- *   - Anyone clicking Anuluj closes the modal for everyone.
- *
- * 2026-05-13 spec ("Na tym popupie pokazuj obrazek potwora na jakiego
- * idziemy jego nazwe oraz poziom, tak samo przed napisz czy to
- * Polowanie czy Boss czy raid czy trainer"): the modal now reads the
- * destination + payload to render a kind label (Polowanie/Boss/Raid/
- * Trainer) plus the target's sprite + name + level. Members get a
- * preview of what they're confirming before they hit Gotowy.
- */
 
 const ReadyCheckModal = () => {
     const character = useCharacterStore((s) => s.character);
@@ -45,9 +25,6 @@ const ReadyCheckModal = () => {
     const cancel = usePartyReadyCheckStore((s) => s.cancel);
     const fireGo = usePartyReadyCheckStore((s) => s.fireGo);
 
-    // Leader-side: when everyone in the required set has confirmed,
-    // broadcast `go`. Doing it from a useEffect avoids the race the
-    // store's auto-fire path would hit (state not yet settled).
     useEffect(() => {
         if (!open || !character || !requesterId) return;
         if (requesterId !== character.id) return;
@@ -56,11 +33,6 @@ const ReadyCheckModal = () => {
         if (allReady) fireGo();
     }, [open, character, requesterId, requiredIds, readyIds, fireGo]);
 
-    // Resolve the target preview from destination + payload. Hunt ships
-    // the full IMonster, boss/raid ship just an id (we look up the
-    // static def). Trainer doesn't ship any payload — it just shows a
-    // generic "Trainer" header. Memoised so a re-ready doesn't recompute
-    // the find() on every render.
     const target = useMemo(() => resolveTarget(destination, payload), [destination, payload]);
 
     if (!open || !character || !party) return null;
@@ -83,15 +55,6 @@ const ReadyCheckModal = () => {
                 >
                     <div className="ready-check__title"><GameIcon name="crossed-swords" /> Gotowość do walki</div>
                     <div className="ready-check__kind">{target.kindLabel}</div>
-                    {/* 2026-05-14 spec ("Tam powinno byc to zdjecie co
-                        jest na danym tle backgroundzie dla tego raidu
-                        a nie powinno byc zdjecia potworu, tylko caly
-                        ten kafelek jako tlo i napis nazwa i poziom"):
-                        raids render as a single tile with the dungeon
-                        painting as the background and name+level
-                        centred over a dark gradient — no monster
-                        portrait. Hunt and boss keep the original
-                        sprite + meta side-by-side layout. */}
                     {target.kind === 'raid' && (target.name || target.bgImage) && (
                         <div
                             className="ready-check__target ready-check__target--raid"
@@ -189,22 +152,10 @@ interface IReadyCheckTarget {
     kindLabel: string;
     name?: string;
     level?: number;
-    /** Sprite path/emoji passed to MonsterSprite / BossSprite. Used for
-     *  hunt / boss only — raid uses `bgImage` instead. */
     sprite?: string;
-    /** 2026-05-14 spec ("Nie widze na popupie jako sojusznik zdjecia
-     *  raidu. Tam powinno byc to zdjecie co jest na danym tle
-     *  backgroundzie dla tego raidu a nie powinno byc zdjecia
-     *  potworu, tylko caly ten kafelek jako tlo i napis nazwa i
-     *  poziom"): raids render as a single tile with the dungeon
-     *  painting as the BACKGROUND (no separate monster portrait),
-     *  matching how the raid list cards present each raid. */
     bgImage?: string;
 }
 
-/** Decode destination + payload into a renderable preview. Defensive —
- *  any malformed payload falls back to the unknown bucket so the popup
- *  still opens (rather than crashing the global modal). */
 const resolveTarget = (destination: string | null, payload: unknown): IReadyCheckTarget => {
     if (!destination) {
         return { kind: 'unknown', kindLabel: '?' };
@@ -239,10 +190,6 @@ const resolveTarget = (destination: string | null, payload: unknown): IReadyChec
         const raid = p?.raidId
             ? getAllRaids().find((r) => r.id === p.raidId)
             : undefined;
-        // 2026-05-14: pull the source-dungeon painting as the tile
-        // background — same image the raid list card uses, so the
-        // ready-check preview matches what the player just saw on
-        // /raid before the leader fired the check.
         const bgUrl = raid?.sourceDungeonId
             ? (getDungeonImage(raid.sourceDungeonId) ?? undefined)
             : undefined;

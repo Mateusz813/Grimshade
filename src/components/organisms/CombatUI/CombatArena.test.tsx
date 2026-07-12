@@ -1,11 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * CombatArena — fixed 4×2 grid wrapping EnemyCard + AllyCard. Each column
- * is always padded to 4 placeholders. Children are stubbed so we focus on
- * the wrapper's own behaviour (padding, modifier classes, overlay).
- */
 vi.mock('./EnemyCard', () => ({
     default: ({ enemy, onTarget }: { enemy: { id: string; name: string } | null; onTarget?: (e: { id: string; name: string }) => void }) =>
         enemy
@@ -65,9 +60,7 @@ const makeAlly = (id: string): ICombatAlly => ({
 describe('CombatArena — smoke', () => {
     it('pads both columns to 4 slots with placeholders', () => {
         render(<CombatArena enemies={[makeEnemy('a')]} allies={[makeAlly('b')]} />);
-        // 1 real enemy + 3 enemy placeholders.
         expect(screen.getAllByTestId('enemy-empty').length).toBe(3);
-        // 1 real ally + 3 ally placeholders.
         expect(screen.getAllByTestId('ally-empty').length).toBe(3);
         expect(screen.getByTestId('enemy-a')).toBeTruthy();
         expect(screen.getByTestId('ally-b')).toBeTruthy();
@@ -76,7 +69,6 @@ describe('CombatArena — smoke', () => {
     it('truncates input arrays longer than 4', () => {
         const enemies = ['a', 'b', 'c', 'd', 'e', 'f'].map(makeEnemy);
         render(<CombatArena enemies={enemies} allies={[]} />);
-        // Only first 4 enemies render.
         expect(screen.getByTestId('enemy-a')).toBeTruthy();
         expect(screen.getByTestId('enemy-d')).toBeTruthy();
         expect(screen.queryByTestId('enemy-e')).toBeNull();

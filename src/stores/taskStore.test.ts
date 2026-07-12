@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useTaskStore, type ITask } from './taskStore';
 
-// -- Mocks --------------------------------------------------------------------
-// taskStore.claimReward calls into inventoryStore.addGold + characterStore.addXp.
-// We mock both so the test exercises taskStore in isolation — the actual
-// inventory + character math has its own coverage in their dedicated suites.
 
 const addGoldMock = vi.fn();
 const addXpMock = vi.fn();
@@ -25,7 +21,6 @@ vi.mock('./characterStore', () => ({
     },
 }));
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeTask = (overrides: Partial<ITask> = {}): ITask => ({
     id: 'task_rat_10',
@@ -38,7 +33,6 @@ const makeTask = (overrides: Partial<ITask> = {}): ITask => ({
     ...overrides,
 });
 
-// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useTaskStore.setState({
@@ -50,7 +44,6 @@ const resetStore = (): void => {
     addXpMock.mockClear();
 };
 
-// -- Tests --------------------------------------------------------------------
 
 describe('taskStore — initial state', () => {
     beforeEach(resetStore);
@@ -74,7 +67,6 @@ describe('taskStore — startTask (addTask)', () => {
         expect(s.activeTasks[0].id).toBe(task.id);
         expect(s.activeTasks[0].progress).toBe(0);
         expect(typeof s.activeTasks[0].startedAt).toBe('string');
-        // First task also mirrors into the deprecated single-task slot
         expect(s.activeTask?.id).toBe(task.id);
     });
 
@@ -157,7 +149,6 @@ describe('taskStore — claimReward (claimTask)', () => {
         useTaskStore.getState().claimReward('a');
         expect(addGoldMock).not.toHaveBeenCalled();
         expect(addXpMock).not.toHaveBeenCalled();
-        // Task still active
         expect(useTaskStore.getState().activeTasks).toHaveLength(1);
     });
 
@@ -167,13 +158,10 @@ describe('taskStore — claimReward (claimTask)', () => {
         }));
         useTaskStore.getState().addKill('rat', 1, 10);
         useTaskStore.getState().claimReward('a');
-        // Rewards paid (rat exists in monsters.json so computeTaskRewards
-        // recomputes from live data; assert at least one positive value)
         expect(addGoldMock).toHaveBeenCalledTimes(1);
         expect(addXpMock).toHaveBeenCalledTimes(1);
         expect(addGoldMock.mock.calls[0][0]).toBeGreaterThan(0);
         expect(addXpMock.mock.calls[0][0]).toBeGreaterThan(0);
-        // Task removed
         expect(useTaskStore.getState().activeTasks).toHaveLength(0);
     });
 
@@ -191,7 +179,6 @@ describe('taskStore — claimReward (claimTask)', () => {
     });
 
     it('keeps at most 20 completed tasks (FIFO drop)', () => {
-        // Seed 20 already-completed tasks
         const seeded = Array.from({ length: 20 }, (_, i) => ({
             id: `completed_${i}`,
             taskId: `task_${i}`,
@@ -202,7 +189,6 @@ describe('taskStore — claimReward (claimTask)', () => {
             completedAt: new Date().toISOString(),
         }));
         useTaskStore.setState({ completedTasks: seeded });
-        // Complete one more
         useTaskStore.getState().startTask(makeTask({
             id: 'fresh', monsterId: 'rat', killCount: 1,
         }));
@@ -210,9 +196,7 @@ describe('taskStore — claimReward (claimTask)', () => {
         useTaskStore.getState().claimReward('fresh');
         const s = useTaskStore.getState();
         expect(s.completedTasks).toHaveLength(20);
-        // Newest is first
         expect(s.completedTasks[0].taskId).toBe('fresh');
-        // The oldest one was bumped out
         expect(s.completedTasks.find((t) => t.taskId === 'task_19')).toBeUndefined();
     });
 

@@ -1,23 +1,3 @@
-/**
- * Atomic E2E — `/leaderboard` "MLVL" tab pokazuje naszą seedowaną
- * postać z high `magic_level` weapon skill.
- *
- * Spec (BACKLOG 5.11): "Rankingi: każda kategoria". Rozszerzenie pokrycia
- * — Magic Level ranking (weapon_skill source).
- *
- * Tab definition (Leaderboard.tsx linia 135):
- *   { key: 'magic_level', label: 'MLVL', icon: 'crystal-ball',
- *     source: 'weapon_skill', skillName: 'magic_level',
- *     valueLabel: 'MLvl' }
- *
- * Cross-class check vs `sword_fighting`: tu używamy **Mage**, nie Knight,
- * żeby pokryć alternative class avatar in row + alternative weapon-skill
- * key in `character_weapon_skills` insert. Mage base magic_level = 5
- * (CLASS_BASE_STATS w createCharacter.ts) — domyślny seed 999 przebija
- * każdy realny postępy w fazie projektu.
- *
- * Cleanup: try/finally + cleanupCharacterById.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
@@ -71,7 +51,6 @@ test.describe('City › Rankings', { tag: '@city' }, () => {
             await page.goto('/leaderboard');
             await waitForAppReady(page);
 
-            // valueLabel='MLvl' + value=999 -> "MLvl 999"
             await assertSeededRankingRow(page, {
                 tabLabel: /^MLVL$/,
                 nick,

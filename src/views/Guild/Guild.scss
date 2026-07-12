@@ -12,10 +12,6 @@
         padding: 0 28px 140px;
     }
 
-    // -- Top bar --------------------------------------------------------
-    // 2026-05-18 spec ("Napis gildie na 100% szerokosci ekranu"): stretch
-    // the sticky bar edge-to-edge by negating the page padding (the .guild
-    // root carries 20px / 28px side padding for the rest of the screen).
     &__top-bar {
         display: flex;
         align-items: center;
@@ -42,11 +38,6 @@
         font-weight: 700;
         color: $color-text;
         margin: 0;
-        // 2026-05-18 spec ("Wysrodkuj napis gildie"): always centred
-        // inside the top bar — when there's no back button (list view)
-        // it sits perfectly in the middle; when there IS a back button
-        // (detail/boss/treasury/requests) the title still centres
-        // within the remaining flex space.
         text-align: center;
     }
 
@@ -69,7 +60,6 @@
         color: $color-text-muted;
     }
 
-    // -- List view ------------------------------------------------------
     &__list-box {
         background: linear-gradient(180deg, rgba(156, 39, 176, 0.08) 0%, rgba(20, 20, 30, 0.9) 100%);
         border: 1px solid rgba(156, 39, 176, 0.25);
@@ -231,7 +221,6 @@
         text-align: center;
     }
 
-    // -- Create dialog --------------------------------------------------
     &__create-cost {
         font-size: 14px;
         color: $color-text-muted;
@@ -321,7 +310,6 @@
         font-size: 13px;
     }
 
-    // -- Guild home -----------------------------------------------------
     &__home-banner {
         display: flex;
         align-items: center;
@@ -391,11 +379,6 @@
         white-space: nowrap;
     }
 
-    // 2026-05-18 spec ("Pod lista graczy dodaj jeszcze chat
-    // gildyjny i trzymaj ostatnie 500 wiadomosci"): per-guild chat
-    // container under the member roster. Reuses the global Chat
-    // component so styling matches the rest of the app — we only
-    // need a top margin to separate from the member list.
     &__chat {
         margin-top: 18px;
     }
@@ -406,7 +389,6 @@
         margin: 6px 0;
     }
 
-    // -- Members --------------------------------------------------------
     &__members {
         list-style: none;
         margin: 12px 0 0;
@@ -416,11 +398,6 @@
         gap: 8px;
     }
 
-    // 2026-05-18 v2 spec ("Na mobilce ile XP pod nickiem i avatarem a
-    // akcje ponizej XP"): on phones the row collapses vertically —
-    // avatar + class-icon + name sit on the top row, XP chip + action
-    // buttons drop below as their own row. The desktop layout keeps
-    // the dense horizontal arrangement for ≥768px.
     &__member-row {
         display: grid;
         grid-template-columns: auto auto 1fr;
@@ -450,8 +427,6 @@
     &__member-class-icon { grid-area: classIcon; }
     &__member-info { grid-area: info; }
 
-    // The XP chip + kick/leave buttons share an "actions" row on
-    // mobile, centred. On desktop they each sit inline at the end.
     &__member-actions {
         grid-area: actions;
         display: flex;
@@ -483,9 +458,6 @@
             object-fit: cover;
         }
 
-        // Shimmering border = transform-colored member. Animates a
-        // subtle hue rotation so the avatar visibly "glows" like the
-        // town widget does for transformed players.
         &.is-shimmer {
             animation: guild-shimmer 4s ease-in-out infinite;
         }
@@ -559,25 +531,13 @@
         &:hover { background: rgba(255, 152, 0, 0.25); }
     }
 
-    // -- Sub-nav --------------------------------------------------------
-    // 2026-05-18 spec ("uzyj zdjec w pliku guild/ tak samo jak te
-    // kafelki sa w miescie, napis na dole i zdjecie jako tlo"): each
-    // tile is a square-ish card with a full-bleed background image
-    // and a frosted glass label at the bottom — mirrors the town's
-    // .town__nav-tile-img + .town__nav-btn-label--glass pair.
-    // 2026-05-18 v2 spec ("Jednak daj max width 300px i height i ustaw
-    // te kafelki od lewej do prawej"): tiles capped at 300×300 and
-    // anchored to the LEFT (not centred). Wrap onto a second row when
-    // the viewport can't fit three across.
     &__nav {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 18px;
-        // 2026-07-11: na mobilce kafelki wyśrodkowane (nie do lewej).
         justify-content: center;
 
-        // Desktop: wraca do lewej (kafelki 3-w-rzędzie wg starego speca).
         @media (min-width: 768px) {
             justify-content: flex-start;
         }
@@ -647,12 +607,6 @@
         border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    // -- Boss -----------------------------------------------------------
-    // 2026-05-18 spec ("Zamiast obecnego tla uzywamy tla dla danego
-    // poziomu lochu"): full-width stage that paints the dungeon
-    // background art under the card. Background is set inline via
-    // `style={{backgroundImage}}` so the per-tier art switches without
-    // CSS contortions.
     &__boss-stage {
         position: relative;
         margin: 12px auto 0;
@@ -662,32 +616,17 @@
         background-position: center;
         background-color: rgba(0, 0, 0, 0.18);
         overflow: hidden;
-        // 2026-05-18 v15 spec ("tlo ma byc 700px szerokie na 200px,
-        // obrazek bossa duzo mniejszy adekwatnie"): hard-locked
-        // panel dimensions in the arena/preview phase — 700 × 200,
-        // centred. The portrait + HP bar live inside, leaving room
-        // without squishing the dungeon backdrop.
         width: 700px;
         max-width: 100%;
         height: 200px;
         display: flex;
         flex-direction: column;
         justify-content: stretch;
-        // 2026-05-18 v16 spec ("Animacje i sama walke mozesz
-        // powiekszyc juz do normalnych rozmiarow"): smoothly grow
-        // to the combat-grade size when entering the entry/fight
-        // phases so the resize happens behind the door overlay
-        // (no visible jump). 350ms matches the door-opening hold.
         transition:
             width 350ms ease,
             max-width 350ms ease,
             height 350ms ease;
 
-        // Combat-size mode: the panel matches the shared CombatArena
-        // footprint (max-width 980px) so the boss + player cards
-        // render at their natural hunt/raid resolution. Height
-        // collapses to fit content so the arena can grow as tall as
-        // it needs without scroll-clipping.
         &.is-fighting {
             width: 100%;
             max-width: 1040px;
@@ -695,12 +634,6 @@
             min-height: 200px;
         }
 
-        // 2026-05-18 v10: when the shared CombatArena renders inside
-        // the guild stage, strip its own opaque "daily-boss"
-        // gradient + glow so the dungeon art (loch.png) bleeds
-        // through. Cards (ally/enemy) and inner column dividers stay
-        // styled by the arena itself — only the outer surface goes
-        // see-through.
         .combat-ui__arena {
             background: transparent !important;
             box-shadow: none !important;
@@ -717,14 +650,6 @@
             }
         }
 
-        // 2026-05-19 v18 spec ("te okna tez zrob przezroczyste tylko
-        // na tym widoku"): empty enemy / ally slot placeholders
-        // (`--empty` modifier) get the dark `rgba(20,22,32,0.85)`
-        // background + grey border from the shared CombatUI base
-        // class. Inside the guild boss stage we want the dungeon
-        // backdrop to show through those unused slots instead, so
-        // we zero out their fill + border. Filled boss / player
-        // cards keep their normal chrome.
         .combat-ui__enemy--empty,
         .combat-ui__ally--empty {
             background: transparent !important;
@@ -733,23 +658,10 @@
         }
     }
 
-    // 2026-05-18 v3 spec ("z klasy .guild__boss-card usun border, tak
-    // samo background, usun wszystko tak na prawde zostaw tam tylko
-    // position: relative"): all chrome stripped — the dungeon
-    // background art is the canvas, the boss + hp bar sit directly
-    // on it without a card overlay.
     &__boss-card {
         position: relative;
         height: 100%;
 
-        // 2026-05-18 v16 spec ("w animacji dodaj zanikanie ekranu
-        // do 0 widocznosci zeby nie bylo widac przeskoku w
-        // powiekszaniu okna do walki"): when the combat arena
-        // mounts (phase === 'fighting'), fade it in from 0  1
-        // opacity over 380ms. Combined with the entry overlay
-        // fade-out at the tail end of the door sequence, the
-        // transition reads as "doors part  combat scene
-        // materialises" instead of a hard snap.
         &.is-fighting {
             animation: guild-combat-fade-in 380ms ease-out;
         }
@@ -770,29 +682,13 @@
         margin-bottom: 6px;
         text-transform: uppercase;
 
-        // 2026-05-18 v14: external variant rendered BELOW the boss
-        // stage panel — bigger label since it's no longer competing
-        // with the dungeon backdrop for visual weight.
         &--ext {
             font-size: 20px;
             margin: 0;
         }
     }
 
-    // 2026-05-18 v14 spec ("poukladaj tam buttony i wszystkie
-    // informacje zeby sie zmiescily, moga byc tez pod tym zdjeciem"):
-    // wrapper for everything that used to sit ON the dungeon panel —
-    // boss label, status banners, engagement readout, speed picker,
-    // attack/finish/claim buttons, error message. Centred under the
-    // panel with the same max-width so the column reads as one
-    // visual unit.
     &__boss-controls {
-        // 2026-05-18 v17 spec ("reszta boxow rozszesz na caly ekran
-        // prawie tylko tlo z bossem wysrodkowane"): only the
-        // boss-stage stays at its compact 700px width; controls /
-        // info / log stretch close to the full viewport width so
-        // the panel reads as a centred focal point with broad
-        // chrome on either side.
         width: 100%;
         max-width: 1280px;
         margin: 12px auto 0;
@@ -807,13 +703,6 @@
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
     }
 
-    // 2026-05-18 v17 spec ("na desktopach ikonka po lewej stronie"
-    // + "Dla mobilki daj … width i height 100px dla wiekszych
-    // 130px, zdejmij border z niego"): desktop is an L-shaped grid
-    // — image pinned top-LEFT (130×130, borderless), HP bar spans
-    // the full panel width along the bottom. On phones the grid
-    // collapses to a single column so the image centres above the
-    // bar instead of crowding the left edge.
     &__boss-preview {
         display: grid;
         grid-template-columns: 130px 1fr;
@@ -850,17 +739,7 @@
         }
     }
 
-    // 2026-05-18 v13 spec ("Pokaz na progress barze aktualny poziom
-    // hp bossa zeby bylo widac ile %HP mu zostalo"): replace the
-    // text-only HP pill with a full-width red progress bar that
-    // visualises remaining boss HP. Fill width is set inline from
-    // the live `boss.boss_current_hp / boss.boss_max_hp` ratio.
     &__boss-preview-hpbar {
-        // 2026-05-18 v17: bar always spans the full panel width
-        // along the bottom row of the grid — `grid-column: 1 / -1`
-        // makes it stretch beneath both the portrait cell and the
-        // empty cell on desktop, and beneath the lone portrait
-        // cell on mobile.
         grid-row: 2 / 3;
         grid-column: 1 / -1;
         position: relative;
@@ -898,9 +777,6 @@
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 4px rgba(0, 0, 0, 0.8);
     }
 
-    // Compact boss portrait — fixed square ratio, image fills the
-    // tile via object-fit: cover so the boss face is centred and
-    // legible at small sizes. Cast overlays sit on top.
     &__boss-sprite {
         position: relative;
         width: 100%;
@@ -924,9 +800,6 @@
             animation: guild-boss-hit 360ms ease;
         }
 
-        // 2026-05-18 v4 spec ("pokonany boss powinna byc ikonka
-        // czaszki na nim"): dead-boss visual — image desaturates and
-        // the giant skull-and-crossbones overlay sits on top of the portrait.
         &.is-dead img {
             filter: grayscale(0.85) brightness(0.55);
         }
@@ -953,11 +826,6 @@
         100% { opacity: 1; transform: scale(1); }
     }
 
-    // 2026-05-18 spec ("widzimy ich animacje ataku"): per-spell cast
-    // overlay layered on top of the boss sprite. The icon + name
-    // panel scales in, the radial glow ring pulses outwards, then
-    // both fade. The `--cast-color` CSS var is set inline from the
-    // spell's hex so every spell kind feels visually distinct.
     &__boss-cast-fx {
         position: absolute;
         inset: 0;
@@ -992,8 +860,6 @@
             animation: guild-boss-cast-ring 700ms ease-out;
         }
 
-        // Per-spell-kind extra accent layer. Each tints the boss
-        // sprite with a different hue while the cast is active.
         &--fire {
             mix-blend-mode: screen;
             filter: drop-shadow(0 0 12px #ff5722);
@@ -1046,7 +912,6 @@
         line-height: 1;
         filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.7));
 
-        // PNG icon variant — same footprint as the emoji glyph.
         img {
             width: 56px;
             height: 56px;
@@ -1073,12 +938,6 @@
         white-space: nowrap;
     }
 
-    // -- Arena: boss tile left, player tile right ---------------
-    // 2026-05-18 v4 spec ("1 kafelek bossa i 1 kafelek naszej
-    // postaci"): compact portrait tiles, ~180-220px wide, anchored
-    // side-by-side on every viewport (mobile + desktop). Boss
-    // tile and player tile each carry their own HP bar + cast
-    // overlays — no stack/wrap.
     &__boss-arena {
         display: flex;
         gap: 14px;
@@ -1103,17 +962,10 @@
         }
 
         &--placeholder {
-            // Empty column in the arena phase so the boss stays
-            // anchored to the left half of the layout.
             visibility: hidden;
         }
     }
 
-    // Player tile mirrors the boss tile — same square footprint
-    // with the avatar filling the frame (object-fit: cover) so
-    // both portraits feel visually balanced. Border colour is
-    // injected via inline `style` from the player's transform
-    // tier — see GuildBoss render where `borderStyle` is built.
     &__boss-player-avatar {
         position: relative;
         width: 100%;
@@ -1225,12 +1077,6 @@
         100% { transform: translateX(0) scale(1); }
     }
 
-    // 2026-05-18 v6 spec ("Animacje moich atakow nie sa takie same
-    // jak na polowaniu"): class-themed flash on the boss sprite each
-    // time the player swings. Each class gets its own coloured
-    // diagonal streak across the boss tile (Knight=red sword,
-    // Mage=purple bolt, Archer=green arrow, etc.) — quick 320ms
-    // sweep so back-to-back swings re-mount the animation.
     &__boss-sprite {
         &::after {
             content: '';
@@ -1421,13 +1267,6 @@
         }
     }
 
-    // 2026-05-18 v9 spec ("zrob jakas epicka fajna animacje startu
-    // walki z bossem"): door-opening intro modelled after Boss.tsx
-    // (`.boss__entry-*`). Two iron doors slide off, a seam of light
-    // cracks down the middle, a shockwave ring pulses outward, and
-    // the boss portrait + name punch into view. Total runtime 1.7s,
-    // aligned with the `setTimeout` that swaps phase from 'entry'
-    // to 'fighting' in attemptAttackNow.
     &__boss-entry-overlay {
         position: absolute;
         inset: 0;
@@ -1442,18 +1281,11 @@
     }
 
     @keyframes guild-entry-overlay {
-        // 2026-05-18 v16: overlay starts FULLY opaque so the stage
-        // resize (700×200  1040×auto) that fires at the same time
-        // is hidden from frame 1. Tail fade-out remains so the
-        // doors clear into the new combat arena that's already in
-        // place behind them.
         0%   { opacity: 1; }
         85%  { opacity: 1; }
         100% { opacity: 0; }
     }
 
-    // Soft fog / ember underglow that becomes visible as the doors
-    // slide off — gives the reveal a dungeon-floor depth.
     &__boss-entry-bg {
         position: absolute;
         inset: 0;
@@ -1482,7 +1314,6 @@
         box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.8);
         will-change: transform;
 
-        // Rivets along the seam edge (top + bottom rows).
         &::before, &::after {
             content: '';
             position: absolute;
@@ -1510,8 +1341,6 @@
         }
     }
 
-    // Doors hold closed for the first ~12% (200ms), then slide off
-    // by ~58% (1000ms), then stay off-screen until the overlay fades.
     @keyframes guild-entry-door-left {
         0%   { transform: translateX(0); }
         12%  { transform: translateX(0); }
@@ -1525,7 +1354,6 @@
         100% { transform: translateX(110%); }
     }
 
-    // Vertical crack of light down the seam — scales in as doors part.
     &__boss-entry-seam {
         position: absolute;
         top: 0;
@@ -1555,7 +1383,6 @@
         100% { transform: scaleY(1); opacity: 0; }
     }
 
-    // Expanding shockwave ring that pulses out of the seam crack.
     &__boss-entry-shock {
         position: absolute;
         top: 50%;
@@ -1579,9 +1406,6 @@
         100% { transform: scale(4); opacity: 0; }
     }
 
-    // Boss portrait + name + tier reveal in the centre.
-    // 2026-05-18 v18: shrunk gap from 6  3px so sprite + name +
-    // level pack inside the 200px-tall panel without overflowing.
     &__boss-entry-label {
         position: absolute;
         top: 50%;
@@ -1606,12 +1430,6 @@
         100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
 
-    // 2026-05-18 v18 spec ("Juz prawie animacja ma za duze zdjecie
-    // nie miesci sie w tym oknie teraz zrob tak zeby animacja
-    // pierwsza wejscia do bossa miescila sie w calosci ta ikonka"):
-    // the entry overlay is anchored to the boss-stage panel which
-    // is only 200px tall — sprite + name + level all shrink so
-    // every part of the reveal fits inside that frame.
     &__boss-entry-sprite {
         display: block;
         width: clamp(80px, 14vw, 110px);
@@ -1654,9 +1472,6 @@
     }
 
     &__boss-log {
-        // 2026-05-18 v17: stretched along with controls/info to
-        // ~1280px — only the boss-stage panel keeps its 700px
-        // focal width.
         width: 100%;
         max-width: 1280px;
         margin: 14px auto 0;
@@ -1720,8 +1535,6 @@
     }
 
     &__boss-info {
-        // 2026-05-18 v17: widened to match controls/log — only the
-        // boss-stage stays compact.
         width: 100%;
         max-width: 1280px;
         margin: 14px auto 0;
@@ -1742,7 +1555,6 @@
         margin-top: 8px !important;
     }
 
-    // -- Claim popup ----------------------------------------------------
     &__claim-popup {
         display: flex;
         flex-direction: column;
@@ -1765,7 +1577,6 @@
         font-size: 22px;
     }
 
-    // -- Treasury -------------------------------------------------------
     &__treasury-grids {
         display: grid;
         grid-template-columns: 1fr;
@@ -1896,7 +1707,6 @@
         font-size: 11px;
     }
 
-    // -- Logs -----------------------------------------------------------
     &__log-list {
         list-style: none;
         margin: 0;
@@ -1957,7 +1767,6 @@
         color: $color-text-muted;
     }
 
-    // -- Requests -------------------------------------------------------
     &__requests {
         list-style: none;
         margin: 12px 0 0;
@@ -1967,10 +1776,6 @@
         gap: 8px;
     }
 
-    // 2026-05-18 spec ("guziki na mobilce pod nazwa gracza, nazwa
-    // gracza i guziki wysrodkowane"): on phones the row stacks
-    // vertically with everything centred; the wider desktop layout
-    // keeps the side-by-side row for density.
     &__request-row {
         display: flex;
         flex-direction: column;
@@ -2024,7 +1829,6 @@
         }
     }
 
-    // -- Modal ----------------------------------------------------------
     &__modal-overlay {
         position: fixed;
         inset: 0;
@@ -2078,7 +1882,6 @@
         }
     }
 
-    // -- Buttons --------------------------------------------------------
     &__btn-primary {
         padding: 8px 16px;
         background: linear-gradient(180deg, #ff9800, #f57c00) !important;
@@ -2089,12 +1892,6 @@
 
         &:hover:not(:disabled) { filter: brightness(1.1); }
 
-        // 2026-05-19 spec ("kolor guzika do ataku bossa w kolorze
-        // naszego transformu"): when the guild boss attack CTA
-        // carries the `--attack` modifier, read the bg + border
-        // from CSS variables that the view inline-sets from the
-        // player's highest-transform colour. Falls back to the
-        // default orange when no transform has been claimed.
         &--attack {
             background: var(
                 --guild-attack-bg,
@@ -2127,9 +1924,6 @@
         &:hover { background: rgba(33, 150, 243, 0.25); }
     }
 
-    // 2026-05-18 spec ("guzik przyjmij na zielono"): dedicated green
-    // CTA variant for the requests-accept flow + any other positive
-    // confirmation button we add later (e.g. claim boss reward).
     &__btn-ok {
         padding: 8px 16px;
         background: linear-gradient(180deg, #43a047, #2e7d32) !important;

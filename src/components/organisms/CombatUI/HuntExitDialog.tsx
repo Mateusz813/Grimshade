@@ -1,16 +1,9 @@
 interface IProps {
-    /** "Zakończ polowanie" — fully stops combat and the session resets. */
     onEndHunt: () => void;
-    /** "Wróć do miasta" — leaves the view but combat continues in background. */
     onLeaveBackground: () => void;
     onClose: () => void;
 }
 
-/**
- * Hunting-only popup triggered by the action-bar exit button. Hunting is
- * the one combat type with no penalty for leaving — so we offer two
- * exits side-by-side instead of a single flee + confirm flow.
- */
 const HuntExitDialog = ({ onEndHunt, onLeaveBackground, onClose }: IProps) => {
     return (
         <div className="combat-ui__modal-bg" onClick={onClose}>

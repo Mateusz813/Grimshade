@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-// -- Types ---------------------------------------------------------------------
 
 export interface IMasteryData {
   level: number;
@@ -20,13 +19,10 @@ export interface IMasteryProgress {
   level: number;
 }
 
-/** Kills required per mastery level (auto-increments when reached). */
 export const MASTERY_KILL_THRESHOLD = 5000;
 
-/** Maximum mastery level per monster. */
 export const MASTERY_MAX_LEVEL = 25;
 
-/** Bonuses per mastery level (percentage points). */
 const BONUS_PER_LEVEL: IMasteryBonuses = {
   strong: 1.0,
   epic: 0.5,
@@ -35,17 +31,10 @@ const BONUS_PER_LEVEL: IMasteryBonuses = {
   heroic: 0,
 };
 
-/** At max mastery (25), heroic drop rate unlocked on boss-rarity variants.
- *  0.005 = 0.5% base chance. Actual chance is further reduced by monster level in lootSystem. */
 export const HEROIC_DROP_RATE_AT_MAX = 0.005;
 
-/**
- * Point N7: each mastery level grants +2% XP and +2% Gold on kills of that
- * monster. Max at lvl 25 = +50%. Also applies in offline hunt / training
- * outputs that feed off live kills. Returns a multiplier (1.00–1.50).
- */
-export const MASTERY_XP_BONUS_PER_LEVEL = 0.02; // 2% per level
-export const MASTERY_GOLD_BONUS_PER_LEVEL = 0.02; // 2% per level
+export const MASTERY_XP_BONUS_PER_LEVEL = 0.02;
+export const MASTERY_GOLD_BONUS_PER_LEVEL = 0.02;
 
 export const getMasteryXpMultiplier = (masteryLevel: number): number => {
   const lvl = Math.max(0, Math.min(MASTERY_MAX_LEVEL, masteryLevel));
@@ -57,17 +46,14 @@ export const getMasteryGoldMultiplier = (masteryLevel: number): number => {
   return 1 + lvl * MASTERY_GOLD_BONUS_PER_LEVEL;
 };
 
-/** Calculate kills required for the next mastery level. */
 const killsRequiredForLevel = (currentLevel: number): number => {
   return MASTERY_KILL_THRESHOLD * (currentLevel + 1);
 };
 
-// -- Store interface ----------------------------------------------------------
 
 interface IMasteryStore {
   masteries: Record<string, IMasteryData>;
   masteryKills: Record<string, number>;
-  /** @deprecated Use addMasteryKills instead. Kept for backward compat. */
   addMasteryLevel: (monsterId: string) => void;
   addMasteryKills: (monsterId: string, killCount: number) => void;
   getMasteryKills: (monsterId: string) => number;
@@ -78,7 +64,6 @@ interface IMasteryStore {
   isMaxMastery: (monsterId: string) => boolean;
 }
 
-// -- Store ---------------------------------------------------------------------
 
 export const useMasteryStore = create<IMasteryStore>()(
     (set, get) => ({
@@ -89,7 +74,6 @@ export const useMasteryStore = create<IMasteryStore>()(
         const { masteries } = get();
         const current = masteries[monsterId] ?? { level: 0 };
 
-        // Already maxed – no more tracking needed
         if (current.level >= MASTERY_MAX_LEVEL) return;
 
         set({
@@ -98,22 +82,11 @@ export const useMasteryStore = create<IMasteryStore>()(
             [monsterId]: { level: current.level + 1 },
           },
         });
-        // Refresh mastery-type quest goals (lazy import to avoid circular dependency)
         setTimeout(() => {
-          // Dynamic import — questStore imports masteryStore at module
-          // load, so a top-level import here would create a cycle.
-          // `import()` resolves at runtime when both modules are fully
-          // initialised. Vite ships ESM in dev too, so the legacy
-          // `require()` here used to throw `require is not defined`.
           void import('./questStore').then(({ useQuestStore }) => {
             useQuestStore.getState().refreshMasteryProgress();
           });
         }, 0);
-        // 2026-05-19 v16 spec ("Dodaj jeszcze zakladke z punktami
-        // masteri"): push the new total mastery point sum to the
-        // character row so the leaderboard ranks players by lifetime
-        // mastery progression. `mode: 'set'` overwrites — the client
-        // is the source of truth for the sum.
         void pushMasteryTotal(get());
       },
 
@@ -121,7 +94,6 @@ export const useMasteryStore = create<IMasteryStore>()(
         const { masteries, masteryKills } = get();
         const currentLevel = masteries[monsterId]?.level ?? 0;
 
-        // Already maxed – no more tracking needed
         if (currentLevel >= MASTERY_MAX_LEVEL) return;
 
         const currentKills = masteryKills[monsterId] ?? 0;
@@ -129,7 +101,6 @@ export const useMasteryStore = create<IMasteryStore>()(
         const required = killsRequiredForLevel(currentLevel);
 
         if (newKills >= required) {
-          // Level up mastery, reset kills (carry over excess)
           const newLevel = currentLevel + 1;
           const overflow = newKills - required;
           set({
@@ -142,14 +113,11 @@ export const useMasteryStore = create<IMasteryStore>()(
               [monsterId]: newLevel >= MASTERY_MAX_LEVEL ? 0 : overflow,
             },
           });
-          // Dynamic import — same circular-dep avoidance as the
-          // single-kill path above.
           setTimeout(() => {
             void import('./questStore').then(({ useQuestStore }) => {
               useQuestStore.getState().refreshMasteryProgress();
             });
           }, 0);
-          // 2026-05-19 v16: push new mastery-points total.
           void pushMasteryTotal(get());
         } else {
           set({
@@ -201,16 +169,6 @@ export const useMasteryStore = create<IMasteryStore>()(
     }),
 );
 
-/**
- * 2026-05-19 v16 spec ("Dodaj jeszcze zakladke z punktami masteri"):
- * sum every monster's mastery level and push the total to the
- * character row's `mastery_points` column. Called after every
- * mastery level-up so the leaderboard ranking stays fresh.
- *
- * Lives outside the store factory because Zustand `set/get` types
- * inside the factory closure are awkward to expose; the helper
- * takes the live store snapshot directly.
- */
 async function pushMasteryTotal(snapshot: { masteries: Record<string, IMasteryData> }): Promise<void> {
     try {
         const total = Object.values(snapshot.masteries).reduce(
@@ -230,6 +188,5 @@ async function pushMasteryTotal(snapshot: { masteries: Record<string, IMasteryDa
             mode: 'set',
         });
     } catch {
-        // Non-critical — best-effort sync.
     }
 }

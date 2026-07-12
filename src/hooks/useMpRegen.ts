@@ -11,45 +11,21 @@ import itemsRaw from '../data/items.json';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-/**
- * Hard cap: regen can never exceed this percentage of effective max per second.
- * Prevents immortality at very high training/gear levels.
- */
-const MAX_REGEN_PCT = 0.05; // 5% of max per second
+const MAX_REGEN_PCT = 0.05;
 const TICK_MS = 1000;
 
-// Fractional accumulators so sub-1 regen values (e.g. 0.1/s) still apply over time.
 let hpRegenAccumulator = 0;
 let mpRegenAccumulator = 0;
 
-/**
- * Passively regenerates HP and MP every second.
- *
- * Regen is PURELY flat-based and sourced from the SAME effective char the
- * stats panel displays (getEffectiveChar):
- *   total = character.hp_regen (base, starts at 0) + training bonus + transform bonus
- *
- * There is NO percentage-based baseline. If the stat shows 0.0/s, regeneration
- * is truly zero. Players must train hp_regen / mp_regen or complete transforms
- * that grant regen to gain any passive healing.
- *
- * - In combat  -> writes to `combatStore.playerCurrentHp/Mp` via heal helpers.
- * - Out of combat -> writes directly to `character.hp/mp` via `updateCharacter`.
- */
 export const useMpRegen = (): void => {
     const tickRef = useRef<() => void>(() => undefined);
 
     const doTick = () => {
-        // 2026-05-09: pause regen on auth / character-select routes —
-        // otherwise updateCharacter writes hp/mp on every tick and the
-        // characterStore subscriber kicks scheduleAutoSave even when
-        // the player isn't actively in a session.
         if (useAppRouteStore.getState().isCharacterless) return;
         const charStore = useCharacterStore.getState();
         const char = charStore.character;
         if (!char) return;
 
-        // Equipment + training bonuses
         const { skillLevels } = useSkillStore.getState();
         const tb = getTrainingBonuses(skillLevels, char.class);
         const { equipment } = useInventoryStore.getState();
@@ -60,11 +36,8 @@ export const useMpRegen = (): void => {
             eqHp = eqStats.hp ?? 0;
             eqMp = eqStats.mp ?? 0;
         } catch {
-            /* ignore */
         }
 
-        // Include transform % multiplier via the shared engine helper so
-        // regen caps at the same value the combat/inventory views display.
         const engineEff = getEffectiveChar(char);
         const effectiveMaxHp = Math.max(
             1,
@@ -75,21 +48,12 @@ export const useMpRegen = (): void => {
             engineEff?.max_mp ?? (char.max_mp + eqMp + tb.max_mp),
         );
 
-        // 2026-06-24: apply EXACTLY the regen the stats panel displays. The
-        // engine's effective char already folds in base + training + TRANSFORM
-        // regen (getEffectiveChar.hp_regen/mp_regen). Previously this hook used
-        // only `char.X_regen + tb.X_regen` and dropped the transform term, so a
-        // player whose entire regen came from a transform (e.g. MP regen 3/s)
-        // saw the number but MP never moved. Fall back to base+training if the
-        // engine can't resolve an effective char.
         const hpRegenFlat = engineEff?.hp_regen ?? ((char.hp_regen ?? 0) + (tb.hp_regen ?? 0));
         const mpRegenFlat = engineEff?.mp_regen ?? ((char.mp_regen ?? 0) + (tb.mp_regen ?? 0));
 
-        // Cap at MAX_REGEN_PCT of effective max
         const hpRegenCapped = Math.min(effectiveMaxHp * MAX_REGEN_PCT, hpRegenFlat);
         const mpRegenCapped = Math.min(effectiveMaxMp * MAX_REGEN_PCT, mpRegenFlat);
 
-        // Accumulate fractional amounts (e.g. 0.1/s -> heals 1 HP every 10 seconds)
         let hpRegen = 0;
         if (hpRegenCapped > 0) {
             hpRegenAccumulator += hpRegenCapped;
@@ -112,24 +76,16 @@ export const useMpRegen = (): void => {
             mpRegenAccumulator = 0;
         }
 
-        // Nothing to regenerate
         if (hpRegen === 0 && mpRegen === 0) return;
 
         const combat = useCombatStore.getState();
         if (combat.phase === 'fighting') {
-            // In combat: only HP regenerates. MP is intentionally frozen so
-            // skill costs accumulate across a session instead of being silently
-            // refunded by passive regen between cooldowns.
             if (hpRegen > 0 && combat.playerCurrentHp > 0 && combat.playerCurrentHp < effectiveMaxHp) {
                 combat.healPlayerHp(hpRegen, effectiveMaxHp);
             }
             return;
         }
 
-        // Between waves (phase === 'victory'): pause MP regen entirely for the
-        // same reason — the ~1s auto-fight gap would otherwise silently refill
-        // exactly one skill cast. HP still regenerates so players recover chip
-        // damage between waves.
         if (combat.phase === 'victory') {
             if (hpRegen > 0 && combat.playerCurrentHp > 0 && combat.playerCurrentHp < effectiveMaxHp) {
                 combat.healPlayerHp(hpRegen, effectiveMaxHp);
@@ -137,8 +93,6 @@ export const useMpRegen = (): void => {
             return;
         }
 
-        // Out of combat – refill character pool directly up to effective max.
-        // Skip fully dead characters (hp=0) – respawn handles those.
         if ((char.hp ?? 0) <= 0 && (char.mp ?? 0) <= 0) return;
 
         const newHp = hpRegen > 0

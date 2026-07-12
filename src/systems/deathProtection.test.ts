@@ -2,9 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { consumeDeathProtection, hasDeathProtection } from './deathProtection';
 import { useInventoryStore } from '../stores/inventoryStore';
 
-// 2026-06-21 spec: either protection item (death_protection elixir OR amulet of
-// loss) fully shields the player on death AND flee — zero loss — and consumes
-// exactly ONE item, elixir first.
 
 const seed = (consumables: Record<string, number>): void => {
     useInventoryStore.setState({ consumables });
@@ -45,7 +42,7 @@ describe('deathProtection › consumeDeathProtection', () => {
         expect(r.consumedId).toBe('death_protection');
         const c = useInventoryStore.getState().consumables;
         expect(c.death_protection).toBe(0);
-        expect(c.amulet_of_loss).toBe(1); // ONE item consumed, not both
+        expect(c.amulet_of_loss).toBe(1);
     });
 });
 

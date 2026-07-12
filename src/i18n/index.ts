@@ -3,7 +3,6 @@ import { initReactI18next } from 'react-i18next';
 import pl from './pl.json';
 import en from './en.json';
 
-/** Read persisted language from settingsStore (avoids Zustand circular dep). */
 function getInitialLanguage(): string {
   try {
     const raw = localStorage.getItem('dungeon_rpg_settings');
@@ -12,7 +11,6 @@ function getInitialLanguage(): string {
       return parsed.state?.language ?? 'pl';
     }
   } catch {
-    // ignore
   }
   return 'pl';
 }

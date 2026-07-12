@@ -9,8 +9,6 @@ const baseEvent: ILevelUpEvent = {
 };
 
 beforeEach(() => {
-    // The store has no `reset` of its own — wipe the event slot directly so
-    // each test starts with a clean "no banner showing" baseline.
     useLevelUpStore.setState({ event: null });
 });
 
@@ -47,8 +45,6 @@ describe('triggerLevelUp', () => {
     });
 
     it('passes through optional gold milestone payload', () => {
-        // Combat.tsx forwards milestone gold when crossing 25/50/100 etc. so
-        // the banner can list them. Make sure the optional fields survive.
         useLevelUpStore.getState().triggerLevelUp({
             ...baseEvent,
             newLevel: 100,
@@ -63,7 +59,6 @@ describe('triggerLevelUp', () => {
     it('overwrites a previous event rather than queueing (latest-wins)', () => {
         useLevelUpStore.getState().triggerLevelUp({ ...baseEvent, newLevel: 5 });
         useLevelUpStore.getState().triggerLevelUp({ ...baseEvent, newLevel: 6 });
-        // No queue / no merge — UI shows the most recent level-up banner.
         expect(useLevelUpStore.getState().event!.newLevel).toBe(6);
     });
 
@@ -88,7 +83,6 @@ describe('clearLevelUp', () => {
     });
 
     it('is a no-op when no event is present', () => {
-        // Defensive: a stale "Close" button click shouldn't throw / mutate.
         expect(() => useLevelUpStore.getState().clearLevelUp()).not.toThrow();
         expect(useLevelUpStore.getState().event).toBeNull();
     });
@@ -101,7 +95,3 @@ describe('clearLevelUp', () => {
     });
 });
 
-// TODO: the banner component (LevelUpBanner / similar) subscribes via
-// `useLevelUpStore((s) => s.event)`. Component-level tests asserting that
-// trigger -> banner appears + clear -> banner unmounts belong in a Testing
-// Library suite for that view, not here.

@@ -14,15 +14,6 @@ import {
 import itemTemplates from '../../src/data/itemTemplates.json';
 import type { Rarity, EquipmentSlot, IInventoryItem } from '../../src/systems/itemSystem';
 
-// GOLDEN dla itemGenerator.ts — podzbiór PORTOWALNY:
-//  - rarity 'common' → RARITY_BONUS_SLOTS=0 → generateBonusStats wraca {} BEZ
-//    konsumowania RNG (early return przed shuffle) → pełny seeded parytet.
-//  - wyższe rarity używają sort(()=>Math.random()-0.5) → NIEPORTOWALNE bit-w-bit
-//    (PHP testuje własnościowo).
-//  - uuid zawiera Date.now() → WYCINANY z porównania (strip).
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/itemGenerator.golden.test.ts
-//   cp golden/itemGenerator.json ../grimshade-backend/tests/Golden/fixtures/
 
 const strip = (item: IInventoryItem | null) =>
     item === null ? null : { itemId: item.itemId, rarity: item.rarity, bonuses: item.bonuses, itemLevel: item.itemLevel, upgradeLevel: item.upgradeLevel };

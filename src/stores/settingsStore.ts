@@ -8,14 +8,12 @@ interface ISettingsState {
   language: Language;
   combatSpeed: CombatSpeed;
   skillMode: SkillMode;
-  // Slot 1: flat (non-%) potions
   autoPotionHpEnabled: boolean;
   autoPotionMpEnabled: boolean;
   autoPotionHpThreshold: number;
   autoPotionMpThreshold: number;
   autoPotionHpId: string;
   autoPotionMpId: string;
-  // Slot 2: percentage-based potions (Great, Super, Ultimate, Divine)
   autoPotionPctHpEnabled: boolean;
   autoPotionPctMpEnabled: boolean;
   autoPotionPctHpThreshold: number;
@@ -23,8 +21,6 @@ interface ISettingsState {
   autoPotionPctHpId: string;
   autoPotionPctMpId: string;
   showCombatXpBar: boolean;
-  /** Hold a screen wake lock while playing so the phone doesn't auto-lock
-   *  mid-fight. Global (not per-character). Default ON. */
   keepScreenAwake: boolean;
   autoSellCommon: boolean;
   autoSellRare: boolean;
@@ -32,24 +28,15 @@ interface ISettingsState {
   autoSellLegendary: boolean;
   autoSellMythic: boolean;
 
-  /** Hunt-hub filters (persisted per character via characterScope). */
   huntFilterAvailableOnly: boolean;
   huntFilterTaskedOnly: boolean;
-  /** Minimum monster level to show in the hub list (0 = no minimum). */
   huntFilterMinLevel: number;
-  /** Sort the hub list by descending level (highest first) when true. */
   huntFilterSortDesc: boolean;
   setHuntFilterAvailableOnly: (val: boolean) => void;
   setHuntFilterTaskedOnly: (val: boolean) => void;
   setHuntFilterMinLevel: (val: number) => void;
   setHuntFilterSortDesc: (val: boolean) => void;
 
-  /** Dungeon-list filters — same per-character persistence pattern as the
-   *  hunt filters above. `dungeonFilterAvailableOnly` hides locked/exhausted
-   *  dungeons, `dungeonFilterMinLevel` is the input the player types to
-   *  hide everything below their chosen floor, and `dungeonFilterSortDesc`
-   *  flips the list to highest-level-first. All three persist to the active
-   *  character's scope so they survive across sessions and classes. */
   dungeonFilterAvailableOnly: boolean;
   dungeonFilterMinLevel: number;
   dungeonFilterSortDesc: boolean;
@@ -57,9 +44,6 @@ interface ISettingsState {
   setDungeonFilterMinLevel: (val: number) => void;
   setDungeonFilterSortDesc: (val: boolean) => void;
 
-  /** Raid-list filters — independent of the dungeon ones so a player can
-   *  filter raids without disturbing their dungeon view. Same persistence
-   *  contract (per-character via characterScope). */
   raidFilterAvailableOnly: boolean;
   raidFilterMinLevel: number;
   raidFilterSortDesc: boolean;
@@ -67,9 +51,6 @@ interface ISettingsState {
   setRaidFilterMinLevel: (val: number) => void;
   setRaidFilterSortDesc: (val: boolean) => void;
 
-  /** Boss-list filters — same persistence contract as the dungeon/raid
-   *  filters. Independent slice so a player can narrow the boss roster
-   *  without affecting the dungeon or raid views. */
   bossFilterAvailableOnly: boolean;
   bossFilterMinLevel: number;
   bossFilterSortDesc: boolean;
@@ -77,10 +58,6 @@ interface ISettingsState {
   setBossFilterMinLevel: (val: number) => void;
   setBossFilterSortDesc: (val: boolean) => void;
 
-  /** Quests "taski" section filters/sort — same per-character persistence
-   *  pattern as the hunt/dungeon/raid/boss list filters above. Persists the
-   *  Available-only / Inactive-only / descending-sort toggles + the "Lvl od…"
-   *  input so the player's task view preferences survive reloads. */
   taskFilterAvailableOnly: boolean;
   taskFilterInactiveOnly: boolean;
   taskFilterSortDesc: boolean;
@@ -120,7 +97,6 @@ export const useSettingsStore = create<ISettingsState>()(
       combatSpeed: 'x1',
       skillMode: 'auto',
 
-      // Slot 1: flat potions
       autoPotionHpEnabled: true,
       autoPotionMpEnabled: true,
       autoPotionHpThreshold: 50,
@@ -128,7 +104,6 @@ export const useSettingsStore = create<ISettingsState>()(
       autoPotionHpId: 'hp_potion_sm',
       autoPotionMpId: 'mp_potion_sm',
 
-      // Slot 2: percentage potions
       autoPotionPctHpEnabled: false,
       autoPotionPctMpEnabled: false,
       autoPotionPctHpThreshold: 40,
@@ -137,7 +112,6 @@ export const useSettingsStore = create<ISettingsState>()(
       autoPotionPctMpId: 'mp_potion_great',
 
       showCombatXpBar: localStorage.getItem('showCombatXpBar') !== 'false',
-      // Default ON — only off if the player explicitly disabled it.
       keepScreenAwake: localStorage.getItem('keepScreenAwake') !== 'false',
       autoSellCommon: false,
       autoSellRare: false,
@@ -145,9 +119,6 @@ export const useSettingsStore = create<ISettingsState>()(
       autoSellLegendary: false,
       autoSellMythic: false,
 
-      // Hunt-hub filters — defaults are "show everything" so existing
-      // characters open the hub looking exactly like before the filter bar
-      // landed. Per-character persistence happens through characterScope.
       huntFilterAvailableOnly: false,
       huntFilterTaskedOnly: false,
       huntFilterMinLevel: 0,
@@ -158,9 +129,6 @@ export const useSettingsStore = create<ISettingsState>()(
           set({ huntFilterMinLevel: Math.max(0, Math.floor(huntFilterMinLevel || 0)) }),
       setHuntFilterSortDesc: (huntFilterSortDesc) => set({ huntFilterSortDesc }),
 
-      // Dungeon filters — defaults match "show everything" so existing
-      // characters open the list looking exactly like before. Per-character
-      // persistence happens through characterScope (same as hunt filters).
       dungeonFilterAvailableOnly: false,
       dungeonFilterMinLevel: 0,
       dungeonFilterSortDesc: false,
@@ -169,9 +137,6 @@ export const useSettingsStore = create<ISettingsState>()(
           set({ dungeonFilterMinLevel: Math.max(0, Math.floor(dungeonFilterMinLevel || 0)) }),
       setDungeonFilterSortDesc: (dungeonFilterSortDesc) => set({ dungeonFilterSortDesc }),
 
-      // Raid filters — same defaults & semantics as dungeon filters; the
-      // raid hub is the dungeon hub's harder sibling so visual parity calls
-      // for behavioural parity in the controls.
       raidFilterAvailableOnly: false,
       raidFilterMinLevel: 0,
       raidFilterSortDesc: false,
@@ -180,10 +145,6 @@ export const useSettingsStore = create<ISettingsState>()(
           set({ raidFilterMinLevel: Math.max(0, Math.floor(raidFilterMinLevel || 0)) }),
       setRaidFilterSortDesc: (raidFilterSortDesc) => set({ raidFilterSortDesc }),
 
-      // Boss filters — same defaults & semantics as dungeon/raid filters.
-      // Independent slice so a player can narrow the boss roster without
-      // affecting other hub views. Per-character persistence handled by
-      // characterScope (see stateKeys list there).
       bossFilterAvailableOnly: false,
       bossFilterMinLevel: 0,
       bossFilterSortDesc: false,
@@ -192,10 +153,6 @@ export const useSettingsStore = create<ISettingsState>()(
           set({ bossFilterMinLevel: Math.max(0, Math.floor(bossFilterMinLevel || 0)) }),
       setBossFilterSortDesc: (bossFilterSortDesc) => set({ bossFilterSortDesc }),
 
-      // Quests "taski" filters/sort — persisted per-character (characterScope)
-      // so the Available/Inactive/sort toggles + "Lvl od…" input survive
-      // reloads. Defaults are "show everything, ascending" so existing chars
-      // open the task list exactly as before.
       taskFilterAvailableOnly: false,
       taskFilterInactiveOnly: false,
       taskFilterSortDesc: false,
@@ -217,7 +174,6 @@ export const useSettingsStore = create<ISettingsState>()(
       setCombatSpeed: (combatSpeed) => set({ combatSpeed }),
       setSkillMode: (skillMode) => set({ skillMode }),
 
-      // Slot 1 setters
       setAutoPotionHpEnabled: (autoPotionHpEnabled) => set({ autoPotionHpEnabled }),
       setAutoPotionMpEnabled: (autoPotionMpEnabled) => set({ autoPotionMpEnabled }),
       setAutoPotionHpThreshold: (autoPotionHpThreshold) => set({ autoPotionHpThreshold }),
@@ -225,7 +181,6 @@ export const useSettingsStore = create<ISettingsState>()(
       setAutoPotionHpId: (autoPotionHpId) => set({ autoPotionHpId }),
       setAutoPotionMpId: (autoPotionMpId) => set({ autoPotionMpId }),
 
-      // Slot 2 setters
       setAutoPotionPctHpEnabled: (autoPotionPctHpEnabled) => set({ autoPotionPctHpEnabled }),
       setAutoPotionPctMpEnabled: (autoPotionPctMpEnabled) => set({ autoPotionPctMpEnabled }),
       setAutoPotionPctHpThreshold: (autoPotionPctHpThreshold) => set({ autoPotionPctHpThreshold }),

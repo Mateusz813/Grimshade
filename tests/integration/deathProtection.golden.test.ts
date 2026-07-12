@@ -5,30 +5,9 @@ import { useInventoryStore } from '../../src/stores/inventoryStore';
 import { hasDeathProtection, consumeDeathProtection } from '../../src/systems/deathProtection';
 import { applyDeathPenalty } from '../../src/systems/levelSystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla deathProtection.ts (+ portowalny rdzeń
-// combatLeavePenalty.ts).
-//
-// deathProtection.ts czyta/mutuje Zustand `inventoryStore` (getter + consumer).
-// Zgodnie z regułą getterów: generator USTAWIA stan store (setState) przed
-// wywołaniem, a PHP odtwarza to czystą funkcją biorącą mapę `consumables`
-// jawnie. `consumeDeathProtection` zapisujemy wraz z mapą PO zużyciu, żeby
-// backend zwrócił NOWĄ mapę (bez side effectów) i dało się porównać 1:1.
-//
-// combatLeavePenalty.ts to niemal same side effecty (deathsApi / Supabase
-// keepalive / stores / death overlay) — POMINIĘTE. Portujemy tylko jego rdzeń
-// numeryczny: opuszczenie walki = PEŁNA kara śmierci (applyDeathPenalty),
-// z pominięciem ochrony (protectionUsed=false) i zachowaniem highest_level.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/deathProtection.golden.test.ts
-//   cp golden/deathProtection.json ../grimshade-backend/tests/Golden/fixtures/
-// ============================================================================
 
 type Consumables = Record<string, number>;
 
-// Reprezentatywne + brzegowe mapy consumables (zera, brak klucza, priorytet,
-// wielokrotne sztuki, inne pozycje które muszą zostać nietknięte).
 const CONSUMABLE_CASES: Consumables[] = [
     {},
     { death_protection: 0, amulet_of_loss: 0 },
@@ -59,9 +38,6 @@ const runConsume = (consumables: Consumables): {
     return { isProtected: result.isProtected, consumedId: result.consumedId, consumables: after };
 };
 
-// Opuszczenie walki: (level, xp, highest_level|null). Brzegowe: zera, grace
-// item-loss (≤50 vs 51), highest > level, highest < level (anomalia →
-// preservedHighest = level), poziomy 1/100/1000/1100.
 const LEAVE_CASES: Array<[number, number, number | null]> = [
     [1, 0, null],
     [1, 150, 1],
@@ -80,8 +56,6 @@ const LEAVE_CASES: Array<[number, number, number | null]> = [
     [1100, 12000000000, 1100],
 ];
 
-// Rdzeń applyCombatLeaveDeath (linie 113-122 + 177-187 combatLeavePenalty.ts):
-// pełna kara śmierci + zachowany highest + ochrona zawsze pominięta.
 const runLeave = (level: number, xp: number, highestLevel: number | null): {
     oldLevel: number;
     newLevel: number;
@@ -129,7 +103,6 @@ describe('deathProtection golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current deathProtection output', () => {
         expect(existsSync(outPath), 'brak golden/deathProtection.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON (usuwa -0) — wzór lootSystem. Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { useTaskStore } from '../../stores/taskStore';
 import type { ITask } from '../../stores/taskStore';
@@ -27,7 +28,6 @@ interface IMonsterMini {
 
 const monsters = monstersData as unknown as IMonsterMini[];
 
-// Recompute rewards from live monster data so tasks stay in sync with rebalance.
 const allTasks = (tasksRaw as ITask[]).map((t) => {
   const monster = monsters.find((m) => m.id === t.monsterId);
   if (!monster) return t;
@@ -48,7 +48,7 @@ const Tasks = () => {
     startTask,
     claimReward,
     cancelTask,
-  } = useTaskStore();
+  } = useTaskStore(useShallow((s) => ({ activeTasks: s.activeTasks, completedTasks: s.completedTasks, startTask: s.startTask, claimReward: s.claimReward, cancelTask: s.cancelTask })));
   const masteries = useMasteryStore((s) => s.masteries);
   const masteryKills = useMasteryStore((s) => s.masteryKills);
   const character = useCharacterStore((s) => s.character);
@@ -69,10 +69,6 @@ const Tasks = () => {
   };
 
   const handleClaimReward = async (taskId: string) => {
-    // Tryb backendu (opt-in): odbior nagrody za task jest autorytatywny —
-    // serwer nalicza gold/xp i usuwa taska. Po sukcesie re-hydratujemy
-    // store'y (task znika, gold/xp z serwera). Start/anulowanie taska
-    // pozostaje klienckie (brak endpointu).
     if (isBackendMode() && character) {
       try {
         await backendApi.claimTask(character.id, taskId);
@@ -86,13 +82,11 @@ const Tasks = () => {
     claimReward(taskId);
   };
 
-  // Sort tasks by monster level, then by kill count
   const sortedTasks = [...allTasks].sort((a, b) => {
     if (a.monsterLevel !== b.monsterLevel) return a.monsterLevel - b.monsterLevel;
     return a.killCount - b.killCount;
   });
 
-  // Group tasks by monster
   const tasksByMonster = sortedTasks.reduce<Record<string, ITask[]>>((acc, task) => {
     const key = task.monsterId;
     if (!acc[key]) acc[key] = [];
@@ -100,11 +94,9 @@ const Tasks = () => {
     return acc;
   }, {});
 
-  // Helper: is a specific monster already taken?
   const monsterHasActiveTask = (monsterId: string) =>
     activeTasks.some((t) => t.monsterId === monsterId);
 
-  // Helper: render inline mastery bar for a monster (only when kills > 0 or level > 0)
   const renderMasteryBar = (monsterId: string) => {
     const level = masteries[monsterId]?.level ?? 0;
     const kills = masteryKills[monsterId] ?? 0;
@@ -144,12 +136,9 @@ const Tasks = () => {
         </span>
       </header>
 
-      {/* Active tasks banners */}
       {activeTasks.length > 0 && (
         <div className="tasks__active-list">
           {activeTasks.map((activeTask) => {
-            // Guardy na wypadek starego/zepsutego zapisu (undefined pola liczbowe) —
-            // bez nich `.toLocaleString()` rzucał i CAŁA strona /tasks była pusta.
             const killCount = activeTask.killCount ?? 0;
             const progress = activeTask.progress ?? 0;
             const isComplete = killCount > 0 && progress >= killCount;
@@ -235,7 +224,6 @@ const Tasks = () => {
                       const activeForThis = activeTasks.find((t) => t.id === task.id);
                       const isActive = !!activeForThis;
                       const isCompleted = isActive && activeForThis!.progress >= activeForThis!.killCount;
-                      // Disable if: slots full and not this task's active, or monster already taken by another task, or monster locked
                       const isDisabled = !isActive && (slotsFullOrMonsterTaken || isLocked);
                       return (
                         <button

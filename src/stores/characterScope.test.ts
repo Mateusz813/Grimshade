@@ -1,40 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// ----------------------------------------------------------------------------
-// characterScope.ts is the central per-character persistence module. It glues
-// 15+ stores to localStorage + Supabase with:
-//   - Module-level state (_activeCharacterId, _switchInProgress, debounce timer)
-//   - Tab-lock localStorage protocol
-//   - Async character switch flow
-//   - Auto-save subscriptions (Zustand subscribe)
-//
-// Strategy: mock EVERY store dependency with a stateful spy harness so we can
-// verify what characterScope reads/writes without dragging the real stores
-// (and their cascading imports of itemSystem, skillSystem, etc.) into the
-// test surface.
-//
-// We mock `gameStorage` + `characterApi` too, so no real Supabase round-trip
-// happens. Each test resets module state via dynamic re-import so the
-// module-level singletons (_activeCharacterId, debounce timer, etc.) don't
-// bleed between tests.
-// ----------------------------------------------------------------------------
 
-// -- Hoisted mock state ------------------------------------------------------
 
 const {
-    // Store mock state holders
     inventoryState, skillState, taskState, questState, bossState, dungeonState,
     partyState, settingsState, dailyQuestState, masteryState, bossScoreState,
     buffState, transformState, combatState, offlineHuntState, friendsState,
     characterState, connectivityState,
-    // Spy collectors
     saveGameMock, loadGameMock, deleteGameSaveMock,
     updateCharacterMock,
     subscribeCalls,
 } = vi.hoisted(() => {
     const subscribeCalls: Array<() => void> = [];
     return {
-        // each store's mutable state holder
         inventoryState: { current: { bag: [], equipment: {}, deposit: [], gold: 0, consumables: {}, stones: {} } },
         skillState: { current: { skillLevels: {}, skillXp: {}, skillUpgradeLevels: {}, unlockedSkills: {}, activeSkillSlots: [null, null, null, null], offlineTrainingSkillId: null, trainingSegmentStartedAt: null, trainingAccumulatedEffectiveSeconds: 0, trainingCurrentSpeedMultiplier: 1, startOfflineTraining: vi.fn(), onActivityChange: vi.fn() } },
         taskState: { current: { activeTask: null, activeTasks: [], completedTasks: [] } },
@@ -61,10 +39,6 @@ const {
     };
 });
 
-// -- Mock factory helper -----------------------------------------------------
-// Each store mock exposes the same shape characterScope expects: getState(),
-// setState() (which merges into the mock's "current" pointer), and subscribe()
-// (which captures the listener so we can fire it manually in autosave tests).
 
 interface IStateHolder<T> { current: T }
 
@@ -86,7 +60,6 @@ const makeMockStore = <T>(holder: IStateHolder<T>): {
     },
 });
 
-// -- vi.mock all dependencies ------------------------------------------------
 
 vi.mock('./inventoryStore', () => ({ useInventoryStore: makeMockStore(inventoryState) }));
 vi.mock('./skillStore', () => ({ useSkillStore: makeMockStore(skillState) }));
@@ -125,15 +98,7 @@ vi.mock('../data/skills.json', () => ({
     default: { activeSkills: { knight: [{ id: 'sword_mastery' }, { id: 'shield_bash' }] } },
 }));
 
-// ----------------------------------------------------------------------------
-// Test helpers
-// ----------------------------------------------------------------------------
 
-/**
- * Reset every state holder, mock, and module-level singleton between tests.
- * Re-import characterScope so its module-level `let _activeCharacterId` etc.
- * start fresh.
- */
 const resetStoreState = (): void => {
     inventoryState.current = { bag: [], equipment: {}, deposit: [], gold: 0, consumables: {}, stones: {} } as typeof inventoryState.current;
     skillState.current = { ...skillState.current, skillLevels: {}, skillXp: {}, skillUpgradeLevels: {}, unlockedSkills: {}, activeSkillSlots: [null, null, null, null], offlineTrainingSkillId: null, trainingSegmentStartedAt: null, trainingAccumulatedEffectiveSeconds: 0, trainingCurrentSpeedMultiplier: 1 };
@@ -155,8 +120,6 @@ const resetStoreState = (): void => {
     connectivityState.current = { mode: 'online', snapshot: null } as typeof connectivityState.current;
 };
 
-/** Build a minimal ICharacter-like object the tests pass into characterStore. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const makeCharacter = (overrides: Record<string, unknown> = {}): any => ({
     id: 'char-1',
     user_id: 'user-1',
@@ -193,7 +156,6 @@ beforeEach(() => {
         window.localStorage.clear();
         window.sessionStorage.clear();
     }
-    // Reset all module-level state in characterScope by re-importing.
     vi.resetModules();
 });
 
@@ -201,9 +163,6 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-// ----------------------------------------------------------------------------
-// peekCharacterStore — read a sub-store without switching active character
-// ----------------------------------------------------------------------------
 
 describe('peekCharacterStore', () => {
     it('returns null when no save exists for the character', async () => {
@@ -226,7 +185,6 @@ describe('peekCharacterStore', () => {
     });
 
     it('handles legacy (no .state wrapper) saves', async () => {
-        // Older revisions stored the blob directly, without { state, updated_at }.
         const legacy = { inventory: { gold: 42 } };
         window.localStorage.setItem('dungeon_rpg_save_char_char-1', JSON.stringify(legacy));
         const mod = await import('./characterScope');
@@ -240,9 +198,6 @@ describe('peekCharacterStore', () => {
     });
 });
 
-// ----------------------------------------------------------------------------
-// restoreFromLocalStorageSync — sync restore on page load
-// ----------------------------------------------------------------------------
 
 describe('restoreFromLocalStorageSync', () => {
     it('returns false and resets stores to defaults when no save exists', async () => {
@@ -250,7 +205,6 @@ describe('restoreFromLocalStorageSync', () => {
         const mod = await import('./characterScope');
         const result = mod.restoreFromLocalStorageSync('char-nonexistent');
         expect(result).toBe(false);
-        // After reset to defaults, gold should be back to the entry's default (0).
         expect(inventoryState.current.gold).toBe(0);
     });
 
@@ -278,7 +232,6 @@ describe('restoreFromLocalStorageSync', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const result = mod.restoreFromLocalStorageSync('char-1');
         expect(result).toBe(false);
-        // Inventory must NOT have the rejected blob's gold.
         expect(inventoryState.current.gold).toBe(0);
         expect(warnSpy).toHaveBeenCalled();
         warnSpy.mockRestore();
@@ -287,9 +240,7 @@ describe('restoreFromLocalStorageSync', () => {
     it('skips per-entry slices whose _entryOwner mismatches but still applies others', async () => {
         const blob = {
             _ownerCharacterId: 'char-1',
-            // This entry was somehow tagged with the wrong owner — must be skipped.
             inventory: { _entryOwner: 'char-OTHER', gold: 99999 },
-            // This one matches and should be applied.
             settings: { _entryOwner: 'char-1', language: 'en' },
         };
         window.localStorage.setItem('dungeon_rpg_save_char_char-1', JSON.stringify({ state: blob }));
@@ -311,7 +262,6 @@ describe('restoreFromLocalStorageSync', () => {
         const mod = await import('./characterScope');
         mod.restoreFromLocalStorageSync('char-1');
         expect(inventoryState.current.gold).toBe(42);
-        // `malicious` is NOT in inventory.stateKeys -> must not appear in the state.
         expect((inventoryState.current as Record<string, unknown>).malicious).toBeUndefined();
     });
 
@@ -323,14 +273,8 @@ describe('restoreFromLocalStorageSync', () => {
     });
 });
 
-// ----------------------------------------------------------------------------
-// switchToCharacter — full character switch flow
-// ----------------------------------------------------------------------------
 
 describe('applyBlobToStores — hydracja _characterStats (regresja: reload nie cofa level/XP)', () => {
-    // characterStore NIE jest w STORE_ENTRIES, więc jego progres żyje w blobie pod
-    // `_characterStats`. Przy RESTORE trzeba go przywrócić (inaczej reload cofa level/XP
-    // do nieaktualnego wiersza `characters` z serwera). Serwerowa hydracja NIE hydratuje.
     type CharHolder = { current: { character: Record<string, unknown> | null; updateCharacter?: (p: Record<string, unknown>) => void } };
     const holder = (): CharHolder => characterState as unknown as CharHolder;
     const setCharWithUpdater = (char: Record<string, unknown>): void => {
@@ -364,7 +308,7 @@ describe('applyBlobToStores — hydracja _characterStats (regresja: reload nie c
         setCharWithUpdater(makeCharacter({ id: 'char-1', level: 10, xp: 100 }));
         const blob = { _ownerCharacterId: 'char-1', _characterStats: { level: 999, xp: 999999 } };
         const mod = await import('./characterScope');
-        mod.applyBlobToStores(blob, 'char-1'); // brak opta => ścieżka serwerowa (res.character autorytatywne)
+        mod.applyBlobToStores(blob, 'char-1');
         expect(readChar().level).toBe(10);
         expect(readChar().xp).toBe(100);
     });
@@ -411,7 +355,6 @@ describe('switchToCharacter', () => {
         inventoryState.current = { ...inventoryState.current, gold: 9999 } as typeof inventoryState.current;
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-EMPTY');
-        // Reset by resetStoresToDefaults during switch flow.
         expect(inventoryState.current.gold).toBe(0);
     });
 
@@ -430,7 +373,6 @@ describe('switchToCharacter', () => {
         loadGameMock.mockResolvedValueOnce({ inventory: { gold: 9999 } });
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-CLOUD');
-        // Cloud must not be consulted while a snapshot exists.
         expect(loadGameMock).not.toHaveBeenCalled();
     });
 
@@ -438,12 +380,9 @@ describe('switchToCharacter', () => {
         characterState.current = { character: makeCharacter({ id: 'char-OLD' }) } as typeof characterState.current;
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-OLD');
-        // Now switch to a different character — outgoing save must be persisted first.
         await mod.switchToCharacter('char-NEW');
-        // saveGame should have been called for the outgoing character.
         expect(saveGameMock).toHaveBeenCalled();
         const calls = saveGameMock.mock.calls;
-        // First arg of one of the calls should be 'char-OLD'.
         expect(calls.some((c) => c[0] === 'char-OLD')).toBe(true);
     });
 
@@ -464,7 +403,6 @@ describe('switchToCharacter', () => {
         } as typeof characterState.current;
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-CAP');
-        // From the mocked skills.json: knight has sword_mastery + shield_bash.
         expect((skillState.current.unlockedSkills as Record<string, boolean>).sword_mastery).toBe(true);
         expect((skillState.current.unlockedSkills as Record<string, boolean>).shield_bash).toBe(true);
     });
@@ -479,16 +417,11 @@ describe('switchToCharacter', () => {
     });
 });
 
-// ----------------------------------------------------------------------------
-// saveCurrentCharacterStoresSync — flush blob on beforeunload
-// ----------------------------------------------------------------------------
 
 describe('saveCurrentCharacterStoresSync', () => {
     it('is a no-op when no active character is set', async () => {
         const mod = await import('./characterScope');
-        // No switch performed -> _activeCharacterId is null.
         mod.saveCurrentCharacterStoresSync();
-        // No save key should have been written.
         const keys: string[] = [];
         for (let i = 0; i < window.localStorage.length; i++) {
             const k = window.localStorage.key(i);
@@ -506,53 +439,36 @@ describe('saveCurrentCharacterStoresSync', () => {
         expect(raw).not.toBeNull();
         const parsed = JSON.parse(raw as string);
         expect(parsed.state._ownerCharacterId).toBe('char-FLUSH');
-        // Character stats embedded so level/XP/gold survive refresh.
         expect(parsed.state._characterStats.gold).toBe(777);
     });
 
     it('refuses to save when characterStore holds a DIFFERENT character (cross-bleed guard)', async () => {
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-A');
-        // Simulate a race: someone else loaded char-B into characterStore.
         characterState.current = { character: makeCharacter({ id: 'char-B' }) } as typeof characterState.current;
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        // Wipe the post-switch save artifact so we can see whether the next flush wrote anything.
         window.localStorage.removeItem('dungeon_rpg_save_char_char-A');
         mod.saveCurrentCharacterStoresSync();
-        // Nothing should have been written under char-A — character.id mismatch blocks it.
         expect(window.localStorage.getItem('dungeon_rpg_save_char_char-A')).toBeNull();
         expect(warnSpy).toHaveBeenCalled();
         warnSpy.mockRestore();
     });
 
     it('refuses to save while a switch is in progress (placeholder check — guard exercised in switchToCharacter)', async () => {
-        // The guard is verified indirectly: saveCurrentCharacterStoresSync exits early
-        // before flushStoresToLocalStorage runs when _switchInProgress is true.
-        // Direct test would require monkey-patching the module-level flag, which we
-        // can't from outside — see the switchToCharacter tests for end-to-end coverage
-        // of the flag's lifecycle.
         const mod = await import('./characterScope');
         expect(typeof mod.saveCurrentCharacterStoresSync).toBe('function');
     });
 });
 
-// ----------------------------------------------------------------------------
-// saveCurrentCharacterStores — async save (throttled)
-// ----------------------------------------------------------------------------
 
 describe('saveCurrentCharacterStores', () => {
     it('calls saveGame + updateCharacter when an active character is set', async () => {
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-A');
         characterState.current = { character: makeCharacter({ id: 'char-A' }) } as typeof characterState.current;
-        // Clear any saves emitted during the switch.
         saveGameMock.mockClear();
         updateCharacterMock.mockClear();
-        // First call after switch — throttle window already consumed by switch's forceSave?
-        // saveCurrentCharacterStores uses a separate throttle gate from forceSave, so this
-        // call is the first one; it should fire.
         await mod.saveCurrentCharacterStores();
-        // updateCharacter is awaited inside the impl; saveGame is awaited at the end.
         expect(updateCharacterMock).toHaveBeenCalledWith('char-A', expect.objectContaining({ gold: 500 }));
         expect(saveGameMock).toHaveBeenCalled();
     });
@@ -566,7 +482,6 @@ describe('saveCurrentCharacterStores', () => {
         updateCharacterMock.mockClear();
         await mod.saveCurrentCharacterStores();
         const firstCallCount = updateCharacterMock.mock.calls.length;
-        // Second call <4s later must be dropped.
         await mod.saveCurrentCharacterStores();
         expect(updateCharacterMock.mock.calls.length).toBe(firstCallCount);
     });
@@ -578,7 +493,6 @@ describe('saveCurrentCharacterStores', () => {
         await mod.saveCurrentCharacterStores();
         const before = updateCharacterMock.mock.calls.length;
         await mod.saveCurrentCharacterStoresForce();
-        // Force version must have produced at least one additional updateCharacter call.
         expect(updateCharacterMock.mock.calls.length).toBeGreaterThan(before);
     });
 
@@ -590,15 +504,11 @@ describe('saveCurrentCharacterStores', () => {
         updateCharacterMock.mockClear();
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         await mod.saveCurrentCharacterStoresForce();
-        // Force still respects the character.id guard.
         expect(saveGameMock).not.toHaveBeenCalled();
         warnSpy.mockRestore();
     });
 });
 
-// ----------------------------------------------------------------------------
-// scheduleAutoSave — debounce timing + offline-mode bypass
-// ----------------------------------------------------------------------------
 
 describe('scheduleAutoSave (via store subscriptions)', () => {
     it('debounces multiple rapid store changes into one localStorage write (online mode)', async () => {
@@ -606,18 +516,12 @@ describe('scheduleAutoSave (via store subscriptions)', () => {
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-DEBOUNCE');
         characterState.current = { character: makeCharacter({ id: 'char-DEBOUNCE' }) } as typeof characterState.current;
-        // After switchToCharacter, subscriptions are active. Wipe the save artifact
-        // so we can detect whether the debounced flush actually writes.
         window.localStorage.removeItem('dungeon_rpg_save_char_char-DEBOUNCE');
-        // Fire several "store changed" notifications rapidly.
         subscribeCalls.forEach((cb) => cb());
         subscribeCalls.forEach((cb) => cb());
         subscribeCalls.forEach((cb) => cb());
-        // Right after the calls, no flush has happened yet (debounce 500ms).
         expect(window.localStorage.getItem('dungeon_rpg_save_char_char-DEBOUNCE')).toBeNull();
-        // Advance past the 500ms debounce window.
         vi.advanceTimersByTime(600);
-        // Now the flush should have run.
         expect(window.localStorage.getItem('dungeon_rpg_save_char_char-DEBOUNCE')).not.toBeNull();
     });
 
@@ -627,30 +531,18 @@ describe('scheduleAutoSave (via store subscriptions)', () => {
         await mod.switchToCharacter('char-OFFLINE');
         characterState.current = { character: makeCharacter({ id: 'char-OFFLINE' }) } as typeof characterState.current;
         window.localStorage.removeItem('dungeon_rpg_save_char_char-OFFLINE');
-        // A single store change in offline mode should flush synchronously.
         subscribeCalls.forEach((cb) => cb());
-        // No timer advance needed — offline mode bypasses the debounce.
         expect(window.localStorage.getItem('dungeon_rpg_save_char_char-OFFLINE')).not.toBeNull();
     });
 
     it('blocks auto-save while _switchInProgress is true (verified via guard semantics)', async () => {
-        // This is implicitly covered: during switchToCharacter, subscriptions are
-        // stopped, then reset, then restarted. Any state changes happening between
-        // stop + restart cannot trigger a save because there's no listener attached.
         const mod = await import('./characterScope');
         const switchPromise = mod.switchToCharacter('char-MID');
-        // While the switch is in flight, no subscribers exist -> store changes
-        // won't reach scheduleAutoSave.
         await switchPromise;
-        // After the switch resolves, subscriptions are active again.
         expect(subscribeCalls.length).toBeGreaterThan(0);
     });
 });
 
-// ----------------------------------------------------------------------------
-// Tab lock mechanism — claimTabLock, refreshTabLock, thisTabOwnsLock
-// (private functions — tested via observable side effects through switchToCharacter)
-// ----------------------------------------------------------------------------
 
 describe('Tab lock mechanism', () => {
     it('writes a tab lock to localStorage on character switch', async () => {
@@ -659,7 +551,6 @@ describe('Tab lock mechanism', () => {
         const lock = window.localStorage.getItem('tibia_tab_lock_char-LOCK');
         expect(lock).not.toBeNull();
         const parsed = JSON.parse(lock as string);
-        // tabId must be a string formatted like `tab_<ms>_<random>`.
         expect(parsed.tabId).toMatch(/^tab_\d+_[a-z0-9]+$/);
         expect(typeof parsed.ts).toBe('number');
     });
@@ -669,7 +560,6 @@ describe('Tab lock mechanism', () => {
         await mod.switchToCharacter('char-FIRST');
         expect(window.localStorage.getItem('tibia_tab_lock_char-FIRST')).not.toBeNull();
         await mod.switchToCharacter('char-SECOND');
-        // Old lock for FIRST released; new lock for SECOND present.
         expect(window.localStorage.getItem('tibia_tab_lock_char-FIRST')).toBeNull();
         expect(window.localStorage.getItem('tibia_tab_lock_char-SECOND')).not.toBeNull();
     });
@@ -678,16 +568,13 @@ describe('Tab lock mechanism', () => {
         const mod = await import('./characterScope');
         await mod.switchToCharacter('char-OWNED');
         characterState.current = { character: makeCharacter({ id: 'char-OWNED' }) } as typeof characterState.current;
-        // Simulate Tab B stealing the lock.
         window.localStorage.setItem(
             'tibia_tab_lock_char-OWNED',
             JSON.stringify({ tabId: 'tab_FOREIGN_xxx', ts: Date.now() }),
         );
-        // Wipe save artifact to detect refusal.
         window.localStorage.removeItem('dungeon_rpg_save_char_char-OWNED');
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         mod.saveCurrentCharacterStoresSync();
-        // Save must be refused — the foreign tab owns the lock now.
         expect(window.localStorage.getItem('dungeon_rpg_save_char_char-OWNED')).toBeNull();
         warnSpy.mockRestore();
     });
@@ -698,7 +585,6 @@ describe('Tab lock mechanism', () => {
         characterState.current = { character: makeCharacter({ id: 'char-REFRESH' }) } as typeof characterState.current;
         const lockBefore = window.localStorage.getItem('tibia_tab_lock_char-REFRESH');
         const tsBefore = JSON.parse(lockBefore as string).ts;
-        // Wait at least 2ms so the next Date.now() value differs.
         await new Promise<void>((r) => setTimeout(r, 5));
         mod.saveCurrentCharacterStoresSync();
         const lockAfter = window.localStorage.getItem('tibia_tab_lock_char-REFRESH');
@@ -707,9 +593,6 @@ describe('Tab lock mechanism', () => {
     });
 });
 
-// ----------------------------------------------------------------------------
-// deleteCharacterData — wipe localStorage + cloud
-// ----------------------------------------------------------------------------
 
 describe('deleteCharacterData', () => {
     it('calls deleteGameSave with the character id', async () => {
@@ -719,20 +602,15 @@ describe('deleteCharacterData', () => {
     });
 
     it('clears old per-store localStorage migration keys for the character', async () => {
-        // Seed a couple of legacy per-store keys.
         window.localStorage.setItem('dungeon_rpg_inventory_char_char-LEG', 'old');
         window.localStorage.setItem('dungeon_rpg_skills_char_char-LEG', 'old');
         const mod = await import('./characterScope');
         await mod.deleteCharacterData('char-LEG');
-        // After delete, legacy keys should be removed.
         expect(window.localStorage.getItem('dungeon_rpg_inventory_char_char-LEG')).toBeNull();
         expect(window.localStorage.getItem('dungeon_rpg_skills_char_char-LEG')).toBeNull();
     });
 });
 
-// ----------------------------------------------------------------------------
-// getActiveCharacterId / getActiveCharacterIdForRestore
-// ----------------------------------------------------------------------------
 
 describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     it('returns null when no switch has happened (per-tab isolation)', async () => {
@@ -749,8 +627,6 @@ describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     it('getActiveCharacterIdForRestore falls back to localStorage on cold load', async () => {
         window.localStorage.setItem('tibia_active_character_id', 'char-PERSISTED');
         const mod = await import('./characterScope');
-        // No switch performed -> _activeCharacterId is null, but the restore helper
-        // checks localStorage as a fallback.
         expect(mod.getActiveCharacterIdForRestore()).toBe('char-PERSISTED');
     });
 
@@ -762,40 +638,3 @@ describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     });
 });
 
-// ----------------------------------------------------------------------------
-// TODOs — coverage gaps
-// ----------------------------------------------------------------------------
-// Functions / scenarios we couldn't fully test (and why):
-//
-// 1. `forceSaveCharacterData` is a private fn; we exercise it indirectly through
-//    `switchToCharacter` (outgoing-character save) and through the public
-//    `saveCurrentCharacterStoresForce`. Direct verification of all 5 phases
-//    (collect, localStorage, saveGame, saveCharacterToSupabase, syncWeaponSkills)
-//    would require breaking encapsulation.
-//
-// 2. `syncWeaponSkillsToSupabase` directly hits `supabase.from('character_weapon_skills').delete()/.insert()`.
-//    Our global vi.mock for supabase (tests/vitest.setup.ts) returns no-op
-//    chains, so the calls don't throw but we can't easily assert the exact
-//    rows inserted without spying on the chained methods. Left for a
-//    follow-up integration test.
-//
-// 3. `migrateOldLocalStorage` runs only when the new-format save is missing
-//    AND old-format keys exist. The `switchToCharacter` "fall back to defaults"
-//    test partially covers the negative case; happy-path migration needs
-//    seeded legacy keys + verification that the migrated blob round-trips
-//    into saveGame. Skipped — the migration path will be removed in a
-//    future cleanup.
-//
-// 4. The window 'storage' event handler (cross-tab detection) needs an
-//    actual `storage` event dispatched on `window`. happy-dom supports
-//    that via `new StorageEvent('storage', ...)` + `window.dispatchEvent`,
-//    but verifying the handler stops subscriptions requires inspecting
-//    private `_subscriptionsActive` state — out of reach for unit tests.
-//
-// 5. `ensureOfflineTrainingRunning(forceBackgroundSpeed=true)` is exercised
-//    implicitly by the outgoing-save path in `switchToCharacter`. Direct
-//    verification of the speed-flush behavior would require spying on
-//    `useSkillStore.getState().onActivityChange(false)` AND having the
-//    skill store report `offlineTrainingSkillId` non-null AND
-//    `trainingSegmentStartedAt` non-null — the test fixture would need
-//    a full training-segment harness. Left as future enhancement.

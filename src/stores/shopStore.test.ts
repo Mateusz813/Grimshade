@@ -2,11 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ICharacter } from './characterStore';
 import type { IShopItem } from './shopStore';
 
-// -- Hoisted mocks ------------------------------------------------------------
-// shopStore.buyShopItem / buyElixir call into a number of game systems
-// (inventoryStore, itemGenerator). Mock each so tests focus on the
-// store's own gold / daily-cap / refund logic without depending on real
-// item drops, item bag size, etc.
 
 const {
     spendGoldMock,
@@ -78,7 +73,6 @@ vi.mock('../systems/itemGenerator', () => ({
     generateAccessory: generateAccessoryMock,
 }));
 
-// Lock today's date helper so daily-cap tests can predict the dayKey.
 vi.mock('../systems/dailyQuestSystem', async () => {
     const actual = await vi.importActual<Record<string, unknown>>('../systems/dailyQuestSystem');
     return {
@@ -90,7 +84,6 @@ vi.mock('../systems/dailyQuestSystem', async () => {
 import { useShopStore, ELIXIRS, type IElixir, generateShopItems, buyArenaItem, getArenaShopCatalog } from './shopStore';
 import { getTodayKey } from '../systems/dailyQuestSystem';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -144,7 +137,6 @@ const findElixir = (id: string): IElixir => {
 };
 
 beforeEach(() => {
-    // Reset all mocks + their internal state.
     invState.gold = 0;
     invState.arenaPoints = 0;
     spendGoldMock.mockClear();
@@ -160,7 +152,6 @@ beforeEach(() => {
     generateArmorMock.mockClear().mockReturnValue({ uuid: 'gen-3', itemId: 'armor', rarity: 'common', bonuses: {}, itemLevel: 1, upgradeLevel: 0 });
     generateAccessoryMock.mockClear().mockReturnValue({ uuid: 'gen-4', itemId: 'ring', rarity: 'common', bonuses: {}, itemLevel: 1, upgradeLevel: 0 });
 
-    // Reset shop store state.
     useShopStore.setState({
         lastNotification: null,
         dayKey: getTodayKey(),
@@ -168,7 +159,6 @@ beforeEach(() => {
     });
 });
 
-// -- Initial state -----------------------------------------------------------
 
 describe('shopStore — initial state', () => {
     it('has no last notification', () => {
@@ -181,7 +171,6 @@ describe('shopStore — initial state', () => {
     });
 });
 
-// -- clearNotification -------------------------------------------------------
 
 describe('clearNotification', () => {
     it('clears any pending lastNotification', () => {
@@ -191,7 +180,6 @@ describe('clearNotification', () => {
     });
 });
 
-// -- getDailyPurchased -------------------------------------------------------
 
 describe('getDailyPurchased', () => {
     it('returns 0 for an unused capped id today', () => {
@@ -213,14 +201,12 @@ describe('getDailyPurchased', () => {
         });
         const r = useShopStore.getState().getDailyPurchased('dungeon_reset');
         expect(r).toBe(0);
-        // Side-effect: the dayKey rolls forward and dailyPurchases is wiped.
         const s = useShopStore.getState();
         expect(s.dayKey).toBe(getTodayKey());
         expect(s.dailyPurchases).toEqual({});
     });
 });
 
-// -- getDailyRemaining -------------------------------------------------------
 
 describe('getDailyRemaining', () => {
     it('returns +Infinity for non-capped ids', () => {
@@ -248,7 +234,6 @@ describe('getDailyRemaining', () => {
     });
 });
 
-// -- buyShopItem -------------------------------------------------------------
 
 describe('buyShopItem', () => {
     it('returns no_gold when the player cannot afford it', () => {
@@ -292,7 +277,6 @@ describe('buyShopItem', () => {
         generateWeaponMock.mockReturnValueOnce(null);
         const r = useShopStore.getState().buyShopItem(makeShopItem({ price: 100 }), makeCharacter());
         expect(r).toBe('bag_full');
-        // 100 spent + 100 refunded = 500 net.
         expect(invState.gold).toBe(500);
     });
 
@@ -306,11 +290,10 @@ describe('buyShopItem', () => {
     });
 });
 
-// -- buyElixir ---------------------------------------------------------------
 
 describe('buyElixir', () => {
     it('rejects when character level is below the elixir minLevel', () => {
-        const elx = findElixir('hp_potion_md'); // minLevel 20
+        const elx = findElixir('hp_potion_md');
         const r = useShopStore.getState().buyElixir(elx, makeCharacter({ level: 5 }));
         expect(r).toBe('level_too_low');
         expect(spendGoldMock).not.toHaveBeenCalled();
@@ -318,7 +301,7 @@ describe('buyElixir', () => {
 
     it('purchases a basic potion at level 1', () => {
         invState.gold = 100;
-        const elx = findElixir('hp_potion_sm'); // 30 gold, minLevel 1
+        const elx = findElixir('hp_potion_sm');
         const r = useShopStore.getState().buyElixir(elx, makeCharacter({ level: 1 }));
         expect(r).toBe('ok');
         expect(addConsumableMock).toHaveBeenCalledWith('hp_potion_sm', 1);
@@ -335,7 +318,7 @@ describe('buyElixir', () => {
 
     it('multiplies price by qty for bulk buys', () => {
         invState.gold = 1000;
-        const elx = findElixir('hp_potion_sm'); // 30 gold
+        const elx = findElixir('hp_potion_sm');
         const r = useShopStore.getState().buyElixir(elx, makeCharacter(), 5);
         expect(r).toBe('ok');
         expect(spendGoldMock).toHaveBeenCalledWith(150);
@@ -345,11 +328,9 @@ describe('buyElixir', () => {
     it('honors daily caps for dungeon_reset (5/day)', () => {
         invState.gold = 999_999_999;
         const elx = findElixir('dungeon_reset');
-        // 5 successful buys fill the daily cap.
         for (let i = 0; i < 5; i++) {
             expect(useShopStore.getState().buyElixir(elx, makeCharacter())).toBe('ok');
         }
-        // 6th hits the cap.
         expect(useShopStore.getState().buyElixir(elx, makeCharacter())).toBe('daily_limit');
     });
 
@@ -367,7 +348,6 @@ describe('buyElixir', () => {
     it('increments daily counter only for capped elixirs', () => {
         invState.gold = 999_999_999;
         useShopStore.getState().buyElixir(findElixir('hp_potion_sm'), makeCharacter());
-        // hp_potion_sm is NOT capped -> counter untouched.
         expect(useShopStore.getState().dailyPurchases['hp_potion_sm']).toBeUndefined();
 
         useShopStore.getState().buyElixir(findElixir('boss_reset'), makeCharacter());
@@ -376,7 +356,7 @@ describe('buyElixir', () => {
 
     it('skips the level check when no character is passed', () => {
         invState.gold = 1000;
-        const elx = findElixir('hp_potion_md'); // minLevel 20
+        const elx = findElixir('hp_potion_md');
         const r = useShopStore.getState().buyElixir(elx, undefined);
         expect(r).toBe('ok');
     });
@@ -388,13 +368,11 @@ describe('buyElixir', () => {
     });
 });
 
-// -- generateShopItems (pure helper) -----------------------------------------
 
 describe('generateShopItems', () => {
     it('returns at least the weapon entry for a known class', () => {
         const items = generateShopItems('Knight', 10);
         expect(items.length).toBeGreaterThan(0);
-        // Each Knight gets a Sword weapon entry.
         const sword = items.find((i) => i.templateType === 'weapon');
         expect(sword).toBeDefined();
     });
@@ -407,16 +385,12 @@ describe('generateShopItems', () => {
     });
 
     it('returns an empty list when the class is unknown', () => {
-        // Unknown class has no CLASS_WEAPON_TYPES entry -> still returns
-        // array, but with no weapon/offhand/armor entries (might still
-        // hit accessories which iterate templates regardless).
         const items = generateShopItems('NoSuchClass', 5);
         const weapons = items.filter((i) => i.templateType === 'weapon');
         expect(weapons).toEqual([]);
     });
 });
 
-// -- buyArenaItem -------------------------------------------------------------
 
 describe('buyArenaItem', () => {
     it('rejects when arena points are insufficient', () => {
@@ -440,7 +414,6 @@ describe('buyArenaItem', () => {
         expect(invState.arenaPoints).toBe(50);
     });
 
-    // 2026-06-24: mythic stone was missing from the arena shop.
     it('grants a MYTHIC stone from the arena shop (arena_stone_mythic)', () => {
         invState.arenaPoints = 10_000;
         const r = buyArenaItem(
@@ -462,23 +435,21 @@ describe('buyArenaItem', () => {
     it('adds a consumable for kind=potion / elixir (at/above the payload unlock level)', () => {
         invState.arenaPoints = 1000;
         buyArenaItem(
-            // arena_hp_25 pays out hp_potion_great (unlock lvl 200) — buy at 200.
             { id: 'arena_hp_25', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 300, kind: 'potion', payloadId: 'hp_potion_great' },
             200,
         );
         expect(addConsumableMock).toHaveBeenCalledWith('hp_potion_great', 1);
     });
 
-    // 2026-06-21: arena HP/MP potions are level-gated by their payload potion.
     it('rejects an arena potion below the payload potion unlock level (no AP spent)', () => {
         invState.arenaPoints = 100_000;
         const r = buyArenaItem(
             { id: 'arena_hp_25', name_pl: 'X', description_pl: '', icon: 'red-heart', apPrice: 300, kind: 'potion', payloadId: 'hp_potion_great' },
-            14, // hp_potion_great needs lvl 200
+            14,
         );
         expect(r).toBe('level_too_low');
         expect(addConsumableMock).not.toHaveBeenCalled();
-        expect(spendArenaPointsMock).not.toHaveBeenCalled(); // AP NOT spent
+        expect(spendArenaPointsMock).not.toHaveBeenCalled();
     });
 
     it('rejects arena_hp_100 (divine, lvl 700) below 700 but allows at 700', () => {
@@ -500,7 +471,6 @@ describe('buyArenaItem', () => {
         invState.arenaPoints = 100_000;
         const item = { id: 'arena_mythic_main', name_pl: 'X', description_pl: '', icon: 'crossed-swords', apPrice: 1000, kind: 'mythic_weapon' as const, perLevel: true };
         buyArenaItem(item, 50, 'Knight');
-        // 1000 × 50 = 50 000 AP spent.
         expect(spendArenaPointsMock).toHaveBeenCalledWith(50_000);
     });
 

@@ -3,34 +3,15 @@ import Icon from '../../atoms/Icon/Icon';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
 
 interface IProps {
-    /** Animation-speed chip — `label` is rendered verbatim (e.g. "x1", "SKIP"). `null` hides.
-     *  `disabled` renders the chip but blocks the click + dims it (used in
-     *  Trainer for non-leader members who can only toggle autoSkill +
-     *  autoFight per spec). */
     speed?: { label: string; onCycle: () => void; disabled?: boolean } | null;
-    /** Auto-skill toggle — null hides the chip. */
     autoSkill?: { on: boolean; onToggle: () => void; disabled?: boolean } | null;
-    /** Auto-fight toggle. */
     autoFight?: { on: boolean; onToggle: () => void; disabled?: boolean } | null;
-    /** XP bar visibility toggle. */
     xpVisible?: { on: boolean; onToggle: () => void; disabled?: boolean } | null;
-    /** Auto-potion toggle. */
     autoPotion?: { on: boolean; onToggle: () => void; disabled?: boolean } | null;
-    /** Slot for any view-specific extras (e.g. dungeon retreat). */
     extras?: TSlotNode;
 }
 
-/**
- * Fixed-positioned cluster under the top header, right-aligned. Pure UI —
- * each toggle is wired by the calling view to whatever store it uses.
- */
 const CombatTopControls = ({ speed, autoSkill, autoFight, xpVisible, autoPotion, extras }: IProps) => {
-    // 2026-05-15 spec ("Sojusznicy powinni tez widziec wszystkie guziki
-    // tylko miec mozliwosc klikania tylko 2"): a chip flagged `disabled`
-    // renders the same but blocks clicks + dims the visual so a
-    // non-leader member of a Trainer party can SEE that the leader set
-    // speed=x4 or "Brak CD: ON", yet cannot click those chips
-    // themselves.
     const disabledStyle: React.CSSProperties = { opacity: 0.45, cursor: 'not-allowed' };
     return (
         <div className="combat-ui__top-controls" role="group" aria-label="Ustawienia walki">

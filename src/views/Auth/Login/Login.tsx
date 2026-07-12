@@ -38,9 +38,6 @@ const Login = () => {
   return (
     <div className="login">
       <div className="login__card">
-        {/* 2026-05-21 spec ("skasuj napis grimshade obok ... na login pageu
-            zrob to samo"): artwork is the whole title now — the
-            wordmark already sits inside the image. */}
         <h1 className="login__title">
           <img src={pwaIcon} alt="Grimshade" className="login__title-icon" />
         </h1>

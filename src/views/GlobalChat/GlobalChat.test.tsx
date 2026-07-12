@@ -2,30 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * GlobalChat view — full-screen chat with city + system + optional PM
- * tabs. Tiny shell (~110 lines) — heavy lifting lives in `<Chat />`
- * (mocked here) and the chatTabsStore. We focus on tab list rendering
- * + tab-switching + unread badge + PM closure.
- *
- * Coverage:
- *   - Smoke render with the .global-chat root + role=tablist.
- *   - Spinner fallback when character is null.
- *   - ensureCityTab / ensureSystemTab fire on mount.
- *   - Tab list renders one button per tab, with the active modifier on
- *     the matching activeId.
- *   - Clicking a tab calls setActive with its id.
- *   - The close (×) button appears on closable PM tabs and calls
- *     closeTab with the tab's id.
- *   - Unread badge renders when t.unread > 0 (and shows 99+ for big
- *     numbers).
- *
- * Mocks: the inner `<Chat />` component (we don't drive supabase here)
- * and react-router-dom's useLocation so we can control the `?pm=`
- * deep-link branch.
- */
 
-// Stub the Chat component — we test the wrapper, not the chat itself.
 vi.mock('../../components/ui/Chat/Chat', () => ({
     default: ({ channel, title }: { channel: string; title: string }) => (
         <div data-testid={`chat-${channel}`} data-title={title} />
@@ -87,8 +64,6 @@ describe('GlobalChat — smoke', () => {
     it('shows a spinner-only layout when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderChat();
-        // Spec: `if (!character)` short-circuit returns just the root +
-        // a Spinner — no tablist, no chat-wrap.
         expect(container.querySelector('.global-chat')).not.toBeNull();
         expect(container.querySelector('.global-chat__tabs')).toBeNull();
     });
@@ -178,7 +153,6 @@ describe('GlobalChat — closable PM tabs', () => {
         });
         const { container } = renderChat();
         const closeBtns = container.querySelectorAll('.global-chat__tab-close');
-        // Only the PM tab is closable.
         expect(closeBtns.length).toBe(1);
     });
 
@@ -210,8 +184,3 @@ describe('GlobalChat — bootstrap effects', () => {
     });
 });
 
-// TODO: Deep-link `?pm=<Name>` opens a PM tab automatically. Verifying
-//       this requires MemoryRouter with `initialEntries=['/chat?pm=Joe']`
-//       and asserting that openPm was called with both names. The simple
-//       mount-test variant lives in PartyMember tests already; skipping
-//       here to keep the smoke pass focused.

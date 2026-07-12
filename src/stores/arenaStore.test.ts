@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IArenaInstance, IArenaCompetitor } from '../types/arena';
 
-// -- Hoisted mocks ------------------------------------------------------------
-// arenaStore.finalizeMatch fires fire-and-forget Supabase RPCs through
-// characterApi. We mock the whole module path so unit tests don't depend on
-// network / RLS / the dynamic import resolving in real time.
 
 const { bumpArenaStatsMock, bumpArenaDeathRpcMock, bumpArenaKillRpcMock } = vi.hoisted(() => ({
     bumpArenaStatsMock: vi.fn().mockResolvedValue(undefined),
@@ -25,7 +21,6 @@ import { useInventoryStore } from './inventoryStore';
 import { useCharacterStore } from './characterStore';
 import { getSeasonStart } from '../systems/arenaSystem';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeCompetitor = (overrides?: Partial<IArenaCompetitor>): IArenaCompetitor => ({
     id: 'player_char-1',
@@ -73,11 +68,9 @@ beforeEach(() => {
     bumpArenaKillRpcMock.mockClear();
 });
 
-// -- consumeAttempt / attemptsRemaining ---------------------------------------
 
 describe('consumeAttempt', () => {
     it('grants the first attempt of the day and counts it', () => {
-        // Stale entry from "yesterday" — consume rolls the day over.
         useArenaStore.setState({
             currentArena: null,
             seasonStartIso: null,
@@ -93,11 +86,6 @@ describe('consumeAttempt', () => {
     });
 
     it('returns false once 10 attempts have been used today', () => {
-        // Reuse today's bucket — count=10 should reject the next request.
-        // The store reads `new Date().toISOString().slice(0, 10)` to
-        // determine "today" — use the same primitive here so the bucket
-        // is recognized as current, otherwise `consumeAttempt` would
-        // see the day as stale and roll the counter back to 1.
         const today = new Date().toISOString().slice(0, 10);
         useArenaStore.setState({
             currentArena: null,
@@ -142,10 +130,6 @@ describe('attemptsRemaining', () => {
     });
 
     it('reflects partial usage during the day', () => {
-        // Same fix as `consumeAttempt` — `attemptsRemaining` compares
-        // `state.dailyAttempts.day` against `todayIso()`. Anything
-        // other than today's ISO date triggers the rollover path that
-        // returns the full daily budget. Use a fresh today key here.
         const today = new Date().toISOString().slice(0, 10);
         useArenaStore.setState({
             currentArena: null,
@@ -160,7 +144,6 @@ describe('attemptsRemaining', () => {
     });
 });
 
-// -- finalizeMatch ------------------------------------------------------------
 
 describe('finalizeMatch', () => {
     it('returns zero rewards immediately when no currentArena is set', () => {
@@ -192,7 +175,6 @@ describe('finalizeMatch', () => {
         useArenaStore.getState().finalizeMatch({
             myCompetitorId: 'player_char-1',
             opponentId: 'bot_bronze_1',
-            // Attacker WON while attacking UP — 200 AP / 2 LP per arenaSystem.
             attackerWon: true,
             attackerIsHigher: false,
             opponentName: 'BotA',
@@ -200,13 +182,11 @@ describe('finalizeMatch', () => {
             opponentLevel: 10,
         });
         const me = useArenaStore.getState().currentArena!.competitors.find((c) => c.id === 'player_char-1')!;
-        // attackerIsHigher=false + won -> 100 AP / 1 LP (see getMatchReward).
         expect(me.seasonArenaPoints).toBe(100);
         expect(me.leaguePoints).toBe(1);
     });
 
     it('credits inventory arena points by the same delta', () => {
-        // Reset inventory store arenaPoints baseline.
         const addArenaPointsSpy = vi.fn();
         const inv = useInventoryStore.getState();
         useInventoryStore.setState({ ...inv, arenaPoints: 0, addArenaPoints: addArenaPointsSpy });
@@ -253,13 +233,10 @@ describe('finalizeMatch', () => {
             opponentClass: 'Knight',
             opponentLevel: 10,
         });
-        // Attacker AP = 0, no inventory hit.
         expect(addArenaPointsSpy).not.toHaveBeenCalled();
     });
 
     it('writes a match-log entry capped at 100 entries', () => {
-        // Seed an arena and an over-full log; finalizeMatch must prepend new entry
-        // and slice to MATCH_LOG_MAX (100).
         const seed = Array.from({ length: 100 }, (_, i) => ({
             id: `old_${i}`,
             at: '2000-01-01T00:00:00Z',
@@ -291,7 +268,6 @@ describe('finalizeMatch', () => {
         });
         const log = useArenaStore.getState().matchLog;
         expect(log.length).toBe(100);
-        // Newest entry sits at index 0.
         expect(log[0].won).toBe(true);
         expect(log[0].opponentName).toBe('BotA');
     });
@@ -349,12 +325,10 @@ describe('finalizeMatch', () => {
             opponentLevel: 10,
         });
         const me = useArenaStore.getState().currentArena!.competitors.find((c) => c.id === 'player_char-1')!;
-        // Loss -> no LP gained -> timestamp stays pinned to the original.
         expect(me.leaguePointsAchievedAt).toBe(oldTs);
     });
 });
 
-// -- submitDefenseSnapshot ----------------------------------------------------
 
 describe('submitDefenseSnapshot', () => {
     it('is a no-op when no character is loaded', () => {
@@ -402,27 +376,7 @@ describe('submitDefenseSnapshot', () => {
     });
 });
 
-// TODO: refreshIfNeeded touches getSeasonStart() which depends on
-// real wall-clock — a robust test would freeze Date via vi.useFakeTimers,
-// pin a known Monday, and walk through {first boot, second boot same week,
-// new week with pendingRewards, promotion/relegation paths}. The existing
-// arenaSystem.test.ts already locks down getSeasonStart / getSeasonOutcome /
-// rankCompetitors at the formula level, so the store-level integration is
-// the missing piece. Left out here to keep this file scoped to the
-// individual public actions explicitly called out in the task.
-//
-// TODO: claimSeasonRewards mutates many inventory slots in one shot — a
-// fully-mocked inventoryStore test would assert every adder fires with the
-// correct count. Skipped because the inventoryStore add* methods are
-// already covered by inventoryStore.test.ts (sibling file) and the bucket
-// -> multiplier math lives in arenaSystem.test.ts.
-//
-// TODO: injectOtherPlayers reads alts' transform progress from
-// localStorage by key (`dungeon_rpg_save_char_<id>`). A direct unit test
-// would seed the storage + invoke the action; left out because the
-// behaviour is exercised by the live Arena page integration test.
 
-// -- BUG #1 (2026-06-23): weekly reset timing — preserve AP/LP until claim -----
 
 describe('refreshIfNeeded — season boundary preserves AP/LP (BUG #1)', () => {
     it('does NOT rebuild/zero the arena at the season boundary — keeps AP/LP + sets pendingRewards', () => {
@@ -434,7 +388,7 @@ describe('refreshIfNeeded — season boundary preserves AP/LP (BUG #1)', () => {
                     makeCompetitor({ id: 'bot_1', name: 'Bot', isBot: true, leaguePoints: 5 }),
                 ],
             }),
-            seasonStartIso: '2020-01-01T00:00:00.000Z', // old week -> seasonChanged
+            seasonStartIso: '2020-01-01T00:00:00.000Z',
             pendingRewards: null,
         });
 
@@ -442,11 +396,9 @@ describe('refreshIfNeeded — season boundary preserves AP/LP (BUG #1)', () => {
 
         const s = useArenaStore.getState();
         const me = s.currentArena?.competitors.find((c) => !c.isBot);
-        // Arena NOT rebuilt — player keeps their accumulated AP + LP.
         expect(me?.seasonArenaPoints).toBe(2000);
         expect(me?.leaguePoints).toBe(50);
         expect(s.currentArena?.id).toBe('bronze_42');
-        // Final standing captured; season NOT advanced (awaiting claim).
         expect(s.pendingRewards).not.toBeNull();
         expect(s.seasonStartIso).toBe('2020-01-01T00:00:00.000Z');
     });
@@ -469,7 +421,7 @@ describe('claimSeasonRewards — reset + promotion AFTER claim (BUG #1)', () => 
         useArenaStore.setState({
             currentArena: makeArena({ id: 'bronze_42' }),
             seasonStartIso: '2020-01-01T00:00:00.000Z',
-            pendingRewards: { league: 'bronze', finalRank: 55 }, // low rank: no bucket, but reset MUST still run
+            pendingRewards: { league: 'bronze', finalRank: 55 },
             stats: { matchesWon: 9, matchesDefended: 3 },
         });
 
@@ -478,10 +430,10 @@ describe('claimSeasonRewards — reset + promotion AFTER claim (BUG #1)', () => 
         const s = useArenaStore.getState();
         expect(result).toEqual({ league: 'bronze', finalRank: 55 });
         expect(s.pendingRewards).toBeNull();
-        expect(s.seasonStartIso).toBe(getSeasonStart().toISOString()); // advanced to current week
+        expect(s.seasonStartIso).toBe(getSeasonStart().toISOString());
         expect(s.stats).toEqual({ matchesWon: 0, matchesDefended: 0 });
-        expect(s.currentArena?.id).not.toBe('bronze_42'); // rebuilt for the new season
-        expect(s.currentArena?.league).toBe('bronze');    // rank 55 stays in bronze
+        expect(s.currentArena?.id).not.toBe('bronze_42');
+        expect(s.currentArena?.league).toBe('bronze');
     });
 
     it('promotes the league on claim when finalRank is in the promotion zone', () => {
@@ -489,7 +441,7 @@ describe('claimSeasonRewards — reset + promotion AFTER claim (BUG #1)', () => 
         useArenaStore.setState({
             currentArena: makeArena({ id: 'bronze_42', league: 'bronze' }),
             seasonStartIso: '2020-01-01T00:00:00.000Z',
-            pendingRewards: { league: 'bronze', finalRank: 1 }, // top -> promote (bronze promotedTop 40)
+            pendingRewards: { league: 'bronze', finalRank: 1 },
         });
         useArenaStore.getState().claimSeasonRewards();
         expect(useArenaStore.getState().currentArena?.league).toBe('silver');

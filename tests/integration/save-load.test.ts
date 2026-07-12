@@ -1,24 +1,3 @@
-/**
- * Integration: characterScope save -> reset -> restore round-trip.
- *
- * The character-scope module owns persistence for 12+ gameplay stores.
- * Every store change debounces into a single JSON blob written to
- * `dungeon_rpg_save_char_<id>`; on character load the blob is replayed
- * back into the same store list. This file exercises the full
- * round-trip: populate every relevant store -> flush -> wipe -> restore ->
- * verify the original values are back.
- *
- * The point is to catch regressions where someone adds a new store /
- * field but forgets to:
- *   - include it in STORE_ENTRIES' stateKeys list (won't be saved),
- *   - include it in defaults() (won't be reset properly), or
- *   - match keys between save / restore.
- *
- * We use `saveCurrentCharacterStoresSync` (the localStorage-only path
- * used by `beforeunload`) + `restoreFromLocalStorageSync` because both
- * are synchronous and don't hit Supabase. The Supabase path is mocked
- * globally by `tests/vitest.setup.ts`.
- */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -35,7 +14,6 @@ import { useMasteryStore } from '../../src/stores/masteryStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { EMPTY_EQUIPMENT, buildItem } from '../../src/systems/itemSystem';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const CHAR_ID = 'char-roundtrip-1';
 
@@ -68,7 +46,6 @@ const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
 } as ICharacter);
 
 const resetAll = (): void => {
-    // Clean localStorage so we don't pull state from a previous test file.
     localStorage.clear();
     sessionStorage.clear();
     useCharacterStore.setState({ character: null, isLoading: false });
@@ -91,19 +68,9 @@ beforeEach(() => {
     resetAll();
 });
 
-/**
- * Build a non-trivial save state across multiple stores, flush it,
- * wipe state in-memory, then restore from localStorage. The helper
- * returns a "before snapshot" so each test can compare specific values.
- */
 const fullStateRoundTrip = async (): Promise<{ sword: ReturnType<typeof buildItem>; before: ReturnType<typeof captureSnapshot> }> => {
-    // 1) Make characterScope aware of which character we are saving.
-    //    switchToCharacter writes the tab lock + active id + resets all
-    //    stores. MUST be awaited — if we fire-and-forget, the reset
-    //    races with our setState calls below and wipes them out mid-test.
     await switchToCharacter(CHAR_ID);
 
-    // 2) Populate every store.
     useCharacterStore.getState().setCharacter(makeChar());
     const sword = buildItem({
         itemId: 'sword_lvl10_rare',
@@ -157,10 +124,8 @@ const fullStateRoundTrip = async (): Promise<{ sword: ReturnType<typeof buildIte
 
     const before = captureSnapshot(sword.uuid);
 
-    // 3) Force a sync flush — the same path beforeunload uses.
     saveCurrentCharacterStoresSync();
 
-    // 4) Wipe every store back to defaults (simulating a fresh app boot).
     useCharacterStore.setState({ character: null });
     useInventoryStore.setState({
         bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [],
@@ -176,7 +141,6 @@ const fullStateRoundTrip = async (): Promise<{ sword: ReturnType<typeof buildIte
     useQuestStore.setState({ activeQuests: [], completedQuestIds: [] });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
 
-    // 5) Restore from localStorage.
     const restored = restoreFromLocalStorageSync(CHAR_ID);
     expect(restored).toBe(true);
 
@@ -187,9 +151,6 @@ const captureSnapshot = (swordUuid: string) => ({
     swordUuid,
     bag: useInventoryStore.getState().bag.map(i => i.uuid),
     gold: useInventoryStore.getState().gold,
-    // 2026-06-24 BUG 6: arenaPoints must round-trip — it was missing from
-    // STORE_ENTRIES stateKeys, so the spendable Arena currency reset to 0 on
-    // every reload. Capturing it here makes the snapshot test guard it.
     arenaPoints: useInventoryStore.getState().arenaPoints,
     consumables: { ...useInventoryStore.getState().consumables },
     stones: { ...useInventoryStore.getState().stones },
@@ -207,7 +168,6 @@ const captureSnapshot = (swordUuid: string) => ({
     masteryKills: { ...useMasteryStore.getState().masteryKills },
 });
 
-// -- Tests --------------------------------------------------------------------
 
 describe('characterScope: save -> restore round-trip preserves state', () => {
     it('restores inventory (bag, gold, arena points, consumables, stones)', async () => {
@@ -215,7 +175,6 @@ describe('characterScope: save -> restore round-trip preserves state', () => {
         const inv = useInventoryStore.getState();
         expect(inv.bag.some(i => i.uuid === sword.uuid)).toBe(true);
         expect(inv.gold).toBe(5000);
-        // BUG 6 regression: spendable Arena points must survive the round-trip.
         expect(inv.arenaPoints).toBe(100);
         expect(inv.consumables.hp_potion_sm).toBe(5);
         expect(inv.stones.common_stone).toBe(12);
@@ -272,15 +231,10 @@ describe('characterScope: save -> restore round-trip preserves state', () => {
     it('restores the entire state via a single before/after snapshot comparison', async () => {
         const { before } = await fullStateRoundTrip();
         const after = captureSnapshot(before.swordUuid);
-        // We use toEqual instead of toMatchObject so any extra fields
-        // (i.e. somebody adding new state but forgetting to clear in beforeEach)
-        // also tank the test.
         expect(after).toEqual(before);
     });
 
     it('persists Quests task filters/sort across save -> restore (settings slice)', async () => {
-        // 2026-06-24: the "taski" Available/Inactive/sort toggles + "Lvl od…"
-        // input now live in settingsStore and must survive a reload.
         await switchToCharacter(CHAR_ID);
         useCharacterStore.getState().setCharacter(makeChar());
         useSettingsStore.setState({
@@ -290,7 +244,6 @@ describe('characterScope: save -> restore round-trip preserves state', () => {
             taskFilterLvlFrom: '65',
         });
         saveCurrentCharacterStoresSync();
-        // Wipe the settings back to defaults (simulating a fresh boot).
         useSettingsStore.setState({
             taskFilterAvailableOnly: false,
             taskFilterInactiveOnly: false,
@@ -306,10 +259,8 @@ describe('characterScope: save -> restore round-trip preserves state', () => {
     });
 
     it('returns false when no save exists for the character', () => {
-        // No `fullStateRoundTrip` — fresh localStorage.
         const restored = restoreFromLocalStorageSync('char-no-save');
         expect(restored).toBe(false);
-        // Stores remain at their defaults (no leftover from previous test).
         expect(useInventoryStore.getState().gold).toBe(0);
     });
 

@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// -- Hoisted mocks ------------------------------------------------------------
-// raidStore relies on `getRaidById` (lookup) and `todayIso` (clock) from
-// raidSystem. We stub both so daily-cap logic is testable without the
-// DUNGEONS JSON's real layout, and so we can fast-forward "today" by
-// reassigning todayIsoMock between tests.
 
 const { getRaidByIdMock, todayIsoMock } = vi.hoisted(() => ({
     getRaidByIdMock: vi.fn(),
@@ -36,11 +31,9 @@ beforeEach(() => {
     getRaidByIdMock.mockReset();
     todayIsoMock.mockReset();
     todayIsoMock.mockReturnValue('2026-05-21');
-    // Default lookup: known raid resolves to the fixture above.
     getRaidByIdMock.mockImplementation((id: string) => (id === 'raid_1' ? RAID : null));
 });
 
-// -- setActiveRaid ------------------------------------------------------------
 
 describe('setActiveRaid', () => {
     it('stores the raid id (entering the raid view)', () => {
@@ -61,7 +54,6 @@ describe('setActiveRaid', () => {
     });
 });
 
-// -- attemptsRemaining --------------------------------------------------------
 
 describe('attemptsRemaining', () => {
     it('returns 0 for an unknown raid id (defensive: never hand out attempts for missing data)', () => {
@@ -97,7 +89,6 @@ describe('attemptsRemaining', () => {
     });
 });
 
-// -- consumeAttempt -----------------------------------------------------------
 
 describe('consumeAttempt', () => {
     it('returns false and writes nothing for an unknown raid', () => {
@@ -152,7 +143,6 @@ describe('consumeAttempt', () => {
     });
 });
 
-// -- refundAttempt ------------------------------------------------------------
 
 describe('refundAttempt', () => {
     it('is a no-op for a raid the player has never tried today', () => {
@@ -166,9 +156,6 @@ describe('refundAttempt', () => {
             activeRaidId: null,
         });
         useRaidStore.getState().refundAttempt('raid_1');
-        // Stale entry preserved verbatim — the day-rollover code path is
-        // owned by `consumeAttempt`/`attemptsRemaining`; refund doesn't try
-        // to be clever about it.
         expect(useRaidStore.getState().attempts['raid_1']).toEqual({ day: '1999-12-31', count: 4 });
     });
 
@@ -205,7 +192,6 @@ describe('refundAttempt', () => {
     });
 });
 
-// -- resetDay -----------------------------------------------------------------
 
 describe('resetDay', () => {
     it('wipes every raid\'s daily counter', () => {
@@ -235,7 +221,6 @@ describe('resetDay', () => {
     });
 });
 
-// -- Cross-action integration ------------------------------------------------
 
 describe('consumeAttempt + refundAttempt + attemptsRemaining', () => {
     it('round-trips: consume 3 -> 2 left; refund 1 -> 3 left', () => {
@@ -256,10 +241,8 @@ describe('consumeAttempt + refundAttempt + attemptsRemaining', () => {
     });
 
     it('day-rollover via todayIso bump resets the budget on the next consume', () => {
-        // Day 1: spend all 5.
         for (let i = 0; i < 5; i++) useRaidStore.getState().consumeAttempt('raid_1');
         expect(useRaidStore.getState().attemptsRemaining('raid_1')).toBe(0);
-        // Tick the clock to "tomorrow" via the hoisted todayIso mock.
         todayIsoMock.mockReturnValue('2026-05-22');
         expect(useRaidStore.getState().attemptsRemaining('raid_1')).toBe(5);
         const ok = useRaidStore.getState().consumeAttempt('raid_1');
@@ -268,8 +251,3 @@ describe('consumeAttempt + refundAttempt + attemptsRemaining', () => {
     });
 });
 
-// TODO: persist middleware writes to localStorage under the key
-// `grimshade-raid-store`. Testing the persisted shape across page reloads
-// requires `vi.resetModules()` + a fresh import after seeding localStorage,
-// and the persist layer is shipped + tested by zustand itself. Left out
-// here to keep the unit test focused on the store's PUBLIC actions.

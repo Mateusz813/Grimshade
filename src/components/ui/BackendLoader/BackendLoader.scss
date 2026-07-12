@@ -1,21 +1,16 @@
-// Globalny overlay dla requestów backendu w locie (patrz BackendLoader.tsx).
-// Bez boxa/ramki — mocno przyciemnione tło + logo + mieniący się napis Grimshade.
-// Akcent mienienia: --loader-accent (kolor transformacji gracza).
 .backend-loader {
     position: fixed;
     inset: 0;
-    z-index: 10000; // ponad wszystkim (nav/popupy) — blokuje przypadkowe klikanie
+    z-index: 10000;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 20px;
-    // Mocno przyciemnione całe tło aplikacji (≥50%).
     background: rgba(0, 0, 0, 0.72);
     backdrop-filter: blur(4px) brightness(0.62) saturate(0.85);
     -webkit-backdrop-filter: blur(4px) brightness(0.62) saturate(0.85);
     animation: backend-loader-fade 0.2s ease-out;
-    // pointer-events domyślnie auto → overlay łapie kliknięcia (blokada).
 
     &__logo {
         width: 96px;
@@ -25,8 +20,6 @@
         animation: backend-loader-pulse 1.7s ease-in-out infinite;
     }
 
-    // Mieniący się napis: gradient przesuwa się w poprzek liter (light sweep),
-    // z akcentem w kolorze transformacji.
     &__brand {
         font-size: 26px;
         font-weight: 700;

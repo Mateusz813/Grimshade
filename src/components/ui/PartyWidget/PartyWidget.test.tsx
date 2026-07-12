@@ -2,14 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * PartyWidget — fixed shield button + popover roster. Hidden without a
- * character / party and on characterless routes. Popover lists each
- * member with HP/MP/damage.
- *
- * getCharacterAvatar + getEffectiveChar are stubbed so we keep the
- * dependency surface flat — both return predictable values.
- */
 
 vi.mock('../../../data/classAvatars', () => ({
     getCharacterAvatar: () => '/avatar.png',
@@ -100,7 +92,6 @@ describe('PartyWidget — visibility', () => {
         renderAt('/');
         const btn = document.querySelector('.party-widget__btn');
         expect(btn).toBeTruthy();
-        // Member count chip shows "2" for the two-member party.
         expect(screen.getByText('2')).toBeTruthy();
     });
 });
@@ -108,7 +99,6 @@ describe('PartyWidget — visibility', () => {
 describe('PartyWidget — popover', () => {
     it('opens popover on shield button click', () => {
         renderAt('/');
-        // Popover hidden until clicked.
         expect(document.querySelector('.party-widget__popover')).toBeNull();
         fireEvent.click(document.querySelector('.party-widget__btn')!);
         expect(document.querySelector('.party-widget__popover')).toBeTruthy();
@@ -129,7 +119,6 @@ describe('PartyWidget — popover', () => {
         });
         renderAt('/');
         fireEvent.click(document.querySelector('.party-widget__btn')!);
-        // 3800 -> "3.8k" via formatDmg.
         expect(screen.getByText(/3\.8k dmg/)).toBeTruthy();
     });
 
@@ -142,9 +131,7 @@ describe('PartyWidget — popover', () => {
     it('renders ? for ally HP/MP when no presence snapshot exists', () => {
         renderAt('/');
         fireEvent.click(document.querySelector('.party-widget__btn')!);
-        // Ally row HP label falls back to "?" until presence broadcasts.
         const allyLabels = document.querySelectorAll('.party-widget__bar-label');
-        // Two members × 2 bars = 4 labels. The remote ally's 2 should be "?".
         const fallbackCount = Array.from(allyLabels).filter((l) => l.textContent === '?').length;
         expect(fallbackCount).toBe(2);
     });

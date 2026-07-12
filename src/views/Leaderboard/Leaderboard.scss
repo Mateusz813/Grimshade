@@ -7,7 +7,6 @@
   color: $color-text;
   padding-bottom: $spacing-xl;
 
-  // -- Header -----------------------------------------------------------------
   &__header {
     display: flex;
     align-items: center;
@@ -46,7 +45,6 @@
     &:hover { border-color: $color-accent; color: $color-accent; }
   }
 
-  // -- My rank ----------------------------------------------------------------
   &__my-rank {
     font-size: $font-sm;
     color: $color-text-muted;
@@ -57,13 +55,6 @@
     strong { color: $color-accent; }
   }
 
-  // -- Tabs (scrollable) -----------------------------------------------------
-  // 2026-05-19 v18 spec ("Nie widze wszystkich tabow"): with 20+
-  // ranking tabs the bar overflows the viewport on every breakpoint.
-  // Switched to a free-flowing horizontal scroll with thicker (8px)
-  // visible thumb so the player notices there's MORE to the right.
-  // Desktop's `justify-content: center` removed — center-align made
-  // the leftmost tabs unreachable when the row overflowed.
   &__tabs {
     display: flex;
     flex-wrap: nowrap;
@@ -122,7 +113,6 @@
     line-height: 1;
   }
 
-  // -- Info banner ------------------------------------------------------------
   &__info {
     font-size: $font-xs;
     color: $color-text-muted;
@@ -133,7 +123,6 @@
     font-style: italic;
   }
 
-  // -- States -----------------------------------------------------------------
   &__loading, &__error, &__empty {
     text-align: center;
     padding: $spacing-xl $spacing-md;
@@ -143,7 +132,6 @@
 
   &__error { color: $color-accent; }
 
-  // -- List -------------------------------------------------------------------
   &__list {
     padding: $spacing-md;
     display: flex;
@@ -191,12 +179,6 @@
 
   &__level { font-size: $font-md; font-weight: 700; color: $color-accent; }
 
-  // 2026-05-19 v20 spec ("jezeli walcze z botami to napisz np w
-  // miejscu pierwszym 4 nicki jeden pod drugim z ikonkami klasy i
-  // na koncu na srodku po prawej DPS laczny"): party-DPS row stacks
-  // every party member vertically. Each member is `[class-icon]
-  // [nick]`. The row's height grows to accommodate up to 4 members,
-  // and the DPS value stays right-aligned + vertically centred.
   &__row--party {
     align-items: center;
     padding-top: 6px;

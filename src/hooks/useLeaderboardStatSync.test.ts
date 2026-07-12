@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, cleanup } from '@testing-library/react';
 
-/**
- * useLeaderboardStatSync tests
- *
- * On character mount the hook computes a one-shot snapshot of
- *  - mastery_points       (sum of mastery levels)
- *  - quests_oneshot_done  (length of completedQuestIds)
- *  - quests_daily_done    (today's claimed daily count)
- *  - skill_upgrades_done  (sum of skillUpgradeLevels)
- *
- * and fires `characterApi.bumpStat` once per stat. It dedupes by
- * `character.id` via a ref so unrelated re-renders don't re-fire.
- */
 
 vi.mock('../api/v1/characterApi', () => ({
     characterApi: {
@@ -53,12 +41,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // Without this every prior `renderHook(useLeaderboardStatSync)`
-    // stays subscribed to the Zustand `useCharacterStore`. When a
-    // later test calls `useCharacterStore.setState(...)`, all those
-    // stale subscriptions re-fire the effect — inflating
-    // `bumpStat.mock.calls.length` and breaking exact-count assertions.
-    // `cleanup()` unmounts every hook rendered via `renderHook`.
     cleanup();
 });
 
@@ -111,8 +93,6 @@ describe('useLeaderboardStatSync', () => {
         const call = (characterApi.bumpStat as ReturnType<typeof vi.fn>).mock.calls
             .find((c) => c[0]?.column === 'quests_daily_done');
         expect(call?.[0].value).toBe(2);
-        // Lifetime daily counter uses 'max' so back-fill never regresses
-        // a higher server-side count from previous days.
         expect(call?.[0].mode).toBe('max');
     });
 
@@ -151,15 +131,10 @@ describe('useLeaderboardStatSync', () => {
         useCharacterStore.setState({ character: makeChar('same-id') });
         const { rerender } = renderHook(() => useLeaderboardStatSync());
         expect(characterApi.bumpStat).toHaveBeenCalledTimes(4);
-        // Force another render with same identity — store update without
-        // an id change -> effect should not re-run.
         useCharacterStore.setState({
             character: { ...makeChar('same-id'), gold: 999 } as ICharacter,
         });
         rerender();
-        // syncedRef tracks the last id we synced. Even with a brand-new
-        // character object the id matches the previous run, so the
-        // effect returns early after the ref check — no extra bumps.
         const ids = (characterApi.bumpStat as ReturnType<typeof vi.fn>).mock.calls
             .map((c) => c[0]?.characterId);
         expect(ids.filter((i) => i === 'same-id').length).toBe(4);

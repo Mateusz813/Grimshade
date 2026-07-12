@@ -3,32 +3,19 @@
     display: flex;
     flex-direction: column;
 
-    // Loading variant — used while the character store hasn't hydrated.
-    // Centers the Spinner against the global dragon backdrop instead of
-    // dropping a plain "Wczytywanie postaci…" string.
     &--loading {
         align-items: center;
         justify-content: center;
         min-height: calc(100dvh - 110px);
     }
-    // Match-style: full-bleed view. The header back-button + "Trainer"
-    // title were removed per the 2026-05 redesign; navigation goes
-    // through the combat exit button at the bottom. No `min-height: 100vh`
-    // so the page doesn't scroll when the combat-ui already fills the
-    // viewport — every other combat view (Arena, Boss) follows the same
-    // pattern.
     padding: 0;
     max-width: none;
 
-    // Damage stats card — horizontally centred above the action bar so
-    // the player's eye lands on the DPS readout naturally between the
-    // arena and their skill row. Translucent background + thin border
-    // so the trainer arena art still reads through it.
     &__stats {
         position: fixed;
         left: 50%;
         transform: translateX(-50%);
-        bottom: 96px; // sits clear of the 80px action-bar + ~16px gap
+        bottom: 96px;
         z-index: 30;
         display: flex;
         gap: 14px;
@@ -50,8 +37,6 @@
         span { color: #888; font-size: 11px; }
 
         @media (max-width: 540px) {
-            // Mobile — keep centered but allow the strip to span more
-            // of the viewport with smaller numbers.
             bottom: 88px;
             gap: 8px;
             padding: 6px 10px;
@@ -61,8 +46,6 @@
         }
     }
 
-    // 2026-05 v6: dummy HP % slider — sandbox target HP for execute_below
-    // testing. Sits inline with other top-bar chips.
     &__hp-slider {
         display: inline-flex;
         align-items: center;
@@ -86,8 +69,6 @@
     &__hp-slider-label { color: #ffcdd2; }
     &__hp-slider-val { color: #ff8a80; min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
 
-    // 2026-05 v6: kill-ally sandbox modal — overlays everything when
-    // the player wants to test rez/heal/shield spells on a fallen ally.
     &__kill-overlay {
         position: fixed;
         inset: 0;

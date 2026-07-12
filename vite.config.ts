@@ -4,21 +4,11 @@ import svgr from 'vite-plugin-svgr';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
 
-// 2026-05-21: vitest config wydzielona do dedykowanego `vitest.config.ts`
-// — patrz tam dla setupu happy-dom, coverage thresholds i excludes (E2E
-// w tests/e2e/ uruchamia Playwright, nie vitest).
 export default defineConfig({
-  // 2026-05-21: expose `package.json` version as a global constant so
-  // UI code can `import { APP_VERSION }` from a typed module without
-  // dragging package.json into the TS include / rootDir tree. See
-  // `src/lib/appVersion.ts` for the typed shim.
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   build: {
-    // Keep the bundled emoji icons (src/assets/icons/*.svg) as SEPARATE
-    // content-hashed files rather than inlining 217 small SVGs as base64 into
-    // the JS bundle (~550 KB bloat). Everything else keeps the default.
     assetsInlineLimit: (filePath: string) =>
       filePath.includes('/assets/icons/') ? false : undefined,
   },
@@ -31,22 +21,11 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [
-    // SVG icons imported as inline React components via `?react`
-    // (e.g. `import.meta.glob('…/icons/*.svg', { query: '?react' })`).
-    // `icon: true` -> each <svg> is sized 1em so it scales with font-size,
-    // and `currentColor` strokes/fills tint with the surrounding text.
     svgr({ svgrOptions: { icon: true } }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // 2026-06-24: we register the SW ourselves (src/lib/pwaUpdate.ts) so we
-      // can add aggressive update checks (on app-visible / interval / reconnect)
-      // — that's what makes an installed home-screen PWA pick up new deploys
-      // without a reinstall. Disable the plugin's auto-injected registration so
-      // the SW isn't registered twice.
       injectRegister: false,
-      // 2026-05-20: bundle the brand icon set so the install prompt +
-      // home-screen tile pick up the new artwork from /public/.
       includeAssets: ['apple-touch-icon.png', 'pwa.png', 'favicon.svg'],
       manifest: {
         name: 'Grimshade',
@@ -72,9 +51,6 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // 2026-06-24: a new SW takes control immediately (skip the "waiting"
-        // state) and purges the previous build's precache, so reopening the
-        // installed PWA never serves a stale bundle.
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

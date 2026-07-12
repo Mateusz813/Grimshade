@@ -17,7 +17,6 @@ import {
   type IBossCharacter,
 } from './bossSystem';
 
-// -- Fixtures ------------------------------------------------------------------
 
 const BOSS: IBoss = {
   id: 'goblin_king',
@@ -35,7 +34,7 @@ const BOSS: IBoss = {
   uniqueDrops: [
     {
       itemId: 'crown',
-      chance: 1.0,   // guaranteed for testing
+      chance: 1.0,
       rarity: 'heroic',
       name_pl: 'Korona',
       name_en: 'Crown',
@@ -44,7 +43,7 @@ const BOSS: IBoss = {
     },
     {
       itemId: 'scepter',
-      chance: 0.0,   // never drops
+      chance: 0.0,
       rarity: 'heroic',
       name_pl: 'Berło',
       name_en: 'Scepter',
@@ -59,7 +58,6 @@ const BOSS: IBoss = {
 const STRONG_CHAR: IBossCharacter = { attack: 500, defense: 200, max_hp: 50000, level: 50 };
 const WEAK_CHAR: IBossCharacter   = { attack: 1,   defense: 0,   max_hp: 1,     level: 1 };
 
-// -- canChallengeBoss ----------------------------------------------------------
 
 describe('canChallengeBoss', () => {
   it('allows challenge when level >= boss.level and no cooldown', () => {
@@ -83,7 +81,6 @@ describe('canChallengeBoss', () => {
   });
 });
 
-// -- getBossRemainingMs --------------------------------------------------------
 
 describe('getBossRemainingMs', () => {
   it('returns 0 with no lastDefeatedAt', () => {
@@ -91,7 +88,7 @@ describe('getBossRemainingMs', () => {
   });
 
   it('returns positive ms when recently defeated', () => {
-    const ts = new Date(Date.now() - 600_000).toISOString(); // 10 min ago
+    const ts = new Date(Date.now() - 600_000).toISOString();
     expect(getBossRemainingMs(BOSS, ts)).toBeGreaterThan(0);
   });
 
@@ -101,7 +98,6 @@ describe('getBossRemainingMs', () => {
   });
 });
 
-// -- getBossPhaseMultiplier ----------------------------------------------------
 
 describe('getBossPhaseMultiplier', () => {
   it('returns 1.0 above 30% HP', () => {
@@ -117,7 +113,6 @@ describe('getBossPhaseMultiplier', () => {
   });
 });
 
-// -- isBossEnraged -------------------------------------------------------------
 
 describe('isBossEnraged', () => {
   it('is not enraged above 30%', () => {
@@ -131,7 +126,6 @@ describe('isBossEnraged', () => {
   });
 });
 
-// -- rollBossLoot --------------------------------------------------------------
 
 describe('rollBossLoot', () => {
   it('drops guaranteed items (chance 1.0)', () => {
@@ -152,7 +146,6 @@ describe('rollBossLoot', () => {
   });
 });
 
-// -- rollBossGold --------------------------------------------------------------
 
 describe('rollBossGold', () => {
   it('stays within the level-driven gold range', () => {
@@ -185,17 +178,15 @@ describe('computeBossRewards', () => {
   });
 
   it('caps top-end gold at ≲2 sc per kill', () => {
-    expect(computeBossRewards(1000).goldMax).toBeLessThanOrEqual(20_000_000); // 2 sc
+    expect(computeBossRewards(1000).goldMax).toBeLessThanOrEqual(20_000_000);
   });
 
   it('caps top-end XP at ≲2% of next-level XP', () => {
     const r = computeBossRewards(1000);
-    // 897.15M anchor at lvl 1000 -> 2% = 17.94M
     expect(r.xp).toBeLessThanOrEqual(18_000_000);
   });
 });
 
-// -- getScaledBossStats (party balance) ----------------------------------------
 
 describe('getScaledBossStats', () => {
   it('multiplies HP by BOSS_HP_MULTIPLIER', () => {
@@ -219,24 +210,16 @@ describe('getScaledBossStats', () => {
   });
 });
 
-// -- resolveBoss ---------------------------------------------------------------
 
 describe('resolveBoss', () => {
-  // 2026-05-21: replaces deleted test "strong character beats the boss" — now tests current logic
-  // The constant `BOSS_REWARD_MULTIPLIER` still exists (= 1) but is no longer
-  // used by `resolveBoss` — XP and gold now come from `computeBossRewards(boss.level)`
-  // (see lines 175-209 of bossSystem.ts). Boss XP is deterministic per level,
-  // gold is rolled from the canonical [goldMin, goldMax] range.
   it('strong character beats the boss with deterministic XP and gold in range', () => {
     const result = resolveBoss(BOSS, STRONG_CHAR);
     expect(result.won).toBe(true);
     expect(result.playerHpLeft).toBeGreaterThan(0);
 
-    // XP must equal the canonical reward curve at boss.level (no multiplier).
     const expected = computeBossRewards(BOSS.level);
     expect(result.xp).toBe(expected.xp);
 
-    // Gold must fall inside the level-driven range from computeBossRewards.
     expect(result.gold).toBeGreaterThanOrEqual(expected.goldMin);
     expect(result.gold).toBeLessThanOrEqual(expected.goldMax);
   });
@@ -251,7 +234,6 @@ describe('resolveBoss', () => {
 
   it('winning includes unique drops from rollBossLoot', () => {
     const result = resolveBoss(BOSS, STRONG_CHAR);
-    // chance-1.0 drop must appear
     expect(result.drops.some((d) => d.itemId === 'crown')).toBe(true);
   });
 

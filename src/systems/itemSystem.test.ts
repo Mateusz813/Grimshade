@@ -39,7 +39,6 @@ import {
 } from './itemSystem';
 import type { IBaseItem, IInventoryItem, IEquipment } from './itemSystem';
 
-// -- Fixtures ------------------------------------------------------------------
 
 const baseSword: IBaseItem = {
   id: 'iron_sword',
@@ -74,7 +73,6 @@ const makeItem = (overrides?: Partial<IInventoryItem>): IInventoryItem => ({
   ...overrides,
 });
 
-// -- buildItem -----------------------------------------------------------------
 
 describe('buildItem', () => {
   it('should generate unique UUIDs for each call', () => {
@@ -93,7 +91,6 @@ describe('buildItem', () => {
   });
 });
 
-// -- getItemStats --------------------------------------------------------------
 
 describe('getItemStats', () => {
   it('should return base attack when no bonuses', () => {
@@ -118,7 +115,6 @@ describe('getItemStats', () => {
   });
 });
 
-// -- getTotalEquipmentStats ----------------------------------------------------
 
 describe('getTotalEquipmentStats', () => {
   it('should return zeros for empty equipment', () => {
@@ -134,8 +130,8 @@ describe('getTotalEquipmentStats', () => {
       helmet:   makeItem({ itemId: 'iron_helmet', bonuses: { defense: 2 } }),
     };
     const total = getTotalEquipmentStats(eq, allItems);
-    expect(total.attack).toBe(15);   // 12 base + 3 bonus
-    expect(total.defense).toBe(10);  // 8 base + 2 bonus
+    expect(total.attack).toBe(15);
+    expect(total.defense).toBe(10);
   });
 
   it('should skip slots with null', () => {
@@ -145,7 +141,6 @@ describe('getTotalEquipmentStats', () => {
   });
 });
 
-// -- getSellPrice --------------------------------------------------------------
 
 describe('getSellPrice', () => {
   it('should be less than base price', () => {
@@ -168,7 +163,6 @@ describe('getSellPrice', () => {
   });
 });
 
-// -- canEquip ------------------------------------------------------------------
 
 describe('canEquip', () => {
   it('should allow equip at exact required level', () => {
@@ -188,21 +182,16 @@ describe('canEquip', () => {
   });
 });
 
-// -- RARITY_COLORS -------------------------------------------------------------
 
 describe('RARITY_COLORS', () => {
   it('should have correct hex for common', () => {
     expect(RARITY_COLORS.common).toBe('#9e9e9e');
   });
 
-  // 2026-05-21: replaces deleted test "should have correct hex for legendary" — now tests current logic
-  // RARITY_COLORS were re-mapped: legendary is now red (#f44336) and mythic is yellow (#ffc107).
-  // CLAUDE.md spec also lists heroic as the new top tier (purple #9c27b0).
   it('should have correct hex for legendary (red)', () => {
     expect(RARITY_COLORS.legendary).toBe('#f44336');
   });
 
-  // 2026-05-21: replaces deleted test "should have correct hex for mythic" — now tests current logic
   it('should have correct hex for mythic (yellow)', () => {
     expect(RARITY_COLORS.mythic).toBe('#ffc107');
   });
@@ -212,7 +201,6 @@ describe('RARITY_COLORS', () => {
   });
 });
 
-// -- flattenItemsData ----------------------------------------------------------
 
 describe('flattenItemsData', () => {
   it('should combine all item categories into one array', () => {
@@ -232,7 +220,6 @@ describe('flattenItemsData', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — enhancement system -----------------------------
 
 describe('getRequiredStoneType', () => {
   it('maps every rarity to its matching stone tier', () => {
@@ -286,7 +273,6 @@ describe('getEnhancementMultiplier', () => {
     expect(getEnhancementMultiplier(1)).toBeCloseTo(1.10, 4);
     expect(getEnhancementMultiplier(5)).toBeCloseTo(1.50, 4);
     expect(getEnhancementMultiplier(10)).toBeCloseTo(2.00, 4);
-    // Monotonic increasing across the 1-10 band.
     for (let u = 1; u <= 10; u += 1) {
       expect(getEnhancementMultiplier(u)).toBeGreaterThan(getEnhancementMultiplier(u - 1));
     }
@@ -301,7 +287,6 @@ describe('getEnhancementMultiplier', () => {
     expect(at15).toBeCloseTo(2.50, 4);
     expect(at20).toBeCloseTo(3.00, 4);
     expect(at30).toBeCloseTo(4.00, 4);
-    // Constant slope 0.10/level across the whole curve.
     expect((at30 - at20) / 10).toBeCloseTo(0.10, 4);
   });
 });
@@ -314,7 +299,6 @@ describe('getUpgradedBaseStat / getEnhancedBaseStats alias', () => {
   });
 
   it('guarantees at least +N per upgrade level (flat floor) for tiny base stats', () => {
-    // base 2, +5 -> multiplied would round to 2*2.01=4; flat floor = 7. Floor wins.
     expect(getUpgradedBaseStat(2, 5)).toBe(7);
   });
 
@@ -380,7 +364,6 @@ describe('getEnhancementRefund', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — slot resolution & class equip ----------------
 
 describe('findBaseItem / getItemSlot / getItemSlotSafe', () => {
   it('findBaseItem locates by id', () => {
@@ -394,9 +377,6 @@ describe('findBaseItem / getItemSlot / getItemSlotSafe', () => {
   });
 
   it('getItemSlotSafe falls back to generated-item info for unknown legacy items', () => {
-    // Generated items follow the pattern `<type>_lvl<N>_<rarity>` and use
-    // itemTemplates.json for slot resolution. Unknown to legacy list, known
-    // to the encoder.
     expect(getItemSlotSafe('iron_sword', allItems)).toBe('mainHand');
     expect(getItemSlotSafe('totally_garbage_id', allItems)).toBeNull();
   });
@@ -513,7 +493,6 @@ describe('canEquip with class restriction', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — slot routing for rings / Rogue daggers -------
 
 describe('getEquipTargetSlot', () => {
   const emptyEq: IEquipment = { ...EMPTY_EQUIPMENT };
@@ -581,7 +560,6 @@ describe('isSlotCompatible', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — class skill bonus ----------------------------
 
 describe('getClassSkillBonus', () => {
   it('Knight scales by sword_fighting level × 0.5', () => {
@@ -624,7 +602,6 @@ describe('getClassSkillBonus', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — getItemType / getItemIcon legacy paths -------
 
 describe('getItemType (legacy id fallback)', () => {
   it('detects sword family by name', () => {
@@ -690,8 +667,6 @@ describe('getItemIcon', () => {
   });
 
   it('returns icon string (emoji or asset URL) for weapon name fallbacks', () => {
-    // getItemImage may return a real PNG URL for known item shapes; we accept either path
-    // but the icon must never be empty or 'package'.
     const swordIcon = getItemIcon('runic_blade', '', []);
     expect(swordIcon.length).toBeGreaterThan(0);
     expect(swordIcon).not.toBe('package');
@@ -709,7 +684,6 @@ describe('getItemIcon', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — formatItemName + constants ------------------
 
 describe('formatItemName', () => {
   it('converts snake_case to Title Case', () => {
@@ -750,7 +724,6 @@ describe('CLASS_* maps and RARITY_BONUS_SLOTS exports', () => {
   it('RARITY_BONUS_SLOTS increases with rarity (with heroic being top at 5)', () => {
     expect(RARITY_BONUS_SLOTS.common).toBe(0);
     expect(RARITY_BONUS_SLOTS.heroic).toBe(5);
-    // strict monotonic from common forward (rare -> epic stays equal, legendary > epic, mythic > legendary)
     expect(RARITY_BONUS_SLOTS.legendary).toBeGreaterThan(RARITY_BONUS_SLOTS.epic);
     expect(RARITY_BONUS_SLOTS.mythic).toBeGreaterThan(RARITY_BONUS_SLOTS.legendary);
     expect(RARITY_BONUS_SLOTS.heroic).toBeGreaterThan(RARITY_BONUS_SLOTS.mythic);
@@ -762,7 +735,6 @@ describe('CLASS_* maps and RARITY_BONUS_SLOTS exports', () => {
   });
 });
 
-// -- Coverage push 2026-05-26 — clearGenInfoCache + getGeneratedItemInfo via getItemSlotSafe -
 
 describe('clearGenInfoCache', () => {
   it('does not throw and can be invoked repeatedly', () => {
@@ -771,7 +743,6 @@ describe('clearGenInfoCache', () => {
   });
 });
 
-// -- Gear-gap penalty (2026-06-20) --------------------------------------------
 
 describe('getGearGapMultiplier', () => {
   it('returns 1 when gear level >= content level (fully geared)', () => {
@@ -784,7 +755,6 @@ describe('getGearGapMultiplier', () => {
   });
 
   it('floors at 0.05 when gear is far below content (gear = content x0.1)', () => {
-    // (10/100)^2 = 0.01 -> clamped up to the 0.05 floor.
     expect(getGearGapMultiplier(10, 100)).toBe(0.05);
   });
 
@@ -795,8 +765,6 @@ describe('getGearGapMultiplier', () => {
 });
 
 describe('getEquippedGearLevel', () => {
-  // Generated item ids follow `<type>_lvl<N>_<rarity>`; getGeneratedItemInfo
-  // parses the level out of the `_lvlN_` segment.
   const genItem = (itemId: string, itemLevel: number): IInventoryItem => ({
     uuid: `u-${itemId}`,
     itemId,
@@ -810,7 +778,6 @@ describe('getEquippedGearLevel', () => {
       mainHand: genItem('sword_lvl10_rare', 10),
       helmet: genItem('heavy_helmet_lvl20_epic', 20),
     };
-    // avg(10, 20) = 15
     expect(getEquippedGearLevel(equipment)).toBe(15);
   });
 
@@ -819,7 +786,6 @@ describe('getEquippedGearLevel', () => {
       mainHand: genItem('sword_lvl10_rare', 10),
       offHand: genItem('shield_lvl11_rare', 11),
     };
-    // avg(10, 11) = 10.5 -> round -> 11
     expect(getEquippedGearLevel(equipment)).toBe(11);
   });
 
@@ -831,11 +797,9 @@ describe('getEquippedGearLevel', () => {
   it('ignores null slots and non-generated (legacy) item ids', () => {
     const equipment: Partial<IEquipment> = {
       mainHand: genItem('sword_lvl30_legendary', 30),
-      // Legacy / starter ids have no parseable _lvlN_ level -> skipped.
       offHand: genItem('iron_sword', 5),
       helmet: null,
     };
-    // Only the generated sword (level 30) contributes.
     expect(getEquippedGearLevel(equipment)).toBe(30);
   });
 });

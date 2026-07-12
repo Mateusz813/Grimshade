@@ -16,14 +16,6 @@ import {
     type IMasteryRarityBonuses,
 } from '../../src/systems/lootSystem';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla lootSystem.ts (podzbiór).
-// Funkcje losujące: podmieniamy Math.random na deterministyczny mulberry32(seed)
-// i zapisujemy seed — backend z tym samym seedem konsumuje RNG w tej samej
-// kolejności → identyczny wynik. generateBonuses/rollLoot (sort-shuffle) i
-// rollSpellChestDrop pominięte (patrz LootSystem.php).
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/lootSystem.golden.test.ts
-//   cp golden/lootSystem.json ../grimshade-backend/tests/Golden/fixtures/
 
 const withSeed = <T>(seed: number, fn: () => T): T => {
     const rng = new Mulberry32(seed);
@@ -44,7 +36,6 @@ const buildGolden = (): Record<string, unknown> => ({
     system: 'lootSystem',
     note: 'Generowane z src/systems/lootSystem.ts (podzbiór). Funkcje RNG: seed + mulberry32. NIE edytuj ręcznie.',
 
-    // Deterministyczne
     scaleHeroicDropRate: [[0.005, 1], [0.005, 100], [0.005, 200], [0.005, 500], [0.005, 1000], [0, 50]]
         .map(([rate, lvl]) => ({ rate, lvl, value: scaleHeroicDropRate(rate, lvl) })),
     getGeneratedSellPrice: (['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'])
@@ -55,7 +46,6 @@ const buildGolden = (): Record<string, unknown> => ({
         { m: HEAVY_MASTERY, value: getEffectiveRarityChances(HEAVY_MASTERY) },
     ],
 
-    // Losujące (seed → mulberry32)
     rollMonsterRarity: SEEDS.flatMap((seed) => [
         { seed, skip: false, mastery: null, value: withSeed(seed, () => rollMonsterRarity(false)) },
         { seed, skip: false, mastery: HEAVY_MASTERY, value: withSeed(seed, () => rollMonsterRarity(false, HEAVY_MASTERY)) },
@@ -88,8 +78,6 @@ describe('lootSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current lootSystem output', () => {
         expect(existsSync(outPath), 'brak golden/lootSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON — usuwa -0 (getEffectiveRarityChances bez mastery),
-        // które i tak serializuje się jako 0 (i tak liczy PHP). Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

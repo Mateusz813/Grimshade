@@ -3,7 +3,7 @@ import type { IBossResult } from '../systems/bossSystem';
 
 interface IDailyAttempts {
   used: number;
-  date: string; // YYYY-MM-DD
+  date: string;
 }
 
 interface IBossStore {

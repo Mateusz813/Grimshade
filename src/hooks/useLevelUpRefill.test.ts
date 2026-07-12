@@ -1,17 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-/**
- * useLevelUpRefill tests
- *
- * On a fresh level-up event in `useLevelUpStore`, the hook fires the
- * caller's `onRefill(maxHp, maxMp)` once with the player's freshly
- * computed effective max — but ONLY while the calling view is `active`.
- * Repeat renders for the same event must NOT re-fire.
- *
- * `getEffectiveChar` is mocked so the test owns the effective max
- * regardless of equipment / training math.
- */
 
 vi.mock('../systems/combatEngine', () => ({
     getEffectiveChar: vi.fn((c) => c),
@@ -114,16 +103,12 @@ describe('useLevelUpRefill', () => {
         useLevelUpStore.setState({ event: makeEvent({ newLevel: 6 }) });
         const { rerender } = renderHook(() => useLevelUpRefill(true, cb));
         expect(cb).toHaveBeenCalledTimes(1);
-        // Replace the event reference — hook keys off identity, not value.
         useLevelUpStore.setState({ event: makeEvent({ newLevel: 7 }) });
         rerender();
         expect(cb).toHaveBeenCalledTimes(2);
     });
 
     it('fires once when active flips from false -> true with a pending event', () => {
-        // Active=false skips the effect; flipping to true with the SAME
-        // event reference still fires once (the previous render didn't
-        // mark it handled).
         const cb = vi.fn();
         useLevelUpStore.setState({ event: makeEvent() });
         const { rerender } = renderHook(

@@ -8,12 +8,6 @@
   color: $color-text;
   padding-bottom: $spacing-xl;
 
-  // While the combat phase is mounted (`dungeon__panel--combat` exists
-  // somewhere in the subtree) collapse the root spacing so the combat UI
-  // fills the visible viewport instead of overflowing it. Hunting's
-  // `.combat` wrapper uses `min-height: 100%` for the same reason — this
-  // brings dungeon to parity so the player never sees a vertical scroll
-  // bar during a fight.
   &:has(.dungeon__panel--combat) {
     min-height: 100%;
     padding-bottom: 0;
@@ -25,7 +19,6 @@
     color: $color-text-muted;
   }
 
-  // -- Panel ------------------------------------------------------------------
   &__panel {
     padding: $spacing-md;
     display: flex;
@@ -33,33 +26,16 @@
     gap: $spacing-md;
   }
 
-  // Combat panel — used during the in-fight 'running' phase. We zero
-  // every bit of padding so the unified <CombatTopControls> chip strip
-  // touches the underside of the fixed TopHeader (no visual gap), and
-  // the arena fits inside the visible viewport without forcing a scroll.
-  // The hunting (Combat) view doesn't add any wrapper padding either —
-  // this brings dungeon parity so both feel identically "fitted".
   &__panel--combat {
     padding: 0;
     gap: 0;
   }
 
-  // Result/summary screen — vertically centred in the *visible* viewport
-  // (top header 50px + bottom nav ≈ 64px subtracted from 100dvh) so the
-  // celebration card floats in the middle of the screen instead of being
-  // pinned to the top with empty dark space below. `min-height` is the
-  // gate: if the card is taller than the available room (small phone
-  // landscape, lots of drops), `justify-content` becomes a no-op and the
-  // card grows naturally without clipping.
   &__panel--centered {
     min-height: calc(100dvh - 114px);
     justify-content: center;
   }
 
-  // Ultrawide layout: two 1100px cards fit comfortably side-by-side. We
-  // switch the panel to a wrapping row and force every NON-card child
-  // (filter strip, empty state, arena view, result screen) to span the
-  // full width via `flex-basis: 100%` so only `&__card` siblings pair up.
   @media (min-width: 2300px) {
     &__panel {
       flex-direction: row;
@@ -73,11 +49,6 @@
     }
   }
 
-  // -- Hub filter bar ---------------------------------------------------------
-  // Mirrors the Hunt-Hub filter strip exactly: three pill toggles + a numeric
-  // "Lvl od" input + an optional Wyczyść button (only shows when ≥1 filter is
-  // active). Wraps freely on small phones. Per-character persistence happens
-  // in settingsStore via characterScope.
   &__hub-filters {
     display: flex;
     flex-direction: column;
@@ -119,8 +90,6 @@
     transition: all $transition-fast;
     user-select: none;
 
-    // The native checkbox stays in the DOM for a11y / form semantics but the
-    // visual cue is `--active` on the label itself.
     input[type='checkbox'] {
       height: 0;
       margin: 0;
@@ -211,23 +180,12 @@
     border-radius: $radius-md;
   }
 
-  // -- Dungeon card -----------------------------------------------------------
-  // Per spec: background is JUST the per-dungeon art — no hue tint, no
-  // darkening overlay underneath. The colored left border (border-left in
-  // hue) and the ::before shimmer animation stay; both render *over* the
-  // image on their own z-layer so the picture reads clean. The fallback
-  // background-color shows only when the art is missing (--card-image
-  // resolves to `none`).
   &__card {
     --h: var(--card-hue, 220);
     --card-image: none;
     position: relative;
     overflow: hidden;
     min-height: 240px;
-    // Per spec: a single tile never grows past 1100px wide. Below the
-    // ultrawide breakpoint (see media block at the bottom) the parent
-    // `__panel` is a flex column so cards stack and centre via
-    // `align-self`. Above it, cards pack two-up.
     width: 100%;
     max-width: 1100px;
     align-self: center;
@@ -248,7 +206,6 @@
                 0 0 1px hsla(var(--h), 60%, 50%, 0.3),
                 inset 0 1px 0 hsla(var(--h), 50%, 60%, 0.1);
 
-    // Animated shimmer overlay
     &::before {
       content: '';
       position: absolute;
@@ -267,7 +224,6 @@
       z-index: 0;
     }
 
-    // Top glow accent line
     &::after {
       content: '';
       position: absolute;
@@ -297,9 +253,6 @@
 
     &--blocked { opacity: 0.6; }
 
-    // "All daily attempts used" — image stays clean (no green tint), state
-    // is signalled with a green border + reduced opacity so the card visibly
-    // recedes without obscuring the art.
     &--all-done {
       border-color: rgba(76, 175, 80, 0.5);
       border-left-color: rgba(76, 175, 80, 0.75);
@@ -315,8 +268,6 @@
     80% { left: 200%; opacity: 0; }
   }
 
-  // -- Corner badges ----------------------------------------------------------
-  // Pinned absolute so the centred head can claim the full card width.
   &__corner {
     position: absolute;
     top: 8px;
@@ -336,11 +287,6 @@
     &--lvl   { left: 8px; }
     &--waves { right: 8px; }
 
-    // "Pokonany" — sits between the lvl & waves pills, signalling that the
-    // current character has cleared this dungeon at least once. Driven by
-    // `clearedDungeonIds` (with legacy backfill from `dailyAttempts`).
-    // Bumped one size class above the metadata pills + saturated green +
-    // outer glow so it reads as a status, not as another corner chip.
     &--cleared {
       left: 50%;
       transform: translateX(-50%);
@@ -357,7 +303,6 @@
     }
   }
 
-  // -- Centered head (icon, name, description) --------------------------------
   &__card-head {
     display: flex;
     flex-direction: column;
@@ -365,7 +310,7 @@
     gap: $spacing-xs;
     text-align: center;
     max-width: 400px;
-    margin: 28px auto 0; // top inset clears the corner badges
+    margin: 28px auto 0;
     padding: 0 $spacing-sm;
   }
 
@@ -391,9 +336,6 @@
     line-height: 1.4;
   }
 
-  // -- Reward summary (gold / XP only — level + waves live in corners) -------
-  // Per spec: no separator borders — the row sits cleanly on the dungeon
-  // art with just typographic weight and the colored gold/XP glyphs.
   &__card-rewards {
     display: flex;
     justify-content: center;
@@ -413,7 +355,6 @@
     color: $color-text-muted;
   }
 
-  // -- Drop table toggle & content ---------------------------------------------
   &__drop-toggle {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid $color-border;
@@ -430,11 +371,6 @@
     &--open { border-color: $color-accent; color: $color-text; }
   }
 
-  // -- Drop popup trigger (replaces inline expansion) ------------------------
-  // Unobtrusive ghost button — the focal point of the card is the wide
-  // "Wejdź" CTA below it, so the drop trigger keeps a low-key look. Capped
-  // at 200px wide and centred via `align-self: center` so it matches the
-  // sibling "Wejdź" CTA's footprint.
   &__drop-btn {
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid hsla(var(--h, 220), 40%, 50%, 0.3);
@@ -457,7 +393,6 @@
     }
   }
 
-  // -- Drop-table modal (popup) -----------------------------------------------
   &__modal-backdrop {
     position: fixed;
     inset: 0;
@@ -656,10 +591,6 @@
     transition: background $transition-fast;
     &:hover { background: $color-accent-hover; }
 
-    // Wide variant — bottom-of-card CTA. Per spec: hollow look (transparent
-    // fill + 2px hue-coloured border) capped at 200px wide and centred so
-    // it visually pairs with the matching `__drop-btn` above it instead of
-    // stretching across the whole tile.
     &--wide {
       width: 100%;
       max-width: 200px;
@@ -683,7 +614,6 @@
     }
   }
 
-  // -- Combat toggle buttons (skill mode, auto-potion) ------------------------
   &__combat-toggles {
     display: flex;
     gap: 6px;
@@ -747,7 +677,6 @@
     }
   }
 
-  // -- Speed button ------------------------------------------------------------
   &__speed-btn {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -765,20 +694,17 @@
     &--SKIP { color: #f44336; background: rgba(#f44336, 0.1); }
   }
 
-  // -- Arena (real combat view) ----------------------------------------------
   &__arena {
     display: flex;
     flex-direction: column;
     gap: $spacing-sm;
 
-    // Side-by-side layout on wider screens: monster LEFT, player RIGHT
     @media (min-width: 1024px) {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: $spacing-md;
       align-items: start;
 
-      // Everything except the two combat cards spans full width
       > *:not(.dungeon__combat-card--monster):not(.dungeon__combat-card--player) {
         grid-column: 1 / -1;
       }
@@ -907,7 +833,6 @@
     font-weight: 600;
   }
 
-  // -- HP bars (combat-style) -------------------------------------------------
   &__combat-bar {
     flex: 1;
     height: 12px;
@@ -927,7 +852,6 @@
   &__combat-bar--mp .dungeon__combat-bar-fill { background: linear-gradient(90deg, #1565c0, #42a5f5); }
   &__combat-bar--enemy .dungeon__combat-bar-fill { background: linear-gradient(90deg, #b71c1c, #ff5252); }
 
-  // -- Floating damage numbers ------------------------------------------------
   &__floating-dmg {
     position: absolute;
     top: 50%;
@@ -944,7 +868,6 @@
     &--crit { color: #ff9100; font-size: 26px; }
   }
 
-  // -- Skill slots ----------------------------------------------------------
   &__skill-slots {
     display: flex;
     gap: 4px;
@@ -1019,7 +942,6 @@
     z-index: 1;
   }
 
-  // -- Potions --------------------------------------------------------------
   &__potions {
     display: flex;
     gap: 6px;
@@ -1081,7 +1003,6 @@
     opacity: 0.7;
   }
 
-  // -- Flee button ------------------------------------------------------------
   &__flee-btn {
     background: rgba(#f44336, 0.1);
     border: 1px solid rgba(#f44336, 0.3);
@@ -1096,7 +1017,6 @@
     &:hover { background: rgba(#f44336, 0.2); }
   }
 
-  // -- Combat log -------------------------------------------------------------
   &__combat-log {
     background: $color-bg-card;
     border: 1px solid $color-border;
@@ -1137,11 +1057,6 @@
     80% { transform: translateX(2px); }
   }
 
-  // -- Result -----------------------------------------------------------------
-  // Mirrors the dungeon-card chrome — uses the per-dungeon background art
-  // (driven by `--card-image` set on the wrapper). Reward rows / banner
-  // sit on top with their own backgrounds so the picture doesn't fight
-  // text legibility.
   &__result {
     --h: var(--card-hue, 220);
     --card-image: none;
@@ -1149,10 +1064,6 @@
     overflow: hidden;
     background-color: $color-bg-card;
     background-image: var(--card-image);
-    // `contain` keeps the dungeon art whole (no edge crop) and `repeat`
-    // tiles it across whatever extra space the result card takes when the
-    // drops list grows. Centred so the focal point of the picture lands
-    // under the victory banner on the most common card size.
     background-size: contain;
     background-position: center;
     background-repeat: repeat;
@@ -1181,11 +1092,6 @@
   &__result--loss .dungeon__result-title { color: $color-accent; }
   &__result-dungeon { font-size: $font-md; color: $color-text-muted; }
 
-  // -- Victory banner --------------------------------------------------------
-  // Per spec: transparent fill so the dungeon art behind shows through,
-  // borders dropped, only the diagonal shimmer (::before) and the text
-  // shadows on the inner labels stay. Reads as a "ribbon of light"
-  // sweeping over the dungeon image rather than a coloured plaque.
   &__victory-banner {
     position: relative;
     overflow: hidden;
@@ -1333,11 +1239,6 @@
     transition: border-color $transition-fast;
     &:hover { border-color: $color-accent; }
 
-    // "Odbierz" claim CTA on the result screen — the celebratory beat
-    // after a dungeon win. Bold green gradient (mirrors the retry-btn
-    // palette) so the eye lands on it as the main next action. Width
-    // capped to match the other in-card CTAs (`__enter-btn--wide`,
-    // `__drop-btn`) for visual continuity.
     &--claim {
       width: 100%;
       max-width: 240px;
@@ -1364,9 +1265,6 @@
       &:active { transform: translateY(0); }
     }
 
-    // Spec 4 (2026-05): "Walcz ponownie" CTA shown next to the green
-    // claim on a winning result screen — same chrome as `--claim` but
-    // tinted blue so the two reads as paired actions, not a duplicate.
     &--again {
       width: 100%;
       max-width: 240px;
@@ -1393,12 +1291,6 @@
       &:active { transform: translateY(0); }
     }
 
-    // "Uciekaj" / "Wróć" CTA on the result screen — the defeat / flee
-    // beats. Bold red gradient (mirrors the danger palette used on the
-    // in-fight Exit chip) so the eye reads "this was a loss" instead of
-    // mistaking the panel for a celebratory win screen with a green
-    // claim button. Same width / typography as `--claim` so the two
-    // CTAs feel like siblings, only the colour scheme differs.
     &--retreat {
       width: 100%;
       max-width: 240px;
@@ -1426,25 +1318,10 @@
     }
   }
 
-  // -- Cinematic entry overlay (2.0s) -----------------------------------------
-  // Three-layer cinematic that plays when the player taps "Wejdź" on a
-  // dungeon card. Layer A is the dungeon image morphing from the card to
-  // fullscreen. Layer B is a black panel that fades in over the image, holds,
-  // then fades back out to reveal the combat HUD that mounted underneath at
-  // ~2.4s in. Layer C is a small "click to skip" affordance. The wrapper is
-  // the click target and takes pointer events so the whole viewport is the
-  // skip surface.
-  //
-  // Z-index ladder inside this block:
-  //   wrapper     — 9000 (above TopHeader at ~1000 and spawn-bar at ~1290)
-  //   image       —    1
-  //   darkness    —    2 (covers the image when at peak opacity)
-  //   skip-hint   —    3 (legible against full-black mid-animation)
   &__enter-overlay {
     position: fixed;
     inset: 0;
     z-index: 9000;
-    // Wrapper itself is invisible — it's just the geometry + click target.
     background: transparent;
     cursor: pointer;
     overflow: hidden;
@@ -1466,9 +1343,6 @@
                 0 0 120px hsla(var(--h), 60%, 50%, 0.35);
     overflow: hidden;
 
-    // Class-tinted vignette over the image — keeps the morph from looking
-    // like a flat scaled JPEG and instead reads as "we're falling into a
-    // location with mood lighting".
     &::after {
       content: '';
       position: absolute;
@@ -1493,8 +1367,6 @@
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    // Pure black — opacity is driven by Framer Motion. Sits above the image
-    // so when it hits opacity 1 the entire viewport reads as fully black.
     background: #000;
   }
 
@@ -1547,5 +1419,4 @@
   }
 }
 
-// -- Class-specific attack animations for dungeon combat ----------------------
 @include class-attack-animations('dungeon__combat-card');

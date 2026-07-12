@@ -1,18 +1,3 @@
-/**
- * Tests for partyApi — multiplayer party CRUD with schema-tolerant fallbacks.
- *
- * partyApi is the most complex API in the project — it has to cope with
- * THREE possible schema states:
- *   1. Fully migrated (description / password / is_public / min_join_level columns + RLS).
- *   2. Partially migrated (some columns missing -> schema-missing errors).
- *   3. Pre-migration (no extended columns, RLS may block).
- *
- * We mock the underlying axios instance + supabase here so we can:
- * - Assert URL/payload shape for the happy path (extended schema).
- * - Simulate PGRST204 / 400 / 401 errors and verify the fallback branches.
- * - Verify the `insertMemberWithRetry` strips missing columns and retries.
- * - Verify free helpers (extractApiError, PartyMigrationMissingError).
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AxiosError } from 'axios';
@@ -34,7 +19,6 @@ import {
     PartyMigrationMissingError,
 } from './partyApi';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 const mkRes = <T>(data: T) => ({ data });
 
@@ -45,14 +29,11 @@ beforeEach(() => {
 const makeAxiosError = (status: number, data?: unknown, config?: { url?: string }): AxiosError => {
     const err = new AxiosError('Request failed');
     err.isAxiosError = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     err.response = { status, data, statusText: '', headers: {}, config: {} as any };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     err.config = (config ?? {}) as any;
     return err;
 };
 
-// -- extractApiError ------------------------------------------------------
 
 describe('extractApiError', () => {
     it('returns the message field from PostgREST JSON', () => {
@@ -79,7 +60,6 @@ describe('extractApiError', () => {
     });
 });
 
-// -- PartyMigrationMissingError --------------------------------------------
 
 describe('PartyMigrationMissingError', () => {
     it('produces the schema-missing prefix', () => {
@@ -100,7 +80,6 @@ describe('PartyMigrationMissingError', () => {
     });
 });
 
-// -- listPublicParties -----------------------------------------------------
 
 describe('partyApi.listPublicParties', () => {
     it('queries with the full schema first and returns sanitized parties', async () => {
@@ -126,7 +105,6 @@ describe('partyApi.listPublicParties', () => {
         expect(url).toContain('/rest/v1/parties');
         expect(url).toContain('select=');
         expect(url).toContain('party_members(');
-        // Password stripped from output.
         expect(result[0]).not.toHaveProperty('password');
         expect(result[0].has_password).toBe(false);
         expect(result[0].members).toHaveLength(1);
@@ -166,7 +144,6 @@ describe('partyApi.listPublicParties', () => {
     });
 });
 
-// -- getPartyWithMembers ---------------------------------------------------
 
 describe('partyApi.getPartyWithMembers', () => {
     it('returns sanitized party with members', async () => {
@@ -205,12 +182,9 @@ describe('partyApi.getPartyWithMembers', () => {
     });
 });
 
-// -- getMyActiveParty ------------------------------------------------------
 
 describe('partyApi.getMyActiveParty', () => {
     it('resolves the membership lookup to the full party row', async () => {
-        // First GET: membership lookup.
-        // Second GET: full party.
         mockApi.get
             .mockResolvedValueOnce(mkRes([{ party_id: 'p1' }]))
             .mockResolvedValueOnce(mkRes([{
@@ -236,7 +210,6 @@ describe('partyApi.getMyActiveParty', () => {
     });
 });
 
-// -- deleteMyStaleMemberships ---------------------------------------------
 
 describe('partyApi.deleteMyStaleMemberships', () => {
     it('issues DELETE on party_members filtered by character_id', async () => {
@@ -252,18 +225,13 @@ describe('partyApi.deleteMyStaleMemberships', () => {
     });
 });
 
-// -- createParty ------------------------------------------------------------
 
 describe('partyApi.createParty', () => {
     it('inserts party + leader member then fetches the full row', async () => {
-        // 1) party insert succeeds.
         mockApi.post
             .mockResolvedValueOnce(mkRes([{ id: 'p1', leader_id: 'c1', name: 'X', description: '', max_members: 4, is_public: true, password: null, created_at: '2026' }]))
-            // 2) member insert succeeds.
             .mockResolvedValueOnce(mkRes([]));
-        // 3) cleanup delete for stale memberships.
         mockApi.delete.mockResolvedValueOnce(mkRes(undefined));
-        // 4) getPartyWithMembers re-fetch.
         mockApi.get.mockResolvedValueOnce(mkRes([{
             id: 'p1', leader_id: 'c1', name: 'X', description: '', max_members: 4, is_public: true, password: null, created_at: '2026',
             party_members: [{ id: 'm1', party_id: 'p1', character_id: 'c1', character_name: 'Alice', character_class: 'Knight', character_level: 10, joined_at: '2026' }],
@@ -275,7 +243,7 @@ describe('partyApi.createParty', () => {
             description: 'Hi',
             password: null,
             isPublic: true,
-            partyId: '', // ignored by createParty — it generates its own id
+            partyId: '',
             characterId: 'c1',
             characterName: 'Alice',
             characterClass: 'Knight',
@@ -283,7 +251,6 @@ describe('partyApi.createParty', () => {
         });
 
         expect(result?.id).toBe('p1');
-        // First post: party row, with the extended fields.
         const [partyUrl, partyBody] = mockApi.post.mock.calls[0];
         expect(partyUrl).toBe('/rest/v1/parties');
         expect(partyBody).toMatchObject({
@@ -293,7 +260,6 @@ describe('partyApi.createParty', () => {
             is_public: true,
             max_members: 4,
         });
-        // Second post: member row.
         const [memberUrl, memberBody] = mockApi.post.mock.calls[1];
         expect(memberUrl).toBe('/rest/v1/party_members');
         expect(memberBody).toMatchObject({
@@ -406,7 +372,6 @@ describe('partyApi.createParty', () => {
     });
 
     it('throws a friendly migration error on RLS permission denied for parties insert', async () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rlsErr = makeAxiosError(403, { code: '42501', message: 'permission denied for table parties' });
         mockApi.post.mockRejectedValueOnce(rlsErr);
         await expect(partyApi.createParty({
@@ -428,13 +393,11 @@ describe('partyApi.createParty', () => {
 
     it('throws a friendly migration error on RLS denial for member insert', async () => {
         mockApi.post
-            // party insert OK
             .mockResolvedValueOnce(mkRes([{ id: 'p1', leader_id: 'c1', name: 'X', description: '', max_members: 4, is_public: true, password: null, created_at: '2026' }]))
-            // member insert fails with RLS
             .mockRejectedValueOnce(makeAxiosError(403, { code: '42501', message: 'new row violates row-level security' }));
         mockApi.delete
-            .mockResolvedValueOnce(mkRes(undefined)) // stale cleanup
-            .mockResolvedValueOnce(mkRes(undefined)); // best-effort rollback
+            .mockResolvedValueOnce(mkRes(undefined))
+            .mockResolvedValueOnce(mkRes(undefined));
         const consoleErr = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         await expect(partyApi.createParty({
@@ -447,14 +410,11 @@ describe('partyApi.createParty', () => {
 
     it('retries member insert dropping columns when PGRST204 fires', async () => {
         mockApi.post
-            // party insert OK
             .mockResolvedValueOnce(mkRes([{ id: 'p1', leader_id: 'c1', name: 'X', description: '', max_members: 4, is_public: true, password: null, created_at: '2026' }]))
-            // first member insert fails: missing 'character_class' column
             .mockRejectedValueOnce(makeAxiosError(400, {
                 code: 'PGRST204',
                 message: "Could not find the 'character_class' column of 'party_members' in the schema cache",
             }))
-            // retry succeeds
             .mockResolvedValueOnce(mkRes([]));
         mockApi.delete.mockResolvedValueOnce(mkRes(undefined));
         mockApi.get.mockResolvedValueOnce(mkRes([{
@@ -469,7 +429,6 @@ describe('partyApi.createParty', () => {
             characterId: 'c1', characterName: 'A', characterClass: 'Knight', characterLevel: 1,
         });
         expect(result?.id).toBe('p1');
-        // Retry payload should not have character_class.
         const retryBody = mockApi.post.mock.calls[2][1];
         expect(retryBody).not.toHaveProperty('character_class');
         expect(retryBody.character_id).toBe('c1');
@@ -477,14 +436,12 @@ describe('partyApi.createParty', () => {
     });
 });
 
-// -- joinParty -------------------------------------------------------------
 
 describe('partyApi.joinParty', () => {
     const baseInput = {
         partyId: 'p1',
         characterId: 'c2',
         characterName: 'Bob',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         characterClass: 'Mage' as any,
         characterLevel: 10,
     };
@@ -515,12 +472,10 @@ describe('partyApi.joinParty', () => {
     });
 
     it('returns full error when party is at capacity', async () => {
-        // First GET: party detail (no password gate).
         mockApi.get.mockResolvedValueOnce(mkRes([{
             id: 'p1', leader_id: 'c1', name: 'X', description: '',
             max_members: 2, is_public: true, password: null, created_at: '2026',
         }]));
-        // Second GET: full party with members (already at capacity).
         mockApi.get.mockResolvedValueOnce(mkRes([{
             id: 'p1', leader_id: 'c1', name: 'X', description: '',
             max_members: 2, is_public: true, password: null, created_at: '2026',
@@ -554,15 +509,12 @@ describe('partyApi.joinParty', () => {
             id: 'p1', leader_id: 'c1', name: 'X', description: '',
             max_members: 4, is_public: true, password: null, created_at: '2026',
         }]));
-        // existing.members empty
         mockApi.get.mockResolvedValueOnce(mkRes([{
             id: 'p1', leader_id: 'c1', name: 'X', description: '',
             max_members: 4, is_public: true, password: null, created_at: '2026',
             party_members: [],
         }]));
-        // insertMemberWithRetry -> post
         mockApi.post.mockResolvedValueOnce(mkRes([]));
-        // final getPartyWithMembers
         mockApi.get.mockResolvedValueOnce(mkRes([{
             id: 'p1', leader_id: 'c1', name: 'X', description: '',
             max_members: 4, is_public: true, password: null, created_at: '2026',
@@ -573,7 +525,6 @@ describe('partyApi.joinParty', () => {
 
         const result = await partyApi.joinParty({ ...baseInput });
         expect((result as { id?: string }).id).toBe('p1');
-        // Insert payload check.
         const insertBody = mockApi.post.mock.calls[0][1];
         expect(insertBody).toMatchObject({
             party_id: 'p1',
@@ -585,7 +536,6 @@ describe('partyApi.joinParty', () => {
     });
 });
 
-// -- leaveParty ------------------------------------------------------------
 
 describe('partyApi.leaveParty', () => {
     it('returns early when party not found', async () => {
@@ -632,7 +582,6 @@ describe('partyApi.leaveParty', () => {
                 { id: 'm-me', party_id: 'p1', character_id: 'c-me', character_name: 'M', character_class: 'Mage', character_level: 1, joined_at: '2026' },
             ],
         }]));
-        // member delete + cascade party delete
         mockApi.delete.mockResolvedValueOnce(mkRes(undefined)).mockResolvedValueOnce(mkRes(undefined));
 
         await partyApi.leaveParty('p1', 'c-me');
@@ -642,7 +591,6 @@ describe('partyApi.leaveParty', () => {
     });
 });
 
-// -- kickMember ------------------------------------------------------------
 
 describe('partyApi.kickMember', () => {
     it('deletes by row id + party id', async () => {
@@ -654,7 +602,6 @@ describe('partyApi.kickMember', () => {
     });
 });
 
-// -- transferLeadership ----------------------------------------------------
 
 describe('partyApi.transferLeadership', () => {
     it('patches parties.leader_id', async () => {
@@ -671,7 +618,6 @@ describe('partyApi.transferLeadership', () => {
     });
 });
 
-// -- updatePartyMeta -------------------------------------------------------
 
 describe('partyApi.updatePartyMeta', () => {
     it('patches the parties row with the partial', async () => {
@@ -690,8 +636,3 @@ describe('partyApi.updatePartyMeta', () => {
     });
 });
 
-// TODO: subscribeParty / subscribePublicFeed install supabase realtime
-// channels — partially exercised by chatApi.test.ts which uses the same
-// `supabase.channel().on(...).subscribe()` pattern. Direct coverage
-// would require asserting the cleanup function calls supabase.removeChannel,
-// which is mechanically identical to the assertions in chatApi.test.ts.

@@ -1,26 +1,3 @@
-/**
- * Integration: full death penalty fan-out across multiple stores.
- *
- * Death isn't one mutation, it's a SIX-store cascade:
- *   1. deathsApi.logDeath  — network audit row (mocked).
- *   2. characterStore       — level + XP rollback, highest_level preserved.
- *   3. characterStore.fullHealEffective — HP/MP refilled to effective max.
- *   4. skillStore.applyDeathPenalty — 50% banked-XP shave on every trained
- *      skill.
- *   5. skillStore.purgeLockedSkillSlots — un-slot any spell whose unlock
- *      level now exceeds the lower post-penalty level.
- *   6. inventoryStore.applyDeathItemLoss — random 5% item loss (off in our
- *      tests because we pass protectedByAol=false but inspect the count
- *      indirectly).
- *   7. combatStore.clearCombatSession — wipe session XP / gold / drops.
- *   8. deathStore.triggerDeath — overlay event populated for UI.
- *
- * This file ties them all together using `applyCombatLeaveDeath`, which
- * is the shared helper invoked by every "leave mid-combat" code path
- * (URL change, tab close, back button, DC). The unit tests cover each
- * piece in isolation; here we verify the WHOLE cascade fires in one
- * call.
- */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { applyCombatLeaveDeath } from '../../src/systems/combatLeavePenalty';
@@ -32,7 +9,6 @@ import { useCombatStore } from '../../src/stores/combatStore';
 import { deathsApi } from '../../src/api/v1/deathsApi';
 import { EMPTY_EQUIPMENT, buildItem } from '../../src/systems/itemSystem';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-death-1',
@@ -83,8 +59,6 @@ let logDeathSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
     resetAll();
-    // happy-dom has fetch globally; stub it so the keepalive PATCH
-    // doesn't try to talk to a real Supabase REST endpoint.
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
     logDeathSpy = vi.spyOn(deathsApi, 'logDeath').mockResolvedValue(null);
 });
@@ -94,7 +68,6 @@ afterEach(() => {
     logDeathSpy.mockRestore();
 });
 
-// -- Tests --------------------------------------------------------------------
 
 describe('death penalty cascade: character level + XP', () => {
     it('strips max(0.20, level/100) = 1 level at lvl 100', () => {
@@ -102,8 +75,8 @@ describe('death penalty cascade: character level + XP', () => {
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'Boss', sourceLevel: 100 });
 
         const ch = useCharacterStore.getState().character!;
-        expect(ch.level).toBe(99);  // 100 - 1.0 level (continuous)
-        expect(ch.xp).toBe(4925);   // XP reduced by 1 level's worth, lands in lvl 99
+        expect(ch.level).toBe(99);
+        expect(ch.xp).toBe(4925);
     });
 
     it('preserves highest_level when it exceeds the post-penalty level', () => {
@@ -121,7 +94,6 @@ describe('death penalty cascade: character level + XP', () => {
         }));
         applyCombatLeaveDeath({ source: 'monster', sourceName: 'X', sourceLevel: 100 });
         const ch = useCharacterStore.getState().character!;
-        // No equipment, no buffs -> effective max == base max.
         expect(ch.hp).toBe(500);
         expect(ch.mp).toBe(100);
     });
@@ -130,7 +102,6 @@ describe('death penalty cascade: character level + XP', () => {
 describe('death penalty cascade: skill XP loss across every trained skill', () => {
     it('shaves 25% of banked XP from every trained skill', () => {
         useCharacterStore.getState().setCharacter(makeChar({ level: 100 }));
-        // Seed three skills with non-zero levels.
         useSkillStore.setState({
             skillLevels: { sword_fighting: 20, magic_level: 10, shielding: 8 },
             skillXp: { sword_fighting: 0, magic_level: 0, shielding: 0 },
@@ -143,29 +114,16 @@ describe('death penalty cascade: skill XP loss across every trained skill', () =
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'X', sourceLevel: 100 });
 
         const sk = useSkillStore.getState();
-        // 25% banked-XP loss reduces every trained skill's level.
-        // Exact value depends on skill XP curve, but it MUST drop
-        // strictly below the original (20→18, 10→9, 8→7).
         expect(sk.skillLevels.sword_fighting).toBeLessThan(20);
         expect(sk.skillLevels.magic_level).toBeLessThan(10);
         expect(sk.skillLevels.shielding).toBeLessThan(8);
-        // None should be wiped to zero either — most of the bank still
-        // leaves a meaningful level.
         expect(sk.skillLevels.sword_fighting).toBeGreaterThan(0);
     });
 
     it('purges locked active-skill slots when their unlock level exceeds post-penalty level', () => {
         useCharacterStore.getState().setCharacter(makeChar({ level: 100, xp: 0 }));
-        // Pretend the player has `shield_bash` (Knight, unlockLevel 1)
-        // slotted alongside a hypothetical lvl-99 spell. After death the
-        // post-penalty level = 98, so the lvl-99 spell MUST be purged
-        // from the active slot. shield_bash stays — its unlock is 1.
         useSkillStore.setState({
             skillLevels: {}, skillXp: {},
-            // shield_bash at slot 0, a fake high-unlock skill at slot 1.
-            // `purgeLockedSkillSlots` walks `skillsData.activeSkills[class]`
-            // for the unlockLevel lookup. Picking an existing skill id
-            // for slot 0 ensures it doesn't get cleared.
             activeSkillSlots: ['shield_bash', 'iron_defense', null, null] as [string | null, string | null, string | null, string | null],
             skillUpgradeLevels: {}, unlockedSkills: { shield_bash: true, iron_defense: true },
             offlineTrainingSkillId: null, trainingSegmentStartedAt: null,
@@ -175,13 +133,7 @@ describe('death penalty cascade: skill XP loss across every trained skill', () =
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'X', sourceLevel: 100 });
 
         const slots = useSkillStore.getState().activeSkillSlots;
-        // shield_bash (unlock 1) survives — well below 98.
         expect(slots[0]).toBe('shield_bash');
-        // TODO: verify behavior — `iron_defense` is in Knight's class list
-        // with unlockLevel 90 in current data. After lvl drops to 98 it
-        // stays unlocked, so this assertion only confirms the helper ran.
-        // If skills.json gets reshuffled and iron_defense moves past 98,
-        // this slot will end up null and the assertion below will trip.
         expect(slots[1] === 'iron_defense' || slots[1] === null).toBe(true);
     });
 });
@@ -227,7 +179,6 @@ describe('death penalty cascade: combat session + death overlay', () => {
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'B', sourceLevel: 100 });
         expect(logDeathSpy).toHaveBeenCalledTimes(1);
         const payload = logDeathSpy.mock.calls[0][0];
-        // Recorded level is the pre-penalty value, NOT 98.
         expect(payload.character_level).toBe(100);
         expect(payload.result).toBe('fled');
     });
@@ -236,8 +187,6 @@ describe('death penalty cascade: combat session + death overlay', () => {
 describe('death penalty cascade: inventory item loss runs but is bounded', () => {
     it('triggers applyDeathItemLoss without protection (protectedByAol=false)', () => {
         useCharacterStore.getState().setCharacter(makeChar({ level: 100 }));
-        // Seed 20 items so the 5% loss formula = 1 item lost (floor min 1).
-        // Item generation uses a UUID per call so dedup is automatic.
         const items = Array.from({ length: 20 }, (_, i) =>
             buildItem({
                 itemId: `sword_lvl1_common_${i}`,
@@ -255,8 +204,6 @@ describe('death penalty cascade: inventory item loss runs but is bounded', () =>
         applyCombatLeaveDeath({ source: 'boss', sourceName: 'X', sourceLevel: 100 });
 
         const after = useInventoryStore.getState().bag.length;
-        // 5% of 20 = 1 item lost (minimum guaranteed). Cap: total bag drops
-        // by exactly the floor of 5% of pool when no equipment was held.
         expect(after).toBe(19);
     });
 
@@ -301,9 +248,7 @@ describe('death penalty cascade: level-1 corner case (no level to strip)', () =>
 
         const ch = useCharacterStore.getState().character!;
         expect(ch.level).toBe(1);
-        // New spec: ~20% of a level is taken; 50 XP is below that and clamps to 0.
         expect(ch.xp).toBe(0);
-        // Skill XP loss still hits even at level 1 — 50% of banked XP shaved.
         expect(useSkillStore.getState().skillLevels.sword_fighting).toBeLessThan(5);
     });
 });

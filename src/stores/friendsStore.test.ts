@@ -1,15 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFriendsStore } from './friendsStore';
 
-// -- Reset helper -------------------------------------------------------------
-// friendsStore is a plain Zustand store (no persist, no api) — set lists back
-// to empty before each test so state from prior tests can't leak.
 
 beforeEach(() => {
     useFriendsStore.setState({ friends: [], favorites: [], blocked: [] });
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('friendsStore — initial state', () => {
     it('starts with empty friends, favorites and blocked lists', () => {
@@ -20,7 +16,6 @@ describe('friendsStore — initial state', () => {
     });
 });
 
-// -- addFriend ----------------------------------------------------------------
 
 describe('addFriend', () => {
     it('appends a friend to the friends list', () => {
@@ -54,7 +49,6 @@ describe('addFriend', () => {
     });
 });
 
-// -- removeFriend -------------------------------------------------------------
 
 describe('removeFriend', () => {
     it('removes a friend from the list', () => {
@@ -84,7 +78,6 @@ describe('removeFriend', () => {
     });
 });
 
-// -- toggleFavorite -----------------------------------------------------------
 
 describe('toggleFavorite', () => {
     it('adds a friend to favorites when not yet favorited', () => {
@@ -111,7 +104,6 @@ describe('toggleFavorite', () => {
     });
 });
 
-// -- blockUser ----------------------------------------------------------------
 
 describe('blockUser', () => {
     it('adds a user to the blocked list', () => {
@@ -146,7 +138,6 @@ describe('blockUser', () => {
     });
 });
 
-// -- unblockUser --------------------------------------------------------------
 
 describe('unblockUser', () => {
     it('removes the name from the blocked list', () => {
@@ -156,7 +147,6 @@ describe('unblockUser', () => {
     });
 
     it('preserves the friend list per spec (no auto-add or auto-remove)', () => {
-        // Stranger unblocked -> does NOT enter friends
         useFriendsStore.setState({ blocked: ['Stranger'] });
         useFriendsStore.getState().unblockUser('Stranger');
         const s = useFriendsStore.getState();
@@ -178,7 +168,6 @@ describe('unblockUser', () => {
     });
 });
 
-// -- isFriend / isFavorite / isBlocked ---------------------------------------
 
 describe('selectors (isFriend / isFavorite / isBlocked)', () => {
     beforeEach(() => {
@@ -217,7 +206,6 @@ describe('selectors (isFriend / isFavorite / isBlocked)', () => {
     });
 });
 
-// -- resetFriends -------------------------------------------------------------
 
 describe('resetFriends', () => {
     it('clears all three lists', () => {
@@ -242,7 +230,6 @@ describe('resetFriends', () => {
     });
 });
 
-// -- Integration: friend + block lifecycle ------------------------------------
 
 describe('friend + block lifecycle', () => {
     it('block then unblock keeps friend status intact', () => {

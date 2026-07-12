@@ -41,7 +41,6 @@ import type { IMonster } from '../types/monster';
 import type { ICharacter } from '../api/v1/characterApi';
 import type { IInventoryItem } from './itemSystem';
 
-// -- Helpers ------------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-1',
@@ -138,7 +137,6 @@ const resetAllStores = (): void => {
     resetAggro();
 };
 
-// -- getSkillMpCost -----------------------------------------------------------
 
 describe('getSkillMpCost', () => {
     it('returns floor (15) for null skillId', () => {
@@ -158,16 +156,12 @@ describe('getSkillMpCost', () => {
     });
 
     it('returns the data/skills.json mpCost for a known skill', () => {
-        // shield_bash has mpCost=15 per data/skills.json
         expect(getSkillMpCost('shield_bash')).toBe(15);
-        // battle_cry has mpCost=20
         expect(getSkillMpCost('battle_cry')).toBe(20);
-        // berserker_rage has mpCost=40
         expect(getSkillMpCost('berserker_rage')).toBe(40);
     });
 });
 
-// -- getAttackMs --------------------------------------------------------------
 
 describe('getAttackMs', () => {
     it('maps speed 1.5 to 2000ms', () => {
@@ -192,8 +186,6 @@ describe('getAttackMs', () => {
     });
 
     it('handles negative input by treating as 1', () => {
-        // Math.max(1, -5 || 1) = 1, so getAttackMs would be 3000.
-        // But Math.max(1, speed) with negative speed returns 1.
         expect(getAttackMs(-5)).toBe(3000);
     });
 
@@ -202,7 +194,6 @@ describe('getAttackMs', () => {
     });
 });
 
-// -- SPEED_MULT / SPEED_ORDER -------------------------------------------------
 
 describe('SPEED_MULT', () => {
     it('has x1 = 1', () => {
@@ -224,7 +215,6 @@ describe('SPEED_ORDER', () => {
     });
 });
 
-// -- applyRarityToMonster -----------------------------------------------------
 
 describe('applyRarityToMonster', () => {
     const baseMonster: IMonster = makeMonster({
@@ -249,7 +239,7 @@ describe('applyRarityToMonster', () => {
         const result = applyRarityToMonster(baseMonster, 'epic');
         expect(result.hp).toBe(250);
         expect(result.attack).toBe(16);
-        expect(result.defense).toBe(7); // floor(5*1.5)=7
+        expect(result.defense).toBe(7);
         expect(result.xp).toBe(200);
         expect(result.gold).toEqual([40, 80]);
     });
@@ -273,9 +263,7 @@ describe('applyRarityToMonster', () => {
     it('floors fractional results', () => {
         const m: IMonster = makeMonster({ hp: 3, attack: 3, defense: 3, xp: 3, gold: [3, 7] });
         const result = applyRarityToMonster(m, 'strong');
-        // hp 3*1.5=4.5 -> 4
         expect(result.hp).toBe(4);
-        // attack 3*1.2=3.6 -> 3
         expect(result.attack).toBe(3);
     });
 
@@ -287,7 +275,6 @@ describe('applyRarityToMonster', () => {
     });
 });
 
-// -- getEffectiveChar ---------------------------------------------------------
 
 describe('getEffectiveChar', () => {
     beforeEach(() => {
@@ -321,7 +308,6 @@ describe('getEffectiveChar', () => {
     it('uses default crit_damage 2.0 when undefined', () => {
         const ch = makeCharacter({ crit_damage: undefined as unknown as number });
         const result = getEffectiveChar(ch);
-        // base 2.0 + eq (0) + tb (0) = 2.0
         expect(result?.crit_damage).toBeCloseTo(2.0, 2);
     });
 
@@ -345,12 +331,6 @@ describe('getEffectiveChar', () => {
     });
 
     it('defaults undefined attack/defense/crit_chance to 0 (NaN hardening 2026-05-25)', () => {
-        // CLAUDE.md "NaN w combat = krytyczny bug — waliduj WSZYSTKIE
-        // wartości przed obliczeniami, undefined/null -> 0". This used to
-        // propagate NaN through Math.floor / Math.min when any of these
-        // base fields were undefined — fixed by `?? 0` defaults in
-        // `getEffectiveChar`. Regression test: every output field must
-        // be a finite number even when EVERY input field is undefined.
         const ch = makeCharacter({
             attack: undefined as unknown as number,
             defense: undefined as unknown as number,
@@ -366,7 +346,6 @@ describe('getEffectiveChar', () => {
     });
 });
 
-// -- Hunt effects session -----------------------------------------------------
 
 describe('resetHuntEffects', () => {
     it('clears stun status — player not stunned after reset', () => {
@@ -436,7 +415,6 @@ describe('clearHuntNecroSummons', () => {
     });
 });
 
-// -- Aggro --------------------------------------------------------------------
 
 describe('resetAggro', () => {
     it('runs without throwing', () => {
@@ -475,12 +453,10 @@ describe('maybeSwitchAggro', () => {
         resetAggro();
         const first = maybeSwitchAggro();
         const second = maybeSwitchAggro();
-        // Within the 10s switch interval the same target id is returned.
         expect(first).toBe(second);
     });
 });
 
-// -- advanceSkillCooldowns ----------------------------------------------------
 
 describe('advanceSkillCooldowns', () => {
     it('runs without throwing when no cooldowns are tracked', () => {
@@ -492,14 +468,10 @@ describe('advanceSkillCooldowns', () => {
     });
 
     it('accepts negative ms input (no-op semantics)', () => {
-        // TODO: verify if this is intentional — negative ms would
-        // INCREASE every tracked cooldown. The current code just
-        // subtracts so negative ms increments instead of decrements.
         expect(() => advanceSkillCooldowns(-500)).not.toThrow();
     });
 });
 
-// -- getAllMonsters -----------------------------------------------------------
 
 describe('getAllMonsters', () => {
     it('returns a non-empty list', () => {
@@ -526,7 +498,6 @@ describe('getAllMonsters', () => {
     });
 });
 
-// -- syncCasterChargeConsume --------------------------------------------------
 
 describe('syncCasterChargeConsume', () => {
     beforeEach(() => {
@@ -560,7 +531,6 @@ describe('syncCasterChargeConsume', () => {
     });
 });
 
-// -- dropLootToInventory ------------------------------------------------------
 
 describe('dropLootToInventory', () => {
     beforeEach(() => {
@@ -591,8 +561,6 @@ describe('dropLootToInventory', () => {
     });
 
     it('returns an entry array where each drop has icon + name + rarity', () => {
-        // Use a level high enough to maximise drop probability for a single
-        // run; we still tolerate runs that don't roll an item (RNG).
         const monster = makeMonster({ level: 20 });
         const drops = dropLootToInventory(monster, 'epic');
         for (const d of drops) {
@@ -603,13 +571,11 @@ describe('dropLootToInventory', () => {
     });
 });
 
-// -- applyMonsterKillRewardsForMember -----------------------------------------
 
 describe('applyMonsterKillRewardsForMember', () => {
     beforeEach(() => {
         resetAllStores();
         useCharacterStore.setState({ character: makeCharacter({ level: 10, xp: 0 }) });
-        // Need an active fight phase so addLog / addReward succeed silently.
         useCombatStore.getState().initCombat(makeMonster(), 100, 50, 'normal');
     });
 
@@ -623,10 +589,7 @@ describe('applyMonsterKillRewardsForMember', () => {
         const xpBefore = charBefore?.xp ?? 0;
         applyMonsterKillRewardsForMember('rat', 1, 'normal', 50);
         const charAfter = useCharacterStore.getState().character;
-        // XP went up — exact amount depends on level + crowded math, but
-        // the floor is +50 (leader's xp), modulo any level-up reset.
         expect(charAfter).not.toBeNull();
-        // After awarding 50 xp, either xp >= prev+50 (no level up) or level > prev.
         const leveled = (charAfter?.level ?? 0) > (charBefore?.level ?? 0);
         const xpGrew = (charAfter?.xp ?? 0) >= xpBefore;
         expect(leveled || xpGrew).toBe(true);
@@ -639,7 +602,6 @@ describe('applyMonsterKillRewardsForMember', () => {
     });
 });
 
-// -- addMonsterToWave ---------------------------------------------------------
 
 describe('addMonsterToWave', () => {
     beforeEach(() => {
@@ -670,7 +632,6 @@ describe('addMonsterToWave', () => {
         const monster = makeMonster();
         useCombatStore.getState().initCombat(monster, 100, 50, 'normal');
         useCombatStore.getState().setBaseMonster(monster);
-        // Push wave up to cap (3 extra additions reach 4 total).
         addMonsterToWave();
         addMonsterToWave();
         addMonsterToWave();
@@ -679,7 +640,6 @@ describe('addMonsterToWave', () => {
     });
 });
 
-// -- startAutoNextFight -------------------------------------------------------
 
 describe('startAutoNextFight', () => {
     beforeEach(() => {
@@ -690,7 +650,6 @@ describe('startAutoNextFight', () => {
         useCharacterStore.setState({ character: makeCharacter() });
         useCombatStore.setState({ autoFight: false, baseMonster: makeMonster() });
         expect(() => startAutoNextFight()).not.toThrow();
-        // Phase should remain unchanged (idle from reset).
         expect(useCombatStore.getState().phase).toBe('idle');
     });
 
@@ -702,7 +661,6 @@ describe('startAutoNextFight', () => {
     });
 });
 
-// -- stopCombat ---------------------------------------------------------------
 
 describe('stopCombat', () => {
     beforeEach(() => {
@@ -729,7 +687,6 @@ describe('stopCombat', () => {
     it('clears bot list', () => {
         useCharacterStore.setState({ character: makeCharacter() });
         useCombatStore.getState().initCombat(makeMonster(), 100, 50, 'normal');
-        // Manually populate to verify clearing.
         useBotStore.setState({
             bots: [{
                 id: 'bot1', name: 'Sir Bot', class: 'Knight', level: 10,
@@ -747,7 +704,6 @@ describe('stopCombat', () => {
     });
 });
 
-// -- IDropDisplay type sanity -------------------------------------------------
 
 describe('IDropDisplay shape', () => {
     it('supports the minimal icon+name+rarity contract', () => {
@@ -769,7 +725,6 @@ describe('IDropDisplay shape', () => {
     });
 });
 
-// -- Guard: spy on Math.random to make stochastic tests deterministic ---------
 
 describe('applyRarityToMonster determinism guard', () => {
     let randomSpy: ReturnType<typeof vi.spyOn>;
@@ -782,12 +737,10 @@ describe('applyRarityToMonster determinism guard', () => {
         const a = applyRarityToMonster(monster, 'strong');
         const b = applyRarityToMonster(monster, 'strong');
         expect(a).toEqual(b);
-        // Spy is set up correctly.
         expect(randomSpy).toBeDefined();
     });
 });
 
-// -- Equipment-aware getEffectiveChar tests -----------------------------------
 
 describe('getEffectiveChar with equipped item', () => {
     beforeEach(() => {
@@ -808,7 +761,6 @@ describe('getEffectiveChar with equipped item', () => {
             equipment: { ...s.equipment, mainHand: weapon },
         }));
         const result = getEffectiveChar(ch);
-        // attack now = floor((20 + 5 + 0 + 0) * 1) = 25
         expect(result?.attack).toBeGreaterThanOrEqual(20);
     });
 });

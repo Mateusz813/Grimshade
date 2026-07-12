@@ -8,9 +8,6 @@ import { useCombatStore } from '../stores/combatStore';
 import { deathsApi } from '../api/v1/deathsApi';
 import type { ICharacter } from '../api/v1/characterApi';
 
-// -- Backend-mode glue mocks --------------------------------------------------
-// Default OFF so every existing test runs the unchanged client path. The
-// dedicated backend-mode describe flips `backendFlag.on`.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({
     logDeath: vi.fn(),
@@ -25,7 +22,6 @@ vi.mock('../api/backend/backendApi', () => ({ backendApi: backendApiMock }));
 const commitMock = vi.hoisted(() => ({ commitStateViaKeepalive: vi.fn(), commitStateToBackend: vi.fn() }));
 vi.mock('../api/backend/commit', () => commitMock);
 
-// -- Helpers ------------------------------------------------------------------
 
 const makeCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-test-1',
@@ -85,8 +81,6 @@ const resetStores = (): void => {
     useCombatStore.getState().resetCombat();
 };
 
-// Silence the keepalive PATCH so the test doesn't hit any real Supabase
-// endpoint and doesn't pollute the console with unhandled rejections.
 let fetchSpy: ReturnType<typeof vi.spyOn>;
 let logDeathSpy: ReturnType<typeof vi.spyOn>;
 
@@ -94,11 +88,9 @@ beforeEach(() => {
     resetStores();
     backendFlag.on = false;
     backendApiMock.logDeath.mockReset().mockResolvedValue(undefined);
-    // happy-dom provides a fetch — stub it to a no-op promise.
     fetchSpy = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValue(new Response(null, { status: 204 }));
-    // Block real network call to Supabase from deathsApi.
     logDeathSpy = vi
         .spyOn(deathsApi, 'logDeath')
         .mockResolvedValue(null);
@@ -109,7 +101,6 @@ afterEach(() => {
     logDeathSpy.mockRestore();
 });
 
-// -- applyCombatLeaveDeath: guard clauses -------------------------------------
 
 describe('applyCombatLeaveDeath – guard clauses', () => {
     it('no-ops cleanly when there is no active character', () => {
@@ -119,7 +110,6 @@ describe('applyCombatLeaveDeath – guard clauses', () => {
             sourceName: 'Some Dungeon',
             sourceLevel: 5,
         })).not.toThrow();
-        // No death event registered.
         expect(useDeathStore.getState().event).toBeNull();
     });
 
@@ -134,13 +124,9 @@ describe('applyCombatLeaveDeath – guard clauses', () => {
     });
 });
 
-// -- applyCombatLeaveDeath: tryb backendu (anti-cheat) ------------------------
 
 describe('applyCombatLeaveDeath – tryb backendu (regresja anti-cheat)', () => {
     it('utrwala karę autorytatywnym commitem stanu (keepalive), NIE surowym PATCH-em Supabase', () => {
-        // Dziura: w trybie backendu leciał surowy PATCH /rest/v1/characters z JWT
-        // gracza (podrabialny level/xp). Teraz kara idzie commitem stanu keepalive
-        // — serwer waliduje i zapisuje; żaden bezpośredni zapis do Supabase.
         backendFlag.on = true;
         commitMock.commitStateViaKeepalive.mockClear();
         useCharacterStore.setState({ character: makeCharacter({ level: 50, xp: 1234 }) });
@@ -155,7 +141,6 @@ describe('applyCombatLeaveDeath – tryb backendu (regresja anti-cheat)', () => 
     });
 });
 
-// -- applyCombatLeaveDeath: side effects on stores ----------------------------
 
 describe('applyCombatLeaveDeath – store effects', () => {
     it('logs the leave via deathsApi with result=fled', () => {
@@ -181,7 +166,6 @@ describe('applyCombatLeaveDeath – store effects', () => {
             sourceLevel: 100,
         });
         const payload = logDeathSpy.mock.calls[0][0];
-        // Level recorded is the pre-penalty value.
         expect(payload.character_level).toBe(100);
     });
 
@@ -193,9 +177,7 @@ describe('applyCombatLeaveDeath – store effects', () => {
             sourceLevel: 100,
         });
         const ch = useCharacterStore.getState().character;
-        // New spec (2026-06-21): death loss = max(0.20, level/100) = 1.0 level at lvl 100.
         expect(ch?.level).toBe(99);
-        // XP reduced continuously by 1 level's worth, landing partway into lvl 99.
         expect(ch?.xp).toBe(4925);
     });
 
@@ -250,7 +232,6 @@ describe('applyCombatLeaveDeath – store effects', () => {
         expect(ev?.sourceLevel).toBe(50);
         expect(ev?.source).toBe('transform');
         expect(ev?.protectionUsed).toBe(false);
-        // oldLevel pre-penalty (100), newLevel post-penalty (99 — 1 level lost).
         expect(ev?.oldLevel).toBe(100);
         expect(ev?.newLevel).toBe(99);
         expect(ev?.levelsLost).toBe(1);
@@ -258,7 +239,6 @@ describe('applyCombatLeaveDeath – store effects', () => {
 
     it('clears the active combat session after applying the penalty', () => {
         useCharacterStore.setState({ character: makeCharacter({ level: 100, xp: 5000 }) });
-        // Seed some session state.
         useCombatStore.setState({
             sessionXpEarned: 999,
             sessionGoldEarned: 999,
@@ -300,7 +280,6 @@ describe('applyCombatLeaveDeath – store effects', () => {
     });
 });
 
-// -- applyCombatLeaveDeath: level-1 corner case ------------------------------
 
 describe('applyCombatLeaveDeath – level 1 corner case', () => {
     it('keeps level 1 at level 1 but drains its XP (clamped at the floor)', () => {
@@ -312,8 +291,6 @@ describe('applyCombatLeaveDeath – level 1 corner case', () => {
         });
         const ch = useCharacterStore.getState().character;
         expect(ch?.level).toBe(1);
-        // New spec: death takes ~20% of a level. 50 XP is below that slice, and
-        // the position clamps at level 1.0, so the lvl-1 XP is wiped to 0.
         expect(ch?.xp).toBe(0);
     });
 
@@ -330,7 +307,6 @@ describe('applyCombatLeaveDeath – level 1 corner case', () => {
     });
 });
 
-// -- applyCombatLeaveDeath: leave-source coverage -----------------------------
 
 describe('applyCombatLeaveDeath – source coverage', () => {
     const sources: TLeaveSource[] = ['monster', 'dungeon', 'boss', 'raid', 'transform'];
@@ -347,7 +323,6 @@ describe('applyCombatLeaveDeath – source coverage', () => {
     }
 });
 
-// -- applyCombatLeaveDeath: high-level penalty math ---------------------------
 
 describe('applyCombatLeaveDeath – penalty math anchors', () => {
     it('lvl 1000 loses 10 levels (the spec anchor: level/100)', () => {
@@ -386,12 +361,9 @@ describe('applyCombatLeaveDeath – penalty math anchors', () => {
     });
 });
 
-// -- applyCombatLeaveDeath: idempotency-from-call-site responsibility ---------
 
 describe('applyCombatLeaveDeath – callers must guard idempotency', () => {
     it('a second consecutive call applies penalty again (no internal guard)', () => {
-        // Per header comment in source: "Idempotent guard is the caller's
-        // responsibility — this helper does NOT track 'already applied' state."
         useCharacterStore.setState({ character: makeCharacter({ level: 100, xp: 0, highest_level: 100 }) });
         applyCombatLeaveDeath({
             source: 'monster',
@@ -400,7 +372,6 @@ describe('applyCombatLeaveDeath – callers must guard idempotency', () => {
         });
         expect(useCharacterStore.getState().character?.level).toBe(99);
 
-        // Second call drops another ~1 level (max(0.20, 0.99) = 0.99 at lvl 99).
         applyCombatLeaveDeath({
             source: 'monster',
             sourceName: 'X',
@@ -411,7 +382,6 @@ describe('applyCombatLeaveDeath – callers must guard idempotency', () => {
     });
 });
 
-// -- applyCombatLeaveDeath: backend-mode death logging ------------------------
 
 describe('applyCombatLeaveDeath – backend mode routes the death log', () => {
     it('calls backendApi.logDeath (char id + trimmed payload) and SKIPS deathsApi', () => {
@@ -422,9 +392,7 @@ describe('applyCombatLeaveDeath – backend mode routes the death log', () => {
             sourceName: 'Skeleton King',
             sourceLevel: 100,
         });
-        // Client Supabase write is gated OFF in backend mode.
         expect(logDeathSpy).not.toHaveBeenCalled();
-        // Authoritative backend receives id + source/source_name/source_level/result.
         expect(backendApiMock.logDeath).toHaveBeenCalledTimes(1);
         expect(backendApiMock.logDeath).toHaveBeenCalledWith('char-9', {
             source: 'boss',

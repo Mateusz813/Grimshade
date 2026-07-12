@@ -7,14 +7,6 @@ import Spinner from '../../components/ui/Spinner/Spinner';
 import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import './GlobalChat.scss';
 
-/**
- * Global chat screen — dedicated full-screen view with tab support.
- *
- * The city tab is always open. Opening a PM via the message context menu
- * (Wyślij prywatną wiadomość) adds a new tab instead of navigating away,
- * so multiple PM conversations can be kept open at once. Tabs track unread
- * message counts; inactive tabs show a badge when someone writes.
- */
 const GlobalChat = () => {
     const location = useLocation();
     const character = useCharacterStore((s) => s.character);
@@ -32,7 +24,6 @@ const GlobalChat = () => {
         ensureSystemTab();
     }, [ensureCityTab, ensureSystemTab]);
 
-    // Support `?pm=<Name>` deep-links (e.g. from an older Friends shortcut).
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const target = params.get('pm');
@@ -98,10 +89,6 @@ const GlobalChat = () => {
                         disableContextMenu={t.type === 'pm'}
                         active={t.id === activeId}
                         fillHeight
-                        // 2026-05-19 v11: same in-place PM open for
-                        // every non-PM tab (city / guild / party /
-                        // system) — opens the PM as a new tab in
-                        // this view instead of navigating.
                         onOpenPm={t.type !== 'pm' ? handleOpenPm : undefined}
                     />
                 ))}

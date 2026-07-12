@@ -3,7 +3,6 @@ import { useCombatStore, MAX_WAVE_MONSTERS, type IMonster } from './combatStore'
 import type { TMonsterRarity } from '../systems/lootSystem';
 import type { IDropDisplay, ICombatEvent } from '../systems/combatEngine';
 
-// -- Fixtures ----------------------------------------------------------------
 
 const makeMonster = (overrides: Partial<IMonster> = {}): IMonster => ({
     id: 'rat',
@@ -28,13 +27,11 @@ const makeDrop = (overrides: Partial<IDropDisplay> = {}): IDropDisplay => ({
     ...overrides,
 });
 
-// -- Helpers -----------------------------------------------------------------
 
 const resetStore = (): void => {
     useCombatStore.getState().resetCombat();
 };
 
-// -- Tests -------------------------------------------------------------------
 
 describe('combatStore — initial state', () => {
     beforeEach(resetStore);
@@ -224,7 +221,6 @@ describe('combatStore — clearCombatSession', () => {
 
     it('resets sessionStartedAt to a fresh timestamp', () => {
         const oldStart = useCombatStore.getState().sessionStartedAt;
-        // Force a small wait to guarantee Date.now() advances
         const before = Date.now();
         useCombatStore.getState().clearCombatSession();
         const newStart = useCombatStore.getState().sessionStartedAt;
@@ -321,8 +317,6 @@ describe('combatStore — addLog / bulkAddLog', () => {
     });
 
     it('caps the session log at 1000 entries when entries come via addLog', () => {
-        // Note: only addLog / bulkAddLog enforce the 1000-entry cap on
-        // sessionLog. The standalone addSessionLog appends unconditionally.
         for (let i = 0; i < 1100; i++) {
             useCombatStore.getState().addLog(`msg ${i}`, 'player');
         }
@@ -392,19 +386,16 @@ describe('combatStore — wave actions', () => {
 
     it('addWaveMonster appends up to MAX_WAVE_MONSTERS', () => {
         useCombatStore.getState().initCombat(makeMonster(), 100, 50);
-        // Already 1 monster in wave from initCombat
         for (let i = 0; i < MAX_WAVE_MONSTERS - 1; i++) {
             const ok = useCombatStore.getState().addWaveMonster(makeMonster(), 'normal');
             expect(ok).toBe(true);
         }
-        // Trying past the cap should return false
         const overflow = useCombatStore.getState().addWaveMonster(makeMonster(), 'normal');
         expect(overflow).toBe(false);
         expect(useCombatStore.getState().waveMonsters).toHaveLength(MAX_WAVE_MONSTERS);
     });
 
     it('addWaveMonster refuses if phase is not "fighting"', () => {
-        // No initCombat -> phase stays idle
         const ok = useCombatStore.getState().addWaveMonster(makeMonster(), 'normal');
         expect(ok).toBe(false);
     });
@@ -474,7 +465,6 @@ describe('combatStore — wave actions', () => {
         expect(removed).toBe(true);
         const s = useCombatStore.getState();
         expect(s.waveMonsters).toHaveLength(2);
-        // active stays at 0, last (idx 2) was removed
         expect(s.waveMonsters.map((w) => w.monster.id)).toEqual(['a', 'b']);
     });
 

@@ -3,33 +3,13 @@ import AllyCard from './AllyCard';
 import type { ICombatEnemy, ICombatAlly } from './types';
 
 interface IProps {
-    /** Up to 4 enemy slots — pad to length 4 with `null` for empty visuals. */
     enemies: Array<ICombatEnemy | null>;
-    /** Up to 4 ally slots — pad to length 4 with `null` for empty visuals. */
     allies: Array<ICombatAlly | null>;
-    /** Click handler when player retargets an enemy. */
     onTargetEnemy?: (enemy: ICombatEnemy) => void;
-    /**
-     * Optional bg modifier — set to `'daily-boss'` for the shimmering
-     * gradient unique to 3-attempts-per-day boss encounters, or to
-     * `'transform'` for a per-tier phoenix photo background (the caller
-     * sets `--arena-image: url(...)` and `--transform-hue: <hsl-hue>`
-     * on a parent so each transform tier gets its own painting).
-     */
     bgVariant?: 'default' | 'daily-boss' | 'transform';
-    /** Slot for any per-view extras you want overlaid (skill anim, +/- monster controls, etc.). */
     overlay?: React.ReactNode;
 }
 
-/**
- * Fixed-layout combat arena: 4 enemy slots on the left, 4 ally slots on the
- * right, both columns always rendering 4 placeholders so nothing in the
- * arena ever reflows during a fight.
- *
- * Mobile: stacks columns 2×4 (smaller cards).
- * Desktop: side-by-side, slots also rendered 2×2 inside each column for
- *  "always 4 reserved" feel.
- */
 const PAD = 4;
 
 const padTo4 = <T,>(arr: Array<T | null>): Array<T | null> => {

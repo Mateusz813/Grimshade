@@ -1,26 +1,9 @@
-/**
- * In-game tutorial content for NEW players. Each entry is a game segment /
- * view, rendered by <TutorialModal> as a numbered, bold-titled section with a
- * one-line summary + short bullet points (NOT a wall of text).
- *
- * Source of truth for mechanics: `.claude/spec/*.md`. Keep this in sync when
- * a view's behavior changes (CLAUDE.md DOKUMENTACJA rule).
- *
- * NOTE: content is filled comprehensively below — one section per real view so
- * a brand-new user can read what every screen is for, what each button does,
- * and how to play.
- */
 
 export interface ITutorialSection {
-  /** Stable id (used as React key + E2E hook via data attr). */
   id: string;
-  /** Emoji shown next to the numbered title. */
   icon: string;
-  /** Bold section title, e.g. "Polowanie". */
   title: string;
-  /** One short line: what this screen IS. */
   summary: string;
-  /** Short how-to / what-each-button-does points. Keep each bullet tight. */
   bullets: string[];
 }
 

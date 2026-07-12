@@ -2,12 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * ChatUnreadBadge — fixed-corner chat button + notification dot.
- * Hidden until a character is loaded, on characterless routes, and in
- * offline mode. Toggles the ChatPopup; ChatPopup is stubbed here so we
- * isolate the badge's own gating + interactions.
- */
 
 vi.mock('./ChatPopup', () => ({
     __esModule: true,
@@ -54,7 +48,6 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar() });
     useChatTabsStore.setState({ hasNotification: false });
     useConnectivityStore.setState({ mode: 'online' });
-    // Reset transform store to default (no completed transforms -> no color).
     useTransformStore.setState({ completedTransforms: [] });
 });
 
@@ -107,7 +100,6 @@ describe('ChatUnreadBadge — notification dot', () => {
 describe('ChatUnreadBadge — popup toggle', () => {
     it('opens the popup on click', () => {
         renderAt('/inventory');
-        // Popup closed initially.
         expect(screen.queryByTestId('chat-popup')).toBeNull();
         fireEvent.click(document.querySelector('.chat-unread-badge')!);
         expect(screen.getByTestId('chat-popup')).toBeTruthy();

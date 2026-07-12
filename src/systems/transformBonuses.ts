@@ -1,33 +1,3 @@
-/**
- * Transform Bonuses – LIVE helpers for permanent transform rewards.
- *
- * -- Point 7 rewrite (2026-04) ------------------------------------------------
- * Previously most bonuses (hpPercent, mpPercent, defPercent, flatHp, flatMp,
- * attack, defense, regen) were baked into character.max_hp / max_mp / attack /
- * defense at the moment the transform quest was completed, using the THEN-
- * current stats. This meant leveling up or upgrading gear afterwards never
- * re-applied the `% of max HP / MP / DEF` reward — the bonus was frozen at
- * claim time.
- *
- * Now every bonus is computed LIVE at each render / combat tick:
- *   - Flat bonuses (flatHp, flatMp, attack, defense, hpRegenFlat, mpRegenFlat)
- *     are simply summed across all completed transforms for the character's
- *     class and added in getEffectiveChar().
- *   - Percent bonuses (hpPercent, mpPercent, defPercent) are applied on top
- *     of the character's (base + equip + training) pool so they always scale
- *     with the player's current power.
- *   - dmgPercent still works the same — it multiplies outgoing damage.
- *
- * Legacy characters whose stats were already baked are migrated in
- * characterScope.ts: on first load we compute the original bake delta by
- * forward-iterating over completedTransforms, subtract it from character
- * stats, and flip `bakedBonusesApplied` to false. Going forward the store
- * starts new characters with the flag already false so the baking never
- * happens again.
- *
- * All helpers read transformStore + characterStore directly so that every
- * combat view (Combat, Dungeon, Boss, Transform) can call them the same way.
- */
 
 import { useCharacterStore } from '../stores/characterStore';
 import { useTransformStore } from '../stores/transformStore';
@@ -42,24 +12,11 @@ const ZERO_BONUS: ITransformPermanentBonuses = {
     classSkillBonus: 0,
 };
 
-/**
- * Sum every per-tier bonus across the character's completed transforms.
- * Returns a zeroed record if no character, no transforms, or bonuses are
- * still baked (legacy mode) — in that case the stats are already in
- * character.max_hp / attack / etc., so we must NOT apply them again.
- */
 const sumCompletedBonuses = (): ITransformPermanentBonuses => {
     try {
         const char = useCharacterStore.getState().character;
         if (!char) return { ...ZERO_BONUS };
         const store = useTransformStore.getState();
-        // 2026-06-24: transform bonuses ALWAYS apply live from completedTransforms.
-        // The old `bakedBonusesApplied` guard suppressed them on the assumption the
-        // bonuses were baked into base stats — but in practice base stays the pure
-        // level floor (verified: Archer lvl-109 base = exact floor, no transform in
-        // it), so the guard just HID a real bonus the player never received. Base is
-        // kept pure by computeBaseStatFloor / healCorruptedBaseStats, so applying
-        // live here does NOT double-count.
         const completed = store.completedTransforms;
         if (!completed || completed.length === 0) return { ...ZERO_BONUS };
         const cls = char.class as TCharacterClass;
@@ -86,14 +43,6 @@ const sumCompletedBonuses = (): ITransformPermanentBonuses => {
     }
 };
 
-/**
- * Returns the outgoing damage multiplier granted by all completed transforms.
- * Stacks additively: `1 + (Σ dmgPercent) / 100`. Defaults to 1.0 (no bonus).
- *
- * Note: dmgPercent is read straight from the bonus table regardless of
- * `bakedBonusesApplied` — it was never baked into character stats in the old
- * system either, so legacy saves are unaffected.
- */
 export const getTransformDmgMultiplier = (): number => {
     try {
         const char = useCharacterStore.getState().character;
@@ -115,99 +64,55 @@ export const getTransformDmgMultiplier = (): number => {
     }
 };
 
-/**
- * Flat HP bonus granted by transforms (sum of `flatHp` across all completed
- * transforms). Added directly to max HP in getEffectiveChar.
- */
 export const getTransformFlatHp = (): number => sumCompletedBonuses().flatHp;
 
-/** Flat MP bonus from transforms (sum of per-tier `flatMp`). */
 export const getTransformFlatMp = (): number => sumCompletedBonuses().flatMp;
 
-/** Flat attack bonus from transforms. */
 export const getTransformFlatAttack = (): number => sumCompletedBonuses().attack;
 
-/** Flat defense bonus from transforms (NOT the % defense reward). */
 export const getTransformFlatDefense = (): number => sumCompletedBonuses().defense;
 
-/** Flat HP/s regen bonus from transforms (sum of `hpRegenFlat`). */
 export const getTransformHpRegenFlat = (): number => sumCompletedBonuses().hpRegenFlat;
 
-/** Flat MP/s regen bonus from transforms. */
 export const getTransformMpRegenFlat = (): number => sumCompletedBonuses().mpRegenFlat;
 
-/**
- * Returns the multiplier to apply to a stat pool for the `hpPercent` reward.
- * Stacks additively: `1 + Σ hpPercent / 100`. This mirrors how combat elixirs
- * layer on top of base + equip + training pools.
- */
 export const getTransformHpPctMultiplier = (): number => {
     const pct = sumCompletedBonuses().hpPercent;
     if (pct <= 0) return 1.0;
     return 1 + pct / 100;
 };
 
-/** Multiplier for max MP (`mpPercent` stacked additively). */
 export const getTransformMpPctMultiplier = (): number => {
     const pct = sumCompletedBonuses().mpPercent;
     if (pct <= 0) return 1.0;
     return 1 + pct / 100;
 };
 
-/** Multiplier for defense (`defPercent` stacked additively). */
 export const getTransformDefPctMultiplier = (): number => {
     const pct = sumCompletedBonuses().defPercent;
     if (pct <= 0) return 1.0;
     return 1 + pct / 100;
 };
 
-/**
- * Point N5: Multiplier for attack (`atkPercent` stacked additively). Applied
- * on top of base + equip + training + flat-transform attack, so the bonus
- * scales naturally as the player levels up or upgrades gear (e.g. 7% of 200
- * ATK = 14 extra ATK, 7% of 400 ATK = 28 extra ATK).
- */
 export const getTransformAtkPctMultiplier = (): number => {
     const pct = sumCompletedBonuses().atkPercent;
     if (pct <= 0) return 1.0;
     return 1 + pct / 100;
 };
 
-/**
- * Full breakdown of live transform bonuses for UI (CharacterStats). Skips
- * everything when the character is still in the legacy baked state so the
- * panel doesn't double-report them.
- */
 export interface ILiveTransformBreakdown {
-    dmgPercent: number;      // outgoing damage %
-    hpPercent: number;       // % added to max HP pool
-    mpPercent: number;       // % added to max MP pool
-    defPercent: number;      // % added to defense pool
-    atkPercent: number;      // % added to attack pool
+    dmgPercent: number;
+    hpPercent: number;
+    mpPercent: number;
+    defPercent: number;
+    atkPercent: number;
     flatHp: number;
     flatMp: number;
     flatAttack: number;
     flatDefense: number;
     hpRegenFlat: number;
     mpRegenFlat: number;
-    /**
-     * `true`  -> bonuses apply LIVE (NOT in base stats). The breakdown values
-     *            must be ADDED to base+equip pools by the caller.
-     * `false` -> either no transforms / no character (everything is 0), OR the
-     *            character is a legacy "baked" save (`baked === true`), in which
-     *            case the values are still 0 here to preserve the historical
-     *            contract that `active === false` means "do not add to the live
-     *            pipeline" (see `getDisplayTransformBreakdown` for baked chars).
-     */
     active: boolean;
-    /**
-     * Bug 8 (2026-06-23): legacy baked save flag. When `true`, the transform
-     * bonuses are ALREADY inside character.max_hp / attack / etc. (baked at
-     * claim time, pre-April-2026). Callers must NOT add `active`-path values on
-     * top — those are 0 here precisely to avoid double-counting. Use this flag
-     * to drive a DISPLAY-ONLY "Transform (zapieczone)" attribution from
-     * `getDisplayTransformBreakdown()` instead.
-     */
     baked: boolean;
 }
 
@@ -233,11 +138,6 @@ const mapBreakdown = (b: ITransformPermanentBonuses, active: boolean, baked: boo
     baked,
 });
 
-/**
- * LIVE breakdown for the stats panel — values that the caller must ADD on top
- * of base+equip pools. Returns an all-zero, `active:false` record for legacy
- * baked saves so the existing live-add math is never double-counted.
- */
 export const getLiveTransformBreakdown = (): ILiveTransformBreakdown => {
     try {
         const store = useTransformStore.getState();
@@ -245,36 +145,12 @@ export const getLiveTransformBreakdown = (): ILiveTransformBreakdown => {
         if (!char || store.completedTransforms.length === 0) {
             return zeroBreakdown(false);
         }
-        // 2026-06-24: transform bonuses ALWAYS apply live now (base is the pure
-        // floor — never baked), so the breakdown is ALWAYS active. The old
-        // `bakedBonusesApplied` short-circuit is gone; the stats panel shows a
-        // real "Transform" attribution that matches what getEffectiveChar adds.
         return mapBreakdown(sumCompletedBonuses(), true, false);
     } catch {
         return zeroBreakdown(false);
     }
 };
 
-/**
- * Bug 8 (2026-06-23): DISPLAY-ONLY breakdown of the transform contribution,
- * regardless of baked state. Computes the cumulative per-tier bonuses for every
- * completed transform of the character's class.
- *
- * SAFETY — this must ONLY be used to ATTRIBUTE existing power in the stats
- * panel, never to add stats:
- *   - For a LIVE character (`baked:false`) the live pipeline already adds these
- *     values (getEffectiveChar), so the panel uses `getLiveTransformBreakdown`
- *     for the math and this helper is redundant.
- *   - For a LEGACY baked character (`baked:true`) the values are already inside
- *     character.max_hp / attack / etc. We surface them here as an informational
- *     line so the player can SEE the transform contribution, WITHOUT touching
- *     any stat (no unbake, no double-count, zero corruption risk). This is the
- *     "Approach B" fix: safest possible, never mutates persisted stats.
- *
- * Returns `active:false` (all-zero) only when there's no character or no
- * completed transforms; otherwise `active:true` with the cumulative values and
- * the `baked` flag passed through so the UI can label the line correctly.
- */
 export const getDisplayTransformBreakdown = (): ILiveTransformBreakdown => {
     try {
         const store = useTransformStore.getState();
@@ -284,8 +160,6 @@ export const getDisplayTransformBreakdown = (): ILiveTransformBreakdown => {
         }
         const cls = char.class as TCharacterClass;
         const b = getCumulativeTransformBonuses(store.completedTransforms, cls);
-        // ICumulativeTransformBonuses is a structural superset of
-        // ITransformPermanentBonuses for the fields mapBreakdown reads.
         return mapBreakdown(b as ITransformPermanentBonuses, true, store.bakedBonusesApplied);
     } catch {
         return zeroBreakdown(false);

@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// -- Hoisted mock for buildPmChannel ------------------------------------------
-// The store calls `buildPmChannel(myName, targetName)` from `friendsApi` to
-// derive a deterministic id. We mock it with a tiny lower-cased+sorted impl
-// so the assertions stay readable AND deterministic regardless of arg order.
 
 const { buildPmChannelMock } = vi.hoisted(() => ({
     buildPmChannelMock: vi.fn((a: string, b: string) => {
@@ -20,10 +16,6 @@ vi.mock('../api/v1/friendsApi', () => ({
 
 import { useChatTabsStore } from './chatTabsStore';
 
-// -- Reset helper -------------------------------------------------------------
-// chatTabsStore uses zustand `persist`, so we need to forcibly reset to the
-// canonical initial shape — the persisted state from a previous test (or
-// the auto-merge logic) could otherwise leak.
 
 const INITIAL_TABS = [
     {
@@ -53,7 +45,6 @@ beforeEach(() => {
     buildPmChannelMock.mockClear();
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('chatTabsStore — initial state', () => {
     it('starts with city + system tabs only', () => {
@@ -70,7 +61,6 @@ describe('chatTabsStore — initial state', () => {
     });
 });
 
-// -- ensureCityTab ------------------------------------------------------------
 
 describe('ensureCityTab', () => {
     it('is a no-op when the city tab is already present', () => {
@@ -87,7 +77,6 @@ describe('ensureCityTab', () => {
     });
 });
 
-// -- ensureSystemTab ----------------------------------------------------------
 
 describe('ensureSystemTab', () => {
     it('is a no-op when system tab is already present', () => {
@@ -104,7 +93,6 @@ describe('ensureSystemTab', () => {
     });
 });
 
-// -- openPm -------------------------------------------------------------------
 
 describe('openPm', () => {
     it('creates a new PM tab and focuses it', () => {
@@ -133,7 +121,6 @@ describe('openPm', () => {
 
     it('clears unread count when re-opening an existing PM tab', () => {
         const ch = useChatTabsStore.getState().openPm('Me', 'Alice');
-        // Switch away so we can accumulate unread on the PM tab.
         useChatTabsStore.getState().setActive('city');
         useChatTabsStore.getState().incrementUnread(ch);
         expect(
@@ -146,14 +133,13 @@ describe('openPm', () => {
     });
 });
 
-// -- ensurePmTab --------------------------------------------------------------
 
 describe('ensurePmTab', () => {
     it('adds a background PM tab without stealing focus', () => {
         useChatTabsStore.setState({ activeId: 'city' });
         const ch = useChatTabsStore.getState().ensurePmTab('Me', 'Alice');
         const s = useChatTabsStore.getState();
-        expect(s.activeId).toBe('city'); // still on city
+        expect(s.activeId).toBe('city');
         expect(s.tabs.some((t) => t.id === ch)).toBe(true);
     });
 
@@ -167,7 +153,6 @@ describe('ensurePmTab', () => {
     });
 });
 
-// -- syncPartyTab -------------------------------------------------------------
 
 describe('syncPartyTab', () => {
     it('adds a party tab when joining a party', () => {
@@ -213,7 +198,6 @@ describe('syncPartyTab', () => {
     });
 });
 
-// -- syncGuildTab -------------------------------------------------------------
 
 describe('syncGuildTab', () => {
     it('adds a guild tab when joining a guild', () => {
@@ -242,7 +226,6 @@ describe('syncGuildTab', () => {
     });
 });
 
-// -- closeTab -----------------------------------------------------------------
 
 describe('closeTab', () => {
     it('closes a closable (PM) tab', () => {
@@ -273,7 +256,6 @@ describe('closeTab', () => {
     });
 });
 
-// -- setActive ----------------------------------------------------------------
 
 describe('setActive', () => {
     it('switches the active tab', () => {
@@ -299,7 +281,6 @@ describe('setActive', () => {
     });
 });
 
-// -- incrementUnread ----------------------------------------------------------
 
 describe('incrementUnread', () => {
     it('increments unread for an inactive tab', () => {
@@ -329,7 +310,6 @@ describe('incrementUnread', () => {
     });
 });
 
-// -- markRead -----------------------------------------------------------------
 
 describe('markRead', () => {
     it('zeros the unread counter on the given tab', () => {
@@ -348,7 +328,6 @@ describe('markRead', () => {
     });
 });
 
-// -- raiseNotification / clearNotification ------------------------------------
 
 describe('raiseNotification', () => {
     it('flips hasNotification to true', () => {
@@ -376,7 +355,6 @@ describe('clearNotification', () => {
     });
 });
 
-// -- Tab ordering (sortTabs) --------------------------------------------------
 
 describe('tab ordering', () => {
     it('keeps canonical order: city -> guild -> party -> system -> pm', () => {

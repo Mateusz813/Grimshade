@@ -12,10 +12,6 @@ import {
 } from '../../src/systems/arenaSystem';
 import { ARENA_LEAGUES } from '../../src/types/arena';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla arenaSystem.ts (liga/reward/sezon).
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/arenaSystem.golden.test.ts
-//   cp golden/arenaSystem.json ../grimshade-backend/tests/Golden/fixtures/
 
 const SEASON_RANKS = [1, 5, 10, 15, 17, 20, 30, 33, 35, 40, 41, 50, 60, 70, 80, 81, 100];
 const BUCKET_RANKS = [1, 2, 3, 5, 10, 50, 100, 101, 0];

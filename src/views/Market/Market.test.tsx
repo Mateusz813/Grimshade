@@ -2,25 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Market view — 1568 lines, 3 tabs (Przeglądaj / Sprzedawaj / Moje),
- * paged listings table, sell-tile grid, buy / list / edit modals, sale
- * notifications drawer. We DO NOT touch the marketStore async actions —
- * the Supabase mock in `tests/vitest.setup.ts` returns null and the
- * store's `fetch*` calls catch silently.
- *
- * Coverage:
- *   - Smoke render (root + 3 tab buttons + filter bar).
- *   - Tab swap -> active modifier moves.
- *   - Search input is controlled.
- *   - Category select dropdown lists every option.
- *   - Empty-state copy on Browse + My tabs when stores are empty.
- *   - Sale-notifications button shows a badge when notifications exist.
- *   - Notifications modal opens on button click.
- *   - Renders without crashing when character is null.
- *
- * Mocks: framer-motion stubbed.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -36,8 +17,6 @@ vi.mock('framer-motion', async () => {
     };
 });
 
-// Backend-mode (opt-in) mocks. Default OFF so every existing test runs the
-// untouched client/Supabase path; a single test flips `backendFlag.on`.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({
     marketListings: vi.fn(),
@@ -128,7 +107,6 @@ const renderMarket = () =>
     );
 
 beforeEach(() => {
-    // Backend mode OFF by default + fresh mock resolutions each test.
     backendFlag.on = false;
     backendApiMock.marketListings.mockReset().mockResolvedValue([]);
     backendApiMock.marketMine.mockReset().mockResolvedValue([]);
@@ -152,8 +130,6 @@ beforeEach(() => {
         saleNotifications: [],
         isLoading: false,
         error: null,
-        // No-op the async actions so the mount effect doesn't reach for
-        // the mocked Supabase chain — keeps tests deterministic.
         fetchListings: vi.fn().mockResolvedValue(undefined),
         fetchMyListings: vi.fn().mockResolvedValue(undefined),
         fetchSaleNotifications: vi.fn().mockResolvedValue(undefined),
@@ -231,8 +207,6 @@ describe('Market — filter inputs', () => {
     it('renders all 17 category options in the category dropdown', () => {
         const { container } = renderMarket();
         const select = container.querySelectorAll('.market__select')[0] as HTMLSelectElement;
-        // Spec: 17 entries in CATEGORY_OPTIONS (all, 10 equipment slots,
-        // potions, elixirs, stones, arena_points, spell_chests).
         expect(select.querySelectorAll('option').length).toBe(17);
     });
 });
@@ -289,8 +263,6 @@ describe('Market — listings render', () => {
             ],
         });
         const { container } = renderMarket();
-        // Listing rows live inside the panel — the icon cell is a stable
-        // hook (`.market__row-icon`) so we count those.
         const rows = container.querySelectorAll('.market__row-icon');
         expect(rows.length).toBe(2);
     });
@@ -308,8 +280,6 @@ describe('Market — listings render', () => {
 describe('Market — backend mode (opt-in)', () => {
     it('sources the Browse list from backendApi.marketListings, not the store', async () => {
         backendFlag.on = true;
-        // Store lists intentionally empty — in backend mode they must NOT be
-        // the source of truth for the rendered rows.
         useMarketStore.setState({ listings: [], myListings: [] });
         backendApiMock.marketListings.mockResolvedValue([
             {
@@ -341,27 +311,21 @@ describe('Market — backend mode (opt-in)', () => {
 describe('Market — edit price (backend mode)', () => {
     it('routes handleEditPrice through backendApi.editListing + syncFromBackend and SKIPS the store editListing', async () => {
         backendFlag.on = true;
-        // Store action spy — in backend mode it must NOT be reached.
         const storeEditListing = vi.fn().mockResolvedValue(makeListing('l-1'));
         useMarketStore.setState({ editListing: storeEditListing });
-        // My tab is sourced from backendApi.marketMine in backend mode —
-        // seed one own listing so a row renders + opens the edit modal.
         backendApiMock.marketMine.mockResolvedValue([makeListing('be-mine-1', { sellerId: 'char-1', price: 100 })]);
 
         const { container } = renderMarket();
 
-        // Switch to the "Moje" tab where own listings live.
         const myTab = Array.from(container.querySelectorAll('.market__tab'))
             .find((t) => t.textContent?.includes('Moje')) as HTMLButtonElement;
         fireEvent.click(myTab);
 
-        // Wait for the backend-sourced row, then open the edit modal.
         await waitFor(() => {
             expect(container.querySelector('.market__row')).not.toBeNull();
         });
         fireEvent.click(container.querySelector('.market__row') as HTMLElement);
 
-        // Change the price + save.
         const priceInput = container.querySelector('.market__modal-price-row input') as HTMLInputElement;
         fireEvent.change(priceInput, { target: { value: '250' } });
         const saveBtn = Array.from(container.querySelectorAll('.market__modal-btn'))
@@ -372,7 +336,6 @@ describe('Market — edit price (backend mode)', () => {
             expect(backendApiMock.editListing).toHaveBeenCalledWith('char-1', 'be-mine-1', { price: 250 });
         });
         expect(syncFromBackend).toHaveBeenCalledWith('char-1');
-        // Old client path must be skipped.
         expect(storeEditListing).not.toHaveBeenCalled();
     });
 
@@ -407,20 +370,9 @@ describe('Market — edit price (backend mode)', () => {
 
 describe('Market — character-less render', () => {
     it('renders nothing (returns null) when character is missing', () => {
-        // Spec: `if (!character) return null;` short-circuits before any
-        // markup is emitted. Verifies the guard is in place — protects
-        // against the character.id null-deref paths further down.
         useCharacterStore.setState({ character: null });
         const { container } = renderMarket();
         expect(container.querySelector('.market')).toBeNull();
     });
 });
 
-// TODO: Driving listItem / buyListing / editListing / cancelListing through
-//       the view requires opening their respective modals + filling a
-//       price/quantity input + submitting — full flow lives in the
-//       marketStore.test.ts (which can hit the store directly) and in
-//       Playwright e2e (which exercises the real Supabase chain).
-// TODO: Pagination (50/page) only surfaces with >50 listings — covered
-//       implicitly by the row-count test above. Add explicit pagination
-//       smoke once we have a deterministic-page seed.

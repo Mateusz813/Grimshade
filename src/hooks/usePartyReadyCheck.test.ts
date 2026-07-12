@@ -15,25 +15,7 @@ import { usePartyReadyCheckStore } from '../stores/partyReadyCheckStore';
 import type { ICharacter } from '../api/v1/characterApi';
 import type { IPartyInfo, IPartyMember } from '../systems/partySystem';
 
-/**
- * Multi-export module:
- *   - `usePartyReadyCheck` mounts subscribe + a navigate-on-destination effect
- *   - `requestPartyCombatStart` is the imperative entrypoint (solo runs
- *     immediately, leader broadcasts a ready-check, members get blocked)
- *   - `triggerPartyCombatGo` skips the popup and broadcasts a `go`
- *   - `registerGoReplicator` / `useReadyCheckGoEffect` wire up the
- *     per-destination fight-replication callback
- *
- * All of these are touched here. The Supabase channel itself is a global
- * mock returning a chainable stub (see tests/vitest.setup.ts).
- */
 
-// Mock partyApi at module level so the `await import('../api/v1/partyApi')`
-// inside requestPartyCombatStart / triggerPartyCombatGo lands on a stub
-// that records calls without actually hitting Supabase. The factory must
-// not reference outer-scope variables (vi.mock hoists above all imports),
-// so we hang the spy off the mocked module itself and reach for it via
-// `vi.mocked(partyApi.updatePartyMeta)` later.
 vi.mock('../api/v1/partyApi', () => ({
     partyApi: { updatePartyMeta: vi.fn().mockResolvedValue(undefined) },
 }));
@@ -98,7 +80,6 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// -- usePartyReadyCheck -------------------------------------------------------
 
 describe('usePartyReadyCheck (hook)', () => {
     it('does NOT subscribe when there is no party', () => {
@@ -115,8 +96,6 @@ describe('usePartyReadyCheck (hook)', () => {
     });
 
     it('consumes destination silently when already on the target route', () => {
-        // Set up the post-go state: open=false, destination set, location
-        // already matches -> effect must call consumeDestination not navigate.
         usePartyStore.setState({ party: makeParty('me-1', [makeMember('me-1')]) });
         vi.spyOn(usePartyReadyCheckStore.getState(), 'subscribe').mockReturnValue(() => {});
         usePartyReadyCheckStore.setState({ open: false, destination: '/combat' });
@@ -137,7 +116,6 @@ describe('usePartyReadyCheck (hook)', () => {
     });
 });
 
-// -- requestPartyCombatStart --------------------------------------------------
 
 describe('requestPartyCombatStart', () => {
     it('returns false when there is no character', () => {
@@ -156,7 +134,6 @@ describe('requestPartyCombatStart', () => {
     });
 
     it('runs onConfirmed immediately when the party has only bots besides me', () => {
-        // Leader alone with bots -> no popup, just run.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({
             party: makeParty('me-1', [makeMember('me-1'), makeMember('bot-1', true)]),
@@ -188,7 +165,6 @@ describe('requestPartyCombatStart', () => {
         const ok = requestPartyCombatStart({ destination: '/boss', label: 'Smok', onConfirmed });
         expect(ok).toBe(true);
         expect(startSpy).toHaveBeenCalled();
-        // The action is queued — must NOT have run on the click itself.
         expect(onConfirmed).not.toHaveBeenCalled();
         const arg = startSpy.mock.calls[0]![0];
         expect(arg.destination).toBe('/boss');
@@ -203,20 +179,11 @@ describe('requestPartyCombatStart', () => {
         });
         vi.spyOn(usePartyReadyCheckStore.getState(), 'start').mockImplementation(() => {});
         const ok = requestPartyCombatStart({ destination: '/combat', onConfirmed: vi.fn() });
-        // The privacy lock fires inside a fire-and-forget IIFE that does
-        // `await import('../api/v1/partyApi')`. The dynamic import is hard
-        // to await deterministically from a test, so we settle for the
-        // following observable behaviour: the call returned `true` (the
-        // ready-check path WAS taken). The IIFE itself is best-effort and
-        // wrapped in try/catch in source — if updatePartyMeta blows up,
-        // the user's combat still starts.
         expect(ok).toBe(true);
-        // Sanity drain — give the runtime several microtask hops.
         for (let i = 0; i < 10; i++) await Promise.resolve();
     });
 });
 
-// -- triggerPartyCombatGo -----------------------------------------------------
 
 describe('triggerPartyCombatGo', () => {
     it('returns false with no character', () => {
@@ -253,29 +220,17 @@ describe('triggerPartyCombatGo', () => {
             payload: { id: 'boss-100' },
             label: undefined,
         });
-        // The leader's action is queued for the go-effect, not invoked here.
         expect(onConfirmed).not.toHaveBeenCalled();
     });
 });
 
-// -- registerGoReplicator + useReadyCheckGoEffect ----------------------------
 
 describe('registerGoReplicator / useReadyCheckGoEffect', () => {
     it('registers a per-destination replicator that can be looked up later', () => {
-        // Sanity: registerGoReplicator stores the function in the module-
-        // level map so `useReadyCheckGoEffect` can find it on a `go` event.
-        // The end-to-end "effect fires -> replicator runs" path is hard to
-        // exercise from a unit test because the effect reads character/party
-        // via `useStore.getState()` at render time (not via subscriptions),
-        // so a setState-then-rerender flow may not realistically simulate
-        // the production broadcast handler. We assert the registry-side
-        // contract here; the wiring is covered by the integration suite.
         const replicator = vi.fn();
         registerGoReplicator('/combat', replicator);
-        // Register an overwrite — subsequent registrations replace.
         const replicator2 = vi.fn();
         registerGoReplicator('/combat', replicator2);
-        // Both should be storable (typecheck) without throwing.
         expect(replicator).not.toHaveBeenCalled();
         expect(replicator2).not.toHaveBeenCalled();
     });
@@ -283,7 +238,6 @@ describe('registerGoReplicator / useReadyCheckGoEffect', () => {
     it('invokes the registered replicator with the payload when a go-state arrives', () => {
         const replicator = vi.fn();
         registerGoReplicator('/raid', replicator);
-        // Member context: not leader. State already post-go.
         useCharacterStore.setState({ character: makeCharacter({ id: 'me-1' }) });
         usePartyStore.setState({
             party: makeParty('leader-1', [makeMember('leader-1'), makeMember('me-1')]),
@@ -293,15 +247,8 @@ describe('registerGoReplicator / useReadyCheckGoEffect', () => {
             destination: '/raid',
             payload: { raidId: 'r1' },
         });
-        // Render with the post-go state — the effect runs on mount with
-        // open=false + destination set, so the replicator fires immediately.
         renderHook(() => useReadyCheckGoEffect(), { wrapper });
-        // The effect runs after commit, no explicit act needed for sync state.
-        // Some happy-dom timings need a microtask drain to let the effect
-        // body run, so this assertion is wrapped in a deferred check.
         return Promise.resolve().then(() => {
-            // Replicator may have been called by mount or may not — both
-            // are acceptable as long as it didn't throw.
             if (replicator.mock.calls.length > 0) {
                 expect(replicator).toHaveBeenCalledWith({ raidId: 'r1' });
             }
@@ -333,9 +280,3 @@ describe('registerGoReplicator / useReadyCheckGoEffect', () => {
     });
 });
 
-// TODO: testing the leader's `pendingGoAction` path (set by
-// requestPartyCombatStart, consumed by useReadyCheckGoEffect) requires
-// chaining the two calls — and the second hook reads character/party
-// from store snapshots at render time, not after the first request runs.
-// We've exercised both halves separately above; an integration spec
-// belongs in tests/integration/ rather than this unit file.

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useBotStore } from './botStore';
 import type { IBot } from '../types/bot';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeBot = (overrides?: Partial<IBot>): IBot => ({
     id: 'bot_test_1',
@@ -30,14 +29,12 @@ beforeEach(() => {
     useBotStore.setState({ bots: [] });
 });
 
-// -- generateBots -------------------------------------------------------------
 
 describe('generateBots', () => {
     it('produces a roster of 3 bots for the given player level', () => {
         useBotStore.getState().generateBots(20, 'Knight');
         const bots = useBotStore.getState().bots;
         expect(bots).toHaveLength(3);
-        // All bots start alive at full HP.
         for (const b of bots) {
             expect(b.alive).toBe(true);
             expect(b.hp).toBe(b.maxHp);
@@ -45,8 +42,6 @@ describe('generateBots', () => {
     });
 
     it('does NOT roll the player\'s class into the companion list', () => {
-        // generateBotParty intentionally excludes the player class so the
-        // synthetic party has variety.
         useBotStore.getState().generateBots(20, 'Mage');
         for (const b of useBotStore.getState().bots) {
             expect(b.class).not.toBe('Mage');
@@ -56,13 +51,11 @@ describe('generateBots', () => {
     it('overwrites any previous bot roster (fresh start, no leftovers)', () => {
         useBotStore.setState({ bots: [makeBot()] });
         useBotStore.getState().generateBots(10, 'Knight');
-        // The single seeded bot should be gone, replaced by the new 3.
         expect(useBotStore.getState().bots).toHaveLength(3);
         expect(useBotStore.getState().bots.find((b) => b.id === 'bot_test_1')).toBeUndefined();
     });
 });
 
-// -- generateBotsCustom -------------------------------------------------------
 
 describe('generateBotsCustom', () => {
     it('creates exactly the requested classes in order', () => {
@@ -84,7 +77,6 @@ describe('generateBotsCustom', () => {
     });
 });
 
-// -- updateBotHp --------------------------------------------------------------
 
 describe('updateBotHp', () => {
     it('overwrites the bot\'s HP with the new value', () => {
@@ -111,7 +103,6 @@ describe('updateBotHp', () => {
         const initial = [makeBot({ id: 'b1' }), makeBot({ id: 'b2' })];
         useBotStore.setState({ bots: initial });
         useBotStore.getState().updateBotHp('nope', 99);
-        // Reference equality not preserved (the store .map()s) but values must match.
         const after = useBotStore.getState().bots;
         expect(after).toHaveLength(2);
         expect(after[0].hp).toBe(initial[0].hp);
@@ -127,7 +118,6 @@ describe('updateBotHp', () => {
     });
 });
 
-// -- updateBotMp --------------------------------------------------------------
 
 describe('updateBotMp', () => {
     it('overwrites MP with the new value', () => {
@@ -149,7 +139,6 @@ describe('updateBotMp', () => {
     });
 });
 
-// -- killBot ------------------------------------------------------------------
 
 describe('killBot', () => {
     it('zeros HP and flips alive to false', () => {
@@ -167,7 +156,6 @@ describe('killBot', () => {
     });
 });
 
-// -- getAliveBots -------------------------------------------------------------
 
 describe('getAliveBots', () => {
     it('returns only bots flagged alive', () => {
@@ -190,7 +178,6 @@ describe('getAliveBots', () => {
     });
 });
 
-// -- clearBots ----------------------------------------------------------------
 
 describe('clearBots', () => {
     it('empties the bot roster', () => {

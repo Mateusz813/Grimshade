@@ -1,14 +1,3 @@
-/**
- * Tests for the app-version shim.
- *
- * `APP_VERSION` is sourced from Vite's `define` block at build time —
- * the test config (see `vitest.config.ts`) injects the literal string
- * "test" for `__APP_VERSION__`, so we assert that exact value. The
- * fallback branch (`typeof __APP_VERSION__ !== 'string'`) can't be
- * reached from inside vitest because `define` always supplies a
- * string, so we cover it indirectly by asserting the documented type
- * contract — the exported constant must always be a string.
- */
 
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION } from './appVersion';
@@ -19,7 +8,6 @@ describe('APP_VERSION', () => {
     });
 
     it('matches the vitest `define` injection ("test")', () => {
-        // vitest.config.ts:   define: { __APP_VERSION__: JSON.stringify('test') }
         expect(APP_VERSION).toBe('test');
     });
 

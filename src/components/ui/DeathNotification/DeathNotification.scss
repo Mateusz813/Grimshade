@@ -1,10 +1,7 @@
-// ==============================================================================
-// Death Notification — epic fullscreen death animation
-// ==============================================================================
 
 .death {
   position: fixed;
-  z-index: 10001; // above level-up
+  z-index: 10001;
   pointer-events: auto;
 
   &--epic {
@@ -18,19 +15,11 @@
       rgba(20, 0, 0, 0.98) 50%,
       rgba(0, 0, 0, 0.99) 100%
     );
-    // Full death = persistent popup. Only the in-animation runs; the player
-    // must click to dismiss (handled in JS). The auto-out keyframe was
-    // removed to match the spec — if the popup hides itself the player can
-    // miss the post-mortem entirely.
     animation: death-epic-in 0.6s ease-out;
     overflow: hidden;
     cursor: pointer;
   }
 
-  // Flee variant — soft, blue/dust palette instead of blood. Same layout +
-  // particle system, just toned down so the "you ran" message reads as a
-  // small slap on the wrist instead of a death. Flee KEEPS its auto-out
-  // animation because it's a soft event the JS layer also auto-dismisses.
   &--flee {
     background: radial-gradient(
       ellipse at center,
@@ -48,7 +37,6 @@
     }
   }
 
-  // -- Blood drip particles falling from top ---------------------------------
   &__drips {
     position: absolute;
     inset: 0;
@@ -72,7 +60,6 @@
     opacity: 0;
   }
 
-  // -- Dark rings expanding from center --------------------------------------
   &__rings {
     position: absolute;
     top: 50%;
@@ -97,7 +84,6 @@
     &--3 { animation-delay: 1.6s; border-color: rgba(100, 0, 0, 0.3); }
   }
 
-  // -- Soul particles drifting upwards ---------------------------------------
   &__souls {
     position: absolute;
     inset: 0;
@@ -122,7 +108,6 @@
     opacity: 0;
   }
 
-  // -- Center content --------------------------------------------------------
   &__center {
     position: relative;
     z-index: 2;
@@ -224,9 +209,6 @@
   }
 }
 
-// ==============================================================================
-// Keyframes
-// ==============================================================================
 
 @keyframes death-epic-in {
   from { opacity: 0; }

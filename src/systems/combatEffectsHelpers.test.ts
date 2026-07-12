@@ -10,7 +10,6 @@ import {
     routeHeal,
 } from './combatEffectsHelpers';
 
-// -- newCombatEffectsSession --------------------------------------------------
 
 describe('newCombatEffectsSession', () => {
     it('returns a session with an empty status map', () => {
@@ -27,7 +26,6 @@ describe('newCombatEffectsSession', () => {
     });
 });
 
-// -- ensureStatus -------------------------------------------------------------
 
 describe('ensureStatus', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -61,7 +59,6 @@ describe('ensureStatus', () => {
     });
 });
 
-// -- isCombatantStunned -------------------------------------------------------
 
 describe('isCombatantStunned', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -91,7 +88,6 @@ describe('isCombatantStunned', () => {
     });
 });
 
-// -- tickAll ------------------------------------------------------------------
 
 describe('tickAll', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -106,7 +102,6 @@ describe('tickAll', () => {
     });
 
     it('skips combatants that have no registered status', () => {
-        // Only combatant-a has a status entry; combatant-b is unknown.
         const stA = ensureStatus(session, 'a');
         stA.dots.push({ remainingMs: 5000, pctPerSec: 10 });
         const out = tickAll(
@@ -122,13 +117,12 @@ describe('tickAll', () => {
         const st = ensureStatus(session, 'a');
         st.stunMs = 1000;
         const out = tickAll(session, [{ id: 'a', maxHp: 100 }], 500);
-        expect(out).toEqual([]); // no DOT, no ritual -> no row
+        expect(out).toEqual([]);
         expect(st.stunMs).toBe(500);
     });
 
     it('reports DOT damage when a DOT ticks', () => {
         const st = ensureStatus(session, 'a');
-        // DOT spec: 10%/sec of max HP, run for 1 full second.
         st.dots.push({ remainingMs: 5000, pctPerSec: 10 });
         const out = tickAll(session, [{ id: 'a', maxHp: 100 }], 1000);
         expect(out).toHaveLength(1);
@@ -139,7 +133,6 @@ describe('tickAll', () => {
 
     it('reports dark ritual when its countdown expires this tick', () => {
         const st = ensureStatus(session, 'a');
-        // 50% of max HP as flat damage when triggered.
         st.darkRitualPending.push({ triggerInMs: 1000, pctOfMaxHp: 50 });
         const out = tickAll(session, [{ id: 'a', maxHp: 200 }], 1000);
         expect(out).toHaveLength(1);
@@ -161,7 +154,6 @@ describe('tickAll', () => {
     });
 });
 
-// -- castSkill ----------------------------------------------------------------
 
 describe('castSkill', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -180,7 +172,6 @@ describe('castSkill', () => {
             allyIds: ['p'],
             enemyIds: ['m'],
         });
-        // No atoms -> blank() returns aoe=false / castDmgMult=1 / no special flags.
         expect(out.aoe).toBe(false);
         expect(out.castDmgMult).toBe(1);
         expect(out.instantKill).toBe(false);
@@ -239,10 +230,8 @@ describe('castSkill', () => {
             allyIds: ['p'],
             enemyIds: [],
         });
-        // Cast resolves without crashing on null target.
         expect(out).toBeDefined();
         const casterStatus = session.statuses.get('p')!;
-        // attack_up writes atkBuffPct + atkBuffMs to the caster.
         expect(casterStatus.atkBuffPct).toBeGreaterThan(0);
     });
 
@@ -277,7 +266,6 @@ describe('castSkill', () => {
     });
 });
 
-// -- resolveBasicAttack -------------------------------------------------------
 
 describe('resolveBasicAttack', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -294,14 +282,12 @@ describe('resolveBasicAttack', () => {
             targetId: 'm',
             baseDmg: 50,
         });
-        // No buffs, no crits -> damage is just floor(50).
         expect(r.damage).toBe(50);
         expect(r.dodged).toBe(false);
         expect(r.wasCrit).toBe(false);
     });
 
     it('returns 0 damage and dodged=true when target has a non-magic dodge_next charge and attacker is non-magic', () => {
-        // Force a dodge_next charge with scope=non_magic against a Knight.
         const targetStatus = ensureStatus(session, 'm');
         targetStatus.dodgeNext.push({ count: 1, scope: 'non_magic' });
 
@@ -327,7 +313,6 @@ describe('resolveBasicAttack', () => {
             targetId: 'm',
             baseDmg: 100,
         });
-        // Mage / Cleric / Necromancer skip the non_magic dodge.
         expect(r.dodged).toBe(false);
         expect(r.damage).toBe(100);
     });
@@ -345,12 +330,12 @@ describe('resolveBasicAttack', () => {
         });
         expect(r.wasCrit).toBe(true);
         expect(r.critMult).toBe(3);
-        expect(r.damage).toBe(150); // floor(50 * 3)
+        expect(r.damage).toBe(150);
     });
 
     it('uses crit_buff_next with Math.random < threshold', () => {
         const attacker = ensureStatus(session, 'p');
-        attacker.critBuffNext = 100; // 100% crit chance for next swing
+        attacker.critBuffNext = 100;
         const rng = vi.spyOn(Math, 'random').mockReturnValue(0.5);
         try {
             const r = resolveBasicAttack({
@@ -361,16 +346,14 @@ describe('resolveBasicAttack', () => {
                 baseDmg: 50,
             });
             expect(r.wasCrit).toBe(true);
-            expect(r.damage).toBe(100); // floor(50 * 2)
+            expect(r.damage).toBe(100);
         } finally {
             rng.mockRestore();
         }
-        // critBuffNext consumed.
         expect(attacker.critBuffNext).toBe(0);
     });
 });
 
-// -- routeDamage --------------------------------------------------------------
 
 describe('routeDamage', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;
@@ -389,8 +372,6 @@ describe('routeDamage', () => {
         const st = ensureStatus(session, 'm');
         st.immortalMs = 5000;
         const r = routeDamage(session, 'm', 100, 999);
-        // Note: routeDamage returns -hpDelta, and hpDelta is 0 when absorbed,
-        // so appliedDmg is -0 in JS — use loose numeric comparison.
         expect(r.appliedDmg).toBe(-0);
         expect(Math.abs(r.appliedDmg)).toBe(0);
         expect(r.absorbed).toBe(true);
@@ -400,8 +381,6 @@ describe('routeDamage', () => {
         const st = ensureStatus(session, 'm');
         st.cannotDieMs = 5000;
         const r = routeDamage(session, 'm', 50, 500);
-        // applyIncomingDamage clamps so HP cannot drop below 1.
-        // appliedDmg = -hpDelta = currentHp - 1 = 49.
         expect(r.appliedDmg).toBe(49);
         expect(r.absorbed).toBe(false);
     });
@@ -421,7 +400,6 @@ describe('routeDamage', () => {
     });
 });
 
-// -- routeHeal ----------------------------------------------------------------
 
 describe('routeHeal', () => {
     let session: ReturnType<typeof newCombatEffectsSession>;

@@ -3,11 +3,6 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 import OfflineRewardModal from './OfflineRewardModal';
 
-/**
- * OfflineRewardModal — wrapped in framer-motion's AnimatePresence.
- * When `show` is false the modal unmounts entirely. Click on the
- * overlay or the Odbierz button fires onClose.
- */
 
 afterEach(() => {
     cleanup();
@@ -39,7 +34,6 @@ describe('OfflineRewardModal — visibility', () => {
         );
         expect(screen.getByText('Trening offline!')).toBeTruthy();
         expect(screen.getByText('Sword Fighting')).toBeTruthy();
-        // XP value with PL locale formatting (space/dot grouping).
         const xpSpan = document.querySelector('.offline-reward-modal__xp');
         expect(xpSpan?.textContent).toMatch(/\+1[\s.,]?234 XP/);
     });
@@ -56,7 +50,6 @@ describe('OfflineRewardModal — formatTime', () => {
                 onClose={() => undefined}
             />,
         );
-        // The duration is wrapped in <strong>, so we grep the surrounding text.
         expect(screen.getByText('42s')).toBeTruthy();
     });
 

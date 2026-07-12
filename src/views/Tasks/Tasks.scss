@@ -51,7 +51,6 @@
     white-space: nowrap;
   }
 
-  // Active tasks container (multiple)
   &__active-list {
     display: flex;
     flex-direction: column;
@@ -59,7 +58,6 @@
     padding: $spacing-md $spacing-md 0;
   }
 
-  // Active task banner
   &__active {
     background: $color-bg-card;
     border: 1px solid $color-accent;
@@ -168,7 +166,6 @@
     50% { opacity: 0.85; }
   }
 
-  // Tabs
   &__tabs {
     display: flex;
     border-bottom: 1px solid $color-border;
@@ -196,7 +193,6 @@
     }
   }
 
-  // Task list
   &__list {
     padding: $spacing-sm;
   }
@@ -212,7 +208,6 @@
       border-color: rgba($color-accent, 0.4);
     }
 
-    // When preceded by an inline mastery bar, flatten the top corners
     .tasks__monster-group-wrap > & {
       margin-bottom: 0;
     }
@@ -317,19 +312,16 @@
     font-weight: 700;
   }
 
-  // -- Monster group wrapper (mastery bar + card together) ------------------
   &__monster-group-wrap {
     display: flex;
     flex-direction: column;
     margin-bottom: $spacing-md;
   }
 
-  // Override bottom margin on group itself when inside wrapper
   &__monster-group-wrap > &__monster-group {
     margin-bottom: 0;
   }
 
-  // -- Inline mastery bar (above each monster card) -----------------------
   &__inline-mastery {
     display: flex;
     align-items: center;
@@ -390,14 +382,12 @@
     flex-shrink: 0;
   }
 
-  // Empty state
   &__empty {
     text-align: center;
     color: $color-text-muted;
     padding: $spacing-xl;
   }
 
-  // History
   &__history {
     padding: $spacing-sm;
   }
@@ -431,7 +421,6 @@
   }
 }
 
-// Responsive
 @media (min-width: 768px) {
   .tasks {
     &__threshold-list {

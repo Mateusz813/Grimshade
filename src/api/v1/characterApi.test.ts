@@ -1,20 +1,6 @@
-/**
- * Tests for characterApi — REST/PostgREST helpers + Supabase RPC bumps.
- *
- * The REST methods (getCharacter, getCharacters, createCharacter,
- * updateCharacter, deleteCharacter, bumpArenaStats, bumpStat) hit
- * `api.get/post/patch/delete` from BaseApi, which calls the shared axios
- * instance. We mock that instance so we can assert URL/payload/config
- * shape without touching the network.
- *
- * The RPC methods (bumpArenaDeathRpc, bumpArenaKillRpc,
- * bumpMarketSaleRpc) call `supabase.rpc(...)` — the supabase mock is
- * provided by the global setup file.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock axiosInstance BEFORE importing characterApi so BaseApi picks up the mock.
 vi.mock('./axiosInstance', () => ({
     default: {
         get: vi.fn(),
@@ -42,16 +28,13 @@ import { characterApi } from './characterApi';
 import { isBackendMode } from '../../config/backendMode';
 import { backendApi } from '../backend/backendApi';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 
 beforeEach(() => {
     vi.clearAllMocks();
-    // Domyślnie tryb backendu WYŁĄCZONY — istniejące testy (zapisy do Supabase) bez zmian.
     vi.mocked(isBackendMode).mockReturnValue(false);
 });
 
-// -- Helpers ----------------------------------------------------------------
 const mkRes = <T>(data: T) => ({ data });
 
 describe('characterApi.getCharacter', () => {
@@ -90,12 +73,10 @@ describe('characterApi.createCharacter', () => {
     it('posts payload+user_id and returns the inserted row', async () => {
         const inserted = { id: 'new', user_id: 'u1', name: 'Mage1', class: 'Mage' };
         mockApi.post.mockResolvedValueOnce(mkRes([inserted]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = await characterApi.createCharacter('u1', { name: 'Mage1', class: 'Mage' } as any);
         const [url, body, config] = mockApi.post.mock.calls[0];
         expect(url).toBe('/rest/v1/characters');
         expect(body).toMatchObject({ name: 'Mage1', class: 'Mage', user_id: 'u1' });
-        // SUPABASE_RETURN_HEADERS — needed for the row to come back.
         expect(config.headers.Prefer).toBe('return=representation');
         expect(result).toBe(inserted);
     });
@@ -123,15 +104,11 @@ describe('characterApi.deleteCharacter', () => {
         mockApi.delete.mockResolvedValue(mkRes(undefined));
         await characterApi.deleteCharacter('to-yeet');
 
-        // Membership tables (not FK-cascaded) get cleaned so the deleted
-        // character vanishes from its guild / party roster.
         expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/guild_members?character_id=eq.to-yeet', expect.any(Object));
         expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/party_members?character_id=eq.to-yeet', expect.any(Object));
         expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/guild_join_requests?character_id=eq.to-yeet', expect.any(Object));
-        // The character row itself.
         expect(mockApi.delete).toHaveBeenCalledWith('/rest/v1/characters?id=eq.to-yeet', expect.any(Object));
 
-        // Chat history is intentionally PRESERVED — messages must NOT be deleted.
         const deletedUrls = mockApi.delete.mock.calls.map((c: unknown[]) => String(c[0]));
         expect(deletedUrls.some((u: string) => u.includes('/messages'))).toBe(false);
     });
@@ -166,19 +143,19 @@ describe('characterApi.bumpArenaStats', () => {
     });
 
     it('treats missing row as zeroes (no-op start) and floors negative deltas at 0', async () => {
-        mockApi.get.mockResolvedValueOnce(mkRes([])); // no row
+        mockApi.get.mockResolvedValueOnce(mkRes([]));
         mockApi.patch.mockResolvedValueOnce(mkRes([{}]));
         vi.spyOn(console, 'log').mockImplementation(() => {});
 
         await characterApi.bumpArenaStats({
             characterId: 'x',
-            winDelta: -5, // floored to 0
+            winDelta: -5,
             lossDelta: 2,
             league: 'silver',
             leaguePoints: 500,
         });
         const body = mockApi.patch.mock.calls[0][1];
-        expect(body.arena_kills).toBe(0); // 0 + max(0, -5) = 0
+        expect(body.arena_kills).toBe(0);
         expect(body.arena_deaths).toBe(2);
     });
 
@@ -201,7 +178,6 @@ describe('characterApi.bumpStat', () => {
     it('mode=add: reads current value then patches with sum', async () => {
         mockApi.get.mockResolvedValueOnce(mkRes([{ market_items_sold: 7 }]));
         mockApi.patch.mockResolvedValueOnce(mkRes([{}]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'market_items_sold' as any, value: 3, mode: 'add' });
         const patchBody = mockApi.patch.mock.calls[0][1];
         expect(patchBody.market_items_sold).toBe(10);
@@ -209,7 +185,6 @@ describe('characterApi.bumpStat', () => {
 
     it('mode=max: skips patch when new value not greater', async () => {
         mockApi.get.mockResolvedValueOnce(mkRes([{ best_dps5: 100 }]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'best_dps5' as any, value: 50, mode: 'max' });
         expect(mockApi.patch).not.toHaveBeenCalled();
     });
@@ -217,7 +192,6 @@ describe('characterApi.bumpStat', () => {
     it('mode=max: patches when new value beats current', async () => {
         mockApi.get.mockResolvedValueOnce(mkRes([{ best_dps5: 100 }]));
         mockApi.patch.mockResolvedValueOnce(mkRes([{}]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'best_dps5' as any, value: 200, mode: 'max' });
         const patchBody = mockApi.patch.mock.calls[0][1];
         expect(patchBody.best_dps5).toBe(200);
@@ -225,7 +199,6 @@ describe('characterApi.bumpStat', () => {
 
     it('mode=set: skips the read and just patches', async () => {
         mockApi.patch.mockResolvedValueOnce(mkRes([{}]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'mastery_points' as any, value: 99, mode: 'set' });
         expect(mockApi.get).not.toHaveBeenCalled();
         const patchBody = mockApi.patch.mock.calls[0][1];
@@ -235,7 +208,6 @@ describe('characterApi.bumpStat', () => {
     it('default mode is "add"', async () => {
         mockApi.get.mockResolvedValueOnce(mkRes([{ quests_done: 5 }]));
         mockApi.patch.mockResolvedValueOnce(mkRes([{}]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'quests_done' as any, value: 2 });
         const patchBody = mockApi.patch.mock.calls[0][1];
         expect(patchBody.quests_done).toBe(7);
@@ -244,7 +216,6 @@ describe('characterApi.bumpStat', () => {
     it('handles null current values by treating them as 0', async () => {
         mockApi.get.mockResolvedValueOnce(mkRes([{ market_items_sold: null }]));
         mockApi.patch.mockResolvedValueOnce(mkRes([{}]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'market_items_sold' as any, value: 4 });
         const patchBody = mockApi.patch.mock.calls[0][1];
         expect(patchBody.market_items_sold).toBe(4);
@@ -253,7 +224,6 @@ describe('characterApi.bumpStat', () => {
     it('swallows errors and console.warns', async () => {
         mockApi.get.mockRejectedValueOnce(new Error('boom'));
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await characterApi.bumpStat({ characterId: 'c1', column: 'foo' as any, value: 1 });
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
@@ -261,11 +231,9 @@ describe('characterApi.bumpStat', () => {
 });
 
 describe('characterApi RPC helpers', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rpcMock = vi.fn().mockResolvedValue({ error: null }) as any;
 
     beforeEach(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).rpc = rpcMock;
         rpcMock.mockClear();
     });
@@ -332,7 +300,6 @@ describe('characterApi RPC helpers', () => {
     });
 });
 
-// -- backend mode: server is the sole writer ---------------------------------
 
 describe('characterApi — backend mode gates all direct character writes', () => {
     beforeEach(() => {
@@ -361,7 +328,6 @@ describe('characterApi — backend mode gates all direct character writes', () =
 
     it('arena RPC bumps do NOT call supabase.rpc', async () => {
         const rpc = vi.fn().mockResolvedValue({ error: null });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).rpc = rpc;
         await characterApi.bumpArenaDeathRpc('victim');
         await characterApi.bumpArenaKillRpc('victim');
@@ -373,11 +339,8 @@ describe('characterApi — backend mode gates all direct character writes', () =
         const seeded = { id: 'srv-1', user_id: 'u1', name: 'Mage1', class: 'Mage', level: 1 };
         vi.mocked(backendApi.createCharacter).mockResolvedValueOnce(seeded);
 
-        // The client passes full base-stats too, but the backend branch must
-        // forward ONLY name+class — the server derives stats + seeds the blob.
         const result = await characterApi.createCharacter('u1', {
             name: 'Mage1', class: 'Mage', hp: 999, gold: 999999,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
 
         expect(backendApi.createCharacter).toHaveBeenCalledWith({ name: 'Mage1', class: 'Mage' });
@@ -391,12 +354,7 @@ describe('characterApi — backend mode gates all direct character writes', () =
         await characterApi.deleteCharacter('yeet-me');
 
         expect(backendApi.deleteCharacter).toHaveBeenCalledWith('yeet-me');
-        // Server does roster + game_saves + row in one txn — no client DELETEs.
         expect(mockApi.delete).not.toHaveBeenCalled();
     });
 });
 
-// TODO: We don't directly cover the auth-token interceptor here (that
-// lives in axiosInstance.test.ts). The other concrete URL-construction
-// edge cases (special characters in user_id) get exercised live by the
-// integration suites under tests/integration/.

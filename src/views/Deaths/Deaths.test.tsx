@@ -2,21 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Deaths view — paginated graveyard feed (~490 lines). Loads up to
- * 1000 most-recent rows via deathsApi.listRecentDeaths, filters by
- * source kind (all / raid / boss / dungeon / transform / monster), and
- * paginates 100/page.
- *
- * Coverage:
- *   - Smoke: root + filter row mount.
- *   - Spinner mounts before data resolves.
- *   - Empty payload renders the "Brak zapisanych śmierci" copy.
- *   - Populated payload renders one <li> per record.
- *   - Filter click switches the active filter chip.
- *   - Counts per filter render the row totals.
- *   - Pagination row appears when items > 100.
- */
 
 vi.mock('../../api/v1/deathsApi', () => ({
     deathsApi: {
@@ -67,7 +52,6 @@ describe('Deaths — smoke', () => {
     it('renders the .deaths root', async () => {
         const { container } = renderDeaths();
         expect(container.querySelector('.deaths')).not.toBeNull();
-        // Filters row always renders.
         await waitFor(() => {
             expect(container.querySelector('.deaths__filters')).not.toBeNull();
         });
@@ -94,7 +78,6 @@ describe('Deaths — smoke', () => {
 describe('Deaths — load states', () => {
     it('renders the loading state before the API resolves', () => {
         const { container } = renderDeaths();
-        // Loading branch renders a Spinner inside .deaths__empty.
         expect(container.querySelector('.deaths__empty')).not.toBeNull();
     });
 
@@ -122,21 +105,6 @@ describe('Deaths — load states', () => {
         expect(container.textContent).toContain('Crypt');
     });
 
-    // 2026-05-27: raid death-source badge coverage.
-    //
-    // The E2E counterpart (`tests/e2e/city/deaths/per-combat-type.spec.ts`)
-    // covers monster/dungeon/boss/transform end-to-end against the real DB.
-    // The 'raid' source can ONLY be INSERTed into `character_deaths` once
-    // `scripts/deaths_migration.sql` widens the CHECK constraint (DDL — owner
-    // applies via Supabase dashboard, same as the other 3 migrations). Until
-    // then a real-DB raid insert is rejected, so the raid-badge RENDERING is
-    // covered HERE at the component level instead — deterministic, no DB.
-    //
-    // SOURCE_META.raid -> { label: 'Rajd', icon: 'crossed-swords' } (Deaths.tsx line 50).
-    // This asserts a source='raid' row renders the 'Rajd' badge so the feed's
-    // source->badge mapping for raid is regression-guarded regardless of the
-    // DB constraint state. When the migration lands, the E2E parametrization
-    // can re-add the 'raid' case for full end-to-end depth.
     it('renders the "Rajd" badge for a source="raid" death row', async () => {
         vi.mocked(deathsApi.listRecentDeaths).mockResolvedValueOnce([
             makeDeath({ id: 'r1', source: 'raid', source_name: 'Smoczy Rajd', source_level: 40 }),
@@ -146,7 +114,6 @@ describe('Deaths — load states', () => {
         await waitFor(() => {
             expect(container.querySelectorAll('.deaths__item').length).toBe(1);
         });
-        // Badge label comes from SOURCE_META.raid.label = 'Rajd'.
         expect(container.textContent).toContain('Rajd');
         expect(container.textContent).toContain('Smoczy Rajd');
     });
@@ -185,7 +152,6 @@ describe('Deaths — filtering', () => {
 
         await waitFor(() => {
             const visible = container.querySelectorAll('.deaths__item');
-            // Only the dungeon record (Crypt) should remain visible.
             expect(visible.length).toBe(1);
         });
         expect(container.textContent).toContain('Crypt');
@@ -197,12 +163,9 @@ describe('Deaths — filtering', () => {
         await waitFor(() => {
             expect(container.querySelectorAll('.deaths__item').length).toBe(3);
         });
-        // Each chip shows its count in `.deaths__filter-count`.
         const counts = Array.from(container.querySelectorAll('.deaths__filter-count'))
             .map((c) => c.textContent);
-        // "all" should show 3.
         expect(counts).toContain('3');
-        // Each source filter shows 1.
         expect(counts.filter((c) => c === '1').length).toBeGreaterThanOrEqual(3);
     });
 });
@@ -250,10 +213,3 @@ describe('Deaths — pagination', () => {
     });
 });
 
-// TODO: Cover the inferResult() legacy-suffix path — rows with the old
-//       "(uciekłeś z gry)" suffix should render with the "przegnał" verb
-//       even when `result` is missing. Easy to set up; skipped to keep
-//       the suite focused on render contract.
-// TODO: Image resolution (resolveRowBackground / resolvePortrait) uses
-//       JSON lookups + import.meta.glob — kept implicit. Covered well
-//       enough by the populated-list smoke test above.

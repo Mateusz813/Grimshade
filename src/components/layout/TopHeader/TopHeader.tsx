@@ -20,31 +20,10 @@ import TaskBadge from './TaskBadge';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './TopHeader.scss';
 
-/**
- * Fixed thin top header that lives on every authenticated screen.
- * Layout: [avatar] [hp/mp mini-bars] [buffs (if any)] [spacer] [tasks] [gold]
- *
- * Avatar opens a popup (change character, language, sync, logout).
- * The two thin bars next to the avatar mirror the player's live HP/MP from
- * the characterStore — every combat view (Dungeon, Boss, Transform, Combat
- * hunting, Raid) writes its tick-by-tick HP/MP back to characterStore via a
- * mirror useEffect, so the header stays live during fights without needing
- * to subscribe to per-view local state.
- * Gold is displayed in the compact tier form (k / cc / sc); clicking the
- * pill opens a small popover with the full breakdown.
- */
 const TopHeader = () => {
   const character = useCharacterStore((s) => s.character);
   const gold = useInventoryStore((s) => s.gold);
-  // 2026-05-20 spec: drives the offline pill rendered next to the buffs.
   const playMode = useConnectivityStore((s) => s.mode);
-  // -- Gold tick-up animation -------------------------------------------
-  // When `gold` jumps (typically because the player just claimed a task
-  // / quest / loot drop), the displayed value rolls UP from the previous
-  // amount to the new one over ~600 ms instead of snapping. The pill
-  // also pulses with a brief glow so the eye catches the increase. The
-  // animation only fires on increases — a spend snaps instantly so the
-  // player isn't tricked into thinking they have more than they do.
   const [displayGold, setDisplayGold] = useState(gold);
   const [goldPulse, setGoldPulse] = useState(false);
   const lastGoldRef = useRef(gold);
@@ -52,12 +31,10 @@ const TopHeader = () => {
     const prev = lastGoldRef.current;
     if (gold === prev) return;
     if (gold < prev) {
-      // Spend / loss — snap straight to the new value.
       lastGoldRef.current = gold;
       setDisplayGold(gold);
       return;
     }
-    // Increase — count up over ~600 ms.
     const start = prev;
     const target = gold;
     const startedAt = performance.now();
@@ -66,7 +43,6 @@ const TopHeader = () => {
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - startedAt) / duration);
-      // Ease-out so the number slows as it approaches the final value.
       const eased = 1 - Math.pow(1 - t, 3);
       const current = Math.round(start + (target - start) * eased);
       setDisplayGold(current);
@@ -74,7 +50,6 @@ const TopHeader = () => {
         raf = window.requestAnimationFrame(tick);
       } else {
         lastGoldRef.current = target;
-        // Drop the pulse a moment after the count settles.
         window.setTimeout(() => setGoldPulse(false), 250);
       }
     };
@@ -86,42 +61,19 @@ const TopHeader = () => {
   const consumables = useInventoryStore((s) => s.consumables);
   const { accent, accentRgb } = useTransformAccent();
 
-  // Subscribe to fields that affect getEffectiveChar's max_hp/max_mp so the
-  // bars re-scale instantly when buffs/elixirs/equipment swaps occur. The
-  // returned value isn't used here — `getEffectiveChar` reads it via store
-  // getters — but the subscription forces a re-render on change.
   useInventoryStore((s) => s.equipment);
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [buffsOpen, setBuffsOpen] = useState(false);
-  // Change-password + tutorial modals live HERE (not inside AvatarMenu) so they
-  // survive the menu closing when the user taps the menu item.
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [goldOpen, setGoldOpen] = useState(false);
-  // Pulse popover — click on the HP/MP mini bars to peek the exact values
-  // (shown as "10/100" rows). Same click-outside contract as the gold popover.
   const [pulseOpen, setPulseOpen] = useState(false);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
   const buffsBtnRef = useRef<HTMLButtonElement>(null);
   const goldRef = useRef<HTMLDivElement>(null);
   const pulseRef = useRef<HTMLDivElement>(null);
 
-  // Track wall-clock time as state so the buff icon's "active count" stays
-  // current as buffs expire — Date.now() is impure and may not be called
-  // during render (react-hooks/purity).
-  //
-  // 2026-05 v6 (buff-stuck fix): TopHeader is the SINGLE always-mounted
-  // host that ticks the global BuffStore. Each interval pass:
-  //   - Drains every game-time buff by 250ms × combatSpeedMult so a
-  //     20s skill buff cast at x4 burns in 5 wall seconds, while a
-  //     buff cast outside combat (mult=1) drains in real time.
-  //   - Calls cleanExpired() to drop realtime buffs whose expiresAt
-  //     passed, plus pausable / game-time buffs whose remaining time
-  //     hit zero.
-  // Previously this lived in `<BuffBar>` — but BuffBar was never mounted
-  // (orphaned file), so game-time buffs never drained: the player cast
-  // a spell, the buff appeared in the header, and stayed there forever.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const TICK = 250;
@@ -129,11 +81,6 @@ const TopHeader = () => {
       const bs = useBuffStore.getState();
       bs.tickGameTimeBuffs(TICK, bs.combatSpeedMult);
       bs.cleanExpired();
-      // 2026-05 v6: Cleric Błogosławieństwo (heal_party_dot) — central
-      // regen tick that runs OUT of combat. Each combat view owns its
-      // own 1-Hz pulse for the visible floats + local HP refs, so we
-      // skip the rise here when a combat HUD is mounted (combatHudStore
-      // active=true) — otherwise characterStore.hp would double-tick.
       const hudActive = useCombatHudStore.getState().active;
       const pctPerSec = bs.getPartyHealDotPctPerSec();
       if (pctPerSec > 0 && !hudActive) {
@@ -152,7 +99,6 @@ const TopHeader = () => {
     return () => clearInterval(id);
   }, []);
 
-  // Gold popover click-outside.
   useEffect(() => {
     if (!goldOpen) return;
     const onDoc = (e: MouseEvent) => {
@@ -162,7 +108,6 @@ const TopHeader = () => {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [goldOpen]);
 
-  // Pulse popover click-outside — same contract as gold above.
   useEffect(() => {
     if (!pulseOpen) return;
     const onDoc = (e: MouseEvent) => {
@@ -172,22 +117,14 @@ const TopHeader = () => {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [pulseOpen]);
 
-  // -- Claimable rewards detection ------------------------------------------
-  // Subscribe to the source data so the glow turns on / off the moment a
-  // task or quest crosses its goal threshold (or gets claimed).
   const activeTasks = useTaskStore((s) => s.activeTasks);
   const activeQuests = useQuestStore((s) => s.activeQuests);
   const dailyActive = useDailyQuestStore((s) => s.activeQuests);
 
-  // Tasks: ready-to-claim = progress reached killCount.
   const claimableTasks = activeTasks.filter((t) => t.progress >= t.killCount).length;
-  // Quests: ALL goals must be done. Quests don't currently track a "claimed"
-  // flag distinct from "completed" — claiming removes them from activeQuests
-  // — so being in activeQuests with all goals done means "ready".
   const claimableQuests = activeQuests.filter((aq) =>
     aq.goals.every((g) => (g.progress ?? 0) >= g.count),
   ).length;
-  // Daily quests have explicit completed/claimed flags.
   const claimableDailies = dailyActive.filter((dq) => dq.completed && !dq.claimed).length;
   const claimableTotal = claimableTasks + claimableQuests + claimableDailies;
 
@@ -195,7 +132,6 @@ const TopHeader = () => {
 
   const playerAvatarSrc = getCharacterAvatar(character.class, completedTransforms);
 
-  // Effective max HP/MP — accounts for equipment + training + elixirs + transform.
   const effChar = getEffectiveChar(character);
   const maxHp = effChar?.max_hp ?? character.max_hp;
   const maxMp = effChar?.max_mp ?? character.max_mp;
@@ -204,9 +140,6 @@ const TopHeader = () => {
   const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, (liveHp / maxHp) * 100)) : 0;
   const mpPct = maxMp > 0 ? Math.max(0, Math.min(100, (liveMp / maxMp) * 100)) : 0;
 
-  // Count active buffs (realtime: not expired; pausable: remainingMs > 0;
-  // charge buffs: charges > 0). Plus passive death-protection counters
-  // (amulet of loss + death potion).
   const charId = character.id;
   const activeBuffCount = allBuffs.filter((b) => {
     if (b.characterId !== charId) return false;
@@ -219,9 +152,6 @@ const TopHeader = () => {
   const deathProtCount = consumables['death_protection'] ?? 0;
   const totalBuffCount = activeBuffCount + (aolCount > 0 ? 1 : 0) + (deathProtCount > 0 ? 1 : 0);
 
-  // Displayed value during the tick-up; the popover still uses the
-  // canonical `gold` so the breakdown matches the inventory store
-  // exactly even mid-animation.
   const goldShort = formatGoldShort(displayGold);
   const goldBreakdown = getGoldBreakdown(gold);
 
@@ -242,10 +172,6 @@ const TopHeader = () => {
           type="button"
         >
           <img src={playerAvatarSrc} alt={character.class} className="top-header__avatar-img" />
-          {/* 2026-05-20 spec ("Wywal offline z headera, daj tylko czerwona
-              kropke w prawym rogu avataru w headerze, a jak jestem online
-              to zielona"): tiny status dot anchored to the bottom-right
-              of the avatar. Green = online, red = offline. */}
           <span
             className={`top-header__status-dot top-header__status-dot--${playMode}`}
             aria-label={playMode === 'online' ? 'Tryb online' : 'Tryb offline'}
@@ -253,13 +179,6 @@ const TopHeader = () => {
           />
         </button>
 
-        {/* Live HP/MP mini bars — sit IMMEDIATELY next to the avatar so the
-            player's pulse reads as part of the avatar identity, before the
-            buff chip. Each bar carries a tiny percentage label inside it so
-            the player can read "10%/100%" at a glance; clicking the cluster
-            opens a popover with the exact HP/MP values for cases where the
-            percent isn't enough (e.g. 1 HP at low cap looks the same as 1 HP
-            at high cap on the bar). */}
         <div
           className="top-header__pulse-wrap"
           ref={pulseRef}
@@ -315,16 +234,8 @@ const TopHeader = () => {
 
         <div className="top-header__spacer" />
 
-        {/* Task/quest badge — global, shows ALL active tasks + quests across
-            every screen. Sits just before the gold counter so the player can
-            check "what's next" with one tap from anywhere. Glows when at
-            least one task / quest / daily is ready to claim. */}
         <TaskBadge claimableCount={claimableTotal} />
 
-        {/* Arena Points used to live here next to gold; per design it now
-            lives only inside the Arena view's league strip. The header is
-            for in-world currencies (gold, chests, badges) — AP is a
-            tournament-scoped score that doesn't belong globally. */}
 
         <div className="top-header__gold" ref={goldRef} title="Złoto">
           <button

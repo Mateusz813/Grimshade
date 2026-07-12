@@ -34,29 +34,6 @@ import {
     type DungeonMonsterType,
 } from '../../src/systems/dungeonSystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla dungeonSystem.
-//
-// Trzy klasy funkcji (patrz DungeonSystem.php po stronie backendu):
-//  1. DETERMINISTYCZNE (bez RNG) → golden bit-parity: skalowanie fal, kompozycje
-//     potworów, pick po poziomie (sort deterministyczny), symulacja fali,
-//     estymacja nagród, helpery poziom/waves/cooldown/reward, format cooldownu.
-//  2. RNG STAŁA KOLEJNOŚĆ (1 rzut) → seeded golden bit-parity: rollDungeonRarity,
-//     rollDungeonGold. mulberry32(seed) podmienia Math.random (helper withSeed),
-//     backend replay z Mulberry32Rng(seed).
-//  3. RNG + ItemGenerator: rollDungeonItemDrop / resolveDungeon. Tu używamy
-//     lochów o maxRarity 'common' — rarity itemów zawsze 'common' → 0 slotów
-//     bonusów → BRAK sort-shuffle w generatorze → CAŁA sekwencja RNG jest
-//     deterministyczna, więc te wektory są bit-parity (uuid nie jest zwracane
-//     w IGeneratedItem). Ścieżki rare+ (shuffle) NIE są bit-parity — testowane
-//     własnościowo po stronie PHP (patrz DungeonSystemTest + ItemGenerator).
-//
-// Date.now() jest podmieniane helperem withNow (parametryzacja czasu, reguła 6).
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/dungeonSystem.golden.test.ts
-//   cp golden/dungeonSystem.json ../grimshade-backend/tests/Golden/fixtures/
-// ============================================================================
 
 const withSeed = <T>(seed: number, fn: () => T): T => {
     const rng = new Mulberry32(seed);
@@ -82,7 +59,6 @@ const withNow = <T>(nowMs: number, fn: () => T): T => {
 const SEEDS = [1, 2, 3, 7, 13, 42, 99, 777];
 const RESOLVE_SEEDS = [1, 42, 777];
 
-// -- Wspólny roster potworów (rozpiętość poziomów pod sort pickWaveMonster) ----
 
 const MONSTERS: IDungeonMonster[] = [
     { id: 'rat', name_pl: 'Szczur', hp: 60, attack: 8, defense: 1, level: 1, xp: 3, sprite: 'rat', speed: 2 },
@@ -95,7 +71,6 @@ const MONSTERS: IDungeonMonster[] = [
     { id: 'dragon', name_pl: 'Smok', hp: 500, attack: 40, defense: 12, level: 40, xp: 400, sprite: 'dragon', speed: 1 },
 ];
 
-// -- Lochy: pokrywają gałęzie helperów (derived vs override, explicit picks) ----
 
 const D_SIMPLE: IDungeon = {
     id: 'd_simple', name_pl: 'Prosty', name_en: 'Simple', level: 1,
@@ -130,7 +105,6 @@ const D_DAILY: IDungeon = {
 
 const ALL_DUNGEONS: IDungeon[] = [D_SIMPLE, D_EXPLICIT, D_MID, D_HARD, D_TOP, D_OVERRIDE, D_DAILY];
 
-// Poziomy lochów pod matryce typów/kompozycji fal (granice tierów).
 const WAVE_LEVELS = [1, 5, 8, 9, 14, 15, 18, 19, 20, 30, 50, 100, 799, 800, 1000];
 const WAVE_COUNTS = [3, 4, 5, 6, 10];
 
@@ -172,7 +146,7 @@ const buildCompositionCases = (): Array<{ dungeonLevel: number; wave: number; to
 
 const buildScaleCases = (): Array<{ monster: IDungeonMonster; wave: number; totalWaves: number; dungeonLevel: number; value: IDungeonMonster }> => {
     const out: Array<{ monster: IDungeonMonster; wave: number; totalWaves: number; dungeonLevel: number; value: IDungeonMonster }> = [];
-    const bases = [MONSTERS[5], MONSTERS[7]]; // troll, dragon
+    const bases = [MONSTERS[5], MONSTERS[7]];
     for (const monster of bases) {
         for (const dungeonLevel of [1, 5, 8, 9, 15, 18, 20, 30, 100, 220, 800, 1000]) {
             for (const totalWaves of [3, 5, 6, 10]) {
@@ -191,7 +165,7 @@ const buildScaleCases = (): Array<{ monster: IDungeonMonster; wave: number; tota
 const buildScaleAsTypeCases = (): Array<{ monster: IDungeonMonster; wave: number; totalWaves: number; dungeonLevel: number; asType: DungeonMonsterType; value: IDungeonMonster }> => {
     const out: Array<{ monster: IDungeonMonster; wave: number; totalWaves: number; dungeonLevel: number; asType: DungeonMonsterType; value: IDungeonMonster }> = [];
     const types: DungeonMonsterType[] = ['Normal', 'Strong', 'Epic', 'Legendary', 'Boss'];
-    const monster = MONSTERS[6]; // ogre_boss
+    const monster = MONSTERS[6];
     for (const dungeonLevel of [5, 15, 30, 800]) {
         for (const totalWaves of [4, 6]) {
             for (let wave = 0; wave < totalWaves; wave++) {
@@ -230,14 +204,14 @@ const buildPickMultiCases = (): Array<{ dungeon: IDungeon; wave: number; totalWa
 };
 
 const RESOLVE_WAVE_CASES: Array<[number, number, number, number, number, number]> = [
-    [500, 999, 100, 60, 8, 1],      // one-shot win
-    [200, 30, 5, 80, 12, 3],        // multi-round win, player loses some hp
-    [30, 10, 0, 100, 15, 2],        // loss
-    [10, 1, 0, 48, 5, 0],           // fast loss, pDmg floored to 1
-    [1000, 5, 50, 500, 200, 40],    // player blocks (mDmg floored to 1), grind win
-    [50, 8, 2, 40, 60, 10],         // exact-ish lethal exchange
-    [100, 100, 100, 100, 100, 100], // symmetric floors
-    [1, 1, 0, 1, 1, 0],             // minimal
+    [500, 999, 100, 60, 8, 1],
+    [200, 30, 5, 80, 12, 3],
+    [30, 10, 0, 100, 15, 2],
+    [10, 1, 0, 48, 5, 0],
+    [1000, 5, 50, 500, 200, 40],
+    [50, 8, 2, 40, 60, 10],
+    [100, 100, 100, 100, 100, 100],
+    [1, 1, 0, 1, 1, 0],
 ];
 
 const buildEstimateCases = (): Array<{ dungeon: IDungeon; monstersRaw: { id: string; gold: [number, number] }[]; value: unknown }> => {
@@ -249,7 +223,6 @@ const buildEstimateCases = (): Array<{ dungeon: IDungeon; monstersRaw: { id: str
     }));
 };
 
-// -- Loch/postać dla resolveDungeon (maxRarity common → bit-parity) ------------
 
 const RD_L8: IDungeon = {
     id: 'rd_l8', name_pl: 'RD8', name_en: 'RD8', level: 8,
@@ -271,7 +244,6 @@ const RESOLVE_SCENARIOS: Array<{ label: string; dungeon: IDungeon; character: ID
     { label: 'l30-strong', dungeon: RD_L30, character: CHAR_STRONG },
 ];
 
-// -- Lochy dla rollDungeonItemDrop (maxRarity common → item zawsze common) ------
 
 const DROP_DUNGEONS: IDungeon[] = [
     { id: 'drop_l1', name_pl: 'DL1', name_en: 'DL1', level: 1, maxRarity: 'common', description_pl: '' },
@@ -289,14 +261,12 @@ const buildGolden = (): Record<string, unknown> => ({
         DUNGEON_MONSTER_TYPE_MULTIPLIERS,
     },
 
-    // -- Deterministyczne helpery ---------------------------------------------
     getDungeonMinLevel: ALL_DUNGEONS.map((dungeon) => ({ dungeon, value: getDungeonMinLevel(dungeon) })),
     getDungeonWaves: ALL_DUNGEONS.map((dungeon) => ({ dungeon, value: getDungeonWaves(dungeon) })),
     getDungeonCooldown: ALL_DUNGEONS.map((dungeon) => ({ dungeon, value: getDungeonCooldown(dungeon) })),
     getDungeonRewardGold: ALL_DUNGEONS.map((dungeon) => ({ dungeon, value: getDungeonRewardGold(dungeon) })),
     getDungeonRewardXp: ALL_DUNGEONS.map((dungeon) => ({ dungeon, value: getDungeonRewardXp(dungeon) })),
 
-    // -- Czas (Date.now podmieniony przez withNow) ----------------------------
     canEnterDungeon: [
         { dungeon: D_MID, characterLevel: 10, lastCompletedAt: null, nowMs: 1_000_000_000_000 },
         { dungeon: D_MID, characterLevel: 15, lastCompletedAt: null, nowMs: 1_000_000_000_000 },
@@ -317,7 +287,6 @@ const buildGolden = (): Record<string, unknown> => ({
     formatCooldown: [0, 500, 999, 1000, 1001, 59_000, 60_000, 61_000, 3_599_000, 3_600_000, 3_661_000, 7_325_000, 90_061_000]
         .map((ms) => ({ ms, value: formatCooldown(ms) })),
 
-    // -- Typy/kompozycje fal ---------------------------------------------------
     getFinalWaveMonsterType: [1, 5, 8, 9, 15, 18, 19, 20, 50, 1000]
         .map((dungeonLevel) => ({ dungeonLevel, value: getFinalWaveMonsterType(dungeonLevel) })),
     getMidWaveMonsterType: buildWaveTypeCases()
@@ -326,22 +295,18 @@ const buildGolden = (): Record<string, unknown> => ({
     getWaveMonsterCount: buildWaveCountCases(),
     getWaveComposition: buildCompositionCases(),
 
-    // -- Pick po poziomie (sort deterministyczny) -----------------------------
     pickWaveMonster: buildPickCases(),
     pickWaveMonsters: buildPickMultiCases(),
 
-    // -- Skalowanie potworów ---------------------------------------------------
     scaleDungeonMonster: buildScaleCases(),
     scaleDungeonMonsterAsType: buildScaleAsTypeCases(),
 
-    // -- Symulacja fali + estymacja -------------------------------------------
     resolveWave: RESOLVE_WAVE_CASES.map(([playerHp, playerAtk, playerDef, monsterHp, monsterAtk, monsterDef]) => ({
         playerHp, playerAtk, playerDef, monsterHp, monsterAtk, monsterDef,
         value: resolveWave(playerHp, playerAtk, playerDef, monsterHp, monsterAtk, monsterDef),
     })),
     estimateDungeonRewards: buildEstimateCases(),
 
-    // -- RNG stała kolejność (1 rzut) → bit-parity ----------------------------
     rollDungeonRarity: DUNGEON_RARITY_ORDER.flatMap((maxRarity) =>
         SEEDS.map((seed) => ({ maxRarity, seed, value: withSeed(seed, () => rollDungeonRarity(maxRarity)) }))),
     rollDungeonGold: SEEDS.flatMap((seed) => [
@@ -350,7 +315,6 @@ const buildGolden = (): Record<string, unknown> => ({
         { seed, range: [7, 7] as [number, number], value: withSeed(seed, () => rollDungeonGold([7, 7])) },
     ]),
 
-    // -- RNG + ItemGenerator (common → bit-parity, uuid nie zwracane) ----------
     rollDungeonItemDrop: DROP_DUNGEONS.flatMap((dungeon) =>
         SEEDS.flatMap((seed) => [false, true].map((isBossWave) => ({
             dungeon, seed, isBossWave,
@@ -375,8 +339,6 @@ describe('dungeonSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current dungeonSystem output', () => {
         expect(existsSync(outPath), 'brak golden/dungeonSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON usuwa -0 (skalowania float) — i tak serializuje
-        // się jako 0, tak samo liczy PHP. Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

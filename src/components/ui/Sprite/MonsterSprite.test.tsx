@@ -1,14 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 
-/**
- * MonsterSprite / BossSprite tests — both render an <img> when the sprite
- * registry resolves a URL for the level, and fall back to an emoji <span>
- * when it doesn't.
- *
- * The sprite registry is stubbed so tests don't depend on Vite asset
- * resolution: levels 1-50 return a URL for monsters, 100+ for bosses.
- */
 vi.mock('../../../systems/spriteAssets', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../systems/spriteAssets')>();
     return {
@@ -52,7 +44,6 @@ describe('MonsterSprite', () => {
         expect(container.querySelector('img')).toBeNull();
         const span = container.querySelector('span');
         expect(span?.textContent).toBe('ogre');
-        // aria-hidden because the emoji is decorative.
         expect(span?.getAttribute('aria-hidden')).toBe('true');
     });
 
@@ -75,7 +66,6 @@ describe('MonsterSprite', () => {
         );
         const img = container.querySelector('img') as HTMLImageElement;
         expect(img.style.width).toBe('42px');
-        // height not forced to 100% when fill is off.
         expect(img.style.height).not.toBe('100%');
     });
 });

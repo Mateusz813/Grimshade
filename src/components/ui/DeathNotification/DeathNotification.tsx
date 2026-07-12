@@ -8,11 +8,6 @@ import Icon from '../../atoms/Icon/Icon';
 import EmojiText from '../../atoms/Twemoji/EmojiText';
 import './DeathNotification.scss';
 
-// Flee is a SOFT event with a low-stakes penalty — the popup auto-dismisses
-// after a short read-window. Death is a HARD event the player must
-// acknowledge: navigation to town happens automatically, but the popup
-// itself persists until the player clicks it. This guarantees the
-// "you died, here's what you lost" message can't be missed.
 const FLEE_DURATION_MS = 3500;
 
 const DeathNotification = () => {
@@ -20,18 +15,12 @@ const DeathNotification = () => {
   const clearDeath = useDeathStore((s) => s.clearDeath);
   const navigate = useNavigate();
 
-  // Flee = soft penalty (no level loss, ~1/10 XP, no nav to town).
-  // Death = full penalty + force-return to town.
   const isFlee = event?.kind === 'flee';
 
   useEffect(() => {
     if (!event) return;
 
     if (!isFlee) {
-      // Real death stops combat hard, then auto-navigates to town —
-      // but the popup is mounted globally in AppRouter, so it stays
-      // on screen across the route change. The only way to dismiss
-      // it is the click handler below. The player MUST acknowledge.
       const cs = useCombatStore.getState();
       if (cs.phase === 'fighting' || cs.phase === 'victory' || cs.phase === 'dead') {
         stopCombat();
@@ -40,8 +29,6 @@ const DeathNotification = () => {
       return;
     }
 
-    // Flee: soft auto-dismiss after a short read-window. No navigation —
-    // the calling view already handled returning to its own list.
     const timer = setTimeout(() => {
       clearDeath();
     }, FLEE_DURATION_MS);
@@ -57,7 +44,6 @@ const DeathNotification = () => {
 
   return (
     <div className={`death death--epic${isFlee ? ' death--flee' : ''}`} onClick={handleClick}>
-      {/* Blood drip particles falling from top */}
       <div className="death__drips">
         {Array.from({ length: isFlee ? 8 : 30 }).map((_, i) => (
           <span
@@ -73,14 +59,12 @@ const DeathNotification = () => {
         ))}
       </div>
 
-      {/* Expanding dark rings */}
       <div className="death__rings">
         <span className="death__ring death__ring--1" />
         <span className="death__ring death__ring--2" />
         <span className="death__ring death__ring--3" />
       </div>
 
-      {/* Floating soul particles */}
       <div className="death__souls">
         {Array.from({ length: 20 }).map((_, i) => (
           <span
@@ -96,7 +80,6 @@ const DeathNotification = () => {
         ))}
       </div>
 
-      {/* Center content */}
       <div className="death__center">
         <span className="death__skull">{isFlee ? <GameIcon name="person-running" /> : <GameIcon name="skull" />}</span>
         <span className="death__label">{isFlee ? 'UCIEKŁEŚ' : 'ZGINĄŁEŚ'}</span>

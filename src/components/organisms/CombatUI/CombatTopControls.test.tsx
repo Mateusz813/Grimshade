@@ -10,7 +10,6 @@ afterEach(() => {
 describe('CombatTopControls — smoke', () => {
     it('renders nothing visible when all props are omitted', () => {
         const { container } = render(<CombatTopControls />);
-        // Wrapper still renders but no chip buttons inside.
         expect(container.querySelectorAll('button.combat-ui__chip').length).toBe(0);
     });
 
@@ -25,8 +24,6 @@ describe('CombatTopControls — smoke', () => {
         const { container, rerender } = render(
             <CombatTopControls autoSkill={{ on: true, onToggle: vi.fn() }} />,
         );
-        // Button text is ":sparkles: ON" / ":sparkles: OFF" with leading emoji+space; match
-        // the whole text content instead of a child node.
         expect(container.querySelector('button')!.textContent).toMatch(/ON/);
         rerender(<CombatTopControls autoSkill={{ on: false, onToggle: vi.fn() }} />);
         expect(container.querySelector('button')!.textContent).toMatch(/OFF/);
@@ -90,7 +87,6 @@ describe('CombatTopControls — interactions', () => {
                 xpVisible={{ on: true, onToggle: xv }}
             />,
         );
-        // Each chip carries a unique title attribute -> reliable selector.
         fireEvent.click(screen.getByTitle('Auto walka'));
         fireEvent.click(screen.getByTitle('Auto potion'));
         fireEvent.click(screen.getByTitle('Pokaż pasek XP'));

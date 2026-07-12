@@ -1,17 +1,3 @@
-/**
- * Atomic E2E — text inputs render >= 16px on mobile (no iOS focus-zoom).
- *
- * CRITICAL (2026-06-24): iOS Safari auto-zooms the whole app when a focused
- * input/textarea/select has computed font-size < 16px, and in a PWA the user
- * cannot pinch back out. Per-view SCSS styled many fields at 11-15px (by class,
- * so they beat the element-level global rule), so focusing them zoomed the app.
- * Fix: a `!important` guard in src/index.css (scoped to touch / <=767px) forces
- * every text field to 16px on mobile regardless of specificity/load order.
- *
- * This guards the fix on the mobile profiles (iPhone 13 / Pixel 7): the public
- * /login page's inputs (styled .login__input = 15px by class) must compute to
- * >= 16px. No auth / character needed — /login is public, so no cleanup.
- */
 
 import { test, expect } from '@playwright/test';
 

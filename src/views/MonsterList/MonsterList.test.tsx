@@ -2,21 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * MonsterList view — full bestiary (~727 lines). Reuses
- * Combat.scss styling. Filter bar (available / tasked / sort / min-lvl)
- * + monster card grid + drop info modal + fullscreen sprite preview.
- *
- * Coverage:
- *   - Smoke: root + filter bar + monster grid mount.
- *   - Filter toggles (available + tasked + sort) flip the active modifier.
- *   - Min-level input filters out lower-level cards.
- *   - Clear-filters button only renders when at least one filter is on.
- *   - Fight button on an unlocked monster navigates to /combat.
- *   - Drop info button opens the modal.
- *   - Fullscreen sprite preview opens on sprite click + ESC closes.
- *   - Party non-leader disables fight buttons.
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -86,7 +71,6 @@ describe('MonsterList — smoke', () => {
         const { container } = renderMonsterList();
         expect(container.querySelector('.combat__filter-bar')).not.toBeNull();
         const toggles = container.querySelectorAll('.combat__filter-toggle');
-        // Available + tasked + sort = 3 toggles.
         expect(toggles.length).toBe(3);
         expect(container.querySelector('.combat__filter-input')).not.toBeNull();
     });
@@ -110,10 +94,8 @@ describe('MonsterList — filters', () => {
 
     it('renders the clear-filters button only when at least one filter is on', () => {
         const { container } = renderMonsterList();
-        // No filter active -> no clear button.
         expect(container.querySelector('.combat__filter-clear')).toBeNull();
 
-        // Turn on "Tylko dostępne".
         const toggleLabel = Array.from(container.querySelectorAll('.combat__filter-toggle'))
             .find((b) => b.textContent?.includes('dostępne')) as HTMLLabelElement;
         const input = toggleLabel.querySelector('input[type="checkbox"]') as HTMLInputElement;
@@ -146,7 +128,6 @@ describe('MonsterList — filters', () => {
 describe('MonsterList — fight + drop actions', () => {
     it('opens the drop info modal when :package: is clicked on an unlocked monster', () => {
         const { container } = renderMonsterList();
-        // Find first unlocked card's drop button.
         const dropBtn = container.querySelector('.combat__mcard-action--info:not(:disabled)') as HTMLButtonElement;
         expect(dropBtn).not.toBeNull();
         fireEvent.click(dropBtn);
@@ -177,8 +158,6 @@ describe('MonsterList — fullscreen preview', () => {
     it('opens the fullscreen sprite preview when the sprite button is clicked', () => {
         const { container } = renderMonsterList();
         const spriteBtn = container.querySelector('.combat__mcard-sprite') as HTMLButtonElement;
-        // Only fires on unlocked monsters; with character level 50 the first
-        // monster should be unlocked.
         fireEvent.click(spriteBtn);
         expect(container.querySelector('.monster-list__fullscreen-backdrop')).not.toBeNull();
     });
@@ -233,7 +212,6 @@ describe('MonsterList — edge cases', () => {
         const { container } = renderMonsterList();
         const minLvlInput = container.querySelector('.combat__filter-input input[type="number"]') as HTMLInputElement;
         fireEvent.change(minLvlInput, { target: { value: '9999' } });
-        // Empty-state copy renders.
         expect(container.querySelector('.combat__hub-empty')).not.toBeNull();
         expect(container.textContent).toContain('Żaden potwór nie pasuje');
     });
@@ -245,12 +223,3 @@ describe('MonsterList — edge cases', () => {
     });
 });
 
-// TODO: Cover the task-counter badge ("Tylko z taskiem/questem") with a
-//       real active task — requires seeding taskStore + questStore with a
-//       row + an existing monster id, easy but verbose. Already implicitly
-//       exercised by the filter toggle test.
-// TODO: ESC key dismissing the fullscreen preview — fireEvent.keyDown is
-//       feasible but the keydown handler attaches to window, not the
-//       fullscreen container, so requires window.dispatchEvent — skipped
-//       in favour of the close-button assertion which exercises the same
-//       state setter.

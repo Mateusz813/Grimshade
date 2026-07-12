@@ -24,7 +24,6 @@ import './Deposit.scss';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
 
-// Mirrors the inventoryStore cap so Deposit -> Bag never races past it.
 const MAX_BAG_SIZE = 1000;
 const MAX_DEPOSIT_SIZE = 10000;
 
@@ -104,8 +103,6 @@ const Deposit = () => {
     const filteredDeposit = useMemo(() => deposit.filter(filterItem), [deposit, filter, slotFilter, search]);
 
     const handleDeposit = async (uuid: string) => {
-        // Backend-authoritative branch (opt-in). Server moves the item into the
-        // warehouse; we re-hydrate the stores from the returned state.
         if (isBackendMode() && character) {
             try {
                 await backendApi.deposit(character.id, uuid);
@@ -245,7 +242,6 @@ const Deposit = () => {
             </div>
 
             <div className="deposit__panels">
-                {/* Bag panel */}
                 <section className="deposit__panel">
                     <div className="deposit__panel-header">
                         <h2 className="deposit__panel-title"><GameIcon name="backpack" /> Plecak</h2>
@@ -269,7 +265,6 @@ const Deposit = () => {
                     )}
                 </section>
 
-                {/* Deposit panel */}
                 <section className="deposit__panel">
                     <div className="deposit__panel-header">
                         <h2 className="deposit__panel-title"><GameIcon name="bank" /> Depozyt</h2>

@@ -1,39 +1,3 @@
-/**
- * Skill cooldown — integration tests for the combat engine's cooldown machinery.
- *
- * Covers BACKLOG.md 12.2 ("Skill auto-cast po cooldown"). These tests live at
- * the unit/integration boundary: they drive the engine's exported helpers
- * (`advanceSkillCooldowns`, `SPEED_MULT`, `SKILL_COOLDOWN_MS` via observable
- * behaviour) and the `useCooldownStore` Zustand slice that the view layer
- * reads to render the cooldown ring on each skill button.
- *
- * Why this isn't E2E: the cooldown matrix is class × skill × speed × elapsed-ms
- * (>3000 combinations). Running each in Playwright would take hours; vitest
- * gives us deterministic μs-precision time control via `vi.useFakeTimers`.
- *
- * What we test:
- *   1. Per-skill cooldown contract (every tier-1 active spell across all 7
- *      classes) — cast -> cooldown installed in `useCooldownStore`; tick by
- *      `cooldown_ms - 1` -> still > 0; tick remaining ms -> cleared to 0.
- *   2. Multi-skill independence — casting skill A doesn't disturb skill B's
- *      cooldown timer.
- *   3. `advanceSkillCooldowns` behavior — drains internal engine state by
- *      the provided ms, accepts 0/negative without throwing.
- *   4. `useCooldownStore.tick` clamps at 0 (cooldowns don't underflow into
- *      negative numbers — that would let `skillCooldowns[id] > 0` checks
- *      stay truthy forever for a "ready" skill).
- *   5. Drop semantics — cooldowns at 0 are pruned from the map so the
- *      view's `Object.keys(skillCooldowns)` reflects only blocked skills.
- *
- * Sources of truth read here:
- *   - `src/data/skills.json` activeSkills.*[].cooldown — the per-skill ms
- *     the engine wants enforced (NOTE: the engine currently uses a flat
- *     SKILL_COOLDOWN_MS=8000 for the auto-cast path regardless of the
- *     declared cooldown; the cooldown field IS authoritative for the
- *     manual-cast path and for the BuffBar UI cooldown ring read from
- *     `useCooldownStore.skillCooldowns`. Tests exercise the store contract
- *     since that's what the player sees as a visible ring.)
- */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import skillsData from '../data/skills.json';
@@ -59,13 +23,11 @@ type ClassKey = 'knight' | 'mage' | 'cleric' | 'archer' | 'rogue' | 'necromancer
 const CLASS_KEYS: ClassKey[] = ['knight', 'mage', 'cleric', 'archer', 'rogue', 'necromancer', 'bard'];
 const ACTIVE = skillsData.activeSkills as Record<ClassKey, IActiveSkillRow[]>;
 
-// Tier-1 = lowest unlockLevel per class (= first row in skills.json, lvl 5 for all 7).
 const TIER_1: Record<ClassKey, IActiveSkillRow> = CLASS_KEYS.reduce((acc, cls) => {
     acc[cls] = ACTIVE[cls][0];
     return acc;
 }, {} as Record<ClassKey, IActiveSkillRow>);
 
-// -- Per-class tier-1: cast -> cooldown installed -> tick -> cleared ------------
 
 describe('Skill cooldown contract (per-class tier-1 active skill)', () => {
     beforeEach(() => {
@@ -91,8 +53,6 @@ describe('Skill cooldown contract (per-class tier-1 active skill)', () => {
         it(`${cls}.${skill.id}: clears (key dropped) after full cooldown elapsed`, () => {
             useCooldownStore.getState().setSkillCooldown(skill.id, skill.cooldown);
             useCooldownStore.getState().tick(skill.cooldown);
-            // tick() prunes keys at 0 — view's `cd > 0` check sees missing key
-            // as "ready", so the cooldown ring stops rendering.
             expect(useCooldownStore.getState().skillCooldowns[skill.id]).toBeUndefined();
         });
 
@@ -100,13 +60,11 @@ describe('Skill cooldown contract (per-class tier-1 active skill)', () => {
             useCooldownStore.getState().setSkillCooldown(skill.id, skill.cooldown);
             useCooldownStore.getState().tick(skill.cooldown * 10);
             const remaining = useCooldownStore.getState().skillCooldowns[skill.id];
-            // Either undefined (pruned) or exactly 0 — never negative.
             expect(remaining === undefined || remaining === 0).toBe(true);
         });
     }
 });
 
-// -- Multi-skill independence ------------------------------------------------
 
 describe('Skill cooldown multi-skill independence', () => {
     beforeEach(() => {
@@ -114,11 +72,9 @@ describe('Skill cooldown multi-skill independence', () => {
     });
 
     it('casting one knight skill leaves another skill cooldown untouched', () => {
-        // shield_bash cooldown=8000, fortify cooldown=20000.
         useCooldownStore.getState().setSkillCooldown('shield_bash', 8000);
         useCooldownStore.getState().setSkillCooldown('fortify', 20000);
 
-        // Tick 8000ms — shield_bash should clear, fortify still 12000.
         useCooldownStore.getState().tick(8000);
 
         expect(useCooldownStore.getState().skillCooldowns['shield_bash']).toBeUndefined();
@@ -130,7 +86,6 @@ describe('Skill cooldown multi-skill independence', () => {
             const skill = TIER_1[cls];
             useCooldownStore.getState().setSkillCooldown(skill.id, skill.cooldown);
         }
-        // Every skill remembered with its own ms.
         for (const cls of CLASS_KEYS) {
             const skill = TIER_1[cls];
             expect(useCooldownStore.getState().skillCooldowns[skill.id]).toBe(skill.cooldown);
@@ -148,7 +103,6 @@ describe('Skill cooldown multi-skill independence', () => {
     });
 });
 
-// -- Engine-side advanceSkillCooldowns ---------------------------------------
 
 describe('advanceSkillCooldowns', () => {
     it('is a no-op for an unset map (engine never tracked anything)', () => {
@@ -164,14 +118,10 @@ describe('advanceSkillCooldowns', () => {
     });
 
     it('accepts negative ms without throwing (defensive; TODO: clamp at 0 in engine)', () => {
-        // Negative would INCREASE cooldowns — the current implementation
-        // does no clamp at the engine level. Document the existing behaviour
-        // so future hardening doesn't silently break callers.
         expect(() => advanceSkillCooldowns(-1000)).not.toThrow();
     });
 });
 
-// -- useCooldownStore mechanic regressions -----------------------------------
 
 describe('useCooldownStore.tick edge cases', () => {
     beforeEach(() => {
@@ -181,8 +131,6 @@ describe('useCooldownStore.tick edge cases', () => {
     it('drops keys whose remaining hits exactly 0', () => {
         useCooldownStore.getState().setSkillCooldown('drop_me', 1000);
         useCooldownStore.getState().tick(1000);
-        // Prune happens at the < 0 boundary: 1000-1000=0, code path skips
-        // anything that isn't strictly > 0.
         expect(useCooldownStore.getState().skillCooldowns['drop_me']).toBeUndefined();
     });
 
@@ -199,7 +147,6 @@ describe('useCooldownStore.tick edge cases', () => {
     });
 });
 
-// -- setSkillCooldown clamping (input < 0 -> stored as 0) ---------------------
 
 describe('useCooldownStore.setSkillCooldown clamps negative ms to 0', () => {
     beforeEach(() => {
@@ -217,12 +164,11 @@ describe('useCooldownStore.setSkillCooldown clamps negative ms to 0', () => {
     });
 
     it('accepts very large ms (catch-all for legendary cooldowns)', () => {
-        useCooldownStore.getState().setSkillCooldown('big', 300_000); // 5min
+        useCooldownStore.getState().setSkillCooldown('big', 300_000);
         expect(useCooldownStore.getState().skillCooldowns['big']).toBe(300_000);
     });
 });
 
-// -- Cooldown semantics with SPEED_MULT (engine's speed-up logic) ------------
 
 describe('SPEED_MULT × cooldown wall-clock interaction', () => {
     beforeEach(() => {
@@ -236,9 +182,6 @@ describe('SPEED_MULT × cooldown wall-clock interaction', () => {
     });
 
     it('at x4 speed, a 10s cooldown drains in 2.5s of WALL time (via store ticks scaled by caller)', () => {
-        // The cooldown store itself doesn't know about speed — engine callers
-        // pass `wallDelta * SPEED_MULT[speed]` as the tick argument. Verify
-        // the math holds: 10000ms cooldown at x4 means 2500ms wall × 4 = 10000ms drained.
         useCooldownStore.getState().setSkillCooldown('speed_test', 10000);
         const wallMs = 2500;
         const gameMs = wallMs * SPEED_MULT.x4;
@@ -261,7 +204,6 @@ describe('SPEED_MULT × cooldown wall-clock interaction', () => {
     });
 });
 
-// -- clearAll ----------------------------------------------------------------
 
 describe('useCooldownStore.clearAll', () => {
     it('wipes every cooldown including HP/MP potion ones', () => {

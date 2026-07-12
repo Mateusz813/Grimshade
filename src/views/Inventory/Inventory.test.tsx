@@ -2,26 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Inventory view — 4851 lines, the "Postać" tab. Hosts the paperdoll,
- * bag grid, rarity + slot filters, multi-sell / disassemble flow, item
- * detail popup, training popup, skills popup, auto-potion popup, stone
- * conversion, and bonus-reroll. We absolutely don't try to validate the
- * item/equip/upgrade math through the view — that's
- * `itemSystem.test.ts` + `inventoryStore.test.ts`.
- *
- * What we DO cover (smoke / render contract):
- *   - Smoke render with a character + empty bag.
- *   - Paperdoll mounts (avatar + HP/MP bars + 12 slot frames).
- *   - Character-less render — paperdoll guard kicks in, root still mounts.
- *   - Bag header renders the "Plecak: 0 / 1000" counter.
- *   - Multi-sell toggle puts the bag into bulk mode (Cancel button surfaces).
- *   - Filter chips render for every rarity + slot.
- *   - Bag tile click selects the item (opens detail popup overlay).
- *   - Auto-sell row renders 5 buttons (one per rarity).
- *
- * Mocks: framer-motion stubbed so AnimatePresence doesn't pin happy-dom.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -37,10 +17,6 @@ vi.mock('framer-motion', async () => {
     };
 });
 
-// Backend-authoritative branch mocks. Default OFF so every existing
-// client-path test exercises the untouched store logic; the dedicated
-// backend describe flips `backendFlag.on`. Mirrors the pattern used by
-// Deposit.test.tsx / Market.test.tsx.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({
     disassemble: vi.fn(),
@@ -180,7 +156,6 @@ describe('Inventory — smoke', () => {
     it('mounts the paperdoll when a character is loaded', () => {
         const { container } = renderInventory();
         expect(container.querySelector('.inventory__paperdoll')).not.toBeNull();
-        // HP + MP bars
         expect(container.querySelectorAll('.inventory__paperdoll-bar').length).toBe(2);
     });
 
@@ -188,14 +163,11 @@ describe('Inventory — smoke', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderInventory();
         expect(container.querySelector('.inventory')).not.toBeNull();
-        // The `{character && (...)}` guard short-circuits — no paperdoll.
         expect(container.querySelector('.inventory__paperdoll')).toBeNull();
     });
 
     it('renders 12 equipment slot frames inside the paperdoll', () => {
         const { container } = renderInventory();
-        // Spec: 12 slots (helmet, armor, pants, gloves, shoulders, boots,
-        // mainHand, offHand, ring1, ring2, earrings, necklace).
         const slots = container.querySelectorAll('.inventory__doll-slot');
         expect(slots.length).toBe(12);
     });
@@ -226,10 +198,8 @@ describe('Inventory — bag chrome', () => {
     it('toggles autoSellCommon when its button is clicked', () => {
         const { container } = renderInventory();
         const btn = container.querySelector('.inventory__auto-sell-btn') as HTMLButtonElement;
-        // Default off.
         expect(btn.className).not.toContain('inventory__auto-sell-btn--active');
         fireEvent.click(btn);
-        // Settings store flipped.
         expect(useSettingsStore.getState().autoSellCommon).toBe(true);
     });
 });
@@ -248,7 +218,6 @@ describe('Inventory — multi-sell / disassemble bulk mode', () => {
         const sellBtn = Array.from(container.querySelectorAll('.inventory__multi-sell-toggle'))
             .find((b) => b.textContent?.includes('Sprzedaj')) as HTMLButtonElement;
         fireEvent.click(sellBtn);
-        // After click, the Cancel button surfaces and the two toggles disappear.
         const cancel = container.querySelector('.inventory__multi-sell-toggle--active');
         expect(cancel).not.toBeNull();
         expect(cancel?.textContent).toMatch(/Anuluj/);
@@ -258,9 +227,6 @@ describe('Inventory — multi-sell / disassemble bulk mode', () => {
 describe('Inventory — filter rows', () => {
     it('renders rarity filter buttons', () => {
         const { container } = renderInventory();
-        // Spec: filter row exists with at least the 7 rarity-class chips
-        // (all + 6 rarities). Some configurations also add stack-kind
-        // filters — we accept >=7.
         const filterBtns = container.querySelectorAll('.inventory__filter-btn');
         expect(filterBtns.length).toBeGreaterThanOrEqual(7);
     });
@@ -269,7 +235,6 @@ describe('Inventory — filter rows', () => {
         const { container } = renderInventory();
         const slotFilterRow = container.querySelector('.inventory__filter-row--slots');
         expect(slotFilterRow).not.toBeNull();
-        // At least the "all" / weapons / armor / jewelry meta-buttons + slot buttons.
         const slotBtns = slotFilterRow!.querySelectorAll('.inventory__filter-btn--slot');
         expect(slotBtns.length).toBeGreaterThan(3);
     });
@@ -285,7 +250,6 @@ describe('Inventory — bag tiles render', () => {
             ],
         });
         const { container } = renderInventory();
-        // Pagination caps at 50 per page but 3 items fit on page 1.
         const tiles = container.querySelectorAll('.inventory__bag-tile');
         expect(tiles.length).toBe(3);
     });
@@ -336,19 +300,12 @@ describe('Inventory — edge cases', () => {
     it('renders without crashing when character has stat_points to spend', () => {
         useCharacterStore.setState({ character: makeChar({ stat_points: 5 }) });
         const { container } = renderInventory();
-        // Stat allocation grid surfaces when stat_points > 0.
         expect(container.querySelector('.inventory__stat-alloc')).not.toBeNull();
     });
 });
 
 describe('Inventory — backend-authoritative branches', () => {
-    // Open the DetailPanel for the first bag tile (bulkMode === 'none' ->
-    // selectBagItem sets `selected`, which mounts the detail overlay).
     const openFirstTileDetail = (container: HTMLElement) => {
-        // Stackable tiles (potions / chests / stones) reuse `.inventory__bag-tile`
-        // and render BEFORE gear, so target a GEAR tile specifically — only gear
-        // tiles carry a `.inventory__bag-tile-level` span. The click handler lives
-        // on the ItemIcon (`.item-icon`) inside the tile.
         const gearTile = Array.from(container.querySelectorAll('.inventory__bag-tile'))
             .find((t) => t.querySelector('.inventory__bag-tile-level')) as HTMLElement;
         const icon = gearTile.querySelector('.item-icon') as HTMLElement;
@@ -378,7 +335,6 @@ describe('Inventory — backend-authoritative branches', () => {
             openFirstTileDetail(container);
             const btn = container.querySelector('.inventory__action-btn--disassemble') as HTMLButtonElement;
             fireEvent.click(btn);
-            // Client path resolves the result after a 1.5s progress animation.
             vi.advanceTimersByTime(1600);
             expect(removeSpy).toHaveBeenCalledWith('itm-c');
             expect(backendApiMock.disassemble).not.toHaveBeenCalled();
@@ -389,7 +345,6 @@ describe('Inventory — backend-authoritative branches', () => {
 
     it('handleStartReroll: backend ON does the atomic reroll + sync, skips client bonus update', async () => {
         backendFlag.on = true;
-        // Reroll needs a slotted, non-common item + >= 2 rarity stones.
         useInventoryStore.setState({
             bag: [makeItem('itm-r', { itemId: 'sword_of_beginnings', rarity: 'rare' })],
             stones: { rare_stone: 5 },
@@ -403,8 +358,6 @@ describe('Inventory — backend-authoritative branches', () => {
         fireEvent.click(btn);
         await vi.waitFor(() => expect(backendApiMock.reroll).toHaveBeenCalledWith('char-1', 'itm-r'));
         expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
-        // Atomic backend reroll skips the client preview -> no client stone
-        // spend and no client bonus mutation.
         expect(useStonesSpy).not.toHaveBeenCalled();
         expect(updateSpy).not.toHaveBeenCalled();
     });
@@ -426,15 +379,12 @@ describe('Inventory — backend-authoritative branches', () => {
 
     it('handleMassDisassemble: backend ON calls backendApi.disassembleMass + sync, skips client disassembleMultiple', async () => {
         backendFlag.on = true;
-        // rAF drives the ~1.2s progress bar; stub it to fire one tick with a
-        // timestamp far past the animation window so the commit runs at once.
         const rafSpy = vi.spyOn(globalThis, 'requestAnimationFrame')
             .mockImplementation((cb: FrameRequestCallback) => { cb(performance.now() + 100000); return 0; });
         try {
             useInventoryStore.setState({ bag: [makeItem('m1'), makeItem('m2')] });
             const massSpy = vi.spyOn(useInventoryStore.getState(), 'disassembleMultiple');
             const { container } = renderInventory();
-            // Enter bulk-disassemble mode, then select both tiles.
             fireEvent.click(container.querySelector('.inventory__multi-sell-toggle--disassemble') as HTMLButtonElement);
             container.querySelectorAll('.inventory__bag-tile .item-icon').forEach((t) => fireEvent.click(t));
             fireEvent.click(container.querySelector('.inventory__mass-disassemble-btn') as HTMLButtonElement);
@@ -465,8 +415,6 @@ describe('Inventory — backend-authoritative branches', () => {
         }
     });
 
-    // Owned potions / elixirs surface as `.inventory__bag-tile` stack tiles
-    // in the bag grid; clicking one opens the per-potion "use" popup.
     const openFirstStackTile = (container: HTMLElement) => {
         const icon = container.querySelector('.inventory__bag-tile .item-icon') as HTMLElement;
         fireEvent.click(icon);
@@ -474,7 +422,7 @@ describe('Inventory — backend-authoritative branches', () => {
 
     it('applyElixirDose: backend ON fires useConsumable + sync, heal visual stays client-side', async () => {
         backendFlag.on = true;
-        useCharacterStore.setState({ character: makeChar({ hp: 50 }) }); // not full -> heal runs
+        useCharacterStore.setState({ character: makeChar({ hp: 50 }) });
         useInventoryStore.setState({ consumables: { hp_potion_sm: 5 } });
         const updateSpy = vi.spyOn(useCharacterStore.getState(), 'updateCharacter');
         const { container } = renderInventory();
@@ -482,7 +430,6 @@ describe('Inventory — backend-authoritative branches', () => {
         fireEvent.click(container.querySelector('.inventory__use-potion-btn--use') as HTMLButtonElement);
         await vi.waitFor(() => expect(backendApiMock.useConsumable).toHaveBeenCalledWith('char-1', 'hp_potion_sm'));
         expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
-        // Buff/heal visual is intentionally kept client-side.
         expect(updateSpy).toHaveBeenCalled();
     });
 
@@ -500,7 +447,7 @@ describe('Inventory — backend-authoritative branches', () => {
 
     it('applyElixirDose (stat_reset): backend ON fires statReset + sync, skips client stat mutation', async () => {
         backendFlag.on = true;
-        vi.stubGlobal('confirm', () => true); // stat_reset tile guards with window.confirm
+        vi.stubGlobal('confirm', () => true);
         try {
             useInventoryStore.setState({ consumables: { stat_reset: 1 } });
             const updateSpy = vi.spyOn(useCharacterStore.getState(), 'updateCharacter');
@@ -509,7 +456,6 @@ describe('Inventory — backend-authoritative branches', () => {
             fireEvent.click(container.querySelector('.inventory__use-potion-btn--reset') as HTMLButtonElement);
             await vi.waitFor(() => expect(backendApiMock.statReset).toHaveBeenCalledWith('char-1', 'stat_reset'));
             expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
-            // stat_reset delegates fully to the server -> no client stat recompute.
             expect(updateSpy).not.toHaveBeenCalled();
         } finally {
             vi.unstubAllGlobals();
@@ -521,7 +467,7 @@ describe('Inventory — backend-authoritative branches', () => {
         useInventoryStore.setState({ stones: { rare_stone: 100 }, gold: 5000 });
         const convertSpy = vi.spyOn(useInventoryStore.getState(), 'convertStones');
         const { container } = renderInventory();
-        openFirstStackTile(container); // stone stack tile -> stone popup
+        openFirstStackTile(container);
         fireEvent.click(container.querySelector('.inventory__stone-popup-btn') as HTMLButtonElement);
         await vi.waitFor(() => expect(backendApiMock.convertStones).toHaveBeenCalledWith('char-1', 'rare_stone'));
         expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
@@ -546,8 +492,6 @@ describe('Inventory — backend-authoritative branches', () => {
             stones: { common_stone: 10 },
             gold: 100000,
         });
-        // Simulate the server bumping the item's level so readItemUpgradeLevel
-        // reports success after the (mocked) sync.
         syncFromBackendMock.mockImplementation(async () => {
             useInventoryStore.setState((s) => ({
                 bag: s.bag.map((i) => (i.uuid === 'itm-up' ? { ...i, upgradeLevel: 1 } : i)),
@@ -592,8 +536,6 @@ describe('Inventory — backend-authoritative branches', () => {
 
     it('confirmUpgrade (skill upgrade): backend ON success fires backendApi.chatSystemEvent (skillUpgrade payload)', async () => {
         backendFlag.on = true;
-        // shield_bash: Knight, unlockLevel 5 (char is level 5) — purchased so the
-        // upgrade button surfaces. Give resources so the confirm button enables.
         useInventoryStore.setState({ gold: 100000, consumables: { spell_chest_5: 10 } });
         useSkillStore.setState({
             activeSkillSlots: [null, null, null, null],
@@ -601,7 +543,6 @@ describe('Inventory — backend-authoritative branches', () => {
             skillUpgradeLevels: {},
             unlockedSkills: { shield_bash: true },
         });
-        // Server bumps the skill level so ok = newLevel > prevLevel.
         syncFromBackendMock.mockImplementation(async () => {
             useSkillStore.setState({ skillUpgradeLevels: { shield_bash: 1 } });
         });
@@ -647,19 +588,3 @@ describe('Inventory — backend-authoritative branches', () => {
     });
 });
 
-// TODO: Detail popup interaction (clicking a bag tile to open the
-//       comparison overlay -> equip / sell / upgrade buttons) requires
-//       wiring a known itemId from `data/items.json` so the comparison
-//       column can resolve a base item. Skipped here — that depth is
-//       carried by Playwright in tests/e2e/inventory/ once authored.
-// TODO: Training popup, skills popup, auto-potion popup, stone-convert
-//       popup, bonus-reroll preview — all dispatch through
-//       `setPopupKey('avatar' | 'stats' | 'training' | 'potion' | 'skills')`.
-//       Smoke-mounting them is straightforward but the popup bodies
-//       depend on `data/skills.json` + sprite assets that aren't worth
-//       seeding for a render check. Add per-popup smoke tests when the
-//       popup bodies become refactored components.
-// TODO: Sell click + upgrade click flows are routed through
-//       `selectBagItem` -> DetailPanel -> action button. The DetailPanel
-//       is heavy (~700 lines of its own) and merits a dedicated test
-//       file once it's pulled out as a top-level component.

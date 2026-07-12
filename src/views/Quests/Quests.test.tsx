@@ -2,26 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Quests view — the 3-tile hub (Taski / Questy / Dzienne misje) that
- * routes between four sub-views via local `mainTab` state. ~1800 lines,
- * but the hub picker is the canonical entry point ("home" tab) and the
- * three leaf sub-views render only after clicking a tile.
- *
- * Coverage:
- *   - Smoke render: .quests root + .quests__hub on home tab.
- *   - 3 hub tiles render with correct aria-labels.
- *   - Clicking a tile switches mainTab (verified via DOM swap).
- *   - Tasks sub-view: renders active-task box + filter chips + task list.
- *   - Daily sub-view: locked branch for level < 25, summary for >= 25.
- *   - Quests sub-view: renders quest cards (or empty list); the modal
- *     overlays (claim/abandon) only mount when triggered.
- *   - Edge: spinner not gated at mount — renderHomeTab works even when
- *     character is null on the Daily sub-view fallback.
- *
- * Mocks: framer-motion, react-router-dom's useLocation (key triggers
- * reset effect), Spinner (heavy import path), claudeApi nothing here.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -94,10 +74,6 @@ beforeEach(() => {
         activeTasks: [],
         completedTasks: [],
     } as never);
-    // `lastRefreshDate` MUST equal today's key so the view's mount
-    // `useEffect(refreshIfNeeded)` is a no-op — otherwise it would
-    // call `selectDailyQuests()` and overwrite the per-test fixtures
-    // (`activeQuests` / `todayQuestDefs`) we configure below.
     useDailyQuestStore.setState({
         lastRefreshDate: getTodayKey(),
         activeQuests: [],
@@ -105,9 +81,6 @@ beforeEach(() => {
     });
     useMasteryStore.setState({ masteries: {}, masteryKills: {} } as never);
     useTransformStore.setState({ completedTransforms: [] });
-    // Reset the persisted level filter to its `''` default so each test
-    // starts from a clean, non-null value (the null-regression test below
-    // overrides it explicitly).
     useSettingsStore.setState({ taskFilterLvlFrom: '' });
 });
 
@@ -140,9 +113,7 @@ describe('Quests — hub tile navigation', () => {
         const { container } = renderQuests();
         const tasksTile = container.querySelector('.quests__hub-tile--tasks') as HTMLButtonElement;
         fireEvent.click(tasksTile);
-        // Hub disappears; the inner sub-view mounts.
         expect(container.querySelector('.quests__hub')).toBeNull();
-        // Tasks sub-view renders the .tasks__list grid + filter chips.
         expect(container.querySelector('.tasks__list')).not.toBeNull();
     });
 
@@ -151,9 +122,6 @@ describe('Quests — hub tile navigation', () => {
         const questsTile = container.querySelector('.quests__hub-tile--quests') as HTMLButtonElement;
         fireEvent.click(questsTile);
         expect(container.querySelector('.quests__hub')).toBeNull();
-        // Quests sub-view renders the filter strip (category chips + lvl
-        // input). renderQuestsTab uses `.quests__filters` rather than
-        // `.quests__sub-controls` (the latter belongs to the Tasks tab).
         expect(container.querySelector('.quests__filters')).not.toBeNull();
     });
 
@@ -162,8 +130,6 @@ describe('Quests — hub tile navigation', () => {
         const dailyTile = container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement;
         fireEvent.click(dailyTile);
         expect(container.querySelector('.quests__hub')).toBeNull();
-        // Daily sub-view renders the .quests__daily-list (or locked card if
-        // level < 25). At level 50 (default) the list renders.
         expect(container.querySelector('.quests__daily-list')).not.toBeNull();
     });
 });
@@ -179,7 +145,7 @@ describe('Quests — claimable dot on hub tiles', () => {
                 killCount: 10,
                 rewardGold: 100,
                 rewardXp: 50,
-                progress: 10, // = killCount -> claimable
+                progress: 10,
                 startedAt: '2026-05-22T00:00:00.000Z',
             }],
         } as never);
@@ -203,8 +169,6 @@ describe('Quests — Daily sub-view (unlocked)', () => {
     it('renders the empty-list message when todayQuestDefs is empty', () => {
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement);
-        // The empty message lives inside `.quests__daily-list` (see
-        // Quests.tsx) — the literal copy says "Brak questow na dzis."
         const empties = container.querySelectorAll('.quests__empty');
         const hasEmpty = Array.from(empties).some(
             (n) => n.textContent?.includes('Brak questow'),
@@ -244,7 +208,6 @@ describe('Quests — Daily sub-view (locked)', () => {
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement);
         expect(container.querySelector('.quests__daily-locked')).not.toBeNull();
-        // Daily list should NOT render in the locked branch.
         expect(container.querySelector('.quests__daily-list')).toBeNull();
     });
 });
@@ -264,7 +227,6 @@ describe('Quests — Tasks sub-view', () => {
         const availChip = Array.from(container.querySelectorAll('.quests__filter-chip')).find(
             (b) => b.textContent?.includes('Dostępne'),
         ) as HTMLButtonElement;
-        // Off by default
         expect(availChip.className).not.toContain('quests__filter-chip--on');
         fireEvent.click(availChip);
         expect(availChip.className).toContain('quests__filter-chip--on');
@@ -295,7 +257,6 @@ describe('Quests — Quests sub-view', () => {
     it('renders the filter chip strip with the 4 category buttons', () => {
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--quests') as HTMLButtonElement);
-        // Spec: 4 category chips — Wszystkie / Aktywne / Dostępne / Ukończone.
         const filterBtns = container.querySelectorAll('.quests__filter-btn');
         expect(filterBtns.length).toBe(4);
     });
@@ -319,20 +280,11 @@ describe('Quests — Quests sub-view', () => {
 });
 
 describe('Quests — hydrated-null level filter regression', () => {
-    // Regression: an old save / backend state round-trip can hydrate
-    // `settings.taskFilterLvlFrom` as `null` (the field is typed `string`,
-    // but `applyBlobToStores` copies blob values verbatim, so a null slips
-    // past the `''` default). The Tasks sub-view then did
-    // `taskLvlFilter.trim()` → "Cannot read properties of null (reading
-    // 'trim')" and the whole view went blank. The `?? ''` guard at the
-    // store read must keep the sub-view rendering.
     it('renders the Tasks sub-view without crashing when taskFilterLvlFrom is null', () => {
         useSettingsStore.setState({ taskFilterLvlFrom: null as unknown as string });
         const { container } = renderQuests();
-        // Before the fix, clicking the Taski tile threw during render.
         fireEvent.click(container.querySelector('.quests__hub-tile--tasks') as HTMLButtonElement);
         expect(container.querySelector('.tasks__list')).not.toBeNull();
-        // The level-filter input still mounts (controlled value coerced to '').
         const lvlInput = container.querySelector('.quests__lvl-filter') as HTMLInputElement | null;
         expect(lvlInput).not.toBeNull();
         expect(lvlInput?.value).toBe('');
@@ -343,7 +295,6 @@ describe('Quests — edge cases', () => {
     it('still renders the root and 3 hub tiles when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderQuests();
-        // No early return — hub renders with class-color fallback.
         expect(container.querySelector('.quests')).not.toBeNull();
         expect(container.querySelectorAll('.quests__hub-tile').length).toBe(3);
     });
@@ -355,15 +306,3 @@ describe('Quests — edge cases', () => {
     });
 });
 
-// TODO: handleClaimQuest deep coverage exercises a 6-branch reward
-//       switch (gold / xp / elixir / item / stones / stat_points) +
-//       the random gift item. The reward path lives in itemGenerator
-//       tests already, so the view-level smoke + the four-tile
-//       navigation matrix is enough here.
-// TODO: Pagination chrome — only mounts when groupedEntries.length >
-//       TASKS_PER_PAGE (20). With our fixture (no active tasks, default
-//       tasks.json) the pagination is hidden. Coverage of the pager
-//       lives at unit level inside the Pagination component itself.
-// TODO: Cancel-task + abandon-quest modal confirmations — feasible to
-//       drive, but each requires clicking through to a leaf row first.
-//       Skipped to keep the smoke matrix focused.

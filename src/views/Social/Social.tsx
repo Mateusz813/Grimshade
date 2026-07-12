@@ -7,17 +7,6 @@ import bgZnajomi from '../../assets/images/spolecznosc/spolecznosc-znajomi.png';
 import bgCzat from '../../assets/images/spolecznosc/spolecznosc-czat.png';
 import './Social.scss';
 
-/**
- * Społeczność hub. Vertically-stacked banner tiles styled identically
- * to the Battle hub (`/walka`) — Party / Gildia / Znajomi / Czat. Each
- * tile uses a custom background image from `/assets/images/spolecznosc/`
- * and inherits the player's transform-tier accent for the border + glow.
- *
- * Per spec ("zrob taki sam widok jak klika sie spolecznosc jak w walce
- * i questach: Lista jeden pod drugim do wyboru. Tła adekwatnie jak w
- * polowaniu pod nazwa spolecznosc-party..."): same layout, same
- * animations, same visual rhythm — just a different set of destinations.
- */
 
 const CLASS_COLORS: Record<string, string> = {
   Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
@@ -55,7 +44,6 @@ const Social = () => {
   })();
   const tileAccentRgb = hexToRgb(tileAccent);
 
-  // Order matches the spec: Party first, then Gildia, Znajomi, Czat.
   const tiles: ISocialTile[] = [
     { id: 'party',   label: 'Party',   path: '/party',   bg: bgParty },
     { id: 'gildia',  label: 'Gildia',  path: '/guild',   bg: bgGildia },

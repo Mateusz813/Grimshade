@@ -2,9 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDailyQuestStore } from './dailyQuestStore';
 import { getTodayKey, DAILY_QUEST_COUNT } from '../systems/dailyQuestSystem';
 
-// -- Mocks --------------------------------------------------------------------
-// claimReward dynamically imports characterStore + characterApi to bump a
-// leaderboard column. Mock both so the test focuses on store state changes.
 
 vi.mock('./characterStore', () => ({
     useCharacterStore: {
@@ -20,19 +17,15 @@ vi.mock('../api/v1/characterApi', () => ({
     },
 }));
 
-// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useDailyQuestStore.getState().resetDailyQuests();
 };
 
-// Force a refresh at a known player level so the rest of the test has a
-// deterministic active-quest list.
 const seedTodayQuests = (playerLevel = 100): void => {
     useDailyQuestStore.getState().refreshIfNeeded(playerLevel);
 };
 
-// -- Tests --------------------------------------------------------------------
 
 describe('dailyQuestStore — initial state', () => {
     beforeEach(resetStore);
@@ -74,13 +67,11 @@ describe('dailyQuestStore — refreshIfNeeded (refreshDailyQuests)', () => {
     it('is idempotent when called twice on the same day', () => {
         useDailyQuestStore.getState().refreshIfNeeded(100);
         const firstSnapshot = useDailyQuestStore.getState().activeQuests;
-        // Mutate progress so we can verify the second call doesn't overwrite
         useDailyQuestStore.setState({
             activeQuests: firstSnapshot.map((aq) => ({ ...aq, progress: 999 })),
         });
         useDailyQuestStore.getState().refreshIfNeeded(100);
         const secondSnapshot = useDailyQuestStore.getState().activeQuests;
-        // No reset -> progress kept
         expect(secondSnapshot[0].progress).toBe(999);
     });
 
@@ -104,7 +95,6 @@ describe('dailyQuestStore — refreshIfNeeded (refreshDailyQuests)', () => {
     });
 
     it('returns no quests when player level is below every quest\'s minLevel', () => {
-        // Daily quests all start at minLevel >= 25 in the JSON
         useDailyQuestStore.getState().refreshIfNeeded(0);
         expect(useDailyQuestStore.getState().activeQuests).toEqual([]);
     });
@@ -117,10 +107,9 @@ describe('dailyQuestStore — addProgress', () => {
     });
 
     it('increments quests of the matching goal type', () => {
-        // Find a kill_any quest from today's batch
         const { todayQuestDefs } = useDailyQuestStore.getState();
         const killQuest = todayQuestDefs.find((d) => d.goal.type === 'kill_any');
-        if (!killQuest) return; // can't run this assertion w/o a kill quest in pool
+        if (!killQuest) return;
         useDailyQuestStore.getState().addProgress('kill_any', 1);
         const aq = useDailyQuestStore.getState().activeQuests.find((q) => q.questId === killQuest.id);
         expect(aq?.progress).toBe(1);
@@ -128,7 +117,6 @@ describe('dailyQuestStore — addProgress', () => {
 
     it('ignores progress for unmatched goal types', () => {
         useDailyQuestStore.getState().addProgress('use_potion', 5);
-        // Any quest not of type "use_potion" should still be at 0
         const { activeQuests, todayQuestDefs } = useDailyQuestStore.getState();
         for (const aq of activeQuests) {
             const def = todayQuestDefs.find((d) => d.id === aq.questId);
@@ -139,7 +127,6 @@ describe('dailyQuestStore — addProgress', () => {
     });
 
     it('caps progress at the goal count', () => {
-        // Pick the first quest, find its target count, then over-progress
         const def = useDailyQuestStore.getState().todayQuestDefs[0];
         if (!def) return;
         useDailyQuestStore.getState().addProgress(def.goal.type, def.goal.count + 9999);
@@ -159,7 +146,6 @@ describe('dailyQuestStore — addProgress', () => {
     it('does not progress an already-claimed quest', () => {
         const def = useDailyQuestStore.getState().todayQuestDefs[0];
         if (!def) return;
-        // Mark it claimed manually
         useDailyQuestStore.setState({
             activeQuests: useDailyQuestStore.getState().activeQuests.map((aq) =>
                 aq.questId === def.id ? { ...aq, claimed: true, progress: 0 } : aq,
@@ -167,7 +153,6 @@ describe('dailyQuestStore — addProgress', () => {
         });
         useDailyQuestStore.getState().addProgress(def.goal.type, def.goal.count);
         const aq = useDailyQuestStore.getState().activeQuests.find((q) => q.questId === def.id);
-        // Progress untouched because claimed=true
         expect(aq?.progress).toBe(0);
     });
 });
@@ -224,11 +209,10 @@ describe('dailyQuestStore — claimReward', () => {
         if (!def) return;
         useDailyQuestStore.getState().addProgress(def.goal.type, def.goal.count);
         const lowRewards = useDailyQuestStore.getState().claimReward(def.id, 1);
-        // Reset + re-prime so we can claim again at a higher level
         resetStore();
         seedTodayQuests(500);
         const def2 = useDailyQuestStore.getState().todayQuestDefs.find((d) => d.id === def.id);
-        if (!def2) return; // Daily quests are sampled — skip if def isn't selected
+        if (!def2) return;
         useDailyQuestStore.getState().addProgress(def2.goal.type, def2.goal.count);
         const highRewards = useDailyQuestStore.getState().claimReward(def2.id, 500);
         expect(highRewards?.gold ?? 0).toBeGreaterThan(lowRewards?.gold ?? 0);

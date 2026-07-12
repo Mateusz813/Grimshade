@@ -2,26 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Combat view — the hunting hub. 2948 lines, drives ~15 stores, runs
- * combatEngine intervals, animations, party sync, etc. We can't (and
- * shouldn't) cover the entire combat loop through React tests — that's
- * what combatEngine.test.ts and Playwright E2E exist for.
- *
- * What we DO cover here:
- *   - Smoke render in idle phase (the monster picker hub).
- *   - Null-character short-circuit (returns null, no crash).
- *   - Idle-phase top control bar mounts.
- *   - Transitioning the store to phase==='fighting' swaps the chrome
- *     (the idle header disappears, combat arena mounts).
- *   - Engine helpers (`startNewFight`, `stopCombat`, `handlePlayerDeath`)
- *     are wired through the engine module — we don't drive them but we
- *     verify the import didn't crash.
- *
- * Mocking strategy: stub the entire `combatEngine` module + heavy
- * animation hooks + framer-motion AnimatePresence so the view doesn't
- * spawn any intervals on mount.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -71,8 +51,6 @@ vi.mock('../../hooks/usePartyReadyCheck', () => ({
     triggerPartyCombatGo: vi.fn(),
 }));
 
-// combatEngine spawns intervals + timeouts on `startNewFight` — pure
-// stub here.
 vi.mock('../../systems/combatEngine', async () => {
     const actual = await vi.importActual<typeof import('../../systems/combatEngine')>(
         '../../systems/combatEngine',
@@ -192,14 +170,11 @@ describe('Combat — smoke', () => {
     it('returns null (renders nothing) when character is missing', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderCombat();
-        // The component short-circuits with `if (!character) return null;`
-        // before any markup is emitted.
         expect(container.querySelector('.combat')).toBeNull();
     });
 
     it('renders idle-phase top header with the speed / skill / fight / xp buttons', () => {
         const { container } = renderCombat();
-        // Idle header lives in <header class="combat__top page-header">.
         expect(container.querySelector('.combat__top')).not.toBeNull();
         expect(container.querySelector('.combat__speed-btn')).not.toBeNull();
         expect(container.querySelector('.combat__mode-btn')).not.toBeNull();
@@ -208,7 +183,6 @@ describe('Combat — smoke', () => {
 
     it('renders the wave count / monster picker hub when no selectedMonster is set', () => {
         const { container } = renderCombat();
-        // The hub section mounts when phase==='idle' AND no selectedMonster.
         expect(container.querySelector('.combat__hub')).not.toBeNull();
     });
 });
@@ -260,19 +234,9 @@ describe('Combat — phase guard', () => {
     it('hides the idle hub when phase==="fighting" (renders the in-fight arena instead)', () => {
         useCombatStore.setState({ phase: 'fighting' });
         const { container } = renderCombat();
-        // Idle hub gates on phase==='idle' so when we flip to fighting it
-        // unmounts. The .combat root still mounts.
         expect(container.querySelector('.combat')).not.toBeNull();
         expect(container.querySelector('.combat__hub')).toBeNull();
-        // Idle top header also disappears in fighting phase.
         expect(container.querySelector('.combat__top')).toBeNull();
     });
 });
 
-// TODO: Driving Attack / Flee / Skill 1-4 interactions in fighting phase
-//       requires wiring combatStore.waveMonsters with a real monster + the
-//       full effects session refs that <CombatActionBar> reads. The action
-//       bar itself has dedicated unit coverage in
-//       src/components/organisms/CombatUI/CombatActionBar.test.tsx.
-//       End-to-end click-to-damage is covered by Playwright in
-//       tests/e2e/combat/.

@@ -10,12 +10,6 @@ interface IStateResponse {
     updated_at?: string | null;
 }
 
-/**
- * Pobiera autorytatywny stan z backendu (GET /state) i hydratuje store'y:
- *  - characterStore ← character (level/xp/hp/staty/rankingi),
- *  - reszta store'ów ← blob state (inventory/skills/quests/tasks/...).
- * Wołane PO każdej mutującej akcji backendu, żeby UI = stan serwera.
- */
 export const syncFromBackend = async (charId: string): Promise<void> => {
     const res = await backendApi.state(charId) as IStateResponse;
     if (res.character) {
@@ -26,7 +20,6 @@ export const syncFromBackend = async (charId: string): Promise<void> => {
     }
 };
 
-/** Odśwież z backendu TYLKO gdy tryb backendu aktywny (no-op inaczej). */
 export const syncIfBackend = async (charId: string | null | undefined): Promise<void> => {
     if (!charId || !isBackendMode()) return;
     await syncFromBackend(charId);

@@ -9,8 +9,6 @@ describe('BackendLoader', () => {
         useApiPendingStore.setState({ pending: 0 });
     });
     afterEach(() => {
-        // Unmount between tests — the overlay subscribes to a GLOBAL store, so a
-        // leaked instance would react to the next test's pending change too.
         cleanup();
         vi.useRealTimers();
     });
@@ -23,7 +21,6 @@ describe('BackendLoader', () => {
     it('shows the overlay only after the delay while a request is pending', () => {
         render(<BackendLoader />);
         act(() => { useApiPendingStore.setState({ pending: 1 }); });
-        // before the delay elapses — still hidden (fast requests never flash it)
         expect(screen.queryByText(/Grimshade/)).toBeNull();
         act(() => { vi.advanceTimersByTime(400); });
         expect(screen.getByText(/Grimshade/)).toBeTruthy();

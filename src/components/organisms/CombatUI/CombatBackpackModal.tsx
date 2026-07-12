@@ -13,20 +13,10 @@ interface IProps {
 }
 
 interface IGroupedDrop extends IDropDisplay {
-    /** How many drops collapsed into this row. */
     count: number;
-    /** Total gold the stack was sold for (when `sold` rows collapse). */
     totalSoldPrice: number;
 }
 
-/**
- * Collapse the cumulative session drops by visual identity so the same item
- * doesn't fill the grid 50× over. Stacking key is `name + rarity + upgrade
- * + sold`; the icon is forced into the key too so two distinct items that
- * happen to share a name (rare for current data, but cheap to guard) stay
- * separate. We sum the sale price across the stack so the tooltip can
- * still show "x12 · sprzedano za 360g".
- */
 const groupDrops = (drops: IDropDisplay[]): IGroupedDrop[] => {
     const map = new Map<string, IGroupedDrop>();
     for (const d of drops) {
@@ -42,26 +32,14 @@ const groupDrops = (drops: IDropDisplay[]): IGroupedDrop[] => {
     return Array.from(map.values());
 };
 
-/**
- * Popup showing the *cumulative* session loot — everything the player
- * earned across every wave since they entered the combat view, until they
- * exited via the action bar / died / defeated the boss.
- *
- * Reads directly from combatStore so each combat view doesn't have to
- * forward the data manually.
- */
 const CombatBackpackModal = ({ onClose }: IProps) => {
     const sessionXp = useCombatStore((s) => s.sessionXpEarned);
     const sessionGold = useCombatStore((s) => s.sessionGoldEarned);
     const sessionKills = useCombatStore((s) => s.sessionKills);
-    // Cumulative drops since the player entered the combat view — survives
-    // wave/fight boundaries (only `clearCombatSession` wipes it).
     const drops = useCombatStore((s) => s.sessionDrops);
 
     const totalKills = Object.values(sessionKills).reduce((sum, n) => sum + n, 0);
 
-    // Memoised grouping — the drop list grows monotonically during a session
-    // so this saves re-collapsing 100s of entries on every render.
     const groupedDrops = useMemo(() => groupDrops(drops), [drops]);
 
     return (
@@ -72,12 +50,6 @@ const CombatBackpackModal = ({ onClose }: IProps) => {
                     <button type="button" className="combat-ui__modal-close" onClick={onClose} aria-label="Zamknij">×</button>
                 </header>
 
-                {/* 2026-05-11 spec ("w dropie powinno byc info ile +% mam
-                    do XP i ile +% do golda"): summarise the session-active
-                    bonuses so the player can see WHY their reward totals
-                    look the way they do. Mastery bonuses are per-monster
-                    (shown in the live log), so we only render the constant
-                    party + buff multipliers here. */}
                 {(() => {
                     const party = usePartyStore.getState().party;
                     const partySize = party ? Math.max(1, party.members.length) : 1;

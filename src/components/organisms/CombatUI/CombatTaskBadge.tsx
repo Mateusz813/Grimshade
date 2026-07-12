@@ -3,17 +3,9 @@ import type { ICombatActiveQuest } from './types';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
 
 interface IProps {
-    /** All active tasks/quests for the currently fought enemy. Empty = badge hidden. */
     items: ICombatActiveQuest[];
 }
 
-/**
- * Top-left fixed scroll badge with a small counter showing how many
- * tasks/quests are active for this monster. Click toggles a dropdown
- * that lists each one with name + dynamic progress (X/Y).
- *
- * Renders nothing if there are no active tasks/quests.
- */
 const CombatTaskBadge = ({ items }: IProps) => {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);

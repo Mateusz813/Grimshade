@@ -28,29 +28,7 @@ import {
     checkConversionAvailability,
 } from '../../src/systems/potionConversion';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla potionSystem (potionSystem.ts +
-// potionConversion.ts + potionGating.ts).
-//
-// System CZYSTY/deterministyczny (zero RNG) — golden bit-parity. Backend
-// (App\Domain\Items\PotionSystem) odtwarza każdy wektor bajt-w-bajt.
-//
-// Dwie role:
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/potionSystem.json z realnych funkcji.
-//  2. Normalnie → GUARD: fixture == aktualny output TS (zmiana logiki bez
-//     regeneracji → czerwień).
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/potionSystem.golden.test.ts
-//   cp golden/potionSystem.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// POMINIĘTO (UI, nie autorytet): name_pl/name_en/description/icon/price z
-// ELIXIRS oraz inputName/inputIcon/outputName/outputIcon z konwersji. Portujemy
-// TYLKO logikę: id, effect, kolejność pul, gating po poziomie, koszty i sortowanie
-// konwersji, wartości leczenia parsowane z effect-stringa (protokół).
-// ============================================================================
 
-/** Pule potek (id-only reprezentacja pobierana po nazwie w PHP i TS). */
 const POOLS: Record<string, ReadonlyArray<{ id: string; effect: string }>> = {
     allHp: ALL_HP_POTIONS,
     allMp: ALL_MP_POTIONS,
@@ -61,7 +39,6 @@ const POOLS: Record<string, ReadonlyArray<{ id: string; effect: string }>> = {
     empty: [],
 };
 
-// -- Kolekcje przypadków ------------------------------------------------------
 
 const POTION_IDS = [
     'hp_potion_sm', 'hp_potion_md', 'hp_potion_lg', 'hp_potion_mega',
@@ -70,7 +47,6 @@ const POTION_IDS = [
     'mp_potion_great', 'mp_potion_super', 'mp_potion_ultimate', 'mp_potion_divine',
 ];
 
-// Nie-poteki + brzegowe id (nieznany tier, prefiks bez podkreślenia, pusty).
 const MISC_IDS = ['xp_boost', 'stat_reset', 'hp_potion_weird', 'hp_potionx', 'HP_POTION_sm', 'unknown', ''];
 
 const MIN_LEVEL_IDS = [...POTION_IDS, ...MISC_IDS];
@@ -152,25 +128,21 @@ const buildGolden = (): Record<string, unknown> => ({
     system: 'potionSystem',
     note: 'Generowane z src/systems/potionSystem.ts + potionConversion.ts + potionGating.ts. NIE edytuj ręcznie — regeneruj UPDATE_GOLDEN=1.',
 
-    // -- potionGating ---------------------------------------------------------
     pctPotionMinLevel: PCT_POTION_MIN_LEVEL,
     getPotionMinLevel: MIN_LEVEL_IDS.map((id) => ({ id, value: getPotionMinLevel(id) })),
     canUsePotionAtLevel: CAN_USE_CASES.map(([id, level]) => ({ id, level, value: canUsePotionAtLevel(id, level) })),
     isHpMpPotionId: IS_HP_MP_IDS.map((id) => ({ id, value: isHpMpPotionId(id) })),
 
-    // -- Kategoryzacja + cooldowny + etykieta leczenia ------------------------
     isPctPotion: EFFECTS.map((effect) => ({ effect, value: isPctPotion(effect) })),
     isPctPotionId: MIN_LEVEL_IDS.map((id) => ({ id, value: isPctPotionId(id) })),
     isFlatPotionId: MIN_LEVEL_IDS.map((id) => ({ id, value: isFlatPotionId(id) })),
     getPotionCooldownMs: COOLDOWN_IDS.map((id) => ({ id, value: getPotionCooldownMs(id) })),
     getPotionLabel: EFFECTS.map((effect) => ({ effect, value: getPotionLabel(effect) })),
 
-    // -- Pule potek (kolejność jest logiką) -----------------------------------
     pools: Object.fromEntries(
         Object.entries(POOLS).map(([name, pool]) => [name, pool.map((p) => p.id)]),
     ),
 
-    // -- Gettery czytające stan (consumables + level jako jawne parametry) -----
     getBestPotion: BEST_CASES.map((c) => ({
         pool: c.pool,
         consumables: c.consumables,
@@ -190,7 +162,6 @@ const buildGolden = (): Record<string, unknown> => ({
             : resolveAutoPotionElixir(c.preferredId ?? undefined, c.hpOrMp, c.slotKind, c.consumables, c.level))?.id ?? null,
     })),
 
-    // -- Konwersja (chain, sort, gating) --------------------------------------
     potionConversions: POTION_CONVERSIONS.map((c) => ({
         tier: c.tier,
         family: c.family,
@@ -229,7 +200,6 @@ describe('potionSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current potionSystem output', () => {
         expect(existsSync(outPath), 'brak golden/potionSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON (usuwa -0), wzór lootSystem — parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

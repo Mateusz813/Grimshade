@@ -1,22 +1,3 @@
-/**
- * Tests for the skill-animation registry.
- *
- * Maps every active skill id (Knight..Bard) and every guild-boss
- * spell id to one of 12 animation presets (fire / ice / lightning /
- * holy / dark / physical / arrow / music / arcane / poison / buff /
- * summon). Each preset bundles cssClass, duration, color and an
- * emoji glyph.
- *
- * Public exports:
- *   - SKILL_ANIMATIONS    — the raw map (used directly by the combat
- *                           overlay component for static lookups).
- *   - getSkillAnimation   — safe resolver; returns undefined when
- *                           the id isn't known.
- *
- * We assert structural invariants on the registry (so a stray
- * preset that doesn't match the documented categories will fail
- * the test) plus the resolver's contract on edge inputs.
- */
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -30,7 +11,6 @@ const VALID_CATEGORIES: SkillAnimCategory[] = [
     'arrow', 'music', 'arcane', 'poison', 'buff', 'summon',
 ];
 
-// -- SKILL_ANIMATIONS structural invariants ----------------------------------
 
 describe('SKILL_ANIMATIONS', () => {
     it('every entry uses one of the 12 documented categories', () => {
@@ -65,7 +45,6 @@ describe('SKILL_ANIMATIONS', () => {
     });
 });
 
-// -- Per-class coverage (spot checks) ----------------------------------------
 
 describe('SKILL_ANIMATIONS coverage', () => {
     it('includes signature Knight skills with the documented categories', () => {
@@ -83,7 +62,6 @@ describe('SKILL_ANIMATIONS coverage', () => {
     });
 
     it('includes the guild-boss spell ids (cios, pozoga, apokalipsa, …)', () => {
-        // 2026-05-18 v11: boss spells get themed overlays via this map.
         expect(SKILL_ANIMATIONS.cios).toBeDefined();
         expect(SKILL_ANIMATIONS.pozoga.category).toBe('fire');
         expect(SKILL_ANIMATIONS.mroz.category).toBe('ice');
@@ -92,7 +70,6 @@ describe('SKILL_ANIMATIONS coverage', () => {
     });
 });
 
-// -- getSkillAnimation resolver ----------------------------------------------
 
 describe('getSkillAnimation', () => {
     it('returns the matching animation for a known id', () => {

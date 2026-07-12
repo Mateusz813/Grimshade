@@ -2,21 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Leaderboard view — multi-tab rankings page (~510 lines). 30+ tabs
- * pull from different REST endpoints (characters / weapon_skill /
- * guilds / deaths_total). Per-tab loads up to 100 rows + renders class
- * icons + medals for top-3.
- *
- * Coverage:
- *   - Smoke: root mounts + page-tabs row renders all the tabs.
- *   - Default tab is "level" (active modifier).
- *   - Loading spinner mounts on first render before data resolves.
- *   - Empty payload renders the "Brak graczy w rankingu" copy.
- *   - Tab click switches the active tab.
- *   - Populated character list renders one row per entry with class icon.
- *   - My-rank badge surfaces when the active character is in the entries.
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -106,8 +91,6 @@ describe('Leaderboard — smoke', () => {
 describe('Leaderboard — content states', () => {
     it('mounts a loading spinner before the first response resolves', () => {
         const { container } = renderLeaderboard();
-        // The component flips loading=true synchronously on tab change -> at
-        // first render the spinner branch renders.
         expect(container.querySelector('.leaderboard__loading')).not.toBeNull();
     });
 
@@ -150,7 +133,6 @@ describe('Leaderboard — content states', () => {
 describe('Leaderboard — tab switching', () => {
     it('flips the active modifier when a different tab is clicked', async () => {
         const { container } = renderLeaderboard();
-        // Find a tab labeled "MLVL" (magic_level) — exists in the TABS list.
         const allTabs = Array.from(container.querySelectorAll('.leaderboard__tab'));
         const magicTab = allTabs.find((t) => t.textContent?.includes('MLVL')) as HTMLButtonElement;
         expect(magicTab).toBeDefined();
@@ -203,10 +185,3 @@ describe('Leaderboard — my-rank badge', () => {
     });
 });
 
-// TODO: Each tab branch (weapon_skill / guilds / deaths_total / arena_league
-//       / market_items_sold / best_dps5_party) sends a different query +
-//       transforms the rows differently. Smoke-asserting render here is
-//       enough; per-branch transformation correctness lives in api/v1
-//       integration tests.
-// TODO: Top-3 medal rendering (:1st-place-medal: / :2nd-place-medal: / :3rd-place-medal:) -> trivial slice but already
-//       implicitly covered by the populated-list test.

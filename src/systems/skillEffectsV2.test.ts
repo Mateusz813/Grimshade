@@ -18,12 +18,6 @@ import {
 
 const blankStatus = newStatusState;
 
-// -- Rogue Naznaczony na Śmierć (`mark_heal_to_dmg:6000`) ------------------
-// Marks the target so any incoming heal during the buff window flips into
-// damage of equal magnitude. The mechanic shares the v2 `markNoHealMs`
-// status field with `mark_no_heal` (semantic alias). User explicitly
-// asked for proof this works, so we exercise both Arena (vs Cleric heal
-// on a marked opponent) and Boss (boss tries to self-heal while marked).
 
 describe('mark_heal_to_dmg (Rogue Naznaczony na Śmierć)', () => {
     const setupMarked = () => {
@@ -40,30 +34,19 @@ describe('mark_heal_to_dmg (Rogue Naznaczony na Śmierć)', () => {
     });
 
     it('reverses an incoming heal into damage of equal value', () => {
-        // Scenario: Arena Cleric self-casts heal_lowest_ally_pct for
-        // 20% maxHp ≈ 500. With the mark active the heal flips: the
-        // caster (Cleric) would LOSE 500 HP instead of gaining it.
         const { target } = setupMarked();
         const r = applyIncomingHeal(target, 500);
         expect(r.hpDelta).toBe(-500);
     });
 
-    // 2026-05-21: replaces deleted test "reverses tiny heals" — now tests current logic
-    // applyIncomingHeal (line 1082-1089 of skillEffectsV2.ts) returns
-    // { hpDelta: -rawHeal } when markNoHealMs > 0 — so heal of 1 flips
-    // to -1, and heal of 0 flips to -0 (which is === 0 in JS). The mark
-    // does NOT cause a damage minimum of 1 — true zero stays zero.
     it('flips tiny heals into damage of identical magnitude', () => {
         const { target } = setupMarked();
         expect(applyIncomingHeal(target, 1).hpDelta).toBe(-1);
         expect(applyIncomingHeal(target, 2).hpDelta).toBe(-2);
-        // heal of 0 stays at 0 (negating zero is still zero)
         expect(applyIncomingHeal(target, 0).hpDelta).toBe(-0);
     });
 
     it('reverses every heal source while the timer is active', () => {
-        // Multiple consecutive heals — engine uses the same status
-        // field for each call, so each should flip independently.
         const { target } = setupMarked();
         expect(applyIncomingHeal(target, 200).hpDelta).toBe(-200);
         expect(applyIncomingHeal(target, 800).hpDelta).toBe(-800);
@@ -71,62 +54,45 @@ describe('mark_heal_to_dmg (Rogue Naznaczony na Śmierć)', () => {
     });
 
     it('expires after the duration ticks down', () => {
-        // tickStatus drains the mark timer by deltaMs each call.
-        // After 6s the mark is gone and heals work normally again.
         const { target } = setupMarked();
         expect(target.markNoHealMs).toBe(6000);
         tickStatus(target, 3000, 1000);
         expect(target.markNoHealMs).toBe(3000);
-        // Still flipping mid-window.
         expect(applyIncomingHeal(target, 100).hpDelta).toBe(-100);
         tickStatus(target, 3000, 1000);
         expect(target.markNoHealMs).toBe(0);
-        // Now back to normal heal.
         expect(applyIncomingHeal(target, 100).hpDelta).toBe(100);
     });
 
     it('Boss self-heal scenario: boss marked, then casts heal on self', () => {
-        // Mirror the Boss view's fix: boss's self-heal goes through
-        // applyIncomingHeal(bossStatus, healAmount). With the mark
-        // active, the boss takes damage equal to the heal value.
         const { target: bossStatus } = setupMarked();
-        const healAmount = 1234; // arbitrary boss heal power × maxHp
+        const healAmount = 1234;
         const r = applyIncomingHeal(bossStatus, healAmount);
         expect(r.hpDelta).toBe(-1234);
-        // View clamps newBossHp = max(0, currentHp - reversed).
         const startHp = 5000;
         const newHp = Math.max(0, startHp - (-r.hpDelta));
         expect(newHp).toBe(5000 - 1234);
     });
 
     it('Arena scenario: opponent (Cleric) casts heal on themselves while marked', () => {
-        // Arena Cleric AI fires heal -> applyIncomingHeal(caster.status,
-        // heal). caster.hp += hr.hpDelta. With mark, hpDelta is
-        // negative so caster.hp decreases.
         const { target: opponent } = setupMarked();
         const startHp = 800;
         const heal = 250;
         const r = applyIncomingHeal(opponent, heal);
-        const newHp = Math.min(1000, startHp + r.hpDelta); // 1000 = maxHp
+        const newHp = Math.min(1000, startHp + r.hpDelta);
         expect(r.hpDelta).toBe(-250);
         expect(newHp).toBe(550);
     });
 
     it('does not stack with mark_no_heal — re-casting just refreshes', () => {
-        // Rogue casts mark_heal_to_dmg twice — duration takes the max
-        // (Math.max(...e.a)) so a longer second cast wins, shorter
-        // doesn't reduce the timer.
         const { target } = setupMarked();
         applyEffects(parseEffects('mark_heal_to_dmg:3000'), blankStatus(), target, 100, [], [target]);
-        // 6000 was the first cast, 3000 doesn't shorten it.
         expect(target.markNoHealMs).toBe(6000);
         applyEffects(parseEffects('mark_heal_to_dmg:8000'), blankStatus(), target, 100, [], [target]);
-        // 8000 > 6000 so it bumps up.
         expect(target.markNoHealMs).toBe(8000);
     });
 });
 
-// -- Coverage push 2026-05-26 — parseEffects edge cases ---------------------
 
 describe('parseEffects', () => {
     it('returns [] for null / undefined / empty input', () => {
@@ -198,7 +164,6 @@ describe('isStunned', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — applyIncomingDamage / mana shield -----------
 
 describe('applyIncomingDamage', () => {
     it('absorbs damage when immortal is active', () => {
@@ -220,7 +185,7 @@ describe('applyIncomingDamage', () => {
         const s = newStatusState();
         s.cannotDieMs = 2000;
         const r = applyIncomingDamage(s, 50, 100);
-        expect(r.hpDelta).toBe(-49); // 50 -> 1, so delta = -49
+        expect(r.hpDelta).toBe(-49);
         expect(r.absorbed).toBe(false);
     });
 
@@ -282,7 +247,6 @@ describe('applyManaShieldRedirect', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — applyIncomingHeal edge cases -----------------
 
 describe('applyIncomingHeal extra cases', () => {
     it('returns 0 hpDelta when enemyNoHealMs is active', () => {
@@ -299,7 +263,6 @@ describe('applyIncomingHeal extra cases', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — skillTargetsEnemy classifier ----------------
 
 describe('skillTargetsEnemy', () => {
     it('returns false for null/empty', () => {
@@ -324,13 +287,11 @@ describe('skillTargetsEnemy', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — tickStatus DOTs + dark ritual --------------
 
 describe('tickStatus DOTs', () => {
     it('applies a DOT each tick and removes it when exhausted', () => {
         const s = newStatusState();
         s.dots = [{ remainingMs: 1000, pctPerSec: 10 }];
-        // 1 second tick on maxHp=100 -> 10% = 10 damage; remaining 0 -> cleared.
         const r1 = tickStatus(s, 1000, 100);
         expect(r1.dotDamage).toBe(10);
         expect(s.dots.length).toBe(0);
@@ -339,7 +300,7 @@ describe('tickStatus DOTs', () => {
     it('keeps surviving DOTs and ticks proportional damage', () => {
         const s = newStatusState();
         s.dots = [{ remainingMs: 3000, pctPerSec: 5 }];
-        const r = tickStatus(s, 500, 200); // 0.5s × 5% × 200 = 5
+        const r = tickStatus(s, 500, 200);
         expect(r.dotDamage).toBe(5);
         expect(s.dots.length).toBe(1);
         expect(s.dots[0].remainingMs).toBe(2500);
@@ -355,17 +316,17 @@ describe('tickStatus DOTs', () => {
         expect(s.stunMs).toBe(500);
         expect(s.immortalMs).toBe(0);
         expect(s.atkBuffMs).toBe(0);
-        expect(s.atkBuffPct).toBe(0); // zeroed when timer hits 0
+        expect(s.atkBuffPct).toBe(0);
     });
 
     it('decays markAmp duration and prunes when 0 or count <= 0', () => {
         const s = newStatusState();
         s.markAmp = [
             { mult: 2, count: 1, remainingMs: 500 },
-            { mult: 3, count: 0, remainingMs: 10000 }, // stale: count 0
+            { mult: 3, count: 0, remainingMs: 10000 },
         ];
         tickStatus(s, 600, 100);
-        expect(s.markAmp.length).toBe(0); // first ran out, second filtered
+        expect(s.markAmp.length).toBe(0);
     });
 
     it('drains markAmpAll and nulls it when expired', () => {
@@ -379,16 +340,15 @@ describe('tickStatus DOTs', () => {
         const s = newStatusState();
         s.darkRitualPending = [
             { triggerInMs: 1000, pctOfMaxHp: 10 },
-            { triggerInMs: 5000, pctOfMaxHp: 20 }, // not yet
+            { triggerInMs: 5000, pctOfMaxHp: 20 },
         ];
         const r = tickStatus(s, 1000, 500);
         expect(r.darkRitualTriggered).toBe(true);
-        expect(r.darkRitualDamage).toBe(Math.floor(500 * 0.1)); // 50
+        expect(r.darkRitualDamage).toBe(Math.floor(500 * 0.1));
         expect(s.darkRitualPending.length).toBe(1);
     });
 });
 
-// -- Coverage push 2026-05-26 — resolveBasicHit / consumeCasterBasicHitMods -
 
 describe('resolveBasicHit', () => {
     it('returns base damage when no buffs active', () => {
@@ -407,7 +367,7 @@ describe('resolveBasicHit', () => {
         const r = resolveBasicHit(a, 'Knight', 100, t);
         expect(r.dodged).toBe(true);
         expect(r.damage).toBe(0);
-        expect(t.dodgeNext.length).toBe(0); // consumed
+        expect(t.dodgeNext.length).toBe(0);
     });
 
     it('dodgeNext does NOT dodge magic class with non_magic scope', () => {
@@ -416,7 +376,7 @@ describe('resolveBasicHit', () => {
         t.dodgeNext = [{ count: 1, scope: 'non_magic' }];
         const r = resolveBasicHit(a, 'Mage', 100, t);
         expect(r.dodged).toBe(false);
-        expect(t.dodgeNext.length).toBe(1); // charge preserved
+        expect(t.dodgeNext.length).toBe(1);
     });
 
     it('dodgeNext with scope=all dodges magic too', () => {
@@ -453,7 +413,7 @@ describe('resolveBasicHit', () => {
         t.markAmp = [{ mult: 3, count: 1, remainingMs: 5000 }];
         const r = resolveBasicHit(a, 'Knight', 100, t);
         expect(r.damage).toBe(300);
-        expect(t.markAmp.length).toBe(0); // consumed
+        expect(t.markAmp.length).toBe(0);
     });
 
     it('lifesteal adds casterHeal proportional to damage', () => {
@@ -495,13 +455,11 @@ describe('resolveBasicHit', () => {
         a.nextAllyInstantKillPct = [{ pct: 100, count: 1 }];
         const t = newStatusState();
         const orig = Math.random;
-        Math.random = () => 0; // pass the roll
+        Math.random = () => 0;
         try {
             const r = resolveBasicHit(a, 'Knight', 100, t);
-            // No longer a one-shot — produces a finite execute burst instead.
             expect(r.executeBurstPct).toBe(12);
             expect(r.instantKill).toBe(false);
-            // Charge consumed on the roll.
             expect(a.nextAllyInstantKillPct.length).toBe(0);
         } finally {
             Math.random = orig;
@@ -513,12 +471,11 @@ describe('resolveBasicHit', () => {
         a.nextAllyInstantKillPct = [{ pct: 10, count: 1 }];
         const t = newStatusState();
         const orig = Math.random;
-        Math.random = () => 0.99; // fail the roll
+        Math.random = () => 0.99;
         try {
             const r = resolveBasicHit(a, 'Knight', 100, t);
             expect(r.executeBurstPct).toBe(0);
             expect(r.instantKill).toBe(false);
-            // Charge still consumed (count decrements regardless of roll).
             expect(a.nextAllyInstantKillPct.length).toBe(0);
         } finally {
             Math.random = orig;
@@ -551,7 +508,7 @@ describe('consumeTargetMarkAmp', () => {
         const r = consumeTargetMarkAmp(s);
         expect(r.mult).toBe(2);
         expect(r.consumed).toBe(false);
-        expect(s.markAmpAll?.remainingMs).toBe(5000); // not modified here
+        expect(s.markAmpAll?.remainingMs).toBe(5000);
     });
 
     it('combines count-based and duration-based marks multiplicatively', () => {

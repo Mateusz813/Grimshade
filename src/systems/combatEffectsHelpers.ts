@@ -1,28 +1,3 @@
-/**
- * View-side helper that hides the bookkeeping for `skillEffectsV2`.
- *
- * Each combat view (Boss / Dungeon / Transform / Raid / Hunt / ArenaMatch)
- * has its own tick loop with its own combatant model — but the rules for
- * stun / DOT / AOE / instant-kill / marks / dodges / multistrike are
- * identical. This module exposes a tiny per-session container the view
- * keeps in a ref, plus 4 verbs:
- *
- *   - `ensureStatus(id)`              — get-or-init a status state
- *   - `tickAll(combatants, deltaMs)`  — drain timers + apply DOT to every
- *                                       provided combatant; returns the DOT
- *                                       deltas so the view can render
- *                                       floating numbers
- *   - `castSkill({...})`              — apply a skill's parsed effects
- *                                       (AOE / instant-kill / multistrike /
- *                                       marks / heals / immortal / etc.)
- *                                       and return the side-effects the
- *                                       view still has to commit
- *                                       (multistrike count, summon spec,
- *                                       aggro-steal flag, AOE flag, …)
- *   - `resolveBasicAttack({...})`     — single-hit resolution honouring
- *                                       stun / dodge / amp queues / marks /
- *                                       crit-next / lifesteal queue
- */
 
 import {
     parseEffects,
@@ -37,14 +12,12 @@ import {
     type IApplyResult,
 } from './skillEffectsV2';
 
-/** A combatant the view is tracking — we only need id + max-HP for DOT calc. */
 export interface ICombatEffectsRef {
     id: string;
     maxHp: number;
 }
 
 export interface ICombatEffectsSession {
-    /** id -> live status. Created lazily on first `ensureStatus`. */
     statuses: Map<string, IStatusState>;
 }
 
@@ -61,16 +34,11 @@ export const ensureStatus = (s: ICombatEffectsSession, id: string): IStatusState
     return st;
 };
 
-/** Returns true if the named combatant cannot act this tick. */
 export const isCombatantStunned = (s: ICombatEffectsSession, id: string): boolean => {
     const st = s.statuses.get(id);
     return st ? isStunned(st) : false;
 };
 
-/** Drain timers + accumulate DOT damage per combatant. Also surfaces
- *  Necromancer Mroczny Rytuał damage when its countdown expires this
- *  tick — caller subtracts both from the same target HP and pushes
- *  whatever floats they want for each (:skull-and-crossbones: DOT vs :skull: RITUAL). */
 export const tickAll = (
     s: ICombatEffectsSession,
     combatants: ICombatEffectsRef[],
@@ -93,20 +61,14 @@ export const tickAll = (
     return out;
 };
 
-// -- Skill cast / basic-hit thin wrappers ------------------------------------
 
 export interface ICastSkillParams {
     session: ICombatEffectsSession;
     casterId: string;
-    /** Single-target id when known; null for self-buff casts. */
     targetId: string | null;
-    /** Target HP/% for `execute_below`. */
     targetHpPct: number;
-    /** Effect string from skills.json (e.g. "aoe;dot:5000:5"). */
     effect: string | null | undefined;
-    /** All ally ids (incl. caster). Used for party_* effects. */
     allyIds: string[];
-    /** All alive enemy ids. Used for enemy_* effects. */
     enemyIds: string[];
 }
 
@@ -122,10 +84,8 @@ export const castSkill = (p: ICastSkillParams): IApplyResult => {
 export interface IResolveBasicParams {
     session: ICombatEffectsSession;
     attackerId: string;
-    /** Class name informs dodge scope (`non_magic` skips Mage/Cleric/Necromancer). */
     attackerClass: string | undefined;
     targetId: string;
-    /** Pre-effect base damage (already factoring weapon / atk / etc.). */
     baseDmg: number;
 }
 
@@ -135,13 +95,7 @@ export const resolveBasicAttack = (p: IResolveBasicParams) => {
     return resolveBasicHit(a, p.attackerClass, p.baseDmg, t);
 };
 
-// -- Damage / heal routing --------------------------------------------------
 
-/**
- * Apply raw damage to a combatant honouring `immortal` and `cannotDie`. The
- * view should subtract the returned `appliedDmg` from HP; `appliedDmg` may
- * be 0 (immortal absorb) or clamped to keep HP at 1 (cannotDie window).
- */
 export const routeDamage = (
     session: ICombatEffectsSession,
     targetId: string,
@@ -153,8 +107,6 @@ export const routeDamage = (
     return { appliedDmg: -r.hpDelta, absorbed: r.absorbed };
 };
 
-/** Apply heal honouring `mark_no_heal` / `enemy_no_heal`. Returns the actual
- *  delta — negative when heal was reversed to damage. */
 export const routeHeal = (
     session: ICombatEffectsSession,
     targetId: string,

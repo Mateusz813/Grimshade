@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 
-// Mock `getQuestById` BEFORE importing the component — the spec
-// "hides quests whose minLevel exceeds the player level" needs to
-// inject a quest definition with `minLevel: 100`. The default
-// export returns `undefined` for unknown ids, which short-circuits
-// the level guard in TaskBadge and prevents the test from exercising
-// the filter branch we're trying to verify.
 vi.mock('../../../stores/questStore', async () => {
     const actual = await vi.importActual<typeof import('../../../stores/questStore')>(
         '../../../stores/questStore',
@@ -39,17 +33,6 @@ import { useCharacterStore } from '../../../stores/characterStore';
 import type { ICharacter } from '../../../api/v1/characterApi';
 import { useCombatStore } from '../../../stores/combatStore';
 
-/**
- * TaskBadge — globalna ikonka ":clipboard: N" w TopHeader.
- *
- * Renderuje listę aktywnych tasków + kill-quest goals. Każdy row ma
- * status (done / live / pending), badge ma color-coded dot:
- *   purple -> claimable (claimableCount > 0)
- *   green  -> live (właśnie walczę z monstrum który ma task aktywny)
- *   none   -> nic
- *
- * Renderuje `null` gdy zero aktywnych tasków + quest goals.
- */
 
 describe('TaskBadge', () => {
     beforeEach(() => {
@@ -152,7 +135,6 @@ describe('TaskBadge', () => {
     });
 
     it('hides quests whose minLevel exceeds the player level', () => {
-        // Player lvl 5, quest requires lvl 100 — should be filtered out.
         useCharacterStore.setState((s) => ({
             character: { ...(s.character ?? {}), level: 5 } as unknown as ICharacter,
         }));
@@ -164,7 +146,6 @@ describe('TaskBadge', () => {
             }],
         } as unknown as Parameters<typeof useQuestStore.setState>[0]);
         const { container } = render(<TaskBadge />);
-        // No tasks + quest hidden -> returns null
         expect(container.firstChild).toBeNull();
     });
 });

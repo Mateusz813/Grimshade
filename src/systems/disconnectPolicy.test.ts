@@ -8,20 +8,6 @@ import {
     type IDisconnectContext,
 } from './disconnectPolicy';
 
-/**
- * Unit coverage for the involuntary-disconnect death policy (BACKLOG #17
- * "Gra w trybie offline"). These pure rules drive the AppShell DC watcher:
- * when the network drops (online -> offline) the player should die + leave
- * the party ONLY in a party-combat or arena context; solo combat must keep
- * running; party + non-combat just drops the party with no death.
- *
- * Spec quadrants (the table the user asked to verify):
- *   party + combat     -> DIE + leave party
- *   arena (any party)  -> DIE + leave party (if in one)
- *   solo + combat      -> NO death, NO party leave (combat continues offline)
- *   party + non-combat -> NO death, but LEAVE party
- *   solo + non-combat  -> nothing
- */
 
 const ctx = (over: Partial<IDisconnectContext>): IDisconnectContext => ({
     inParty: false,
@@ -56,8 +42,6 @@ describe('shouldDieOnDisconnect — the #17 spec quadrants', () => {
     });
 
     it('arena flag dominates even without combat flag', () => {
-        // Arena routes are not in the combat-route set, so inCombat is false
-        // for them — the inArena branch is what triggers the death.
         expect(shouldDieOnDisconnect(ctx({ inParty: false, inCombat: false, inArena: true }))).toBe(true);
     });
 });
@@ -134,10 +118,6 @@ describe('resolveDisconnectSource — route -> death source', () => {
     });
 
     it('every combat route resolves to a defined (non-fallback) source', () => {
-        // Guard: each route in the combat set has an explicit mapping, so a
-        // future combat-route addition that forgets the source map would only
-        // silently fall back to 'monster' — this test documents the current
-        // explicit set so that drift is visible.
         const explicit: Record<string, string> = {
             '/boss': 'boss',
             '/dungeon': 'dungeon',

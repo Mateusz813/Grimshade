@@ -1,21 +1,7 @@
-/**
- * Tests for the guild logo / palette registry.
- *
- * Three exports:
- *   - GUILD_ICONS   — 20-entry array of { id, icon, label }.
- *   - GUILD_COLORS  — 20-entry palette of hex strings.
- *   - getGuildIcon  — id -> emoji, falls back to 'castle' (castle) when
- *                     the id isn't registered.
- *
- * We intentionally don't hard-code the emoji glyph for each id (the
- * artwork might be tweaked later) — instead we assert structural
- * invariants and the resolver's lookup + fallback contract.
- */
 
 import { describe, it, expect } from 'vitest';
 import { GUILD_ICONS, GUILD_COLORS, getGuildIcon } from './guildIcons';
 
-// -- GUILD_ICONS structural invariants ---------------------------------------
 
 describe('GUILD_ICONS', () => {
     it('ships exactly 20 icons (matches the documented picker grid)', () => {
@@ -40,7 +26,6 @@ describe('GUILD_ICONS', () => {
 
     it('includes the documented canonical ids', () => {
         const ids = GUILD_ICONS.map((g) => g.id);
-        // Spot-check a few documented entries from the source file.
         expect(ids).toContain('castle');
         expect(ids).toContain('dragon');
         expect(ids).toContain('skull');
@@ -48,7 +33,6 @@ describe('GUILD_ICONS', () => {
     });
 });
 
-// -- GUILD_COLORS structural invariants --------------------------------------
 
 describe('GUILD_COLORS', () => {
     it('ships exactly 20 swatches', () => {
@@ -66,7 +50,6 @@ describe('GUILD_COLORS', () => {
     });
 });
 
-// -- getGuildIcon resolver ---------------------------------------------------
 
 describe('getGuildIcon', () => {
     it('returns the icon glyph for every shipped id', () => {
@@ -84,11 +67,7 @@ describe('getGuildIcon', () => {
     });
 
     it("is case-sensitive — 'CASTLE' isn't found, falls back", () => {
-        // The lookup uses .find with strict equality, so different casings
-        // miss the registry and hit the fallback (which happens to be
-        // castle either way — verify by checking a NON-castle id).
         expect(getGuildIcon('DRAGON')).toBe('castle');
-        // The lowercase variant resolves correctly.
         expect(getGuildIcon('dragon')).toBe('dragon');
     });
 });

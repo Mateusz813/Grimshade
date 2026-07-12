@@ -2,22 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * TopHeader tests — fixed thin header that lives on every authenticated
- * screen. Renders avatar + HP/MP bars + buff chip + task badge + gold pill,
- * and toggles popovers for avatar / buffs / gold / HP/MP. Returns null
- * when there is no character.
- *
- * Mocks:
- *   - AvatarMenu, BuffPopover, TaskBadge: stubbed render-only components so
- *     popover open/close behaviour is testable without dragging in their
- *     own store + supabase deps.
- *   - getCharacterAvatar: stubbed to a fixed string so we don't need real
- *     Vite image asset URLs.
- *   - getEffectiveChar: returns max_hp / max_mp identity so the bars
- *     render with predictable percentages.
- *   - useTransformAccent: trivial object.
- */
 
 vi.mock('../AvatarMenu/AvatarMenu', () => ({
     __esModule: true,
@@ -139,7 +123,6 @@ describe('TopHeader — smoke', () => {
 
 describe('TopHeader — HP/MP bars', () => {
     it('renders HP/MP pulse button with correct aria percentages', () => {
-        // 80/100 hp = 80%, 20/40 mp = 50%.
         useCharacterStore.setState({ character: makeChar({ hp: 80, max_hp: 100, mp: 20, max_mp: 40 }) });
         renderHeader();
         const pulseBtn = screen.getByLabelText('HP 80% · MP 50%');
@@ -152,7 +135,6 @@ describe('TopHeader — HP/MP bars', () => {
         const pulseBtn = screen.getByLabelText('HP 80% · MP 50%');
         fireEvent.click(pulseBtn);
         expect(screen.getByRole('dialog', { name: 'Stan HP i MP' })).toBeTruthy();
-        // Polish-formatted numbers — happy-dom uses standard Intl.
         expect(screen.getByText('80/100')).toBeTruthy();
         expect(screen.getByText('20/40')).toBeTruthy();
     });
@@ -196,7 +178,6 @@ describe('TopHeader — buff chip', () => {
         renderHeader();
         const buffBtn = screen.getByLabelText('Aktywne buffy');
         expect(buffBtn).toBeTruthy();
-        // Count displayed inside the button.
         expect(buffBtn.textContent).toContain('1');
     });
 
@@ -208,7 +189,6 @@ describe('TopHeader — buff chip', () => {
         });
         renderHeader();
         const buffBtn = screen.getByLabelText('Aktywne buffy');
-        // No active buffs, only 2 passive counters -> count = 2.
         expect(buffBtn.textContent).toContain('2');
     });
 

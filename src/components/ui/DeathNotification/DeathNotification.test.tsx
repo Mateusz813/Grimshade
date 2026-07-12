@@ -2,14 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * DeathNotification — reads from useDeathStore. Two paths:
- *   - death: full penalty, navigates to /, persists until clicked
- *   - flee: soft penalty, auto-dismisses after 3.5s, no nav
- *
- * `stopCombat` is mocked because the real one digs into combatEngine
- * internals + dispatches side effects we don't care about here.
- */
 
 const navigateMock = vi.fn();
 const stopCombatMock = vi.fn();
@@ -75,9 +67,6 @@ describe('DeathNotification — visibility', () => {
         renderInRouter();
         expect(screen.getByText('ZGINĄŁEŚ')).toBeTruthy();
         expect(screen.getByText('Lich King')).toBeTruthy();
-        // Level transition copy. The arrow is now an inline <Icon name="arrowRight">
-        // svg between the two numbers, so the text is split across nodes — assert
-        // the level row's combined textContent carries both the old and new level.
         const levelRow = document.querySelector('.death__penalty--level');
         expect(levelRow?.textContent).toMatch(/Poziom\s*30/);
         expect(levelRow?.textContent).toMatch(/28/);
@@ -100,9 +89,7 @@ describe('DeathNotification — visibility', () => {
         });
         renderInRouter();
         expect(screen.getByText('UCIEKŁEŚ')).toBeTruthy();
-        // No "Zabity przez" block when fleeing.
         expect(screen.queryByText(/Zabity przez/)).toBeNull();
-        // Flee variant CSS modifier.
         expect(document.querySelector('.death--flee')).toBeTruthy();
     });
 

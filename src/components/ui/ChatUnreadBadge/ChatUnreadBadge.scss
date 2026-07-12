@@ -1,20 +1,3 @@
-// 2026-05-19 v3 spec ("Tak jak jest ikonka z party powinna byc w
-// lewym dolnym roku tylko chatu na zawsze przytwierdzona"): the chat
-// icon anchors to the bottom-LEFT corner so it doesn't clash with
-// the party widget on the bottom-right. Always visible across every
-// screen the player can reach with an active character.
-//
-// 2026-05-19 v4: z-index above the bottom-nav (z:1300), bottom
-// offset clear of its 60px height.
-//
-// 2026-05-19 v6: red-pulse / count-chip variants removed in favour
-// of a single corner dot whose colour matches the player's highest
-// transform tier. The dot only renders when there's something
-// genuinely new since the icon was last clicked.
-// 2026-05-19 v7 spec ("zamiast left uzyj right 0px i bottom 50px"):
-// floating icon now pinned to the bottom-RIGHT edge. Flush against
-// the viewport's right edge (right: 0) so it doesn't fight with the
-// party shield in the top-right corner.
 .chat-unread-badge {
     position: fixed;
     right: 0;
@@ -50,13 +33,6 @@
         line-height: 1;
     }
 
-    // 2026-05-19 v8 spec ("powinna o taka jak w headerze przy
-    // questach"): match the header `tasks-status-dot` shape — small
-    // pulsing dot anchored to the top-LEFT corner of the icon (the
-    // badge sits flush against the viewport right edge, so a
-    // top-right placement would push the dot off-screen). Border +
-    // glow + blink make it pop the same way the quest claim dot
-    // does.
     &__dot {
         position: absolute;
         top: -3px;
@@ -85,9 +61,6 @@
         }
     }
 
-    // Pressed-in state while the chat popup is open. Tints the
-    // button slightly so the player sees which icon launched the
-    // visible popover.
     &--open {
         background: rgba(76, 175, 80, 0.18);
         border-color: rgba(76, 175, 80, 0.65);

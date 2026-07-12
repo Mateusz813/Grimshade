@@ -23,7 +23,6 @@ const LevelUpNotification = () => {
   const goldGained = event.goldGained ?? 0;
   const goldMilestones = event.goldMilestoneLevels ?? [];
 
-  // -- Subtle (in-combat) --------------------------------------------------
   if (event.inCombat) {
     return (
       <div className="lvlup lvlup--subtle" onClick={clearLevelUp}>
@@ -46,10 +45,8 @@ const LevelUpNotification = () => {
     );
   }
 
-  // -- Epic (out of combat) ------------------------------------------------
   return (
     <div className="lvlup lvlup--epic" onClick={clearLevelUp}>
-      {/* Background rays */}
       <div className="lvlup__rays">
         {Array.from({ length: 12 }).map((_, i) => (
           <span
@@ -60,14 +57,12 @@ const LevelUpNotification = () => {
         ))}
       </div>
 
-      {/* Expanding rings */}
       <div className="lvlup__rings">
         <span className="lvlup__ring lvlup__ring--1" />
         <span className="lvlup__ring lvlup__ring--2" />
         <span className="lvlup__ring lvlup__ring--3" />
       </div>
 
-      {/* Floating particles */}
       <div className="lvlup__particles">
         {Array.from({ length: 40 }).map((_, i) => (
           <span
@@ -83,7 +78,6 @@ const LevelUpNotification = () => {
         ))}
       </div>
 
-      {/* Center content */}
       <div className="lvlup__center">
         <span className="lvlup__star"><GameIcon name="star" /></span>
         <span className="lvlup__level-label">LEVEL UP!</span>

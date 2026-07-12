@@ -3,18 +3,6 @@ import { renderHook, act } from '@testing-library/react';
 import { useOfflineTrainingResume } from './useOfflineTrainingResume';
 import { useSkillStore } from '../stores/skillStore';
 
-/**
- * Hook reads ONCE on mount (empty deps). It decides whether a reward
- * popup should pop based on:
- *   - offlineTrainingSkillId being non-null
- *   - trainingSegmentStartedAt being non-null
- *   - trainingCurrentSpeedMultiplier === 1 (player was AWAY, not active)
- *   - total effective seconds >= 600 (>=10 minutes)
- *   - collectOfflineTraining() returns > 0
- *
- * Each test resets the skill store state to a known baseline so we can
- * exercise one branch at a time without polluting siblings.
- */
 
 const INITIAL_SKILL_STATE = {
     skillLevels: {},
@@ -50,8 +38,6 @@ describe('useOfflineTrainingResume', () => {
     });
 
     it('returns null reward when speed multiplier is 2 (player was active)', () => {
-        // Active play (x2) should never trigger the popup — only background
-        // (x1) returns are surfaced as "you were away" rewards.
         useSkillStore.setState({
             ...INITIAL_SKILL_STATE,
             offlineTrainingSkillId: 'sword_fighting',
@@ -63,7 +49,6 @@ describe('useOfflineTrainingResume', () => {
     });
 
     it('returns null reward when total effective time is under 10 minutes', () => {
-        // 5 minutes elapsed at 1x speed = 300s effective — under the 600s gate.
         useSkillStore.setState({
             ...INITIAL_SKILL_STATE,
             offlineTrainingSkillId: 'sword_fighting',
@@ -76,7 +61,6 @@ describe('useOfflineTrainingResume', () => {
     });
 
     it('shows a reward when player was inactive for 10+ minutes and XP > 0', () => {
-        // 20 minutes elapsed at 1x speed = 1200s effective — past the gate.
         useSkillStore.setState({
             ...INITIAL_SKILL_STATE,
             offlineTrainingSkillId: 'sword_fighting',
@@ -102,8 +86,6 @@ describe('useOfflineTrainingResume', () => {
             skillXp: { sword_fighting: 0 },
         });
         const { result } = renderHook(() => useOfflineTrainingResume());
-        // SKILL_NAMES_PL maps sword_fighting -> 'Walka mieczem' — assert it
-        // resolved to SOMETHING other than the raw id at minimum.
         expect(result.current.reward).not.toBeNull();
         expect(typeof result.current.reward!.skillName).toBe('string');
         expect(result.current.reward!.skillName.length).toBeGreaterThan(0);
@@ -134,10 +116,7 @@ describe('useOfflineTrainingResume', () => {
             skillXp: { sword_fighting: 0 },
         });
         const { result } = renderHook(() => useOfflineTrainingResume());
-        // Sanity: we got a reward to clear.
         if (!result.current.reward) {
-            // Nothing earned (unlikely with 30 min) — bail without making
-            // the test brittle on calc internals.
             return;
         }
         act(() => result.current.clearReward());
@@ -145,7 +124,6 @@ describe('useOfflineTrainingResume', () => {
     });
 
     it('calls collectOfflineTraining once when the popup fires', () => {
-        // 30 minutes inactive — should trigger collection.
         const collectSpy = vi.fn().mockReturnValue(123);
         useSkillStore.setState({
             ...INITIAL_SKILL_STATE,
@@ -160,8 +138,6 @@ describe('useOfflineTrainingResume', () => {
     });
 
     it('does NOT pop the reward when collectOfflineTraining returns 0', () => {
-        // Edge: time gate passes, but the collection itself yields zero
-        // XP (cap reached, training paused at exact moment, etc). No popup.
         const collectSpy = vi.fn().mockReturnValue(0);
         useSkillStore.setState({
             ...INITIAL_SKILL_STATE,
@@ -176,7 +152,3 @@ describe('useOfflineTrainingResume', () => {
     });
 });
 
-// TODO: covering the SKILL_NAMES_PL lookup precisely would require
-// pinning the resolved value to a specific translated string. We've
-// kept the assertion loose (non-empty string) so a future copy change
-// won't break the suite.

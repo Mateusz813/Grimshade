@@ -3,7 +3,6 @@ import { useTransformStore } from './transformStore';
 import { useCharacterStore } from './characterStore';
 import { getTransformMonsters } from '../systems/transformSystem';
 
-// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useTransformStore.setState({
@@ -20,7 +19,6 @@ beforeEach(() => {
     useCharacterStore.setState({ character: null, isLoading: false });
 });
 
-// -- startTransformQuest ------------------------------------------------------
 
 describe('startTransformQuest', () => {
     it('starts a quest for transform 1 when the player meets the level requirement', () => {
@@ -31,12 +29,10 @@ describe('startTransformQuest', () => {
         expect(quest!.transformId).toBe(1);
         expect(quest!.inProgress).toBe(true);
         expect(quest!.monstersDefeated).toEqual([]);
-        // 30 boss monsters for T1 (levels 1-30 range).
         expect(quest!.totalMonsters).toBe(getTransformMonsters(1).length);
     });
 
     it('rejects when the player is below the level requirement', () => {
-        // Transform 1 requires level 30.
         const ok = useTransformStore.getState().startTransformQuest(1, 10);
         expect(ok).toBe(false);
         expect(useTransformStore.getState().currentTransformQuest).toBeNull();
@@ -49,7 +45,6 @@ describe('startTransformQuest', () => {
     });
 
     it('rejects when previous transforms have not been completed (order check)', () => {
-        // Trying to start transform 3 without completing 1 + 2.
         const ok = useTransformStore.getState().startTransformQuest(3, 1000);
         expect(ok).toBe(false);
     });
@@ -72,7 +67,6 @@ describe('startTransformQuest', () => {
     });
 });
 
-// -- defeatMonster ------------------------------------------------------------
 
 describe('defeatMonster', () => {
     beforeEach(() => {
@@ -109,15 +103,11 @@ describe('defeatMonster', () => {
         for (const m of questMonsters) {
             store.defeatMonster(m.id);
         }
-        // Quest still in progress (player hasn't pressed Claim yet) but a
-        // pending claim now exists to protect the reward.
         expect(useTransformStore.getState().pendingClaimTransformId).toBe(1);
-        // Quest is logically "complete".
         expect(useTransformStore.getState().isQuestComplete()).toBe(true);
     });
 });
 
-// -- completeTransform --------------------------------------------------------
 
 describe('completeTransform', () => {
     it('returns 0 when no quest is active and no pending claim exists', () => {
@@ -134,7 +124,6 @@ describe('completeTransform', () => {
         const state = useTransformStore.getState();
         expect(state.completedTransforms).toContain(1);
         expect(state.currentTransformQuest).toBeNull();
-        // pendingClaimTransformId remains for the rewards screen to consume.
         expect(state.pendingClaimTransformId).toBe(1);
     });
 
@@ -146,13 +135,11 @@ describe('completeTransform', () => {
             pendingClaimTransformId: 1,
         });
         const id = useTransformStore.getState().completeTransform();
-        // Pending claim recovery — id returned, no dupe inserted.
         expect(id).toBe(1);
         expect(useTransformStore.getState().completedTransforms.filter((x) => x === 1)).toHaveLength(1);
     });
 });
 
-// -- abandonTransformQuest ----------------------------------------------------
 
 describe('abandonTransformQuest', () => {
     it('clears the active quest', () => {
@@ -162,7 +149,6 @@ describe('abandonTransformQuest', () => {
     });
 
     it('PRESERVES pendingClaimTransformId so a finished player can still claim rewards', () => {
-        // Simulate: all monsters dead -> pending claim locked -> player flees.
         useTransformStore.getState().startTransformQuest(1, 1000);
         for (const m of getTransformMonsters(1)) {
             useTransformStore.getState().defeatMonster(m.id);
@@ -172,7 +158,6 @@ describe('abandonTransformQuest', () => {
     });
 });
 
-// -- claimPendingReward -------------------------------------------------------
 
 describe('claimPendingReward', () => {
     it('returns null when nothing is pending', () => {
@@ -192,7 +177,6 @@ describe('claimPendingReward', () => {
     });
 });
 
-// -- Getters ------------------------------------------------------------------
 
 describe('getHighestCompletedTransform', () => {
     it('returns 0 when nothing is completed', () => {
@@ -224,8 +208,6 @@ describe('getHighestTransformColor', () => {
         });
         const color = useTransformStore.getState().getHighestTransformColor();
         expect(color).not.toBeNull();
-        // The first transform has a solid red accent — confirms we wired through
-        // to the system helper without depending on the exact hex.
         expect(typeof color!.css).toBe('string');
     });
 });
@@ -247,7 +229,6 @@ describe('isTransformAvailable', () => {
     });
 
     it('true when level + order + completion checks all pass', () => {
-        // Transform 2 needs transform 1 completed and the level requirement met.
         useTransformStore.setState({
             completedTransforms: [1],
             currentTransformQuest: null,
@@ -272,7 +253,6 @@ describe('isQuestInProgress / getQuestProgress / getRemainingMonsters', () => {
         useTransformStore.getState().startTransformQuest(1, 1000);
         const monsters = getTransformMonsters(1);
         useTransformStore.getState().defeatMonster(monsters[0].id);
-        // 1 / N — small but strictly positive.
         expect(useTransformStore.getState().getQuestProgress()).toBeGreaterThan(0);
         expect(useTransformStore.getState().getQuestProgress()).toBeLessThanOrEqual(1);
     });
@@ -286,12 +266,9 @@ describe('isQuestInProgress / getQuestProgress / getRemainingMonsters', () => {
     });
 });
 
-// -- migrateLegacyBakedBonuses ------------------------------------------------
 
 describe('migrateLegacyBakedBonuses', () => {
     it('no-op + returns false when already migrated (bakedBonusesApplied=false)', () => {
-        // Default initial state already has the flag false -> migrate must
-        // detect "nothing to do" and bail.
         expect(useTransformStore.getState().migrateLegacyBakedBonuses()).toBe(false);
     });
 
@@ -315,18 +292,11 @@ describe('migrateLegacyBakedBonuses', () => {
             pendingClaimTransformId: null,
         });
         useCharacterStore.setState({ character: null, isLoading: false });
-        // No character to migrate against -> returns false (does not flip the flag).
         expect(useTransformStore.getState().migrateLegacyBakedBonuses()).toBe(false);
         expect(useTransformStore.getState().bakedBonusesApplied).toBe(true);
     });
 
     it('subtracts the per-transform delta from character stats and flips the flag', () => {
-        // Spy on the character updater so we don't care what the actual numbers
-        // end up being — just that it was invoked and the flag flipped.
-        // NOTE: max_hp/max_mp must sit ABOVE the Knight lvl-30 floor
-        // (522 / 123) so the 2026-06-24 corrupted-base guard lets the genuine
-        // geometric unbake run instead of skipping it. A truly-baked legacy
-        // Knight always carries inflated stats well above the floor.
         const updateSpy = vi.fn();
         useCharacterStore.setState({
             character: {
@@ -371,15 +341,9 @@ describe('migrateLegacyBakedBonuses', () => {
     });
 });
 
-// -- migrateLegacyBakedBonuses: corrupted-base safety guard (2026-06-24) ------
 
 describe('migrateLegacyBakedBonuses › corrupted-base safety guard', () => {
     it('SKIPS the geometric unbake when the base is already below the floor', () => {
-        // Mage lvl 109 floor = max_hp 524 / max_mp 1314. Simulate a save whose
-        // base MP has ALREADY been collapsed by the prior double-run bug
-        // (max_mp = 0). The unbake must NOT divide it again — it must detect
-        // "base already corrupted", flip the flag, and bail WITHOUT lowering
-        // any stat further.
         const updateSpy = vi.fn();
         useCharacterStore.setState({
             character: {
@@ -390,9 +354,9 @@ describe('migrateLegacyBakedBonuses › corrupted-base safety guard', () => {
                 level: 109,
                 xp: 0,
                 hp: 200,
-                max_hp: 200,   // also below the 524 floor
+                max_hp: 200,
                 mp: 0,
-                max_mp: 0,     // collapsed by the bug
+                max_mp: 0,
                 attack: 100,
                 defense: 20,
                 attack_speed: 2,
@@ -422,23 +386,16 @@ describe('migrateLegacyBakedBonuses › corrupted-base safety guard', () => {
 
         const ok = useTransformStore.getState().migrateLegacyBakedBonuses();
         expect(ok).toBe(true);
-        // The unbake never touched character stats (no further reduction).
         expect(updateSpy).not.toHaveBeenCalled();
-        // Flag flipped so live bonuses now apply.
         expect(useTransformStore.getState().bakedBonusesApplied).toBe(false);
 
         vi.restoreAllMocks();
     });
 });
 
-// -- Idempotent load-migration (2026-06-24 player-data fix) -------------------
 
 describe('load-migration idempotency (transformMigrationVersion guard)', () => {
     it('does NOT re-run the unbake once transformMigrationVersion=1', () => {
-        // Simulate the load-migration gate logic that lives in characterScope:
-        // "run only when completedTransforms.length>0 && version===0". A save
-        // that already migrated (version=1) must be skipped so the lossy unbake
-        // can never run a second time and double-reduce the base stats.
         const updateSpy = vi.fn();
         useCharacterStore.setState({
             character: {
@@ -453,7 +410,6 @@ describe('load-migration idempotency (transformMigrationVersion guard)', () => {
             updateCharacter: updateSpy,
         } as never);
 
-        // Already-migrated state: completed transforms + version 1 + flag false.
         useTransformStore.setState({
             completedTransforms: [1, 2, 3],
             currentTransformQuest: null,
@@ -462,7 +418,6 @@ describe('load-migration idempotency (transformMigrationVersion guard)', () => {
             pendingClaimTransformId: null,
         });
 
-        // Mirror the characterScope gate: skip when version !== 0.
         const version = useTransformStore.getState().transformMigrationVersion;
         const completed = useTransformStore.getState().completedTransforms;
         if (completed.length > 0 && (version ?? 0) === 0) {
@@ -471,7 +426,6 @@ describe('load-migration idempotency (transformMigrationVersion guard)', () => {
             useTransformStore.setState({ transformMigrationVersion: 1 });
         }
 
-        // Migration was skipped: stats untouched, flag stayed false, no double-run.
         expect(updateSpy).not.toHaveBeenCalled();
         expect(useTransformStore.getState().bakedBonusesApplied).toBe(false);
         expect(useCharacterStore.getState().character!.max_mp).toBe(1314);
@@ -503,7 +457,6 @@ describe('load-migration idempotency (transformMigrationVersion guard)', () => {
             }
         };
 
-        // Legacy save: version 0 + completed transforms.
         useTransformStore.setState({
             completedTransforms: [1],
             currentTransformQuest: null,
@@ -512,13 +465,12 @@ describe('load-migration idempotency (transformMigrationVersion guard)', () => {
             pendingClaimTransformId: null,
         });
 
-        runGate(); // first load
+        runGate();
         expect(useTransformStore.getState().transformMigrationVersion).toBe(1);
         const callsAfterFirst = updateSpy.mock.calls.length;
-        expect(callsAfterFirst).toBe(1); // unbake ran once
+        expect(callsAfterFirst).toBe(1);
 
-        runGate(); // second load (e.g. after localStorage wipe on mobile)
-        // No additional unbake — version guard held.
+        runGate();
         expect(updateSpy.mock.calls.length).toBe(callsAfterFirst);
 
         vi.restoreAllMocks();

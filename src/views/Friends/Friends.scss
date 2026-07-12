@@ -18,8 +18,6 @@
         color: $color-text-muted;
     }
 
-    // -- Header ----------------------------------------------------------------
-    // Negate root side padding so the shared sticky .page-header stretches edge-to-edge.
     &__header {
         margin-left: -20px;
         margin-right: -20px;
@@ -53,7 +51,6 @@
         margin: 0;
     }
 
-    // -- Tabs ------------------------------------------------------------------
     &__tabs {
         display: flex;
         gap: 8px;
@@ -87,7 +84,6 @@
         &:disabled { opacity: 0.4; cursor: not-allowed; }
     }
 
-    // -- Add friend section ----------------------------------------------------
     &__add {
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -167,10 +163,6 @@
         border: 1px solid rgba(76, 175, 80, 0.35);
         border-radius: 10px;
 
-        // 2026-05-19 spec ("Na mobilce Guzik dodaj pod wszystkim"):
-        // on phones the lookup card stacks — icon + info above,
-        // "Dodaj" CTA full-width below so it never gets squished
-        // next to truncated text.
         @media (max-width: 540px) {
             flex-wrap: wrap;
             align-items: flex-start;
@@ -214,9 +206,6 @@
 
         &:hover { background: #43a047; }
 
-        // 2026-05-19: full-width below the icon + info on phones so
-        // the CTA is tap-friendly and doesn't squeeze next to a
-        // wrapped meta line.
         @media (max-width: 540px) {
             width: 100%;
             padding: 10px;
@@ -224,7 +213,6 @@
         }
     }
 
-    // -- List ------------------------------------------------------------------
     &__list {
         display: flex;
         flex-direction: column;
@@ -252,10 +240,6 @@
             border-color: rgba(244, 67, 54, 0.25);
         }
 
-        // 2026-05-19 spec ("Jak mam kogoś w liście znajomych i
-        // zablokuje to jest na obu listach naraz"): friend rows whose
-        // name also lives on the block list get a subtle red tint
-        // + warmer border so the dual state reads at a glance.
         &--also-blocked {
             background: rgba(244, 67, 54, 0.05);
             border-color: rgba(244, 67, 54, 0.22);
@@ -302,8 +286,6 @@
 
         &--on { color: #ffc107; }
 
-        // The star is rendered as a Twemoji <img>, which can't inherit text color.
-        // Show it dimmed/desaturated for the not-favorite state, full for --on.
         img.twemoji {
             opacity: 0.4;
             filter: grayscale(1);
@@ -398,7 +380,6 @@
         }
     }
 
-    // -- Empty state -----------------------------------------------------------
     &__empty-list {
         padding: 24px 20px;
         background: rgba(0, 0, 0, 0.25);
@@ -419,7 +400,6 @@
         color: $color-text-muted;
     }
 
-    // -- PM view ---------------------------------------------------------------
     &__pm {
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(33, 150, 243, 0.25);
@@ -458,10 +438,6 @@
         }
     }
 
-    // 2026-05-19 spec ("dodatkowy popup czy chcemy na pewno to
-    // zrobić"): destructive-action confirm dialog used for remove
-    // friend / block / unblock flows. Backdrop covers the viewport;
-    // modal is small and centered.
     &__confirm-backdrop {
         position: fixed;
         inset: 0;

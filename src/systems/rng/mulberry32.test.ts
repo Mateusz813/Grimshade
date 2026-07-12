@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Mulberry32 } from './mulberry32';
 
-// Referencyjne surowe uint32 (kanoniczny mulberry32). IDENTYCZNE liczby są w
-// backendzie: grimshade-backend/tests/Golden/fixtures/prng/mulberry32.json.
-// Obie strony asertują przeciw tej samej referencji → parytet TS↔PHP.
 const REFERENCE: Record<number, number[]> = {
     1: [2693262067, 11749833, 2265367787, 4213581821, 4159151403, 1207330352, 2632122864, 3095568220],
     12345: [4207900869, 1317490944, 2079646450, 3513001552, 2187978186, 1492380277, 316786230, 3291647763],

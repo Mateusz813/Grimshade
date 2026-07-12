@@ -10,11 +10,6 @@ import {
     getMasteryGoldMultiplier,
 } from './masteryStore';
 
-// -- Mocks --------------------------------------------------------------------
-// `masteryStore` dynamically imports `questStore` (to refresh quest progress
-// on mastery level-ups) and `characterStore` + `characterApi` (to push the
-// mastery_points sum to the leaderboard). Both are best-effort and offline-
-// tolerant, but stubbing them keeps the test deterministic and silent.
 
 vi.mock('./questStore', () => ({
     useQuestStore: {
@@ -38,13 +33,11 @@ vi.mock('../api/v1/characterApi', () => ({
     },
 }));
 
-// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useMasteryStore.setState({ masteries: {}, masteryKills: {} });
 };
 
-// -- Tests --------------------------------------------------------------------
 
 describe('masteryStore — constants', () => {
     it('MASTERY_KILL_THRESHOLD is 5000', () => {
@@ -123,37 +116,30 @@ describe('masteryStore — addMasteryKills', () => {
     });
 
     it('requires more kills per level as mastery climbs (5000 * (lvl+1))', () => {
-        // Level 0 -> 1 needs 5000 kills
         useMasteryStore.getState().addMasteryKills('rat', MASTERY_KILL_THRESHOLD);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(1);
-        // Level 1 -> 2 needs 5000 * 2 = 10000 kills
         useMasteryStore.getState().addMasteryKills('rat', MASTERY_KILL_THRESHOLD * 2);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(2);
         expect(useMasteryStore.getState().getMasteryKills('rat')).toBe(0);
     });
 
     it('does NOT advance past MASTERY_MAX_LEVEL (no-op when already maxed)', () => {
-        // Manually set to max
         useMasteryStore.setState({
             masteries: { rat: { level: MASTERY_MAX_LEVEL } },
             masteryKills: { rat: 0 },
         });
         useMasteryStore.getState().addMasteryKills('rat', 999_999);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(MASTERY_MAX_LEVEL);
-        // Kills stay at 0 because the early-return prevents any state change
         expect(useMasteryStore.getState().getMasteryKills('rat')).toBe(0);
     });
 
     it('zeroes kills at max level (no further tracking)', () => {
-        // Bring a monster up to level 24 with a buffer just shy of the threshold
         useMasteryStore.setState({
             masteries: { rat: { level: 24 } },
             masteryKills: { rat: 0 },
         });
-        // Level 24 -> 25 needs 5000 * 25 = 125000 kills
         useMasteryStore.getState().addMasteryKills('rat', 5000 * 25 + 999);
         expect(useMasteryStore.getState().getMasteryLevel('rat')).toBe(MASTERY_MAX_LEVEL);
-        // At max level the carry-over is discarded (kills set to 0)
         expect(useMasteryStore.getState().getMasteryKills('rat')).toBe(0);
     });
 
@@ -234,7 +220,6 @@ describe('masteryStore — getMasteryProgress', () => {
         const p = useMasteryStore.getState().getMasteryProgress('rat');
         expect(p.level).toBe(3);
         expect(p.kills).toBe(500);
-        // level 3 -> 4 needs 5000 * 4 = 20000 kills
         expect(p.required).toBe(MASTERY_KILL_THRESHOLD * 4);
     });
 
@@ -269,7 +254,6 @@ describe('masteryStore — getMasteryBonuses', () => {
         expect(b.epic).toBeCloseTo(5, 5);
         expect(b.legendary).toBeCloseTo(2.5, 5);
         expect(b.mythic).toBeCloseTo(1, 5);
-        // Heroic is only unlocked at max level
         expect(b.heroic).toBe(0);
     });
 
@@ -280,7 +264,6 @@ describe('masteryStore — getMasteryBonuses', () => {
         });
         const b = useMasteryStore.getState().getMasteryBonuses('rat');
         expect(b.heroic).toBe(HEROIC_DROP_RATE_AT_MAX);
-        // Other bonuses also reach their cap
         expect(b.strong).toBeCloseTo(25, 5);
         expect(b.epic).toBeCloseTo(12.5, 5);
     });

@@ -22,32 +22,6 @@ import {
     getTodayIso,
 } from '../../src/systems/guildSystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla guildSystem.
-//
-// System jest CZYSTY/DETERMINISTYCZNY — zero RNG. Wszystkie formuły (krzywa XP
-// gildii, skalowanie HP bossa, obrażenia/cios, koszt/limit, mnożnik nagrody) to
-// bit-parity golden. Trzy funkcje daty (getCurrentWeekStartIso / isGuildBossClaimDay
-// / getTodayIso) są sparametryzowane epoką w ms (Date(ms)) zamiast new Date() —
-// PHP odtwarza z tego samego znacznika czasu w UTC.
-//
-// Dwie role (jak levelSystem):
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/guildSystem.json z realnych funkcji.
-//  2. Normalnie → GUARD: commitowany fixture == aktualny output TS.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/guildSystem.golden.test.ts
-//   cp golden/guildSystem.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// UWAGA PRECYZJA:
-//  - getGuildBossMaxHp / guildXpToNextLevel testowane do tier/level, gdzie wynik
-//    ≤ 2^53 (Number.MAX_SAFE_INTEGER). Tier bossa i tak jest clampowany do 50, więc
-//    getGuildBossMaxHp badamy w [−5..50] (powyżej ~96 pow(1.25) rozjeżdża się o 1 ULP
-//    między V8 a libm PHP, ale ta strefa jest poza grą).
-//  - guildXpForLevel to SUMA — narastająco przekracza 2^53 ~ powyżej poziomu 400,
-//    gdzie JS (double) traci precyzję integer i rozjeżdża się z int64 PHP. Dlatego
-//    poziomy dla guildXpForLevel są ograniczone do ≤ 400 (total < 2^53).
-// ============================================================================
 
 const BOSS_TIERS = [-5, 0, 1, 2, 3, 5, 10, 25, 49, 50];
 const CLAMP_TIERS = [-5, -0.5, 0, 0.5, 1, 1.9, 2.5, 3, 25, 49, 49.9, 50, 50.9, 51, 100, 1000];
@@ -74,8 +48,6 @@ const CONTRIB_CASES: Array<[number, number]> = [
     [15000000, 15000000], [1, 112103877145],
 ];
 
-// [rok, miesiąc(1-12), dzień, godzina, minuta] → Date.UTC → ms. Pokrywa każdy dzień
-// tygodnia, granice miesiąca/roku, rok przestępny, niedzielę (dzień claim).
 const DATE_SPECS: Array<[number, number, number, number, number]> = [
     [2026, 7, 6, 0, 0], [2026, 7, 7, 12, 30], [2026, 7, 8, 23, 59], [2026, 7, 12, 10, 0],
     [2026, 7, 13, 0, 1], [2026, 1, 1, 5, 0], [2024, 3, 1, 15, 0], [2026, 3, 1, 9, 0],
@@ -98,8 +70,6 @@ const buildGolden = (): Record<string, unknown> => ({
         bossHeroicMaxChance: GUILD_BOSS_HEROIC_MAX_CHANCE,
         bossBlockPct: GUILD_BOSS_BLOCK_PCT,
     },
-    // GUILD_MAX_LEVEL === +Infinity nie serializuje się w JSON (→ null), więc
-    // zamiast wartości zapisujemy niezmiennik: „brak górnego limitu poziomu".
     maxLevelIsInfinite: !Number.isFinite(GUILD_MAX_LEVEL),
 
     clampGuildBossTier: CLAMP_TIERS.map((tier) => ({ tier, value: clampGuildBossTier(tier) })),
@@ -142,8 +112,6 @@ describe('guildSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current guildSystem output', () => {
         expect(existsSync(outPath), 'brak golden/guildSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON — usuwa -0 (np. contributionMultiplier na ujemnym
-        // damage), który i tak serializuje się jako 0. Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

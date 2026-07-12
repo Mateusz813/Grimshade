@@ -22,7 +22,6 @@ import {
   type IPartyInfo,
 } from './partySystem';
 
-// -- Fixtures ------------------------------------------------------------------
 
 const makeHuman = (id: string, cls: IPartyMember['class'] = 'Knight', level = 10): IPartyMember => ({
   id, name: `Player${id}`, class: cls, level, hp: 200, maxHp: 200, isBot: false, isOnline: true,
@@ -32,7 +31,6 @@ const makeBot = (): IPartyMember => ({
   id: 'bot1', name: 'Bot Pancerny', class: 'Knight', level: 10, hp: 200, maxHp: 200, isBot: true, isOnline: true,
 });
 
-// -- calculateDropMultiplier ---------------------------------------------------
 
 describe('calculateDropMultiplier', () => {
   it('returns 1.0 for solo (party size 1)', () => {
@@ -57,7 +55,6 @@ describe('calculateDropMultiplier', () => {
   });
 });
 
-// -- calculateDifficultyMultiplier ---------------------------------------------
 
 describe('calculateDifficultyMultiplier', () => {
   it('returns 1.0 for solo', () => {
@@ -79,7 +76,6 @@ describe('calculateDifficultyMultiplier', () => {
   });
 });
 
-// -- canJoinParty / isFull -----------------------------------------------------
 
 describe('canJoinParty', () => {
   it('allows joining below max size', () => {
@@ -108,7 +104,6 @@ describe('isFull', () => {
   });
 });
 
-// -- getHumanCount / getBotCount -----------------------------------------------
 
 describe('getHumanCount / getBotCount', () => {
   it('counts humans and bots correctly', () => {
@@ -123,7 +118,6 @@ describe('getHumanCount / getBotCount', () => {
   });
 });
 
-// -- shouldSuggestBot ----------------------------------------------------------
 
 describe('shouldSuggestBot', () => {
   it('suggests bot when solo', () => {
@@ -139,7 +133,6 @@ describe('shouldSuggestBot', () => {
   });
 });
 
-// -- createBotHelper -----------------------------------------------------------
 
 describe('createBotHelper', () => {
   it('returns a valid party member', () => {
@@ -168,13 +161,9 @@ describe('createBotHelper', () => {
       makeHuman('2', 'Cleric', 30),
     ];
     const bot = createBotHelper(members);
-    expect(bot.level).toBe(25); // avg of 20 and 30
+    expect(bot.level).toBe(25);
   });
 
-  // 2026-06-21 regression: the bot name used to embed `:robot::class-icon:`
-  // emoji shortcodes (e.g. "Bot Lecznik :robot::latin-cross:"). Those leaked
-  // as literal text wherever the name rendered without <EmojiText>. The name
-  // must now be PLAIN TEXT with no shortcode colons.
   it('produces a plain-text name with NO emoji shortcodes', () => {
     for (let i = 0; i < 10; i++) {
       const bot = createBotHelper([makeHuman('1'), makeHuman('2', 'Mage')]);
@@ -184,18 +173,15 @@ describe('createBotHelper', () => {
   });
 
   it('names the bot to match its chosen class', () => {
-    // No Cleric in party -> bot is a Cleric -> "Bot Lecznik".
     const cleric = createBotHelper([makeHuman('1', 'Knight'), makeHuman('2', 'Archer')]);
     expect(cleric.class).toBe('Cleric');
     expect(cleric.name).toBe('Bot Lecznik');
-    // No Knight -> bot is a Knight -> "Bot Pancerny".
     const knight = createBotHelper([makeHuman('1', 'Cleric'), makeHuman('2', 'Mage')]);
     expect(knight.class).toBe('Knight');
     expect(knight.name).toBe('Bot Pancerny');
   });
 });
 
-// -- getXpShare / getGoldShare -------------------------------------------------
 
 describe('getXpShare', () => {
   it('returns full XP for solo', () => {
@@ -221,7 +207,6 @@ describe('getGoldShare', () => {
   });
 });
 
-// -- getPartySummary -----------------------------------------------------------
 
 describe('getPartySummary', () => {
   it('returns correct summary for mixed party', () => {
@@ -243,7 +228,6 @@ describe('getPartySummary', () => {
   });
 });
 
-// -- generatePartyId -----------------------------------------------------------
 
 describe('generatePartyId', () => {
   it('generates a non-empty uppercase string', () => {
@@ -258,7 +242,6 @@ describe('generatePartyId', () => {
   });
 });
 
-// -- getPartyBuffs ------------------------------------------------------------
 
 describe('getPartyBuffs', () => {
   it('returns buff for Cleric', () => {
@@ -278,7 +261,6 @@ describe('getPartyBuffs', () => {
   });
 });
 
-// -- applyPartyBuffs ----------------------------------------------------------
 
 describe('applyPartyBuffs', () => {
   it('increases attack with atk_boost buff', () => {
@@ -307,7 +289,6 @@ describe('applyPartyBuffs', () => {
   });
 });
 
-// -- hasOptimalComposition ----------------------------------------------------
 
 describe('hasOptimalComposition', () => {
   it('returns true for 3+ unique classes', () => {
@@ -323,7 +304,6 @@ describe('hasOptimalComposition', () => {
   });
 });
 
-// -- getCompositionBonus ------------------------------------------------------
 
 describe('getCompositionBonus', () => {
   it('returns 1.0 for same class party', () => {
@@ -339,7 +319,6 @@ describe('getCompositionBonus', () => {
   });
 });
 
-// -- calculateHelpDamage ------------------------------------------------------
 
 describe('calculateHelpDamage', () => {
   it('returns 50% of finished member attack', () => {

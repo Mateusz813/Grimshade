@@ -7,23 +7,7 @@ import {
     getGuildBossMaxHp,
 } from '../../systems/guildSystem';
 
-/**
- * Guild API — thin REST/PostgREST wrapper around the `guilds`,
- * `guild_members`, `guild_boss_*`, `guild_treasury_*` and
- * `guild_join_requests` tables. The full schema + RLS policies live in
- * `scripts/guild_migration.sql` — run it once in the Supabase SQL
- * editor before this API works against a fresh project.
- *
- * The helpers below all return plain row shapes (TS interfaces below);
- * `useGuildStore` wraps them in higher-level actions (create, join,
- * kick, etc.) so the views never talk to PostgREST directly.
- *
- * Realtime channels are subscribed from the store (per-guild channel
- * `guild-{guildId}`) so member-list and boss-state updates flow without
- * polling.
- */
 
-// -- Row shapes --------------------------------------------------------------
 
 export interface IGuildRow {
     id: string;
@@ -47,8 +31,6 @@ export interface IGuildMemberRow {
     character_name: string;
     character_class: CharacterClass;
     character_level: number;
-    /** Highest completed transform tier — drives the rendered avatar
-     *  art in the roster. 0 = base class portrait. */
     character_transform_tier: number;
     joined_at: string;
 }
@@ -117,18 +99,11 @@ export interface IGuildJoinRequestRow {
     requested_at: string;
 }
 
-// -- Helpers -----------------------------------------------------------------
 
-/** Supabase realtime channel name for a single guild. Per-guild so
- *  members of guild A don't get blasted with guild B's boss / chat
- *  updates. */
 export const buildGuildChannel = (guildId: string): string => `guild-${guildId}`;
 
 class GuildApi extends BaseApi {
-    // -- Guild list / lookup --------------------------------------------
 
-    /** Fetch a single page of guilds for the browser. Server-side
-     *  search by name uses ilike (case-insensitive). */
     listGuilds = async (params: {
         offset?: number;
         limit?: number;
@@ -148,10 +123,6 @@ class GuildApi extends BaseApi {
         return this.get<IGuildRow[]>({ url: `/rest/v1/guilds?${q.toString()}` });
     };
 
-    /** Bulk lookup: guildId -> live member count + leader display name.
-     *  Used by the list view so each row shows "1/20 · Lider Krasek".
-     *  Single round-trip pulling every membership row for the given
-     *  guild ids; the client buckets by guild_id locally. */
     listGuildSummaries = async (guildIds: string[]): Promise<Record<string, { memberCount: number; leaderName: string | null }>> => {
         const out: Record<string, { memberCount: number; leaderName: string | null }> = {};
         if (guildIds.length === 0) return out;
@@ -159,14 +130,7 @@ class GuildApi extends BaseApi {
         const rows = await this.get<Array<{ guild_id: string; character_id: string; character_name: string }>>({
             url: `/rest/v1/guild_members?guild_id=in.(${inList})&select=guild_id,character_id,character_name`,
         });
-        // Seed every requested guild with zero so the renderer can show
-        // "0/20" even for empty guilds (shouldn't happen post-create
-        // since the founder joins immediately, but defensive).
         for (const id of guildIds) out[id] = { memberCount: 0, leaderName: null };
-        // Pair leader_id -> name via a second pull of the guild rows so
-        // we don't depend on a fragile PostgREST relationship hint. The
-        // leader lookup is per-guild so the row keeps its own data even
-        // if PostgREST doesn't know the FK exists.
         const guildRows = await this.get<Array<{ id: string; leader_id: string }>>({
             url: `/rest/v1/guilds?id=in.(${inList})&select=id,leader_id`,
         });
@@ -185,7 +149,6 @@ class GuildApi extends BaseApi {
         return out;
     };
 
-    /** Cheap count for pagination — uses PostgREST's `head` + `Range-Unit`. */
     countGuilds = async (search?: string): Promise<number> => {
         let query = supabase.from('guilds').select('id', { count: 'exact', head: true });
         if (search && search.trim()) {
@@ -202,7 +165,6 @@ class GuildApi extends BaseApi {
         return rows[0] ?? null;
     };
 
-    /** Resolve the guild a character belongs to (if any). */
     findGuildForCharacter = async (characterId: string): Promise<{ guild: IGuildRow; membership: IGuildMemberRow } | null> => {
         const members = await this.get<IGuildMemberRow[]>({
             url: `/rest/v1/guild_members?character_id=eq.${encodeURIComponent(characterId)}&select=*&limit=1`,
@@ -213,9 +175,7 @@ class GuildApi extends BaseApi {
         return { guild, membership: members[0] };
     };
 
-    // -- Create / leave / disband ---------------------------------------
 
-    /** Insert a new guild + auto-add the creator as a member. */
     createGuild = async (params: {
         name: string;
         tag: string;
@@ -225,8 +185,6 @@ class GuildApi extends BaseApi {
         leaderName: string;
         leaderClass: CharacterClass;
         leaderLevel: number;
-        /** Founder's current highest-completed transform tier so the
-         *  roster avatar renders right out of the gate. */
         leaderTransformTier?: number;
     }): Promise<IGuildRow> => {
         const { data: guildInsert, error: guildErr } = await supabase
@@ -243,8 +201,6 @@ class GuildApi extends BaseApi {
         if (guildErr || !guildInsert) {
             throw new Error(guildErr?.message ?? 'Nie udało się utworzyć gildii.');
         }
-        // Add the founder as the first member so the realtime channel
-        // already shows them in the roster.
         const { error: memErr } = await supabase.from('guild_members').insert({
             guild_id: guildInsert.id,
             character_id: params.leaderId,
@@ -254,26 +210,17 @@ class GuildApi extends BaseApi {
             character_transform_tier: params.leaderTransformTier ?? 0,
         });
         if (memErr) {
-            // Best-effort roll back so a half-created guild doesn't sit there.
             await supabase.from('guilds').delete().eq('id', guildInsert.id);
             throw new Error(memErr.message);
         }
         return guildInsert as IGuildRow;
     };
 
-    /** Remove a character from their guild. If the character is the
-     *  leader, hand leadership to a RANDOM remaining (live) member; if
-     *  no one else is left, delete the guild outright. */
     leaveGuild = async (params: { guildId: string; characterId: string }): Promise<{ disbanded: boolean }> => {
         const guild = await this.findGuildById(params.guildId);
         if (!guild) return { disbanded: false };
         const isLeader = guild.leader_id === params.characterId;
 
-        // For a leader leaving, decide the successor BEFORE removing them, using
-        // a FRESH authoritative existence check (NOT listMembers — its read-safety
-        // fallbacks can return ghosts). This guarantees leadership never lands on
-        // a deleted character, and computing first shrinks the window in which a
-        // later failed write could leave the guild leaderless.
         let nextLeaderId: string | null = null;
         if (isLeader) {
             const { data: others } = await supabase
@@ -294,7 +241,6 @@ class GuildApi extends BaseApi {
             }
         }
 
-        // Remove the leaver — surface failures instead of silently no-oping.
         const { error: delErr } = await supabase
             .from('guild_members')
             .delete()
@@ -313,18 +259,12 @@ class GuildApi extends BaseApi {
             return { disbanded: false };
         }
 
-        // No LIVE successor -> disband. Purge any leftover (ghost) member rows
-        // first so nothing dangles, then drop the guild row (cascades clean
-        // join requests / treasury / boss state).
         await supabase.from('guild_members').delete().eq('guild_id', params.guildId);
         const { error: gErr } = await supabase.from('guilds').delete().eq('id', params.guildId);
         if (gErr) throw gErr;
         return { disbanded: true };
     };
 
-    /** Leader-only (UI-gated): disband the whole guild — delete every member
-     *  row then the guild itself (FK cascades clean join requests / treasury /
-     *  boss state). Lets a leader remove the guild without first leaving. */
     disbandGuild = async (guildId: string): Promise<void> => {
         const { error: mErr } = await supabase.from('guild_members').delete().eq('guild_id', guildId);
         if (mErr) throw mErr;
@@ -332,7 +272,6 @@ class GuildApi extends BaseApi {
         if (gErr) throw gErr;
     };
 
-    /** Leader-only: kick a member from the guild. */
     kickMember = async (params: { guildId: string; characterId: string }): Promise<void> => {
         await supabase
             .from('guild_members')
@@ -347,15 +286,7 @@ class GuildApi extends BaseApi {
         });
         if (rows.length === 0) return rows;
 
-        // `guild_members` is a denormalised snapshot and isn't FK-cascaded, so a
-        // member whose character was deleted lingers as a "ghost" row. We HIDE
-        // such ghosts from the roster (read-only — we never delete here; that
-        // caused a data-loss incident. Orphan rows are cleaned at delete time by
-        // characterApi.deleteCharacter, and the disband-if-empty flow handles
-        // truly empty guilds).
         const ids = [...new Set(rows.map((r) => r.character_id))];
-        // UUIDs go UNQUOTED in PostgREST `in.()` — quoting them silently matches
-        // nothing, which would hide the ENTIRE roster.
         const idList = ids.join(',');
         let existing: Set<string>;
         try {
@@ -364,19 +295,14 @@ class GuildApi extends BaseApi {
             });
             existing = new Set(chars.map((c) => c.id));
         } catch {
-            return rows; // check failed -> show everyone, never hide live members
+            return rows;
         }
 
-        // Guard: if the existence check came back empty, treat it as unreliable
-        // (or a genuinely empty-of-live-chars guild) and show the raw roster
-        // rather than blanking it — never hide every member at once.
         if (existing.size === 0) return rows;
 
         return rows.filter((r) => existing.has(r.character_id));
     };
 
-    /** Push character's freshest stats so the guild roster shows
-     *  accurate level/class without a full refetch. */
     updateMemberStats = async (params: {
         characterId: string;
         level: number;
@@ -413,7 +339,6 @@ class GuildApi extends BaseApi {
         await supabase.from('guilds').update(patch).eq('id', params.guildId);
     };
 
-    // -- Join requests --------------------------------------------------
 
     requestJoin = async (params: {
         guildId: string;
@@ -430,9 +355,6 @@ class GuildApi extends BaseApi {
             character_class: params.characterClass,
             character_level: params.characterLevel,
         });
-        // characterTransformTier isn't stored on the request row (kept
-        // simple) — applied when the request is accepted via
-        // acceptRequest's `characterTransformTier` field.
         void params.characterTransformTier;
     };
 
@@ -446,10 +368,6 @@ class GuildApi extends BaseApi {
         await supabase.from('guild_join_requests').delete().eq('id', params.requestId);
     };
 
-    /** When a character joins a guild, drop every OTHER pending request
-     *  from the same character — spec: "Jeżeli ktoś zgłosił się do kilku
-     *  gildii na raz to po dołączeniu do jednej gildii znika od razu z
-     *  prośby u innych gildii". */
     purgeRequestsForCharacter = async (characterId: string): Promise<void> => {
         await supabase
             .from('guild_join_requests')
@@ -457,8 +375,6 @@ class GuildApi extends BaseApi {
             .eq('character_id', characterId);
     };
 
-    /** Leader accepts a join request -> insert into members + drop every
-     *  pending request that character had. */
     acceptRequest = async (params: {
         requestId: string;
         guildId: string;
@@ -482,9 +398,7 @@ class GuildApi extends BaseApi {
         await this.purgeRequestsForCharacter(params.characterId);
     };
 
-    // -- Boss -----------------------------------------------------------
 
-    /** Fetch (or lazily create) the current week's boss state. */
     fetchOrCreateWeeklyBoss = async (params: {
         guildId: string;
         bossTier: number;
@@ -512,10 +426,6 @@ class GuildApi extends BaseApi {
         return data as IGuildBossStateRow;
     };
 
-    /** Try to claim the arena for a character. Returns the updated row
-     *  if claim succeeded (no other attacker, claimed within their
-     *  allowed block window), null otherwise. Atomic via an `eq` on
-     *  current_attacker_id IS NULL precondition. */
     claimBossArena = async (params: { guildId: string; characterId: string; weekStart: string }): Promise<IGuildBossStateRow | null> => {
         const { data, error } = await supabase
             .from('guild_boss_state')
@@ -532,16 +442,10 @@ class GuildApi extends BaseApi {
         return data as IGuildBossStateRow;
     };
 
-    /** Dev/leader-only: wipe the current week's boss state + attempts +
-     *  contributions for this guild so the boss respawns from full
-     *  HP. Spec: "zresetuj wszystkie bossy w gildi bo chcialem
-     *  potestowac". Idempotent. */
     resetGuildBossForTesting = async (params: { guildId: string }): Promise<void> => {
         await supabase.from('guild_boss_state').delete().eq('guild_id', params.guildId);
         await supabase.from('guild_boss_attempts').delete().eq('guild_id', params.guildId);
         await supabase.from('guild_boss_contributions').delete().eq('guild_id', params.guildId);
-        // Rewind the guild's own XP/level/tier so the next fight is
-        // tier 1 again — matches the SQL reset script intent.
         await supabase
             .from('guilds')
             .update({ level: 1, xp: 0, boss_tier: 1, member_cap: 20, updated_at: new Date().toISOString() })
@@ -559,8 +463,6 @@ class GuildApi extends BaseApi {
             .eq('week_start', params.weekStart);
     };
 
-    /** Apply boss damage atomically — clamps at 0, marks killed when
-     *  HP reaches zero. */
     applyBossDamage = async (params: {
         guildId: string;
         weekStart: string;
@@ -604,12 +506,6 @@ class GuildApi extends BaseApi {
         characterName: string;
         damageDealt: number;
     }): Promise<void> => {
-        // 2026-05-18 v7: upsert silently failed in some test
-        // environments (Supabase JS sometimes returns success without
-        // actually writing when the ON CONFLICT clause hits an
-        // unexpected constraint shape). Switched to explicit fetch +
-        // update / insert — mirrors `addContribution`'s reliable
-        // pattern. Logs every error so we can debug.
         const today = getTodayIso();
         try {
             const existing = await this.get<Array<{ id: string }>>({
@@ -642,15 +538,10 @@ class GuildApi extends BaseApi {
         }
     };
 
-    /** Every attack made against the current week's boss, newest
-     *  first. Powers the scrolling attack log at the bottom of the
-     *  boss view. */
     listWeeklyAttempts = async (params: {
         guildId: string;
         weekStart: string;
     }): Promise<IGuildBossAttemptRow[]> => {
-        // attempt_date >= week_start (Monday) is the simplest filter
-        // — Sunday's claim day rows share the same week_start.
         return this.get<IGuildBossAttemptRow[]>({
             url: `/rest/v1/guild_boss_attempts?guild_id=eq.${encodeURIComponent(params.guildId)}&attempt_date=gte.${params.weekStart}&select=*&order=created_at.desc`,
         });
@@ -719,7 +610,6 @@ class GuildApi extends BaseApi {
             .eq('id', params.contributionId);
     };
 
-    // -- Treasury -------------------------------------------------------
 
     listTreasury = async (guildId: string): Promise<IGuildTreasuryItemRow[]> => {
         return this.get<IGuildTreasuryItemRow[]>({
@@ -762,9 +652,6 @@ class GuildApi extends BaseApi {
         characterId: string;
         characterName: string;
         itemName: string;
-        /** Serialized snapshot of the withdrawn item — lets the log
-         *  popup render the rarity colour + level + upgrade level
-         *  exactly like the deposit row. */
         itemData?: string;
     }): Promise<void> => {
         const { error } = await supabase

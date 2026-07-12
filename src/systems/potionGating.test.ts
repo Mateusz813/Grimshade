@@ -2,10 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { isHpMpPotionId, getPotionMinLevel, canUsePotionAtLevel } from './potionGating';
 import { ELIXIRS } from '../stores/shopStore';
 
-/**
- * Potion level-gating — the single source of truth for the 2026-06-21 spec:
- * HP/MP potions unlock by tier at levels 1 / 20 / 50 / 100 / 200 / 350 / 500 / 700.
- */
 
 const TIERS: Array<[string, number]> = [
     ['sm', 1],
@@ -64,11 +60,11 @@ describe('potionGating › canUsePotionAtLevel', () => {
     });
 
     it('matches the player report: a level-14 character can ONLY use the 50-tier potion', () => {
-        expect(canUsePotionAtLevel('hp_potion_sm', 14)).toBe(true);   // 50 HP, lvl 1
-        expect(canUsePotionAtLevel('hp_potion_md', 14)).toBe(false);  // 150 HP, lvl 20
-        expect(canUsePotionAtLevel('hp_potion_lg', 14)).toBe(false);  // 400 HP, lvl 50
-        expect(canUsePotionAtLevel('hp_potion_mega', 14)).toBe(false); // 1000 HP, lvl 100
-        expect(canUsePotionAtLevel('mp_potion_md', 14)).toBe(false);  // MP mirrors HP
+        expect(canUsePotionAtLevel('hp_potion_sm', 14)).toBe(true);
+        expect(canUsePotionAtLevel('hp_potion_md', 14)).toBe(false);
+        expect(canUsePotionAtLevel('hp_potion_lg', 14)).toBe(false);
+        expect(canUsePotionAtLevel('hp_potion_mega', 14)).toBe(false);
+        expect(canUsePotionAtLevel('mp_potion_md', 14)).toBe(false);
     });
 
     it('gates the % potions at the high levels (200/350/500/700)', () => {
@@ -80,12 +76,9 @@ describe('potionGating › canUsePotionAtLevel', () => {
 });
 
 describe('potionGating › shop ELIXIRS stay in sync', () => {
-    // The shop buy gate reads IElixir.minLevel; the drink + alchemy gates read
-    // potionGating. They MUST agree or a player could buy a potion they can't
-    // drink (or vice versa).
     it('every HP/MP elixir minLevel matches getPotionMinLevel', () => {
         const potions = ELIXIRS.filter((e) => isHpMpPotionId(e.id));
-        expect(potions.length).toBe(16); // 8 HP + 8 MP
+        expect(potions.length).toBe(16);
         for (const e of potions) {
             expect(e.minLevel).toBe(getPotionMinLevel(e.id));
         }

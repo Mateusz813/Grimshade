@@ -12,7 +12,6 @@
         padding: 20px 28px 100px;
     }
 
-    // -- Filter chips --------------------------------------------------------
     &__filters {
         display: flex;
         flex-wrap: wrap;
@@ -69,7 +68,6 @@
         border-radius: $radius-md;
     }
 
-    // -- Row list ------------------------------------------------------------
     &__list {
         list-style: none;
         margin: 0;
@@ -81,25 +79,13 @@
 
     &__item {
         position: relative;
-        // 2026-05-20 spec (".deaths__item usun background i dodaj padding
-        // 20px 0"): drop the card background colour, give the row vertical
-        // breathing room. The instance art in &__item-bg below is the only
-        // visible backdrop now.
         border: 1px solid $color-border;
         border-left: 3px solid #ff6b6b;
         border-radius: $radius-md;
         padding: 20px 0;
         overflow: hidden;
-        // The card is composed of two stacking contexts: the instance art
-        // (--deaths-bg-url) sits in &__item-bg behind everything; the actual
-        // text + chips live in &__item-content above it.
     }
 
-    // 2026-05-20 spec: switched from cover+no-repeat to contain+repeat so
-    // the per-instance art tiles across the row at its natural aspect
-    // ratio instead of being cropped or stretched. Opacity is also gone —
-    // the image renders at full strength; the dark gradient in &::after
-    // is what keeps text legible.
     &__item-bg {
         position: absolute;
         inset: 0;
@@ -110,9 +96,6 @@
         z-index: 0;
         pointer-events: none;
 
-        // Dark left-weighted overlay. Heavier on the left where the text
-        // sits so the name + verb + nick stay readable; lighter on the
-        // right where only the timestamp lives.
         &::after {
             content: '';
             position: absolute;
@@ -153,18 +136,13 @@
         align-self: flex-start;
     }
 
-    // -- Main content row ----------------------------------------------------
-    // Mobile = vertical centered stack (matches the original spec'd look).
-    // Desktop ≥768px = horizontal sprite? > name > verb > victim, packed
-    // tight on the left ("Caly tekst do lewej na desktopach dawaj zeby
-    // napisy zabil nick itp byl zaraz po nazwie potwora dungeonu itp").
     &__item-main {
         display: flex;
         flex-direction: column;
         align-items: center;
         text-align: center;
         gap: 8px;
-        padding: 4px 0 28px; // bottom padding leaves room for the absolute date
+        padding: 4px 0 28px;
 
         @media (min-width: 768px) {
             flex-direction: row;
@@ -172,8 +150,6 @@
             justify-content: flex-start;
             text-align: left;
             gap: 12px;
-            // Right padding reserves space for the absolute-positioned date
-            // stack (two lines now: relative + absolute timestamp).
             padding: 4px 180px 4px 0;
             flex-wrap: wrap;
         }
@@ -204,7 +180,6 @@
         }
     }
 
-    // -- Monster row (icon? + name + level) ----------------------------------
     &__monster {
         display: inline-flex;
         align-items: center;
@@ -214,8 +189,6 @@
 
         @media (min-width: 768px) {
             justify-content: flex-start;
-            // Don't stretch — let the verb + victim sit immediately to the
-            // right of the name instead of pushing them to the far edge.
             flex: 0 0 auto;
             min-width: 0;
         }
@@ -246,10 +219,6 @@
         font-weight: 600;
     }
 
-    // -- Verb pill -----------------------------------------------------------
-    // 2026-05-19 v25 spec:
-    //   "Napis zabil na tle czarnym z czaszka"       black + skull
-    //   "Napis przegnal na czerwonym tle z duchem"   red + ghost
     &__verb-wrap {
         display: flex;
         justify-content: center;
@@ -294,7 +263,6 @@
         line-height: 1;
     }
 
-    // -- Victim row (class icon + tag + nick + lvl) --------------------------
     &__victim {
         display: inline-flex;
         align-items: center;
@@ -334,10 +302,6 @@
         color: $color-text;
     }
 
-    // -- Date — pinned bottom-right both layouts -----------------------------
-    // 2026-05-19 v25 spec ("Data w prawym dolnym rogu zawsze").
-    // 2026-05-20 spec: color  white + bold; show a relative "X temu" line
-    // above the absolute timestamp.
     &__item-date {
         position: absolute;
         right: 10px;
@@ -368,7 +332,6 @@
         color: rgba(255, 255, 255, 0.82);
     }
 
-    // -- Pagination ----------------------------------------------------------
     &__pager {
         display: flex;
         align-items: center;

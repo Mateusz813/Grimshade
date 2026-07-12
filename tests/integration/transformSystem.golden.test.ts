@@ -44,38 +44,9 @@ import { useTransformStore } from '../../src/stores/transformStore';
 import type { ICharacter, TCharacterClass } from '../../src/api/v1/characterApi';
 import type { IMonster } from '../../src/types/monster';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla transformSystem (+ transformBonuses).
-//
-// Żyje w tests/integration/ (nie w src), bo używa API node (fs) do zapisu
-// fixture oraz ustawia stan Zustand store'ów (useTransformStore.setState /
-// useCharacterStore.setState) żeby wygenerować wektory dla stateful getterów
-// z transformBonuses.ts (rule 4: getter store → czysta funkcja z jawnym
-// stanem jako parametr; generator ustawia store przed wywołaniem).
-//
-// Dwie role:
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/transformSystem.json z realnych funkcji.
-//  2. Normalnie → GUARD: asertuje, że commitowany fixture == aktualny output TS.
-//
-// Fixture jest kopiowany do backendu (grimshade-backend/tests/Golden/fixtures/
-// transformSystem.json), gdzie Pest odtwarza go w PHP → parytet TS↔PHP.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/transformSystem.golden.test.ts
-//   cp golden/transformSystem.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// ŚWIADOMIE POMINIĘTE (nie w fixture, patrz TransformSystem.php docblock):
-//  - getTransformColor (kolory/CSS UI — rule 5),
-//  - getTransformWaveLineup (buduje spriteImageUrl przez getMonsterImage — UI;
-//    jego rdzeń liczbowy pokrywa applyTransformTierStats + scaleMonsterStats),
-//  - weapon z calculateTransformRewards (generateWeapon = RNG w systemie
-//    itemGenerator, poza zakresem tego systemu) — testujemy część
-//    deterministyczną: consumables + permanentBonuses.
-// ============================================================================
 
 const CLASSES: TCharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'];
 
-// Pełny, type-poprawny ICharacter dla store'a (gettery czytają tylko char.class).
 const makeChar = (cls: TCharacterClass): ICharacter => ({
     id: 'char-tx-golden',
     user_id: 'user-1',
@@ -103,7 +74,6 @@ const makeChar = (cls: TCharacterClass): ICharacter => ({
     updated_at: '2024-01-01T00:00:00Z',
 });
 
-// Ustawia stan store'ów i wywołuje getter (rule 4). cls === null → brak postaci.
 const withState = <T>(cls: TCharacterClass | null, ids: number[], baked: boolean, fn: () => T): T => {
     useCharacterStore.setState({ character: cls === null ? null : makeChar(cls), isLoading: false });
     useTransformStore.setState({
@@ -115,8 +85,6 @@ const withState = <T>(cls: TCharacterClass | null, ids: number[], baked: boolean
     return fn();
 };
 
-// Wyciąga wygenerowany monster dla danego poziomu (przez getTransformMonsters),
-// żeby przetestować prywatne scaleMonsterStats + findClosestMonster + gold.
 const monsterForLevel = (level: number): IMonster | null => {
     const t = getAllTransforms().find(
         (tr) => level >= tr.monsterLevelRange[0] && level <= tr.monsterLevelRange[1],
@@ -125,7 +93,6 @@ const monsterForLevel = (level: number): IMonster | null => {
     return getTransformMonsters(t.id)[level - t.monsterLevelRange[0]] ?? null;
 };
 
-// -- Fixtury wejściowe --------------------------------------------------------
 
 const TIER_IDS = [0, -1, 1, 2, 3, 5, 6, 10, 11, 12, 100];
 const BONUS_IDS: Array<number | null> = [null, 1, 2, 5, 6, 11];
@@ -136,8 +103,6 @@ const MONSTER_LEVELS = [
 const COUNT_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 99];
 const TIERS: TTransformTier[] = ['Normal', 'Strong', 'Epic', 'Boss'];
 
-// Reprezentatywne monstery do apply* (jeden bez attack_min/max = ścieżka fallback,
-// jeden z jawnymi min/max, jeden słaby = testuje klamry max(1, ...)).
 const monsterNoMinMax: IMonster = {
     id: 'orc', name_pl: 'Ork', name_en: 'Orc', level: 20, hp: 250, attack: 28,
     defense: 8, speed: 2, xp: 120, gold: [20, 40], dropTable: [], sprite: 'orc',
@@ -153,7 +118,6 @@ const monsterWeak: IMonster = {
 };
 const APPLY_MONSTERS = [monsterNoMinMax, monsterWithMinMax, monsterWeak];
 
-// Escort-sloty do resolveActiveOpponentSlot (null = już wyczyszczony escort).
 const ESCORT_CASES: Array<Array<{ currentHp: number } | null>> = [
     [{ currentHp: 10 }, { currentHp: 10 }, { currentHp: 10 }],
     [{ currentHp: 0 }, { currentHp: 10 }, { currentHp: 10 }],
@@ -182,7 +146,6 @@ const REWARD_CASES: Array<[number, TCharacterClass]> = [
     [10, 'Necromancer'], [11, 'Bard'], [3, 'Mage'], [0, 'Knight'], [12, 'Mage'],
 ];
 
-// Kombinacje (klasa/brak, lista ukończonych) dla getterów transformBonuses.
 const BONUS_STATE_CASES: Array<{ cls: TCharacterClass | null; ids: number[] }> = [
     { cls: null, ids: [1, 2, 3] },
     { cls: 'Knight', ids: [] },
@@ -200,7 +163,6 @@ const buildGolden = (): Record<string, unknown> => ({
     system: 'transformSystem',
     note: 'Generowane z src/systems/transformSystem.ts + transformBonuses.ts. NIE edytuj ręcznie — regeneruj UPDATE_GOLDEN=1.',
 
-    // -- Stałe --------------------------------------------------------------
     constants: {
         TRANSFORM_COUNT,
         TRANSFORM_SLOT_TIERS: [...TRANSFORM_SLOT_TIERS],
@@ -208,7 +170,6 @@ const buildGolden = (): Record<string, unknown> => ({
         TRANSFORM_TIER_MULTIPLIERS,
     },
 
-    // -- Pure ---------------------------------------------------------------
     getTransformTierMultiplier: TIER_IDS.map((id) => ({ id, value: getTransformTierMultiplier(id) })),
     getClassTransformBonuses: CLASSES.flatMap((cls) =>
         BONUS_IDS.map((id) => ({ cls, id, value: getClassTransformBonuses(cls, id ?? undefined) })),
@@ -220,19 +181,16 @@ const buildGolden = (): Record<string, unknown> => ({
     resolveActiveOpponentSlot: ESCORT_CASES.map((escorts) => ({ escorts, value: resolveActiveOpponentSlot(escorts) })),
     getHighestCompletedTransform: HIGHEST_ID_LISTS.map((ids) => ({ ids, value: getHighestCompletedTransform(ids) })),
 
-    // -- Treść (transforms/monsters.json) -----------------------------------
     getTransformById: [0, 1, 5, 8, 11, 12].map((id) => ({ id, value: getTransformById(id) ?? null })),
     getTransformMonsterCount: COUNT_IDS.map((id) => ({ id, value: getTransformMonsterCount(id) })),
     generateTransformBossMonster: MONSTER_LEVELS.map((level) => ({ level, value: monsterForLevel(level) })),
     getTransformBonuses: CLASSES.flatMap((cls) =>
         [0, 1, 6, 11, 12].map((id) => ({ cls, id, value: getTransformBonuses(id, cls) })),
     ),
-    // Brak klasy → zawsze EMPTY_BONUSES (nawet dla poprawnego id).
     getTransformBonusesNoClass: [1, 6, 12].map((id) => ({ id, value: getTransformBonuses(id) })),
     getCumulativeTransformBonuses: CLASSES.flatMap((cls) =>
         CUMULATIVE_ID_LISTS.map((ids) => ({ cls, ids, value: getCumulativeTransformBonuses(ids, cls) })),
     ),
-    // Brak klasy → wszystkie sumy zerowe.
     getCumulativeTransformBonusesNoClass: CUMULATIVE_ID_LISTS.map((ids) => ({ ids, value: getCumulativeTransformBonuses(ids) })),
     isLevelSufficient: LEVEL_SUFFICIENT_CASES.map(([level, id]) => ({ level, id, value: isLevelSufficient(level, id) })),
     getNextAvailableTransform: NEXT_AVAILABLE_CASES.map(([ids, level]) => ({ ids, level, value: getNextAvailableTransform(ids, level) })),
@@ -241,11 +199,9 @@ const buildGolden = (): Record<string, unknown> => ({
     ),
     calculateTransformRewardsDeterministic: REWARD_CASES.map(([id, cls]) => {
         const full = calculateTransformRewards(id, cls);
-        // weapon POMINIĘTY (RNG/itemGenerator) — parytet tylko consumables + permanentBonuses.
         return { id, cls, value: { consumables: full.consumables, permanentBonuses: full.permanentBonuses } };
     }),
 
-    // -- transformBonuses.ts (stateful → jawny stan) ------------------------
     getTransformDmgMultiplier: BONUS_STATE_CASES.map(({ cls, ids }) => ({
         cls, ids, value: withState(cls, ids, false, () => getTransformDmgMultiplier()),
     })),
@@ -291,7 +247,6 @@ describe('transformSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current transformSystem output', () => {
         expect(existsSync(outPath), 'brak golden/transformSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON — usuwa -0 (identyczne w PHP i tak liczącym 0).
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

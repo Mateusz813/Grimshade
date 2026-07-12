@@ -2,25 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * ForgotPassword view — single email input + supabase
- * resetPasswordForEmail call. On success the form swaps for a success
- * message; on error the message renders inline.
- *
- * Coverage:
- *   - Smoke render: root + email field + submit + back-to-login link.
- *   - Submit calls supabase.auth.resetPasswordForEmail with the email.
- *   - Successful send swaps the form for the success copy.
- *   - Server error renders inline.
- *   - Bad email flagged by zod before the API is even called.
- */
 
 import ForgotPassword from './ForgotPassword';
 import { supabase } from '../../../lib/supabase';
 
-// Global setup mocks signInWithPassword + signOut only. Patch the missing
-// method onto the same supabase.auth object so the component import
-// resolves it.
 const resetSpy = vi.fn();
 (supabase.auth as unknown as { resetPasswordForEmail: typeof resetSpy }).resetPasswordForEmail = resetSpy;
 
@@ -85,7 +70,6 @@ describe('ForgotPassword — submission', () => {
         await waitFor(() => {
             expect(container.querySelector('.forgot-password__success')).not.toBeNull();
         });
-        // Form is gone after success.
         expect(container.querySelector('.forgot-password__form')).toBeNull();
     });
 
@@ -100,7 +84,6 @@ describe('ForgotPassword — submission', () => {
         await waitFor(() => {
             expect(container.textContent).toContain('rate-limited');
         });
-        // Form still mounted — no swap to success.
         expect(container.querySelector('.forgot-password__form')).not.toBeNull();
         expect(container.querySelector('.forgot-password__success')).toBeNull();
     });
@@ -120,5 +103,3 @@ describe('ForgotPassword — validation', () => {
     });
 });
 
-// TODO: Verify the disabled-while-submitting label ('Wysyłanie…') — same
-//       microtask-flake concern as Login/Register.

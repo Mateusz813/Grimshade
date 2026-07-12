@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../../stores/characterStore';
 import { usePartyStore } from '../../stores/partyStore';
@@ -15,7 +16,6 @@ import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import './Party.scss';
 
-// -- Helpers -------------------------------------------------------------------
 
 const CLASS_ICONS: Record<string, string> = {
   Knight: 'crossed-swords', Mage: 'crystal-ball', Cleric: 'sparkles', Archer: 'bow-and-arrow',
@@ -27,7 +27,6 @@ const CLASS_COLORS: Record<string, string> = {
   Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
 };
 
-// -- Component -----------------------------------------------------------------
 
 const Party = () => {
   const character  = useCharacterStore((s) => s.character);
@@ -48,18 +47,13 @@ const Party = () => {
     subscribeToActiveParty,
     refreshPublicParties,
     hydrateActiveParty,
-  } = usePartyStore();
+  } = usePartyStore(useShallow((s) => ({ party: s.party, loading: s.loading, error: s.error, publicParties: s.publicParties, createParty: s.createParty, joinPartyById: s.joinPartyById, leaveParty: s.leaveParty, disbandParty: s.disbandParty, updateMeta: s.updateMeta, transferLeadership: s.transferLeadership, subscribePublicFeed: s.subscribePublicFeed, subscribeToActiveParty: s.subscribeToActiveParty, refreshPublicParties: s.refreshPublicParties, hydrateActiveParty: s.hydrateActiveParty })));
 
-  // -- Local form state -----------------------------------------------------
   const [createOpen, setCreateOpen]         = useState(false);
   const [formName, setFormName]             = useState('');
   const [formDesc, setFormDesc]             = useState('');
   const [formPassword, setFormPassword]     = useState('');
   const [formIsPublic, setFormIsPublic]     = useState(true);
-  // 2026-05-13 spec ("optional input na poziom minimalny zeby dolaczyc"):
-  // empty string = no restriction. We only forward a real number when
-  // the user typed one — partyApi treats undefined / <=1 as "anyone can
-  // join" so legacy code paths stay unchanged.
   const [formMinLevel, setFormMinLevel]     = useState('');
 
   const [joinPromptFor, setJoinPromptFor]   = useState<{ id: string; name: string } | null>(null);
@@ -70,12 +64,8 @@ const Party = () => {
   const [editIsPublic, setEditIsPublic]     = useState(true);
   const [editOpen, setEditOpen]             = useState(false);
 
-  // 2026-05-08 v3: leader-transfer confirmation popup. Stores the
-  // candidate member being promoted; null when no popup is open.
   const [transferTarget, setTransferTarget] = useState<IPartyMember | null>(null);
 
-  // Toast surface for join failures (otherwise the modal just silently
-  // fails when RLS/password is wrong).
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => {
     setToast(msg);
@@ -85,33 +75,13 @@ const Party = () => {
     if (error) showToast(error);
   }, [error]);
 
-  // -- Boot hydration ------------------------------------------------------
-  // 2026-05-09 spec ("dalej widze stare party"): on mount, ask the
-  // server for our actual active membership. If found, hydrate the
-  // local store (handles refresh-while-in-party). If not found AND
-  // local store is also empty, wipe any stale `party_members` rows
-  // for our character so the public feed cleanup pass can finally
-  // delete the parents.
   useEffect(() => {
     if (!character?.id) return;
     void hydrateActiveParty(character.id);
   }, [character?.id, hydrateActiveParty]);
 
-  // -- Subscriptions — live browser feed + active party updates ------------
-  // 2026-05-10 spec ("co pare sekund dziwne przeladowania"): only
-  // refresh + subscribe to the public feed when the player ISN'T in a
-  // party (i.e. they're actually browsing). Inside a party we don't
-  // even render the browser, so the 8 s tick was just causing
-  // re-renders + flicker for nothing.
-  //
-  // 2026-05-13 spec ("wywal ten loader bo caly czas strona przeskakuje
-  // co pare sekund"): dropped the 8 s polling setInterval entirely.
-  // `subscribePublicFeed()` already pushes realtime updates when
-  // parties open / fill / close — the periodic poll was just a fallback
-  // that fired the loading-overlay every 8 s, shifting the layout under
-  // the player's cursor. Manual refresh via the :counterclockwise-arrows-button: button still works.
   useEffect(() => {
-    if (party?.id) return; // already in a party — no need to fetch the feed
+    if (party?.id) return;
     void refreshPublicParties();
     const unsub = subscribePublicFeed();
     return () => { unsub(); };
@@ -123,13 +93,17 @@ const Party = () => {
     return unsub;
   }, [party?.id, subscribeToActiveParty]);
 
-  // Initialize the edit form whenever the party changes
   useEffect(() => {
     if (!party) return;
     setEditDesc(party.description ?? '');
     setEditIsPublic(party.isPublic ?? true);
     setEditPassword('');
   }, [party?.id, party?.description, party?.isPublic]);
+
+  const browsable = useMemo(
+    () => publicParties.filter((p) => p.members.length < p.max_members),
+    [publicParties],
+  );
 
   if (!character) {
     return <div className="party"><Spinner size="lg" /></div>;
@@ -146,12 +120,6 @@ const Party = () => {
   };
 
   const isLeader = party?.leaderId === character.id;
-
-  // -- Browser view helpers -------------------------------------------------
-  const browsable = useMemo(
-    () => publicParties.filter((p) => p.members.length < p.max_members),
-    [publicParties],
-  );
 
   const resetCreateForm = () => {
     setFormName('');
@@ -212,13 +180,7 @@ const Party = () => {
   return (
     <div className="party">
       <div className="party__content">
-        {/* 2026-05-13: dropped the global `loading` overlay. It used to
-            sit on top of the browser list and flicker on every refresh —
-            the player saw the page "jump" each tick. The :counterclockwise-arrows-button: button's
-            inline icon swap (:hourglass-not-done: during loading) is enough feedback for
-            manual refreshes; realtime sub handles auto-updates. */}
 
-        {/* -- No party: browser + create -------------------------------------- */}
         {!party && (
           <>
             <div className="party__intro">
@@ -235,7 +197,6 @@ const Party = () => {
               )}
             </div>
 
-            {/* Create form */}
             <AnimatePresence>
               {createOpen && (
                 <motion.div
@@ -282,8 +243,6 @@ const Party = () => {
                       value={formMinLevel}
                       placeholder="np. 500 — puste = każdy może dołączyć"
                       onChange={(e) => {
-                        // Strip non-digits + clamp to a sane ceiling so a
-                        // typo doesn't lock the party to "1e10+ only".
                         const raw = e.target.value.replace(/[^0-9]/g, '');
                         setFormMinLevel(raw);
                       }}
@@ -309,7 +268,6 @@ const Party = () => {
               )}
             </AnimatePresence>
 
-            {/* Public browser feed */}
             <div className="party__section-header">
               <h3 className="party__section-title">Otwarte drużyny ({browsable.length})</h3>
               <button
@@ -331,31 +289,13 @@ const Party = () => {
                 {browsable.map((p) => {
                   const leader = p.members.find((m) => m.character_id === p.leader_id) ?? p.members[0];
                   const leaderClass = leader?.character_class ?? 'Knight';
-                  // 2026-05-13 spec ("kolor transformu lidera party tlo"):
-                  // tint the card with the leader's class accent. Transform
-                  // tier isn't persisted on `party_members` yet so we use
-                  // the class color as a stand-in — the transform avatars
-                  // are class-themed too, so the hue still matches the
-                  // leader's visual identity in-game. Once we denormalize
-                  // a `character_transform_tier` column we can swap this
-                  // for the transform-specific palette.
                   const leaderColor = CLASS_COLORS[leaderClass] ?? '#e94560';
-                  // Min-join-level badge: shown in the center of the left
-                  // rail in place of the leader's own level. NULL / 1 =
-                  // open to everyone, displayed as "Lv 1".
                   const minLevel = p.min_join_level ?? 1;
                   const slotsTotal = p.max_members ?? MAX_PARTY_SIZE;
                   const memberSlots = Array.from({ length: slotsTotal }, (_, i) => p.members[i] ?? null);
 
                   return (
                     <div key={p.id} className="party__card">
-                      {/* 2026-05-13 spec ("ikonka archera nie powinno
-                          jej byc, tam na srodku tylko w labelce ladnej
-                          poziom od ktorego mozna dolaczyc"): drop the
-                          class icon, keep only the min-join-level
-                          centered. Background hue still uses leader's
-                          class color until we denormalise transform
-                          tier into party_members. */}
                       <div
                         className="party__card-leader party__card-leader--badge-only"
                         style={{ '--leader-color': leaderColor } as React.CSSProperties}
@@ -363,7 +303,6 @@ const Party = () => {
                         <span className="party__card-leader-level">Lv {minLevel}</span>
                       </div>
 
-                      {/* Center: name top, description bottom, member avatars middle */}
                       <div className="party__card-center">
                         <div className="party__card-name">
                           {p.has_password && <span className="party__card-lock"><GameIcon name="locked" /></span>}
@@ -400,7 +339,6 @@ const Party = () => {
                         </div>
                       </div>
 
-                      {/* Right: count + join button */}
                       <div className="party__card-right">
                         <span className="party__card-count">
                           {p.members.length}/{slotsTotal}
@@ -410,10 +348,6 @@ const Party = () => {
                           disabled={
                             loading
                             || p.members.length >= slotsTotal
-                            // 2026-05-13: client-side gate so under-level
-                            // players can't even click Dołącz. Server-side
-                            // partyApi.joinParty re-checks for defence in
-                            // depth.
                             || (character.level < minLevel)
                           }
                           title={
@@ -434,7 +368,6 @@ const Party = () => {
           </>
         )}
 
-        {/* -- In party -------------------------------------------------- */}
         {party && (
           <>
             <div className="party__roster-header">
@@ -502,17 +435,11 @@ const Party = () => {
               )}
             </AnimatePresence>
 
-            {/* Roster — vertical list with avatar + nick + level + leader-only actions */}
             <ul className="party__roster">
               {party.members.map((member) => {
                 const isMe   = member.id === character.id;
                 const isMemberLeader = member.id === party.leaderId;
                 const memberColor = CLASS_COLORS[member.class] ?? '#9e9e9e';
-                // 2026-05-09: every member shows their transformed
-                // avatar — local player pulls from the transformStore,
-                // allies pull the highest-completed-tier from the
-                // realtime presence snapshot. Falls back to the base
-                // class avatar when no snapshot has arrived yet.
                 const presence = presenceMap[member.id];
                 const tierIds = isMe
                     ? completedTransforms
@@ -553,7 +480,6 @@ const Party = () => {
               })}
             </ul>
 
-            {/* Bottom action bar */}
             <div className="party__actions">
               {isLeader ? (
                 <button className="party__danger-btn" onClick={() => void disbandParty(character.id)}>
@@ -566,9 +492,6 @@ const Party = () => {
               )}
             </div>
 
-            {/* Party chat — channel keyed on party.id, deleted when party
-                disbands so the "kanał znika na zawsze" rule works
-                automatically. */}
             <Chat
               channel={`party_${party.id}`}
               characterName={character.name}
@@ -582,7 +505,6 @@ const Party = () => {
         )}
       </div>
 
-      {/* -- Modals --------------------------------------------------- */}
       <AnimatePresence>
         {joinPromptFor && (
           <motion.div

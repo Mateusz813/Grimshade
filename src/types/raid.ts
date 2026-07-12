@@ -8,14 +8,12 @@ export interface IRaid {
     level: number;
     waves: number;
     dailyAttempts: number;
-    /** Dungeon this raid mirrors (for drop table inspiration). */
     sourceDungeonId: string;
 }
 
 export interface IRaidBossState {
     id: string;
     baseId: string;
-    /** Native level of the source boss (used for sprite lookup). */
     level: number;
     name: string;
     sprite: string;
@@ -41,11 +39,8 @@ export interface IRaidMemberState {
     defense: number;
     isDead: boolean;
     isBot: boolean;
-    /** Character has escaped mid-raid (left party). Counts as failed run. */
     hasEscaped: boolean;
-    /** Gradient/solid color for member card accents. */
     color: string;
-    /** Ablaze tier (0 = none). */
     transformTier: number;
 }
 
@@ -56,26 +51,9 @@ export interface IRaidDropLine {
     rarity?: string;
     amount?: number;
     itemId?: string;
-    /** True only for the single completion-roll item rolled per raid clear.
-     *  Render separately under "Dodatkowy item:" so it's not lost in the
-     *  per-boss drop grid. */
     isBonus?: boolean;
 }
 
 export interface IRaidAttemptRecord {
-    /** Map raidId -> ISO date string (YYYY-MM-DD) -> count used that day */
     [raidId: string]: { day: string; count: number };
 }
-
-/** Event payload broadcast over Supabase realtime to other party members. */
-export type RaidRealtimeEvent =
-    | { t: 'attack'; memberId: string; slotIdx: number; dmg: number; crit?: boolean }
-    | { t: 'skill'; memberId: string; skillId: string; targets: number[]; dmg: number }
-    | { t: 'boss-attack'; slotIdx: number; targetId: string; dmg: number }
-    | { t: 'member-hp'; memberId: string; hp: number }
-    | { t: 'member-mp'; memberId: string; mp: number }
-    | { t: 'boss-hp'; slotIdx: number; hp: number; isDead: boolean }
-    | { t: 'wave-advance'; waveIdx: number }
-    | { t: 'end'; result: 'victory' | 'wipe' }
-    | { t: 'escape'; memberId: string }
-    | { t: 'start'; raidId: string; seed: number };

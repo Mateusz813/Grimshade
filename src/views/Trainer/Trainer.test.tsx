@@ -2,27 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Trainer view — sandbox combat arena. Always renders in a single
- * pseudo-phase (no list / no result screen — the player walks in, hits
- * the dummy until they Wyjdź). Heavy compared to Battle but lighter than
- * Boss/Combat because there's no list-fighting-result state machine, no
- * loot drops, no XP/gold flow.
- *
- * Our coverage focuses on render contract:
- *   - Smoke render with a character.
- *   - Spinner fallback when character is null (mount short-circuits to a
- *     "Wczytywanie postaci…" screen).
- *   - Root .trainer wrapper mounts.
- *   - Combat HUD shell is active by default (CombatHudHost active=true).
- *
- * We DON'T try to exercise the spell-cast / sandbox-HP / aggro picker
- * paths — those mutate dozens of refs and would require driving five
- * unrelated stores. That's E2E territory.
- */
 
-// Hooks that touch supabase / realtime / sprite animation — no-op them
-// here so the smoke test stays deterministic + cheap.
 vi.mock('../../hooks/useCombatFx', () => ({
     useCombatFx: () => ({
         enemyFloats: {},
@@ -40,9 +20,6 @@ vi.mock('../../hooks/useCombatFx', () => ({
     }),
 }));
 
-// Backend-authoritative branch mocks. Default OFF so the existing client-path
-// tests exercise the untouched `characterApi.bumpStat` / `updateCharacter`
-// path; the dedicated describe flips `backendFlag.on`.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({
     dpsRecord: vi.fn(),
@@ -64,11 +41,8 @@ vi.mock('../../api/backend/syncState', () => ({
     syncFromBackend: syncFromBackendMock,
     syncIfBackend: vi.fn().mockResolvedValue(undefined),
 }));
-// The high-water DPS effect lazy-imports characterApi — mock the module so the
-// client-path tests can assert on bumpStat / updateCharacter without a network.
 vi.mock('../../api/v1/characterApi', () => ({ characterApi: characterApiMock }));
 
-// framer-motion causes happy-dom hangs on AnimatePresence — stub it.
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
     return {
@@ -153,16 +127,12 @@ describe('Trainer — smoke', () => {
     it('shows the loading spinner when character is null', () => {
         useCharacterStore.setState({ character: null });
         renderTrainer();
-        // Spec: Trainer mount-guards on `if (!character)` and renders
-        // <Spinner size="lg" label="Wczytywanie postaci…">.
         expect(screen.getByText(/Wczytywanie postaci/i)).toBeTruthy();
     });
 
     it('renders the --loading modifier on .trainer when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderTrainer();
-        // Spinner-fallback path still uses the .trainer root but adds
-        // --loading modifier — the full arena does not mount.
         const root = container.querySelector('.trainer');
         expect(root).not.toBeNull();
         expect(root?.className).toContain('trainer--loading');
@@ -212,20 +182,10 @@ describe('Trainer — high-water DPS record backend branch', () => {
         vi.useRealTimers();
     });
 
-    // Drive the combat tick until auto-basic lands a hit (bestWindow > 0),
-    // then past the 800ms DPS-push throttle. The tick interval is 500ms and
-    // the first auto-basic fires on tick 2 (=1000ms), so ~1000ms + 800ms +
-    // margin lands the push. `advanceTimersByTimeAsync` also flushes the
-    // microtask queue so the async dpsRecord -> syncFromBackend chain settles.
     const driveDpsPush = async () => {
-        // Phase 1: run the combat tick long enough to accumulate damage
-        // (bestWindow > 0) and let the passive DPS effect commit + register
-        // its 800ms throttle timeout.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3000);
         });
-        // Phase 2: advance past the 800ms throttle so the push timeout fires
-        // and its async dpsRecord -> syncFromBackend chain settles.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(2000);
         });
@@ -242,7 +202,6 @@ describe('Trainer — high-water DPS record backend branch', () => {
         expect(typeof (bodyArg as { dps: number }).dps).toBe('number');
         expect((bodyArg as { dps: number }).dps).toBeGreaterThan(0);
         expect(syncFromBackendMock).toHaveBeenCalledWith('char-1');
-        // No direct characters PATCH may fire in backend mode.
         expect(characterApiMock.bumpStat).not.toHaveBeenCalled();
         expect(characterApiMock.updateCharacter).not.toHaveBeenCalled();
     });
@@ -261,9 +220,3 @@ describe('Trainer — high-water DPS record backend branch', () => {
     });
 });
 
-// TODO: Deeper coverage of the Trainer sandbox (skill cooldown bypass,
-//       dummy HP% slider driving execute_below atoms, party member
-//       kill/revive picker, leader-only chip gating for non-leader
-//       members) requires real combatEngine + effectsHelpers tick loops
-//       wired against time-travelling refs — not viable for vitest.
-//       That depth lives in Playwright e2e (tests/e2e/trainer/).

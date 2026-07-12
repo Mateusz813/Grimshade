@@ -7,52 +7,27 @@ import { useDailyQuestStore } from '../../../stores/dailyQuestStore';
 import { useConnectivityStore } from '../../../stores/connectivityStore';
 import './BottomNav.scss';
 
-// 2026-05-20 spec ("wyszarz, spolecznosc, arene, raidy"): paths whose
-// nav entries are disabled (grayscale, no pointer events, lock icon)
-// while the player is in offline mode. Matched by `IBottomNavItem.path`.
 const OFFLINE_LOCKED_PATHS = new Set<string>(['/social']);
 
 interface IBottomNavItem {
-  /** Path navigated to when clicked. */
   path: string;
-  /** Polish label rendered below the icon. */
   label: string;
-  /** Inline-SVG icon (we hand-roll these so they all share the same stroke / sizing). */
   icon: ReactNode;
-  /** Optional extra paths whose presence should also light up this item (e.g. /dungeon -> Walka). */
   matches?: string[];
-  /** When true, render a pulsing purple "rewards waiting" dot in the
-   *  top-right of the icon. Same semantic as the header status dot. */
   claimable?: boolean;
 }
 
-/**
- * Six-button fixed bottom navigation. Order is fixed by user spec:
- *   Walka · Questy · Postać · Miasto · Społeczność · Sklep
- *
- * The "Miasto" tile is the home of the app (`/`) and is the default selected
- * item right after login. The active item is derived from `useLocation()` so a
- * Back/Forward navigation also updates the highlight without our help.
- */
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { accent, accentRgb } = useTransformAccent();
-  // 2026-05-20 spec: gates the Społeczność button (online-only sub-routes).
   const playMode = useConnectivityStore((s) => s.mode);
   const isOffline = playMode === 'offline';
 
-  // Claimable lookup — drives the purple "rewards waiting" dot on the
-  // Questy nav button. Reads the same three sources Quests.tsx + the
-  // header's TaskBadge use, so all three indicators (header dot, hub
-  // tile borders, bottom-nav dot) light up together.
   const activeTasks = useTaskStore((s) => s.activeTasks);
   const activeQuests = useQuestStore((s) => s.activeQuests);
   const dailyActiveQuests = useDailyQuestStore((s) => s.activeQuests);
   const tasksClaimable = activeTasks.some((t) => t.progress >= t.killCount);
-  // A quest is claimable when EVERY goal has its `progress` at or past
-  // the goal's `count`. Same calc Quests.tsx uses for its bulk-claim
-  // bar — kept inline here so the nav doesn't need a new store getter.
   const questsClaimable = activeQuests.some(
     (aq) => aq.goals.every((g) => (g.progress ?? 0) >= g.count),
   );
@@ -88,14 +63,8 @@ const BottomNav = () => {
       ),
     },
     {
-      // Postać tab now lands on /inventory — that view hosts the merged
-      // paperdoll + bag + skills + stat-distribution + training + auto-potion
-      // popups. The old /stats page is fully retired (2026-05 v6) and its
-      // route now Navigates to /inventory — we drop it from `matches` so the
-      // tab highlight is driven only by the surviving paths.
       path: '/inventory',
       label: 'Postać',
-      // /skills retired in 2026-05 v5 — Postać tab now owns all skill UX
       matches: ['/inventory'],
       icon: (
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -116,11 +85,6 @@ const BottomNav = () => {
       ),
     },
     {
-      // 2026-05-08 v3: Społeczność now points at the new /social hub
-      // (vertical banner-tile selector identical in style to /walka).
-      // The four sub-routes — /party, /guild, /friends, /chat — keep
-      // the tab highlighted so the indicator stays put when the
-      // player drills into a specific feature.
       path: '/social',
       label: 'Społeczność',
       matches: ['/social', '/friends', '/chat', '/guild', '/party'],
@@ -147,7 +111,6 @@ const BottomNav = () => {
     },
   ];
 
-  // Active match: prefer exact path, then any registered match prefix.
   const isActive = (item: IBottomNavItem): boolean => {
     if (location.pathname === item.path) return true;
     if (item.matches && item.matches.includes(location.pathname)) return true;
@@ -173,14 +136,7 @@ const BottomNav = () => {
             className={`bottom-nav__btn${active ? ' bottom-nav__btn--active' : ''}${locked ? ' bottom-nav__btn--offline-locked' : ''}`}
             disabled={locked}
             onClick={() => {
-              if (locked) return; // 2026-05-20 spec: silent no-op in offline mode
-              // When the player clicks the SAME tab they're already on,
-              // push a fresh history entry with a timestamped state key
-              // so the destination view sees a brand-new `location.key`
-              // and can reset its internal sub-tab state. Without this
-              // a tap on Questy while already on /quests/tasks would
-              // be a router no-op and the player would stay stranded
-              // on the leaf tab.
+              if (locked) return;
               if (location.pathname === item.path) {
                 navigate(item.path, { state: { resetAt: Date.now() }, replace: false });
               } else {

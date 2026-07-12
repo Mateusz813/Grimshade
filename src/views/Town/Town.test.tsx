@@ -2,26 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Town view — game hub (~775 lines). 7-tile nav grid (Offline trening,
- * Depozyt, Market, Potwory, Odpoczynek, Rankingi, Śmierci), character
- * card with HP/MP/XP bars, party strip, combat indicator, rest overlay,
- * tile auto-pulse interval.
- *
- * Coverage:
- *   - Smoke: root mounts with character.
- *   - Character card mounts when character exists, hides otherwise.
- *   - 7 nav tiles render in fixed order.
- *   - Offline mode locks Market / Rankingi / Śmierci (disabled + classes).
- *   - Online mode keeps those tiles enabled.
- *   - Tile click navigates (Depozyt -> /deposit etc.).
- *   - Rest tile disabled when HP + MP already full.
- *   - Combat indicator strip appears when phase === 'fighting'.
- *   - Party strip — empty solo + with party variants.
- *
- * Mocks: framer-motion not needed here (no AnimatePresence on Town). The
- * combat engine's `stopCombat` is called from the combat strip — stub it.
- */
 
 vi.mock('../../systems/combatEngine', async () => {
     const actual = await vi.importActual<typeof import('../../systems/combatEngine')>(
@@ -42,8 +22,6 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-// useOfflineTrainingResume hook reaches into the skill store + side-effect
-// timers — stub the whole thing.
 vi.mock('../../hooks/useOfflineTrainingResume', () => ({
     useOfflineTrainingResume: () => ({ reward: null, clearReward: vi.fn() }),
 }));
@@ -158,7 +136,6 @@ describe('Town — nav tiles', () => {
         expect(labels[1]).toMatch(/Depozyt/);
         expect(labels[2]).toMatch(/Market/);
         expect(labels[3]).toMatch(/Potwory/);
-        // [4] alternates between 'Odpoczynek' and 'Regeneracja...'; rest tile here.
         expect(labels[4]).toMatch(/Odpoczynek|Regeneracja/);
         expect(labels[5]).toMatch(/Rankingi/);
         expect(labels[6]).toMatch(/Śmierci/);
@@ -235,7 +212,6 @@ describe('Town — tile navigation', () => {
 
 describe('Town — rest tile', () => {
     it('is enabled when player has missing HP or MP', () => {
-        // makeChar default has hp 80/100, mp 20/30 -> needs rest.
         const { container } = renderTown();
         const rest = container.querySelector('.town__nav-tile--rest') as HTMLButtonElement;
         expect(rest.disabled).toBe(false);
@@ -328,9 +304,6 @@ describe('Town — class variants', () => {
         useCharacterStore.setState({ character: makeChar({ class: 'Mage' }) });
         const { container } = renderTown();
         expect(container.querySelector('.town')).not.toBeNull();
-        // Class is rendered as an emoji icon, not the class name text — the
-        // Mage glyph is :crystal-ball: (see CLASS_ICONS in Town.tsx). It now renders via
-        // <GameIcon> as an inline <svg>, so query the svg by its data-icon attribute.
         expect(
             container.querySelector('.town__char-class svg.game-icon')?.getAttribute('data-icon'),
         ).toBe('crystal-ball');
@@ -343,13 +316,3 @@ describe('Town — class variants', () => {
     });
 });
 
-// TODO: Cover Odpoczynek (Rest) full timer flow (10s setTimeout setRestResult).
-//       happy-dom + vi.useFakeTimers can drive it but the heal callback walks
-//       useCharacterStore.getState() — would need a more involved store
-//       fixture. Skipped here; the rest-system is unit-tested elsewhere.
-// TODO: Cover offline-hunt active-state tile swap (shows MonsterSprite + timer
-//       label instead of static art) — requires seeding an active hunt with a
-//       monster + ticking the 1s interval. The mechanic itself has dedicated
-//       coverage in offlineHuntStore.test.ts + offlineHuntSystem.test.ts.
-// TODO: Stat-points-to-spend button (visible when character.stat_points > 0)
-//       — simple branch but already implicitly covered when stat_points = 0.

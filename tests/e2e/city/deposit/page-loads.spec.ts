@@ -1,24 +1,3 @@
-/**
- * Atomic E2E — Depozyt (`/deposit`) renderuje podstawowe panele.
- *
- * Spec (BACKLOG.md punkt 5.8): "Depozyt: put + take basic".
- *
- * Pełny put/take flow wymaga seed-u inventory (item w plecaku z UUID
- * + sterowanie inventoryStore.depositItem). To wymaga osobnego
- * `seedInventory` helper-a którego jeszcze nie mamy w fixtures/.
- *
- * Na razie testujemy **smoke layer**:
- *  - Po nawigacji na /deposit widok ładuje się bez błędu.
- *  - Pokazuje nagłówek z napisem "Depozyt".
- *  - Pokazuje dwa panele: :backpack: Plecak + :bank: Depozyt.
- *  - Panel Plecak pokazuje counter 0/1000 (lub > 0 jeśli seed dorzucił coś).
- *  - Empty state "Brak przedmiotów" jest widoczny (świeża postać bez itemów).
- *
- * Full put/take TODO: dorzucić gdy będzie `seedInventory` helper —
- * wtedy seed -> tap tile -> assert item przeniósł się między panelami.
- *
- * Cleanup: try/finally + cleanupCharacterById.
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
@@ -34,7 +13,6 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
         let createdId: string | null = null;
 
         try {
-            // 1. Seed Knight — żadne overrides, świeża postać bez inventory.
             const created = await createCharacterViaApi({
                 userEmail: testUsers.primary.email,
                 name: nick,
@@ -42,7 +20,6 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
             });
             createdId = created.id;
 
-            // 2. Login + select character + go to /deposit
             await loginViaUI(page, testUsers.primary);
             await page.goto('/character-select');
             const card = page.locator('.char-select__card', {
@@ -54,27 +31,20 @@ test.describe('City › Deposit', { tag: '@city' }, () => {
 
             await page.goto('/deposit');
 
-            // 3. Nagłówek strony — tytuł ":bank: Depozyt"
             await expect(page.locator('.deposit__title')).toContainText('Depozyt');
 
-            // 4. Dwa panele (plecak + depozyt) — Deposit.tsx renderuje
-            //    dokładnie 2 `<section class="deposit__panel">`.
             const panels = page.locator('.deposit__panel');
             await expect(panels).toHaveCount(2);
 
-            // 5. Każdy panel ma swój tytuł
             const panelTitles = panels.locator('.deposit__panel-title');
             await expect(panelTitles.nth(0)).toContainText('Plecak');
             await expect(panelTitles.nth(1)).toContainText('Depozyt');
 
-            // 6. Counter formatu "N / MAX" w nagłówku każdego panelu.
-            //    Świeża postać -> plecak=0/1000, depozyt=0/10000.
             const bagCounter = panels.nth(0).locator('.deposit__panel-count');
             const depCounter = panels.nth(1).locator('.deposit__panel-count');
             await expect(bagCounter).toContainText('/ 1000');
             await expect(depCounter).toContainText('/ 10000');
 
-            // 7. Empty state widoczny w obu panelach na świeżej postaci
             const emptyStates = page.locator('.deposit__empty');
             await expect(emptyStates).toHaveCount(2);
         } finally {

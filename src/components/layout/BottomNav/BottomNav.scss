@@ -32,9 +32,6 @@
     line-height: 1.1;
     font-family: inherit;
 
-    // Hover TYLKO na urządzeniach z realnym kursorem — na dotyku `:hover` jest
-    // „sticky" (zostaje po pierwszym tapie), co dawało efekt „najpierw się
-    // zaznacza, potem klika". Na mobilce feedback daje stan &--active (trasa).
     @media (hover: hover) {
       &:hover {
         color: var(--nav-accent, #ffc107);
@@ -48,10 +45,6 @@
       background: rgba(var(--nav-accent-rgb, 255, 193, 7), 0.12);
     }
 
-    // 2026-05-20 spec ("wyszarz, spolecznosc, arene, raidy"): the
-    // Społeczność button is dead in offline mode. Grayscale + reduced
-    // opacity + small lock icon top-right of the SVG. Pointer events
-    // are killed at the React level via the `disabled` attr too.
     &--offline-locked {
       filter: grayscale(0.85) brightness(0.6);
       opacity: 0.55;
@@ -59,7 +52,7 @@
       position: relative;
 
       &:hover {
-        background: transparent; // suppress the hover-tint
+        background: transparent;
         color: #b0b0b0;
       }
 
@@ -77,7 +70,7 @@
   }
 
   &__icon {
-    position: relative; // anchors the absolute claim-dot
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -90,10 +83,6 @@
     }
   }
 
-  // Pulsing purple dot — same colour + cadence as the header status
-  // dot ("rewards waiting"). Sits at the top-right of the icon so it
-  // doesn't shove the label or change the button's footprint. Keyframes
-  // live at the bottom of the file (outside the .bottom-nav block).
   &__claim-dot {
     position: absolute;
     top: -3px;
@@ -154,10 +143,6 @@
   }
 }
 
-// Claim-dot blink — fired by `bottom-nav__claim-dot` when the Questy
-// nav item has rewards waiting. Same cadence as the header status dot
-// + Quests hub claim dot so the three indicators feel like one alert
-// system across the chrome.
 @keyframes bottom-nav-claim-blink {
   0%, 100% { opacity: 1;    transform: scale(1); }
   50%      { opacity: 0.45; transform: scale(0.85); }

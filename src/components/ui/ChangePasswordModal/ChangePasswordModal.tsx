@@ -8,13 +8,9 @@ import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './ChangePasswordModal.scss';
 
 interface IChangePasswordModalProps {
-  /** Closes the modal (called on cancel, backdrop click, Escape, and ~2.2s
-   *  after a successful change so the toast reads as a confirmation). */
   onClose: () => void;
 }
 
-// Current password (security gate) + new password + confirmation. New
-// password mirrors the Register contract (min 6, must match).
 const getChangePasswordSchema = () =>
   z
     .object({
@@ -29,15 +25,6 @@ const getChangePasswordSchema = () =>
 
 type IChangePasswordForm = z.infer<ReturnType<typeof getChangePasswordSchema>>;
 
-/**
- * Password-change popup opened from the avatar menu. Renders via a portal to
- * document.body (like AdminPanel) so it survives the dropdown closing. On
- * success it swaps the form for a success toast and auto-closes.
- *
- * Supabase changes the password of the CURRENT session (authApi.updatePassword
- * -> supabase.auth.updateUser) — no current password is required, just a live
- * session.
- */
 const ChangePasswordModal = ({ onClose }: IChangePasswordModalProps) => {
   const [done, setDone] = useState(false);
   const {
@@ -49,15 +36,12 @@ const ChangePasswordModal = ({ onClose }: IChangePasswordModalProps) => {
     resolver: zodResolver(getChangePasswordSchema()),
   });
 
-  // Auto-close shortly after success so the toast reads as a transient
-  // confirmation rather than a screen the user has to dismiss.
   useEffect(() => {
     if (!done) return;
     const t = window.setTimeout(onClose, 2200);
     return () => window.clearTimeout(t);
   }, [done, onClose]);
 
-  // Escape closes the modal.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -68,7 +52,6 @@ const ChangePasswordModal = ({ onClose }: IChangePasswordModalProps) => {
 
   const onSubmit = async (data: IChangePasswordForm) => {
     try {
-      // Security gate — confirm the current password before changing it.
       const ok = await authApi.verifyCurrentPassword(data.currentPassword);
       if (!ok) {
         setError('currentPassword', { message: 'Nieprawidłowe obecne hasło' });

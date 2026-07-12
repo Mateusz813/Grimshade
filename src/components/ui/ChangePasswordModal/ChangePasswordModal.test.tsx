@@ -1,24 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 
-/**
- * ChangePasswordModal — avatar-menu password change popup.
- *
- * Renders via createPortal to document.body, so we query the DOM through
- * `document.querySelector` (not the render container).
- *
- * Security flow: current password is verified (authApi.verifyCurrentPassword)
- * BEFORE the new password is set (authApi.updatePassword).
- *
- * Coverage:
- *   - Smoke: title + three password inputs + cancel/submit buttons.
- *   - zod validation: short new password -> "Min. 6 znaków".
- *   - zod validation: mismatch -> "Hasła muszą być takie same".
- *   - Wrong current password -> "Nieprawidłowe obecne hasło", no update.
- *   - Success: verify + update called, success toast rendered.
- *   - Server error on update -> root error, no toast.
- *   - Cancel / backdrop / Escape call onClose.
- */
 
 vi.mock('../../../api/v1/authApi', () => ({
     authApi: {
@@ -35,7 +17,6 @@ const renderModal = (onClose = vi.fn()) => {
     return { onClose };
 };
 
-// 3 inputs in order: current, new, confirm.
 const fields = () => {
     const inputs = document.querySelectorAll('.change-password__input');
     return {

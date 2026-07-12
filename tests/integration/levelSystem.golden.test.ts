@@ -15,28 +15,6 @@ import {
     xpProgress,
 } from '../../src/systems/levelSystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla levelSystem.
-//
-// Żyje w tests/integration/ (nie w src), bo używa API node (fs) do zapisu
-// fixture — tsconfig.app typechecku je tylko `src`, więc tu node jest OK,
-// a vitest i tak łapie tests/integration.
-//
-// Dwie role:
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/levelSystem.json z realnych funkcji.
-//  2. Normalnie → GUARD: asertuje, że commitowany fixture == aktualny output TS.
-//     Zmiana formuły w TS bez regeneracji → ten test zczerwienieje.
-//
-// Fixture jest kopiowany do backendu (grimshade-backend/tests/Golden/fixtures/
-// levelSystem.json), gdzie Pest odtwarza go w PHP → parytet TS↔PHP.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/levelSystem.golden.test.ts
-//   cp golden/levelSystem.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// UWAGA: poziomy ≤1100 — powyżej xpToNextLevel przekracza 2^53 (bezpieczna
-// precyzja int JS), co mogłoby dać rozjazd z PHP na ostatnim bicie.
-// ============================================================================
 
 const LEVELS = [0, 1, 2, 3, 5, 10, 25, 50, 99, 100, 101, 150, 199, 200, 201, 300, 400, 500, 600, 700, 800, 900, 999, 1000, 1001, 1010, 1050, 1100];
 const TOTAL_LEVELS = [1, 2, 10, 100, 101, 200, 500, 1000, 1001];

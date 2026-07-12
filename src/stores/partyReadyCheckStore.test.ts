@@ -2,17 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { usePartyReadyCheckStore } from './partyReadyCheckStore';
 import { supabase } from '../lib/supabase';
 
-/**
- * Coordinator store for the "Gotowy?" modal. Realtime is wired through
- * a Supabase broadcast channel — the global vitest setup already
- * stubs `supabase.channel(...)` but the default stub omits `.send`,
- * so we override the factory below to add a no-op send. The dynamic
- * import to `./characterStore` inside the `start` channel handler is
- * only hit when a real broadcast arrives; this test exercises the
- * PUBLIC actions (start / ready / cancel / fireGo / instantStart /
- * consumeDestination / subscribe / clear), all of which are
- * synchronous against the local state.
- */
 
 const installChannelMock = (): void => {
     vi.mocked(supabase.channel).mockReturnValue({
@@ -36,20 +25,14 @@ const baseState = {
 };
 
 beforeEach(() => {
-    // Cancel any active timeout + scrub state. We don't call `clear()`
-    // here because it relies on the supabase mock — `setState` is the
-    // surgical reset path for unit testing.
     usePartyReadyCheckStore.setState({ ...baseState });
     installChannelMock();
 });
 
 afterEach(() => {
-    // Some tests subscribe to a channel; tear down so the next test
-    // starts clean.
-    try { usePartyReadyCheckStore.getState().clear(); } catch { /* ignore */ }
+    try { usePartyReadyCheckStore.getState().clear(); } catch { }
 });
 
-// -- subscribe (smoke) --------------------------------------------------------
 
 describe('subscribe', () => {
     it('opens a channel + records the partyId on first call', () => {
@@ -72,7 +55,6 @@ describe('subscribe', () => {
 
     it('cleanup wipes channel + partyId + open + readyIds + requiredIds + destination + payload', () => {
         const unsub = usePartyReadyCheckStore.getState().subscribe('party-1');
-        // Seed an in-progress check so we can verify it gets cleared.
         usePartyReadyCheckStore.setState({
             open: true,
             destination: '/combat',
@@ -98,18 +80,14 @@ describe('subscribe', () => {
     });
 });
 
-// -- start -------------------------------------------------------------------
 
 describe('start', () => {
     it('is a no-op when no channel is open (early return)', () => {
-        // No subscribe before this call -> channel is null -> start exits.
         usePartyReadyCheckStore.getState().start({
             destination: '/combat',
             requesterId: 'char-1',
             memberIds: ['char-1', 'char-2'],
         });
-        // open stays false: the store waits for the broadcast echo to
-        // populate state (the global supabase mock here is a no-op).
         expect(usePartyReadyCheckStore.getState().open).toBe(false);
     });
 
@@ -140,13 +118,10 @@ describe('start', () => {
     });
 });
 
-// -- ready -------------------------------------------------------------------
 
 describe('ready', () => {
     it('is a no-op when no channel is open', () => {
         usePartyReadyCheckStore.getState().ready('char-1');
-        // No optimistic state change either, because the action exits before
-        // touching state when channel is null.
         expect(usePartyReadyCheckStore.getState().readyIds).toEqual([]);
     });
 
@@ -182,7 +157,6 @@ describe('ready', () => {
             partyId: 'party-1',
         });
         usePartyReadyCheckStore.getState().ready('char-1');
-        // Still just one entry.
         expect(usePartyReadyCheckStore.getState().readyIds.filter((id) => id === 'char-1')).toHaveLength(1);
         unsub();
     });
@@ -206,7 +180,6 @@ describe('ready', () => {
     });
 });
 
-// -- cancel ------------------------------------------------------------------
 
 describe('cancel', () => {
     it('is a no-op when no channel is open', () => {
@@ -220,12 +193,10 @@ describe('cancel', () => {
     });
 });
 
-// -- fireGo ------------------------------------------------------------------
 
 describe('fireGo', () => {
     it('is a no-op when destination is null even with an open channel', () => {
         const unsub = usePartyReadyCheckStore.getState().subscribe('party-1');
-        // destination is null in the baseline state -> fireGo short-circuits.
         expect(() => usePartyReadyCheckStore.getState().fireGo()).not.toThrow();
         unsub();
     });
@@ -235,7 +206,6 @@ describe('fireGo', () => {
             ...baseState,
             destination: '/combat',
         });
-        // No channel — early return.
         expect(() => usePartyReadyCheckStore.getState().fireGo()).not.toThrow();
     });
 
@@ -257,7 +227,6 @@ describe('fireGo', () => {
     });
 });
 
-// -- instantStart ------------------------------------------------------------
 
 describe('instantStart', () => {
     it('is a no-op when no channel is open', () => {
@@ -291,7 +260,6 @@ describe('instantStart', () => {
     });
 });
 
-// -- consumeDestination ------------------------------------------------------
 
 describe('consumeDestination', () => {
     it('clears destination + payload + label (called after navigation lands)', () => {
@@ -321,7 +289,6 @@ describe('consumeDestination', () => {
         });
         usePartyReadyCheckStore.getState().consumeDestination();
         const state = usePartyReadyCheckStore.getState();
-        // These are owned by other code paths (modal close, cancel echo).
         expect(state.open).toBe(true);
         expect(state.requesterId).toBe('char-1');
         expect(state.readyIds).toEqual(['char-1']);
@@ -336,7 +303,6 @@ describe('consumeDestination', () => {
     });
 });
 
-// -- clear -------------------------------------------------------------------
 
 describe('clear', () => {
     it('wipes every public field back to the initial baseline', () => {
@@ -371,7 +337,6 @@ describe('clear', () => {
     });
 });
 
-// -- Initial state ------------------------------------------------------------
 
 describe('initial state', () => {
     it('boots with everything null / empty / closed', () => {
@@ -388,20 +353,3 @@ describe('initial state', () => {
     });
 });
 
-// TODO: channel-handler paths (`start` / `ready` / `cancel` / `go` /
-// `instant-go` broadcast events) drive the cross-client UX. The global
-// supabase mock used by `tests/vitest.setup.ts` returns a chain of no-op
-// methods, so we can't synthesize an inbound broadcast event from a
-// unit test — that needs a custom mock that captures `channel.on(...)`
-// callbacks and replays payloads. Best done as integration coverage
-// against the real Supabase Realtime layer.
-//
-// TODO: the 60-s auto-cancel timeout fired from the `start` handler is
-// also gated behind that channel-handler path. Same caveat — covered
-// indirectly by the unit guarantees above.
-//
-// TODO: the leader-side auto-fireGo wiring (the standalone
-// `usePartyReadyCheckStore.subscribe(...)` block at the bottom of the
-// module) is intentionally a no-op for now — the comment in the source
-// defers the actual gate to the consumer (ReadyCheckModal). No unit
-// test for now; covered when the deferred gate lands.

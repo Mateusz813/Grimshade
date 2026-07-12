@@ -1,11 +1,6 @@
 @use '../../styles/variables' as *;
 @use '../../styles/breakpoints' as *;
 
-// Społeczność hub — 1:1 mirror of `.battle` from Battle.scss. Every
-// hover / press / glow / wave animation matches the combat hub so the
-// two screens move identically. Only difference: 4 tiles instead of 7
-// (Party / Gildia / Znajomi / Czat) and per-tile bg images live under
-// `/assets/images/spolecznosc/`.
 
 .social {
   min-height: calc(100vh - 50px - 60px);
@@ -29,7 +24,6 @@
     }
   }
 
-  // -- Tile shell -----------------------------------------------------------
   &__tile {
     position: relative;
     display: flex;
@@ -61,7 +55,6 @@
       outline-offset: 2px;
     }
 
-    // Resting glow + accent wave (matches Battle / Town tile feel)
     &::before {
       content: '';
       position: absolute;
@@ -142,8 +135,6 @@
   }
 }
 
-// Animations — identical to battle-tile-wave / battle-tile-press so the
-// social hub moves the exact same way as the combat hub.
 @keyframes social-tile-wave {
   0%   { background-position: 100% 0%; }
   100% { background-position: 0% 100%; }

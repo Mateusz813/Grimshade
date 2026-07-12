@@ -1,10 +1,4 @@
-// Inline icon <svg> (rendered by <GameIcon>) — sized + aligned to read exactly
-// like an inline glyph. svgr's `icon: true` already sets width/height = 1em, so
-// the icon scales with the surrounding font-size; here we only fix the baseline
-// alignment and block drag/selection.
 svg.game-icon {
-  // Override the global `svg { display: block }` reset (src/index.css) so the
-  // icon sits inline next to text instead of dropping onto its own line.
   display: inline-block;
   width: 1em;
   height: 1em;

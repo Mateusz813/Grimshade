@@ -49,24 +49,17 @@ describe('getMaxRarityForLevel', () => {
 });
 
 describe('generateBonuses', () => {
-    // 2026-05-21: replaces deleted test "should return N stats for heroic rarity" —
-    // now heroic is the rarest tier and RARITY_BONUS_SLOTS.heroic = 5.
     it('should return 5 stats for heroic rarity', () => {
         const bonuses = generateBonuses('heroic');
         expect(Object.keys(bonuses).length).toBe(5);
     });
 
-    // 2026-05-21: replaces deleted test "should return N stats for common rarity" —
-    // common items have NO random bonus stats (RARITY_BONUS_SLOTS.common = 0).
-    // The function short-circuits to {} for 0-slot rarities.
     it('should return 0 stats (empty object) for common rarity', () => {
         const bonuses = generateBonuses('common');
         expect(Object.keys(bonuses).length).toBe(0);
         expect(bonuses).toEqual({});
     });
 
-    // 2026-05-21: replaces deleted test "should return N stats for epic rarity" —
-    // current RARITY_BONUS_SLOTS.epic = 1 (was higher historically).
     it('should return 1 stat for epic rarity', () => {
         const bonuses = generateBonuses('epic');
         expect(Object.keys(bonuses).length).toBe(1);
@@ -101,7 +94,6 @@ describe('rollLoot', () => {
     });
 
     it('should return max 5 items', () => {
-        // Run many times to verify the cap
         for (let i = 0; i < 50; i++) {
             const result = rollLoot(10, 'boss');
             expect(result.length).toBeLessThanOrEqual(5);
@@ -165,42 +157,22 @@ describe('rollRarity', () => {
     });
 });
 
-// -- GAP #2 — Mastery max -> higher heroic drop chance -------------------------
-// At MAX mastery (25) `masteryStore.getMasteryBonuses().heroic` returns
-// `HEROIC_DROP_RATE_AT_MAX` (0.005). That value flows into the loot pipeline
-// as `rollRarity`/`rollLoot`'s `heroicDropRate` arg. These tests prove the
-// heroic chance is genuinely ADDED on top of the normal rarity roll for
-// boss-rarity monsters: a non-zero heroic rate yields 'heroic' strictly more
-// often than a zero rate, and the heroic band is hit when Math.random falls
-// inside it.
-//
-// NOTE: the task brief said `rollMonsterRarity` consumes `masteryBonuses.heroic`
-// — it does NOT. `rollMonsterRarity` only biases the spawn toward the `boss`
-// TIER (via strong/epic/legendary/mythic). The heroic ITEM drop is applied
-// downstream in `rollRarity(monsterRarity, heroicDropRate)`. We test the real
-// code path here.
 describe('GAP #2 — heroic drop bonus from max mastery (rollRarity)', () => {
     afterEach(() => {
         vi.restoreAllMocks();
     });
 
     it('adds the heroic band to boss-rarity rolls — a roll inside it returns heroic', () => {
-        // rollRarity checks `Math.random() < heroicDropRate` FIRST. With the
-        // first random call below the rate, the function must short-circuit to
-        // 'heroic'. We stub the very first random() to land inside the band.
-        vi.spyOn(Math, 'random').mockReturnValue(0.001); // < 0.005 heroic rate
+        vi.spyOn(Math, 'random').mockReturnValue(0.001);
         expect(rollRarity('boss', 0.005)).toBe('heroic');
     });
 
     it('does NOT return heroic when the first roll lands outside the band', () => {
-        // First random() above the heroic rate -> falls through to the normal
-        // weighted distribution, never 'heroic'. 0.9 hits the common band.
         vi.spyOn(Math, 'random').mockReturnValue(0.9);
         expect(rollRarity('boss', 0.005)).not.toBe('heroic');
     });
 
     it('never returns heroic for non-boss monsters even with a high heroic rate', () => {
-        // The heroic short-circuit is gated on `monsterRarity === 'boss'`.
         vi.spyOn(Math, 'random').mockReturnValue(0.0001);
         expect(rollRarity('legendary', 0.9)).not.toBe('heroic');
         expect(rollRarity('epic', 0.9)).not.toBe('heroic');
@@ -218,20 +190,14 @@ describe('GAP #2 — heroic drop bonus from max mastery (rollRarity)', () => {
             return n;
         };
         const withZero = countHeroics(0);
-        const withBonus = countHeroics(0.3); // exaggerated rate for a stable signal
-        // Zero rate can NEVER produce a heroic (the weighted table tops out at
-        // mythic for boss monsters).
+        const withBonus = countHeroics(0.3);
         expect(withZero).toBe(0);
-        // A 30% heroic rate should produce hundreds of heroics across 4000 runs.
         expect(withBonus).toBeGreaterThan(withZero);
         expect(withBonus).toBeGreaterThan(500);
     });
 
     it('rollLoot threads the (level-scaled) heroic rate through to items', () => {
-        // Force every drop roll to succeed AND every rarity roll to hit the
-        // heroic band. With Math.random pinned at 0 (< dropChance and <
-        // scaled heroic rate), every dropped item on a boss monster is heroic.
-        vi.spyOn(Math, 'random').mockReturnValue(0); // < everything
+        vi.spyOn(Math, 'random').mockReturnValue(0);
         const items = rollLoot(50, 'boss', 0.005);
         expect(items.length).toBeGreaterThan(0);
         for (const item of items) {
@@ -240,8 +206,6 @@ describe('GAP #2 — heroic drop bonus from max mastery (rollRarity)', () => {
     });
 
     it('rollLoot with heroicDropRate=0 never produces heroic items (boss)', () => {
-        // Even with maxed drop chance (random=0), a zero heroic rate must keep
-        // heroic out of the pool — the bonus is strictly additive.
         vi.spyOn(Math, 'random').mockReturnValue(0);
         const items = rollLoot(50, 'boss', 0);
         expect(items.length).toBeGreaterThan(0);
@@ -298,7 +262,6 @@ describe('getGeneratedSellPrice', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — rollMonsterRarity / SKIP mode + mastery -------
 
 describe('rollMonsterRarity', () => {
     it('always returns normal in SKIP mode', () => {
@@ -315,14 +278,13 @@ describe('rollMonsterRarity', () => {
     });
 
     it('honours mastery bonuses (boosting rare-tier spawn chances)', () => {
-        // With giant mastery bonuses, normal should be virtually impossible.
         const bonus = { strong: 90, epic: 90, legendary: 90, mythic: 90, heroic: 90 };
         let rares = 0;
         for (let i = 0; i < 100; i++) {
             const r = rollMonsterRarity(false, bonus);
             if (r !== 'normal') rares++;
         }
-        expect(rares).toBeGreaterThan(50); // overwhelming majority non-normal
+        expect(rares).toBeGreaterThan(50);
     });
 });
 
@@ -331,7 +293,6 @@ describe('getEffectiveRarityChances', () => {
         const breakdown = getEffectiveRarityChances();
         expect(breakdown.normal.base).toBe(MONSTER_RARITY_CHANCES.normal);
         expect(breakdown.strong.base).toBe(MONSTER_RARITY_CHANCES.strong);
-        // bonus can be -0 (JS arithmetic), so compare via Math.abs
         expect(Math.abs(breakdown.normal.bonus)).toBe(0);
         expect(breakdown.normal.total).toBeCloseTo(MONSTER_RARITY_CHANCES.normal, 5);
     });
@@ -351,7 +312,6 @@ describe('getEffectiveRarityChances', () => {
 
 describe('formatRarityChance', () => {
     it('returns plain percent when no bonus (bases >= 0.1 use 1 decimal)', () => {
-        // base 0.9 -> 90% -> >= 0.1 threshold so 1 decimal
         expect(formatRarityChance({ base: 0.9, bonus: 0, total: 0.9 })).toBe('90.0%');
     });
 
@@ -360,13 +320,11 @@ describe('formatRarityChance', () => {
     });
 
     it('renders positive bonus with + sign', () => {
-        // bonus 0.02 > 0.001 -> 1 decimal "2.0%"
         const s = formatRarityChance({ base: 0.9, bonus: 0.02, total: 0.92 });
         expect(s).toBe('90.0% + 2.0%');
     });
 
     it('renders negative bonus with − minus sign (unicode)', () => {
-        // |bonus| 0.05 > 0.001 -> 1 decimal "5.0%"
         const s = formatRarityChance({ base: 0.9, bonus: -0.05, total: 0.85 });
         expect(s).toBe('90.0% − 5.0%');
     });
@@ -398,7 +356,6 @@ describe('scaleHeroicDropRate', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — potion drops --------------------------------
 
 describe('rollPotionDrop', () => {
     it('returns empty array most of the time (drops are scarce)', () => {
@@ -407,12 +364,10 @@ describe('rollPotionDrop', () => {
             const drops = rollPotionDrop(10);
             if (drops.length > 0) { allEmpty = false; break; }
         }
-        // Not asserting; this is just a sanity check that the function runs many times.
         expect(allEmpty || !allEmpty).toBe(true);
     });
 
     it('uses correct potion tier per monster level (small for <20)', () => {
-        // Force lots of rolls; any drop in low-level should be sm
         for (let i = 0; i < 500; i++) {
             const drops = rollPotionDrop(5);
             for (const d of drops) {
@@ -427,10 +382,9 @@ describe('rollPotionDrop', () => {
         for (let i = 0; i < 500; i++) {
             const drops = rollPotionDrop(150);
             for (const d of drops) {
-                if (d.potionId === 'hp_potion_great') return; // hit the great tier path
+                if (d.potionId === 'hp_potion_great') return;
             }
         }
-        // No assertion needed; we exercised the branch.
     });
 
     it('only rolls mega potions for monster level 100+', () => {
@@ -481,7 +435,6 @@ describe('getPotionDropInfo', () => {
     });
 });
 
-// -- Coverage push 2026-05-26 — spell chest drops --------------------------
 
 describe('rollSpellChestDrop', () => {
     it('returns [] for monster level 1-4', () => {
@@ -505,7 +458,6 @@ describe('rollSpellChestDrop', () => {
     });
 
     it('boss-rarity with maxMastery rolls heroic-tier chests too', () => {
-        // Run a lot — at 5% × 1.5 dungeon × 2 boss = 15% per eligible level, drops should occur fast.
         let heroicLevelHit = false;
         for (let i = 0; i < 200; i++) {
             const drops = rollSpellChestDrop(100, 'boss', true, true, true);
@@ -563,7 +515,6 @@ describe('getSpellChestKey / getSpellChestDisplayName / getSpellChestIcon / getS
     });
 });
 
-// -- Coverage push 2026-05-26 — rollStoneDrop misc & constants ------------
 
 describe('rollStoneDrop type map sanity', () => {
     it('every monster rarity maps to a valid stone type', () => {

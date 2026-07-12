@@ -8,37 +8,9 @@ import {
     type TSystemMessagePayload,
 } from '../../src/systems/systemChatMessages';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla systemChatMessages.
-//
-// systemChatMessages to PROTOKÓŁ czatu systemowego (nie UI): format + parse
-// wiadomości `[SYS]{...json...}` przesyłanych po drucie. Wszystkie trzy funkcje
-// są CZYSTE i DETERMINISTYCZNE (bez RNG, bez Date, bez store) → golden bit-parity
-// na stringach (łącznie z polskimi znakami, slashami, cudzysłowami, escapami).
-//
-// Dwie role (jak levelSystem/lootSystem):
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/systemChatMessages.json z realnych funkcji.
-//  2. Normalnie → GUARD: asertuje, że commitowany fixture == aktualny output TS.
-//     Zmiana formatu/parsera w TS bez regeneracji → ten test zczerwienieje.
-//
-// Fixture jest kopiowany do backendu (grimshade-backend/tests/Golden/fixtures/
-// systemChatMessages.json), gdzie Pest odtwarza go w PHP → parytet TS↔PHP.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/systemChatMessages.golden.test.ts
-//   cp golden/systemChatMessages.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// UWAGA parytet JSON: JSON.stringify NIE escape'uje unicode ani slashy i zachowuje
-// kolejność wstawiania kluczy. PHP json_encode musi użyć
-// JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES, żeby dać bajt-w-bajt to samo.
-// ============================================================================
 
-// isUpgradeMilestone: +5, +7 oraz każdy poziom ≥ +10. Brzegi wokół progów +
-// zero i wartości ujemne (nie są milestone).
 const MILESTONE_LEVELS = [-5, -1, 0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 50, 100, 1000];
 
-// formatSystemMessage: reprezentatywne payloady OBU wariantów + brzegi escape'ów
-// (polskie znaki, slash, cudzysłów, backslash, newline, tab, ujemny/zero level).
 const FORMAT_PAYLOADS: TSystemMessagePayload[] = [
     { type: 'upgrade', itemId: 'luk', rarity: 'common', upgradeLevel: 5, itemName: 'Krótki Łuk' },
     { type: 'upgrade', itemId: 'wlocznia', rarity: 'legendary', upgradeLevel: 7, itemName: 'Włócznia Śmierci' },
@@ -53,45 +25,35 @@ const FORMAT_PAYLOADS: TSystemMessagePayload[] = [
     { type: 'skillUpgrade', skillId: 'ognisty', skillName: 'Płomień Zagłady', upgradeLevel: 777 },
 ];
 
-// parseSystemMessage: happy-path OBU wariantów, normalizacja (kolejność kluczy +
-// odrzucone pola extra), plus WSZYSTKIE ścieżki null (brak markera, pusty/whitespace
-// body, malformed JSON, prymitywy JSON, tablica, zły type, złe/brakujące pola typu).
 const PARSE_CONTENTS: string[] = [
-    // Happy path — obie warianty (round-trip przez formatSystemMessage).
     '[SYS]{"type":"upgrade","itemId":"luk","rarity":"common","upgradeLevel":5,"itemName":"Krótki Łuk"}',
     '[SYS]{"type":"skillUpgrade","skillId":"power_strike","skillName":"Potężny Cios","upgradeLevel":10}',
-    // Kolejność kluczy odwrócona → parser normalizuje do kolejności interfejsu.
     '[SYS]{"itemName":"Miecz","upgradeLevel":7,"rarity":"rare","itemId":"sword","type":"upgrade"}',
-    // Pola extra są odrzucane (parser zwraca tylko kanoniczne pola).
     '[SYS]{"type":"skillUpgrade","skillId":"fire","skillName":"Ogień","upgradeLevel":12,"extra":"x","icon":"ikona"}',
-    // Whitespace wokół JSON (marker + spacje/newline) → trim, parsuje się.
     '[SYS]  {"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":1,"itemName":"c"}  ',
     '[SYS]\n{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":1,"itemName":"c"}\n',
-    // Poprawne liczby brzegowe (zero, ujemny) w upgradeLevel.
     '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":0,"itemName":"c"}',
     '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":-3,"itemName":"c"}',
-    // Polskie znaki + slash w skillName zachowane.
     '[SYS]{"type":"skillUpgrade","skillId":"s","skillName":"Cios/Ćma","upgradeLevel":100}',
 
-    // --- Ścieżki null ---
-    'zwykła wiadomość bez markera',                 // brak markera
-    '',                                             // pusty string (brak markera)
-    '[SYS]',                                         // marker, puste body
-    '[SYS]   ',                                      // marker, samo whitespace
-    '[SYS]{"type":"upgrade","itemId":"a"',          // malformed JSON (ucięty)
-    '[SYS]{nie-json}',                               // malformed JSON
-    '[SYS]5',                                         // prymityw JSON (number)
-    '[SYS]"hello"',                                  // prymityw JSON (string)
-    '[SYS]null',                                      // prymityw JSON (null)
-    '[SYS]true',                                       // prymityw JSON (bool)
-    '[SYS][1,2,3]',                                    // tablica JSON
-    '[SYS]{"type":"foo","itemId":"a"}',                // nieznany type
-    '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":1}',            // brak itemName
-    '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":"5","itemName":"c"}', // upgradeLevel string
-    '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":true,"itemName":"c"}', // upgradeLevel bool
-    '[SYS]{"type":"upgrade","itemId":5,"rarity":"b","upgradeLevel":1,"itemName":"c"}',       // itemId number
-    '[SYS]{"type":"skillUpgrade","skillId":"a","upgradeLevel":5}',                    // brak skillName
-    '[SYS]{"type":"skillUpgrade","skillId":"a","skillName":"b"}',                     // brak upgradeLevel
+    'zwykła wiadomość bez markera',
+    '',
+    '[SYS]',
+    '[SYS]   ',
+    '[SYS]{"type":"upgrade","itemId":"a"',
+    '[SYS]{nie-json}',
+    '[SYS]5',
+    '[SYS]"hello"',
+    '[SYS]null',
+    '[SYS]true',
+    '[SYS][1,2,3]',
+    '[SYS]{"type":"foo","itemId":"a"}',
+    '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":1}',
+    '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":"5","itemName":"c"}',
+    '[SYS]{"type":"upgrade","itemId":"a","rarity":"b","upgradeLevel":true,"itemName":"c"}',
+    '[SYS]{"type":"upgrade","itemId":5,"rarity":"b","upgradeLevel":1,"itemName":"c"}',
+    '[SYS]{"type":"skillUpgrade","skillId":"a","upgradeLevel":5}',
+    '[SYS]{"type":"skillUpgrade","skillId":"a","skillName":"b"}',
 ];
 
 const buildGolden = (): Record<string, unknown> => ({
@@ -114,8 +76,6 @@ describe('systemChatMessages golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current systemChatMessages output', () => {
         expect(existsSync(outPath), 'brak golden/systemChatMessages.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON (wzór lootSystem) — usuwa ewentualne -0. Tu i tak
-        // brak floatów, ale trzymamy konwencję guardu spójną między systemami.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

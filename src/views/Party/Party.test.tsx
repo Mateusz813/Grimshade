@@ -1,28 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Party view — server-backed party browser + create form + active-party
- * dashboard. Two main render branches:
- *   1. NOT in a party -> intro + create form + public browser list.
- *   2. IN a party -> active dashboard (member roster, chat, action row).
- *
- * Coverage:
- *   - Smoke render + spinner fallback for null character.
- *   - Intro section + "Stwórz nowe party" button when no party.
- *   - "Otwarte drużyny" section header + empty browser message.
- *   - Create-form toggle: clicking the primary button reveals the form
- *     fields, and Anuluj hides them.
- *   - Public browser cards: with one fixture party, the card row +
- *     join button render.
- *   - Active dashboard renders when party is set (member roster, leader
- *     badge, leave + chat surfaces).
- *
- * Mocks: framer-motion (heavy AnimatePresence usage), the inner Chat
- * component, and the party store subscription functions (so the
- * useEffect doesn't try to open realtime channels).
- */
 
 vi.mock('framer-motion', async () => {
     const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -38,8 +17,6 @@ vi.mock('framer-motion', async () => {
     };
 });
 
-// Stub the Chat component used inside the active dashboard so we don't
-// have to wire chat subscriptions.
 vi.mock('../../components/ui/Chat/Chat', () => ({
     default: ({ channel }: { channel: string }) => <div data-testid={`chat-${channel}`} />,
 }));
@@ -79,17 +56,15 @@ beforeEach(() => {
     useCharacterStore.setState({ character: makeChar() });
     useTransformStore.setState({ completedTransforms: [] });
     usePartyPresenceStore.setState({ byMember: {} } as never);
-    // Keep subscriptions as no-ops so the useEffects don't open
-    // realtime channels.
     usePartyStore.setState({
         party: null,
         loading: false,
         error: null,
         publicParties: [],
-        subscribePublicFeed: () => () => { /* noop */ },
-        subscribeToActiveParty: () => () => { /* noop */ },
-        refreshPublicParties: async () => { /* noop */ },
-        hydrateActiveParty: async () => { /* noop */ },
+        subscribePublicFeed: () => () => { },
+        subscribeToActiveParty: () => () => { },
+        refreshPublicParties: async () => { },
+        hydrateActiveParty: async () => { },
     } as never);
 });
 
@@ -106,10 +81,20 @@ describe('Party — smoke', () => {
     it('shows the spinner-only layout when character is null', () => {
         useCharacterStore.setState({ character: null });
         const { container } = renderParty();
-        // Spec: `if (!character) return <div className="party"><Spinner /></div>`.
-        // The root still mounts but the content wrapper does not.
         expect(container.querySelector('.party')).not.toBeNull();
         expect(container.querySelector('.party__content')).toBeNull();
+    });
+});
+
+describe('Party — hook-order regression (null -> loaded character)', () => {
+    it('does not crash when the character hydrates from null after mount', () => {
+        useCharacterStore.setState({ character: null });
+        const { container } = renderParty();
+        expect(container.querySelector('.party__content')).toBeNull();
+        act(() => {
+            useCharacterStore.setState({ character: makeChar() });
+        });
+        expect(container.querySelector('.party__content')).not.toBeNull();
     });
 });
 
@@ -158,7 +143,6 @@ describe('Party — create form toggle', () => {
         const { container } = renderParty();
         fireEvent.click(container.querySelector('.party__primary-btn') as HTMLButtonElement);
         const inputs = container.querySelectorAll('.party__create-form input');
-        // Nazwa / Opis / Hasło / Minimalny poziom / "Widoczne" checkbox
         expect(inputs.length).toBe(5);
     });
 });
@@ -215,14 +199,13 @@ describe('Party — public browser cards', () => {
             }],
         } as never);
         const { container } = renderParty();
-        // Full party gets filtered out -> still empty list message.
         expect(container.querySelector('.party__empty')).not.toBeNull();
     });
 });
 
 describe('Party — refresh button', () => {
     it('calls refreshPublicParties when the :counterclockwise-arrows-button: button is clicked', () => {
-        const refreshPublicParties = vi.fn(async () => { /* noop */ });
+        const refreshPublicParties = vi.fn(async () => { });
         usePartyStore.setState({ refreshPublicParties } as never);
         const { container } = renderParty();
         const refresh = container.querySelector('.party__refresh-btn') as HTMLButtonElement;
@@ -268,11 +251,3 @@ describe('Party — active dashboard (in a party)', () => {
     });
 });
 
-// TODO: Create form submission (handleCreateSubmit) routes through
-//       createParty + resetCreateForm + state cleanup. Easy to add when
-//       a real createParty mock is wired, but it just verifies the
-//       passthrough — coverage of the actual logic lives in
-//       partyStore tests.
-// TODO: Active dashboard deeper coverage — member chips, kick/transfer
-//       buttons, ready-check, leave/disband — covered by Playwright
-//       multi-user specs (tests/e2e/party/), out of vitest scope.

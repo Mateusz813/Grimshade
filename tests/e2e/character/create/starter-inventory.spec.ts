@@ -1,17 +1,3 @@
-/**
- * Atomic E2E — a new character starts with 30× smallest HP + 30× smallest MP
- * potions (2026-06-24 owner request: healing from the very first fight).
- *
- * Flow: login -> /character-select -> create a Knight via UI -> enter Town ->
- * read the live inventoryStore consumables (the create handler grants the
- * starter potions before redirecting to Town). Asserts consumables.hp_potion_sm
- * === 30 and consumables.mp_potion_sm === 30.
- *
- * We read the store directly via a dev-time dynamic import (same pattern as the
- * arena buy-with-ap spec) instead of scraping bag tiles — robust to UI markup.
- *
- * Cleanup: try/finally -> cleanupCharacterByName (no leftover character).
- */
 
 import { test, expect } from '@playwright/test';
 import { testUsers } from '../../fixtures/testUsers';
@@ -42,10 +28,7 @@ test.describe('Character › Create', { tag: '@character' }, () => {
             await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
             await expect(page.locator('.town__char-name')).toHaveText(nick);
 
-            // Read the live inventory consumables — granted by the create flow
-            // before the Town redirect.
             const consumables = await page.evaluate(async () => {
-                // @ts-expect-error dev-time Vite URL not resolvable by tsc, works in browser
                 const m = await import('/src/stores/inventoryStore.ts');
                 return (m as { useInventoryStore: { getState: () => { consumables: Record<string, number> } } })
                     .useInventoryStore.getState().consumables;

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { rollWeaponDamage, formatSkillName, CLASS_MODIFIER } from '../../systems/combatViewHelpers';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import {
     calculateDamage,
@@ -34,35 +36,17 @@ import { useCombatHudStore } from '../../stores/combatHudStore';
 import { usePartyDamageStore } from '../../stores/partyDamageStore';
 import { requestPartyCombatStart, registerGoReplicator } from '../../hooks/usePartyReadyCheck';
 
-// 2026-05-09: register the hunt go-replicator at module load. When a
-// non-leader member receives the `go` event for the /combat
-// destination, this fires `engineStartNewFight(monster)` so they
-// land on the SAME monster + wave count the leader picked.
 registerGoReplicator('/combat', (payload) => {
     if (!payload) return;
     const p = payload as { monster: Parameters<typeof engineStartNewFight>[0]; waveCount?: number };
     if (!p.monster) return;
-    // 2026-05-10 spec ("knight niezywy od startu"): if the joining
-    // member is at 0 HP (e.g. left over from a prior session/death
-    // that never resolved), heal them to full BEFORE starting the
-    // shared fight. Otherwise the leader sees an immediately-dead
-    // ally card and the member's engine spawns at hp=0.
     const ch = useCharacterStore.getState().character;
     if (ch && (ch.hp ?? 0) <= 0) {
         useCharacterStore.getState().fullHealEffective();
     }
-    // Members should spawn the SAME number of monsters the leader
-    // chose. Sync the wavePlannedCount before kicking off the fight.
     if (typeof p.waveCount === 'number' && p.waveCount > 0) {
         useCombatStore.getState().setWavePlannedCount(p.waveCount);
     }
-    // 2026-05-11 spec ("knight nie dolaczyl do walki"): pass
-    // `bypassLevelCheck=true` so a lower-level party member can follow
-    // the leader into a monster they couldn't solo. The leader has
-    // already validated level + mastery on their end; if the member's
-    // engine re-checks, the fight silently never starts and the member
-    // is stranded on the hub picker. This also skips the mastery gate
-    // (see startNewFight implementation).
     engineStartNewFight(p.monster, true);
 });
 import { useCharacterStore } from '../../stores/characterStore';
@@ -137,24 +121,15 @@ import { useLevelUpRefill } from '../../hooks/useLevelUpRefill';
 import { AUTO_FIGHT_DELAY_MS } from '../../hooks/useBackgroundCombat';
 import { formatGoldShort } from '../../systems/goldFormat';
 import { getPotionImage, getSpellChestImage, getSummonImage } from '../../systems/spriteAssets';
-// 2026-07-09: opt-in autorytatywny backend (Laravel). Gałąź uruchamia się
-// TYLKO gdy isBackendMode() === true — domyślnie gra działa po staremu
-// (kliencki combatEngine). W trybie backendu rozpoczęcie polowania woła
-// jeden resolve na serwerze i hydratuje store'y z /state (patrz runBackendHunt).
 import { isBackendCombatDelegated } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Combat.scss';
 
-// Potion cooldown durations (ms) — for manual potion use UI
 const HP_POTION_COOLDOWN_MS = 1000;
 const MP_POTION_COOLDOWN_MS = 1000;
 const SKILL_COOLDOWN_MS = 8000;
-// 2026-05-12: scale skill MP cost with player's effective max MP.
-// See combatEngine.ts -> `getSkillMpCost()` for the formula. Imported
-// at top of file; alias kept for readability at call sites.
 
-// -- Types / constants ---------------------------------------------------------
 
 const monsters = monstersRaw as unknown as IMonster[];
 const monsterById = new Map(monsters.map((m) => [m.id, m]));
@@ -174,12 +149,7 @@ for (const c of classesArray) {
     classesData[c.id] = c;
 }
 
-const CLASS_MODIFIER: Record<string, number> = {
-    Knight: 1.0, Mage: 1.3, Cleric: 1.0,
-    Archer: 1.2, Rogue: 1.0, Necromancer: 1.2, Bard: 1.0,
-};
 
-// -- Drop breakdown helpers (same logic as MonsterList) -----------------------
 
 const RARITY_THRESHOLDS = [0.55, 0.25, 0.12, 0.05, 0.025, 0.005];
 const RARITY_TIER_NAMES: { key: string; label: string; color: string }[] = [
@@ -204,8 +174,6 @@ const STONE_NAMES_MAP: Record<string, string> = {
     common_stone: 'Common Stone', rare_stone: 'Rare Stone', epic_stone: 'Epic Stone',
     legendary_stone: 'Legendary Stone', mythic_stone: 'Mythic Stone', heroic_stone: 'Heroic Stone',
 };
-// Maps a combat variant key (`normal`/`strong`/.../`boss`) to its drop
-// stone ID so we can resolve the proper PNG via STONE_ICONS.
 const VARIANT_TO_STONE_ID: Record<string, string> = {
     normal: 'common_stone', strong: 'rare_stone', epic: 'epic_stone',
     legendary: 'legendary_stone', boss: 'mythic_stone',
@@ -240,32 +208,9 @@ const getCombatDropBreakdown = (variant: string): { rollCount: number; dropChanc
     return { rollCount, dropChance: dropChance * 100, tiers };
 };
 
-/**
- * Returns a random weapon damage value from mainHand (for manual skill use).
- */
-const rollWeaponDamage = (): number => {
-    const { equipment } = useInventoryStore.getState();
-    const weapon = equipment.mainHand;
-    if (!weapon) return 0;
-    const dmgMin = weapon.bonuses.dmg_min ?? weapon.bonuses.attack ?? 0;
-    const dmgMax = weapon.bonuses.dmg_max ?? dmgMin;
-    if (dmgMax <= 0) return 0;
-    return dmgMin + Math.floor(Math.random() * (dmgMax - dmgMin + 1));
-};
 
-// -- Helpers -------------------------------------------------------------------
 
-const formatSkillName = (id: string | null): string => {
-    if (!id) return '—';
-    const name = id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    return `${getSkillIcon(id)} ${name}`;
-};
 
-// -- Backend hunt (opt-in) -----------------------------------------------------
-// Kształt odpowiedzi POST /combat/resolve (autorytatywny wynik z serwera —
-// patrz CombatController::resolve + HuntResolver). Store'y mają go APLIKOWAĆ,
-// nie liczyć samodzielnie. Wszystkie pola opcjonalne — porażka nie zwraca
-// nagród, więc narrowing musi być defensywny.
 interface IBackendHuntDrops {
     stones?: { type?: string; count?: number } | null;
     potions?: Array<{ potionId?: string; count?: number }>;
@@ -285,7 +230,6 @@ interface IBackendHuntResponse {
     gold?: number;
 }
 
-/** Zawęża `unknown` z backendApi.combatResolve do result-a (bez any). */
 const parseBackendHuntResult = (raw: unknown): IBackendHuntResult => {
     if (typeof raw !== 'object' || raw === null) return {};
     const obj = raw as IBackendHuntResponse;
@@ -293,7 +237,6 @@ const parseBackendHuntResult = (raw: unknown): IBackendHuntResult => {
     return obj.result;
 };
 
-/** Feedback pokazywany po serwerowym rozstrzygnięciu polowania (toast). */
 interface IBackendHuntFeedback {
     won: boolean;
     xp: number;
@@ -304,16 +247,9 @@ interface IBackendHuntFeedback {
     error: boolean;
 }
 
-// -- Main component ------------------------------------------------------------
 
 const ALL_ITEMS: IBaseItem[] = flattenItemsData(itemsData as Parameters<typeof flattenItemsData>[0]);
 
-/**
- * Module-level set of party.id values we've already reset
- * session counters for. Survives Combat.tsx unmount/remount so a
- * background-mode round-trip (town -> /combat) doesn't wipe the
- * shared session tally.
- */
 const sharedSessionResetSeen = new Set<string>();
 
 const Combat = () => {
@@ -327,8 +263,8 @@ const Combat = () => {
         huntFilterAvailableOnly, huntFilterTaskedOnly, huntFilterMinLevel, huntFilterSortDesc,
         setHuntFilterAvailableOnly, setHuntFilterTaskedOnly, setHuntFilterMinLevel, setHuntFilterSortDesc,
         autoPotionHpId, autoPotionMpId, autoPotionPctHpId, autoPotionPctMpId,
-    } = useSettingsStore();
-    const { activeSkillSlots } = useSkillStore();
+    } = useSettingsStore(useShallow((s) => ({ combatSpeed: s.combatSpeed, setCombatSpeed: s.setCombatSpeed, skillMode: s.skillMode, setSkillMode: s.setSkillMode, showCombatXpBar: s.showCombatXpBar, setShowCombatXpBar: s.setShowCombatXpBar, huntFilterAvailableOnly: s.huntFilterAvailableOnly, huntFilterTaskedOnly: s.huntFilterTaskedOnly, huntFilterMinLevel: s.huntFilterMinLevel, huntFilterSortDesc: s.huntFilterSortDesc, setHuntFilterAvailableOnly: s.setHuntFilterAvailableOnly, setHuntFilterTaskedOnly: s.setHuntFilterTaskedOnly, setHuntFilterMinLevel: s.setHuntFilterMinLevel, setHuntFilterSortDesc: s.setHuntFilterSortDesc, autoPotionHpId: s.autoPotionHpId, autoPotionMpId: s.autoPotionMpId, autoPotionPctHpId: s.autoPotionPctHpId, autoPotionPctMpId: s.autoPotionPctMpId })));
+    const { activeSkillSlots } = useSkillStore(useShallow((s) => ({ activeSkillSlots: s.activeSkillSlots })));
     const consumables = useInventoryStore((s) => s.consumables);
     const activeTasks = useTaskStore((s) => s.activeTasks);
     const activeQuests = useQuestStore((s) => s.activeQuests);
@@ -336,13 +272,8 @@ const Combat = () => {
     const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
     const transformColor = getHighestTransformColor();
     const playerAvatarSrc = character ? getCharacterAvatar(character.class, completedTransforms) : '';
-    // Necromancer summon stack — when the local player is a necro, this is
-    // the live ordered list spawned by `useNecroSummonStore` and consumed
-    // by AllyCard for the count badge + tooltip breakdown.
     const necroSummons = useNecroSummonStore((s) => s.summons);
 
-    // Derive an accent color from the active transform tier (solid or first stop
-    // of the gradient). Falls back to the class color if no transform unlocked.
     const classColorFallbackMap: Record<string, string> = {
         Knight: '#e53935', Mage: '#7b1fa2', Cleric: '#ffc107', Archer: '#4caf50',
         Rogue: '#424242', Necromancer: '#795548', Bard: '#ff9800',
@@ -353,11 +284,6 @@ const Combat = () => {
         return character ? (classColorFallbackMap[character.class] ?? '#e94560') : '#e94560';
     })();
 
-    // Calculate effective stats (base character + equipment bonuses) for display.
-    // Use the SAME engine helper the combat system uses so the displayed max_hp /
-    // max_mp match what the engine and auto-potion logic see — otherwise the UI
-    // can show `current > max` (e.g. HP 4055/3962 with an active transform) and
-    // auto-potions fire against a higher engine-max than the UI shows.
     const eqStats = useMemo(
         () => getTotalEquipmentStats(equipment, ALL_ITEMS),
         [equipment],
@@ -367,7 +293,6 @@ const Combat = () => {
         if (!character) return null;
         const engineEff = engineGetEffectiveChar(character);
         if (engineEff) return engineEff;
-        // Fallback if engine helper returned null for any reason — keeps UI safe.
         const tb = getTrainingBonuses(skillLevelsForStats, character.class);
         return {
             ...character,
@@ -380,11 +305,8 @@ const Combat = () => {
             crit_damage: (character.crit_damage ?? 2.0) + eqStats.critDmg * 0.01 + tb.crit_dmg,
             hp_regen: (character.hp_regen ?? 0) + tb.hp_regen,
         };
-        // `completedTransforms` is in the dep list so transform changes
-        // recompute the effective stats while the Combat view is mounted.
     }, [character, eqStats, skillLevelsForStats, completedTransforms]);
 
-    // -- Combat store state ----------------------------------------------------
     const {
         phase, monster,
         playerCurrentHp, playerCurrentMp,
@@ -393,48 +315,20 @@ const Combat = () => {
         setSelectedMonster,
     } = useCombatStore();
 
-    // Background combat state from store (not local)
     const autoFight = useCombatStore((s) => s.autoFight);
     const lastCombatEvent = useCombatStore((s) => s.lastCombatEvent);
-    // Wave state
     const waveMonsters = useCombatStore((s) => s.waveMonsters);
     const activeTargetIdx = useCombatStore((s) => s.activeTargetIdx);
     const wavePlannedCount = useCombatStore((s) => s.wavePlannedCount);
     const decrementWavePlannedCount = useCombatStore((s) => s.decrementWavePlannedCount);
-    // Live XP/h readout — populated globally by `useBackgroundCombat` (mounted
-    // in App.tsx). Read it here so we can pass into <CombatSubControls> for
-    // the in-bar "X.Yk XP/h" badge.
     const sessionXpPerHour = useCombatStore((s) => s.sessionXpPerHour);
-    // Uwaga: checkpoint polowania (co 25 fal → commit) żyje globalnie w
-    // useBackgroundCombat (App.tsx), żeby działał też przy polowaniu w tle.
 
-    // Party bots fighting alongside the player (hydrated in startNewFight)
     const partyBots = useBotStore((s) => s.bots);
-    // 2026-05-09: party humans (non-self, non-bot) shown as ally cards
-    // alongside the local player. Live HP/MP comes from the realtime
-    // presence broadcast (`usePartyPresence` heartbeat).
     const partyPresence = usePartyPresenceStore((s) => s.byMember);
-    // 2026-05-09: realtime spell-cast cues from other party members.
-    // Drives the ally-card skill anim when a teammate casts a spell.
     const partyLastSpells = usePartyCombatSyncStore((s) => s.lastSpellByCaster);
-    // 2026-05-11: realtime damage events from the party-combat channel.
-    // Driven by the leader's resolved attacks (own + applied member
-    // attack-actions). Every client renders the same hit animation +
-    // floating number, and the per-attacker damage counter sums via
-    // `partyDamageStore.addDamage(attackerId, dmg)`.
     const partyLastDamage = usePartyCombatSyncStore((s) => s.lastDamageByAttacker);
-    // 2026-05-11: realtime "monster hit a member" events. Whatever
-    // client receives it renders a floating damage number on the
-    // targeted member's ally slot so the whole party visually sees who
-    // took the hit. The targeted member additionally applies the
-    // damage to their own character (handled in usePartyCombatSync).
     const partyLastMemberHit = usePartyCombatSyncStore((s) => s.lastMemberHit);
 
-    // 2026-05-09 spec ("tylko lider zmienia walke"): in a multi-human party
-    // (i.e. at least one OTHER human besides me) only the leader can change
-    // wave count, combat speed, or kick off a fight. Bots don't count — a
-    // solo player with only bot helpers is still effectively the leader.
-    // Members keep the read-only display so they see what the leader picked.
     const isMemberInMultiHumanParty = useMemo(() => {
         if (!party || !character) return false;
         const otherHumans = party.members.filter((m) => m.id !== character.id && !m.isBot);
@@ -442,14 +336,6 @@ const Combat = () => {
         return party.leaderId !== character.id;
     }, [party, character]);
 
-    // 2026-05-14 spec ("port death popup/handoff to hunt"): are we
-    // the leader in a multi-human party? Drives the PartyDeathChoice
-    // popup that arms when the leader's HP drops to 0 — instead of
-    // auto-running the full death sequence, the player picks between
-    // bailing to town (penalty + leader-handoff + leaveParty) or
-    // waiting for a Cleric ally to revive them. Members in hunt
-    // currently can't really die (engine auto-heals them) so the
-    // popup is leader-only for now.
     const isLeaderInMultiHumanParty = useMemo(() => {
         if (!party || !character) return false;
         const otherHumans = party.members.filter((m) => m.id !== character.id && !m.isBot);
@@ -459,33 +345,21 @@ const Combat = () => {
 
     const logContainerRef = useRef<HTMLDivElement>(null);
 
-    /** Monster currently being inspected in the drop-info modal (idle phase). */
     const [dropModalMonsterId, setDropModalMonsterId] = useState<string | null>(null);
 
-    // 2026-07-09: feedback (toast) po serwerowym rozstrzygnięciu polowania w
-    // trybie backendu. Null = brak. Auto-znika po kilku sekundach (efekt niżej).
     const [backendHuntResult, setBackendHuntResult] = useState<IBackendHuntFeedback | null>(null);
 
-    // Auto-ukrycie toasta z wynikiem serwerowego polowania po 6 s.
     useEffect(() => {
         if (!backendHuntResult) return;
         const id = setTimeout(() => setBackendHuntResult(null), 6000);
         return () => clearTimeout(id);
     }, [backendHuntResult]);
 
-    /**
-     * 2026-07-09: pojedyncze serwerowe rozstrzygnięcie polowania (tryb backendu).
-     * Autorytet ma serwer — NIE odpalamy klienckiego combatEngine. Wołamy
-     * POST /combat/resolve, pokazujemy wynik (won/xp/gold/loot z odpowiedzi),
-     * po czym syncFromBackend(charId) hydratuje wszystkie store'y z GET /state.
-     * try/catch: błąd backendu NIE może wywalić gry — pokazujemy toast błędu.
-     */
     const runBackendHunt = useCallback(async (target: IMonster): Promise<void> => {
         if (!character) return;
         try {
             const raw = await backendApi.combatResolve(character.id, target.id);
             const result = parseBackendHuntResult(raw);
-            // Autorytatywny stan z serwera -> store'y (level/xp/hp/gold/inventory/...).
             await syncFromBackend(character.id);
             const items = result.drops?.items;
             setBackendHuntResult({
@@ -511,32 +385,17 @@ const Combat = () => {
         }
     }, [character]);
 
-    /** Hunt-only "Wyjdź" popup ("Zakończ polowanie" / "Wróć do miasta"). */
     const [exitDialogOpen, setExitDialogOpen] = useState(false);
 
-    // 2026-05-14: leader-death choice popup state. `deathChoicePopup`
-    // is shown when the leader hits 0 HP with at least one ally still
-    // up. `deathChoiceShownRef` is the one-shot latch — without it the
-    // popup would re-open every render frame because HP stays at 0 on
-    // the engine's view (the leader bail keeps it there).
-    // `waitingForResRef` flips when the player picks "Czekaj"; if a
-    // teammate Cleric's Aura Wskrzeszenia revives them, the auto-
-    // close effect below catches the heal and clears all three.
     const [deathChoicePopup, setDeathChoicePopup] = useState(false);
     const deathChoiceShownRef = useRef(false);
     const waitingForResRef = useRef(false);
 
-    // 2026-05-14: arm the popup when the leader's HP hits 0 with at
-    // least one ally still up. The engine's `handlePlayerDeath` bails
-    // for this exact case (see combatEngine.ts) so we DON'T need to
-    // race the death sequence — HP just sits at 0 until the player
-    // picks a path.
     useEffect(() => {
         if (!isLeaderInMultiHumanParty) return;
         if (phase !== 'fighting') return;
         if (playerCurrentHp > 0) return;
         if (deathChoiceShownRef.current) return;
-        // Count alive allies (bots + humans whose presence shows HP > 0).
         const aliveBots = partyBots.filter((b) => b.alive).length;
         const aliveHumans = (party?.members ?? []).filter((m) => {
             if (m.id === character?.id) return false;
@@ -546,9 +405,6 @@ const Combat = () => {
         }).length;
         const aliveAllies = aliveBots + aliveHumans;
         if (aliveAllies <= 0) {
-            // No one to revive us — let the engine's auto-death fire
-            // by forcing through immediately. We pass true so the
-            // leader-bail in handlePlayerDeath doesn't trigger again.
             engineHandlePlayerDeath(true);
             return;
         }
@@ -556,9 +412,6 @@ const Combat = () => {
         setDeathChoicePopup(true);
     }, [isLeaderInMultiHumanParty, phase, playerCurrentHp, partyBots, party, character?.id, partyPresence]);
 
-    // 2026-05-14: auto-close the popup if a Cleric's Aura Wskrzeszenia
-    // (or any other heal) brings the player back above 0 HP. Clears
-    // the one-shot latch so a later death re-arms it.
     useEffect(() => {
         if (playerCurrentHp > 0 && deathChoicePopup) {
             setDeathChoicePopup(false);
@@ -567,13 +420,6 @@ const Combat = () => {
         }
     }, [playerCurrentHp, deathChoicePopup]);
 
-    // 2026-05-14: "Wróć do miasta" handler. Mirrors Boss/Raid's
-    // confirm branch — promote an alive human teammate to leader so
-    // the fight continues under fresh authority, drop ourselves out
-    // of the party so members see us disappear, then run the full
-    // death sequence via the engine (penalty + global skull overlay +
-    // nav home). Fire-and-forget the network calls so the overlay
-    // doesn't wait.
     const handleDeathReturnToTown = useCallback(() => {
         setDeathChoicePopup(false);
         const pty = usePartyStore.getState().party;
@@ -592,39 +438,22 @@ const Combat = () => {
                     if (candidate) {
                         try {
                             await usePartyStore.getState().transferLeadership(candidate.id);
-                        } catch { /* best effort */ }
+                        } catch { }
                     }
                 }
                 try {
                     await usePartyStore.getState().leaveParty(me);
-                } catch { /* best effort */ }
+                } catch { }
             })();
         }
-        // Run the full engine death sequence. forceConfirm=true pushes
-        // past the leader-in-multi-human-party bail we added so the
-        // penalty + skull overlay + nav home actually fire.
         engineHandlePlayerDeath(true);
     }, []);
 
-    // 2026-05-14: "Czekaj na wskrzeszenie". Closes the popup but the
-    // engine keeps HP at 0 — the player sits slumped on the field and
-    // an ally Cleric's Aura Wskrzeszenia can rez them back to half HP.
-    // The auto-close effect above catches the heal and re-arms the
-    // latch for a future death.
     const handleDeathWaitForRes = useCallback(() => {
         setDeathChoicePopup(false);
         waitingForResRef.current = true;
     }, []);
 
-    // 2026-05-17 v2 spec ("to sie tyczy kazdej walki w party"): when a
-    // hunt wave wraps in victory but the local player is still dead
-    // (chose Czekaj earlier, no Cleric rez), auto-fire the same
-    // sequence as the Wróć-do-miasta button: penalty + death overlay
-    // + leave party + nav home. Without this the leader's autoFight
-    // (or "Walcz ponownie" click) would yank the dead player into
-    // the next wave at 0 HP — they'd loop through Czekaj -> death
-    // -> Czekaj forever. One-shot per session via deathChoiceShownRef
-    // semantics — the existing handler already gates re-entry.
     const autoDeathOnVictoryRef = useRef(false);
     useEffect(() => {
         if (phase !== 'victory') return;
@@ -633,21 +462,12 @@ const Combat = () => {
         autoDeathOnVictoryRef.current = true;
         handleDeathReturnToTown();
     }, [phase, playerCurrentHp, handleDeathReturnToTown]);
-    // Re-arm the latch the moment combat resumes so a future death
-    // can re-fire the auto handler.
     useEffect(() => {
         if (phase === 'fighting') {
             autoDeathOnVictoryRef.current = false;
         }
     }, [phase]);
 
-    // -- Level-up HP/MP refill -------------------------------------------------
-    // characterStore.addXp() refills character.hp/mp to the new max on every
-    // level-up. Hunting keeps live HP/MP in combatStore.playerCurrentHp/Mp,
-    // which is NOT touched by addXp — without this hook the player would level
-    // up mid-fight and watch their bars stay at the pre-level-up value until
-    // the next monster died and the engine re-synced. Refill on event so the
-    // bars jump to 100% the same frame the level-up popup shows.
     useLevelUpRefill(phase === 'fighting', useCallback((maxHp, maxMp) => {
         useCombatStore.setState({
             playerCurrentHp: maxHp,
@@ -655,14 +475,6 @@ const Combat = () => {
         });
     }, []));
 
-    // 2026-05-11 spec ("dmg pasek gorny zbiorcze z calego polowania"):
-    // the party-damage tally accumulates across the WHOLE hunt — every
-    // wave, every monster — and resets ONLY when the player leaves
-    // combat (Wyjdź / Zakończ Polowanie / Wróć do miasta). The old
-    // per-wave reset on phase==='fighting' wiped the counter on every
-    // auto-fight transition, which made it useless for tracking party
-    // contribution. Resetting on mount instead gives one tally per
-    // combat session.
     const damageResetDoneRef = useRef(false);
     useEffect(() => {
         if (damageResetDoneRef.current) return;
@@ -670,19 +482,6 @@ const Combat = () => {
         usePartyDamageStore.getState().reset();
     }, []);
 
-    // 2026-05-12 spec ("po powrocie z miasta nie reset counterow / liczniki
-    // nie zgadzaja sie miedzy graczami"): reset the per-session kill
-    // counters + accumulated XP / gold ONCE per party.id. Using a
-    // module-level map outside React so the reset state survives
-    // Combat.tsx unmount/remount (e.g. player goes to town for
-    // background combat, then comes back — view remounts but the same
-    // party is still active, so we MUST NOT reset again).
-    //
-    // Both leader's and member's clients hit this effect when their
-    // local `party` first transitions to a multi-human roster. Both
-    // call `resetSession()` so they start the shared tally at 0 on
-    // the same "first kill". Every subsequent kill broadcast keeps
-    // them in lockstep.
     useEffect(() => {
         if (!character || !party) return;
         const otherHumans = party.members.filter((m) => m.id !== character.id && !m.isBot);
@@ -692,12 +491,6 @@ const Combat = () => {
         useCombatStore.getState().resetSession();
     }, [character, party]);
 
-    // 2026-05-11: defensive heal at /combat mount — if the player
-    // arrives at the combat view with character.hp <= 0 (left over
-    // from any prior session bug, an interrupted death penalty, or a
-    // stale Supabase row), refill them. The defensive heal in
-    // `switchToCharacter` covers session boot; this one catches
-    // direct navigations or hot-reloads that skip the boot path.
     useEffect(() => {
         const ch = useCharacterStore.getState().character;
         if (!ch) return;
@@ -711,30 +504,10 @@ const Combat = () => {
                 });
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // -- Live HP/MP mirror -> characterStore ------------------------------------
-    // Hunting keeps its live HP/MP in combatStore (playerCurrentHp/Mp).
-    // combatEngine already syncs these to characterStore on every kill, but
-    // the global TopHeader bars need the WITHIN-fight values too — without
-    // this mirror they'd freeze between kills until the monster dies. The
-    // engine's stopCombat() and post-kill sync still own end-of-fight
-    // persistence; this effect only handles the mid-fight ticks.
-    //
-    // Clamp uses EFFECTIVE max (base + equipment + training + active
-    // elixirs + transform), NOT the raw `liveChar.max_hp`. Without this,
-    // a potion that brings local HP above base max while an HP elixir is
-    // active would write a truncated value to the store and the
-    // TopHeader bar would lose the elixir-buffed surplus.
     useEffect(() => {
         if (phase !== 'fighting' && phase !== 'victory') return;
-        // 2026-05-11: for non-leader members in a multi-human party,
-        // combatStore.playerCurrentHp/Mp reflect the SHARED arena state
-        // (leader-authoritative). It's NOT this player's HP/MP. Don't
-        // mirror it back into character.hp — that would wipe out the
-        // member's real HP with the leader's value the moment they
-        // walk into /combat.
         const partyState = usePartyStore.getState().party;
         const me = useCharacterStore.getState().character?.id;
         const otherHumans = partyState?.members.filter((m) => m.id !== me && !m.isBot) ?? [];
@@ -751,8 +524,6 @@ const Combat = () => {
         useCharacterStore.getState().updateCharacter({ hp: safeHp, mp: safeMp });
     }, [playerCurrentHp, playerCurrentMp, phase]);
 
-    /** Auto-potion master toggle — flips both HP and MP flat-potion auto-use
-     *  in one chip click (the spec wants a single user-facing switch). */
     const autoPotionHpEnabled = useSettingsStore((s) => s.autoPotionHpEnabled);
     const autoPotionMpEnabled = useSettingsStore((s) => s.autoPotionMpEnabled);
     const setAutoPotionHpEnabled = useSettingsStore((s) => s.setAutoPotionHpEnabled);
@@ -764,50 +535,18 @@ const Combat = () => {
         setAutoPotionMpEnabled(next);
     };
 
-    // -- Combat animation state -------------------------------------------------
-    // Per-monster hit pulse map: monster idx -> monotonically-increasing
-    // counter. EnemyCard renders a keyed flash overlay against this counter,
-    // so two near-simultaneous hits on the same slot (auto + skill, party
-    // members syncing on the same tick) each get their own visible flash
-    // instead of the second one being swallowed by the in-flight 300ms
-    // animation. `hitMonsterIdx` is kept separately to drive the attacker
-    // class slash visual, which is short-lived and naturally resets.
     const [hitMonsterIdx, setHitMonsterIdx] = useState<number | null>(null);
     const [monsterHitPulses, setMonsterHitPulses] = useState<Record<number, number>>({});
     const [playerHitPulse, setPlayerHitPulse] = useState(0);
-    // Per-bot pulse counter — keyed by bot id. Engine emits `botHit` events
-    // whenever a wave monster's aggro lands on a party member, so the player
-    // can visually track which bots are getting focused.
     const [botHitPulses, setBotHitPulses] = useState<Record<string, number>>({});
-    // 2026-05-11: per-remote-human hit pulse — bumped when a party-combat
-    // `member-hit` event arrives. Drives the same flash/shake overlay as
-    // the local player and bots so a monster swing on Archer's ally card
-    // (on Knight's screen) looks identical to a monster swing on Knight's
-    // own card. Keyed by character id.
     const [humanHitPulses, setHumanHitPulses] = useState<Record<string, number>>({});
-    // Note: we no longer track an attacker-side `playerAttacking` flag because
-    // attack animations now land ONLY on the targeted monster (see uiEnemies
-    // binding below). The target's `attack-{class}` modifier is gated on
-    // `hitMonsterIdx` + `attackingClassName` alone.
     const [attackingClassName, setAttackingClassName] = useState<string | null>(null);
 
-    // Skill animation overlay — same pattern as Boss/Dungeon. The hook owns a
-    // single `overlay` slot that holds the active skill's emoji + cssClass and
-    // auto-clears after `animData.duration`. We pass it down to <CombatArena>.
     const { trigger: triggerSkillAnim } = useSkillAnim();
-    // Per-slot combat VFX. Hunting uses 4 wave-monster slots on the left
-    // (engine ships `targetIdx` in events) and player + bots on the right.
-    // We bind these into uiEnemies / uiAllies further down so the cards
-    // render automatically.
     const fx = useCombatFx();
 
-    // Auto-fight countdown progress — drives a thin bar above "Walcz ponownie"
-    // when the player is in `victory` phase with auto-fight ON. Mirrors the
-    // engine's `AUTO_FIGHT_DELAY_MS` timer in `useBackgroundCombat`. Hidden
-    // when SKIP speed is active (delay collapses to 10ms — would just blink).
     const [autoFightProgress, setAutoFightProgress] = useState(0);
 
-    // -- Potion + skill cooldown state ------------------------------------------
     const hpPotionCooldown = useCooldownStore((s) => s.hpPotionCooldown);
     const mpPotionCooldown = useCooldownStore((s) => s.mpPotionCooldown);
     const pctHpCooldown = useCooldownStore((s) => s.pctHpCooldown);
@@ -839,15 +578,6 @@ const Combat = () => {
         Rogue: 250, Necromancer: 450, Bard: 400,
     };
 
-    // Pin the attack animation to the GIVEN slot. We accept `idx` as an
-    // argument instead of reading `activeTargetIdx` from the store because by
-    // the time the React effect fires, the engine may have already advanced
-    // the cursor (post-kill). The engine now ships `targetIdx` in the
-    // `monsterHit` event payload — we route it through here so the slash /
-    // bolt / arrow visual sticks to the slot that was actually struck.
-    // The pulse counter is bumped on every distinct hit so the keyed flash
-    // overlay in EnemyCard re-mounts each time, even if the previous flash
-    // hasn't faded yet.
     const triggerMonsterHit = (idx: number) => {
         setHitMonsterIdx(idx);
         setAttackingClassName(character?.class ?? null);
@@ -860,34 +590,11 @@ const Combat = () => {
         setPlayerHitPulse((p) => p + 1);
     };
 
-    // -- Reset FX on return-to-idle --------------------------------------------
-    // The combat-fx hook holds floats / skill overlays in local state. Hit
-    // pulses naturally fade with their CSS, but a fight that ends mid-cast
-    // (e.g. monster died right after a skill fired) could leave a stale skill
-    // overlay sitting on the slot when the player returns to the monster picker.
-    // Clearing on phase=idle gives every new fight a clean visual canvas.
-    //
-    // IMPORTANT: depend on the stable `fx.resetFx` callback (memoised with
-    // `useCallback([])` inside `useCombatFx`), NOT on the `fx` object — `fx`
-    // is a fresh object literal every render, so depending on it would re-run
-    // this effect every render. When phase === 'idle', that loops:
-    // resetFx() -> 4 setStates to new {} -> re-render -> new fx -> effect again.
     const resetFx = fx.resetFx;
     useEffect(() => {
         if (phase === 'idle') resetFx();
     }, [phase, resetFx]);
 
-    // -- Remote ally spell-cast -> fire animation on the right card --------
-    // The partyCombatSyncStore receives `spell-cast` events from teammates
-    // and stores the latest one per casterId. We watch that map and, when
-    // a NEW timestamp lands for any caster other than the local player,
-    // dispatch the animation:
-    //   - DAMAGE spells -> triggerEnemySkillAnim on the target monster slot
-    //     (the spell visually lands on the enemy, exactly like for our own
-    //     casts). Each player kills their OWN copy of the monster, so the
-    //     floating damage value isn't shipped — only the cast cue is.
-    //   - SELF / HEAL / BUFF spells -> triggerAllySkillAnim on the caster's
-    //     ally card so the aura shows where it's actually applied.
     const lastRemoteCastTsRef = useRef<Record<string, number>>({});
     useEffect(() => {
         if (!character) return;
@@ -895,13 +602,13 @@ const Combat = () => {
             .filter((m) => m.id !== character.id && !m.isBot)
             .map((m) => m.id);
         for (const [casterId, cast] of Object.entries(partyLastSpells)) {
-            if (casterId === character.id) continue; // local cast handled by engine
+            if (casterId === character.id) continue;
             const prev = lastRemoteCastTsRef.current[casterId] ?? 0;
             if (cast.sentAt <= prev) continue;
             lastRemoteCastTsRef.current[casterId] = cast.sentAt;
             const humanIdx = orderedHumanIds.indexOf(casterId);
             if (humanIdx < 0) continue;
-            const allySlot = humanIdx + 1; // +1 because slot 0 is local player
+            const allySlot = humanIdx + 1;
             if (cast.isDamageHit && typeof cast.targetIdx === 'number') {
                 fx.triggerEnemySkillAnim(cast.targetIdx, cast.skillId);
             } else {
@@ -910,24 +617,9 @@ const Combat = () => {
         }
     }, [partyLastSpells, party?.members, character, fx]);
 
-    // -- Remote damage events -> animations + damage counter ----------------
-    // The leader broadcasts every basic-attack hit (own + member-applied)
-    // so all clients render the same floating number / hit flash. Each
-    // attacker's contribution also bumps `partyDamageStore` so the
-    // PartyWidget's per-ally dmg column reflects who hit for what.
     const lastDamageTsRef = useRef<Record<string, number>>({});
     useEffect(() => {
         if (!character) return;
-        // 2026-05-11 spec ("nie widze animacji atakow podstawowych
-        // sojusznikow"): figure out whether THIS client is a member or
-        // the leader. The leader's local engine already emits a
-        // `monsterHit` event for their own swing (rendered via the
-        // `lastCombatEvent` FX path below), so we skip self events for
-        // the leader to avoid double-rendering. A non-leader MEMBER
-        // diverts their swing to an `attack-action` broadcast and
-        // their local engine emits NOTHING — the leader's echoed
-        // `damage-event` is the ONLY path that triggers the
-        // animation, so we must NOT skip self for members.
         const partyState = usePartyStore.getState().party;
         const otherHumans = partyState?.members.filter((m) => m.id !== character.id && !m.isBot) ?? [];
         const iAmLeaderOrSolo = !partyState || otherHumans.length === 0 || partyState.leaderId === character.id;
@@ -936,41 +628,19 @@ const Combat = () => {
             if (ev.sentAt <= prev) continue;
             lastDamageTsRef.current[attackerId] = ev.sentAt;
             if (attackerId === character.id && iAmLeaderOrSolo) continue;
-            // Color the float by attacker — local player's own hits
-            // render in white ('basic'), remote allies in cyan
-            // ('ally-basic'). Members see their own attacks in white
-            // (consistent with solo experience).
             const isLocalAttacker = attackerId === character.id;
             const kind: 'basic' | 'ally-basic' = isLocalAttacker ? 'basic' : 'ally-basic';
             fx.pushEnemyFloat(ev.targetIdx, ev.damage, kind, { isCrit: ev.isCrit });
             setMonsterHitPulses((prev) => ({ ...prev, [ev.targetIdx]: (prev[ev.targetIdx] ?? 0) + 1 }));
-            // 2026-05-12 spec ("damage counter wspolny dla wszystkich"):
-            // ONLY the leader / solo player accumulates locally. Members
-            // wait for the next `state` broadcast which carries the
-            // leader's authoritative damage map and SETS the local
-            // store (see applyStateLocally in partyCombatSyncStore).
-            // Without this gate, members would double-count their own
-            // damage (once via damage-event, once via state mirror)
-            // and any dropped damage-event would permanently desync
-            // them from the leader's truth.
             if (ev.damage > 0 && iAmLeaderOrSolo) {
                 usePartyDamageStore.getState().addDamage(attackerId, ev.damage);
             }
-            // 2026-05-11 spec ("logi pokazuja wszystkie ataki"): write
-            // the ally attack to the local log so the filtered
-            // "Sojusznicy" view shows it. For LEADER/SOLO, skip self
-            // because the local engine already logged the swing via
-            // doSingleHit's addLog. For MEMBER, the local engine
-            // diverts basic attacks to a broadcast (no addLog), so
-            // we MUST log own attacks from the damage-event echo —
-            // otherwise the member's own log is empty for basic hits.
             if (ev.damage > 0) {
                 const isSelfAndLogged = isLocalAttacker && iAmLeaderOrSolo;
                 if (!isSelfAndLogged) {
                     const attackerName = ev.attackerName ?? (isLocalAttacker ? (character.name ?? 'Ja') : 'Sojusznik');
                     const critTag = ev.isCrit ? ' :high-voltage:KRYTYK' : '';
                     if (isLocalAttacker) {
-                        // Mirror the leader/solo log style: "Atakujesz X za N dmg".
                         const monsterName = useCombatStore.getState().waveMonsters[ev.targetIdx]?.monster.name_pl
                             ?? useCombatStore.getState().monster?.name_pl
                             ?? '...';
@@ -989,45 +659,25 @@ const Combat = () => {
         }
     }, [partyLastDamage, character, fx]);
 
-    // -- Remote member-hit (monster -> ally) -> animate on ally card ---------
-    // Every client renders the floating damage number on the targeted
-    // member's slot — same `'monster'` float kind + flash overlay the
-    // local engine uses for `playerHit`. The TARGETED member additionally
-    // takes damage to their own character (handled by usePartyCombatSync
-    // via the local playerHit emit). For OTHER clients (the leader or a
-    // third member), this watcher is the only source of the visual.
-    //
-    // Avoid double-rendering on the targeted member's own client: their
-    // local engine already emit'd `playerHit` from `usePartyCombatSync`,
-    // which routed through the FX subscriber above with the same
-    // `'monster'` kind. Skipping self here prevents two stacked floats.
     const lastMemberHitTsRef = useRef<number>(0);
     useEffect(() => {
         if (!partyLastMemberHit || !character) return;
         if (partyLastMemberHit.sentAt <= lastMemberHitTsRef.current) return;
         lastMemberHitTsRef.current = partyLastMemberHit.sentAt;
-        // Targeted-self path already animated via local playerHit emit
-        // (see usePartyCombatSync.subscribe `lastMemberHit` handler).
         if (partyLastMemberHit.memberId === character.id) return;
         const allHumans = (party?.members ?? []).filter((m) => !m.isBot);
         const targeted = allHumans.find((m) => m.id === partyLastMemberHit.memberId);
         if (!targeted) return;
-        // fx slot resolution: local player = 0, remote humans 1..N.
         const remoteList = allHumans.filter((m) => m.id !== character.id);
         const fxSlot = remoteList.findIndex((m) => m.id === targeted.id) + 1;
         if (fxSlot <= 0) return;
-        // Push the same `'monster'` (red) float the local engine uses
-        // for playerHit — no icon override, isCrit forwarded if known.
         fx.pushAllyFloat(fxSlot, partyLastMemberHit.damage, 'monster');
-        // Bump the targeted human's hit pulse so their card flash
-        // overlay re-mounts (same animation as botHit / playerHit).
         setHumanHitPulses((prev) => ({
             ...prev,
             [partyLastMemberHit.memberId]: (prev[partyLastMemberHit.memberId] ?? 0) + 1,
         }));
     }, [partyLastMemberHit, character, party?.members, fx]);
 
-    // -- Subscribe to combat events from engine (for animations) ---------------
     const lastEventRef = useRef<number>(0);
     useEffect(() => {
         if (!lastCombatEvent) return;
@@ -1037,21 +687,11 @@ const Combat = () => {
         const { type, data } = lastCombatEvent;
 
         if (type === 'monsterHit') {
-            // Prefer the engine-provided slot index so the animation is never
-            // stale. Fall back to `activeTargetIdx` for older engine code
-            // paths (boss/dungeon/etc. that haven't been migrated yet).
             const idx = typeof (data as { targetIdx?: number })?.targetIdx === 'number'
                 ? (data as { targetIdx: number }).targetIdx
                 : useCombatStore.getState().activeTargetIdx;
             triggerMonsterHit(idx);
-            // Floating damage on the monster slot. Player's basic attack ->
-            // 'basic' kind (white). Crits get the brighter render. Hand
-            // (left/right for dual-wield) gets a :dagger: glyph for visual cue.
             const dmg = (data as { damage?: number })?.damage ?? 0;
-            // 2026-05-08 v3: track party damage for the floating widget.
-            // Only the local player's damage feeds the store — each
-            // teammate runs their OWN engine so this counter tracks
-            // "what I hit for in MY copy of the fight".
             const isSummonHit = !!(data as { isSummon?: boolean })?.isSummon;
             if (!isSummonHit && dmg > 0) {
                 const charId = useCharacterStore.getState().character?.id;
@@ -1059,11 +699,6 @@ const Combat = () => {
             }
             const isCrit = !!(data as { isCrit?: boolean })?.isCrit;
             const hand = (data as { hand?: 'left' | 'right' | null })?.hand ?? null;
-            // 2026-05 v6: Necromancer summon swing — engine emits a
-            // separate event per summon (skel :skull-and-crossbones: / ghost :ghost: / demon
-            // :smiling-face-with-horns: / lich :crown:) staggered ~100 ms apart. Render with
-            // 'ally-basic' kind (cyan) + type-specific icon so the
-            // player can tell summon hits apart from their own.
             const isSummon = !!(data as { isSummon?: boolean })?.isSummon;
             const summonType = (data as { summonType?: 'skeleton' | 'ghost' | 'demon' | 'lich' })?.summonType;
             if (isSummon && dmg > 0) {
@@ -1077,72 +712,35 @@ const Combat = () => {
                 fx.pushEnemyFloat(idx, dmg, 'basic', { isCrit, icon: hand ? 'dagger' : undefined });
             }
         } else if (type === 'botMonsterHit') {
-            // Bot landed a swing on the wave's active monster. Re-uses the
-            // monsterHit flash + pushes an ally-basic float so the player
-            // can tell their bots' hits apart from their own (cyan vs white).
             const idx = typeof (data as { targetIdx?: number })?.targetIdx === 'number'
                 ? (data as { targetIdx: number }).targetIdx
                 : useCombatStore.getState().activeTargetIdx;
             const dmg = (data as { damage?: number })?.damage ?? 0;
             const isCrit = !!(data as { isCrit?: boolean })?.isCrit;
-            // No flash override — the monster card already shakes from the
-            // engine's per-hit pulse counter; we just add the float.
             if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'ally-basic', { isCrit });
         } else if (type === 'dotTick') {
-            // 2026-05 v6: per-tick DOT visual. Engine fires this every
-            // 250ms while a poison/bleed/burn DOT drains HP — we push a
-            // green poison-themed float on the affected slot so the
-            // player can see the spell ticking. Aggregating into 1/sec
-            // would feel too slow given the tick cadence; 4/sec reads
-            // as a quick stutter and matches the actual HP drain.
             const idx = (data as { targetIdx?: number })?.targetIdx ?? 0;
             const dmg = (data as { damage?: number })?.damage ?? 0;
             if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: 'skull-and-crossbones' });
         } else if (type === 'summonSpawn') {
-            // 2026-05 v7: Necromancer summon raised. Play the per-type
-            // 2s overlay animation on the player's AllyCard avatar.
             const summonType = (data as { summonType?: 'skeleton' | 'ghost' | 'demon' | 'lich' })?.summonType;
             if (summonType) fx.triggerAllySummonSpawn(0, summonType);
         } else if (type === 'darkRitualTick') {
-            // 2026-05 v7: Necromancer Mroczny Rytuał detonation. Engine
-            // fires this when the countdown hits 0 — push a :skull: RITUAL
-            // crit-styled float so the player sees the lump-sum % HP
-            // chunk separately from regular DOT ticks.
             const idx = (data as { targetIdx?: number })?.targetIdx ?? 0;
             const dmg = (data as { damage?: number })?.damage ?? 0;
             if (dmg > 0) fx.pushEnemyFloat(idx, dmg, 'spell', { icon: 'skull', label: 'RITUAL', isCrit: true });
         } else if (type === 'skillAnim') {
-            // Engine emits this for AUTO-mode skill casts (manual casts are
-            // handled inline in `doUseSkill` above and never go through this
-            // event). Render the per-slot themed overlay + spell float.
             const skillId = (data as { skillId?: string })?.skillId;
             const idx = typeof (data as { targetIdx?: number })?.targetIdx === 'number'
                 ? (data as { targetIdx: number }).targetIdx
                 : useCombatStore.getState().activeTargetIdx;
             const dmg = (data as { damage?: number })?.damage ?? 0;
             const isCrit = !!(data as { isCrit?: boolean })?.isCrit;
-            // 2026-05 v6: AOE splash targets — engine now includes every
-            // additional slot the AOE landed on so we can fire the same
-            // animation + float on each card. Defaults to empty so single-
-            // target skills still render only on `idx`.
             const aoeTargets = ((data as { aoeTargets?: number[] })?.aoeTargets) ?? [];
-            // Splash damage = primary × 0.75 (AOE falloff). Falls back to
-            // primary dmg for older event payloads.
             const splashDmg = (data as { splashDamage?: number })?.splashDamage ?? dmg;
-            // 2026-05 v6: targetsEnemy flag from engine. Damage hits +
-            // enemy debuffs (Pułapka, Strzała Wiatru) animate on the
-            // enemy. Pure self/party buffs (Orle Oko, Bomba Dymna,
-            // Tarcza Many, Okrzyk Bojowy) animate on player avatar.
-            // Falls back to true for older payloads so single-target
-            // damage spells still work without the flag.
             const targetsEnemyEvt = (data as { targetsEnemy?: boolean })?.targetsEnemy ?? true;
             const stunLabelEvt = (data as { stunLabel?: string | null })?.stunLabel ?? null;
-            // 2026-05 v6: instant-kill marker — view shows "DEATH ATTACK"
-            // float on the targeted slot when Strzała Śmierci /
-            // Skrytobójstwo / execute_below proc'd.
             const instantKillEvt = !!(data as { instantKill?: boolean })?.instantKill;
-            // instant_kill_chance finite execute burst from the auto-cast
-            // engine path — show DEATH ATTACK with the actual burst damage.
             const executeBurstDmgEvt = (data as { executeBurstDmg?: number })?.executeBurstDmg ?? 0;
             if (skillId) {
                 if (!targetsEnemyEvt) {
@@ -1172,22 +770,13 @@ const Combat = () => {
         } else if (type === 'playerHit' || type === 'playerDodge') {
             triggerPlayerHit();
             if (type === 'playerHit') {
-                // Floating monster-hit on the player ally slot (always 0).
-                // 'monster' kind -> red. The engine ships hpDamage so we can
-                // show only the actual HP loss (Utamo Vita's MP-shielded
-                // portion is logged but doesn't appear as a hit number).
                 const dmg = (data as { damage?: number; hpDamage?: number })?.hpDamage
                     ?? (data as { damage?: number })?.damage
                     ?? 0;
                 const isCrit = !!(data as { isCrit?: boolean })?.isCrit;
-                // 2026-05 v6: immortal block (Absolutne Cięcie) — push a
-                // distinct BLOCK label instead of nothing/-1 so the player
-                // can SEE the swing was eaten.
                 const isImmortal = !!(data as { isImmortal?: boolean })?.isImmortal;
-                // Tarcza Many — shield ate the hit; show MP loss float.
                 const isManaShield = !!(data as { isManaShield?: boolean })?.isManaShield;
                 const msMpDmg = (data as { mpDamage?: number })?.mpDamage ?? 0;
-                // Void Ray spell heal — green +HP float on player slot.
                 const isSpellHeal = !!(data as { isSpellHeal?: boolean })?.isSpellHeal;
                 const spellHealAmount = (data as { spellHealAmount?: number })?.spellHealAmount ?? 0;
                 if (isImmortal) {
@@ -1206,15 +795,9 @@ const Combat = () => {
                 }
             }
         } else if (type === 'botHit') {
-            // Per-bot pulse — engine ships the bot id alongside damage. Bump
-            // its counter so the matching AllyCard's keyed flash overlay
-            // re-mounts and replays from frame 0.
             const botId = (data as { botId?: string })?.botId;
             if (botId) {
                 setBotHitPulses((prev) => ({ ...prev, [botId]: (prev[botId] ?? 0) + 1 }));
-                // Map bot id -> display slot. Bots render in `bots` order
-                // starting at ally slot 1 (player is slot 0). Use a fresh
-                // store read so we don't depend on a stale closure.
                 const allBots = useBotStore.getState().bots;
                 const botIdx = allBots.findIndex((b) => b.id === botId);
                 const dmg = (data as { damage?: number })?.damage ?? 0;
@@ -1223,9 +806,8 @@ const Combat = () => {
                 }
             }
         }
-    }, [lastCombatEvent]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [lastCombatEvent]);
 
-    // Auto-scroll combat log
     useEffect(() => {
         const container = logContainerRef.current;
         if (container) {
@@ -1233,11 +815,6 @@ const Combat = () => {
         }
     }, [log.length]);
 
-    // Auto-fight countdown — runs an rAF loop while in `victory` phase with
-    // auto-fight on (and not SKIP). Resets to 0 on entry/exit so the next
-    // wave starts the bar fresh. Mirrors `useBackgroundCombat`'s timer; if
-    // the engine starts the next fight earlier (e.g. SKIP toggled mid-wait)
-    // the cleanup guard zeroes the bar instantly.
     useEffect(() => {
         if (phase !== 'victory' || !autoFight || combatSpeed === 'SKIP') {
             setAutoFightProgress(0);
@@ -1258,22 +835,16 @@ const Combat = () => {
         };
     }, [phase, autoFight, combatSpeed]);
 
-    // -- Helper: get class config ----------------------------------------------
     const getClassConfig = useCallback((className: string): IClassData => {
         return classesData[className] ?? {};
     }, []);
 
-    // -- Skill use (manual mode) -----------------------------------------------
     const doUseSkill = (slotIdx: 0 | 1 | 2 | 3) => {
         const skillId = activeSkillSlots[slotIdx];
         const s       = useCombatStore.getState();
         const char    = useCharacterStore.getState().character;
         if (!skillId || !char || s.phase !== 'fighting' || !s.monster) return;
 
-        // Gear-gap penalty: under-geared players deal proportionally less skill
-        // damage so low-level gear can't carry a far-higher-level monster. Same
-        // multiplier the engine's basic/auto-skill path applies in
-        // doPlayerAttackTick (dmg × (gearLvl/monsterLvl)², floor 0.05).
         const skillGearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), s.monster.level ?? 0);
         const skillAtk = char.attack * skillGearGapMult;
 
@@ -1282,48 +853,24 @@ const Combat = () => {
             s.addLog('Za mało MP!', 'system');
             return;
         }
-        // Stun gate — paralysed players can't manually cast either.
         if (engineIsHuntPlayerStunned()) return;
 
         const classConfig = getClassConfig(char.class);
         const maxCrit = (classConfig.maxCritChance ?? 30) / 100;
 
-        // 2026-05 v6: classify cast affinity so the animation lands on the
-        // right side. `damage > 0` always animates on enemy. `damage === 0`
-        // splits two ways:
-        //   - enemy-debuff atom (Pułapka stun:3000, Strzała Wiatru,
-        //     enemy_atk_down, mark_no_heal …) -> animate on enemy slot
-        //   - pure self-buff (Orle Oko, Bomba Dymna, Tarcza Many,
-        //     Okrzyk Bojowy …) -> animate on player avatar
-        // This fixes the "Pułapka anim ląduje na graczu" complaint.
         const skillDef = getSkillDef(skillId);
         const skillDmgMult = skillDef?.damage ?? 0;
         const targetsEnemy = skillDmgMult > 0 || skillTargetsEnemy(skillDef?.effect ?? null);
         const isDamageHit = skillDmgMult > 0;
 
-        // Pull v2 result FIRST so we know `defPenPct` for the damage roll.
-        // Note: this also writes the DOT / stun / mark to the target's
-        // status, which is correct — DOT can land before the spell hit.
-        // 2026-05-11 spec ("podstawowy atak zabija potwora i spell dalej
-        // atakuje w tego potwora"): huntApplySkillEffectV2 retargets to
-        // the next alive wave monster if the active slot died between
-        // click and apply. It returns `null` if NO monster is alive,
-        // in which case we abort the cast — no MP spent, no cooldown
-        // started, no damage applied. The skill becomes a no-op.
         const effApply = engineHuntApplySkillEffectV2(skillId, s.activeTargetIdx);
         if (effApply === null) {
             s.addLog(':bullseye: Brak żywych potworów — spell anulowany', 'system');
             return;
         }
-        // Strzał Snajpera & friends: `def_pen:100` should ignore the
-        // monster's defense outright. Multiply enemy DEF by (1 - %/100).
         const defPenFrac = Math.max(0, Math.min(1, (effApply?.defPenPct ?? 0) / 100));
         const effectiveEnemyDef = Math.max(0, Math.floor(s.monster.defense * (1 - defPenFrac)));
 
-        // Skill-upgrade combat bonus — hunt is solo, this is the local player's
-        // own manual cast. Modest & capped; folded into the skill's damage
-        // multiplier so it scales primary + AOE splash uniformly (matches the
-        // auto path in combatEngine.ts).
         const skillUpgradeMult = getCombatSkillUpgradeMultiplier(
             useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
         );
@@ -1340,18 +887,11 @@ const Combat = () => {
         });
 
         if (isDamageHit) {
-            // Necromancer Klątwa Śmierci (mark_amp) — first damage
-            // hit on the marked monster gets ×N. Consumes the charge
-            // up-front so AOE splash uses the boosted r.finalDamage.
             const ampHunt = consumeHuntMonsterMarkAmp(s.activeTargetIdx, s.monster.id);
             if (ampHunt.mult !== 1) {
                 r.finalDamage = Math.max(1, Math.floor(r.finalDamage * ampHunt.mult));
                 s.addLog(`:skull-and-crossbones: Klątwa Śmierci: ${formatSkillName(skillId)} ×${ampHunt.mult} dmg`, 'system');
             }
-            // 2026-05 v7: track total damage dealt this cast (primary +
-            // every splash that landed). Żniwa Dusz `aoe;heal_self_pct_dmg:50`
-            // heals on the SUM, so a 4-monster AOE pumps the lifesteal
-            // with all four hits instead of just the primary.
             let totalDmgDealtThisCast = 0;
             if (effApply?.instantKill) {
                 const wm = useCombatStore.getState().waveMonsters[s.activeTargetIdx];
@@ -1359,14 +899,9 @@ const Combat = () => {
                     useCombatStore.getState().damageWaveMonster(s.activeTargetIdx, wm.currentHp);
                     totalDmgDealtThisCast += wm.currentHp;
                 }
-                // 2026-05 v6: DEATH ATTACK marker — instant_kill /
-                // execute_below procc'd. Crit-styled float so the player
-                // sees "I rolled the 5%!" on Strzała Śmierci / Skrytobójstwo.
                 fx.pushEnemyFloat(s.activeTargetIdx, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                 s.addLog(`:skull: ${formatSkillName(skillId)}: DEATH ATTACK! Natychmiastowe zabicie!`, 'crit');
             } else {
-                // instant_kill_chance success → finite execute burst (12% of
-                // target max HP, or the normal hit if bigger), NOT a one-shot.
                 let primaryDmg = r.finalDamage;
                 if ((effApply?.executeBurstPct ?? 0) > 0) {
                     const wm = useCombatStore.getState().waveMonsters[s.activeTargetIdx];
@@ -1379,12 +914,6 @@ const Combat = () => {
                 totalDmgDealtThisCast += primaryDmg;
                 if (effApply?.aoe) {
                     const splashDmg = Math.max(1, Math.floor(primaryDmg * 0.75));
-                    // 2026-05 v6: per-target IK roll for AOE skills
-                    // (Strzała Wszechświata `aoe;instant_kill_chance:15`
-                    // gives each splash monster its own 15% IK chance,
-                    // not just the primary). On success the splash now deals a
-                    // finite execute burst (12% of splash target max HP), not
-                    // a one-shot.
                     const splashIkPct = effApply?.instantKillPct ?? 0;
                     const wave = useCombatStore.getState().waveMonsters;
                     for (let ii = 0; ii < wave.length; ii++) {
@@ -1398,9 +927,6 @@ const Combat = () => {
                             fx.triggerEnemySkillAnim(ii, skillId);
                             fx.pushEnemyFloat(ii, ikDmg, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
-                            // 2026-05 v7: each splash target consumes
-                            // its own markAmp / markAmpAll so AOE Kraina
-                            // hits ×2 on every enemy in the wave.
                             let thisSplash = splashDmg;
                             const ampSplash = consumeHuntMonsterMarkAmp(ii, wave[ii].monster.id);
                             if (ampSplash.mult !== 1) {
@@ -1415,26 +941,12 @@ const Combat = () => {
                 }
             }
             if (effApply && effApply.healCasterPctOfDmg > 0 && totalDmgDealtThisCast > 0) {
-                // Żniwa Dusz `aoe;heal_self_pct_dmg:50` — 50% of TOTAL
-                // damage dealt across primary + every AOE splash that
-                // landed. Single-target casts (Pochłonięcie Życia /
-                // Promień Pustki) heal off `totalDmg === r.finalDamage`,
-                // identical to the previous behaviour.
                 const heal = Math.floor(totalDmgDealtThisCast * (effApply.healCasterPctOfDmg / 100));
-                // 2026-05 v6: capture pre/post HP so the heal float
-                // shows the ACTUAL healed amount (player capped at
-                // max_hp may receive 0 even though heal=N — float
-                // should reflect the real delta).
                 const beforeHp = useCombatStore.getState().playerCurrentHp;
                 useCombatStore.getState().healPlayerHp(heal, char.max_hp);
                 const afterHp = useCombatStore.getState().playerCurrentHp;
                 const actual = afterHp - beforeHp;
                 if (heal > 0) {
-                    // Always show the COMPUTED heal value (so player
-                    // sees how much the spell rolled even at full HP).
-                    // When capped at maxHp the bar doesn't move — the
-                    // float still flashes the spell's roll so the
-                    // mechanic stays visible.
                     const cappedTag = actual < heal ? ' (MAX)' : '';
                     fx.pushAllyFloat(0, heal, 'heal', {
                         icon: 'sparkles',
@@ -1444,9 +956,6 @@ const Combat = () => {
                 }
             }
         }
-        // 2026-05 v6: Cleric Niebiańskie Leczenie / Modlitwa Niebios —
-        // heal_party_pct. Heals every alive ally for N% of THEIR own
-        // max HP, with float + skill anim on each slot.
         if (effApply && effApply.healPartyPctInstant > 0) {
             const playerHeal = Math.max(1, Math.floor(char.max_hp * (effApply.healPartyPctInstant / 100)));
             const playerHpBefore = useCombatStore.getState().playerCurrentHp;
@@ -1474,10 +983,6 @@ const Combat = () => {
             }
             s.addLog(`:sparkles: ${formatSkillName(skillId)}: heal_party_pct ${effApply.healPartyPctInstant}%`, 'system');
         }
-        // 2026-05 v6: Cleric `heal` / `holy_nova` — heal_lowest_ally_pct
-        // picks the ally with the lowest HP% (player + bots) and heals
-        // them by N% of their max HP. Float lands on THEIR slot so the
-        // player can see who got patched up.
         if (effApply && effApply.healLowestAllyPct > 0) {
             const allies: Array<{ slot: number; curHp: number; maxHp: number; setHp: (hp: number) => void; name: string }> = [
                 {
@@ -1495,7 +1000,6 @@ const Combat = () => {
                     name: b.name,
                 })),
             ];
-            // Pick the ally with the LOWEST HP ratio. Ties -> player wins.
             let lowest = allies[0];
             let lowestRatio = lowest.curHp / Math.max(1, lowest.maxHp);
             for (let i = 1; i < allies.length; i++) {
@@ -1522,27 +1026,16 @@ const Combat = () => {
         }
         spendPlayerMp(manualMpCost);
         startSkillCooldown(skillId);
-        // Player-side global overlay always fires (so the caster sees the
-        // spell glyph regardless of whether it's a buff or a damage skill).
         triggerSkillAnim(skillId);
         const tgtIdx = useCombatStore.getState().activeTargetIdx;
         if (targetsEnemy) {
-            // Damage skill OR enemy-debuff cast (Pułapka, Strzała Wiatru, etc.)
-            // — animacja + float na celu. Damage spells pokazują liczbę,
-            // pure-debuff casts (damage=0) zostawiają bez liczby ale dorzucają
-            // marker stunu poniżej.
             fx.triggerEnemySkillAnim(tgtIdx, skillId);
             if (isDamageHit) {
                 fx.pushEnemyFloat(tgtIdx, r.finalDamage, 'spell', { icon: getSkillIcon(skillId), isCrit: r.isCrit });
             }
         } else {
-            // Pure self/party buff — animacja na PLAYERZE (ally slot 0).
             fx.triggerAllySkillAnim(0, skillId);
         }
-        // Stun / paralyze visual marker — per-target. For AOE+stun_chance
-        // each enemy rolls independently in the engine; the float only
-        // appears on the slots that actually got stunned. Single-target
-        // casts use the primary stunApplied flag.
         if (effApply?.aoe) {
             const stunIdxs = effApply.aoeStunIdxs ?? [];
             for (const idx of stunIdxs) {
@@ -1557,10 +1050,6 @@ const Combat = () => {
         } else if (effApply?.paralyzeApplied) {
             fx.pushEnemyFloat(tgtIdx, 0, 'spell', { icon: 'locked', label: 'PARAL' });
         }
-        // 2026-05 v6: Cleric Aura Wskrzeszenia. Revive dead party bots
-        // to 50% HP and bring them back to alive. Bot slots are 1+
-        // (player is slot 0, never dead in Hunt — death triggers the
-        // run-end overlay).
         if (effApply?.reviveDeadAllies) {
             const allBots = useBotStore.getState().bots;
             const revivedNames: string[] = [];
@@ -1578,11 +1067,6 @@ const Combat = () => {
                 s.addLog(`:sparkles: ${formatSkillName(skillId)}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
             }
         }
-        // Multistrike (Wielostrzał) — schedule N follow-up basic attacks
-        // on the SAME target, ~120 ms apart so they read as a quick burst
-        // instead of one mega-hit. Each follow-up rolls a fresh basic damage
-        // (uses doSingleHit-style logic but inline since we don't want to
-        // double-trigger the engine's tick callbacks).
         if ((effApply?.multistrike ?? 0) > 0) {
             const extra = Math.max(0, Math.floor(effApply!.multistrike));
             for (let n = 0; n < extra; n++) {
@@ -1606,10 +1090,6 @@ const Combat = () => {
                 }, 120 * (n + 1));
             }
         }
-        // Register every timed self/party buff atom in the BuffBar so the
-        // header shows remaining time for each (Orle Oko / Okrzyk Bojowy /
-        // Tarcza Many / Bomba Dymna / etc.). At x2/x4 the buff drains
-        // faster so its in-game duration matches the rest of the speed-up.
         if (skillDef) applySkillBuff(skillId, skillDef, SPEED_MULT[combatSpeed] ?? 1);
         if (r.finalDamage > 0) {
             useDailyQuestStore.getState().addProgress('deal_damage', r.finalDamage);
@@ -1620,14 +1100,12 @@ const Combat = () => {
             r.isCrit ? 'crit' : 'player',
         );
 
-        // Check monster death after manual skill
         const newMHp = Math.max(0, s.monsterCurrentHp - r.finalDamage);
         if (newMHp <= 0) {
             engineHandleMonsterDeath(s.monsterRarity);
         }
     };
 
-    // -- Potion use ------------------------------------------------------------
     const doUsePotion = (elixirId: string) => {
         if (!character || !effectiveChar) return;
 
@@ -1686,29 +1164,19 @@ const Combat = () => {
         }
     };
 
-    // -- Auto-start fight from MonsterList selection (on mount) ----------------
     useEffect(() => {
         const sel = useCombatStore.getState().selectedMonster;
         if (sel) {
             setSelectedMonster(null);
             engineStartNewFight(sel, true);
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
-    // 2026-05 v6: keep BuffStore's combatSpeedMult in sync with this
-    // view's selected speed. On unmount -> reset to 1 so game-time buffs
-    // drain at real time outside combat.
     useEffect(() => {
         useBuffStore.getState().setCombatSpeedMult(SPEED_MULT[combatSpeed] ?? 1);
         return () => useBuffStore.getState().setCombatSpeedMult(1);
     }, [combatSpeed]);
 
-    // 2026-05 v6: Cleric Błogosławieństwo (heal_party_dot) — 1-Hz game-
-    // time pulse that pushes a green +X HP float on player + every alive
-    // bot's slot. The actual HP increment for the player happens in
-    // TopHeader's central tick (so it works in town too); for bots we
-    // also bump their HP here. Accumulator keeps the pulse rate
-    // synced to game-time (1× per in-game second, scales with speed).
     const partyHealAccumRef = useRef(0);
     useEffect(() => {
         const TICK = 250;
@@ -1718,9 +1186,6 @@ const Combat = () => {
                 partyHealAccumRef.current = 0;
                 return;
             }
-            // Only run the view-side pulse while combat is HUD-active —
-            // TopHeader handles the smooth town regen otherwise (and we
-            // don't want both stacking).
             if (!useCombatHudStore.getState().active) return;
             const mult = useBuffStore.getState().combatSpeedMult;
             partyHealAccumRef.current += TICK * Math.max(1, mult);
@@ -1729,9 +1194,6 @@ const Combat = () => {
             const pulseSkillId = useBuffStore.getState().getPartyHealDotSkillId();
             while (partyHealAccumRef.current >= 1000) {
                 partyHealAccumRef.current -= 1000;
-                // Player slot — bump combatStore HP directly and push
-                // both the +X float and the spell anim overlay (so the
-                // player can see Blessing actually pulsing on them).
                 const playerHeal = Math.max(1, Math.floor(live.max_hp * (pct / 100)));
                 const playerHpBefore = useCombatStore.getState().playerCurrentHp;
                 if (playerHpBefore < live.max_hp) {
@@ -1745,7 +1207,6 @@ const Combat = () => {
                     label: playerCapped ? `+${playerHeal}${playerCapped}` : undefined,
                 });
                 if (pulseSkillId) fx.triggerAllySkillAnim(0, pulseSkillId);
-                // Each alive bot — bump HP, push float, play anim.
                 const allBots = useBotStore.getState().bots;
                 for (let i = 0; i < allBots.length; i++) {
                     const bot = allBots[i];
@@ -1769,36 +1230,22 @@ const Combat = () => {
     }, [fx]);
 
     const cycleSpeed = () => {
-        // 2026-05-09 spec ("tylko lider predkoscia"): in a multi-human
-        // party, only the leader can change the combat-speed multiplier.
-        // Members see the same x1/x2/x4 indicator the leader picked
-        // but their click is a no-op (the button still renders so the
-        // current speed reads at a glance).
         const partyState = usePartyStore.getState().party;
         const me = useCharacterStore.getState().character?.id;
         const otherHumans = partyState?.members.filter((m) => m.id !== me && !m.isBot) ?? [];
         if (partyState && otherHumans.length > 0 && partyState.leaderId !== me) {
             return;
         }
-        // In party (bots present), SKIP is disabled — cycle x1->x2->x4 only.
         const order = partyBots.length > 0
             ? SPEED_ORDER.filter((s) => s !== 'SKIP')
             : SPEED_ORDER;
         const idx = order.indexOf(combatSpeed);
         const next = order[(idx + 1) % order.length];
-        // BuffStore.combatSpeedMult sync is handled by the
-        // useEffect([combatSpeed]) above; calling Zustand setters from
-        // here used to fire TopHeader subscriptions mid-Combat-render
-        // ("Cannot update a component (`TopHeader`) while rendering…").
         setCombatSpeed(next);
     };
 
-    // -- Derived ---------------------------------------------------------------
     const sortedMonsters = [...monsters].sort((a, b) => a.level - b.level);
 
-    // Dock shows the CONFIGURED auto-potion (matching what tryAutoPotion will
-    // actually drink), falling back to the strongest usable potion when the
-    // configured one isn't owned — so the UI never disagrees with the settings.
     const bestHpPotion =
         resolveAutoPotionElixir(autoPotionHpId, 'hp', 'flat', consumables, character?.level ?? 1)
         ?? getBestPotionUtil(FLAT_HP_POTIONS, consumables, character?.level ?? 1);
@@ -1814,13 +1261,9 @@ const Combat = () => {
 
     if (!character) return null;
 
-    // -- Render ----------------------------------------------------------------
     return (
         <div className="combat">
 
-            {/* 2026-07-09: toast wyniku serwerowego polowania (tryb backendu).
-                Renderowany tylko gdy backendHuntResult != null (a ten ustawia
-                się WYŁĄCZNIE w gałęzi isBackendMode()). Klik = zamknij. */}
             {backendHuntResult && (
                 <div
                     className="combat__backend-toast"
@@ -1858,17 +1301,6 @@ const Combat = () => {
                 </div>
             )}
 
-            {/* -- Top bar -----------------------------------------------------
-                Slimmed-down header: no Wstecz button, no "Polowanie" title —
-                just the four control buttons (speed / skill mode / fight mode
-                / XP toggle). Mode buttons use icons instead of word-prefixes:
-                  - :sparkles: + AUTO/MANUAL  -> skill auto-cast toggle
-                  - :crossed-swords: + AUTO/MANUAL  -> auto-fight toggle
-            ---------------------------------------------------------------- */}
-            {/* Idle (hub) top header — kept verbatim. The in-fight phase
-                gets its own top-bar via <CombatTopControls /> + <CombatTaskBadge />
-                rendered inside the arena wrapper below, so we hide this whole
-                bar then. */}
             {phase === 'idle' && (
                 <header className="combat__top page-header">
                     <div className="combat__top-row">
@@ -1914,41 +1346,14 @@ const Combat = () => {
                         </div>
                     </div>
 
-                    {/* 2026-05 v6: stat-points badge removed from hunt
-                        view per spec — distribution lives only in Postać
-                        (/inventory) now. The Postać tab in BottomNav
-                        already shows a yellow "rewards waiting" hint when
-                        the player has unspent points. */}
                 </header>
             )}
 
-            {/* -- Hub: monster picker (idle) ---------------------------------
-                New layout per redesign:
-                  - "Ilość przeciwników" wave-count box (no FALA label,
-                    centered with max-width on mobile, left-aligned on
-                    desktop via SCSS).
-                  - Monster grid — 1 col on mobile, 2-3 on tablet/desktop.
-                    Big sprite, name + LVL chip top-right, stacked stat
-                    rows (ATK/HP/DEF/AS/MAG), XP+Gold rewards with mastery
-                    bonus annotations, package + sword action icons.
-                    Borders highlight when there's an active task or the
-                    monster is fully mastered (25/25).
-                  - Drop info now opens a modal (:package:) instead of expanding
-                    inline — content is identical to the old expand panel.
-                  - Active tasks + quests are listed below the monster grid.
-            -------------------------------------------------------------- */}
             {phase === 'idle' && !useCombatStore.getState().selectedMonster && (() => {
                 const masteriesState = useMasteryStore.getState().masteries;
                 const masteryKillsState = useMasteryStore.getState().masteryKills;
                 const gateLevel = getPartyGateLevel(character.level, party?.members ?? null);
 
-                // 2026-05-11 spec ("lider party powinien widziec tylko te
-                // potwory ktore sa dostepne przez party"): when we're in a
-                // multi-human party, hide monsters that ANY member can't
-                // fight. Each member broadcasts their personal unlock cap
-                // (level + mastery) via `usePartyPresence`; we take the
-                // MIN of those. If a member hasn't broadcast yet, they're
-                // skipped (cap snaps once their snapshot arrives).
                 const myMaxUnlocked = (() => {
                     let max = 0;
                     for (const m of sortedMonsters) {
@@ -1967,13 +1372,6 @@ const Combat = () => {
                 const otherHumansCount = party?.members.filter((m) => m.id !== character.id && !m.isBot).length ?? 0;
                 const applyPartyCap = otherHumansCount > 0;
 
-                // -- Filter pipeline -----------------------------------------
-                // Three independent filters from the persistent settingsStore:
-                //   1. huntFilterAvailableOnly  -> unlocked monsters only
-                //   2. huntFilterTaskedOnly     -> only monsters bound to an
-                //      active task or an active 'kill' quest goal
-                //   3. huntFilterMinLevel > 0   -> hide monsters below this level
-                // Plus the party intersection cap when applicable.
                 const filteredMonsters = sortedMonsters.filter((m) => {
                     if (applyPartyCap && m.level > partyMonsterCap) return false;
                     if (huntFilterMinLevel > 0 && m.level < huntFilterMinLevel) return false;
@@ -1988,9 +1386,6 @@ const Combat = () => {
                     }
                     return true;
                 });
-                // The hub list is built ascending (lowest level first); flip it
-                // here when the player asked for "highest level first" so the
-                // unlock-status helper still works against the canonical order.
                 const visibleMonsters = huntFilterSortDesc
                     ? [...filteredMonsters].reverse()
                     : filteredMonsters;
@@ -1999,7 +1394,6 @@ const Combat = () => {
                 return (
                     <div className="combat__hub">
 
-                        {/* Filter bar --------------------------------------- */}
                         <section className="combat__hub-filters">
                             <h2 className="combat__hub-section-title">Filtry</h2>
                             <div className="combat__filter-bar">
@@ -2068,7 +1462,6 @@ const Combat = () => {
                             </div>
                         </section>
 
-                        {/* Wave-count box ----------------------------------- */}
                         <section className="combat__hub-wave">
                             <h2 className="combat__hub-section-title">Ilość przeciwników</h2>
                             <div className="combat__wave-box" title="Ilość potworów w następnej fali">
@@ -2105,7 +1498,6 @@ const Combat = () => {
                             </div>
                         </section>
 
-                        {/* Monster grid ------------------------------------- */}
                         <section className="combat__hub-monsters">
                             <h2 className="combat__hub-section-title">Przeciwnicy</h2>
                             {visibleMonsters.length === 0 ? (
@@ -2217,11 +1609,6 @@ const Combat = () => {
                                                 </span>
                                             </div>
 
-                                            {/* Per-monster task & quest progress lines.
-                                                These replace the bottom-of-hub list — now
-                                                each card carries its own context so the
-                                                player can see at a glance which monster
-                                                is wired to which goal. */}
                                             {(hasTask || hasQuest) && (
                                                 <div className="combat__mcard-goals">
                                                     {hasTask && monsterTask && (
@@ -2277,30 +1664,10 @@ const Combat = () => {
                                                     className="combat__mcard-action combat__mcard-action--fight"
                                                     onClick={async () => {
                                                         if (locked) return;
-                                                        // 2026-07-09: tryb backendu (opt-in).
-                                                        // Zamiast klienckiego combatEngine +
-                                                        // party ready-check robimy JEDNO
-                                                        // serwerowe rozstrzygnięcie polowania
-                                                        // (POST /combat/resolve) i hydratujemy
-                                                        // store'y z /state. Domyślna ścieżka
-                                                        // (poniżej) pozostaje nietknięta.
                                                         if (isBackendCombatDelegated() && character) {
                                                             await runBackendHunt(m);
                                                             return;
                                                         }
-                                                        // 2026-05-09 spec: party ready-check
-                                                        // fires when leader picks SPECIFIC
-                                                        // monster. Leader's fight does NOT
-                                                        // start until all members confirm —
-                                                        // the broadcast carries the monster
-                                                        // JSON so every client (incl. leader)
-                                                        // calls engineStartNewFight on `go`,
-                                                        // landing everyone on the same fight
-                                                        // simultaneously.
-                                                        // Capture the leader's chosen wave
-                                                        // count so members spawn the same
-                                                        // number of monsters when their
-                                                        // replicator fires on `go`.
                                                         const waveCount = useCombatStore.getState().wavePlannedCount;
                                                         requestPartyCombatStart({
                                                             destination: '/combat',
@@ -2324,12 +1691,6 @@ const Combat = () => {
                 );
             })()}
 
-            {/* -- Drop info modal ---------------------------------------------
-                Replaces the inline expand on monster cards. Same content (per-
-                rarity stats + drop tier breakdown + potions + spell chests),
-                rendered as a centered popup. Heroic chest tier appears only
-                for monsters the player has fully mastered (25/25).
-            ---------------------------------------------------------------- */}
             {phase === 'idle' && dropModalMonsterId && (() => {
                 const m = monsterById.get(dropModalMonsterId);
                 if (!m) return null;
@@ -2383,7 +1744,6 @@ const Combat = () => {
                             </header>
 
                             <div className="combat__drop-modal-body">
-                                {/* Base reward summary (XP + Gold with mastery bonus) */}
                                 <div className="combat__drop-modal-summary">
                                     <span>
                                         <GameIcon name="money-bag" /> Gold: {formatGoldShort(m.gold[0])}–{formatGoldShort(m.gold[1])}
@@ -2406,8 +1766,6 @@ const Combat = () => {
                                     <GameIcon name="backpack" /> Losowy ekwipunek Lvl {m.level} (bronie, zbroje, akcesoria)
                                 </div>
 
-                                {/* Per-rarity drop breakdown — laid out left-to-right
-                                    on wide screens, stacking on narrow ones via SCSS grid. */}
                                 <div className="combat__drop-modal-variants">
                                     {COMBAT_VARIANTS.map((v) => {
                                         const bd = getCombatDropBreakdown(v.key);
@@ -2434,8 +1792,6 @@ const Combat = () => {
                                                 <span className="combat__variant-stats">
                                                     HP: {Math.floor(m.hp * v.hpMult).toLocaleString('pl-PL')} · ATK: {vMin}-{vMax} · DEF: {Math.floor(m.defense * v.defMult)}
                                                 </span>
-                                                {/* Spec 3 (2026-05): each reward row sits on its own
-                                                    line so wrapping never crops a value mid-text. */}
                                                 <span className="combat__variant-xp">
                                                     <span className="combat__variant-xp-row"><GameIcon name="star" /> {effXp.toLocaleString('pl-PL')} XP{mLvl > 0 && (
                                                         <span className="combat__monster-xp-bonus" title={masteryTooltip}>
@@ -2469,7 +1825,6 @@ const Combat = () => {
                                     })}
                                 </div>
 
-                                {/* Potion drops — main tier + optional mega elixir bonus (lvl 100+) */}
                                 <div className="combat__drops-potions">
                                     <div className="combat__drops-potions-title"><TinyIcon icon={getPotionImage(null) ?? 'test-tube'} size="sm" /> Potiony</div>
                                     <div className="combat__variant-tier">
@@ -2506,7 +1861,6 @@ const Combat = () => {
                                     )}
                                 </div>
 
-                                {/* Spell chest drops — heroic tier shown only at mastery 25/25 */}
                                 {chestInfo.levels.length > 0 && (() => {
                                     const chestLevelsLabel = chestInfo.levels.length === 1
                                         ? `Lvl ${chestInfo.levels[0]}`
@@ -2545,21 +1899,7 @@ const Combat = () => {
                 );
             })()}
 
-            {/* -- In-fight UI — fully unified across hunting/boss/dungeon/etc --
-                Per-view engines (combat, boss, dungeon…) all feed the same
-                shared <CombatUI/> family. Hunting is the reference: it shows
-                the most features (HuntedTally, +/- monster controls, hunt-popup
-                exit). Other views just hide what doesn't apply.
-
-                Notable mappings:
-                  - waveMonsters[]  -> enemies  (left column, 4 fixed slots)
-                  - [player, ...partyBots] -> allies  (right column, 4 fixed slots)
-                  - activeSkillSlots[] -> action-bar skill buttons
-                  - bestHp/MpPotion + bestPctHp/MpPotion -> potion buttons
-                  - activeTasks + activeQuests for this monster -> CombatTaskBadge
-            ----------------------------------------------------------------- */}
             {phase !== 'idle' && monster && (() => {
-                // -- Enemy slots (left column) ---------------------------------
                 const uiEnemies: Array<ICombatEnemy | null> = waveMonsters.map((w, i) => ({
                     id: `wave-${i}`,
                     name: w.monster.name_pl,
@@ -2571,35 +1911,16 @@ const Combat = () => {
                     rarity: w.rarity,
                     isDead: w.isDead,
                     isTargetedByPlayer: i === activeTargetIdx && !w.isDead,
-                    // Per-slot pulse counter — every distinct hit landed on
-                    // this monster bumps it so the keyed flash overlay in
-                    // EnemyCard re-mounts and the CSS animation replays even
-                    // when two attacks (auto + skill, party multi-hit) land
-                    // inside the same 300ms window.
                     hitPulse: monsterHitPulses[i] ?? 0,
                     attackingClassName:
                         hitMonsterIdx === i && attackingClassName
                             ? `attack-${attackingClassName}`
                             : null,
-                    // Per-slot VFX from useCombatFx — pushed by the engine's
-                    // event handler above (monsterHit/botMonsterHit/skillAnim).
                     skillAnim: fx.enemySkill[i] ?? null,
                     floats: fx.enemyFloats[i] ?? [],
-                    // Live stun / immortal countdowns from the engine — drains
-                    // every tick because `huntStatusTick` mutates the status
-                    // object in-place (no new ref needed).
                     statusOverlay: getHuntMonsterStatusView(i, w.monster.id),
                 }));
 
-                // -- Ally slots (right column) — player first, then bots ------
-                // 2026-05-11 spec ("agroo widoczne tak samo na obu ekranach"):
-                // the leader's engine encodes aggroTarget as `'player'` for
-                // their own slot and `human_<id>` for remote party humans.
-                // When state is broadcast, both encodings travel as-is. On
-                // the LEADER's screen `'player'` = "me"; on a MEMBER's
-                // screen `'player'` = "the leader" (since the leader is
-                // the broadcast author). Compute the local player's
-                // aggro count accordingly.
                 const partyForUi = party;
                 const iAmRemoteMember = !!(
                     partyForUi && partyForUi.leaderId !== character.id &&
@@ -2611,21 +1932,11 @@ const Combat = () => {
                 ).length;
                 const playerEffMaxHp = effectiveChar?.max_hp ?? character.max_hp;
                 const playerEffMaxMp = effectiveChar?.max_mp ?? character.max_mp;
-                // Build summon-type counts for the badge tooltip. The hunt
-                // engine writes summons under the constant `'player'` key.
                 const playerSummonList = necroSummons['player'] ?? [];
                 const playerSummonsByType: Partial<Record<'skeleton' | 'ghost' | 'demon' | 'lich', number>> = {};
                 for (const sm of playerSummonList) {
                     playerSummonsByType[sm.type] = (playerSummonsByType[sm.type] ?? 0) + 1;
                 }
-                // Necromancer summon avatar/HP swap — front-of-queue
-                // summon (skeleton -> ghost -> demon -> lich) takes over
-                // the necro's card. Slot 0 then represents THAT
-                // summon: name + portrait + own HP/MP pool. Damage to
-                // slot 0 hits the summon's HP first; once dead the
-                // queue rotates, eventually leaving the necro herself
-                // exposed again. See necroSummonStore for caps + HP
-                // fractions per type.
                 const SUMMON_RANK_C = { skeleton: 0, ghost: 1, demon: 2, lich: 3 } as const;
                 const SUMMON_LABELS_C: Record<'skeleton' | 'ghost' | 'demon' | 'lich', string> = {
                     skeleton: 'Szkielet', ghost: 'Duch', demon: 'Demon', lich: 'Lisz',
@@ -2651,29 +1962,12 @@ const Combat = () => {
                 const playerMaxMpC = (character.class === 'Necromancer' && frontSummonC)
                     ? frontSummonC.maxMp
                     : playerEffMaxMp;
-                // 2026-05-11 spec ("postacie w takiej samej kolejnosci na
-                // obu ekranach"): iterate `party.members` in server order
-                // (joined_at ASC — leader first, then joiners in order)
-                // and emit one entry per human regardless of who's the
-                // local player. Bots tack on at the end. fx-slot mapping
-                // stays: local player owns slot 0, remote humans take
-                // 1..N in `non-self filtered` order so the existing
-                // `partyLastSpells` / `partyLastDamage` handlers still
-                // target the right card.
                 const humansInOrder = (party?.members ?? []).filter((m) => !m.isBot);
                 const remoteHumanFxIdx = (memberId: string): number => {
                     const list = humansInOrder.filter((m) => m.id !== character.id);
                     const idx = list.findIndex((m) => m.id === memberId);
                     return idx + 1;
                 };
-                // 2026-05-18 spec ("W polowaniu zniknal moj avatar jak
-                // walcze sam bez party"): when the player isn't in a
-                // party (or is in one but it doesn't contain them as a
-                // human entry yet — race during join), `humansInOrder`
-                // would skip them entirely and the ally column rendered
-                // only bots. Force the local player into slot 0 in
-                // that case so their avatar + HP + MP bars always
-                // render in solo hunts.
                 const localPlayerMember = humansInOrder.find((m) => m.id === character.id);
                 const soloFallbackPlayer: ICombatAlly | null = localPlayerMember ? null : {
                     id: 'player',
@@ -2704,8 +1998,6 @@ const Combat = () => {
                     ...(soloFallbackPlayer ? [soloFallbackPlayer] : []),
                     ...humansInOrder.map<ICombatAlly>((m) => {
                         if (m.id === character.id) {
-                            // Local player — the rich entry with summons,
-                            // hit pulses, etc. fx slot 0.
                             return {
                                 id: 'player',
                                 name: playerNameC,
@@ -2732,7 +2024,6 @@ const Combat = () => {
                                 summonSpawn: fx.allySummonSpawn[0] ?? null,
                             };
                         }
-                        // Remote human ally — HP/MP/transform from presence.
                         const presence = partyPresence[m.id];
                         const tier = presence?.transformTier ?? 0;
                         const accent = classColorFallbackMap[m.class] ?? '#888';
@@ -2742,12 +2033,6 @@ const Combat = () => {
                         const mpC = hasPresence ? (presence?.mp ?? 0) : 1;
                         const mpM = hasPresence ? (presence?.maxMp ?? 1) : 1;
                         const fxSlot = remoteHumanFxIdx(m.id);
-                        // 2026-05-11 spec ("agroo na sojusznikach"): count
-                        // alive wave monsters whose aggroTarget points at
-                        // this remote human. If the remote IS the leader
-                        // their encoded aggro id is `'player'` (because
-                        // that's what the leader's engine wrote before
-                        // broadcasting). Otherwise it's `human_<id>`.
                         const remoteIsLeader = partyForUi && partyForUi.leaderId === m.id;
                         const remoteAggroKey = remoteIsLeader ? 'player' : `human_${m.id}`;
                         const humanAggro = waveMonsters.filter(
@@ -2773,7 +2058,6 @@ const Combat = () => {
                         };
                     }),
                     ...partyBots.map<ICombatAlly>((bot, bIdx) => {
-                        // Bots come AFTER party humans in the column.
                         const slotIdx = (party?.members.filter((m) => m.id !== character.id && !m.isBot).length ?? 0) + bIdx + 1;
                         return {
                             id: bot.id,
@@ -2792,25 +2076,16 @@ const Combat = () => {
                             aggroCount: waveMonsters.filter(
                                 (w) => !w.isDead && w.aggroTarget === bot.id,
                             ).length,
-                            // Per-bot pulse — bumped via the engine's `botHit`
-                            // event (see effect above) so each ally flashes only
-                            // when a wave monster actually targets them.
                             hitPulse: botHitPulses[bot.id] ?? 0,
-                            // Display slot is `bIdx + 1` (player is slot 0). The
-                            // event handler above maps engine `botHit` -> this slot.
                             skillAnim: fx.allySkill[slotIdx] ?? null,
                             floats: fx.allyFloats[slotIdx] ?? [],
                         };
                     }),
                 ];
 
-                // -- Skill slots (action-bar) ----------------------------------
                 const uiSkills: Array<ICombatSkillSlot | null> =
                     (activeSkillSlots as (string | null)[]).map((skillId, i) => {
                         if (!skillId) return null;
-                        // Per-skill MP cost (from data/skills.json). UI shows
-                        // the actual cost of THIS slot so the player sees
-                        // why a high-tier spell might not be castable.
                         const slotMpCost = getSkillMpCost(skillId);
                         const cdRemaining = skillCooldowns[skillId] ?? 0;
                         const cdActive = cdRemaining > 0;
@@ -2827,7 +2102,6 @@ const Combat = () => {
                         };
                     });
 
-                // -- Potion slots (action-bar = pct, sub-controls = flat) ------
                 const buildPotion = (
                     potion: typeof bestPctHpPotion,
                     kind: ICombatPotionSlot['kind'],
@@ -2839,9 +2113,6 @@ const Combat = () => {
                     const cdActive = cd > 0;
                     return {
                         kind,
-                        // 2026-05: feed the actual selected potion's PNG art into
-                        // the dock so it matches the Inventory bag tile (no more
-                        // generic :red-heart:/:droplet: emoji at the bottom of combat).
                         icon: getPotionImage(potion.id) ?? undefined,
                         count,
                         cooldownProgress: cdActive ? 1 - cd / cdMax : 1,
@@ -2883,31 +2154,9 @@ const Combat = () => {
                                 enemies={uiEnemies}
                                 allies={uiAllies}
                                 bgVariant="default"
-                                /* Global cast overlay disabled: per-slot
-                                   animations on the targeted enemy/ally card
-                                   are now the canonical visual. The
-                                   centre-screen overlay was duplicating the
-                                   spell PNG and reading as a bug to the
-                                   player. `skillAnimOverlay` itself still
-                                   ticks (so triggerSkillAnim calls don't
-                                   crash) but its render is suppressed. */
                                 overlay={null}
                             />
 
-                            {/* +/− wave-size controls — hunting only.
-                                Shows the PLANNED wave size (1–MAX) — the count
-                                the player chose for the NEXT wave to spawn. The
-                                current wave is never mutated mid-fight; killing
-                                a monster doesn't drop the number on screen. The
-                                player can tweak this any time and it applies at
-                                the next wave start.
-
-                                The pill is rendered INLINE inside <CombatSubControls>
-                                via the `waveControl` slot so it shares the bag/logs
-                                row — on mobile that gives the player a
-                                [bag][wave][logs] strip; on desktop it sits between
-                                the HuntedTally (left) and the bag/logs cluster
-                                (right) instead of having its own dedicated row. */}
                             <CombatSubControls
                                 xp={
                                     showCombatXpBar
@@ -2920,11 +2169,6 @@ const Combat = () => {
                                 }
                                 xpPerHour={sessionXpPerHour}
                                 xpBonusPct={(() => {
-                                    // 2026-05-11 spec ("dopisz +% bonus XP
-                                    // przy XP/h"): combined XP multiplier
-                                    // ABOVE base — party + active XP buffs.
-                                    // Mastery is per-monster so we skip it
-                                    // here (shown per-kill in the log).
                                     const partySize = party ? Math.max(1, party.members.length) : 1;
                                     const partyMult = calculateXpMultiplier(partySize);
                                     const bStore = useBuffStore.getState();
@@ -2981,24 +2225,6 @@ const Combat = () => {
                                 }
                             />
 
-                            {/* After-victory footer — hunting only.
-                                Two primary post-victory choices: "Walcz ponownie"
-                                (re-spawn same monster) and "Zmień potwora" (back
-                                to monster picker). The flee/exit path is owned by
-                                the action-bar's Wyjdź button.
-
-                                HIDDEN when auto-fight is on — in that mode the
-                                player isn't choosing manually, so the popup just
-                                blocks the arena. The under-header countdown bar
-                                below replaces it as the "we're waiting" cue.
-
-                                2026-05-17 spec ("to sie tyczy kazdej walki w
-                                party"): if the wave ended in victory but the
-                                player is still dead (chose Czekaj, no one
-                                rezed), show only "Wróć do miasta" — same as
-                                boss / raid. Forces the death sequence to
-                                fire so they get the standard skull overlay +
-                                penalty. */}
                             {phase === 'victory' && playerCurrentHp <= 0 && (
                                 <div className="combat-ui__victory-footer">
                                     <button
@@ -3018,8 +2244,6 @@ const Combat = () => {
                                         onClick={async () => {
                                             const baseMonster =
                                                 monsters.find((m) => m.id === monster.id) ?? monster;
-                                            // 2026-07-09: tryb backendu — kolejne polowanie =
-                                            // kolejne serwerowe rozstrzygnięcie (pojedyncze).
                                             if (isBackendCombatDelegated() && character) {
                                                 await runBackendHunt(baseMonster);
                                                 return;
@@ -3039,14 +2263,6 @@ const Combat = () => {
                                 </div>
                             )}
 
-                            {/* Auto-fight countdown — slim transform-tinted bar
-                                pinned right under the TopHeader, fills L->R over
-                                AUTO_FIGHT_DELAY_MS while we wait for the next
-                                wave to spawn. Replaces the in-popup countdown
-                                so the player sees a thin, unobtrusive cue
-                                instead of a center-screen modal during auto
-                                runs. Hidden when SKIP speed is on (delay
-                                collapses to 10ms — would just blink). */}
                             {phase === 'victory' && autoFight && combatSpeed !== 'SKIP' && playerCurrentHp > 0 && (
                                 <div
                                     className="combat-ui__auto-fight-bar"
@@ -3063,11 +2279,6 @@ const Combat = () => {
                                 </div>
                             )}
 
-                            {/* Action bar fixed-bottom — replaces global BottomNav
-                                for the whole combat session. Stays visible during
-                                'victory' so the player still sees skills/potions/
-                                exit between waves; only the explicit Wyjdź /
-                                Zmień potwora paths return to the global nav. */}
                             {(phase === 'fighting' || phase === 'victory') && (
                                 <CombatActionBar
                                     skills={uiSkills}
@@ -3078,9 +2289,6 @@ const Combat = () => {
                                 />
                             )}
 
-                            {/* Floating potion dock — fixed bottom-left, always
-                                visible during fighting/victory so the player can
-                                sip without scrolling. Stacked: HP -> %HP -> MP -> %MP. */}
                             {(phase === 'fighting' || phase === 'victory') && (
                                 <CombatPotionDock
                                     hpPotion={flatHpSlot}
@@ -3090,7 +2298,6 @@ const Combat = () => {
                                 />
                             )}
 
-                            {/* Hunt-only exit popup ("Zakończ" vs "Wróć do miasta") */}
                             {exitDialogOpen && (
                                 <HuntExitDialog
                                     onClose={() => setExitDialogOpen(false)}
@@ -3098,14 +2305,6 @@ const Combat = () => {
                                         setExitDialogOpen(false);
                                         stopCombat();
                                         useCombatStore.getState().clearCombatSession();
-                                        // 2026-05-12 spec ("knight wyszedl z polowania
-                                        // a u archera dalej zostal w walce"): when a
-                                        // PARTY MEMBER exits the hunt, they must leave
-                                        // the party too so the leader's roster + ally
-                                        // column drop them and aggro re-rolls. The
-                                        // leader exiting kicks EVERYONE (disband) per
-                                        // the same spec — boss/raid/hunt exit by the
-                                        // leader auto-dismantles the party.
                                         const pState = usePartyStore.getState().party;
                                         const me = useCharacterStore.getState().character?.id;
                                         if (pState && me) {
@@ -3132,11 +2331,6 @@ const Combat = () => {
                     </CombatHudHost>
                 );
             })()}
-            {/* 2026-05-14: leader-death popup. Mirrors Boss / Raid —
-                arms when the leader's HP hits 0 with at least one
-                ally still up; "Wróć do miasta" applies penalty +
-                hands off leadership + leaves party; "Czekaj" closes
-                the popup and waits for a Cleric rez. */}
             <PartyDeathChoice
                 open={deathChoicePopup}
                 aliveAllies={

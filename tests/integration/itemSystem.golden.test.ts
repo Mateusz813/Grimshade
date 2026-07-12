@@ -14,10 +14,6 @@ import {
     type IBaseItem,
 } from '../../src/systems/itemSystem';
 
-// GOLDEN-VECTOR EXPORT + GUARD dla itemSystem.ts (podzbiór ekonomiczny).
-// Regeneracja:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/itemSystem.golden.test.ts
-//   cp golden/itemSystem.json ../grimshade-backend/tests/Golden/fixtures/
 
 const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'heroic'];
 const COST_LEVELS = [1, 2, 5, 10, 20, 21, 25, 30];

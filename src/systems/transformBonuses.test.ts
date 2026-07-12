@@ -23,7 +23,6 @@ import { getEffectiveChar } from './combatEngine';
 import { EMPTY_EQUIPMENT } from './itemSystem';
 import type { ICharacter, TCharacterClass } from '../api/v1/characterApi';
 
-// -- Helpers ------------------------------------------------------------------
 
 const makeChar = (cls: TCharacterClass = 'Knight', overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-tx-test',
@@ -70,7 +69,6 @@ beforeEach(() => {
     });
 });
 
-// -- getTransformDmgMultiplier ------------------------------------------------
 
 describe('getTransformDmgMultiplier', () => {
     it('returns 1.0 when there is no character', () => {
@@ -83,8 +81,6 @@ describe('getTransformDmgMultiplier', () => {
     });
 
     it('returns 1 + (Σ dmgPercent / 100) for one completed transform', () => {
-        // Knight base: dmgPercent: 3. Per spec, dmgPercent is NOT scaled
-        // by the tier multiplier (only flat rewards are).
         setCompleted([1]);
         const per = getClassTransformBonuses('Knight', 1);
         expect(getTransformDmgMultiplier()).toBeCloseTo(1 + per.dmgPercent / 100, 5);
@@ -92,13 +88,11 @@ describe('getTransformDmgMultiplier', () => {
 
     it('stacks additively across completed transforms', () => {
         setCompleted([1, 2, 3]);
-        const expected = 1 + (3 + 3 + 3) / 100; // Knight dmgPercent = 3 per transform
+        const expected = 1 + (3 + 3 + 3) / 100;
         expect(getTransformDmgMultiplier()).toBeCloseTo(expected, 5);
     });
 
     it('is unaffected by bakedBonusesApplied (always applies)', () => {
-        // Even in legacy "baked" mode dmgPercent is read straight from
-        // the table per the source comment ("never baked into stats").
         setBaked(true);
         setCompleted([1]);
         const per = getClassTransformBonuses('Knight', 1);
@@ -106,13 +100,11 @@ describe('getTransformDmgMultiplier', () => {
     });
 
     it('ignores unknown transform ids gracefully', () => {
-        // ID 999 is not in transforms.json — getTransformById returns undefined.
         setCompleted([999]);
         expect(getTransformDmgMultiplier()).toBe(1.0);
     });
 });
 
-// -- Flat bonus getters -------------------------------------------------------
 
 describe('getTransformFlatHp', () => {
     it('returns 0 with no completed transforms', () => {
@@ -122,8 +114,6 @@ describe('getTransformFlatHp', () => {
     it('2026-06-24: STILL applies flatHp even when bakedBonusesApplied=true (always live)', () => {
         setBaked(true);
         setCompleted([1, 2, 3]);
-        // The old contract returned 0 here (baked suppression) — that HID a real
-        // bonus from the player. Base is the pure floor, so transform always applies.
         expect(getTransformFlatHp()).toBeGreaterThan(0);
     });
 
@@ -175,7 +165,6 @@ describe('getTransformFlatAttack', () => {
     it('returns 0 for Archer (atkPercent-based class, flat attack=0)', () => {
         useCharacterStore.setState({ character: makeChar('Archer') });
         setCompleted([1, 2, 3]);
-        // Archer's `attack` table entry is 0 — confirmed by sourcing the same table.
         expect(getTransformFlatAttack()).toBe(0);
     });
 });
@@ -219,7 +208,6 @@ describe('getTransformMpRegenFlat', () => {
     });
 });
 
-// -- Percent multipliers ------------------------------------------------------
 
 describe('getTransformHpPctMultiplier', () => {
     it('returns 1.0 with no transforms', () => {
@@ -234,13 +222,11 @@ describe('getTransformHpPctMultiplier', () => {
 
     it('returns 1 + Σ hpPercent / 100 for one transform', () => {
         setCompleted([1]);
-        // Knight hpPercent = 4 (not scaled by tier multiplier).
         expect(getTransformHpPctMultiplier()).toBeCloseTo(1 + 4 / 100, 5);
     });
 
     it('stacks additively across transforms', () => {
         setCompleted([1, 2, 3]);
-        // 4 + 4 + 4 = 12 -> 1.12
         expect(getTransformHpPctMultiplier()).toBeCloseTo(1 + 12 / 100, 5);
     });
 });
@@ -252,7 +238,6 @@ describe('getTransformMpPctMultiplier', () => {
 
     it('returns 1 + Σ mpPercent / 100 for completed transforms', () => {
         setCompleted([1, 2]);
-        // Knight mpPercent = 1 per transform -> 2/100
         expect(getTransformMpPctMultiplier()).toBeCloseTo(1 + 2 / 100, 5);
     });
 });
@@ -277,12 +262,10 @@ describe('getTransformAtkPctMultiplier', () => {
     it('returns 1 + Σ atkPercent / 100 for Archer (atkPercent=7)', () => {
         useCharacterStore.setState({ character: makeChar('Archer') });
         setCompleted([1, 2]);
-        // Archer atkPercent = 7 per transform -> 14/100
         expect(getTransformAtkPctMultiplier()).toBeCloseTo(1 + 14 / 100, 5);
     });
 });
 
-// -- getLiveTransformBreakdown ------------------------------------------------
 
 describe('getLiveTransformBreakdown', () => {
     it('returns inactive breakdown with no character', () => {
@@ -298,8 +281,6 @@ describe('getLiveTransformBreakdown', () => {
         setBaked(true);
         setCompleted([1, 2]);
         const b = getLiveTransformBreakdown();
-        // New contract: transform always applies live, so the breakdown is ACTIVE
-        // and carries the real values regardless of the legacy `baked` flag.
         expect(b.active).toBe(true);
         expect(b.flatHp).toBeGreaterThan(0);
     });
@@ -314,8 +295,6 @@ describe('getLiveTransformBreakdown', () => {
         const b = getLiveTransformBreakdown();
         expect(b.active).toBe(true);
         expect(b.baked).toBe(false);
-        // Knight per-transform: dmgPercent=3, hpPercent=4, mpPercent=1,
-        // defPercent=3, atkPercent=0.
         expect(b.dmgPercent).toBe(6);
         expect(b.hpPercent).toBe(8);
         expect(b.mpPercent).toBe(2);
@@ -336,17 +315,10 @@ describe('getLiveTransformBreakdown', () => {
         setCompleted([1]);
         const b = getLiveTransformBreakdown();
         expect(b.atkPercent).toBe(7);
-        // Archer's table sets `attack: 0` so flatAttack should be 0
-        // — bonus comes from atkPercent instead.
         expect(b.flatAttack).toBe(0);
     });
 });
 
-// -- Bug 8: getDisplayTransformBreakdown (display-only, baked-safe) -----------
-// The display breakdown surfaces the transform contribution REGARDLESS of the
-// baked flag, so legacy characters (whose bonuses are inside base stats) can
-// still SEE the transform attribution in the stats panel. It must NEVER be
-// added to the live stat pipeline for baked saves (that would double-count).
 
 describe('getDisplayTransformBreakdown', () => {
     it('returns inactive (all-zero) breakdown with no character', () => {
@@ -369,7 +341,6 @@ describe('getDisplayTransformBreakdown', () => {
         const b = getDisplayTransformBreakdown();
         expect(b.active).toBe(true);
         expect(b.baked).toBe(false);
-        // Cumulative values must match getCumulativeTransformBonuses exactly.
         expect(b.flatHp).toBe(cum.flatHp);
         expect(b.flatMp).toBe(cum.flatMp);
         expect(b.flatAttack).toBe(cum.attack);
@@ -381,7 +352,6 @@ describe('getDisplayTransformBreakdown', () => {
         expect(b.dmgPercent).toBe(cum.dmgPercent);
         expect(b.hpRegenFlat).toBeCloseTo(cum.hpRegenFlat, 5);
         expect(b.mpRegenFlat).toBeCloseTo(cum.mpRegenFlat, 5);
-        // Bonuses are non-zero — proves the character actually "gets" them.
         expect(b.flatHp).toBeGreaterThan(0);
         expect(b.hpPercent).toBeGreaterThan(0);
     });
@@ -391,15 +361,12 @@ describe('getDisplayTransformBreakdown', () => {
         setCompleted([1, 2]);
         const cum = getCumulativeTransformBonuses([1, 2], 'Knight');
         const b = getDisplayTransformBreakdown();
-        // Display is active even when baked — that's the whole point of Bug 8.
         expect(b.active).toBe(true);
         expect(b.baked).toBe(true);
         expect(b.flatHp).toBe(cum.flatHp);
         expect(b.hpPercent).toBe(cum.hpPercent);
         expect(b.flatAttack).toBe(cum.attack);
         expect(b.dmgPercent).toBe(cum.dmgPercent);
-        // 2026-06-24: the LIVE breakdown is now ALSO active (transform always
-        // applies live); base is the pure floor so this does NOT double-count.
         const live = getLiveTransformBreakdown();
         expect(live.active).toBe(true);
         expect(live.flatHp).toBe(cum.flatHp);
@@ -417,14 +384,8 @@ describe('getDisplayTransformBreakdown', () => {
     });
 });
 
-// -- Bug 8: net effective stat has the bonus applied EXACTLY ONCE -------------
-// Reproduces the stats-panel math (getEffectiveChar / StatsPopupBody) to prove
-// there is no double-count regression: net = base + transform, applied once,
-// for both the LIVE path and the LEGACY baked path.
 
 describe('Bug 8 – no double-count regression (net effective stat)', () => {
-    // Mirror of the live max-HP math used by getEffectiveChar / StatsPopupBody:
-    //   rawHp = base + flatHp(live);  effMaxHp = floor(rawHp * hpPctMul(live))
     const computeLiveMaxHp = (baseMaxHp: number): number => {
         const raw = baseMaxHp + getTransformFlatHp();
         return Math.floor(raw * getTransformHpPctMultiplier());
@@ -439,8 +400,6 @@ describe('Bug 8 – no double-count regression (net effective stat)', () => {
         const expected = Math.floor((baseMaxHp + cum.flatHp) * (1 + cum.hpPercent / 100));
 
         expect(computeLiveMaxHp(baseMaxHp)).toBe(expected);
-        // Sanity: the transform actually changed the stat (no silent no-op),
-        // but only once — re-running the live formula is idempotent.
         expect(computeLiveMaxHp(baseMaxHp)).toBeGreaterThan(baseMaxHp);
         expect(computeLiveMaxHp(computeLiveMaxHp(baseMaxHp))).not.toBe(computeLiveMaxHp(baseMaxHp));
     });
@@ -448,11 +407,9 @@ describe('Bug 8 – no double-count regression (net effective stat)', () => {
     it('(3) 2026-06-24: base is PURE, so transform applies live exactly ONCE even when baked=true', () => {
         setBaked(true);
         setCompleted([1, 2]);
-        const baseMaxHp = 1234; // PURE base — transform is NOT inside it
+        const baseMaxHp = 1234;
         useCharacterStore.setState({ character: makeChar('Knight', { max_hp: baseMaxHp }) });
 
-        // New contract: transform always applies live (legacy `baked` flag ignored);
-        // base is the pure floor, so net = base + transform applied EXACTLY ONCE.
         expect(getTransformFlatHp()).toBeGreaterThan(0);
         expect(getTransformHpPctMultiplier()).toBeGreaterThan(1.0);
         const cum = getCumulativeTransformBonuses([1, 2], 'Knight');
@@ -470,20 +427,13 @@ describe('Bug 8 – no double-count regression (net effective stat)', () => {
         const expected = Math.floor((baseAtk + cum.attack) * (1 + cum.atkPercent / 100));
 
         expect(net).toBe(expected);
-        expect(net).toBeGreaterThan(baseAtk); // Archer atkPercent=7/tier -> grows
+        expect(net).toBeGreaterThan(baseAtk);
     });
 });
 
-// -- PART D (player-data fix 2026-06-24): bonuses apply LIVE in getEffectiveChar
-// A migrated character ends up with bakedBonusesApplied=false. Confirm that the
-// REAL getEffectiveChar orchestrator (not a mirror) actually folds the transform
-// flat + pct rewards into max_hp/max_mp/attack/defense once gear/training are
-// neutral. This is the end-to-end proof that "shown in UI but not real" is fixed.
 
 describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () => {
     beforeEach(() => {
-        // Neutralise equipment + training so the only contribution beyond the
-        // character's base stats is the transform reward.
         useInventoryStore.setState({
             bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [], gold: 0,
             consumables: {}, stones: {},
@@ -492,7 +442,7 @@ describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () 
     });
 
     it('max_mp = base + transform flat/pct when completed + bakedBonusesApplied=false', () => {
-        const baseMaxMp = 1314; // Mage lvl-109 healed floor
+        const baseMaxMp = 1314;
         useCharacterStore.setState({
             character: makeChar('Mage', { max_mp: baseMaxMp, max_hp: 524 }),
         });
@@ -504,30 +454,23 @@ describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () 
 
         const expectedMaxMp = Math.floor((baseMaxMp + cum.flatMp) * (1 + cum.mpPercent / 100));
         expect(eff.max_mp).toBe(expectedMaxMp);
-        // The bonus is REAL, not cosmetic — effective MP exceeds the base pool.
         expect(eff.max_mp).toBeGreaterThan(baseMaxMp);
     });
 
     it('2026-06-24: applies the bonus even when bakedBonusesApplied=true (base is pure → no double)', () => {
-        const baseMaxMp = 1314; // PURE base
+        const baseMaxMp = 1314;
         useCharacterStore.setState({
             character: makeChar('Mage', { max_mp: baseMaxMp, max_hp: 524 }),
         });
         useTransformStore.setState({ bakedBonusesApplied: true });
         setCompleted([1, 2]);
 
-        // New contract: the legacy `baked` flag no longer suppresses the live
-        // bonus — getEffectiveChar adds the transform on top of the PURE base.
         const cum = getCumulativeTransformBonuses([1, 2], 'Mage');
         const eff = getEffectiveChar(useCharacterStore.getState().character)!;
         expect(eff.max_mp).toBe(Math.floor((baseMaxMp + cum.flatMp) * (1 + cum.mpPercent / 100)));
         expect(eff.max_mp).toBeGreaterThan(baseMaxMp);
     });
 
-    // The player's explicit ask (2026-06-24): "normalna postać przed transformem
-    // vs po transformie — czy bije mocniej, dostaje mniej obrażeń (więcej DEF),
-    // ma większy HP/MP regen, więcej HP i MP". Full before/after across EVERY
-    // stat getEffectiveChar folds the transform into.
     it('BEFORE vs AFTER transform: ATK/DEF/HP/MP/HPregen/MPregen ALL increase', () => {
         useCharacterStore.setState({
             character: makeChar('Knight', {
@@ -537,26 +480,22 @@ describe('PART D – transform bonuses apply LIVE through getEffectiveChar', () 
         });
         useTransformStore.setState({ bakedBonusesApplied: false });
 
-        // BEFORE — no completed transforms.
         setCompleted([]);
         const before = getEffectiveChar(useCharacterStore.getState().character)!;
 
-        // AFTER — several transforms completed.
         setCompleted([1, 2, 3]);
         const after = getEffectiveChar(useCharacterStore.getState().character)!;
 
-        expect(after.attack).toBeGreaterThan(before.attack);     // bije mocniej
-        expect(after.defense).toBeGreaterThan(before.defense);   // dostaje mniej obrażeń
-        expect(after.max_hp).toBeGreaterThan(before.max_hp);     // więcej HP
-        expect(after.max_mp).toBeGreaterThan(before.max_mp);     // więcej MP
-        expect(after.hp_regen).toBeGreaterThan(before.hp_regen); // większy HP regen
-        expect(after.mp_regen).toBeGreaterThan(before.mp_regen); // większy MP regen
+        expect(after.attack).toBeGreaterThan(before.attack);
+        expect(after.defense).toBeGreaterThan(before.defense);
+        expect(after.max_hp).toBeGreaterThan(before.max_hp);
+        expect(after.max_mp).toBeGreaterThan(before.max_mp);
+        expect(after.hp_regen).toBeGreaterThan(before.hp_regen);
+        expect(after.mp_regen).toBeGreaterThan(before.mp_regen);
     });
 
     it('2026-06-24: getEffectiveChar.mp_regen includes TRAINING (symmetric with hp_regen)', () => {
-        // Regression for the asymmetry where mp_regen dropped the training term
-        // (hp_regen kept it). Both must fold in trained regen levels.
-        setCompleted([]); // isolate training — no transform contribution
+        setCompleted([]);
         useTransformStore.setState({ bakedBonusesApplied: false });
         useSkillStore.setState({ skillLevels: { hp_regen: 100, mp_regen: 100 }, skillXp: {} } as never);
         useCharacterStore.setState({

@@ -2,22 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * AppShell tests — wraps every routed page and decides whether the chrome
- * (TopHeader, BottomNav, PartyWidget, ReadyCheckModal) renders. It also
- * registers a forest of cross-store side-effects (party presence, ready
- * check, combat sync, guild hydration, DC watcher) which we don't need to
- * exercise directly — we mock those hooks to no-ops so the smoke tests
- * remain fast and deterministic.
- *
- * The only behaviour we care about here is:
- *   - Children render in every case (the shell never blocks routing).
- *   - Chrome is mounted when a character exists AND we're not on a
- *     characterless route (`/login`, `/character-select`, etc.).
- *   - Chrome is suppressed when no character is loaded.
- *   - `setIsCharacterlessRoute` is called with the correct boolean.
- *   - BottomNav is suppressed when combat HUD is active.
- */
 
 vi.mock('../TopHeader/TopHeader', () => ({
     __esModule: true,
@@ -39,8 +23,6 @@ vi.mock('../../ui/ReadyCheckModal/ReadyCheckModal', () => ({
     default: () => <div data-testid="ready-check-stub" />,
 }));
 
-// Party / ready-check / combat sync hooks all register supabase realtime
-// channels — we don't want any of that in tests. No-op them.
 vi.mock('../../../hooks/usePartyPresence', () => ({
     usePartyPresence: vi.fn(),
 }));
@@ -151,13 +133,6 @@ describe('AppShell — chrome gating', () => {
 });
 
 describe('AppShell — combat HUD interaction', () => {
-    // AppShell's route-change effect zeroes the combat-HUD ONLY when navigating
-    // to a NON-combat route, so a stale flag can't strand the user without the
-    // global BottomNav. On combat-HUD routes (/combat, /boss, …) it deliberately
-    // SKIPS the reset so the view's own CombatHudHost owns the flag (2026-06-21
-    // fix for the re-entry bug). These first tests set the flag AFTER mount via
-    // act() — valid on any route; the re-entry regression tests below set it
-    // BEFORE mount to prove the combat-route skip.
 
     it('hides BottomNav (but keeps TopHeader) when combat HUD is active', async () => {
         renderAt('/combat');
@@ -194,23 +169,18 @@ describe('AppShell — combat HUD interaction', () => {
         expect(shell?.className).toContain('app-shell--combat-hud-compact');
     });
 
-    // 2026-06-21 regression (combat-nav re-entry bug): a fight left running in
-    // the background keeps combatHudActive=true. Re-entering the combat route
-    // from Town must NOT reset it — otherwise the player sees the normal
-    // Walka/Questy/Miasto nav instead of the spells + exit bar.
     it('keeps an already-active combat HUD when (re)entering a combat route', () => {
-        // Simulate the background fight's HUD flag set BEFORE the view mounts.
         useCombatHudStore.setState({ active: true, compact: false });
-        renderAt('/combat'); // re-enter — route effect must SKIP the reset here
+        renderAt('/combat');
         expect(useCombatHudStore.getState().active).toBe(true);
-        expect(screen.queryByTestId('bottom-nav-stub')).toBeNull(); // HUD bar, not nav
+        expect(screen.queryByTestId('bottom-nav-stub')).toBeNull();
     });
 
     it('STILL resets a stale combat HUD when entering a NON-combat route (Town)', () => {
         useCombatHudStore.setState({ active: true, compact: false });
-        renderAt('/'); // Town — non-combat route keeps the defensive reset
+        renderAt('/');
         expect(useCombatHudStore.getState().active).toBe(false);
-        expect(screen.getByTestId('bottom-nav-stub')).toBeTruthy(); // nav restored
+        expect(screen.getByTestId('bottom-nav-stub')).toBeTruthy();
     });
 });
 

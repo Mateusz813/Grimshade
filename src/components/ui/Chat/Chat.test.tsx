@@ -2,12 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Chat tests — message log + send box + context menu. Cross-store
- * dependencies (friends, guild) are state-driven so the tests can drive
- * them through stores directly. The chatApi is mocked completely so no
- * real network is hit.
- */
 
 const getMessagesMock = vi.fn();
 const sendMessageMock = vi.fn();
@@ -23,13 +17,8 @@ vi.mock('../../../api/v1/chatApi', () => ({
             return unsubscribeMock;
         },
     },
-    // The interface re-import is satisfied at runtime by our shape;
-    // TS uses `import type`, so the runtime mock just needs the value.
 }));
 
-// Backend-authoritative branch mocks. Default OFF so every existing client-path
-// test exercises the untouched chatApi.sendMessage flow; the backend describe
-// flips `backendFlag.on`. Mirrors Deposit.test.tsx / Inventory.test.tsx.
 const backendFlag = vi.hoisted(() => ({ on: false }));
 const backendApiMock = vi.hoisted(() => ({ chatSend: vi.fn() }));
 
@@ -125,10 +114,7 @@ describe('Chat — smoke', () => {
     it('renders the title and the empty placeholder when no messages', async () => {
         renderChat({ title: 'City' });
         expect(screen.getByText('City')).toBeTruthy();
-        // Empty-state copy renders synchronously before the async getMessages
-        // promise resolves (with []).
         expect(screen.getByText(/Brak wiadomości/)).toBeTruthy();
-        // Sanity: getMessages was kicked off on mount.
         await waitFor(() => expect(getMessagesMock).toHaveBeenCalledWith('city', undefined));
     });
 
@@ -194,7 +180,6 @@ describe('Chat — sending', () => {
         renderChat();
         const input = document.querySelector('.chat__input') as HTMLInputElement;
         fireEvent.change(input, { target: { value: 'hello' } });
-        // Send button enables.
         const btn = document.querySelector('.chat__send') as HTMLButtonElement;
         expect(btn.disabled).toBe(false);
         await act(async () => {
@@ -260,9 +245,7 @@ describe('Chat — backend-authoritative branch', () => {
             expect(backendApiMock.chatSend).toHaveBeenCalledWith('char-1', { channel: 'city', content: 'via-backend' });
             expect(input.value).toBe('');
         });
-        // The direct Supabase write is gated off in backend mode.
         expect(sendMessageMock).not.toHaveBeenCalled();
-        // The returned row is pushed optimistically into the log.
         expect(screen.getByText('via-backend')).toBeTruthy();
     });
 
@@ -318,10 +301,8 @@ describe('Chat — context menu (other-player nick)', () => {
         await waitFor(() => {
             expect(screen.getByText('hi')).toBeTruthy();
         });
-        // Nick button (other player) — the disambiguator is the "Alice:" prefix.
         const nickBtn = screen.getByText(/Alice:/);
         fireEvent.click(nickBtn);
-        // Menu portal renders into document.body — verify by anchor item label.
         expect(screen.getByText(/Dodaj do znajomych/)).toBeTruthy();
     });
 });

@@ -1,38 +1,14 @@
-/**
- * Tests for marketApi — listings + sale notifications via supabase-js.
- *
- * Unlike the other APIs, marketApi uses the `supabase.from(...)` chain
- * directly rather than BaseApi/PostgREST URLs. We build a per-test
- * chain mock that records the calls and lets us script the resolved
- * value of the terminal awaitable.
- *
- * Key behaviours under test:
- * - getListings / getMyListings: order by listed_at desc, map rows to
- *   the IMarketListing shape with default fills.
- * - createListing: snake_case column names from camelCase input.
- * - updateListing: returns null for empty patches, otherwise patches
- *   price + quantity.
- * - decrementListing: deletes when remaining <= 0, otherwise updates.
- * - deleteListing / getListing: trivial passthroughs.
- * - Sale notifications: best-effort — return [] / no-op on error.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { supabase } from '../../lib/supabase';
 import { marketApi } from './marketApi';
 
-/**
- * Build a chainable mock of `supabase.from(...)`. Every awaited call
- * resolves to `result`; method calls return `this`. `maybeSingle` and
- * `single` are await-able terminal nodes.
- */
 const buildChain = (result: { data: unknown; error: unknown }) => {
     const chain: Record<string, unknown> = {};
     const methods = ['select', 'insert', 'update', 'delete', 'eq', 'order', 'limit', 'in', 'is'];
     for (const m of methods) chain[m] = vi.fn(() => chain);
     chain.single = vi.fn().mockResolvedValue(result);
     chain.maybeSingle = vi.fn().mockResolvedValue(result);
-    // For non-terminal chains we also want `.then` to make `await chain` work.
     chain.then = (resolve: (v: unknown) => unknown) => resolve(result);
     return chain as Record<string, ReturnType<typeof vi.fn> | ((..._: unknown[]) => unknown)> & {
         single: ReturnType<typeof vi.fn>;
@@ -109,7 +85,6 @@ describe('marketApi.getListings', () => {
             rarity: 'common',
             price: 10,
             listed_at: '2026-05-21',
-            // missing: kind, quantity, quantity_initial, item_level, slot, bonuses, upgrade_level
         };
         const chain = buildChain({ data: [minimalRow], error: null });
         vi.mocked(supabase.from).mockReturnValueOnce(chain as never);
@@ -205,7 +180,6 @@ describe('marketApi.updateListing', () => {
     it('returns null when patch is empty (no-op)', async () => {
         const result = await marketApi.updateListing('L1', {});
         expect(result).toBeNull();
-        // Should not even hit supabase.
         expect(supabase.from).not.toHaveBeenCalled();
     });
 
@@ -243,7 +217,6 @@ describe('marketApi.updateListing', () => {
 
 describe('marketApi.decrementListing', () => {
     it('deletes when the buy quantity hits the remaining count', async () => {
-        // fetchChain returns current quantity = 2, then we decrement by 2.
         const fetchChain = buildChain({ data: makeDbRow({ quantity: 2 }), error: null });
         const deleteChain = buildChain({ data: null, error: null });
         vi.mocked(supabase.from)
@@ -252,10 +225,8 @@ describe('marketApi.decrementListing', () => {
 
         const result = await marketApi.decrementListing('L1', 2);
 
-        // Delete path was used, not update.
         expect(deleteChain.delete).toHaveBeenCalled();
         expect(deleteChain.eq).toHaveBeenCalledWith('id', 'L1');
-        // Returned snapshot has quantity = 0.
         expect(result?.quantity).toBe(0);
     });
 
@@ -295,7 +266,6 @@ describe('marketApi.decrementListing', () => {
         vi.mocked(supabase.from)
             .mockReturnValueOnce(fetchChain as never)
             .mockReturnValueOnce(deleteChain as never);
-        // qty=1, decrement by 1 -> delete path.
         await marketApi.decrementListing('L1', 1);
         expect(deleteChain.delete).toHaveBeenCalled();
     });
@@ -554,7 +524,3 @@ describe('marketApi.dismissSaleNotification', () => {
     });
 });
 
-// TODO: the mapDbToListing/mapDbToSale helpers are exercised indirectly
-// through every getListings / getListing / getSaleNotifications path
-// above. Direct unit testing of them would require exporting them, but
-// the public-method coverage above covers every fallback default.

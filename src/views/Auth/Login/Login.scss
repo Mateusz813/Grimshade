@@ -30,9 +30,6 @@
     width: 100%;
   }
 
-  // 2026-05-21 spec: artwork is the whole title (wordmark removed).
-  // Bumped to 150×150 — same sizing as CharacterSelect so the two
-  // pre-character views read as the same kind of branded splash.
   &__title-icon {
     width: 150px;
     height: 150px;

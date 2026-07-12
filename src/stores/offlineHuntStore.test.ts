@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// -- Mock combatStore + skillStore --------------------------------------------
-// `startHunt` calls into both stores (reset combat + flush + pause active
-// training) and `stopHunt` resumes training. We don't care what those stores
-// actually do here — we just want to assert the right side-effects fire.
 
 const { resetCombatMock, collectOfflineTrainingMock, pauseTrainingMock, resumeTrainingMock } = vi.hoisted(() => ({
     resetCombatMock: vi.fn(),
@@ -67,7 +63,6 @@ beforeEach(() => {
     resumeTrainingMock.mockClear();
 });
 
-// -- startHunt ----------------------------------------------------------------
 
 describe('startHunt', () => {
     it('sets isActive=true, records target + skill + a fresh ISO startedAt', () => {
@@ -77,7 +72,6 @@ describe('startHunt', () => {
         expect(state.isActive).toBe(true);
         expect(state.targetMonster).toBe(monster);
         expect(state.trainedSkillId).toBe('sword_fighting');
-        // Should parse back into a finite Date.
         expect(state.startedAt).not.toBeNull();
         expect(Number.isNaN(new Date(state.startedAt as string).getTime())).toBe(false);
     });
@@ -87,7 +81,6 @@ describe('startHunt', () => {
         expect(resetCombatMock).toHaveBeenCalledTimes(1);
         expect(collectOfflineTrainingMock).toHaveBeenCalledTimes(1);
         expect(pauseTrainingMock).toHaveBeenCalledTimes(1);
-        // resumeTraining must NOT fire on start.
         expect(resumeTrainingMock).not.toHaveBeenCalled();
     });
 
@@ -102,7 +95,6 @@ describe('startHunt', () => {
     });
 });
 
-// -- stopHunt -----------------------------------------------------------------
 
 describe('stopHunt', () => {
     it('clears every hunt field and resumes active training', () => {
@@ -118,13 +110,10 @@ describe('stopHunt', () => {
         expect(state.startedAt).toBeNull();
         expect(state.targetMonster).toBeNull();
         expect(state.trainedSkillId).toBeNull();
-        // Resume active training so the player keeps earning skill XP after stopping.
         expect(resumeTrainingMock).toHaveBeenCalledTimes(1);
     });
 
     it('is safe to call when no hunt is active — still resumes training, still clears', () => {
-        // The store doesn't guard for this and the spec doesn't require it.
-        // Document the behaviour: no throw, training resumed, state empty.
         expect(() => useOfflineHuntStore.getState().stopHunt()).not.toThrow();
         expect(resumeTrainingMock).toHaveBeenCalledTimes(1);
         const state = useOfflineHuntStore.getState();
@@ -133,7 +122,6 @@ describe('stopHunt', () => {
     });
 });
 
-// -- resetHunt ----------------------------------------------------------------
 
 describe('resetHunt', () => {
     it('wipes the hunt without resuming training (character-switch path)', () => {
@@ -149,12 +137,10 @@ describe('resetHunt', () => {
         expect(state.startedAt).toBeNull();
         expect(state.targetMonster).toBeNull();
         expect(state.trainedSkillId).toBeNull();
-        // Resume is NOT called — that distinguishes resetHunt() from stopHunt().
         expect(resumeTrainingMock).not.toHaveBeenCalled();
     });
 });
 
-// -- globalThis registration --------------------------------------------------
 
 describe('module side effects', () => {
     it('registers itself on globalThis as __offlineHuntStore (skillStore probe path)', () => {
@@ -163,7 +149,6 @@ describe('module side effects', () => {
     });
 });
 
-// -- getOfflineHuntSpeedMultiplier --------------------------------------------
 
 describe('getOfflineHuntSpeedMultiplier', () => {
     it('returns x1 for mastery levels below 5', () => {
@@ -184,12 +169,10 @@ describe('getOfflineHuntSpeedMultiplier', () => {
     it('returns x4 at mastery 20+', () => {
         expect(getOfflineHuntSpeedMultiplier(20)).toBe(4);
         expect(getOfflineHuntSpeedMultiplier(25)).toBe(4);
-        // Beyond max-mastery cap still capped at x4.
         expect(getOfflineHuntSpeedMultiplier(999)).toBe(4);
     });
 });
 
-// -- constants sanity --------------------------------------------------------
 
 describe('constants', () => {
     it('base rate is 10 seconds per kill', () => {

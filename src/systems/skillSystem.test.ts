@@ -22,7 +22,6 @@ import {
     rollSkillUpgrade,
 } from './skillSystem';
 
-// -- skillXpToNextLevel --------------------------------------------------------
 
 describe('skillXpToNextLevel', () => {
     it('returns 100 for level 0', () => {
@@ -36,7 +35,6 @@ describe('skillXpToNextLevel', () => {
     });
 });
 
-// -- skillXpPerHit & skillXpPerCast --------------------------------------------
 
 describe('skillXpPerHit', () => {
     it('returns at least 1', () => {
@@ -60,7 +58,6 @@ describe('skillXpPerCast', () => {
     });
 });
 
-// -- calculateOfflineSkillXp ---------------------------------------------------
 
 describe('calculateOfflineSkillXp', () => {
     it('returns 0 for 0 seconds', () => {
@@ -84,7 +81,6 @@ describe('calculateOfflineSkillXp', () => {
     });
 });
 
-// -- processSkillXp ------------------------------------------------------------
 
 describe('processSkillXp', () => {
     it('accumulates XP without levelling up', () => {
@@ -120,7 +116,6 @@ describe('processSkillXp', () => {
     });
 });
 
-// -- applySkillDeathPenalty ----------------------------------------------------
 
 describe('applySkillDeathPenalty', () => {
     it('reduces XP by 5% of current level requirement', () => {
@@ -134,7 +129,6 @@ describe('applySkillDeathPenalty', () => {
     });
 });
 
-// -- getSkillDamageBonus -------------------------------------------------------
 
 describe('getSkillDamageBonus', () => {
     it('returns 0 at skill level 0', () => {
@@ -147,7 +141,6 @@ describe('getSkillDamageBonus', () => {
     });
 });
 
-// -- getClassWeaponSkills ------------------------------------------------------
 
 describe('getClassWeaponSkills', () => {
     it('returns sword_fighting AND shielding for Knight', () => {
@@ -170,7 +163,6 @@ describe('getClassWeaponSkills', () => {
     });
 });
 
-// -- Shielding system ---------------------------------------------------------
 
 describe('shieldingXpPerBlock', () => {
     it('returns at least 1 at any level', () => {
@@ -206,7 +198,6 @@ describe('getShieldingBlockBonus', () => {
     });
 });
 
-// -- MLVL system --------------------------------------------------------------
 
 describe('doesClassGainMlvlFromAttacks', () => {
     it('returns true for Mage, Cleric, Necromancer', () => {
@@ -253,7 +244,6 @@ describe('mlvlXpPerSkillUse', () => {
     });
 });
 
-// -- skillXpProgress -----------------------------------------------------------
 
 describe('skillXpProgress', () => {
     it('returns 0 with no XP', () => {
@@ -269,17 +259,12 @@ describe('skillXpProgress', () => {
     });
 });
 
-// -- Active Skill Upgrade System ----------------------------------------------
 
 describe('getSkillUpgradeCost', () => {
-    // 2026-05-21: replaces deleted test "returns 100% success rate for +1" — now tests current logic
-    // The chest-based variant lives in `getSpellChestUpgradeCost(targetLevel, skillUnlockLevel)`;
-    // `getSkillUpgradeCost(targetLevel)` is still single-arg and still returns 100% success at +1.
-    // Gold cost formula: floor(200 * targetLevel^2.2) -> +1 = 200.
     it('returns 100% success rate and 200 gold for +1', () => {
         const cost = getSkillUpgradeCost(1);
         expect(cost.successRate).toBe(100);
-        expect(cost.gold).toBe(200); // floor(200 * 1^2.2) = 200
+        expect(cost.gold).toBe(200);
     });
 
     it('returns 90% success rate for +2', () => {
@@ -350,7 +335,6 @@ describe('getCombatSkillUpgradeMultiplier', () => {
     });
 
     it('stays modest — far below the Inventory-preview getSkillUpgradeBonus curve', () => {
-        // +10 combat = +20%, while the preview bonus is +305% at +10.
         expect(getCombatSkillUpgradeMultiplier(10) - 1).toBeLessThan(getSkillUpgradeBonus(10));
     });
 });

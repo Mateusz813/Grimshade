@@ -7,10 +7,6 @@ import {
 } from './questStore';
 import { MASTERY_MAX_LEVEL } from './masteryStore';
 
-// -- Mocks --------------------------------------------------------------------
-// questStore reads useCharacterStore.character.level inside addProgress as a
-// defensive level gate, and dynamic-imports characterApi on claimQuest to push
-// a one-shot quest counter. The masteryStore is read by refreshMasteryProgress.
 
 const characterStateMock = { character: { id: 'c1', level: 100 } };
 
@@ -41,7 +37,6 @@ vi.mock('../api/v1/characterApi', () => ({
     },
 }));
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeQuest = (overrides: Partial<IQuest> = {}): IQuest => ({
     id: 'test_quest',
@@ -57,7 +52,6 @@ const makeQuest = (overrides: Partial<IQuest> = {}): IQuest => ({
     ...overrides,
 });
 
-// -- Helpers ------------------------------------------------------------------
 
 const resetStore = (): void => {
     useQuestStore.setState({ activeQuests: [], completedQuestIds: [] });
@@ -65,7 +59,6 @@ const resetStore = (): void => {
     masteryStoreState.masteries = {};
 };
 
-// -- Tests --------------------------------------------------------------------
 
 describe('questStore — initial state', () => {
     beforeEach(resetStore);
@@ -121,7 +114,6 @@ describe('questStore — startQuest', () => {
         }));
         const goal = useQuestStore.getState().activeQuests[0].goals[0];
         expect(goal.minMonsterLevel).toBe(requiredMasteryLevel);
-        // count is reassigned to total monster pool size — just verify it's been changed
         expect(goal.count).toBeGreaterThan(requiredMasteryLevel);
     });
 });
@@ -172,10 +164,7 @@ describe('questStore — addProgress (kill)', () => {
     });
 
     it('respects the minLevel gate (no progress when char level < quest minLevel)', () => {
-        // Use a quest id NOT in quests.json so getQuestById returns undefined
-        // -> no level gate. Instead, ensure the gate fires for known quests:
         characterStateMock.character.level = 5;
-        // 'quest_first_steps' is a real quest with minLevel=10
         const realQuest: IQuest = {
             id: 'quest_first_steps',
             name_pl: 'x', name_en: 'x',
@@ -193,7 +182,6 @@ describe('questStore — addProgress (kill)', () => {
             completedQuestIds: [],
         });
         useQuestStore.getState().addProgress('kill', 'rat', 5);
-        // Player is below minLevel -> no progress
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(0);
     });
 });
@@ -208,7 +196,6 @@ describe('questStore — addProgress (drop_rarity)', () => {
         }));
         useQuestStore.getState().addProgress('drop_rarity', 'epic', 1);
         useQuestStore.getState().addProgress('drop_rarity', 'rare', 1);
-        // common < required (rare) -> skipped
         useQuestStore.getState().addProgress('drop_rarity', 'common', 1);
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(2);
     });
@@ -230,7 +217,6 @@ describe('questStore — addProgress (drop_rarity)', () => {
             goals: [{ type: 'drop_rarity', rarity: 'rare', count: 5 }],
         }));
         useQuestStore.getState().addProgress('drop_rarity', 'gibberish', 1);
-        // gibberish gets rank 0 < 1 -> skipped
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(0);
     });
 });
@@ -358,7 +344,6 @@ describe('questStore — refreshMasteryProgress', () => {
             goals: [{ type: 'mastery_total', count: 100 }],
         }));
         useQuestStore.getState().refreshMasteryProgress();
-        // 5 + 3 = 8
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(8);
     });
 
@@ -387,7 +372,6 @@ describe('questStore — refreshMasteryProgress', () => {
             goals: [{ type: 'mastery_all_at_level', count: 5 }],
         }));
         useQuestStore.getState().refreshMasteryProgress();
-        // 2 monsters at level ≥ 5
         expect(useQuestStore.getState().activeQuests[0].goals[0].progress).toBe(2);
     });
 });
@@ -408,7 +392,6 @@ describe('questStore — claimQuest', () => {
         useQuestStore.getState().addProgress('kill', 'rat', 5);
         useQuestStore.getState().claimQuest('q1');
         expect(useQuestStore.getState().completedQuestIds).toEqual([]);
-        // Still active
         expect(useQuestStore.getState().activeQuests).toHaveLength(1);
     });
 
@@ -434,7 +417,6 @@ describe('questStore — claimQuest', () => {
         }));
         useQuestStore.getState().addProgress('kill', 'rat', 5);
         useQuestStore.getState().claimQuest('q_multi');
-        // Second goal still incomplete -> no claim
         expect(useQuestStore.getState().completedQuestIds).toEqual([]);
         useQuestStore.getState().addProgress('kill', 'goblin', 5);
         useQuestStore.getState().claimQuest('q_multi');

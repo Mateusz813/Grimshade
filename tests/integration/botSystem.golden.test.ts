@@ -17,33 +17,11 @@ import type { TCharacterClass } from '../../src/types/character';
 import type { IBot, IBotAction } from '../../src/types/bot';
 import type { IBoss } from '../../src/systems/bossSystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla botSystem.ts (parytet TS↔PHP).
-//
-// Funkcje losujące (generateBot / generateBotWithClass / generateBotParty /
-// calculateBotAction / pickAggroTarget / getAggroSwitchInterval) konsumują
-// Math.random w STAŁEJ kolejności → podmieniamy Math.random na mulberry32(seed)
-// i zapisujemy seed; backend z Mulberry32Rng(seed) konsumuje identycznie.
-//
-// `id` bota = `bot_${botIdCounter}_${Date.now()}` — licznik modułu + zegar. To
-// runtime-owe artefakty, więc PARAMETRYZUJEMY je: mockujemy Date.now na stałą
-// (FAKE_NOW) i wyciągamy `botSeq` z wygenerowanego id. PHP dostaje botSeq + nowMs
-// jawnie i odtwarza id 1:1. Reszta pól (klasa/poziom/nazwa/staty) to realny
-// parytet RNG + czyste tabele statów z classes.json.
-//
-// POMINIĘTE (UI/ikony): BOT_CLASS_ICONS + getBotLogIcon (shortcody ikon do
-// combat-logu) — czysta prezentacja, patrz pole skipped w raporcie.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/botSystem.golden.test.ts
-//   cp golden/botSystem.json ../grimshade-backend/tests/Golden/fixtures/
-// ============================================================================
 
 const SEEDS = [1, 2, 3, 7, 13, 42, 99, 777];
 const FAKE_NOW = 1_700_000_000_000;
 const ALL_CLASSES: TCharacterClass[] = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'];
 
-// Podmienia Math.random (mulberry32 z seedem) ORAZ Date.now (stała) na czas fn.
 const withSeed = <T>(seed: number, fn: () => T): T => {
     const rng = new Mulberry32(seed);
     const origRandom = Math.random;
@@ -58,10 +36,8 @@ const withSeed = <T>(seed: number, fn: () => T): T => {
     }
 };
 
-// `bot_${seq}_${now}` → seq (środkowy segment).
 const botSeqOf = (id: string): number => Number(id.split('_')[1]);
 
-// Pełny IBoss z atrapami — calculateBotAction czyta tylko boss.defense.
 const makeBoss = (defense: number): IBoss => ({
     id: 'boss_test',
     name_pl: 'Test',
@@ -77,7 +53,6 @@ const makeBoss = (defense: number): IBoss => ({
     description_pl: 'x',
 });
 
-// Pełny IBot z sensownymi domyślnymi — nadpisywany przez `overrides`.
 const makeBot = (overrides: Partial<IBot>): IBot => ({
     id: 'bot_action',
     name: 'Tester',
@@ -199,7 +174,6 @@ const weightedAggro = (seed: number, arg: IAggroCandidate[]): IWeightedAggroCase
     value: withSeed(seed, () => pickAggroTarget(arg)),
 });
 
-// Bots dla calculateBotAction — jawne, żeby wymusić konkretne gałęzie.
 const KNIGHT_SKILL_BOT = makeBot({
     id: 'bot_k',
     name: 'Sir Aldric',
@@ -235,7 +209,6 @@ const buildGolden = (): Record<string, unknown> => ({
     system: 'botSystem',
     note: 'Generowane z src/systems/botSystem.ts. Funkcje RNG: seed + mulberry32; Date.now → FAKE_NOW; botSeq wyciągnięty z id. NIE edytuj ręcznie.',
 
-    // Czyste / deterministyczne
     calculateAoeDamage: [
         [10, 5], [10, 10], [10, 20], [1, 0], [0, 0], [100, 30], [3, 3], [7, 2], [1000, 1], [50, 200],
     ].map(([bossAttack, targetDefense]) => ({ bossAttack, targetDefense, value: calculateAoeDamage(bossAttack, targetDefense) })),
@@ -245,7 +218,6 @@ const buildGolden = (): Record<string, unknown> => ({
         value: isBossAoeTurn(turnCounter),
     })),
 
-    // Losujące (RNG w stałej kolejności → seeded)
     getAggroSwitchInterval: SEEDS.map((seed) => ({ seed, value: withSeed(seed, () => getAggroSwitchInterval()) })),
 
     pickAggroTargetLegacy: [
@@ -272,17 +244,14 @@ const buildGolden = (): Record<string, unknown> => ({
         actionCase('skill-canuse-false-knight', KNIGHT_SKILL_BOT, 10, false, 13),
     ],
 
-    // Generacja botów (RNG: klasa, offset poziomu, nazwa) + parametryzowane id
     generateBot: [
         ...SEEDS.map((seed) => genBot(seed, 1, 'Knight', [])),
         ...SEEDS.map((seed) => genBot(seed, 100, 'Mage', ['Knight'])),
         ...SEEDS.map((seed) => genBot(seed, 1000, 'Cleric', ['Bard', 'Archer'])),
         ...SEEDS.map((seed) => genBot(seed, 3, 'Necromancer', [])),
-        // available puste (wszystkie 7 klas wykluczone) → fallback na ALL_CLASSES
         ...SEEDS.map((seed) => genBot(seed, 50, 'Knight', ['Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard'])),
     ],
 
-    // Czysta tabela statów per klasa/poziom (przez generateBotWithClass)
     generateBotWithClass: [1, 50, 100, 1000].flatMap((playerLevel) =>
         ALL_CLASSES.flatMap((botClass) => SEEDS.map((seed) => genWithClass(seed, playerLevel, botClass))),
     ),
@@ -304,7 +273,6 @@ describe('botSystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current botSystem output', () => {
         expect(existsSync(outPath), 'brak golden/botSystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON — usuwa -0 (i tak serializuje się jako 0). Parytet nienaruszony.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

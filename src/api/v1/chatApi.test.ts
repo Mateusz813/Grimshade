@@ -1,15 +1,3 @@
-/**
- * Tests for chatApi — global / PM / guild / system chat over PostgREST.
- *
- * Covered:
- * - getMessages: queries `messages` by channel, returns oldest-first.
- * - sendMessage: short-circuits when no session, otherwise inserts with
- *   the right payload (truncates content to 300 chars), fires the trim
- *   helper for pm_ + guild_ channels.
- * - postSystemEvent: thin alias over sendMessage with channel='system'.
- * - subscribe / subscribeAll: install a supabase realtime channel and
- *   return an unsubscribe cleanup.
- */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -27,7 +15,6 @@ import { supabase } from '../../lib/supabase';
 import api from './axiosInstance';
 import { chatApi } from './chatApi';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApi = api as unknown as Record<string, any>;
 const mkRes = <T>(data: T) => ({ data });
 
@@ -48,7 +35,6 @@ describe('chatApi.getMessages', () => {
         expect(url).toContain('channel=eq.global');
         expect(url).toContain('order=created_at.desc');
         expect(url).toContain('limit=100');
-        // Reversed -> oldest first
         expect(result.map((m) => m.id)).toEqual(['1', '2', '3']);
     });
 
@@ -80,7 +66,6 @@ describe('chatApi.sendMessage', () => {
 
     it('inserts a message with truncated content + trimmed whitespace', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { id: 'u1' } } as any },
             error: null,
         });
@@ -97,25 +82,21 @@ describe('chatApi.sendMessage', () => {
         expect(body.character_class).toBe('Mage');
         expect(body.character_level).toBe(7);
         expect(body.user_id).toBe('u1');
-        expect(body.content).toBe('a'.repeat(300)); // capped
+        expect(body.content).toBe('a'.repeat(300));
         expect(config.headers.Prefer).toBe('return=representation');
         expect(result).toBe(inserted);
     });
 
     it('triggers a trim for pm_ channels', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { id: 'u1' } } as any },
             error: null,
         });
         mockApi.post.mockResolvedValueOnce(mkRes([{ id: 'm1' }]));
-        // Trim path queries for trim candidates — return empty so nothing to delete.
         mockApi.get.mockResolvedValueOnce(mkRes([]));
 
         await chatApi.sendMessage('pm_Alice_Bob', 'yo', 'Alice', 'Knight', 5);
-        // Wait microtask flush so the void-trim has a chance to fire.
         await new Promise((r) => setTimeout(r, 0));
-        // The trim path issues a get on /rest/v1/messages?...offset=
         const trimCalls = mockApi.get.mock.calls.filter((c: unknown[]) =>
             String(c[0]).includes('offset='),
         );
@@ -124,7 +105,6 @@ describe('chatApi.sendMessage', () => {
 
     it('triggers a trim with the larger 500-cap for guild_ channels', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { id: 'u1' } } as any },
             error: null,
         });
@@ -141,7 +121,6 @@ describe('chatApi.sendMessage', () => {
 
     it('does NOT trim the global channel (city log preserved)', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { id: 'u1' } } as any },
             error: null,
         });
@@ -157,11 +136,10 @@ describe('chatApi.sendMessage', () => {
 
     it('returns null when the insert response is empty', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { id: 'u1' } } as any },
             error: null,
         });
-        mockApi.post.mockResolvedValueOnce(mkRes([])); // no row returned
+        mockApi.post.mockResolvedValueOnce(mkRes([]));
         const result = await chatApi.sendMessage('global', 'hi', 'A', 'Knight', 1);
         expect(result).toBeNull();
     });
@@ -170,7 +148,6 @@ describe('chatApi.sendMessage', () => {
 describe('chatApi.postSystemEvent', () => {
     it('delegates to sendMessage with channel="system"', async () => {
         vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: { session: { user: { id: 'u1' } } as any },
             error: null,
         });
@@ -187,15 +164,12 @@ describe('chatApi.subscribe', () => {
         const onMock = vi.fn().mockReturnThis();
         const subscribeMock = vi.fn().mockReturnThis();
         const channel = { on: onMock, subscribe: subscribeMock };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         vi.mocked(supabase.channel).mockReturnValueOnce(channel as any);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).removeChannel = vi.fn();
 
         const onMessage = vi.fn();
         const cleanup = chatApi.subscribe('global', onMessage);
 
-        // Channel name should embed the chat channel.
         const chanName = vi.mocked(supabase.channel).mock.calls[0][0];
         expect(chanName).toContain('chat:global:');
 
@@ -206,13 +180,11 @@ describe('chatApi.subscribe', () => {
             table: 'messages',
             filter: 'channel=eq.global',
         });
-        // Trigger the inserted-row callback to confirm forwarding.
         const payloadCb = onCall[2];
         payloadCb({ new: { id: 'm1', content: 'hi' } });
         expect(onMessage).toHaveBeenCalledWith({ id: 'm1', content: 'hi' });
 
         cleanup();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((supabase as any).removeChannel).toHaveBeenCalledWith(channel);
     });
 });
@@ -222,9 +194,7 @@ describe('chatApi.subscribeAll', () => {
         const onMock = vi.fn().mockReturnThis();
         const subscribeMock = vi.fn().mockReturnThis();
         const channel = { on: onMock, subscribe: subscribeMock };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         vi.mocked(supabase.channel).mockReturnValueOnce(channel as any);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).removeChannel = vi.fn();
 
         const onMessage = vi.fn();
@@ -234,14 +204,9 @@ describe('chatApi.subscribeAll', () => {
         expect(chanName).toContain('chat:all:');
 
         const onArgs = onMock.mock.calls[0][1];
-        // No `filter` key means we get everything.
         expect(onArgs.filter).toBeUndefined();
         expect(typeof cleanup).toBe('function');
         cleanup();
     });
 });
 
-// TODO: the private `trimChannel` is exercised indirectly via the
-// pm_/guild_ branches in sendMessage. Direct coverage would require
-// reflecting on the class instance — left out because the public path
-// already proves the trim runs.

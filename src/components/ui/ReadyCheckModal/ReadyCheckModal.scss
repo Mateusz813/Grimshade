@@ -64,10 +64,6 @@
     margin-bottom: 14px;
   }
 
-  // 2026-05-14 spec: raid variant renders the dungeon painting as a
-  // full-tile background (no monster portrait). Name + level sit on
-  // top of a dark gradient overlay so they stay legible no matter
-  // how busy the underlying art is.
   &__target--raid {
     position: relative;
     display: block;
@@ -88,10 +84,6 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    // 2026-05-14 spec ("Jasniejsze tlo"): keep just enough dimming so
-    // the white name/level text stays readable, but let the dungeon
-    // painting come through clearly instead of hiding it behind a
-    // near-opaque scrim.
     background: linear-gradient(
       180deg,
       rgba(0, 0, 0, 0.15) 0%,

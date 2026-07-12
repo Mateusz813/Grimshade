@@ -25,14 +25,11 @@ beforeEach(() => {
         isNetworkUp: true,
         snapshot: null,
     });
-    // The store's setSnapshot / setMode both touch sessionStorage. Wipe it
-    // here so each test starts from a clean baseline.
     if (typeof window !== 'undefined') {
         window.sessionStorage.clear();
     }
 });
 
-// -- setMode ------------------------------------------------------------------
 
 describe('setMode', () => {
     it('flips mode to offline and records `explicit: true` when the player toggled it', () => {
@@ -48,8 +45,6 @@ describe('setMode', () => {
     });
 
     it('flips mode to offline WITHOUT marking explicit when the DC watcher auto-flips', () => {
-        // explicit defaults to whatever the store already has — false on first
-        // boot, so an auto-DC must NOT lock the player into explicit-offline.
         useConnectivityStore.getState().setMode('offline', { explicit: false });
         const state = useConnectivityStore.getState();
         expect(state.mode).toBe('offline');
@@ -57,7 +52,6 @@ describe('setMode', () => {
     });
 
     it('preserves the existing explicit flag when called without `explicit` option', () => {
-        // Pre-seed: the player chose offline earlier.
         useConnectivityStore.setState({
             mode: 'online',
             userExplicitlyOffline: true,
@@ -65,7 +59,6 @@ describe('setMode', () => {
             snapshot: null,
         });
         useConnectivityStore.getState().setMode('offline');
-        // No `opts.explicit` passed -> the previous true sticks.
         expect(useConnectivityStore.getState().userExplicitlyOffline).toBe(true);
     });
 
@@ -75,13 +68,10 @@ describe('setMode', () => {
         const state = useConnectivityStore.getState();
         expect(state.mode).toBe('online');
         expect(state.userExplicitlyOffline).toBe(false);
-        // sessionStorage key also wiped.
         expect(window.sessionStorage.getItem('grimshade.userExplicitlyOffline')).toBeNull();
     });
 
     it('clears the explicit flag even when going online from an explicit-offline state', () => {
-        // Mirrors the reconnect button path: user clicked offline earlier,
-        // hits Reconnect -> store should let go of the lock.
         useConnectivityStore.setState({
             mode: 'offline',
             userExplicitlyOffline: true,
@@ -93,7 +83,6 @@ describe('setMode', () => {
     });
 });
 
-// -- setIsNetworkUp ----------------------------------------------------------
 
 describe('setIsNetworkUp', () => {
     it('mirrors the network flag without touching mode/snapshot', () => {
@@ -106,8 +95,6 @@ describe('setIsNetworkUp', () => {
         useConnectivityStore.getState().setIsNetworkUp(false);
         const state = useConnectivityStore.getState();
         expect(state.isNetworkUp).toBe(false);
-        // Mode / snapshot stay put — flipping the flag alone does not
-        // re-route the player into offline.
         expect(state.mode).toBe('online');
         expect(state.snapshot).toBeNull();
     });
@@ -120,7 +107,6 @@ describe('setIsNetworkUp', () => {
     });
 });
 
-// -- setSnapshot --------------------------------------------------------------
 
 describe('setSnapshot', () => {
     it('writes the snapshot into state', () => {
@@ -151,7 +137,6 @@ describe('setSnapshot', () => {
     });
 });
 
-// -- isOfflineMode helper -----------------------------------------------------
 
 describe('isOfflineMode', () => {
     it('returns false when mode is "online"', () => {
@@ -172,7 +157,6 @@ describe('isOfflineMode', () => {
             snapshot: null,
         });
         expect(isOfflineMode()).toBe(true);
-        // Also true with network down.
         useConnectivityStore.setState({
             mode: 'offline',
             userExplicitlyOffline: false,
@@ -183,7 +167,3 @@ describe('isOfflineMode', () => {
     });
 });
 
-// TODO: the module bootstraps `mode` from sessionStorage on first import
-// (resume-after-F5 path). Testing that requires `vi.resetModules()` + a
-// fresh import with pre-seeded sessionStorage; left out for now to keep
-// the test file focused on the public setter contract.

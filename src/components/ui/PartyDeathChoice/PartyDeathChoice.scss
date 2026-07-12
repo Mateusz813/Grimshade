@@ -1,13 +1,8 @@
-// ==============================================================================
-// Party Death Choice — mid-fight modal that fires when the player goes down
-// in a party combat (raid) but allies are still up. Two-button choice:
-// return to town now (apply penalty) or wait for an ally resurrection.
-// ==============================================================================
 
 .party-death-choice {
   position: fixed;
   inset: 0;
-  z-index: 10000; // just under the global death overlay (10001)
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,7 +132,6 @@
   }
 }
 
-// Mobile: tighten paddings so the panel fits comfortably with on-screen keyboards
 @media (max-width: 480px) {
   .party-death-choice {
     padding: 12px;

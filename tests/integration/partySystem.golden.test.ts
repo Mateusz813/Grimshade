@@ -30,30 +30,6 @@ import {
     type IPartyInfo,
 } from '../../src/systems/partySystem';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla partySystem.
-//
-// Żyje w tests/integration/ (używa node:fs do zapisu fixture). Dwie role:
-//  1. UPDATE_GOLDEN=1 → GENERUJE golden/partySystem.json z realnych funkcji.
-//  2. Normalnie → GUARD: asertuje, że commitowany fixture == aktualny output TS.
-//
-// Fixture kopiowany do backendu (grimshade-backend/tests/Golden/fixtures/
-// partySystem.json), gdzie Pest odtwarza go w PHP → parytet TS↔PHP.
-//
-// Regeneracja + kopia:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/partySystem.golden.test.ts
-//   cp golden/partySystem.json ../grimshade-backend/tests/Golden/fixtures/
-//
-// RNG: pickWeightedAggroTarget woła Math.random() DOKŁADNIE raz (stała
-// kolejność) → podmieniamy na mulberry32(seed) i zapisujemy seed; backend z
-// tym samym seedem konsumuje RNG identycznie.
-//
-// POMINIĘTE (glue/UI, brak parytetu): generatePartyId + pole `id` w
-// createBotHelper — oba budowane z `Math.random().toString(36)` (base36 z floata
-// nieodtwarzalny bajt-w-bajt w PHP) + `Date.now()`. Serwer nadaje własne id.
-// Testujemy tylko deterministyczny kontrakt createBotHelper (klasa/poziom/hp/
-// nazwa), który wykorzystuje logika party/combat.
-// ============================================================================
 
 const withSeed = <T>(seed: number, fn: () => T): T => {
     const rng = new Mulberry32(seed);
@@ -66,7 +42,6 @@ const withSeed = <T>(seed: number, fn: () => T): T => {
     }
 };
 
-// Klasa spoza mapy (test fallbacku ?? 30 w getAggroWeight / nieznana klasa aggro).
 const UNKNOWN_CLASS = 'Paladin' as unknown as TCharacterClass;
 
 const mkMember = (
@@ -83,7 +58,6 @@ const mkParty = (members: IPartyMember[]): IPartyInfo => ({
     createdAt: '2026-01-01',
 });
 
-// -- Zestawy członków party ----------------------------------------------------
 
 const MEMBER_SETS: Array<{ label: string; members: IPartyMember[] }> = [
     { label: 'empty', members: [] },
@@ -115,27 +89,23 @@ const MEMBER_SETS: Array<{ label: string; members: IPartyMember[] }> = [
     },
     { label: 'low-level', members: [mkMember('p1', 'Rogue', 1)] },
     { label: 'high-level', members: [mkMember('p1', 'Bard', 1000)] },
-    // createBotHelper: obecne Cleric+Knight+Mage → bot = Archer (pokrywa 'Bot Łucznik').
     {
         label: 'cleric-knight-mage',
         members: [mkMember('p1', 'Cleric', 8), mkMember('p2', 'Knight', 8), mkMember('p3', 'Mage', 8)],
     },
 ];
 
-// -- Rozmiary party (mnożniki / capacity) --------------------------------------
 
 const SIZES = [-5, 0, 1, 2, 3, 4, 5, 10];
 const JOIN_SIZES = [-1, 0, 1, 2, 3, 4, 5];
 const FULL_SIZES = [0, 1, 3, 4, 5];
 
-// -- Podział XP/gold -----------------------------------------------------------
 
 const SHARE_CASES: Array<[number, number]> = [
     [1000, 4], [1000, 3], [1000, 1], [1000, 0], [1000, -2],
     [0, 4], [7, 4], [-100, 3], [999, 4], [2000000000, 4],
 ];
 
-// -- Kompozycja klas -----------------------------------------------------------
 
 const CLASS_SETS: Array<{ label: string; classes: string[] }> = [
     { label: 'empty', classes: [] },
@@ -150,7 +120,6 @@ const CLASS_SETS: Array<{ label: string; classes: string[] }> = [
     { label: 'no-buffs', classes: ['Rogue', 'Mage', 'Archer'] },
 ];
 
-// -- applyPartyBuffs — buffy pochodzą z getPartyBuffs(classes) ------------------
 
 const APPLY_CASES: Array<{ label: string; baseAttack: number; baseDefense: number; maxHp: number; classes: string[] }> = [
     { label: 'none', baseAttack: 100, baseDefense: 50, maxHp: 1000, classes: ['Rogue'] },
@@ -162,13 +131,11 @@ const APPLY_CASES: Array<{ label: string; baseAttack: number; baseDefense: numbe
     { label: 'zero-stats', baseAttack: 0, baseDefense: 0, maxHp: 0, classes: ['Bard', 'Knight', 'Cleric'] },
 ];
 
-// -- calculateHelpDamage -------------------------------------------------------
 
 const HELP_CASES: Array<[number, number]> = [
     [100, 500], [0, 100], [1, 1], [999, 0], [7, 3], [-50, 100],
 ];
 
-// -- getPartyGateLevel ---------------------------------------------------------
 
 const GATE_MEMBERS_FULL = [
     mkMember('p1', 'Knight', 10),
@@ -185,7 +152,6 @@ const GATE_CASES: Array<{ label: string; myLevel: number; members: IPartyMember[
     { label: 'bot-ignored', myLevel: 50, members: [mkMember('p1', 'Knight', 10), mkMember('b1', 'Rogue', 1, true)] },
 ];
 
-// -- getPartyMaxUnlockedMonsterLevel -------------------------------------------
 
 const UNLOCK_MEMBERS = [
     mkMember('p1', 'Knight', 10),
@@ -220,11 +186,9 @@ const UNLOCK_CASES: Array<{
     { label: 'snapshot-without-field', myMax: 100, members: UNLOCK_MEMBERS, presence: { p2: {} }, myId: 'p1' },
 ];
 
-// -- getAggroWeight ------------------------------------------------------------
 
 const AGGRO_CLASSES: TCharacterClass[] = ['Knight', 'Rogue', 'Archer', 'Necromancer', 'Mage', 'Cleric', 'Bard'];
 
-// -- pickWeightedAggroTarget (seeded) ------------------------------------------
 
 const AGGRO_SEEDS = [1, 2, 3, 7, 13, 42, 99, 777];
 const TARGET_SETS: Array<{ label: string; targets: Array<{ id: string; class: TCharacterClass }> }> = [
@@ -249,7 +213,6 @@ const buildGolden = (): Record<string, unknown> => ({
 
     maxPartySize: MAX_PARTY_SIZE,
 
-    // -- Deterministyczne (bit-exact) -----------------------------------------
     calculateDropMultiplier: SIZES.map((size) => ({ size, value: calculateDropMultiplier(size) })),
     calculateXpMultiplier: SIZES.map((size) => ({ size, value: calculateXpMultiplier(size) })),
     calculateDifficultyMultiplier: SIZES.map((size) => ({ size, value: calculateDifficultyMultiplier(size) })),
@@ -265,7 +228,6 @@ const buildGolden = (): Record<string, unknown> => ({
 
     createBotHelper: MEMBER_SETS.map((s) => {
         const bot = createBotHelper(s.members);
-        // `id` (Date.now + Math.random base36) świadomie pominięte — glue, serwer nadaje własne.
         return {
             label: s.label,
             members: s.members,
@@ -328,7 +290,6 @@ const buildGolden = (): Record<string, unknown> => ({
     getAggroWeight: AGGRO_CLASSES.map((cls) => ({ class: cls, value: getAggroWeight(cls) }))
         .concat([{ class: UNKNOWN_CLASS, value: getAggroWeight(UNKNOWN_CLASS) }]),
 
-    // -- RNG (seed → mulberry32) ----------------------------------------------
     pickWeightedAggroTarget: AGGRO_SEEDS.flatMap((seed) =>
         TARGET_SETS.map((ts) => ({
             seed,
@@ -351,7 +312,6 @@ describe('partySystem golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current partySystem output', () => {
         expect(existsSync(outPath), 'brak golden/partySystem.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON — usuwa -0 (parytet nienaruszony, PHP i tak liczy 0).
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

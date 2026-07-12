@@ -17,28 +17,6 @@ import { useBuffStore, type IActiveBuff } from '../../src/stores/buffStore';
 import { useCharacterStore } from '../../src/stores/characterStore';
 import type { ICharacter } from '../../src/api/v1/characterApi';
 
-// ============================================================================
-// GOLDEN-VECTOR EXPORT + GUARD dla combatElixirs.
-//
-// combatElixirs.ts to CZYSTA matematyka mnożników / bonusów eliksirów bojowych
-// czytana z buffStore. Bez RNG, bez Date.now — jedyne „wejście" to zbiór
-// aktywnych buffów (hasBuff) oraz pozostały czas pausable (remainingMs).
-//
-// Decyzja portowa (reguła 4 — gettery czytające Zustand store):
-//  - PHP dostaje stan JAWNIE jako parametry (czysta funkcja):
-//      * gettery       -> lista aktywnych efektów (hasBuff == in_array),
-//      * tickCombatElixirs -> mapa effect => remainingMs (pausable) + ms.
-//  - Generator TS USTAWIA stan store (setState) i wywołuje REALNE funkcje TS,
-//    żeby wektory pochodziły z produkcyjnego kodu, nie z re-implementacji.
-//
-// Dwie role:
-//  1. UPDATE_GOLDEN=1 -> GENERUJE golden/combatElixirs.json z realnych funkcji.
-//  2. Normalnie       -> GUARD: commitowany fixture == aktualny output TS.
-//
-// Regeneracja + kopia do backendu:
-//   UPDATE_GOLDEN=1 npx vitest run tests/integration/combatElixirs.golden.test.ts
-//   cp golden/combatElixirs.json ../grimshade-backend/tests/Golden/fixtures/
-// ============================================================================
 
 const CHAR_ID = 'char-elixir-golden';
 
@@ -80,13 +58,11 @@ const pausableBuff = (effect: string, remainingMs: number, i: number): IActiveBu
     remainingMs,
 });
 
-/** Wgraj świeży stan store: aktywna postać + podane pausable buffy. */
 const setBuffs = (buffs: IActiveBuff[]): void => {
     useCharacterStore.setState({ character: makeChar(), isLoading: false });
     useBuffStore.setState({ allBuffs: buffs, combatSpeedMult: 1 });
 };
 
-// -- Gettery: stan = lista aktywnych efektów (każdy jako pausable, remainingMs>0)
 
 const runGetters = (active: string[]): Record<string, number> => {
     setBuffs(active.map((e, i) => pausableBuff(e, 10_000, i)));
@@ -103,8 +79,6 @@ const runGetters = (active: string[]): Record<string, number> => {
     };
 };
 
-// -- tickCombatElixirs: stan = mapa effect => remainingMs (pausable) + ms.
-//    Wynik = przeżywające buffy (remainingMs>0) po drenażu, jako mapa.
 
 const runTick = (input: Record<string, number>, ms: number): Record<string, number> => {
     const effects = Object.keys(input);
@@ -119,8 +93,6 @@ const runTick = (input: Record<string, number>, ms: number): Record<string, numb
     return out;
 };
 
-// Scenariusze getterów — pojedyncze eliksiry, kaskady tierów (highest-first),
-// niepowiązany buff (nie wpływa na eliksiry), oraz wszystko naraz.
 const GETTER_SCENARIOS: string[][] = [
     [],
     ['atk_dmg_25'],
@@ -147,8 +119,6 @@ const GETTER_SCENARIOS: string[][] = [
     ],
 ];
 
-// Scenariusze ticka — always-drain, grupy tierów (drenuje TYLKO najwyższy),
-// zera, dokładny drenaż do 0 (usunięcie), ms > pozostały czas, ms=0, ms<0.
 const TICK_SCENARIOS: Array<{ input: Record<string, number>; ms: number }> = [
     { input: {}, ms: 1000 },
     { input: { atk_boost_50: 5000 }, ms: 1000 },
@@ -204,7 +174,6 @@ describe('combatElixirs golden vectors (TS↔PHP parity source)', () => {
     it('committed fixture matches current combatElixirs output', () => {
         expect(existsSync(outPath), 'brak golden/combatElixirs.json — uruchom UPDATE_GOLDEN=1').toBe(true);
         const fixture = JSON.parse(readFileSync(outPath, 'utf8'));
-        // Normalizacja przez JSON (usuwa -0 itp.) — wzór z lootSystem.
         expect(JSON.parse(JSON.stringify(computed))).toEqual(fixture);
     });
 });

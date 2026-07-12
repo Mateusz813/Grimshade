@@ -8,16 +8,6 @@ export interface ISkillAnimOverlay {
     anim: ISkillAnimation;
 }
 
-/**
- * Reusable skill animation overlay state. Used by Combat, Dungeon, Boss and
- * Transform views so a short visual effect plays whenever a skill is cast.
- *
- * The overlay's `anim.emoji` is swapped for the per-class spell artwork
- * URL (e.g. archer-1.png) when one is registered. The render sites then
- * branch on `isImageUrl(emoji)` to draw an `<img>` instead of a glyph,
- * so the actual spell image flies across the screen during casts.
- * Falls back to the legacy emoji if the PNG isn't available yet.
- */
 export const useSkillAnim = () => {
     const [overlay, setOverlay] = useState<ISkillAnimOverlay | null>(null);
     const idRef = useRef(0);

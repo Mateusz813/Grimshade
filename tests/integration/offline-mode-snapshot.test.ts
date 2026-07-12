@@ -1,26 +1,3 @@
-/**
- * Integration: offline-mode snapshot + delta anti-duplication.
- *
- * Spec recap (2026-05-20):
- *   - Going offline (user click OR DC) captures a snapshot of the
- *     player's CURRENT character + inventory state into
- *     sessionStorage.
- *   - Live play mutates the stores normally while offline.
- *   - Going back online computes a delta vs the snapshot, logs an
- *     audit trail (suspicious deltas trigger a console.warn), pushes
- *     the live state to Supabase, then clears the snapshot.
- *   - This prevents both real-life data loss (snapshot is the
- *     trusted baseline if Supabase rejects the push) and item
- *     duplication exploits (delta logging lets the team catch
- *     impossible jumps later).
- *
- * This file exercises the helpers as a unit — `transitionToOffline`
- * and `transitionToOnline` are the public entry points called from
- * the avatar menu + DC watcher. We let the real connectivity store
- * + characterStore + inventoryStore collaborate; only the supabase
- * call inside `saveCurrentCharacterStores` is global-mocked (see
- * `tests/vitest.setup.ts`).
- */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
@@ -34,7 +11,6 @@ import { useCharacterStore, type ICharacter } from '../../src/stores/characterSt
 import { useInventoryStore } from '../../src/stores/inventoryStore';
 import { EMPTY_EQUIPMENT } from '../../src/systems/itemSystem';
 
-// -- Fixtures -----------------------------------------------------------------
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
     id: 'char-offline-1',
@@ -80,7 +56,6 @@ const resetAll = (): void => {
     });
 };
 
-// Silence the noisy console.info from transitionToOnline's audit log.
 let infoSpy: ReturnType<typeof vi.spyOn>;
 let warnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -95,7 +70,6 @@ afterEach(() => {
     warnSpy.mockRestore();
 });
 
-// -- Tests --------------------------------------------------------------------
 
 describe('offline mode: snapshot captures pre-offline state', () => {
     it('captures gold + level + xp + item count at the moment we go offline', () => {
@@ -150,15 +124,12 @@ describe('offline mode: live state diverges from snapshot during the session', (
         });
         transitionToOffline({ explicit: true });
 
-        // Player grinds offline.
-        useInventoryStore.getState().addGold(1000); // gold 1000 -> 2000
+        useInventoryStore.getState().addGold(1000);
         useCharacterStore.getState().updateCharacter({ xp: 14000 });
 
         const snap = useConnectivityStore.getState().snapshot!;
-        // Snapshot is the TRUSTED baseline — unaffected by mutations.
         expect(snap.gold).toBe(1000);
         expect(snap.xp).toBe(12000);
-        // Live state has moved.
         expect(useInventoryStore.getState().gold).toBe(2000);
         expect(useCharacterStore.getState().character?.xp).toBe(14000);
     });
@@ -191,7 +162,6 @@ describe('offline mode: transitionToOnline clears snapshot + computes delta', ()
         });
         transitionToOffline({ explicit: true });
 
-        // Player earns 250 gold + 1000 XP while offline.
         useInventoryStore.getState().addGold(250);
         useCharacterStore.getState().updateCharacter({ xp: 1000, level: 51 });
 
@@ -210,7 +180,6 @@ describe('offline mode: transitionToOnline clears snapshot + computes delta', ()
         });
         transitionToOffline({ explicit: true });
 
-        // 100 -> 100000 = 1000× growth, well past the 50× threshold.
         useInventoryStore.setState({
             bag: [], equipment: { ...EMPTY_EQUIPMENT }, deposit: [],
             gold: 100_000, arenaPoints: 0, consumables: {}, stones: {},
@@ -218,7 +187,6 @@ describe('offline mode: transitionToOnline clears snapshot + computes delta', ()
 
         const delta = await transitionToOnline();
         expect(delta?.suspicious).toBe(true);
-        // Reasons mention the gold spike.
         expect(delta?.reasons.join(' ')).toContain('gold');
     });
 
@@ -226,7 +194,6 @@ describe('offline mode: transitionToOnline clears snapshot + computes delta', ()
         useCharacterStore.getState().setCharacter(makeChar({ id: 'char-A' }));
         captureOfflineSnapshot();
         const snap = useConnectivityStore.getState().snapshot!;
-        // Different character now loaded.
         useCharacterStore.getState().setCharacter(makeChar({ id: 'char-B' }));
         expect(computeOfflineDelta(snap)).toBeNull();
     });
@@ -239,7 +206,6 @@ describe('offline mode: idempotency under back-to-back transitions', () => {
         const firstSnap = useConnectivityStore.getState().snapshot!;
         expect(firstSnap.xp).toBe(100);
 
-        // State changes between the two transitions.
         useCharacterStore.getState().updateCharacter({ xp: 5000 });
         transitionToOffline({ explicit: true });
         const secondSnap = useConnectivityStore.getState().snapshot!;

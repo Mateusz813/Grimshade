@@ -8,8 +8,6 @@
   align-items: center;
   padding: 1.5rem 1rem 4rem;
 
-  // Loading variant — centers the Spinner vertically while the
-  // characters fetch resolves.
   &--loading {
     justify-content: center;
     padding: 4rem 1rem;
@@ -31,8 +29,6 @@
     gap: 12px;
   }
 
-  // 2026-05-21 spec: artwork is now the whole title (wordmark removed)
-  // — bumped to 150×150 so the brand reads big at the top of the view.
   &__title-icon {
     width: 150px;
     height: 150px;
@@ -223,7 +219,6 @@
     }
   }
 
-  // -- Password-gated delete modal -------------------------------------------
   &__modal-bg {
     position: fixed;
     inset: 0;

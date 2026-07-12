@@ -1,8 +1,5 @@
 @use '../../../styles/variables' as *;
 
-// -- Backdrop -----------------------------------------------------------------
-// Portaled to <body>, so this `position: fixed` anchors to the viewport
-// even when an ancestor of the original mount-point uses backdrop-filter.
 .admin-panel__backdrop {
     position: fixed;
     inset: 0;
@@ -15,12 +12,9 @@
     backdrop-filter: blur(3px);
 }
 
-// -- Panel --------------------------------------------------------------------
 .admin-panel {
     width: 100%;
     max-width: 680px;
-    // Take 90% of the viewport vertically — tall enough for big forms,
-    // small enough to leave breathing room around the edges.
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -32,7 +26,7 @@
                 0 0 40px rgba(76, 175, 80, 0.18);
     color: $color-text;
     overflow: hidden;
-    position: relative; // anchors the toast pill
+    position: relative;
 
     &__header {
         flex: 0 0 auto;
@@ -69,7 +63,6 @@
         }
     }
 
-    // -- Tab strip — sticky at top of the panel ---------------------------
     &__tabs {
         flex: 0 0 auto;
         display: flex;
@@ -109,16 +102,13 @@
         }
     }
 
-    // -- Body (scrollable) ------------------------------------------------
     &__body {
         flex: 1 1 auto;
         overflow-y: auto;
         overflow-x: hidden;
         padding: 14px 16px 18px;
-        // Smooth scrollbar on macOS / iOS
         -webkit-overflow-scrolling: touch;
 
-        // Custom scrollbar (Chromium / WebKit)
         &::-webkit-scrollbar { width: 8px; }
         &::-webkit-scrollbar-track { background: transparent; }
         &::-webkit-scrollbar-thumb {
@@ -146,7 +136,6 @@
         }
     }
 
-    // -- Row layout for label / control pairs ------------------------------
     &__row {
         display: flex;
         flex-direction: column;
@@ -212,7 +201,6 @@
         }
     }
 
-    // -- Grid for grouped action buttons -----------------------------------
     &__grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -247,7 +235,6 @@
         }
     }
 
-    // -- Nuclear -----------------------------------------------------------
     &__warn {
         font-size: 11px;
         color: #ffb74d;
@@ -282,7 +269,6 @@
         }
     }
 
-    // -- Toast confirmation ------------------------------------------------
     &__toast {
         position: absolute;
         left: 50%;

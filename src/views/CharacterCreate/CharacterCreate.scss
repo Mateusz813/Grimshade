@@ -20,7 +20,6 @@
     }
   }
 
-  // -- Left panel ---------------------------------------------
   &__panel {
     flex: 0 0 320px;
     background: $color-bg-secondary;
@@ -157,7 +156,6 @@
     }
   }
 
-  // -- Right detail panel --------------------------------------
   &__detail {
     flex: 1;
     background: $color-bg-secondary;
@@ -206,7 +204,6 @@
     width: 100%;
   }
 
-  // -- Class portrait ------------------------------------------
   &__portrait {
     width: 200px;
     height: 280px;
@@ -276,7 +273,6 @@
     }
   }
 
-  // -- Stats ---------------------------------------------------
   &__stats {
     display: flex;
     flex-direction: column;
@@ -325,7 +321,6 @@
     text-align: left;
   }
 
-  // -- Growth --------------------------------------------------
   &__growth-grid {
     display: flex;
     flex-wrap: wrap;
@@ -341,7 +336,6 @@
     }
   }
 
-  // -- Skill tags -----------------------------------------------
   &__skill-tags {
     display: flex;
     flex-wrap: wrap;

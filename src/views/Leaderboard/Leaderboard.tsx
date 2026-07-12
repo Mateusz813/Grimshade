@@ -9,33 +9,17 @@ import Spinner from '../../components/ui/Spinner/Spinner';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import './Leaderboard.scss';
 
-// -- Types ---------------------------------------------------------------------
 
 interface ILeaderboardEntry {
   id: string;
   name: string;
   class: string;
-  /** Primary sort value, e.g. level / LP / deaths_count. */
   value: number;
-  /** Optional secondary value rendered as a faded pill, e.g. XP, lifetime AP. */
   secondaryValue?: number;
-  /** Optional label override (e.g. "Bronze · 1240 LP"). */
   valueOverride?: string;
-  /**
-   * 2026-05-19 v20: optional party composition for the DPS-party
-   * leaderboard. When present, the row renders a stack of
-   * `{ name, class }` entries on the left instead of the usual
-   * single-character row.
-   */
   partyComposition?: Array<{ name: string; class: string }>;
 }
 
-/**
- * 2026-05-19 v20 spec ("DPS tez konwertuj na K lub M do 2 miejsc po
- * przecinku"): compact DPS formatter — `1234567` -> `1.23M`,
- * `42150` -> `42.15K`, `987` -> `987`. Two decimal places, suffix
- * inline.
- */
 const formatDpsCompact = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(2)}K`;
@@ -95,7 +79,6 @@ type LeaderboardTab =
   | 'arena_league'
   | 'guilds'
   | 'deaths_total'
-  // 2026-05-19 v16: activity counters
   | 'mastery_points'
   | 'quests_oneshot_done'
   | 'quests_daily_done'
@@ -110,25 +93,13 @@ interface ITabDef {
   key: LeaderboardTab;
   label: string;
   icon: string;
-  /**
-   * Where the data comes from. Drives the fetch branch:
-   *   - `characters`     — read characters table directly
-   *   - `weapon_skill`   — read character_weapon_skills + characters
-   *   - `guilds`         — read guilds table
-   *   - `deaths_total`   — read character_death_totals view
-   */
   source: 'characters' | 'weapon_skill' | 'guilds' | 'deaths_total';
-  /** Skill name for `weapon_skill` source. */
   skillName?: string;
-  /** Column on `characters` for `characters` source. */
   characterColumn?: string;
-  /** Order direction. */
   order?: 'asc' | 'desc';
-  /** Value label shown next to the entry value. */
   valueLabel: string;
 }
 
-// 2026-05-19 v15 spec: every leaderboard tab shows up to 100 entries.
 const ROW_LIMIT = 100;
 
 const TABS: ITabDef[] = [
@@ -146,21 +117,13 @@ const TABS: ITabDef[] = [
   { key: 'mp_regen',          label: 'MP Reg',     icon: 'gem-stone', source: 'weapon_skill',   skillName: 'mp_regen',                 valueLabel: 'MP Reg' },
   { key: 'defense',           label: 'DEF',        icon: 'shield', source: 'weapon_skill',   skillName: 'defense',                  valueLabel: 'DEF' },
   { key: 'crit_chance',       label: 'Crit %',     icon: 'bullseye', source: 'weapon_skill',   skillName: 'crit_chance',              valueLabel: 'Crit' },
-  // 2026-05-19 v15: crit_damage lives on the characters row (no weapon-skill track), order desc.
   { key: 'crit_damage',       label: 'Crit DMG',   icon: 'collision', source: 'characters',     characterColumn: 'crit_damage',        order: 'desc', valueLabel: 'CritDmg' },
   { key: 'boss_score',        label: 'Boss',       icon: 'ogre', source: 'weapon_skill',   skillName: 'boss_score',               valueLabel: 'Boss' },
-  // 2026-05-19 v15 spec ("Dodać do rankingu arenę"): arena tabs sourced from the new
-  // characters.arena_* columns added by the leaderboard_migration.sql.
   { key: 'arena_killers',     label: 'Zabójcy',    icon: 'dagger', source: 'characters',    characterColumn: 'arena_kills',         order: 'desc', valueLabel: 'Zabicia' },
   { key: 'arena_victims',     label: 'Ofiary',     icon: 'skull', source: 'characters',    characterColumn: 'arena_deaths',        order: 'desc', valueLabel: 'Śmierci' },
   { key: 'arena_league',      label: 'Arena',      icon: 'stadium', source: 'characters',    characterColumn: 'arena_league_points', order: 'desc', valueLabel: 'LP' },
-  // 2026-05-19 v15: guild ranking (level desc, then xp desc).
   { key: 'guilds',            label: 'Gildie',     icon: 'castle', source: 'guilds',                                                                valueLabel: 'Lvl' },
-  // 2026-05-19 v15: total death count aggregated by character_id.
   { key: 'deaths_total',      label: 'Śmierci',    icon: 'coffin', source: 'deaths_total',                                                          valueLabel: 'Śmierci' },
-  // 2026-05-19 v16: activity counters — each maps to a column on
-  // characters table populated by the relevant subsystem via
-  // `characterApi.bumpStat`.
   { key: 'mastery_points',     label: 'Mastery', icon: 'glowing-star', source: 'characters', characterColumn: 'mastery_points',     order: 'desc', valueLabel: 'Mastery' },
   { key: 'quests_oneshot_done',label: 'Questy',  icon: 'scroll', source: 'characters', characterColumn: 'quests_oneshot_done',order: 'desc', valueLabel: 'Questy' },
   { key: 'quests_daily_done',  label: 'Daily',   icon: 'spiral-calendar', source: 'characters', characterColumn: 'quests_daily_done',  order: 'desc', valueLabel: 'Daily' },
@@ -179,12 +142,10 @@ const CLASS_ICONS: Record<string, string> = {
 
 const RANK_MEDALS = ['1st-place-medal', '2nd-place-medal', '3rd-place-medal'];
 
-// Build the order-position of each arena league (higher index = higher league).
 const LEAGUE_ORDER: Record<string, number> = Object.fromEntries(
   ARENA_LEAGUES.map((l, i) => [l, i]),
 );
 
-// -- Component -----------------------------------------------------------------
 
 const Leaderboard = () => {
   const character  = useCharacterStore((s) => s.character);
@@ -205,26 +166,7 @@ const Leaderboard = () => {
       if (tabDef.source === 'characters') {
         const col = tabDef.characterColumn ?? 'level';
         const order = tabDef.order ?? 'desc';
-        // 2026-05-19 v15 spec ("każdy ranking pokazuje top 100 najlepszych graczy"):
-        // bumped from 50 -> 100 across all tabs. Special-case arena_league
-        // so we sort first by league rank (descending — legend on top),
-        // then by LP within the league.
         if (currentTab === 'market_items_sold' || currentTab === 'market_items_bought') {
-          // 2026-05-19 v19 spec ("nie zl tylko konwertuj na gp k cc
-          // sc itp i sortuj nie od ilosci sprzedanych tylko od
-          // wlasnie kwot kto najwiecej wydal i zarobil jezeli tyle
-          // samo to wtedy kto wiecej, a jezeli maja wszystko tak
-          // samo to potem po lvl a potem po dacie"): order primarily
-          // by GOLD value, then by item count, then by level, then
-          // by creation date. Gold formatted via the canonical
-          // formatGoldShort (gp / k / cc / sc / etc.).
-          // 2026-05-19 v20 spec ("Na malych ekranach sie nie miesci
-          // tresc usun napis zarobione i sprzedane oraz wydane i
-          // kupione"): pruned the human-readable verbs — every row
-          // now reads as `N · formatGold` so it fits in a 360-px
-          // phone column without truncating. The tab icon
-          // (:money-bag: / :shopping-cart:) already implies which side of the trade is
-          // being measured.
           const goldCol = currentTab === 'market_items_sold' ? 'market_gold_earned' : 'market_gold_spent';
           const res = await api.get<Array<Record<string, unknown> & { id: string; name: string; class: string; level: number; created_at: string }>>(
             `/rest/v1/characters?select=id,name,class,level,created_at,${col},${goldCol}` +
@@ -243,11 +185,6 @@ const Leaderboard = () => {
             };
           }));
         } else if (currentTab === 'best_dps5_solo' || currentTab === 'best_dps5_party') {
-          // 2026-05-19 v20: DPS tabs format the score with K / M
-          // suffix + 2-decimal precision. The party tab also pulls
-          // the composition snapshot so each row shows the full
-          // party stack (4 nicks + class icons) instead of just the
-          // credited player.
           const selectExtra = currentTab === 'best_dps5_party' ? ',best_dps5_party_composition' : '';
           const res = await api.get<Array<Record<string, unknown> & { id: string; name: string; class: string }>>(
             `/rest/v1/characters?select=id,name,class,${col}${selectExtra}&order=${col}.desc&limit=${ROW_LIMIT}`,
@@ -270,7 +207,7 @@ const Leaderboard = () => {
                       )
                       .slice(0, 4);
                   }
-                } catch { /* malformed JSON — fall back to single-row */ }
+                } catch { }
               }
             }
             return {
@@ -348,11 +285,6 @@ const Leaderboard = () => {
           setEntries([]);
         }
       } else if (tabDef.source === 'guilds') {
-        // 2026-05-19 v15 spec ("Dodajemy w rankingu zakładkę gildie i
-        // ich zdobyte punkty od najwyższej do najniższej"): rank guilds
-        // by level desc, then xp desc for the within-level tiebreak.
-        // We piggy-back on the existing leaderboard row shape, so the
-        // "class" slot displays the guild tag and "name" the guild name.
         const res = await api.get<IGuildRow[]>(
           `/rest/v1/guilds?select=id,name,tag,level,xp,boss_tier,leader_id,member_cap&order=level.desc,xp.desc&limit=${ROW_LIMIT}`,
         );
@@ -365,12 +297,6 @@ const Leaderboard = () => {
           valueOverride: `Lvl ${g.level} · ${g.xp.toLocaleString('pl-PL')} XP · Tier ${g.boss_tier}`,
         })));
       } else if (tabDef.source === 'deaths_total') {
-        // 2026-05-19 v15 spec ("Dodajemy zakladke smierci ktora zlicza
-        // ilosc smierci podczas gry"): aggregate from the
-        // `character_death_totals` VIEW provisioned by
-        // `scripts/leaderboard_migration.sql`. The view groups by
-        // character_id with COUNT(*) so we can sort by deaths_count desc
-        // server-side.
         const res = await api.get<IDeathTotalRow[]>(
           `/rest/v1/character_death_totals?select=*&order=deaths_count.desc&limit=${ROW_LIMIT}`,
         );
@@ -407,19 +333,13 @@ const Leaderboard = () => {
 
   return (
     <div className="leaderboard">
-      {/* 2026-05-19 v15 spec ("Kasujemy napis miasto i box caly z
-          powrotem do miasta"): the back-to-Miasto header row is gone;
-          navigation lives in the bottom-nav. The list starts straight
-          from the tab bar so vertical space goes to the rankings. */}
 
-      {/* My rank badge */}
       {character && myRank > 0 && (
         <div className="leaderboard__my-rank">
           Twoja pozycja: <strong>#{myRank}</strong> — {character.name}
         </div>
       )}
 
-      {/* Tabs – scrollable */}
       <nav className="leaderboard__tabs page-tabs">
         {TABS.map((t) => (
           <button
@@ -433,7 +353,6 @@ const Leaderboard = () => {
         ))}
       </nav>
 
-      {/* Content */}
       {loading && <div className="leaderboard__loading"><Spinner /></div>}
       {error   && <div className="leaderboard__error">{error}</div>}
 
@@ -456,13 +375,6 @@ const Leaderboard = () => {
               const medal   = RANK_MEDALS[i] ?? `#${rank}`;
               const icon    = CLASS_ICONS[entry.class] ?? (entry.class === 'Guild' ? 'castle' : '?');
 
-              // 2026-05-19 v20 spec ("jezeli walcze z botami to
-              // napisz np w miejscu pierwszym 4 nicki jeden pod
-              // drugim z ikonkami klasy i na koncu na srodku po
-              // prawej DPS laczny"): party-DPS tab renders the
-              // captured party composition stack (4 nicks + class
-              // icons) instead of the single-character row. Every
-              // other tab uses the normal single-character layout.
               const isPartyDpsRow = !!entry.partyComposition && entry.partyComposition.length > 0;
               return (
                 <div
@@ -485,7 +397,6 @@ const Leaderboard = () => {
                       <div className="leaderboard__info-col">
                         <span className="leaderboard__name">
                             {(() => {
-                                // Guild rows already embed the tag inline, so skip the player-tag prefix lookup.
                                 if (entry.class === 'Guild') return entry.name;
                                 const tag = useGuildTagsStore.getState().getTagByNameSync(entry.name);
                                 return tag ? `${tag} ${entry.name}` : entry.name;

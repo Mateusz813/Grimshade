@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-/**
- * CombatLogsModal — popup showing the uncapped session log with 5 filter
- * toggles (Me / Allies / Monster / Loot / Other). Translates raw skill
- * IDs through skillBuffs.getSkillDef which we stub.
- */
 vi.mock('../../../systems/skillBuffs', () => ({
     getSkillDef: (id: string) => {
         const map: Record<string, { name_pl?: string; name_en?: string }> = {
@@ -131,10 +126,8 @@ describe('CombatLogsModal — filter interactions', () => {
             ],
         });
         render(<CombatLogsModal onClose={vi.fn()} />);
-        // Both visible initially.
         expect(screen.getByText(/Atakujesz Goblina/)).toBeTruthy();
         expect(screen.getByText(/Goblin atakuje cię/)).toBeTruthy();
-        // Toggle Monster filter OFF.
         fireEvent.click(screen.getByTitle(/Potwór/));
         expect(screen.getByText(/Atakujesz Goblina/)).toBeTruthy();
         expect(screen.queryByText(/Goblin atakuje cię/)).toBeNull();

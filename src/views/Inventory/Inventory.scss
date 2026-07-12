@@ -7,13 +7,10 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  // Spec 4: belt-and-braces — the root never scrolls horizontally even if
-  // a child accidentally overflows (max-width 100% on every grid item too).
   overflow-x: hidden;
   max-width: 100%;
-  padding-bottom: 80px; // space for multi-sell footer
+  padding-bottom: 80px;
 
-  // -- Header ------------------------------------------------------------------
   &__header {
     align-items: center;
     background: $color-bg;
@@ -50,14 +47,12 @@
     font-weight: 700;
   }
 
-  // -- Class Avatar ------------------------------------------------------------
   &__avatar-wrapper {
     display: flex;
     justify-content: center;
     padding: $spacing-md $spacing-md $spacing-xs;
   }
 
-  // -- Paperdoll --------------------------------------------------------------
   &__paperdoll {
     display: flex;
     flex-direction: column;
@@ -67,12 +62,6 @@
   }
 
   &__paperdoll-bars {
-    // Postać-spec item 6: HP/MP bars sit ABOVE the avatar, equal width to
-    // the avatar, and tuck slightly under the helmet slot. The negative
-    // bottom margin lets the bars overlap the top edge of the stage by a
-    // few pixels so the helmet slot visually sits on top of them — the
-    // stage is `position: relative` (z-index 0) and the bars stay on flow
-    // (z-index -1) so the helmet renders above the bars.
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -194,7 +183,6 @@
     color: rgba(255, 255, 255, 0.75);
   }
 
-  // -- Doll slots overlaid on avatar ------------------------------------------
   &__doll-slot {
     position: absolute;
     width: 44px;
@@ -231,10 +219,6 @@
                   inset 0 0 8px color-mix(in srgb, var(--rarity-color) 25%, transparent);
     }
 
-    // Spec 1 (2026-05 v2): empty slot keeps the frame chrome (border +
-    // dark bg) so the paperdoll grid stays visually anchored — only the
-    // inner slot icon is suppressed. Cursor stays default + no hover
-    // lift because the slot is non-interactive.
     &--empty {
       cursor: default;
       &:hover { transform: none; border-color: $color-border; }
@@ -247,9 +231,6 @@
     line-height: 1;
   }
 
-  // Position presets — left column hugs left of avatar, right column hugs right.
-  // Top row: helmet + shoulders on top of head area.
-  // Middle rows: armor / gloves / pants etc.
   &__doll-slot--helmet    { top: 0%;   left: 50%; transform: translateX(-50%); }
   &__doll-slot--shoulders { top: 8%;   left: 2%;  }
   &__doll-slot--necklace  { top: 8%;   right: 2%; }
@@ -319,20 +300,16 @@
     color: rgba(255, 255, 255, 0.7);
   }
 
-  // -- Separator ---------------------------------------------------------------
   &__separator {
     border: none;
     border-top: 1px solid $color-border;
     margin: $spacing-sm $spacing-md;
   }
 
-  // -- Enhancement Stones summary ---------------------------------------------
   &__stones {
     padding: $spacing-sm $spacing-md;
   }
 
-  // Spec 6: section headers (Kamienie / Plecak / Auto-sell) all read in
-  // crisp white + bold so they stand out against the dark inventory chrome.
   &__stones-title {
     color: #fff;
     font-size: $font-sm;
@@ -398,13 +375,6 @@
     text-align: center;
   }
 
-  // -- Stone conversion popup ------------------------------------------------
-  // 2026-06-24 BUG 1: centering is now handled by the flex `&__overlay` parent
-  // (it wraps this popup as a child). The popup must NOT self-center with
-  // `position: fixed; top/left: 50%; transform: translate(-50%, -50%)` — that
-  // CSS translate was silently erased by framer-motion's `scale` animation,
-  // pushing the card off-screen on mobile. `position: relative` + `max-height:
-  // 100%` keeps it 100% inside the overlay's 12px padding on any viewport.
   &__stone-popup {
     background: $color-bg-secondary;
     border: 1px solid $color-border;
@@ -443,9 +413,6 @@
   &__stone-popup-current,
   &__stone-popup-target {
     align-items: center;
-    // 2026-05: solid black panel so the stone PNG art reads cleanly
-    // (the PNGs have transparent backgrounds — a faint white tint
-    // washed them out).
     background: rgba(0, 0, 0, 0.78);
     border-radius: $radius-md;
     display: flex;
@@ -535,7 +502,6 @@
     }
   }
 
-  // -- Equipment section ------------------------------------------------------
   &__equip-grid {
     display: grid;
     gap: $spacing-sm;
@@ -647,7 +613,6 @@
     font-weight: 800;
   }
 
-  // -- Bag tab -----------------------------------------------------------------
   &__bag-header {
     align-items: center;
     display: flex;
@@ -663,10 +628,6 @@
     margin-right: auto;
   }
 
-  // Bulk-action toggles in the bag header. Both Sprzedaj and Rozloz share
-  // the same height + padding so they read as a matched pair. Sprzedaj
-  // gets a gold (legendary) border to telegraph "earn money", Rozloz keeps
-  // the orange "destroy for parts" tone.
   &__multi-sell-toggle {
     background: $color-bg-secondary;
     border: 1px solid $color-border;
@@ -691,7 +652,6 @@
       color: #f44336;
     }
 
-    // Spec 1: gold-bordered Sprzedaj button to mirror the Rozloz pill.
     &--sell {
       border-color: #ffc107;
       color: #ffd54f;
@@ -715,7 +675,6 @@
     }
   }
 
-  // -- Auto-sell toggles ----------------------------------------------------
   &__auto-sell {
     display: flex;
     align-items: center;
@@ -740,9 +699,6 @@
     padding: 2px $spacing-sm;
     transition: all $transition-fast;
 
-    // Spec 2: default (common) auto-sell active = grey, NOT green. Common
-    // items don't get a rarity tint anywhere else in the UI either, so
-    // the active pill keeps a neutral white-on-grey look.
     &--active {
       background: rgba(255, 255, 255, 0.10);
       border-color: rgba(255, 255, 255, 0.40);
@@ -782,9 +738,6 @@
   }
 
   &__filter-btn {
-    // 2026-05: solid black pill + white text — uniform chrome across
-    // both rarity and slot filter rows, with rarity / transform colour
-    // taking over only on the active state via the rules below.
     background: rgba(0, 0, 0, 0.78);
     border: 1px solid $color-border;
     border-radius: 99px;
@@ -795,9 +748,6 @@
     padding: 2px $spacing-sm;
     transition: all $transition-fast;
 
-    // Default active = rarity colour border, but background stays solid
-    // black (matches the resting state) per the 2026-05 spec — only the
-    // outline + text color flip to the rarity / transform tint.
     &--active {
       border-color: var(--rarity-color, $color-accent);
       color: var(--rarity-color, $color-accent);
@@ -811,9 +761,6 @@
       padding: 3px 10px;
     }
 
-    // Spec 2: slot-filter active state uses the live transform accent
-    // (not rarity colour). Compound selector with both modifiers so it
-    // wins specificity over the generic --active rule above.
     &--slot.inventory__filter-btn--active {
       border-color: var(--tx-accent, $color-accent);
       color: var(--tx-accent, $color-accent);
@@ -823,8 +770,6 @@
     &-icon {
       font-size: 13px;
       line-height: 1;
-      // Slot-filter icons are PNG art (spec 3) — keep them sized so the
-      // pill height stays consistent with the emoji-based rarity row.
       img {
         width: 18px;
         height: 18px;
@@ -843,10 +788,6 @@
     padding-top: $spacing-sm;
   }
 
-  // -- Pagination -----------------------------------------------------------
-  // Spec 3: stacks vertically on phones (each control on its own line),
-  // sits on a single row on tablet/desktop. Buttons stretch to full width
-  // on mobile so they're easy to tap; auto-width on desktop.
   &__pagination {
     display: flex;
     flex-direction: column;
@@ -907,7 +848,6 @@
     font-size: $font-xs;
   }
 
-  // -- Multi-sell controls ----------------------------------------------------
   &__multi-controls {
     display: flex;
     flex-wrap: wrap;
@@ -930,35 +870,24 @@
       opacity: 0.8;
     }
 
-    // Spec 2: select-all / deselect-all variant uses the transform accent
-    // colour. Stays inert when the rest are tinted by their rarity-colour
-    // inline var.
     &--tx {
       border-color: var(--tx-accent, $color-accent);
       color: var(--tx-accent, $color-accent);
     }
   }
 
-  // Multi-sell / mass-disassemble footer — sits above the bag list with
-  // the confirm button. Original z-index ($z-nav = 800) + bottom: 0 put
-  // it BEHIND the BottomNav (z=1300), so the player couldn't see or
-  // click the actual sell/disassemble button. Bumping z-index above the
-  // nav AND offsetting `bottom` by the nav height puts the footer where
-  // it can actually be tapped on mobile.
   &__multi-footer {
     background: $color-bg-secondary;
     border-top: 1px solid $color-border;
-    bottom: 80px;        // sits ON TOP of the BottomNav strip
+    bottom: 80px;
     left: 0;
     padding: $spacing-sm $spacing-md;
     position: fixed;
     right: 0;
-    z-index: 1400;       // above BottomNav (1300)
+    z-index: 1400;
     display: flex;
     gap: $spacing-sm;
     flex-direction: column;
-    // Soft shadow so the footer reads as a separate plane from the nav
-    // below it (the nav has its own border, no need to fight for space).
     box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.45);
   }
 
@@ -1033,7 +962,6 @@
     }
   }
 
-  // -- Disassemble animation overlay -----------------------------------------
   &__disassemble-anim-overlay {
     position: fixed;
     top: 0;
@@ -1113,7 +1041,6 @@
     gap: $spacing-xs;
   }
 
-  // Bulk disassemble result
   &__bulk-result-overlay {
     position: fixed;
     top: 0;
@@ -1186,19 +1113,6 @@
     &:hover { opacity: 0.85; }
   }
 
-  // -- Bag grid ---------------------------------------------------------------
-  // Bottom padding 180px reserves room for both the BottomNav (~80px) and
-  // the bulk-mode multi-footer (~100px) when active, so the last row of
-  // tiles is always scrollable into view instead of being hidden behind
-  // the fixed footer.
-  // Spec 4: bag never scrolls horizontally. `auto-fill` + `minmax(72px, 1fr)`
-  // packs as many tiles per row as the viewport can fit and gracefully
-  // wraps the rest to the next row instead of forcing a horizontal scroll.
-  // `overflow-x: hidden` is a belt-and-braces guarantee — even if a tile
-  // exceeds its column the page can never scroll sideways.
-  // Spec 2 (2026-05): bag-grid now hugs the last item row (no extra
-  // 180px reserve). The bulk-mode multi-footer adds its own room via
-  // a body-level padding rule (see `&--bulk-mode`).
   &__bag-grid {
     display: grid;
     gap: 6px;
@@ -1206,12 +1120,7 @@
     overflow: visible;
     padding: 0 $spacing-md $spacing-md;
 
-    // Point 3: isolate the bag from the detail-panel slide so opening a tile
-    // doesn't cause the browser to repaint 3500 tiles each frame. `contain:
-    // layout paint` tells the engine that the bag is a paint/layout boundary.
     contain: layout paint;
-    // Separate compositor layer keeps the detail panel's translateY animation
-    // on the GPU instead of invalidating the bag's render tree.
     transform: translateZ(0);
   }
 
@@ -1222,9 +1131,6 @@
     gap: 2px;
     position: relative;
 
-    // Spec 2: selected tile glows in the live transform colour (was the
-    // legacy red `$color-accent`) so multi-sell selection matches the
-    // rest of the player's tier-coloured UI.
     &--selected {
       .item-icon {
         box-shadow:
@@ -1233,9 +1139,6 @@
       }
     }
 
-    // Spec 4: stackable item tile (potion / chest / stone). Looks like a
-    // regular bag tile but with an icon area + count badge instead of
-    // the ItemIcon component. Rarity colour drives the border.
     &--stack {
       background: $color-bg-secondary;
       border: 1.5px solid var(--rarity-color, $color-border);
@@ -1244,8 +1147,6 @@
       padding: 6px 4px 4px;
       font-family: inherit;
       transition: transform $transition-fast, box-shadow $transition-fast;
-      // Min-height keeps the stack tile flush with the ItemIcon-based
-      // gear tiles next to it (ItemIcon is ~64×64 + name).
       min-height: 78px;
 
       &:hover {
@@ -1255,8 +1156,6 @@
     }
   }
 
-  // Stack-tile inner pieces — count badge in the corner, big icon centred,
-  // name underneath. Mirrors the ItemIcon look for consistency.
   &__bag-stack-count {
     position: absolute;
     top: 2px;
@@ -1369,8 +1268,6 @@
     width: 16px;
     z-index: 3;
 
-    // Spec 2: checkbox checked = transform colour pill (matches the tile
-    // glow above so selection reads as one consistent accent).
     &--on {
       background: var(--tx-accent, $color-accent);
       border-color: var(--tx-accent, $color-accent);
@@ -1385,12 +1282,6 @@
     text-align: center;
   }
 
-  // -- Item detail panel (centred popup) --------------------------------------
-  // Overlay = flexbox centering container so the panel can use plain
-  // `position: relative` and let framer-motion drive `transform: scale()`
-  // without fighting a translate-based centering. z-index 1500 so the
-  // whole stack (backdrop + panel) sits above the BottomNav (z=1300) and
-  // the backdrop click-to-close fires reliably across the full viewport.
   &__overlay {
     background: rgba(0, 0, 0, 0.6);
     inset: 0;
@@ -1400,15 +1291,10 @@
     align-items: center;
     justify-content: center;
     padding: 12px;
-    // Point 3: GPU-composited so the fade doesn't repaint the bag underneath.
     will-change: opacity;
     transform: translateZ(0);
   }
 
-  // Spec 12: detail panel = centered popup card. Hosts two side-by-side
-  // columns (NEW + EQUIPPED) when comparing. `position: relative` because
-  // it sits inside the flexbox-centered overlay (no `position: fixed`
-  // conflict with framer-motion's transform animations).
   &__detail {
     background: $color-bg-secondary;
     border: 2px solid var(--rarity-color, $color-border);
@@ -1425,7 +1311,6 @@
     contain: layout paint;
   }
 
-  // Two-column layout (NEW vs EQUIPPED) when comparing.
   &__detail-cols {
     display: grid;
     grid-template-columns: 1fr;
@@ -1471,7 +1356,6 @@
     }
   }
 
-  // Stat-diff list inside the equipped column.
   &__compare-stats {
     display: flex;
     flex-direction: column;
@@ -1521,9 +1405,6 @@
     position: absolute;
     right: $spacing-md;
     top: $spacing-md;
-    // 2026-05 v2: bumped z-index so the X always sits on top of the
-    // comparison column (which has its own positioning context on
-    // desktop) and stays clickable.
     z-index: 5;
     padding: 4px 10px;
     &:hover { color: $color-text; }
@@ -1600,7 +1481,6 @@
     font-weight: 600;
   }
 
-  // -- Item comparison ------------------------------------------------------
   &__comparison {
     margin-top: $spacing-sm;
     padding: $spacing-sm;
@@ -1647,7 +1527,6 @@
     font-size: 11px;
     padding: 1px 0;
 
-    // Header row with column labels (Założony / Nowy / Porównanie).
     &--head {
       color: rgba(255, 255, 255, 0.55);
       font-size: 10px;
@@ -1721,18 +1600,12 @@
     font-weight: 600;
   }
 
-  // 2026-05 v2: 2-row action grid — Zaloz/Do depozytu (or Zdejmij) at top,
-  // Sprzedaj/Rozloz at the bottom. Each row uses a 1fr/1fr grid so the
-  // pair of buttons stays balanced regardless of label length.
   &__detail-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: $spacing-sm;
   }
 
-  // Skip-animation toggle for Ulepsz / Zmiana Bonusu — small inline pill
-  // styled like a chip so it visually pairs with the cost row above the
-  // action button.
   &__skip-anim-toggle {
     display: inline-flex;
     align-items: center;
@@ -1755,7 +1628,6 @@
 
     &:hover { color: $color-text; }
   }
-  // Wraps the 4 action buttons into 2 rows when both rows are present.
   &__detail-actions-block {
     display: flex;
     flex-direction: column;
@@ -1781,11 +1653,6 @@
     &:hover:not(:disabled) { opacity: 0.85; }
     &:disabled { cursor: not-allowed; opacity: 0.4; }
 
-    // 2026-05 v6: equip pill uses solid green so it reads as "ZAŁÓŻ /
-    // wear this" universally — previously took $color-accent (the
-    // class tint) which on Archer/Knight rendered red and visually
-    // collided with "Sprzedaj". Green = positive action, matches the
-    // skill-card "Załóż" button.
     &--equip   { background: #4caf50;        color: #fff; }
     &--unequip { background: #2196f3;         color: #fff; }
     &--sell    { background: $color-legendary; color: #1a1a2e; }
@@ -1811,10 +1678,6 @@
       }
     }
 
-    // Spec 15: deposit-to-warehouse action — calm cyan/teal pill so it
-    // reads as "stash safely" rather than competing with the loud
-    // sell/disassemble buttons. Same outline-on-tint pattern as
-    // disassemble for consistency.
     &--deposit {
       background: rgba(33, 150, 243, 0.15);
       border: 1px solid #2196f3;
@@ -1827,8 +1690,6 @@
     }
   }
 
-  // Spec 15: deposit toast — sits below the actions row, fades in for
-  // ~1.4s on success ("Wpłacono!") or failure ("Depozyt pełny").
   &__deposit-toast {
     margin: 8px 4px 0;
     padding: 8px 12px;
@@ -1849,7 +1710,6 @@
     }
   }
 
-  // -- Disassemble progress bar --
   @keyframes disassemble-progress-fill {
     0% { width: 0%; }
     60% { width: 70%; }
@@ -1910,7 +1770,6 @@
     z-index: 1;
   }
 
-  // -- Disassemble result --
   &__disassemble-result {
     font-size: $font-sm;
     font-weight: 700;
@@ -2050,7 +1909,6 @@
     }
   }
 
-  // -- Enhancement progress bar --
   &__enhance-progress {
     position: relative;
     width: 100%;
@@ -2093,7 +1951,6 @@
     z-index: 1;
   }
 
-  // -- Enhancement result --
   &__enhance-result {
     font-size: $font-sm;
     font-weight: 700;
@@ -2132,7 +1989,6 @@
     50% { opacity: 0.4; }
   }
 
-  // -- Consumables section --------------------------------------------------
   &__consumables {
     margin: 0 $spacing-md $spacing-sm;
     padding: $spacing-sm;
@@ -2223,10 +2079,6 @@
       }
     }
 
-    // 2026-05-08 v3 spec ("eliksiry maja taki sam border wszedzie") —
-    // utility / buff elixirs in the bag get the goldpurple gradient
-    // border, matching the Shop card + Market sell tile + Market
-    // listing row. HP/MP heal potions keep their plain border.
     &--elixir {
       border-color: transparent;
       background:
@@ -2283,7 +2135,6 @@
     pointer-events: none;
   }
 
-  // -- Bonus Reroll -----------------------------------------------------------
 
   &__reroll-section {
     margin-top: 8px;
@@ -2376,7 +2227,6 @@
     animation: reroll-progress-fill 2s ease-in-out forwards;
   }
 
-  // -- Reroll Preview ----------------------------------------------
   &__reroll-preview {
     width: 100%;
     max-width: 360px;
@@ -2546,7 +2396,6 @@
     }
   }
 
-  // -- Reroll Keyframes ----------------------------------------------
 
   @keyframes reroll-dice-spin {
     0%   { transform: rotate(0deg) scale(1); }
@@ -2577,7 +2426,6 @@
     to   { width: 100%; }
   }
 
-  // -- Alchemy (potion conversion) ------------------------------------------
   &__alchemy {
     margin: 12px 16px 4px;
     border: 1px solid $color-border;
@@ -2634,13 +2482,6 @@
     text-align: center;
   }
 
-  // 2026-05 v3: alchemy panel layout —
-  //   - Mobile (default): vertical stack — input    output  controls 
-  //     summary (51)  button. Arrow points DOWN to make the conversion
-  //     direction obvious without horizontal space.
-  //   - Desktop (≥640px): single row — input | arrow | output | controls
-  //     | summary | button — and `output` gets `margin-left: auto` per
-  //     the spec so the destination potion floats to the right edge.
   &__alchemy-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -2653,12 +2494,7 @@
   &__alchemy-row {
     display: flex;
     flex-direction: column;
-    // Spec 1 (2026-05 v4): mobile centres EVERYTHING (input, output,
-    // controls, button); desktop only centres the button (input stays
-    // left, output floats right via `margin-left: auto`).
     align-items: center;
-    // Spec 2: tighter gap on mobile so the row never overflows the
-    // popup at narrow widths.
     gap: 6px;
     padding: 8px 10px;
     background: rgba(0, 0, 0, 0.25);
@@ -2689,7 +2525,6 @@
     gap: 6px;
     min-width: 0;
     width: 100%;
-    // Spec 2: keep names short on mobile so the row never spills.
     .inventory__alchemy-name { white-space: normal; }
 
     @media (min-width: 640px) {
@@ -2698,12 +2533,10 @@
     }
   }
 
-  // Spec 1: desktop only — output potion floats to the right edge.
   &__alchemy-output {
     @media (min-width: 640px) { margin-left: auto; }
   }
 
-  // Arrow points DOWN on mobile (vertical flow), RIGHT on desktop.
   &__alchemy-arrow {
     color: $color-text-muted;
     font-size: 18px;
@@ -2725,7 +2558,6 @@
     width: 100%;
     @media (min-width: 640px) { width: auto; }
   }
-  // Spec 1: button centred via auto margins on desktop, full-width on mobile.
   &__alchemy-btn {
     width: 100%;
     @media (min-width: 640px) {
@@ -2901,12 +2733,7 @@
     }
   }
 
-  // ----------------------------------------------------------------------
-  // Postać-spec Faza B (items 4, 5, 9): paperdoll action row + popups
-  // ----------------------------------------------------------------------
 
-  // The avatar is a button (item 4) — strip browser default chrome and
-  // mark hover so the player notices it's interactive.
   &__paperdoll-avatar--clickable {
     background: transparent;
     border: 0;
@@ -2924,10 +2751,6 @@
     }
   }
 
-  // -- Stat-point distribution tiles --------------------------------------
-  // 2026-05 v6: shown ABOVE the paperdoll-actions row when the player has
-  // unspent stat_points. Replaces the old /stats page allocation grid —
-  // each tile drops ALL available points into one stat in a single click.
   &__stat-alloc {
     width: 100%;
     max-width: 320px;
@@ -2962,14 +2785,9 @@
     font-weight: 800;
     line-height: 1;
     padding: 4px 10px;
-    // No $radius-pill in our scale (only sm/md/lg) — inline 999px gives a
-    // clean capsule shape regardless of the pill's height.
     border-radius: 999px;
   }
 
-  // Toggle that flips the per-tile click handler between "1 punkt na klik"
-  // (default) and "wszystkie naraz". Sits between the header and the grid
-  // so the player sees the mode change reflected in the tile bonus number.
   &__stat-alloc-toggle {
     align-items: center;
     color: $color-text-muted;
@@ -3045,9 +2863,6 @@
     margin-top: 2px;
   }
 
-  // Item 5: the four-icon row sits directly under the paperdoll-stage
-  // (which itself sits under the equipment grid). Equal-spaced buttons
-  // matching the avatar width band so the row reads as a unit.
   &__paperdoll-actions {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -3059,7 +2874,6 @@
 
   &__paperdoll-action {
     align-items: center;
-    // 2026-05 v5: gradient bg restored per follow-up; pure white text kept.
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.25));
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: $radius-md;
@@ -3096,13 +2910,6 @@
     text-transform: uppercase;
   }
 
-  // -- Popup shell — shared by avatar zoom + auto-potion + (later) the
-  //    stats / training / skills popups in Faza B-2. Single overlay
-  //    paints the dimmed background; the popup itself is a centered
-  //    card with a close button.
-  // Popup overlay (avatar / potion / stats / training / skills). Bumped
-  // above the BottomNav (z=1300) so the dimmed backdrop covers the whole
-  // screen and the centered popup never gets clipped by the nav strip.
   &__popup-overlay {
     align-items: center;
     background: rgba(0, 0, 0, 0.7);
@@ -3161,9 +2968,6 @@
     }
   }
 
-  // Popup variant: avatar zoom (item 4) — sized to the viewport so the
-  // entire portrait fits without cropping. The image uses object-fit:
-  // contain so portrait + landscape avatars both render fully visible.
   &__popup--avatar {
     align-items: center;
     background: linear-gradient(180deg, rgba(var(--avatar-class-rgb, 233, 69, 96), 0.18), #15131e);
@@ -3186,9 +2990,6 @@
     border-radius: $radius-lg;
     box-shadow: 0 0 32px rgba(var(--avatar-class-rgb, 233, 69, 96), 0.45);
     display: block;
-    /* Spec: cale zdjęcie zawsze widoczne — `contain` keeps the aspect
-       ratio while fitting inside the popup; viewport caps prevent the
-       portrait from spilling past the visible area on tall screens. */
     object-fit: contain;
     max-width: 100%;
     max-height: calc(92vh - 140px);
@@ -3216,13 +3017,10 @@
     font-size: $font-sm;
   }
 
-  // Popup variant: auto-potion (item 9)
   &__popup--potion {
     max-width: 560px;
   }
 
-  // Spec 2: per-potion use popup — narrow card with description, stock,
-  // amount selector + use buttons. Same chrome as the other popups.
   &__popup--use-potion {
     max-width: 440px;
   }
@@ -3308,8 +3106,6 @@
     flex-direction: column;
     gap: 8px;
   }
-  // Spec 5 (2026-05): inline warning under the amount selector telling
-  // the player why a use might no-op (HP/MP full, or contextual elixir).
   &__use-potion-warn {
     background: rgba(255, 193, 7, 0.10);
     border: 1px solid rgba(255, 193, 7, 0.35);
@@ -3349,8 +3145,6 @@
     }
   }
 
-  // Spec 13c: tab strip inside the Potion popup (Auto / Alchemia).
-  // Sits just below the popup header.
   &__popup-tabs {
     display: flex;
     gap: 4px;
@@ -3376,8 +3170,6 @@
     }
   }
 
-  // Spec 13c: alchemia link chip on the "Potiony i Eliksiry" section
-  // header — one-click jump to the alchemia tab.
   &__consumables-alchemy-link {
     background: rgba(155, 81, 224, 0.18);
     border: 1px solid rgba(155, 81, 224, 0.45);
@@ -3395,10 +3187,6 @@
     &:hover { background: rgba(155, 81, 224, 0.32); color: #fff; }
   }
 
-  // -- Spec 7/8/10: stats / training / skills popup variants ---------------
-  // Wider than the avatar/potion popups because their bodies pack a stat
-  // grid + multiple panels. All three reuse the shared `inventory__popup-*`
-  // shell (header / close / body).
   &__popup--stats,
   &__popup--training,
   &__popup--skills {
@@ -3406,7 +3194,6 @@
     max-height: 86vh;
   }
 
-  // -- Spec 7: combat stats popup body ------------------------------------
   &__stats-popup-body {
     display: flex;
     flex-direction: column;
@@ -3452,10 +3239,6 @@
     font-weight: 800;
     font-variant-numeric: tabular-nums;
   }
-  // Spec 4 (2026-05 v3): contribution breakdown printed UNDER the
-  // headline value — small, tabular, one row per source. The grid
-  // re-flows so a stat with many contributions stretches taller
-  // (other stats in the same row stay compact).
   &__stats-box-breakdown {
     list-style: none;
     margin: 4px 0 0;
@@ -3492,9 +3275,6 @@
   }
   &__stats-dmg-row {
     display: grid;
-    // Spec 3 (2026-05 v3): icon column bumped from 24  36px so the
-    // skill PNG art reads at a glance instead of looking like a tiny
-    // emoji glyph.
     grid-template-columns: 40px 1fr auto;
     align-items: center;
     gap: $spacing-sm;
@@ -3572,7 +3352,6 @@
     margin-top: 4px;
   }
 
-  // -- Spec 8: training popup body ----------------------------------------
   &__training-popup-body {
     display: flex;
     flex-direction: column;
@@ -3683,16 +3462,13 @@
     text-transform: uppercase;
   }
 
-  // -- Spec 10: active skills popup body ----------------------------------
   &__skills-popup-body {
     display: flex;
     flex-direction: column;
     gap: $spacing-sm;
-    // position: relative anchors the absolute slot-swap modal inside.
     position: relative;
   }
 
-  // 2026-05 v6: sandbox "unlock all" row pinned at top of skills popup.
   &__skills-unlock-all-row {
     display: flex;
     justify-content: flex-end;
@@ -3717,10 +3493,6 @@
       cursor: not-allowed;
     }
   }
-  // Spec 7 (2026-05 v4): force the 4 slots to share equal width even
-  // when their content (skill name length) varies. min-width: 0 lets
-  // the grid actually clamp the cells; ellipsis on the name keeps long
-  // labels from blowing the cell out.
   &__skills-slots {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3740,7 +3512,6 @@
     align-items: center;
     justify-content: center;
 
-    // Spec 3: filled slot uses the transform accent (was hard-coded green).
     &--filled {
       border-style: solid;
       border-color: var(--tx-accent, #4caf50);
@@ -3772,7 +3543,6 @@
     font-size: 11px;
     font-weight: 600;
     line-height: 1.1;
-    // Spec 7: ellipsis on long names so the cell never widens.
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3796,9 +3566,6 @@
     max-height: 360px;
     overflow-y: auto;
   }
-  // Spec 3 (2026-05 v5): equipped state border + card-active badge tinted
-  // by the live transform colour (--tx-accent set on .inventory root).
-  // Spec 2: text wraps freely; no overflow / overlap.
   &__skills-card {
     display: flex;
     flex-direction: column;
@@ -3843,8 +3610,6 @@
     width: 50px;
     height: 50px;
   }
-  // Spec 4: badge MUCH smaller — was 1px 5px / font 10. Now 9×9 corner
-  // dot-style badge with tighter padding so it doesn't dominate the icon.
   &__skills-card-badge {
     position: absolute;
     top: -3px;
@@ -3860,7 +3625,6 @@
     line-height: 14px;
     text-align: center;
   }
-  // Spec 5: skill description below the top row.
   &__skills-card-desc {
     background: rgba(0, 0, 0, 0.30);
     border-left: 2px solid rgba(155, 81, 224, 0.55);
@@ -3870,7 +3634,6 @@
     line-height: 1.4;
     padding: 6px 10px;
   }
-  // Spec 6: action buttons row.
   &__skills-card-actions {
     display: flex;
     flex-wrap: wrap;
@@ -3899,8 +3662,6 @@
     &--upgrade { border-color: #ffc107; color: #ffd54f; }
     &--unlock  { border-color: #ab47bc; color: #d6b3ff; }
   }
-  // Spec 2 (2026-05 v6): in-popup result panel after upgrade attempt.
-  // Stays visible until the player closes / tries again.
   &__skills-result {
     border-radius: $radius-sm;
     font-size: $font-sm;
@@ -3919,15 +3680,11 @@
       color: #ffcdd2;
     }
   }
-  // Spec 1 (2026-05 v6): cost-list rows with the 64×64 chest icon need
-  // align-items: center so the text reads vertically-centred against
-  // the much-taller icon.
   &__skills-cost-list li {
     align-items: center;
     line-height: 1.3;
   }
 
-  // Spec 4: slot-swap modal (full-cover overlay over the popup body).
   &__skills-swap {
     position: absolute;
     inset: 0;
@@ -4013,7 +3770,6 @@
 
     &:hover { background: rgba(255, 255, 255, 0.10); }
   }
-  // Spec 5/6: action row (cancel + confirm) inside the upgrade/unlock modal.
   &__skills-swap-actions {
     display: flex;
     gap: 8px;
@@ -4035,7 +3791,6 @@
     }
     &:disabled { opacity: 0.4; cursor: not-allowed; }
   }
-  // Spec 5/6: cost list inside the upgrade/unlock modal.
   &__skills-cost-list {
     list-style: none;
     margin: 0;
@@ -4049,7 +3804,6 @@
     li { display: flex; align-items: center; gap: 6px; }
   }
 
-  // Per-skill toast — inline result line shown briefly inside the card.
   &__skills-card-toast {
     border-radius: $radius-sm;
     font-size: $font-xs;
@@ -4069,7 +3823,6 @@
       color: #ffcdd2;
     }
   }
-  // Spec 8: each line of the skill description (icon prefix + text).
   &__skills-card-desc-line {
     color: $color-text;
     font-size: 11px;
@@ -4093,7 +3846,7 @@
     color: $color-text;
     flex: 1 1 auto;
     min-width: 0;
-    word-break: break-word; // spec 2: wrap long names
+    word-break: break-word;
   }
   &__skills-card-lock {
     background: rgba(255, 255, 255, 0.05);
@@ -4105,9 +3858,6 @@
     white-space: normal;
     word-break: break-word;
   }
-  // Spec 5 (2026-05 v6): unlock-level chip next to the skill name —
-  // tinted with the live transform colour. Locked variant adds a
-  // muted tint so the player can tell at a glance they're under-level.
   &__skills-card-lvl {
     background: color-mix(in srgb, var(--tx-accent, #4caf50) 18%, transparent);
     border: 1px solid var(--tx-accent, #4caf50);
@@ -4126,7 +3876,6 @@
       color: #ef9a9a;
     }
   }
-  // Spec 3: "Aktywny" badge tinted with the live transform colour.
   &__skills-card-active {
     background: var(--tx-accent, #4caf50);
     color: #fff;

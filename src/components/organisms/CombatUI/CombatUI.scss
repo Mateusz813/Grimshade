@@ -1,32 +1,10 @@
-// ==============================================================================
-// Unified Combat UI — shared across hunting, boss, dungeon, transform, raid,
-// trainer. One block (`combat-ui`) so the whole experience is identical
-// regardless of the view that mounted it.
-// ==============================================================================
 
 @use '../../../styles/combat-animations' as *;
 
-// (The per-class attack-animation mixin is included at the BOTTOM of this
-// file — see the `class-attack-animations` calls down there. We need it to
-// emit AFTER the `&--hit` rule so the per-class slash/cast/arrow animations
-// win the `animation:` cascade when both modifiers are present at once. The
-// engine sets `--hit` and `--attack-{Class}` together on the struck card,
-// and CSS lets only ONE `animation:` declaration through per element — so
-// whichever rule comes later in source order wins. Putting the mixin last
-// ensures the per-class flavour beats the generic shake.)
 
 .combat-ui {
-    // Block-only container — most consumers don't actually mount it; the
-    // sub-components are referenced via & nesting below for cascade clarity.
     display: contents;
 
-    // -- Top-right toggles (under the header) ------------------------------
-    // Sits flush with the underside of the fixed TopHeader — `top: 0`
-    // makes it stick once the page scrolls, and zero top-padding means the
-    // chip pills touch the gradient's top edge so the strip looks visually
-    // glued to the header bottom even when sitting still. Per-view wrappers
-    // (`.dungeon__panel--combat`, `.raid--fighting`, `.transform__combat`)
-    // also zero their top padding so this row doesn't get pushed down.
     &__top-controls {
         position: sticky;
         top: 0;
@@ -62,9 +40,6 @@
         &:hover { background: rgba(40, 44, 60, 0.95); }
         &:active { transform: scale(0.96); }
 
-        // Active state — tinted with the player's transformation accent so
-        // the chrome reflects which form they're currently in. Falls back
-        // to a generic blue when no accent is set (lobby/idle states).
         &--on {
             background: var(--combat-accent, rgba(50, 110, 200, 0.85));
             border-color: var(--combat-accent, rgba(120, 180, 255, 0.6));
@@ -73,7 +48,6 @@
         }
     }
 
-    // -- Top-left task badge (scroll + counter) --------------------------------
     &__task-badge {
         position: fixed;
         top: 80px;
@@ -146,20 +120,7 @@
         &-progress { color: #ffc107; font-weight: 700; }
     }
 
-    // -- Wave banner (shared by Dungeon / Transform / Raid) ----------------
-    // Sits between the top-controls chip cluster and the arena. Compact
-    // pill — uppercased label on the left, big bold value on the right.
-    // Per-view wording lives in the JSX (e.g. "Fala 1/4", "Potwory 3/8");
-    // the chrome is identical so the three view families feel unified.
     &__wave-banner {
-        // `display: flex` + `width: fit-content` + `margin: ... auto`
-        // horizontally centres the pill inside ANY parent (block, flex column
-        // with `display: contents` ancestors, etc.) — `inline-flex` +
-        // `align-self: center` fails when the chain has a `display: contents`
-        // wrapper because the auto margin no longer resolves to centring. The
-        // pill's width still hugs its content; only its outer placement
-        // changes, so Dungeon/Raid get the same correct centring without any
-        // per-view CSS.
         display: flex;
         width: fit-content;
         align-items: baseline;
@@ -171,8 +132,6 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 999px;
         backdrop-filter: blur(2px);
-        // Tint the border with the active accent (set on the HUD root via
-        // --combat-accent). Falls back to a soft amber if none is present.
         border-color: var(--combat-accent, #f9a825);
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
     }
@@ -194,7 +153,6 @@
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
 
-    // -- Arena (4v4 grid) --------------------------------------------------
     &__arena {
         position: relative;
         display: grid;
@@ -204,18 +162,11 @@
         max-width: 980px;
         margin: 0 auto;
 
-        // Mobile pulls the gap + padding in tight so each per-side 2×2 grid
-        // gets every spare horizontal pixel the viewport can give it.
         @media (max-width: 540px) {
             gap: 6px;
             padding: 6px;
         }
 
-        // Vertical divider — sits dead-centre in the arena's gap so the
-        // player can tell at a glance which 2×2 block is enemies (LEFT) and
-        // which is allies (RIGHT). Uses a soft top/bottom fade so it doesn't
-        // crash into the cards above/below the row. `pointer-events: none`
-        // means it never swallows clicks meant for the underlying cards.
         &::before {
             content: '';
             position: absolute;
@@ -238,15 +189,6 @@
             border-radius: 2px;
         }
 
-        // Boss arena shimmer — pulses in the per-boss hue passed in via
-        // `--boss-hue` (see Boss.tsx: the panel sets this from
-        // getBossCardHue(activeBoss.level) so the gradient matches the
-        // tier-coloured border the player saw on the list card). The
-        // five-stop gradient cycles through tonal variations of the
-        // single hue (light  mid  deep  dark  mid) so it still feels
-        // animated without fighting the boss's identity colour. Falls
-        // back to the original red palette when --boss-hue is missing
-        // (e.g. legacy "daily boss" callers in other views).
         &--daily-boss {
             --h: var(--boss-hue, 0);
             background: linear-gradient(
@@ -263,13 +205,6 @@
             box-shadow: 0 0 30px hsla(var(--h), 70%, 50%, 0.4);
         }
 
-        // Per-transform phoenix arena. The caller sets `--arena-image` to the
-        // tier's `transform-N.png` URL on a parent (Transform.tsx mounts it on
-        // `.transform__combat`), and the static photo is painted on the arena
-        // element itself. A `::after` overlay then washes the photo with a
-        // hue-tinted darkening gradient (driven by `--transform-hue`) so the
-        // ally / enemy cards stay legible while the phoenix is still readable
-        // behind them. The vertical `::before` divider already coexists fine.
         &--transform {
             --h: var(--transform-hue, 30);
             background-image: var(--arena-image, none);
@@ -296,7 +231,6 @@
                     );
             }
 
-            // Cards / divider must sit above the darkening overlay.
             > .combat-ui__arena-col,
             > .combat-ui__arena-overlay {
                 position: relative;
@@ -310,10 +244,6 @@
         grid-template-columns: 1fr 1fr;
         gap: 8px;
 
-        // On mobile we used to collapse each side to a single column (4 cards
-        // stacked vertically) — the player explicitly wants a 2×2 grid per
-        // side at all viewport widths. We just keep `1fr 1fr` here and let
-        // the `&__enemy` / `&__ally` cards shrink at the same breakpoint.
         @media (max-width: 540px) {
             gap: 6px;
         }
@@ -332,7 +262,6 @@
         100% { background-position: 0% 50%; }
     }
 
-    // -- Enemy card --------------------------------------------------------
     &__enemy {
         position: relative;
         display: flex;
@@ -344,10 +273,6 @@
         border-radius: 10px;
         cursor: pointer;
         transition: transform 0.15s, border-color 0.15s, background 0.15s;
-        // Card sizes per viewport — mobile (≤540px) renders the 4 enemy
-        // slots as a 2×2 grid INSIDE the left half of the arena, so each
-        // card is ~half the half-width. Bumped per request so the artwork
-        // gets more breathing room at every breakpoint.
         min-height: 150px;
         height: 150px;
         @media (min-width: 540px) {
@@ -358,10 +283,6 @@
             min-height: 310px;
             height: 310px;
         }
-        // Clip every attack overlay (slash bar, glow ring, dark swirl, etc.)
-        // to the card boundary — without this the per-class `::after` effects
-        // would spill onto the neighbouring slot or the player's avatar on
-        // mobile (2×2 grid) where cards sit tightly together.
         overflow: hidden;
 
         &:hover:not(:disabled) {
@@ -403,18 +324,6 @@
         100% { transform: scale(1); }
     }
 
-    // -- Per-attack hit pulse overlay -----------------------------------------
-    // Mounted as a keyed transient `<span>` inside EnemyCard / AllyCard for
-    // every distinct hit (counter increments). Each fresh mount runs the
-    // CSS animation from frame 0 — that's what makes rapid hits land as
-    // separate visible flashes instead of merging into one ongoing shake.
-    //
-    // Layered over the whole card (absolute, inset 0, pointer-events: none)
-    // so it never blocks the card's click-to-target / button semantics. The
-    // `combat-ui-pulse` animation auto-fades the overlay out so we don't
-    // need a JS timer to remove it — once it finishes, the next pulse will
-    // unmount this element via React (different `key`) and mount a fresh
-    // one. Until that happens it just sits at the final keyframe (opacity 0).
     &__enemy-hit-pulse,
     &__ally-hit-pulse {
         position: absolute;
@@ -423,9 +332,6 @@
         border-radius: inherit;
         z-index: 2;
         animation: combat-ui-pulse 0.32s ease-out forwards;
-        // The flash itself: a quick red wash over the card with a soft inner
-        // glow. Same colour for ally + enemy so the visual language reads as
-        // "something just took damage here" regardless of side.
         background:
             radial-gradient(
                 circle at center,
@@ -436,32 +342,6 @@
         box-shadow: inset 0 0 14px rgba(255, 50, 50, 0.55);
     }
 
-    // -- Side-strike modifiers (enemy side) ------------------------------
-    // EnemyCard alternates `--strike-l` / `--strike-r` based on `hitPulse`
-    // parity. Two purposes:
-    //
-    //   1. Visual distinction for dual-wield. Rogue lands hit #1 (left dagger)
-    //      and 150ms later hit #2 (right dagger). The pulse animation is 320ms
-    //      so the first flash is still ~70% visible when the second begins — if
-    //      both flashes covered the whole card identically, the eye would merge
-    //      them into one ongoing wash. Shifting the gradient origin to opposite
-    //      halves makes the player see two distinct strike points: a flash on
-    //      the left side, then a flash on the right side, which reads
-    //      correctly as "two daggers landed".
-    //
-    //   2. Cross-browser animation restart. The parity-named keyframes
-    //      (`combat-ui-pulse-l` / `combat-ui-pulse-r`) mirror the existing
-    //      `--shake-a` / `--shake-b` pattern further down: when the modifier
-    //      flips on the keyed element, the browser sees a different animation
-    //      name and starts it from frame 0 even if the previous one was still
-    //      mid-flight. (The keyed React unmount also restarts it, but doubling
-    //      up here means rapid same-side hits without an unmount also replay.)
-    //
-    // Each side keeps the same red colour family (a missed strike on one side
-    // shouldn't read as "I got healed") — only the position of the radial peak
-    // and the inset shadow's heaviest edge shift. Non-dual-wield classes still
-    // use this on every auto, which gives consecutive hits a slight side-to-
-    // side variety without changing the "got hit" semantics.
     &__enemy-hit-pulse--strike-l {
         animation-name: combat-ui-pulse-l;
         background:
@@ -485,10 +365,6 @@
         box-shadow: inset -8px 0 18px rgba(255, 50, 50, 0.55);
     }
 
-    // Same shape as `combat-ui-pulse` above — the only reason these exist as
-    // separate names is the cross-browser restart guarantee documented on the
-    // `--strike-l` / `--strike-r` rules above. Keep all three keyframe blocks
-    // in lock-step if the timing curve ever changes.
     @keyframes combat-ui-pulse-l {
         0%   { opacity: 0;    transform: scale(1.04); }
         25%  { opacity: 1;    transform: scale(1);    }
@@ -500,8 +376,6 @@
         100% { opacity: 0;    transform: scale(1);    }
     }
 
-    // Ally side — slightly cooler tint so the player's own card flash reads
-    // as a defensive "I got hit" rather than an offensive "I dealt damage".
     &__ally-hit-pulse {
         background:
             radial-gradient(
@@ -519,15 +393,6 @@
         100% { opacity: 0;    transform: scale(1);    }
     }
 
-    // -- Ally hit shake ---------------------------------------------------
-    // Every monster hit on an ally bumps `ally.hitPulse`. AllyCard maps that
-    // counter onto one of two parity-toggled modifier classes (`--shake-a` /
-    // `--shake-b`) — each binds the SAME visual shake to a UNIQUE keyframes
-    // name. When the parity flips the browser sees a different animation
-    // name and restarts the animation from frame 0, even if the previous
-    // shake hasn't finished yet (single-class restart isn't reliable across
-    // browsers). The shake is small and quick — kept under the flash overlay
-    // duration so the visual reads as "got hit" rather than "I'm dancing".
     &__ally--shake-a {
         animation: combat-ui-ally-shake-a 0.32s ease-out;
     }
@@ -569,9 +434,6 @@
             transition: width 0.25s ease;
         }
 
-        // Monsters only have an HP bar — by design they cast spells without
-        // a mana cost, so the `--mp` variant that used to live here was dead
-        // code (the MP bar JSX was removed from EnemyCard at the same time).
         &--hp span { background: linear-gradient(90deg, #d32f2f, #ff5252); }
     }
 
@@ -581,11 +443,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        // Sprite area sized so source art (~128px PNGs) doesn't get
-        // brutally upscaled. Mobile shrinks to fit a 2×2 grid inside the
-        // left half of the arena; tablet/desktop keep the bigger frames.
         min-height: 80px;
-        // No padding — the sprite fills its container directly.
         padding: 0;
         overflow: hidden;
         border-radius: 6px;
@@ -598,9 +456,6 @@
             min-height: 220px;
         }
 
-        // `contain` — preserves the full sprite (no head/tail cropping).
-        // Letterbox bands on the sides sit against the dark sprite-area
-        // background which is nearly invisible.
         img, svg {
             width: 100%;
             height: 100%;
@@ -640,10 +495,6 @@
         white-space: nowrap;
     }
 
-    // Rarity banner pinned to the absolute TOP-CENTRE of the enemy card so it
-    // sits OVER the sprite (never pushes it down). Per-rarity tint comes from
-    // the `--{rarity}` modifier — tinted background + white text + a thin dark
-    // ring so the chip stays readable against any sprite art behind it.
     &__enemy-rarity {
         position: absolute;
         top: 4px;
@@ -658,8 +509,6 @@
         color: #fff;
         white-space: nowrap;
         line-height: 1.3;
-        // Soft drop-shadow so the chip lifts off the sprite underneath
-        // regardless of how dark/light that pixel happens to be.
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.45);
         pointer-events: none;
 
@@ -677,10 +526,6 @@
         filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.7));
     }
 
-    // 2026-05 v6: live status countdown stack — pinned top-left of the
-    // enemy card. Each badge shows an icon + remaining seconds. Drains
-    // visibly because the view re-renders every render-loop tick (~10fps
-    // via the engine's status tick, faster on the active view).
     &__status-stack {
         position: absolute;
         top: 4px;
@@ -705,8 +550,6 @@
         background: rgba(0, 0, 0, 0.65);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.18);
         white-space: nowrap;
-        // Subtle pulse so a stunned/paralysed enemy reads as "actively CC'd"
-        // even with one frame's worth of remaining time.
         animation: combat-ui-status-pulse 1.2s ease-in-out infinite;
 
         &--stun     { background: rgba(106, 90, 205, 0.85); box-shadow: 0 0 6px rgba(106, 90, 205, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2); }
@@ -729,7 +572,6 @@
         50%      { opacity: 0.78; }
     }
 
-    // -- Ally card (mirrors enemy layout) ----------------------------------
     &__ally {
         position: relative;
         display: flex;
@@ -739,9 +581,6 @@
         background: rgba(20, 22, 32, 0.85);
         border: 2px solid var(--ally-accent, rgba(255, 255, 255, 0.15));
         border-radius: 10px;
-        // Mirror the enemy card sizes so the 2-column arena stays visually
-        // balanced at every breakpoint. Bumped per request to give the
-        // portraits more presence at every viewport size.
         min-height: 150px;
         height: 150px;
         @media (min-width: 540px) {
@@ -753,23 +592,11 @@
             height: 310px;
         }
         transition: transform 0.15s;
-        // Clip overlay/animation effects (when a monster crit-hits the ally,
-        // for example) so they never bleed onto the neighbour card. Mirrors
-        // the enemy card's overflow rule for symmetry.
         overflow: hidden;
 
         &--empty {
             border-style: dashed;
             border-color: rgba(255, 255, 255, 0.05);
-            // 2026-05-15 v14 spec ("Dalej ikonka tarczy jest w zlym
-            // miejscu"): the SHIELD ICON the user has been pointing
-            // at for 13+ turns is part of the global `body::before`
-            // dragon backdrop showing through the semi-transparent
-            // empty tile (previous rgba alpha 0.3 let the heraldic
-            // motif in the background image bleed into the top-right
-            // corner — the user perceived it as an in-arena indicator
-            // misrendered on the empty slot). Make the tile FULLY
-            // opaque so nothing from body::before can show through.
             background: rgb(20, 22, 32);
             overflow: hidden !important;
             *,
@@ -780,15 +607,6 @@
         }
 
         &--player {
-            // Transform-tinted DIAGONAL gradient pulled IN from the player's
-            // accent colour (`--ally-accent` is set by AllyCard from
-            // `ally.accentColor`) so the whole tile reads as "this is YOUR
-            // transform" at a glance — the previous radial wash at 35% mix
-            // was barely visible against the base dark slate. Bumped to a
-            // 70%25% diagonal so the top-left corner is unmistakably the
-            // transform colour while the bottom-right keeps enough contrast
-            // for the white name/level text underneath. Falls back to the
-            // generic blue when no accent is set (lobby/idle).
             background: linear-gradient(
                 135deg,
                 color-mix(in srgb, var(--ally-accent, #6aa9ff) 70%, rgba(20, 22, 32, 0.6)) 0%,
@@ -828,11 +646,7 @@
     &__ally-avatar {
         position: relative;
         flex: 1;
-        // Avatar matches the enemy sprite so the arena reads as a balanced
-        // 2-up/4-up portrait grid. Tiny on mobile (2×2 grid per side) and
-        // larger on tablet/desktop where the per-side grid widens.
         min-height: 80px;
-        // No inner padding — the portrait fills the frame.
         padding: 0;
         overflow: hidden;
         border-radius: 6px;
@@ -848,18 +662,12 @@
         img {
             width: 100%;
             height: 100%;
-            // `contain` per request — show the whole portrait without
-            // cropping head/feet. Letterbox bands on the sides sit
-            // against the dark avatar-area background and are barely
-            // perceptible.
             object-fit: contain;
             object-position: center;
             display: block;
         }
     }
 
-    // Level badge — pinned to the top-left corner of the WHOLE card (not
-    // the avatar) so it never crops the portrait or pushes it smaller.
     &__ally-level {
         position: absolute;
         top: 4px;
@@ -887,12 +695,6 @@
         pointer-events: none;
     }
 
-    // 2026-05 v7: Necromancer summon-stack — vertical column of per-type
-    // pills in the bottom-right of the avatar. Each pill shows one
-    // summon type (skull Szkielety / ghost Duchy / smiling-face-with-horns Demony / crown Liche)
-    // with its live count. Pills with an `onClick` handler (the local
-    // player's card) double as a despawn button — tapping one removes
-    // the oldest summon of that type from the queue.
     &__ally-summon-stack {
         position: absolute;
         bottom: 2px;
@@ -922,8 +724,6 @@
         line-height: 1;
         filter: drop-shadow(0 0 4px rgba(140, 80, 220, 0.55));
         transition: transform 0.1s ease, background 0.1s ease;
-        // Disabled pills (no onClick — bot ally cards) get the default
-        // help cursor so the player understands the badge is read-only.
         &[disabled] { cursor: help; }
         &:not([disabled]) {
             cursor: pointer;
@@ -935,11 +735,6 @@
         }
     }
 
-    // 2026-05 v7: Necromancer summon-spawn overlay (~2s, per-type theme).
-    // The container fills the avatar; one glyph (skull/ghost/smiling-face-with-horns/crown) bursts out
-    // and a coloured aura ring expands behind it. Each type has its own
-    // colour palette + motion curve so the player can tell summons apart
-    // at a glance.
     &__summon-spawn {
         position: absolute;
         inset: 0;
@@ -950,14 +745,12 @@
         pointer-events: none;
         overflow: visible;
 
-        // Glyph that bursts up from the avatar centre.
         .combat-ui__summon-spawn-glyph {
             font-size: 56px;
             line-height: 1;
             filter: drop-shadow(0 0 8px currentColor);
             animation-fill-mode: forwards;
         }
-        // Coloured aura ring that expands behind the glyph.
         .combat-ui__summon-spawn-aura {
             position: absolute;
             inset: 0;
@@ -967,7 +760,6 @@
             animation-fill-mode: forwards;
         }
 
-        // -- Skeleton: gray bone-dust burst ---------------------------
         &--skeleton {
             color: #d6d6d6;
             .combat-ui__summon-spawn-glyph {
@@ -977,7 +769,6 @@
                 animation: summon-skeleton-aura 2s ease-out;
             }
         }
-        // -- Ghost: cyan ethereal swirl -------------------------------
         &--ghost {
             color: #6ee0ff;
             .combat-ui__summon-spawn-glyph {
@@ -988,7 +779,6 @@
                 box-shadow: 0 0 24px #6ee0ff inset, 0 0 24px #6ee0ff;
             }
         }
-        // -- Demon: red/orange flame eruption -------------------------
         &--demon {
             color: #ff6a3d;
             .combat-ui__summon-spawn-glyph {
@@ -1000,7 +790,6 @@
                 box-shadow: 0 0 32px #ff3d00 inset, 0 0 32px #ff6a3d;
             }
         }
-        // -- Lich: epic purple vortex with golden runes ---------------
         &--lich {
             color: #c779ff;
             .combat-ui__summon-spawn-glyph {
@@ -1035,8 +824,6 @@
         white-space: nowrap;
     }
 
-    // Small robot badge for AI bot helpers — distinguishes bots from human
-    // party members now that the bot's name is plain text (no embedded icon).
     &__ally-bot-badge {
         display: inline-flex;
         align-items: center;
@@ -1050,9 +837,6 @@
         }
     }
 
-    // Aggro indicator — pinned to the top-right of the WHOLE card so the
-    // mob-target counter (X mobs targeting me) doesn't fight the avatar
-    // for vertical space the way it did when it lived inside `&__ally-foot`.
     &__ally-aggro {
         position: absolute;
         top: 4px;
@@ -1074,17 +858,9 @@
         strong { color: #fff; font-weight: 800; }
     }
 
-    // -- Sub-controls (under arena: pots + bag + logs + xp) ----------------
     &__sub-controls {
         display: flex;
         flex-direction: column;
-        // No vertical container gap — we move the spacing onto `&__sub-row`
-        // itself (margin: 24px 0 on mobile / 32px 0 on desktop) so the
-        // bag/logs icons get *equal* breathing room above (from the arena)
-        // AND below (toward the XP bar). Previously the container held the
-        // top margin and a 6px child-gap, so the bottom gap (6px) was much
-        // tighter than the top gap (24/32px) — the player called this out
-        // as visually asymmetric.
         padding: 0 12px;
         max-width: 980px;
         margin: 0 auto;
@@ -1094,33 +870,17 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        // Symmetric vertical spacing — top margin pulls the icons clear of
-        // the arena cards, bottom margin pushes the XP bar away by the same
-        // amount. The previous layout had no bottom margin so the bar sat
-        // 6px under the icons while the cards sat 24/32px above them.
         margin: 24px 0;
 
         @media (min-width: 768px) {
             margin: 32px 0;
         }
 
-        // Mobile: center the bag + logs pair so they don't hug the right edge —
-        // the row also collapses without the XP bar pushing them around.
         @media (max-width: 540px) {
             justify-content: center;
         }
     }
 
-    // Hunting-view variant — shares the same row with the wave +/- pill AND
-    // the "Upolowano:" tally. Layout swaps between two responsive shapes:
-    //   - mobile    3-col grid  [bag][wave][logs]   then row 2 = [tally]
-    //   - desktop   3-col grid  [tally:1fr][wave:auto][actions:1fr]   single row
-    //
-    // The DOM order is `tally  wave  actions(bag+logs)` and the actions
-    // wrapper's `display: contents` (mobile) lets bag/logs spill back as
-    // direct grid items so the `bag` and `logs` grid areas can pick them up
-    // individually. On desktop the wrapper becomes a flex cluster so the
-    // two buttons sit tight together on the right of the row.
     &__sub-row--with-extras {
         display: grid;
         align-items: center;
@@ -1130,36 +890,16 @@
             "bag wave logs"
             "tally tally tally";
 
-        // Mobile: the wrapper spills its children back into the grid so
-        // bag/logs occupy separate cells either side of the wave control.
-        // `display: contents` removes the wrapper from the layout tree
-        // without removing what it wraps — bag/logs still match the
-        // `grid-area: bag` / `grid-area: logs` rules at the bottom of this
-        // block and slot themselves into the right cells.
         .combat-ui__sub-actions {
             display: contents;
         }
 
         @media (min-width: 768px) {
-            // Desktop: tally on the LEFT, wave dead-CENTRE, bag+logs cluster
-            // on the RIGHT. Equal-width flank columns (1fr each) guarantee
-            // the wave pill sits at the visual centre of the row regardless
-            // of how wide the tally string gets.
             grid-template-columns: 1fr auto 1fr;
             grid-template-areas: "tally wave actions";
 
-            // Squeeze the row up against the arena cards above (0 margin)
-            // and only leave a small gap (10px) before the XP bar below.
-            // Without this override the row would inherit the base 32px
-            // symmetric margin and the wave/tally would float far below
-            // the arena, wasting vertical space on desktop.
             margin: 0 0 10px 0;
 
-            // The action wrapper becomes a flex cluster so bag+logs sit
-            // tight together at the right edge of the row. The per-button
-            // `grid-area` rules below stop applying once their parent is
-            // flex, so they fall through to natural flex order (bag first,
-            // logs second) — exactly what we want.
             .combat-ui__sub-actions {
                 display: flex;
                 grid-area: actions;
@@ -1168,10 +908,6 @@
             }
         }
 
-        // Slot placement (mobile only — desktop wrapper is flex so these
-        // are ignored). Overrides the default `margin-left: auto` on bag
-        // that would otherwise survive the wrapper switch and shove the
-        // bag away from the left edge of its grid cell.
         .combat-ui__sub-bag {
             grid-area: bag;
             margin-left: 0;
@@ -1185,9 +921,6 @@
 
     &__sub-tally-slot {
         grid-area: tally;
-        // Mobile: kill the existing top margin on the tally container so the
-        // grid `gap: 12px` is the single source of vertical breathing.
-        // Desktop (left column) stays naturally on the row baseline.
         > .combat-ui__hunted {
             margin: 0;
             padding: 0;
@@ -1197,15 +930,11 @@
     &__sub-wave-slot {
         grid-area: wave;
         justify-self: center;
-        // Override the standalone wave-ctl's `margin: 8px auto 0` so it sits
-        // flush in its grid cell — auto-margin + grid-cell justify-self both
-        // try to center, which double-centers and shifts the pill off.
         > .combat-ui__wave-ctl {
             margin: 0;
         }
     }
 
-    // (Potion sub-circles removed — moved to floating <CombatPotionDock />.)
 
     &__sub-bag,
     &__sub-logs {
@@ -1225,8 +954,6 @@
     &__sub-bag {
         margin-left: auto;
 
-        // On mobile we drop the auto-margin so the row's `justify-content: center`
-        // can do its job without the bag being shoved to the right edge.
         @media (max-width: 540px) {
             margin-left: 0;
         }
@@ -1245,8 +972,6 @@
 
     &__sub-xp {
         position: relative;
-        // Bumped from 14  18px so the white in-bar text sits comfortably
-        // without crowding the gradient fill underneath.
         height: 18px;
         background: rgba(0, 0, 0, 0.55);
         border-radius: 9px;
@@ -1272,26 +997,16 @@
         gap: 8px;
         font-size: 11px;
         font-weight: 700;
-        // Switched to white per request — the dark-on-yellow text was hard
-        // to read once the gradient hit higher levels and we now also need
-        // legibility over the dark portion of the bar (when XP is low) and
-        // the bright portion (when XP is high). The black drop shadow keeps
-        // it readable over both.
         color: #fff;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
         letter-spacing: 0.3px;
     }
 
     &__sub-xp-rate {
-        // Per-hour readout glued to the right of the XP text. Hidden when
-        // there's no rate yet (first ~6 sec of session — useBackgroundCombat
-        // requires elapsed >= 1/600 h). Same white + shadow as the main
-        // text but slightly lighter to read as a secondary metric.
         color: #ffe082;
         font-weight: 800;
     }
 
-    // -- Hunted tally (hunting only) ---------------------------------------
     &__hunted {
         max-width: 980px;
         margin: 8px auto 0;
@@ -1300,10 +1015,6 @@
         flex-direction: column;
         gap: 4px;
 
-        // Mobile: centre both the "Upolowano:" label and the rarity-cell row
-        // so the strip reads as a centred caption instead of left-aligned
-        // text that floats off to one side under the cards. Desktop keeps
-        // the original left-aligned layout.
         @media (max-width: 540px) {
             align-items: center;
             text-align: center;
@@ -1322,9 +1033,6 @@
         gap: 6px;
         flex-wrap: wrap;
 
-        // Mobile: pair with the column container's `align-items: center` —
-        // this centres the wrapped row visually so 5 rarity cells sit
-        // symmetrically under the "Upolowano:" label.
         @media (max-width: 540px) {
             justify-content: center;
         }
@@ -1350,7 +1058,6 @@
     &__hunted-icon { font-size: 14px; }
     &__hunted-count { font-weight: 800; }
 
-    // -- Wave +/- strip (hunting only — picks how many mobs spawn next) ---
     &__wave-ctl {
         display: flex;
         align-items: center;
@@ -1399,12 +1106,6 @@
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     }
 
-    // -- Post-victory footer (hunting only — Walcz ponownie / Zmień potwora)
-    // Pinned to the centre of the viewport so the player always sees the two
-    // primary post-victory choices regardless of where they were scrolled when
-    // the wave ended. Sits below the modal layer (1500) and above the action
-    // bar (1300) / potion dock (1310). The dark glassy background keeps the
-    // buttons readable over the arena underneath.
     &__victory-footer {
         position: fixed;
         top: 50%;
@@ -1431,16 +1132,6 @@
         to   { opacity: 1; transform: translate(-50%, -50%); }
     }
 
-    // Auto-fight countdown bar — slim, FULL-WIDTH bar pinned to the viewport
-    // right under the TopHeader. Replaces the in-popup countdown: when the
-    // player has auto-fight ON we hide the entire victory footer (no
-    // "Walcz ponownie / Zmień potwora" choice), and instead surface a thin
-    // LR progress bar in the player's transform accent colour so they can
-    // see at a glance how long until the next wave fires. Disappears the
-    // moment the next fight starts (`phase` flips off 'victory').
-    //
-    // Pinned at top: 50px (TopHeader height) on desktop and top: 46px on
-    // mobile so it sits visually glued to the underside of the header.
     &__auto-fight-bar {
         position: fixed;
         top: 50px;
@@ -1448,16 +1139,13 @@
         right: 0;
         height: 4px;
         background: rgba(0, 0, 0, 0.45);
-        z-index: 1290; // sits just under the header (1300) but above arena
+        z-index: 1290;
         pointer-events: none;
         overflow: hidden;
-        // Subtle fade-in so the bar doesn't pop in jarringly the moment a
-        // wave ends — we're already animating the width from 0% via JS so
-        // the opacity ramp is purely a polish touch.
         animation: combat-ui-auto-fade-in 0.18s ease;
 
         @media (max-width: 480px) {
-            top: 46px; // mobile TopHeader is 46px tall
+            top: 46px;
         }
     }
 
@@ -1466,14 +1154,8 @@
         left: 0;
         top: 0;
         bottom: 0;
-        // Transform-tinted fill — picks up the player's `--nav-accent` so
-        // a Knight transform shows blue, a Rogue purple, etc. Falls back to
-        // gold (`#ffc107`) when no transform is active, matching the rest
-        // of the header chrome.
         background: var(--nav-accent, #ffc107);
         box-shadow: 0 0 6px var(--nav-accent, rgba(255, 193, 7, 0.55));
-        // Width is JS-driven via rAF — no CSS transition, otherwise the
-        // visual would lag the timer and look stuttery on the 0% reset.
         transition: none;
     }
 
@@ -1482,15 +1164,6 @@
         to   { opacity: 1; }
     }
 
-    // -- Monster-spawn timer bar (Dungeon / Raid / Transform) -------------
-    // Slim LR progress bar pinned right under the TopHeader, fills over
-    // the per-view "next monster will appear in X ms" timeout. Visually
-    // identical to `&__auto-fight-bar` so the player learns one cue:
-    // "thin bar pinned to header = something is about to happen". The
-    // amber accent reads as a neutral "waiting" colour so it doesn't
-    // step on the per-class transform tinting used elsewhere in the HUD.
-    //
-    // Positioned at top: 50px (TopHeader) on desktop, 46px on mobile.
     &__spawn-bar {
         position: fixed;
         top: 50px;
@@ -1515,8 +1188,6 @@
         bottom: 0;
         background: var(--combat-accent, #ffc107);
         box-shadow: 0 0 6px var(--combat-accent, rgba(255, 193, 7, 0.55));
-        // JS-driven via rAF — no transition so the visual lockstep with
-        // the timer isn't broken by interpolation lag on the 0% reset.
         transition: none;
     }
 
@@ -1554,7 +1225,6 @@
         }
     }
 
-    // -- Bottom action bar (replaces global nav) --------------------------
     &__action-bar {
         position: fixed;
         bottom: 0;
@@ -1567,9 +1237,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        // Skill buttons get the same generous spacing as the potion dock
-        // (30px desktop / 18px mobile) so the two control rows feel like a
-        // matched pair instead of one tight & one airy.
         gap: 30px;
         padding: 8px 16px;
         backdrop-filter: blur(8px);
@@ -1614,12 +1281,6 @@
         &--disabled,
         &:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        // Cooldown state — strong visual cue so the player can tell at a
-        // glance whether a slot is ready vs draining. The 55%-black sweep
-        // alone (`&__action-cd`) was too subtle on a busy combat screen,
-        // so we ALSO desaturate the icon, dim it, and switch the border
-        // to a muted gray. The ready state gets restored automatically
-        // when this modifier comes off (no `--ready` modifier needed).
         &--cooldown {
             border-color: rgba(120, 120, 120, 0.6);
             box-shadow: none;
@@ -1636,16 +1297,8 @@
         &--pct-mp { border-color: #2196f3; }
 
         &--skill {
-            // Skill ring picks up the player's transformation accent so the
-            // 4 active spells share the visual language of the rest of the
-            // chrome. Fallback is the original lavender ring.
             border-color: var(--combat-accent, rgba(180, 140, 255, 0.5));
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
-            // READY-state glow: when the slot is NOT on cooldown AND not
-            // disabled (enough MP, off-CD, manual mode), pulse a soft
-            // accent halo so the player can spot a castable spell at a
-            // glance. The cooldown / disabled modifiers above override
-            // box-shadow so this only shines through when actually usable.
             &:not(.combat-ui__action-btn--cooldown):not(.combat-ui__action-btn--disabled):not(:disabled) {
                 box-shadow:
                     0 0 0 1px rgba(0, 0, 0, 0.4),
@@ -1654,7 +1307,6 @@
             }
         }
 
-        // Single red icon-only exit (no text label, no hunt-yellow variant).
         &--exit {
             border-color: #f44336;
             color: #ff8a80;
@@ -1675,9 +1327,6 @@
     }
 
     &__action-icon { font-size: 18px; line-height: 1; }
-    // Spell image fills the whole circular button so the artwork reads as
-    // a full icon, not a tiny inset. `object-fit: cover` keeps the focal
-    // crop centred (most spell PNGs are square/centred composition).
     &__action-skill-img {
         width: 100%;
         height: 100%;
@@ -1709,23 +1358,15 @@
         border-radius: 3px;
     }
 
-    // Cooldown overlay — flat semi-transparent fill covering the WHOLE slot
-    // (no animated bottom-up sweep, no coloured wave-front). The numeric
-    // remaining-time text is the only progress cue; a static dim layer
-    // just signals "this slot is locked" without competing with the timer.
     &__action-cd {
         position: absolute;
         inset: 0;
-        height: auto !important; // override any inline height passed by React
+        height: auto !important;
         background: rgba(0, 0, 0, 0.65);
         pointer-events: none;
         border-radius: inherit;
     }
 
-    // Numeric remaining-time overlay — pinned dead-centre over the cd sweep.
-    // Reads the value from `cooldownRemainingMs` so the player always knows
-    // exactly how long until the slot is castable, no second-guessing the
-    // dim sweep height. Drop-shadow keeps it readable against any backdrop.
     &__action-cd-text {
         position: absolute;
         inset: 0;
@@ -1742,10 +1383,6 @@
         z-index: 2;
     }
 
-    // Subtle pulse on a ready, castable skill slot — so the eye snaps to
-    // it the moment it comes off cooldown. Uses two halo shadows, one
-    // tight + one loose, so the throb feels organic rather than a single
-    // flat blink.
     @keyframes combat-ui-skill-ready {
         0%, 100% {
             box-shadow:
@@ -1759,24 +1396,14 @@
         }
     }
 
-    // -- Potion strip (one row, pinned just above the action bar) ---------
-    // Always 4 slots in a row: HP / %HP / MP / %MP. Empty slots render as
-    // transparent placeholders so the row never shifts when the player runs
-    // out of one tier. Sits flush over the action bar with a small gap so it
-    // never overlaps the skill ring.
     &__pot-dock {
         position: fixed;
         left: 50%;
         transform: translateX(-50%);
-        bottom: 74px; // sits above the 72px action bar with 2px breathing
+        bottom: 74px;
         z-index: 1310;
         display: flex;
         flex-direction: row;
-        // Spread the 4 potion slots EVENLY across a wide pill so the icons
-        // don't huddle together. Width = 90% viewport per request (capped at
-        // 400px on huge desktops so the row doesn't end up halfway across the
-        // screen). `justify-content: space-between` distributes the 4 buttons
-        // edge-to-edge inside the wider pill.
         width: 90%;
         max-width: 400px;
         justify-content: space-between;
@@ -1788,7 +1415,7 @@
         backdrop-filter: blur(6px);
 
         @media (max-width: 540px) {
-            bottom: 68px; // sits above the 64px mobile action bar
+            bottom: 68px;
             gap: 18px;
         }
     }
@@ -1828,8 +1455,6 @@
         &--disabled,
         &:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        // Per-tier accent on the icon inset — bright HP red / MP blue stripe
-        // so colour-coding stays readable even with the transform tint.
         &--hp { border-color: #f44336; }
         &--pct-hp { border-color: #ff5252; }
         &--mp { border-color: #2196f3; }
@@ -1860,8 +1485,6 @@
     }
 
     &__pot-dock-cd {
-        // Same flat dim overlay as the skill bar — full slot coverage, no
-        // animated sweep. Numeric "Xs" timer below is the actual progress.
         position: absolute;
         inset: 0;
         height: auto !important;
@@ -1869,8 +1492,6 @@
         pointer-events: none;
         border-radius: inherit;
     }
-    // Numeric remaining-time overlay for the potion dock — same UX as
-    // the skill bar.
     &__pot-dock-cd-text {
         position: absolute;
         inset: 0;
@@ -1887,7 +1508,6 @@
         z-index: 2;
     }
 
-    // -- Modals (backpack / logs / hunt-exit) -----------------------------
     &__modal-bg {
         position: fixed;
         inset: 0;
@@ -2052,101 +1672,27 @@
     }
 }
 
-// -- AppShell — when combat HUD is active, ensure body keeps room for the
-//    fixed action bar AND the floating potion dock so nothing gets clipped
-//    underneath / behind them.
-//
-//    Action bar = 72px (64px on mobile)
-//    Potion strip = ~54px tall, sits on top of the action bar with 6px gap
-//       cumulative bottom obstruction ≈ 132px desktop / 120px mobile
-//
-//    Bottom padding has to clear BOTH the action bar AND the potion strip
-//    so the player can scroll the last row of arena/sub-controls into view
-//    without it being hidden behind the dock + nav stack.
-//
-//    NOTE: We use the double-class selector `.app-shell.app-shell--combat-hud`
-//    on purpose — the base AppShell rules are scoped with `:not(.app-shell--bare)`
-//    which gives them specificity 0,3,0. Without bumping our rule we'd lose the
-//    cascade at the desktop (≥768px) and tiny-phone (≤380px) breakpoints and
-//    the player wouldn't be able to scroll the bottom row into view.
 .app-shell.app-shell--combat-hud {
     .app-shell__main {
-        // Single uniform clearance per request — enough room to clear the
-        // 72px action bar PLUS the floating potion dock that hovers ~18px
-        // above it. 140px is the same across desktop/mobile/tiny-phone so
-        // we don't have to maintain three different breakpoint values.
         padding-bottom: 140px;
     }
 
-    // -- Release per-view viewport locks during unified-HUD combat ---------
-    // Pre-refactor `.combat` and `.boss--fighting` both pinned themselves to
-    // `height: 100dvh; overflow: hidden` because each view scrolled its own
-    // arena internally. The new unified UI lays out the arena, wave-ctl,
-    // sub-controls (bag/logs/XP), hunted tally, and victory footer one after
-    // the other in normal flow — that means anything past the viewport on
-    // mobile (where 4 enemy cards alone are already ~800px tall) gets clipped
-    // by the parent's `overflow: hidden`. Desktop got away with it because the
-    // viewport is taller than the full stack; mobile didn't and the player
-    // saw "nothing under the monster icons". Switching to `auto`/`visible`
-    // lets the AppShell scroll naturally, with the existing `padding-bottom`
-    // above keeping the bottom row clear of the action bar + potion dock.
     .combat,
     .boss.boss--fighting,
     .raid.raid--fighting,
     .dungeon:has(.dungeon__panel--combat),
     .transform.transform--fighting {
-        // Transform / Raid / Dungeon were added alongside Boss because
-        // each `&--fighting` modifier used to ship its own viewport lock
-        // (`height: 100dvh; overflow: hidden`) — combined with
-        // `.app-shell__main`'s 50px header padding that produced a phantom
-        // scrollbar on desktop (the lock claimed exactly viewport height,
-        // the shell's top padding pushed it further  page-level scroll
-        // for nothing). Same release rule applies across all four:
-        // natural flow, scroll only when the unified arena genuinely
-        // exceeds the viewport (narrow / tall layouts), and the carve-out
-        // below reserves 140px so the dock never overlaps the last row.
-        //
-        // Dungeon is selected via `:has()` because it doesn't carry its
-        // own `--fighting` modifier — the combat phase is identified by
-        // the presence of the inner `.dungeon__panel--combat` panel.
         height: auto;
         min-height: 100%;
         overflow: visible;
     }
 }
 
-// -- Compact combat HUD (Dungeon / Boss / Raid / Arena) -------------------
-// Goal: the combat screen NEVER scrolls on a normal phone/desktop viewport.
-// The bag pill is hidden in JSX, the logs icon is portalled to the top-right
-// corner of the screen, the sub-row is gone, and the AppShell's bottom
-// padding (which exists in the non-compact hunting view to clear the potion
-// dock) drops to 0. The only thing reserved at the bottom is the action bar
-// itself — handled inside the view's own layout.
-//
-// Tiny viewports (≤ 360 × 600 phones, foldables, browser dev-tool windows)
-// still get `overflow: auto` from the rule above, so if the content ever
-// genuinely exceeds the viewport the player can still scroll. We just don't
-// reserve the 140px buffer that's pure waste on these layouts.
 .app-shell.app-shell--combat-hud.app-shell--combat-hud-compact {
     .app-shell__main {
         padding-bottom: 0;
     }
 
-    // Compact-mode carve-out — every fighting view that runs in natural
-    // flow (`height: auto; overflow: visible` via the unlock rule above)
-    // needs the 140px (= 72px action bar + ~18px potion-dock float + a
-    // little breathing room) bottom buffer on `.app-shell__main` so the
-    // floating `position: fixed` action bar / potion dock never crashes
-    // over the last row of the arena. The non-compact rule above is the
-    // authoritative comment for the magic value.
-    //
-    // Hunting (`.combat`) intentionally stays out of this carve-out — it
-    // owns its own bottom-padding scheme and the user reports the existing
-    // hunting layout as fine ("Na polowaniu jest okej, nie ruszaj tam").
-    //
-    // `:has()` keeps the rule scoped: when the player is on the matching
-    // view AND in compact HUD mode, the buffer is reserved; everywhere
-    // else the original `padding-bottom: 0` reset wins.
     &:has(.transform--fighting),
     &:has(.boss--fighting),
     &:has(.raid--fighting),
@@ -2157,54 +1703,27 @@
     }
 
     .combat-ui__sub-controls {
-        // Kill the 12px horizontal padding too — with the row gone and the
-        // logs icon floating, all that's left here is the XP bar (which the
-        // view-side may or may not show), and it should hug the edges.
         padding: 0;
         margin: 0;
     }
 
-    // Defensive: if a view ever forgets to pass `compact` to <CombatHudHost>
-    // but still ends up here (e.g. via an accidental third-party dispatch),
-    // any sub-row that does render is squashed flat instead of pushing the
-    // potion dock off-screen.
     .combat-ui__sub-row {
         margin: 0;
     }
 }
 
-// Floating logs button — sits in the top-right corner, just below the fixed
-// TopHeader. `position: fixed` so it stays put while the view's own arena
-// scrolls (on tiny screens). z-index is between the TopHeader (which uses
-// 100+) and combat overlays (which use 1000+) so it doesn't bleed over
-// modals or the action bar.
 .combat-ui__sub-logs--floating {
     position: fixed;
-    // 2026-05-15 v8 spec ("Trening ikonka z logami w zlym miejscu
-    // powinna byc jak wszedzie po prawej stronie"): keep on the
-    // RIGHT side at top:100px right:10px (where it was originally).
-    // The actual "shield" complaint the user kept raising was the
-    // PartyWidget, which is now fully unmounted during combat (see
-    // AppShell + PartyWidget hide rules). The logs pill stays on
-    // the right where the user expects.
     top: 100px;
     right: 10px;
     z-index: 90;
-    // Slightly smaller than the in-flow 44px bag/logs pair so the floating
-    // pill doesn't dominate the corner — it's still tappable (40 × 40 ≥ Apple
-    // HIG 44 minus 4px on each side, well within thumb reach).
     width: 40px;
     height: 40px;
     font-size: 18px;
-    // Strong shadow so it's legible against any arena background — the
-    // monster portraits behind it can be very dark or very bright, so a flat
-    // pill would disappear into either extreme.
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 
     @media (max-width: 480px) {
-        // 46px header + 4px spawn-bar + 12px breathing.
         top: calc(46px + 4px + 12px);
-        // Right-side on mobile to match desktop.
         right: 6px;
         width: 38px;
         height: 38px;
@@ -2212,47 +1731,11 @@
     }
 }
 
-// -- Per-class attack animations -------------------------------------------
-// Emitted at the BOTTOM of the file on purpose — see the comment at the top
-// of this file. The mixin builds rules like `.combat-ui__enemy--attack-Knight`
-// (slash) / `--attack-Mage` (cast bolt) / `--attack-Archer` (arrow trail)
-// etc. Each rule sets `animation:` on the card AND `::after` overlay. By
-// being LAST in source order, these win the cascade over the plain
-// `.combat-ui__enemy--hit` shake declared inside the `.combat-ui` block —
-// without that ordering, the engine setting both modifiers at once would
-// trip the wrong animation and the player would just see a generic shake
-// instead of e.g. the green arrow trail that signals "this was a Knight
-// crit", breaking the per-class visual identity entirely.
 @include class-attack-animations('combat-ui__ally');
 @include class-attack-animations('combat-ui__enemy');
 
-// -- Floating damage / heal numbers ----------------------------------------
-// Spawned by `useCombatFx` (pushEnemyFloat / pushAllyFloat) and rendered as
-// `.combat-ui__float` children of `.combat-ui__floats` inside Enemy/Ally
-// cards. Each entry self-prunes after 1.5s on the JS side; the CSS
-// animation runs that same length so it lines up with the unmount.
-//
-// Layout decisions:
-//   - The container is absolutely positioned over the upper portion of the
-//     card so floats rise from "where the hit landed" rather than from the
-//     name foot — the player's eye is on the sprite, not the bar.
-//   - Each float is `display: inline-flex` with the icon on the left and
-//     the number on the right; crit floats append a bright "CRIT" chip.
-//   - Multiple simultaneous floats stack horizontally and wrap — they all
-//     share the rise-and-fade animation but with no explicit positioning,
-//     letting the inline-flex layout fan them out so they don't overlap
-//     even when 4 monsters take damage on the same frame.
-//   - Every kind has its own colour family so the player can tell at a
-//     glance whether they hit the monster, the ally hit the monster, the
-//     monster hit them, or a heal landed — see the per-modifier blocks
-//     below for the exact palette rationale.
 .combat-ui__floats {
     position: absolute;
-    // Damage numbers live at the vertical CENTRE of the card — the most
-    // legible spot on a small mobile tile. The spell-cast animation lives
-    // BELOW (anchored bottom; see `.skill-anim-overlay`) so the two zones
-    // never overlap: number on the chest, glyph at the feet. Per
-    // 2026-05 redesign request.
     top: 45%;
     left: 0;
     right: 0;
@@ -2271,19 +1754,11 @@
     align-items: center;
     gap: 2px;
     font-weight: 800;
-    // Mobile damage tally — minimalist by design. Multi-attacker fights
-    // (e.g. 4-mob raid waves, 4-bot party) stack 4+ floats simultaneously,
-    // so a 14-16px number was eating most of the small monster card.
-    // 9px on phones reads as a "tick number"; desktop keeps the
-    // bigger 14px for legibility.
     font-size: 9px;
     line-height: 1;
     padding: 1px 4px;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.55);
-    // Drift up + fade. Same total time as FLOAT_LIFETIME_MS in
-    // useCombatFx so React unmounts at the same moment the float reaches
-    // opacity 0 — no flash on removal.
     animation: combat-ui-float-rise 1.5s ease-out forwards;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
     white-space: nowrap;
@@ -2301,10 +1776,6 @@
     line-height: 1;
 }
 
-// When the icon resolved to a spell PNG (per-class artwork) the renderer
-// swaps the emoji <span> for an <img> with this modifier. Mobile keeps it
-// minimal (12px) so a spell-damage float doesn't dwarf its number; desktop
-// gets the original 18px scale.
 .combat-ui__float-icon--img {
     width: 12px;
     height: 12px;
@@ -2323,9 +1794,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-// "CRIT" chip — appended after the number on critical hits. Bright,
-// uppercase, and slightly larger than the surrounding glyphs so the
-// player can spot a crit at a glance without parsing the number.
 .combat-ui__float-crit {
     font-size: 0.7em;
     letter-spacing: 0.5px;
@@ -2337,10 +1805,6 @@
     box-shadow: 0 0 6px rgba(255, 193, 7, 0.7);
 }
 
-// 2026-05 v6: DEATH ATTACK float — instant-kill proc'd. Visually
-// distinct from a regular crit (yellow): blood-red glow, jagged drop,
-// big bold text. Pulses twice for emphasis then drifts up like a
-// normal float.
 .combat-ui__float--death {
     font-size: 22px;
     font-weight: 900;
@@ -2365,8 +1829,6 @@
     100% { transform: scale(1); }
 }
 
-// Crit floats themselves get a size + glow boost so they pop visually
-// out of a stream of regular hits even before you read the chip.
 .combat-ui__float--crit {
     font-size: 17px;
     box-shadow: 0 0 12px rgba(255, 215, 0, 0.55);
@@ -2376,33 +1838,18 @@
     }
 }
 
-// -- Float colour palette (one per kind, see TFloatKind) ---------------
-// Player physical hit on enemy — clean white, the "default" damage colour.
 .combat-ui__float--basic        { color: #f5f5f5; }
-// Player spell — purple/pink so spell vs. basic is immediately legible.
 .combat-ui__float--spell        { color: #ce93d8; }
-// Ally physical hit — cyan to disambiguate from the player's own white.
 .combat-ui__float--ally-basic   { color: #80deea; }
-// Ally spell — cyan-pink blend so the player can tell ally spells apart
-// from their own (purple) spells AND from ally basics (plain cyan).
 .combat-ui__float--ally-spell   { color: #f48fb1; }
-// Monster physical hit on player/ally — red, the universal "I got hurt".
 .combat-ui__float--monster      { color: #ff5252; }
-// Monster spell — slightly darker red plus a subtle dark halo so the
-// player can read the magical-vs-physical distinction at a glance even
-// when the number is small.
 .combat-ui__float--monster-spell {
     color: #ef9a9a;
     background: rgba(20, 0, 0, 0.65);
     box-shadow: 0 0 6px rgba(120, 0, 30, 0.5);
 }
-// Heal — green, with a "+" prefix added by AllyCard JSX so even at a
-// glance the player can tell heal from damage without reading colour.
 .combat-ui__float--heal         { color: #69f0ae; }
 
-// Crit overrides — keep the kind's hue but shift toward a brighter,
-// more-saturated tint so the crit glow above doesn't desaturate the
-// underlying colour into white.
 .combat-ui__float--basic.combat-ui__float--crit       { color: #fff59d; }
 .combat-ui__float--spell.combat-ui__float--crit       { color: #f8bbd0; }
 .combat-ui__float--ally-basic.combat-ui__float--crit  { color: #ccff90; }
@@ -2425,20 +1872,11 @@
     }
     100% {
         opacity: 0;
-        // Travel only ~22px upward from the centre anchor (45% of card) so
-        // the number stays within the visible sprite area for its entire
-        // lifetime. Combined with the smaller starting offset (translateY 8px
-        //  -22px = ~30px total), back-to-back floats still separate cleanly
-        // because spawn #2 is ~3 frames behind spawn #1's drift.
         transform: translateY(-22px) scale(0.95);
     }
 }
 
-// --- 2026-05 v7: Necromancer summon-spawn keyframes -----------------------
-// Each summon type plays its own 2-second animation when the necro raises
-// a new minion. Glyph bursts UP-AND-OUT of the avatar, aura ring expands.
 
-// Skeleton: bone dust puff. Glyph rattles + fades; aura is a single quick pulse.
 @keyframes summon-skeleton-glyph {
     0%   { transform: translateY(0)    scale(0.4) rotate(0deg);    opacity: 0; }
     20%  { transform: translateY(-8px) scale(1.3) rotate(-6deg);   opacity: 1; }
@@ -2452,7 +1890,6 @@
     100% { opacity: 0; transform: scale(1.4); }
 }
 
-// Ghost: ethereal swirl. Glyph spirals upward, aura pulses twice (haunting).
 @keyframes summon-ghost-glyph {
     0%   { transform: translate(0, 0)        scale(0.3); opacity: 0;   filter: blur(6px); }
     25%  { transform: translate(-12px, -8px) scale(1.1); opacity: 0.8; filter: blur(0); }
@@ -2468,7 +1905,6 @@
     100% { opacity: 0;   transform: scale(1.5); }
 }
 
-// Demon: explosive flame. Glyph erupts, aura flashes hard, screen-shake feel.
 @keyframes summon-demon-glyph {
     0%   { transform: translateY(20px) scale(0.2);   opacity: 0; }
     15%  { transform: translateY(-4px) scale(1.6);   opacity: 1; }
@@ -2484,8 +1920,6 @@
     100% { opacity: 0;   transform: scale(1.6); border-color: #ff3d00; }
 }
 
-// Lich: EPIC. Glyph rotates with golden lightning, aura pulses 3x with a final
-// brilliant flash. The boss summon — most dramatic of the four.
 @keyframes summon-lich-glyph {
     0%   { transform: translateY(0) scale(0.2) rotate(0deg);     opacity: 0; filter: brightness(0.5); }
     15%  { transform: translateY(-6px) scale(1.4) rotate(-180deg); opacity: 1; filter: brightness(1.5); }

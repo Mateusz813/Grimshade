@@ -66,9 +66,6 @@
       }
     }
 
-    // 2026-05-21 spec: admin panel entry — visible only for the
-    // allow-listed account. Green tint so it reads as "tooling" not
-    // "destructive".
     &--admin {
       color: #a5d6a7;
       &:hover {
@@ -127,9 +124,6 @@
     }
   }
 
-  // 2026-05-21: app version footer (reads from package.json). Sits
-  // below the logout button, muted + small so it reads as metadata,
-  // not an interactive row.
   &__version {
     margin-top: 6px;
     padding: 6px 12px 4px;

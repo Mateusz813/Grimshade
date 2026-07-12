@@ -1,19 +1,3 @@
-// 2026-05-19 v2 spec ("Brakuje ikonki chatu do odpalania malego
-// chatu na popupie jak w party"): compact chat popover anchored to
-// the bottom-right of the viewport, matching the party widget's
-// popover footprint. Sits ABOVE the chat-unread badge so the badge
-// is still visible (or hidden via badge.is-popup-open, whichever
-// reads better — kept here so the popup can stack on phones too).
-// 2026-05-19 v3 spec ("powinien byc tam na popupie odwzorowany
-// widok /chat ze wszystkimi dostepnymi chatami"): popover anchored
-// to the bottom-LEFT next to the chat icon. Mirrors the /chat
-// route's layout (every tab, full Chat panels) at a compact size
-// so the player can read & reply without leaving the current view.
-// 2026-05-19 v7 spec ("popraw wyswietlanie chatu zeby byl przy tej
-// ikonce w miare"): popover anchored to the bottom-RIGHT next to
-// the new chat-icon position. Sits just above + slightly inside
-// of the icon so the visual relationship reads as "this is the
-// thing the icon opened".
 .chat-popup {
     position: fixed;
     right: 8px;

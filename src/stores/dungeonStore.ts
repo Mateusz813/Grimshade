@@ -3,19 +3,11 @@ import type { IDungeonResult } from '../systems/dungeonSystem';
 
 interface IDailyAttempts {
   used: number;
-  date: string; // YYYY-MM-DD
+  date: string;
 }
 
 interface IDungeonStore {
   dailyAttempts: Record<string, IDailyAttempts>;
-  /**
-   * Permanent "ever cleared" log keyed by dungeon id (value is just `true`
-   * — kept as an object instead of a Set so Zustand persistence via JSON
-   * round-trips cleanly through characterScope without custom replacers).
-   * Set once on the first victory and never reset; daily attempts can
-   * reach zero again, but `Pokonany` stays for the lifetime of the
-   * character.
-   */
   clearedDungeonIds: Record<string, true>;
   lastResult: IDungeonResult | null;
 
@@ -53,8 +45,6 @@ export const useDungeonStore = create<IDungeonStore>()(
                 date: today,
               },
             },
-            // Mark this dungeon as ever-cleared. Idempotent — re-setting
-            // to true on every subsequent win is a no-op.
             clearedDungeonIds: {
               ...s.clearedDungeonIds,
               [dungeonId]: true,

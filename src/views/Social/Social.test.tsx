@@ -2,23 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/**
- * Social view — vertically stacked banner-tile hub (Party / Gildia /
- * Znajomi / Czat). Tiny view (~100 lines), reads only `useCharacterStore`
- * for the class color fallback and `useTransformStore` for the highest-tier
- * accent. Each tile is a button that navigate(path)'s away.
- *
- * Coverage:
- *   - Smoke render of the `.social` root + 4 button tiles.
- *   - aria-label on each tile matches the Polish spec
- *     (Party / Gildia / Znajomi / Czat).
- *   - Navigation: clicking a tile fires `useNavigate()` with the correct
- *     route (`/party`, `/guild`, `/friends`, `/chat`).
- *   - Edge: still renders sensibly when character is `null` (uses
- *     fallback class accent — no spinner gate, just renders the hub
- *     with the default red color).
- *   - Class variants: render for every class without crashing.
- */
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -152,8 +135,3 @@ describe('Social — edge cases', () => {
     });
 });
 
-// TODO: Verifying the actual transform-tinted CSS custom properties on
-//       the root would require resolving inline `style` to a hex string
-//       per class; happy-dom resolves them but the test value is brittle
-//       across the 7-class palette + 12 transform tiers. Skipped here —
-//       Battle.test.tsx covers the same pattern.
