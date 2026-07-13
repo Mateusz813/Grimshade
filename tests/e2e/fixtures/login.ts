@@ -1,7 +1,50 @@
 
 import { type Page } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
 import type { ITestUser } from './testUsers';
-import { readSavedAuth } from './authState';
+import { readSavedAuth, writeSavedAuth, supabaseAuthStorageKey, type ISavedAuth } from './authState';
+
+const REMINT_BUFFER_MS = 15 * 60 * 1000;
+
+const isExpiredSoon = (saved: ISavedAuth): boolean => {
+    try {
+        const session = JSON.parse(saved.value) as { expires_at?: number };
+        if (!session.expires_at) return true;
+        return session.expires_at * 1000 <= Date.now() + REMINT_BUFFER_MS;
+    } catch {
+        return true;
+    }
+};
+
+const remintSession = async (user: ITestUser): Promise<ISavedAuth | null> => {
+    const url = process.env.VITE_SUPABASE_URL;
+    const anon = process.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !anon) return null;
+    try {
+        const client = createClient(url, anon, {
+            auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data, error } = await client.auth.signInWithPassword({
+            email: user.email,
+            password: user.password,
+        });
+        if (error || !data.session) return null;
+        const saved: ISavedAuth = {
+            name: supabaseAuthStorageKey(url),
+            value: JSON.stringify(data.session),
+        };
+        writeSavedAuth(user.label, saved);
+        return saved;
+    } catch {
+        return null;
+    }
+};
+
+const ensureFreshAuth = async (user: ITestUser): Promise<ISavedAuth | null> => {
+    const saved = readSavedAuth(user.label);
+    if (saved && !isExpiredSoon(saved)) return saved;
+    return (await remintSession(user)) ?? saved;
+};
 
 const waitForAuthToken = async (page: Page): Promise<boolean> => {
     return page
@@ -29,19 +72,7 @@ export const loginViaUIReal = async (page: Page, user: ITestUser): Promise<void>
     await waitForAuthToken(page);
 };
 
-export const loginViaUI = async (page: Page, user: ITestUser): Promise<void> => {
-    await page.addInitScript(() => {
-        try {
-            window.localStorage.setItem('grimshade_backend_mode', '0');
-        } catch {
-        }
-    });
-    const saved = readSavedAuth(user.label);
-    if (!saved) {
-        await loginViaUIReal(page, user);
-        return;
-    }
-
+const injectSession = async (page: Page, saved: ISavedAuth): Promise<void> => {
     await page.goto('/login');
     await page.evaluate(
         (s) => {
@@ -53,8 +84,32 @@ export const loginViaUI = async (page: Page, user: ITestUser): Promise<void> => 
         saved,
     );
     await page.goto('/character-select');
-
     await page.waitForURL(/\/(login|character-select)?$/, { timeout: 20_000 }).catch(() => {});
+};
+
+export const loginViaUI = async (page: Page, user: ITestUser): Promise<void> => {
+    await page.addInitScript(() => {
+        try {
+            window.localStorage.setItem('grimshade_backend_mode', '0');
+        } catch {
+        }
+    });
+
+    let saved = await ensureFreshAuth(user);
+    if (!saved) {
+        await loginViaUIReal(page, user);
+        return;
+    }
+
+    await injectSession(page, saved);
+
+    if (page.url().includes('/login')) {
+        saved = await remintSession(user);
+        if (saved) {
+            await injectSession(page, saved);
+        }
+    }
+
     if (page.url().includes('/login')) {
         await loginViaUIReal(page, user);
         return;

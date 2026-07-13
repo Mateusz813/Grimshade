@@ -78,6 +78,14 @@ przez wszystkich userów z domeną `@grimshade-test.local` i kasuje
 matchujące pattern. Użyteczne jako CI cron (TODO: dorzucić workflow)
 i lokalnie żeby zacząć od czystego stanu po failed afterEach.
 
+**Pre-run sweep stałych kont** (2026-07-13): `cleanupAllCharactersOnStableAccounts()`
+kasuje WSZYSTKIE postaci (+ child rows, parties/guilds, messages) na
+`STABLE_TEST_ACCOUNTS`. `global-setup.ts` woła to na STARCIE każdego runu
+(best-effort, try/catch) — dzięki temu śmieci po **anulowanym** runie (np.
+timeout w CI, który nie dobiega do `global-teardown`) nie przechodzą do
+kolejnego runu. Kluczowe dla testów rankingów: zalegające seedowane postaci
+wypychały świeżo seedowaną postać poza top-N leaderboardu.
+
 ### 3. Charactery na stałych kontach — ZAWSZE kasowane po teście (2026-05-25)
 
 **Hard rule** (CLAUDE.md TESTING): żaden test E2E nie zostawia po sobie
@@ -200,13 +208,25 @@ się, stwórz postać, idź do walki, atakuj") — to wolne i kruche. Wzorce:
    (`fixtures/login.ts`) **wstrzykuje** tę sesję do localStorage zamiast
    robić realny login GoTrue — ~315 loginów/run → 3. To usunęło rate-limit
    GoTrue (`listUsers failed: {}`), który zabijał job E2E timeoutem.
-   - Wszystkie 157 spec files wołają `loginViaUI(page, user)` BEZ ZMIAN —
+   - Wszystkie spec files wołają `loginViaUI(page, user)` BEZ ZMIAN —
      zmienił się tylko mechanizm.
+   - **TTL-refresh (2026-07-13)**: access token Supabase żyje ~1h, a pełny
+     run E2E trwa dłużej. `loginViaUI` przed wstrzyknięciem sprawdza
+     `session.expires_at`; jeśli sesja jest wygasła albo bliska wygaśnięcia
+     (bufor 15 min), **re-mintuje** ją przez jednorazowy `signInWithPassword`
+     i nadpisuje `playwright/.auth/<label>.json`. Kolejne testy czytają już
+     świeży blob → co najwyżej ~1 realny login na okno TTL zamiast jednego
+     na test. Bez tego run przekraczający 1h wpadał w rate-limit (klaster
+     `mobile-chrome` failów ~1.3h w runie).
    - `loginViaUIReal` = stary realny flow (escape hatch + auto-fallback gdy
      brak cache'a lub sesja odrzucona jako stale → self-healing).
    - Wstrzyknięcie jest JEDNORAZOWE (goto `/login` → setItem → goto
      `/character-select`), NIE `addInitScript` — dzięki temu testy logout /
      session-expiry (które celowo czyszczą sesję) działają bez zmian.
+   - **userId cache na dysku**: `global-setup.ts` zapisuje mapę
+     email→userId do `playwright/.auth/userids.json`; `findUserIdByEmail`
+     hydratuje z niej cache na zimnym starcie workera → recycled worker po
+     failu nie woła ponownie rate-limit-owego `listUsers`.
 2. **Direct API seed** — Supabase REST/RPC do dosypania character +
    state ZANIM test odpali browser (helper TODO w `fixtures/`).
 3. **localStorage / sessionStorage injection** — `page.addInitScript`

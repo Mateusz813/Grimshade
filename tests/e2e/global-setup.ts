@@ -3,7 +3,8 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAuthStorageKey, writeSavedAuth, type TAuthLabel } from './fixtures/authState';
+import { supabaseAuthStorageKey, writeSavedAuth, writeUserIds, type TAuthLabel } from './fixtures/authState';
+import { cleanupAllCharactersOnStableAccounts } from './fixtures/cleanup';
 
 const PROJECT_ROOT = process.cwd();
 const DIST = resolve(PROJECT_ROOT, 'dist');
@@ -57,6 +58,7 @@ const preauthenticate = async (): Promise<void> => {
         ['admin', process.env.E2E_ADMIN_EMAIL, process.env.E2E_ADMIN_PASSWORD],
     ];
     const storageKey = supabaseAuthStorageKey(url);
+    const userIds: Record<string, string> = {};
 
     for (const [label, email, password] of accounts) {
         if (!email || !password) continue;
@@ -70,9 +72,23 @@ const preauthenticate = async (): Promise<void> => {
                 continue;
             }
             writeSavedAuth(label, { name: storageKey, value: JSON.stringify(data.session) });
+            if (data.user?.id) userIds[email.toLowerCase()] = data.user.id;
         } catch (err) {
             console.warn(`[globalSetup] pre-auth ${label} threw: ${err instanceof Error ? err.message : String(err)}`);
         }
+    }
+
+    if (Object.keys(userIds).length > 0) writeUserIds(userIds);
+};
+
+const wipeStaleCharacters = async (): Promise<void> => {
+    try {
+        const wiped = await cleanupAllCharactersOnStableAccounts();
+        if (wiped > 0) {
+            console.log(`[globalSetup] pre-run wipe removed ${wiped} leftover character(s) from stable accounts`);
+        }
+    } catch (err) {
+        console.warn(`[globalSetup] pre-run wipe skipped: ${err instanceof Error ? err.message : String(err)}`);
     }
 };
 
@@ -95,6 +111,7 @@ const ensureBuild = (): void => {
 
 const globalSetup = async (): Promise<void> => {
     await preauthenticate();
+    await wipeStaleCharacters();
     ensureBuild();
 };
 

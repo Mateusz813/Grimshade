@@ -1,5 +1,6 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { readUserIds } from './authState';
 
 let adminClient: SupabaseClient | null = null;
 
@@ -68,6 +69,8 @@ const TRANSIENT_MESSAGE_PATTERNS = [
 export const isTransientError = (error: IPgErrorLike | null | undefined): boolean => {
     if (!error) return false;
     if (error.code && PERMANENT_ERROR_CODES.has(error.code)) return false;
+    const status = (error as { status?: number }).status;
+    if (status === 429 || (typeof status === 'number' && status >= 500)) return true;
     const msg = (error.message ?? '').toLowerCase();
     if (!msg) return true;
     return TRANSIENT_MESSAGE_PATTERNS.some((p) => msg.includes(p));
@@ -91,9 +94,26 @@ const emailToUserIdCache = new Map<string, string>();
 
 let cachePopulated = false;
 
+let diskCacheLoaded = false;
+
+const hydrateFromDisk = (): void => {
+    if (diskCacheLoaded) return;
+    diskCacheLoaded = true;
+    for (const [email, id] of Object.entries(readUserIds())) {
+        if (!emailToUserIdCache.has(email.toLowerCase())) {
+            emailToUserIdCache.set(email.toLowerCase(), id);
+        }
+    }
+};
+
 export const findUserIdByEmail = async (email: string): Promise<string | null> => {
     const lower = email.toLowerCase();
 
+    if (emailToUserIdCache.has(lower)) {
+        return emailToUserIdCache.get(lower)!;
+    }
+
+    hydrateFromDisk();
     if (emailToUserIdCache.has(lower)) {
         return emailToUserIdCache.get(lower)!;
     }

@@ -111,7 +111,7 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
       - name: E2E skipped (secrets missing)
         if: steps.e2eguard.outputs.ready != 'true'
-        run: echo "::notice::E2E secrets not set — skipping Playwright in CI. Add them (see .github/DEPLOY.md) to activate; point VITE_SUPABASE_URL at a TEST Supabase project, not prod."
+        run: echo "E2E secrets not set — skipping Playwright in CI. Add them (see .github/DEPLOY.md) to activate; point VITE_SUPABASE_URL at a TEST Supabase project, not prod."
       - name: Upload Playwright report
         if: always() && steps.e2eguard.outputs.ready == 'true'
         uses: actions/upload-artifact@v6
@@ -188,4 +188,4 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       - name: Deploy skipped (secrets missing)
         if: steps.guard.outputs.ready != 'true'
-        run: echo "::notice::VERCEL_TOKEN not set — skipping gated deploy. Add secrets (see .github/DEPLOY.md) to activate."
+        run: echo "VERCEL_TOKEN not set — gated deploy nieaktywny; produkcja idzie przez Vercel auto-deploy. Add secrets (see .github/DEPLOY.md) to activate."

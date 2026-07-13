@@ -18,6 +18,22 @@ export const supabaseAuthStorageKey = (supabaseUrl: string): string => {
 
 const authFilePath = (label: TAuthLabel): string => resolve(AUTH_DIR, `${label}.json`);
 
+const USERIDS_PATH = resolve(AUTH_DIR, 'userids.json');
+
+export const writeUserIds = (map: Record<string, string>): void => {
+    mkdirSync(AUTH_DIR, { recursive: true });
+    writeFileSync(USERIDS_PATH, JSON.stringify(map), 'utf8');
+};
+
+export const readUserIds = (): Record<string, string> => {
+    if (!existsSync(USERIDS_PATH)) return {};
+    try {
+        return JSON.parse(readFileSync(USERIDS_PATH, 'utf8')) as Record<string, string>;
+    } catch {
+        return {};
+    }
+};
+
 export const writeSavedAuth = (label: TAuthLabel, saved: ISavedAuth): void => {
     mkdirSync(AUTH_DIR, { recursive: true });
     writeFileSync(authFilePath(label), JSON.stringify(saved), 'utf8');

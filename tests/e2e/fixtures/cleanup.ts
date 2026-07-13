@@ -349,3 +349,35 @@ export const cleanupAllRegistrationTestUsers = async (): Promise<IBulkCleanupRes
 
     return { deleted, failed, skipped, details };
 };
+
+export const cleanupAllCharactersOnStableAccounts = async (): Promise<number> => {
+    const admin = getAdminClient();
+    const { data: list, error } = await withSupabaseRetry(
+        () => admin.auth.admin.listUsers({ perPage: 1000 }),
+    );
+    if (error) {
+        throw new Error(`[cleanup-stable] listUsers failed: ${error.message ?? JSON.stringify(error)}`);
+    }
+
+    let wiped = 0;
+    for (const user of list.users) {
+        if (!user.email || !STABLE_TEST_ACCOUNTS.has(user.email.toLowerCase())) continue;
+
+        const { data: chars } = await withSupabaseRetry(
+            () => admin.from('characters').select('id').eq('user_id', user.id),
+        );
+        const ids = (chars ?? []).map((c: { id: string }) => c.id);
+        if (ids.length === 0) continue;
+
+        await withSupabaseRetry(() => admin.from('parties').delete().in('leader_id', ids));
+        await withSupabaseRetry(() => admin.from('guilds').delete().in('leader_id', ids));
+        for (const { table, key } of CHARACTER_CHILD_TABLES) {
+            await withSupabaseRetry(() => admin.from(table).delete().in(key, ids));
+        }
+        await withSupabaseRetry(() => admin.from('messages').delete().eq('user_id', user.id));
+        await withSupabaseRetry(() => admin.from('characters').delete().eq('user_id', user.id));
+        wiped += ids.length;
+    }
+
+    return wiped;
+};
