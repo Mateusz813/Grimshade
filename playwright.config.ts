@@ -25,7 +25,7 @@ export default defineConfig({
     testDir: './tests/e2e',
     fullyParallel: true,
     forbidOnly: isCI,
-    retries: 3,
+    retries: 2,
     maxFailures: isCI ? 12 : 0,
     workers: 1,
     reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
