@@ -85,7 +85,7 @@ const getRealtimeCallback = (channel: string): ((msg: IMessage) => void) | null 
 describe('useChatUnreadSubscription — wiring', () => {
     it('subscribes to system channel when character is loaded', () => {
         renderHook(() => useChatUnreadSubscription());
-        expect(chatApi.subscribe).toHaveBeenCalledWith('system', expect.any(Function));
+        expect(chatApi.subscribe).toHaveBeenCalledWith('system', expect.any(Function), expect.any(Function));
     });
 
     it('does NOT subscribe when there is no character name', () => {
@@ -103,7 +103,7 @@ describe('useChatUnreadSubscription — wiring', () => {
             },
         });
         renderHook(() => useChatUnreadSubscription());
-        expect(chatApi.subscribe).toHaveBeenCalledWith('guild_g-1', expect.any(Function));
+        expect(chatApi.subscribe).toHaveBeenCalledWith('guild_g-1', expect.any(Function), expect.any(Function));
     });
 
     it('subscribes to party channel when player is in a party', () => {
@@ -115,7 +115,7 @@ describe('useChatUnreadSubscription — wiring', () => {
             },
         });
         renderHook(() => useChatUnreadSubscription());
-        expect(chatApi.subscribe).toHaveBeenCalledWith('party_p-1', expect.any(Function));
+        expect(chatApi.subscribe).toHaveBeenCalledWith('party_p-1', expect.any(Function), expect.any(Function));
     });
 
     it('opens a global PM catch-all subscription via subscribeAll', () => {

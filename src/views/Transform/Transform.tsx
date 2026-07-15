@@ -1138,7 +1138,7 @@ const Transform = () => {
       if (!target) return;
       const targetSlot = target.slot;
 
-      let totalDmg = 0;
+      let totalDmg: number;
       if (isDualWield) {
         const dual = calculateDualWieldDamage({
           baseAtk: eff.attack,

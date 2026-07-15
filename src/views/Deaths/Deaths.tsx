@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { deathsApi, type IDeathRecord, type TDeathSource } from '../../api/v1/deathsApi';
+import { cachedRead } from '../../lib/queryCache';
 import { useGuildTagsStore } from '../../stores/guildTagsStore';
 import {
     getBossImageNearest,
@@ -196,7 +197,7 @@ const Deaths = () => {
         let cancelled = false;
         (async () => {
             setLoading(true);
-            const data = await deathsApi.listRecentDeaths(FETCH_LIMIT);
+            const data = await cachedRead(`deaths:${FETCH_LIMIT}`, 45_000, () => deathsApi.listRecentDeaths(FETCH_LIMIT));
             if (cancelled) return;
             setDeaths(data);
             setLoading(false);

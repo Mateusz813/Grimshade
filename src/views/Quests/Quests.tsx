@@ -680,21 +680,19 @@ const Quests = () => {
 
     if (isBackendMode()) {
       const entries: IClaimSummaryEntry[] = [];
-      try {
-        for (const aq of claimable) {
+      let claimedCount = 0;
+      for (const aq of claimable) {
+        try {
           const res = await backendApi.claimDailyQuest(character.id, aq.questId);
           entries.push(...buildBackendClaimEntries(res));
+          await syncFromBackend(character.id);
+          claimedCount += 1;
+        } catch (e) {
+          console.warn('[quests] backend claimDailyQuest (bulk item) failed', e);
         }
-      } catch (e) {
-        console.warn('[quests] backend claimDailyQuest (bulk) failed', e);
-      }
-      try {
-        await syncFromBackend(character.id);
-      } catch (e) {
-        console.warn('[quests] backend sync (claim-all-daily) failed', e);
       }
       if (entries.length > 0) {
-        setClaimSummary({ questName: `${claimable.length} questow dziennych`, entries });
+        setClaimSummary({ questName: `${claimedCount} questow dziennych`, entries });
       }
       return;
     }

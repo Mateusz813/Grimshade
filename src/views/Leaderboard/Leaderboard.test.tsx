@@ -25,6 +25,7 @@ vi.mock('../../api/v1/axiosInstance', () => ({
 
 import Leaderboard from './Leaderboard';
 import api from '../../api/v1/axiosInstance';
+import { invalidateQueryCache } from '../../lib/queryCache';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useGuildTagsStore } from '../../stores/guildTagsStore';
 import type { ICharacter } from '../../api/v1/characterApi';
@@ -54,6 +55,7 @@ const renderLeaderboard = () =>
     );
 
 beforeEach(() => {
+    invalidateQueryCache();
     vi.mocked(api.get).mockReset();
     vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
     useCharacterStore.setState({ character: makeChar() });

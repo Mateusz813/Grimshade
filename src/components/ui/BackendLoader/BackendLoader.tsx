@@ -4,7 +4,7 @@ import { useTransformStore } from '../../../stores/transformStore';
 import pwaIcon from '../../../assets/images/pwa.png';
 import './BackendLoader.scss';
 
-const SHOW_DELAY_MS = 350;
+const SHOW_DELAY_MS = 900;
 const DEFAULT_ACCENT = '#ffcf6b';
 
 const BackendLoader = (): React.ReactElement | null => {

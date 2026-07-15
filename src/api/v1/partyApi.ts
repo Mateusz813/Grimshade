@@ -199,7 +199,7 @@ class PartyApi extends BaseApi {
     ): Promise<IRawPartyRowWithMembers[]> => {
         if (parties.length === 0) return [];
         const ids = parties.map((p) => `"${p.id}"`).join(',');
-        let members: IPartyMemberRow[] = [];
+        let members: IPartyMemberRow[];
         try {
             members = await this.get<IPartyMemberRow[]>({
                 url:
@@ -370,7 +370,7 @@ class PartyApi extends BaseApi {
                 config: { headers: { Prefer: 'return=representation' } },
             });
 
-        let partyRows: IRawPartyRow[] = [];
+        let partyRows: IRawPartyRow[];
         try {
             partyRows = await insertParty(shouldUseExtendedCols());
         } catch (err) {
@@ -430,7 +430,7 @@ class PartyApi extends BaseApi {
                     `/rest/v1/parties?id=eq.${encodeURIComponent(input.partyId)}` +
                     `&select=${select}&limit=1`,
             });
-        let rows: IRawPartyRow[] = [];
+        let rows: IRawPartyRow[];
         try {
             rows = await fetchTarget(shouldUseExtendedCols() ? FULL_PARTY_SINGLE_SELECT : MIN_PARTY_SINGLE_SELECT);
         } catch (err) {

@@ -3997,7 +3997,7 @@ const Inventory = () => {
                   )}
 
                   {!isHeal && !isBuff && !isReset && (() => {
-                    let infoLabel = '';
+                    let infoLabel: string;
                     if (fx === 'amulet_of_loss') {
                       infoLabel = `:shield: Posiadasz ${stack} amuletów = ${stack} ochron przedmiotów. Każda śmierć automatycznie zużywa 1 sztukę i ratuje plecak + ekwipunek.`;
                     } else if (fx === 'death_protection') {

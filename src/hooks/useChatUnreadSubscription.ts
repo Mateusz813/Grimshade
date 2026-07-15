@@ -35,28 +35,41 @@ export const useChatUnreadSubscription = (): void => {
 
     const wireChannel = (channel: string): (() => void) => {
         let cancelled = false;
-        void chatApi.getMessages(channel).then((rows) => {
-            if (cancelled) return;
-            for (const m of rows) handleMessage(channel, m, true);
-        }).catch(() => { });
+        let subscribedOnce = false;
 
-        const unsubRealtime = chatApi.subscribe(channel, (msg) => {
-            if (cancelled) return;
-            handleMessage(channel, msg, false);
-        });
-
-        const pollId = window.setInterval(() => {
-            if (cancelled) return;
+        const backfill = (isInitial: boolean) => {
             void chatApi.getMessages(channel).then((rows) => {
                 if (cancelled) return;
-                for (const m of rows) handleMessage(channel, m, false);
+                for (const m of rows) handleMessage(channel, m, isInitial);
             }).catch(() => { });
-        }, 4000);
+        };
+
+        backfill(true);
+
+        const unsubRealtime = chatApi.subscribe(
+            channel,
+            (msg) => {
+                if (cancelled) return;
+                handleMessage(channel, msg, false);
+            },
+            (status) => {
+                if (cancelled) return;
+                if (status === 'SUBSCRIBED') {
+                    if (subscribedOnce) backfill(false);
+                    subscribedOnce = true;
+                }
+            },
+        );
+
+        const onVisible = () => {
+            if (!cancelled && document.visibilityState === 'visible') backfill(false);
+        };
+        document.addEventListener('visibilitychange', onVisible);
 
         return () => {
             cancelled = true;
             unsubRealtime();
-            window.clearInterval(pollId);
+            document.removeEventListener('visibilitychange', onVisible);
         };
     };
 

@@ -4,6 +4,10 @@ import type {
     IMarketSaleNotification,
     MarketKind,
 } from '../../systems/marketSystem';
+import { cachedRead, invalidateQueryCache } from '../../lib/queryCache';
+
+const MARKET_LISTINGS_TTL_MS = 30_000;
+const invalidateMarketCache = (): void => invalidateQueryCache((k) => k.startsWith('market:'));
 
 
 export type IMarketBuyRpcResult =
@@ -32,13 +36,16 @@ export type IMarketBuyRpcResult =
 
 export const marketApi = {
     getListings: async (): Promise<IMarketListing[]> => {
-        const { data, error } = await supabase
-            .from('market_listings')
-            .select('*')
-            .order('listed_at', { ascending: false });
+        return cachedRead('market:listings', MARKET_LISTINGS_TTL_MS, async () => {
+            const { data, error } = await supabase
+                .from('market_listings')
+                .select('*')
+                .order('listed_at', { ascending: false })
+                .limit(500);
 
-        if (error) throw error;
-        return (data ?? []).map(mapDbToListing);
+            if (error) throw error;
+            return (data ?? []).map(mapDbToListing);
+        });
     },
 
     getMyListings: async (sellerId: string): Promise<IMarketListing[]> => {
@@ -76,6 +83,7 @@ export const marketApi = {
             .single();
 
         if (error) throw error;
+        invalidateMarketCache();
         return mapDbToListing(data);
     },
 
@@ -94,6 +102,7 @@ export const marketApi = {
             .select()
             .single();
         if (error) throw error;
+        invalidateMarketCache();
         return data ? mapDbToListing(data) : null;
     },
 
@@ -124,6 +133,7 @@ export const marketApi = {
                 reason: (row.reason as string | undefined) ?? 'unknown',
             };
         }
+        invalidateMarketCache();
         return {
             ok: true,
             listingId: row.listing_id as string,
@@ -161,6 +171,7 @@ export const marketApi = {
                 .delete()
                 .eq('id', listingId);
             if (delErr) throw delErr;
+            invalidateMarketCache();
             return mapDbToListing({ ...current, quantity: 0 });
         }
         const { data: updated, error: updErr } = await supabase
@@ -170,6 +181,7 @@ export const marketApi = {
             .select()
             .single();
         if (updErr) throw updErr;
+        invalidateMarketCache();
         return updated ? mapDbToListing(updated) : null;
     },
 
@@ -180,6 +192,7 @@ export const marketApi = {
             .eq('id', listingId);
 
         if (error) throw error;
+        invalidateMarketCache();
     },
 
     getListing: async (listingId: string): Promise<IMarketListing | null> => {

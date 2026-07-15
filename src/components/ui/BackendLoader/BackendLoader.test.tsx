@@ -22,7 +22,7 @@ describe('BackendLoader', () => {
         render(<BackendLoader />);
         act(() => { useApiPendingStore.setState({ pending: 1 }); });
         expect(screen.queryByText(/Grimshade/)).toBeNull();
-        act(() => { vi.advanceTimersByTime(400); });
+        act(() => { vi.advanceTimersByTime(1000); });
         expect(screen.getByText(/Grimshade/)).toBeTruthy();
     });
 
@@ -38,7 +38,7 @@ describe('BackendLoader', () => {
     it('hides again once all requests finish', () => {
         render(<BackendLoader />);
         act(() => { useApiPendingStore.setState({ pending: 1 }); });
-        act(() => { vi.advanceTimersByTime(400); });
+        act(() => { vi.advanceTimersByTime(1000); });
         expect(screen.getByText(/Grimshade/)).toBeTruthy();
         act(() => { useApiPendingStore.setState({ pending: 0 }); });
         expect(screen.queryByText(/Grimshade/)).toBeNull();

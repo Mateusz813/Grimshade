@@ -11,6 +11,7 @@ vi.mock('../../api/v1/deathsApi', () => ({
 
 import Deaths from './Deaths';
 import { deathsApi } from '../../api/v1/deathsApi';
+import { invalidateQueryCache } from '../../lib/queryCache';
 import { useGuildTagsStore } from '../../stores/guildTagsStore';
 import type { IDeathRecord } from '../../api/v1/deathsApi';
 
@@ -36,6 +37,7 @@ const renderDeaths = () =>
     );
 
 beforeEach(() => {
+    invalidateQueryCache();
     vi.mocked(deathsApi.listRecentDeaths).mockReset();
     vi.mocked(deathsApi.listRecentDeaths).mockResolvedValue([]);
     useGuildTagsStore.setState({

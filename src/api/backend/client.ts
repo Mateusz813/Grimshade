@@ -11,10 +11,12 @@ const backendClient = axios.create({
 
 backendClient.interceptors.request.use(
     async (config) => {
-        useApiPendingStore.getState().inc();
-        config.baseURL = getBackendBaseUrl();
         const method = (config.method ?? 'get').toLowerCase();
         const url = config.url ?? '';
+        const silent = method !== 'get';
+        (config as { _silent?: boolean })._silent = silent;
+        if (!silent) useApiPendingStore.getState().inc();
+        config.baseURL = getBackendBaseUrl();
         if (method !== 'get' && !url.endsWith('/state')) {
             await flushPendingCommit();
         }
@@ -34,11 +36,15 @@ backendClient.interceptors.request.use(
 
 backendClient.interceptors.response.use(
     (response) => {
-        useApiPendingStore.getState().dec();
+        if (!(response.config as { _silent?: boolean })._silent) {
+            useApiPendingStore.getState().dec();
+        }
         return response;
     },
     (error) => {
-        useApiPendingStore.getState().dec();
+        if (!(error.config as { _silent?: boolean } | undefined)?._silent) {
+            useApiPendingStore.getState().dec();
+        }
         return Promise.reject(error);
     },
 );

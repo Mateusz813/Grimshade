@@ -893,7 +893,7 @@ interface IMemberRowProps {
 
 const MemberRow = ({ member, isLeader, isMe, showKick, bossContribution, onKick, onLeave, onDisband }: IMemberRowProps) => {
     const character = useCharacterStore((s) => s.character);
-    let avatarUrl: string | null = null;
+    let avatarUrl: string | null;
     let transformCss: string | null = null;
     if (isMe && character) {
         const completed = useTransformStore.getState().completedTransforms ?? [];
@@ -987,6 +987,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
     const [bossHitPulse, setBossHitPulse] = useState(0);
     const [speedMult, setSpeedMult] = useState<1 | 2 | 4>(1);
     const engagementDmgRef = useRef(0);
+    const pendingBossDmgRef = useRef(0);
     const liveBossHpRef = useRef(0);
     const backendDamageRef = useRef<IBackendBossDamageResponse | null>(null);
     const backendTargetHpRef = useRef<number | null>(null);
@@ -1140,6 +1141,39 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
         }
     };
 
+    const flushPendingBossDamage = useCallback(async () => {
+        const guildId = guild?.id;
+        const weekStart = boss?.week_start;
+        const characterId = character?.id;
+        const characterName = character?.name;
+        if (isBackendMode() || !guildId || !weekStart || !characterId || !characterName) return;
+        const dmg = pendingBossDmgRef.current;
+        if (dmg > 0) {
+            pendingBossDmgRef.current = 0;
+            try {
+                await guildApi.applyBossDamage({ guildId, weekStart, damage: dmg });
+            } catch { }
+        }
+        if (engagementDmgRef.current > 0) {
+            try {
+                await guildApi.logAttempt({
+                    guildId,
+                    characterId,
+                    characterName,
+                    damageDealt: engagementDmgRef.current,
+                });
+            } catch (err: unknown) {
+                console.warn('[guildBoss] logAttempt failed:', err);
+            }
+        }
+    }, [guild?.id, boss?.week_start, character?.id, character?.name]);
+
+    useEffect(() => {
+        if (phase !== 'fighting' || isBackendMode()) return;
+        const id = window.setInterval(() => { void flushPendingBossDamage(); }, 2500);
+        return () => { window.clearInterval(id); void flushPendingBossDamage(); };
+    }, [phase, flushPendingBossDamage]);
+
     const finishEngagement = useCallback(async () => {
         if (!character || !boss) return;
         if (isBackendMode()) {
@@ -1158,6 +1192,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             await refresh();
             return;
         }
+        await flushPendingBossDamage();
         const totalDmg = Math.min(engagementDmgRef.current, boss.boss_max_hp);
         try {
             if (totalDmg > 0) {
@@ -1198,7 +1233,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             setErrorMsg(err instanceof Error ? err.message : 'Zamykanie walki nieudane.');
             setPhase('arena');
         }
-    }, [character, boss, guild, refresh]);
+    }, [character, boss, guild, refresh, flushPendingBossDamage]);
 
     useEffect(() => {
         if (phase !== 'fighting' || !character || !boss) return;
@@ -1230,21 +1265,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
             window.setTimeout(() => setBossAttackingPulse(null), 320);
             fx.pushEnemyFloat(0, cappedDmg, 'basic', { isCrit });
             if (!isBackendMode()) {
-                void guildApi.applyBossDamage({
-                    guildId: guild.id,
-                    weekStart: boss.week_start,
-                    damage: cappedDmg,
-                }).catch(() => { });
-                if (engagementDmgRef.current > 0) {
-                    void guildApi.logAttempt({
-                        guildId: guild.id,
-                        characterId: character.id,
-                        characterName: character.name,
-                        damageDealt: engagementDmgRef.current,
-                    }).catch((err: unknown) => {
-                        console.warn('[guildBoss] logAttempt failed:', err);
-                    });
-                }
+                pendingBossDmgRef.current += cappedDmg;
             }
         };
         const id = window.setInterval(basicTick, basicInterval);
@@ -1294,11 +1315,7 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                     icon: getSkillIcon(def.id),
                 });
                 if (!isBackendMode()) {
-                    void guildApi.applyBossDamage({
-                        guildId: guild.id,
-                        weekStart: boss.week_start,
-                        damage: cappedDmg,
-                    }).catch(() => { });
+                    pendingBossDmgRef.current += cappedDmg;
                 }
                 break;
             }
@@ -1805,7 +1822,7 @@ const GuildTreasury = ({ onBack }: IGuildTreasuryProps) => {
 
     const treasuryParsed = useMemo(() => {
         return treasury.map((row) => {
-            let parsed: IInventoryItem | null = null;
+            let parsed: IInventoryItem | null;
             try { parsed = JSON.parse(row.item_data) as IInventoryItem; }
             catch { parsed = null; }
             return { row, parsed };

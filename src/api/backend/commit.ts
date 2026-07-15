@@ -22,7 +22,7 @@ export const commitStateToBackend = async (
 ): Promise<boolean> => {
     if (!charId || !isBackendMode()) return false;
 
-    let raw: string | null = null;
+    let raw: string | null;
     try {
         raw = localStorage.getItem(`dungeon_rpg_save_char_${charId}`);
     } catch {
@@ -52,7 +52,7 @@ export const commitStateViaKeepalive = (charId: string | null | undefined): void
     const token = getAuthToken();
     if (!base || !token) return;
 
-    let raw: string | null = null;
+    let raw: string | null;
     try {
         raw = localStorage.getItem(`dungeon_rpg_save_char_${charId}`);
     } catch {

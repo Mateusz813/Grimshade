@@ -27,7 +27,7 @@ const EmojiText = ({ children }: IEmojiTextProps) => {
     last = m.index + m[0].length;
   }
   if (last === 0) return <>{text}</>;
-  if (last < text.length) parts.push(<Fragment key={key++}>{text.slice(last)}</Fragment>);
+  if (last < text.length) parts.push(<Fragment key={key}>{text.slice(last)}</Fragment>);
 
   return <>{parts}</>;
 };

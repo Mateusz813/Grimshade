@@ -2649,7 +2649,7 @@ const Boss = () => {
 
                     if (ev.attackerId !== 'boss' && ev.attackerId === ev.targetId) {
                         const localBotsForBuff = useBotStore.getState().bots;
-                        let buffSlot = 0;
+                        let buffSlot: number;
                         if (ev.targetId === 'player') {
                             const leaderIdx = localBotsForBuff.findIndex((b) => b.isLeader);
                             buffSlot = leaderIdx >= 0 ? leaderIdx + 1 : 0;
@@ -2687,7 +2687,7 @@ const Boss = () => {
                     }
                     if (ev.attackerId === 'boss') {
                         const localBotsForFx = useBotStore.getState().bots;
-                        let fxSlot = 0;
+                        let fxSlot: number;
                         if (ev.targetId === 'player') {
                             const leaderIdx = localBotsForFx.findIndex((b) => b.isLeader);
                             fxSlot = leaderIdx >= 0 ? leaderIdx + 1 : 0;

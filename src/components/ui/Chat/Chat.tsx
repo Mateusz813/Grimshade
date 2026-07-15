@@ -113,14 +113,7 @@ const Chat = ({
             if (msg.character_name === characterName) return;
             onMessageReceived?.(msg);
         };
-        const unsub = chatApi.subscribe(channel, (msg) => {
-            setMessages((prev) => {
-                if (prev.some((m) => m.id === msg.id)) return prev;
-                notifyIfNew(msg);
-                return [...prev, msg];
-            });
-        });
-        const pollId = setInterval(() => {
+        const mergeFresh = () => {
             chatApi.getMessages(channel)
                 .then((fresh) => {
                     setMessages((prev) => {
@@ -136,8 +129,32 @@ const Chat = ({
                     });
                 })
                 .catch(() => { });
-        }, 4000);
-        return () => { unsub(); clearInterval(pollId); };
+        };
+        let subscribedOnce = false;
+        const unsub = chatApi.subscribe(
+            channel,
+            (msg) => {
+                setMessages((prev) => {
+                    if (prev.some((m) => m.id === msg.id)) return prev;
+                    notifyIfNew(msg);
+                    return [...prev, msg];
+                });
+            },
+            (status) => {
+                if (status === 'SUBSCRIBED') {
+                    if (subscribedOnce) mergeFresh();
+                    subscribedOnce = true;
+                }
+            },
+        );
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') mergeFresh();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            unsub();
+            document.removeEventListener('visibilitychange', onVisible);
+        };
     }, [channel, characterName, onMessageReceived]);
 
     useEffect(() => {

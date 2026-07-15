@@ -42,6 +42,8 @@ export default defineConfig([
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      'no-useless-assignment': 'error',
+      'preserve-caught-error': 'off',
       'local/no-comments': 'error',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
@@ -67,6 +69,7 @@ export default defineConfig([
     files: ['**/*.test.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      'no-useless-assignment': 'off',
     },
   },
 ])

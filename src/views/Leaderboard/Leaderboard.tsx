@@ -7,7 +7,12 @@ import { ARENA_LEAGUES, ARENA_LEAGUE_LABELS, ARENA_LEAGUE_ICONS } from '../../ty
 import { formatGoldShort } from '../../systems/goldFormat';
 import Spinner from '../../components/ui/Spinner/Spinner';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
+import { cachedRead } from '../../lib/queryCache';
 import './Leaderboard.scss';
+
+const LEADERBOARD_TTL_MS = 45_000;
+const lbGet = <T,>(url: string) =>
+  cachedRead(url, LEADERBOARD_TTL_MS, () => api.get<T>(url));
 
 
 interface ILeaderboardEntry {
@@ -168,7 +173,7 @@ const Leaderboard = () => {
         const order = tabDef.order ?? 'desc';
         if (currentTab === 'market_items_sold' || currentTab === 'market_items_bought') {
           const goldCol = currentTab === 'market_items_sold' ? 'market_gold_earned' : 'market_gold_spent';
-          const res = await api.get<Array<Record<string, unknown> & { id: string; name: string; class: string; level: number; created_at: string }>>(
+          const res = await lbGet<Array<Record<string, unknown> & { id: string; name: string; class: string; level: number; created_at: string }>>(
             `/rest/v1/characters?select=id,name,class,level,created_at,${col},${goldCol}` +
             `&order=${goldCol}.desc,${col}.desc,level.desc,created_at.asc` +
             `&limit=${ROW_LIMIT}`,
@@ -186,7 +191,7 @@ const Leaderboard = () => {
           }));
         } else if (currentTab === 'best_dps5_solo' || currentTab === 'best_dps5_party') {
           const selectExtra = currentTab === 'best_dps5_party' ? ',best_dps5_party_composition' : '';
-          const res = await api.get<Array<Record<string, unknown> & { id: string; name: string; class: string }>>(
+          const res = await lbGet<Array<Record<string, unknown> & { id: string; name: string; class: string }>>(
             `/rest/v1/characters?select=id,name,class,${col}${selectExtra}&order=${col}.desc&limit=${ROW_LIMIT}`,
           );
           setEntries((res.data ?? []).map((r) => {
@@ -220,7 +225,7 @@ const Leaderboard = () => {
             };
           }));
         } else if (currentTab === 'arena_league') {
-          const res = await api.get<Array<{ id: string; name: string; class: string; arena_league: string; arena_league_points: number }>>(
+          const res = await lbGet<Array<{ id: string; name: string; class: string; arena_league: string; arena_league_points: number }>>(
             `/rest/v1/characters?select=id,name,class,arena_league,arena_league_points&order=arena_league_points.desc&limit=500`,
           );
           const rows = res.data ?? [];
@@ -238,7 +243,7 @@ const Leaderboard = () => {
             valueOverride: `${ARENA_LEAGUE_ICONS[r.arena_league as keyof typeof ARENA_LEAGUE_ICONS] ?? ''} ${ARENA_LEAGUE_LABELS[r.arena_league as keyof typeof ARENA_LEAGUE_LABELS] ?? r.arena_league} · ${r.arena_league_points} LP`,
           })));
         } else {
-          const res = await api.get<Array<Record<string, unknown> & { id: string; name: string; class: string }>>(
+          const res = await lbGet<Array<Record<string, unknown> & { id: string; name: string; class: string }>>(
             `/rest/v1/characters?select=id,name,class,${col}&order=${col}.${order}&limit=${ROW_LIMIT}`,
           );
           setEntries(
@@ -251,7 +256,7 @@ const Leaderboard = () => {
           );
         }
       } else if (tabDef.source === 'weapon_skill' && tabDef.skillName) {
-        const skillRes = await api.get<ISkillRow[]>(
+        const skillRes = await lbGet<ISkillRow[]>(
           `/rest/v1/character_weapon_skills?select=skill_level,skill_xp,character_id&skill_name=eq.${tabDef.skillName}&order=skill_level.desc,skill_xp.desc&limit=${ROW_LIMIT}`,
         );
         const skillRows = skillRes.data ?? [];
@@ -259,7 +264,7 @@ const Leaderboard = () => {
         if (skillRows.length > 0) {
           const charIds = [...new Set(skillRows.map((r) => r.character_id))];
           const charIdsParam = charIds.map((id) => `"${id}"`).join(',');
-          const charRes = await api.get<ICharacterInfo[]>(
+          const charRes = await lbGet<ICharacterInfo[]>(
             `/rest/v1/characters?select=id,name,class&id=in.(${charIdsParam})`,
           );
           const charMap = new Map<string, ICharacterInfo>();
@@ -285,7 +290,7 @@ const Leaderboard = () => {
           setEntries([]);
         }
       } else if (tabDef.source === 'guilds') {
-        const res = await api.get<IGuildRow[]>(
+        const res = await lbGet<IGuildRow[]>(
           `/rest/v1/guilds?select=id,name,tag,level,xp,boss_tier,leader_id,member_cap&order=level.desc,xp.desc&limit=${ROW_LIMIT}`,
         );
         const rows = res.data ?? [];
@@ -297,7 +302,7 @@ const Leaderboard = () => {
           valueOverride: `Lvl ${g.level} · ${g.xp.toLocaleString('pl-PL')} XP · Tier ${g.boss_tier}`,
         })));
       } else if (tabDef.source === 'deaths_total') {
-        const res = await api.get<IDeathTotalRow[]>(
+        const res = await lbGet<IDeathTotalRow[]>(
           `/rest/v1/character_death_totals?select=*&order=deaths_count.desc&limit=${ROW_LIMIT}`,
         );
         const rows = res.data ?? [];

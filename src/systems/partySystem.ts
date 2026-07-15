@@ -70,7 +70,7 @@ const BOT_NAMES: Partial<Record<CharacterClass, string>> = {
 
 export const createBotHelper = (partyMembers: IPartyMember[]): IPartyMember => {
   const classes = partyMembers.map((m) => m.class);
-  let botClass: CharacterClass = 'Knight';
+  let botClass: CharacterClass;
 
   if (!classes.includes('Cleric')) {
     botClass = 'Cleric';

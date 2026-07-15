@@ -110,6 +110,7 @@ class ChatApi extends BaseApi {
     subscribe = (
         channel: string,
         onMessage: (msg: IMessage) => void,
+        onStatus?: (status: string) => void,
     ): (() => void) => {
         const uniqueName = `chat:${channel}:${Math.random().toString(36).slice(2, 10)}:${Date.now()}`;
         const sub = supabase
@@ -124,7 +125,7 @@ class ChatApi extends BaseApi {
                 },
                 (payload) => onMessage(payload.new as IMessage),
             )
-            .subscribe();
+            .subscribe((status) => { onStatus?.(status); });
 
         return () => { void supabase.removeChannel(sub); };
     };

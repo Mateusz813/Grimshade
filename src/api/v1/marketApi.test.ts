@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { supabase } from '../../lib/supabase';
 import { marketApi } from './marketApi';
+import { invalidateQueryCache } from '../../lib/queryCache';
 
 const buildChain = (result: { data: unknown; error: unknown }) => {
     const chain: Record<string, unknown> = {};
@@ -18,6 +19,7 @@ const buildChain = (result: { data: unknown; error: unknown }) => {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    invalidateQueryCache();
 });
 
 const makeDbRow = (overrides: Record<string, unknown> = {}) => ({

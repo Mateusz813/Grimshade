@@ -44,10 +44,9 @@ const Party = () => {
     updateMeta,
     transferLeadership,
     subscribePublicFeed,
-    subscribeToActiveParty,
     refreshPublicParties,
     hydrateActiveParty,
-  } = usePartyStore(useShallow((s) => ({ party: s.party, loading: s.loading, error: s.error, publicParties: s.publicParties, createParty: s.createParty, joinPartyById: s.joinPartyById, leaveParty: s.leaveParty, disbandParty: s.disbandParty, updateMeta: s.updateMeta, transferLeadership: s.transferLeadership, subscribePublicFeed: s.subscribePublicFeed, subscribeToActiveParty: s.subscribeToActiveParty, refreshPublicParties: s.refreshPublicParties, hydrateActiveParty: s.hydrateActiveParty })));
+  } = usePartyStore(useShallow((s) => ({ party: s.party, loading: s.loading, error: s.error, publicParties: s.publicParties, createParty: s.createParty, joinPartyById: s.joinPartyById, leaveParty: s.leaveParty, disbandParty: s.disbandParty, updateMeta: s.updateMeta, transferLeadership: s.transferLeadership, subscribePublicFeed: s.subscribePublicFeed, refreshPublicParties: s.refreshPublicParties, hydrateActiveParty: s.hydrateActiveParty })));
 
   const [createOpen, setCreateOpen]         = useState(false);
   const [formName, setFormName]             = useState('');
@@ -86,12 +85,6 @@ const Party = () => {
     const unsub = subscribePublicFeed();
     return () => { unsub(); };
   }, [party?.id, subscribePublicFeed, refreshPublicParties]);
-
-  useEffect(() => {
-    if (!party?.id) return;
-    const unsub = subscribeToActiveParty();
-    return unsub;
-  }, [party?.id, subscribeToActiveParty]);
 
   useEffect(() => {
     if (!party) return;

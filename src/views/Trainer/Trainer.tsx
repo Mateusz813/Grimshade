@@ -160,8 +160,8 @@ const Trainer = () => {
             const liveEffOut = getEffectiveChar(live);
             const effMaxHpOut = liveEffOut?.max_hp ?? live.max_hp;
             const effMaxMpOut = liveEffOut?.max_mp ?? live.max_mp;
-            let finalHp = currentHp;
-            let finalMp = currentMp;
+            let finalHp: number;
+            let finalMp: number;
             if (currentHp === 0) {
                 finalHp = snapshotHp > 0 ? Math.min(effMaxHpOut, snapshotHp) : effMaxHpOut;
             } else {
