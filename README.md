@@ -164,10 +164,14 @@ Pierwsze podłączenie krok po kroku: [../grimshade-backend/SETUP.md](../grimsha
 
 ## Dokumentacja projektu
 
-- [`CLAUDE.md`](CLAUDE.md) — zasady projektu (workflow, testy, semver, stack, mechaniki).
+- [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) — **pełny dokument projektowy gry**: wszystkie mechaniki, formuły, szanse na drop, balans, koszty i progi (autorytatywny, wewnętrzny). **Aktualizowany przy KAŻDEJ zmianie mechaniki.**
+- **Wiki gracza** — dostępna w grze pod `/wiki` (menu awatara → „Wiki", otwiera się w nowej karcie). Treść: [`src/data/wiki.ts`](src/data/wiki.ts), widok: [`src/views/Wiki/Wiki.tsx`](src/views/Wiki/Wiki.tsx). To player-facing, uproszczona wersja `GAME_DESIGN.md`.
+- [`CLAUDE.md`](CLAUDE.md) — zasady projektu (workflow, testy, semver, stack, mechaniki, reguła utrzymania dokumentacji).
 - [`../grimshade-backend/README.md`](../grimshade-backend/README.md) — architektura backendu, zmienne env, komendy.
 - [`../grimshade-backend/LOCAL_DEV.md`](../grimshade-backend/LOCAL_DEV.md) — dev loop front+backend z live-edit.
 - [`../grimshade-backend/SETUP.md`](../grimshade-backend/SETUP.md) — pierwsze podłączenie backendu do Supabase, CI/CD.
+
+> **Reguła utrzymania (obowiązkowa):** po każdej zmianie backendu lub frontu dotykającej mechaniki — zaktualizuj `docs/GAME_DESIGN.md` **oraz** Wiki gracza (`src/data/wiki.ts`) **oraz** `CLAUDE.md`/`.claude/spec`. Nowy feature = opis we wszystkich trzech. Szczegóły w [`docs/GAME_DESIGN.md` §30](docs/GAME_DESIGN.md#30-reguła-utrzymania-obowiązkowe).
 
 ---
 

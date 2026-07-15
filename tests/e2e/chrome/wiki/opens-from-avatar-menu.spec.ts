@@ -6,10 +6,10 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 import { waitForAppReady } from '../../fixtures/appReady';
 
-test.describe('Chrome › Tutorial', { tag: '@chrome' }, () => {
+test.describe('Chrome › Wiki', { tag: '@chrome' }, () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test('tutorial opens from AvatarMenu with numbered sections', async ({ page }) => {
+    test('Wiki opens in a new tab from the AvatarMenu with real sections', async ({ page, context }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
 
@@ -33,26 +33,34 @@ test.describe('Chrome › Tutorial', { tag: '@chrome' }, () => {
             await waitForAppReady(page);
 
             await page.getByRole('button', { name: /menu postaci/i }).tap();
-            const tutorialItem = page.getByRole('menuitem', { name: /tutorial/i });
-            await expect(tutorialItem).toBeVisible({ timeout: 5_000 });
-            await tutorialItem.tap();
+            const wikiItem = page.getByRole('menuitem', { name: /wiki/i });
+            await expect(wikiItem).toBeVisible({ timeout: 5_000 });
 
-            await expect(page.locator('.tutorial')).toBeVisible({ timeout: 5_000 });
-            await expect(page.locator('.avatar-menu')).toHaveCount(0);
+            const newPagePromise = context.waitForEvent('page');
+            await wikiItem.tap();
+            const wikiPage = await newPagePromise;
+            await wikiPage.waitForLoadState('domcontentloaded');
 
-            const sections = page.locator('.tutorial__section');
+            await expect(wikiPage).toHaveURL(/\/wiki$/, { timeout: 10_000 });
+            await expect(wikiPage.locator('.wiki')).toBeVisible({ timeout: 10_000 });
+
+            const sections = wikiPage.locator('.wiki__section');
             expect(await sections.count()).toBeGreaterThanOrEqual(10);
-            await expect(page.locator('.tutorial__section-num').first()).toHaveText('1.');
-            await expect(
-                sections.first().locator('.tutorial__section-bullet').first(),
-            ).toBeVisible();
 
-            await page.locator('.tutorial__done').tap();
-            await expect(page.locator('.tutorial')).toHaveCount(0, { timeout: 5_000 });
+            await expect(wikiPage.locator('.wiki__tips')).toBeVisible();
+            await expect(wikiPage.locator('.wiki__tips')).toContainText(/task/i);
+
+            await wikiPage.close();
         } finally {
             if (createdId) {
                 await cleanupCharacterById(createdId);
             }
         }
+    });
+
+    test('Wiki is reachable directly at /wiki (standalone, no character needed)', async ({ page }) => {
+        await page.goto('/wiki');
+        await expect(page.locator('.wiki')).toBeVisible({ timeout: 10_000 });
+        await expect(page.locator('.wiki__section').first()).toBeVisible();
     });
 });

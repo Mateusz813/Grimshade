@@ -44,6 +44,7 @@ const Raid = lazy(() => import('../views/Raid/Raid'));
 const Arena = lazy(() => import('../views/Arena/Arena'));
 const ArenaMatch = lazy(() => import('../views/Arena/ArenaMatch'));
 const Trainer = lazy(() => import('../views/Trainer/Trainer'));
+const Wiki = lazy(() => import('../views/Wiki/Wiki'));
 
 interface IAppRouterProps {
     session: Session | null;
@@ -97,6 +98,8 @@ const AppRouterInner = ({ session }: IAppRouterProps) => {
                     element={!session ? <Register /> : <Navigate to="/" replace />}
                 />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+
+                <Route path="/wiki" element={<Wiki />} />
 
                 <Route
                     path="/character-select"

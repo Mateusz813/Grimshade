@@ -14,7 +14,6 @@ import { getEffectiveChar } from '../../../systems/combatEngine';
 import { formatGoldShort, getGoldBreakdown } from '../../../systems/goldFormat';
 import AvatarMenu from '../AvatarMenu/AvatarMenu';
 import ChangePasswordModal from '../../ui/ChangePasswordModal/ChangePasswordModal';
-import TutorialModal from '../../ui/TutorialModal/TutorialModal';
 import BuffPopover from '../BuffPopover/BuffPopover';
 import TaskBadge from './TaskBadge';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
@@ -66,7 +65,6 @@ const TopHeader = () => {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [buffsOpen, setBuffsOpen] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
-  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [goldOpen, setGoldOpen] = useState(false);
   const [pulseOpen, setPulseOpen] = useState(false);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
@@ -285,14 +283,10 @@ const TopHeader = () => {
           anchorRef={avatarBtnRef}
           onClose={() => setAvatarOpen(false)}
           onChangePassword={() => { setAvatarOpen(false); setChangePwdOpen(true); }}
-          onOpenTutorial={() => { setAvatarOpen(false); setTutorialOpen(true); }}
         />
       )}
       {changePwdOpen && (
         <ChangePasswordModal onClose={() => setChangePwdOpen(false)} />
-      )}
-      {tutorialOpen && (
-        <TutorialModal onClose={() => setTutorialOpen(false)} />
       )}
       {buffsOpen && (
         <BuffPopover

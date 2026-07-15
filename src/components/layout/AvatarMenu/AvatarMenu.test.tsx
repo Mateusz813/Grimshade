@@ -76,8 +76,7 @@ const makeChar = (): ICharacter => ({
 const Harness = ({
     onClose = () => undefined,
     onChangePassword = () => undefined,
-    onOpenTutorial = () => undefined,
-}: { onClose?: () => void; onChangePassword?: () => void; onOpenTutorial?: () => void }) => {
+}: { onClose?: () => void; onChangePassword?: () => void }) => {
     const ref = useRef<HTMLButtonElement>(null);
     return (
         <MemoryRouter>
@@ -86,7 +85,6 @@ const Harness = ({
                 anchorRef={ref}
                 onClose={onClose}
                 onChangePassword={onChangePassword}
-                onOpenTutorial={onOpenTutorial}
             />
         </MemoryRouter>
     );
@@ -235,21 +233,24 @@ describe('AvatarMenu — change password', () => {
     });
 });
 
-describe('AvatarMenu — tutorial', () => {
-    it('calls onOpenTutorial when "Tutorial" is tapped', () => {
-        const onOpenTutorial = vi.fn();
-        render(<Harness onOpenTutorial={onOpenTutorial} />);
-        fireEvent.click(screen.getByText('Tutorial'));
-        expect(onOpenTutorial).toHaveBeenCalled();
+describe('AvatarMenu — wiki', () => {
+    it('opens /wiki in a new tab when "Wiki" is tapped', () => {
+        const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+        const onClose = vi.fn();
+        render(<Harness onClose={onClose} />);
+        fireEvent.click(screen.getByText('Wiki'));
+        expect(openSpy).toHaveBeenCalledWith('/wiki', '_blank', 'noopener,noreferrer');
+        expect(onClose).toHaveBeenCalled();
+        openSpy.mockRestore();
     });
 
-    it('renders Tutorial immediately before Wyloguj', () => {
+    it('renders Wiki immediately before Wyloguj', () => {
         render(<Harness />);
         const labels = Array.from(document.querySelectorAll('.avatar-menu__item-label'))
             .map((el) => el.textContent);
-        const tut = labels.indexOf('Tutorial');
+        const wiki = labels.indexOf('Wiki');
         const logout = labels.indexOf('Wyloguj');
-        expect(tut).toBeGreaterThan(-1);
-        expect(logout).toBe(tut + 1);
+        expect(wiki).toBeGreaterThan(-1);
+        expect(logout).toBe(wiki + 1);
     });
 });

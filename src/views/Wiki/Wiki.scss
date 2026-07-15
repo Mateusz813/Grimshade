@@ -1,0 +1,423 @@
+.wiki {
+  --wiki-accent: #ffc107;
+  --wiki-accent-2: #e94560;
+  --wiki-bg: #14141f;
+  --wiki-card: #1c1f2b;
+  --wiki-card-2: #232739;
+  --wiki-line: rgba(255, 255, 255, 0.09);
+  --wiki-text: #e8e8ea;
+  --wiki-muted: rgba(232, 232, 234, 0.62);
+
+  min-height: 100vh;
+  width: 100%;
+  color: var(--wiki-text);
+  padding-bottom: 64px;
+  scroll-behavior: smooth;
+
+  &__topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(15, 16, 24, 0.94);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--wiki-line);
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  &__logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    flex: none;
+    box-shadow: 0 0 0 1px var(--wiki-line), 0 4px 14px rgba(0, 0, 0, 0.4);
+  }
+
+  &__brand-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__brand-name {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    background: linear-gradient(90deg, var(--wiki-accent), #ffe082 60%, var(--wiki-accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  &__brand-sub {
+    font-size: 11.5px;
+    color: var(--wiki-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__open-game {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: none;
+    padding: 8px 13px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    background: rgba(255, 193, 7, 0.12);
+    color: var(--wiki-accent);
+    font-size: 13px;
+    font-weight: 700;
+
+    .game-icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  @media (hover: hover) {
+    &__open-game:hover {
+      background: rgba(255, 193, 7, 0.2);
+    }
+  }
+
+  &__body {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 18px 16px 0;
+  }
+
+  &__hero {
+    padding: 8px 0 4px;
+  }
+
+  &__hero-title {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    line-height: 1.15;
+  }
+
+  &__hero-lead {
+    font-size: 15px;
+    color: var(--wiki-muted);
+    line-height: 1.6;
+  }
+
+  /* Starter tips callout */
+  &__tips {
+    margin: 20px 0;
+    padding: 16px 16px 6px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(233, 69, 96, 0.12), rgba(255, 193, 7, 0.06));
+    border: 1px solid rgba(233, 69, 96, 0.35);
+  }
+
+  &__tips-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 17px;
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+
+  &__tips-icon .game-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  &__tips-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 0 8px;
+    counter-reset: tip;
+  }
+
+  &__tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--wiki-line);
+    font-size: 14px;
+    line-height: 1.55;
+
+    &--strong {
+      border-color: rgba(255, 193, 7, 0.55);
+      background: rgba(255, 193, 7, 0.1);
+      font-weight: 600;
+    }
+  }
+
+  &__tip-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+
+    .game-icon {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  &__tip-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Table of contents */
+  &__toc {
+    margin: 22px 0;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--wiki-card);
+    border: 1px solid var(--wiki-line);
+  }
+
+  &__toc-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--wiki-muted);
+    margin-bottom: 12px;
+  }
+
+  &__toc-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  @media (min-width: 620px) {
+    &__toc-list {
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 18px;
+    }
+  }
+
+  &__toc-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--wiki-text);
+    transition: background 120ms ease;
+  }
+
+  @media (hover: hover) {
+    &__toc-link:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  &__toc-num {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    background: rgba(255, 193, 7, 0.14);
+    color: var(--wiki-accent);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  &__toc-icon .game-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  &__toc-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Content sections */
+  &__sections {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__section {
+    padding: 18px;
+    border-radius: 14px;
+    background: var(--wiki-card);
+    border: 1px solid var(--wiki-line);
+    scroll-margin-top: 72px;
+  }
+
+  &__section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 19px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  &__section-num {
+    color: var(--wiki-accent);
+  }
+
+  &__section-icon .game-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  &__section-summary {
+    font-size: 14.5px;
+    color: var(--wiki-muted);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  &__section-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__section-bullet {
+    position: relative;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 9px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--wiki-accent);
+    }
+
+    .game-icon {
+      width: 16px;
+      height: 16px;
+      vertical-align: -3px;
+    }
+  }
+
+  /* Tables inside sections */
+  &__table-wrap {
+    margin-top: 14px;
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid var(--wiki-line);
+  }
+
+  &__table-caption {
+    font-size: 12.5px;
+    color: var(--wiki-muted);
+    margin: 0 0 6px;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 380px;
+
+    th,
+    td {
+      padding: 8px 11px;
+      text-align: left;
+      border-bottom: 1px solid var(--wiki-line);
+      white-space: nowrap;
+    }
+
+    thead th {
+      background: var(--wiki-card-2);
+      color: var(--wiki-accent);
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .game-icon {
+      width: 15px;
+      height: 15px;
+      vertical-align: -2px;
+    }
+  }
+
+  &__section-note {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--wiki-accent);
+    border-radius: 0 8px 8px 0;
+    background: rgba(255, 193, 7, 0.07);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--wiki-text);
+  }
+
+  /* Footer */
+  &__footer {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--wiki-line);
+    text-align: center;
+  }
+
+  &__footer-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    border: 1px solid var(--wiki-line);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--wiki-text);
+
+    .game-icon {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  &__footer-meta {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--wiki-muted);
+  }
+}

@@ -19,10 +19,9 @@ interface IAvatarMenuProps {
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   onChangePassword: () => void;
-  onOpenTutorial: () => void;
 }
 
-const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IAvatarMenuProps) => {
+const AvatarMenu = ({ anchorRef, onClose, onChangePassword }: IAvatarMenuProps) => {
   const navigate = useNavigate();
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -118,6 +117,11 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
     await supabase.auth.signOut();
     useCharacterStore.getState().clearCharacter();
     navigate('/login');
+  };
+
+  const handleOpenWiki = () => {
+    onClose();
+    window.open('/wiki', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -242,11 +246,12 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onOpenTutorial }: IA
       <button
         type="button"
         className="avatar-menu__item"
-        onClick={onOpenTutorial}
+        onClick={handleOpenWiki}
         role="menuitem"
       >
         <span className="avatar-menu__item-icon"><GameIcon name="open-book" /></span>
-        <span className="avatar-menu__item-label">Tutorial</span>
+        <span className="avatar-menu__item-label">Wiki</span>
+        <span className="avatar-menu__item-meta">nowa karta</span>
       </button>
 
       <button

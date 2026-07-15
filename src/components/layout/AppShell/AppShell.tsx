@@ -36,6 +36,7 @@ const CHARACTERLESS_ROUTES = new Set<string>([
   '/forgot-password',
   '/character-select',
   '/create-character',
+  '/wiki',
 ]);
 
 const COMBAT_HUD_ROUTES: ReadonlySet<string> = new Set([
