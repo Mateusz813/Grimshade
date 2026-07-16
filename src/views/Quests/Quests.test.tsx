@@ -17,7 +17,22 @@ vi.mock('framer-motion', async () => {
     };
 });
 
+vi.mock('../../config/backendMode', () => ({ isBackendMode: vi.fn(() => false) }));
+
+vi.mock('../../api/backend/backendApi', () => ({
+    backendApi: {
+        refreshDailyQuests: vi.fn().mockResolvedValue(undefined),
+        claimDailyQuest: vi.fn().mockResolvedValue({}),
+        claimQuest: vi.fn().mockResolvedValue({}),
+    },
+}));
+
+vi.mock('../../api/backend/syncState', () => ({
+    syncFromBackend: vi.fn().mockResolvedValue(undefined),
+}));
+
 import Quests from './Quests';
+import { isBackendMode } from '../../config/backendMode';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useQuestStore } from '../../stores/questStore';
@@ -55,6 +70,7 @@ const renderQuests = () =>
     );
 
 beforeEach(() => {
+    vi.mocked(isBackendMode).mockReturnValue(false);
     useCharacterStore.setState({ character: makeChar() });
     useInventoryStore.setState({
         bag: [],
@@ -155,10 +171,16 @@ describe('Quests — claimable dot on hub tiles', () => {
     });
 
     it('marks the Daily tile as claimable when a daily quest is completed but unclaimed', () => {
+        const level = useCharacterStore.getState().character!.level;
+        useDailyQuestStore.getState().refreshIfNeeded(level);
+        const target = useDailyQuestStore.getState().todayQuestDefs[0];
         useDailyQuestStore.setState({
-            lastRefreshDate: getTodayKey(),
-            activeQuests: [{ questId: 'dq1', progress: 50, completed: true, claimed: false }],
-        } as never);
+            activeQuests: useDailyQuestStore.getState().activeQuests.map((aq) =>
+                aq.questId === target.id
+                    ? { ...aq, progress: target.goal.count, completed: true, claimed: false }
+                    : aq,
+            ),
+        });
         const { container } = renderQuests();
         const dailyTile = container.querySelector('.quests__hub-tile--daily');
         expect(dailyTile?.className).toContain('quests__hub-tile--claimable');
@@ -167,6 +189,7 @@ describe('Quests — claimable dot on hub tiles', () => {
 
 describe('Quests — Daily sub-view (unlocked)', () => {
     it('renders the empty-list message when todayQuestDefs is empty', () => {
+        vi.mocked(isBackendMode).mockReturnValue(true);
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement);
         const empties = container.querySelectorAll('.quests__empty');
@@ -177,28 +200,16 @@ describe('Quests — Daily sub-view (unlocked)', () => {
     });
 
     it('renders one quest card per todayQuestDef when active', () => {
-        useDailyQuestStore.setState({
-            lastRefreshDate: getTodayKey(),
-            todayQuestDefs: [
-                {
-                    id: 'dq_kill_50',
-                    name_pl: 'Zabij 50 potworow',
-                    name_en: 'Kill 50 monsters',
-                    description_pl: 'Zabij dowolne 50 potworow',
-                    minLevel: 25,
-                    goal: { type: 'kill_any', count: 50 },
-                    rewards: { gold: 1000, xp: 500 },
-                },
-            ],
-            activeQuests: [
-                { questId: 'dq_kill_50', progress: 25, completed: false, claimed: false },
-            ],
-        });
+        const level = useCharacterStore.getState().character!.level;
+        useDailyQuestStore.getState().refreshIfNeeded(level);
+        const defs = useDailyQuestStore.getState().todayQuestDefs;
+        expect(defs.length).toBeGreaterThan(1);
+
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement);
         const cards = container.querySelectorAll('.quests__daily-quest');
-        expect(cards.length).toBe(1);
-        expect(container.textContent).toContain('Zabij 50 potworow');
+        expect(cards.length).toBe(defs.length);
+        expect(container.textContent).toContain(defs[0].name_pl);
     });
 });
 

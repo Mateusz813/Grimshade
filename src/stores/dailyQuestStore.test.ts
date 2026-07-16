@@ -232,3 +232,62 @@ describe('dailyQuestStore — resetDailyQuests', () => {
         expect(s.todayQuestDefs).toEqual([]);
     });
 });
+
+
+describe('dailyQuestStore — self-heal zdegradowanego slice', () => {
+    beforeEach(() => {
+        resetStore();
+    });
+
+    it('odbudowuje pelna liste gdy zapis ma tylko 2 questy, zachowujac postep', () => {
+        const level = 345;
+        seedTodayQuests(level);
+        const full = useDailyQuestStore.getState().todayQuestDefs;
+        expect(full.length).toBe(DAILY_QUEST_COUNT);
+
+        const kept = full.slice(0, 2);
+        useDailyQuestStore.setState({
+            lastRefreshDate: getTodayKey(),
+            todayQuestDefs: kept,
+            activeQuests: [
+                { questId: kept[0].id, progress: 3, completed: false, claimed: false },
+                { questId: kept[1].id, progress: 0, completed: false, claimed: false },
+            ],
+        });
+
+        useDailyQuestStore.getState().refreshIfNeeded(level);
+
+        const healed = useDailyQuestStore.getState();
+        expect(healed.todayQuestDefs.length).toBe(DAILY_QUEST_COUNT);
+        expect(healed.activeQuests.length).toBe(DAILY_QUEST_COUNT);
+        expect(healed.activeQuests.find((a) => a.questId === kept[0].id)?.progress).toBe(3);
+        expect(healed.lastRefreshDate).toBe(getTodayKey());
+    });
+
+    it('uzupelnia brakujacy activeQuest gdy defy i aktywne sie rozjechaly', () => {
+        const level = 345;
+        seedTodayQuests(level);
+        const defs = useDailyQuestStore.getState().todayQuestDefs;
+
+        useDailyQuestStore.setState({
+            activeQuests: useDailyQuestStore.getState().activeQuests.slice(0, 2),
+        });
+
+        useDailyQuestStore.getState().refreshIfNeeded(level);
+
+        const healed = useDailyQuestStore.getState();
+        expect(healed.activeQuests.length).toBe(defs.length);
+        expect(healed.todayQuestDefs.length).toBe(DAILY_QUEST_COUNT);
+    });
+
+    it('nie rusza zdrowego slice (idempotencja)', () => {
+        const level = 345;
+        seedTodayQuests(level);
+        useDailyQuestStore.getState().addProgress('kill_any', 2);
+        const snapshot = useDailyQuestStore.getState().activeQuests;
+
+        useDailyQuestStore.getState().refreshIfNeeded(level);
+
+        expect(useDailyQuestStore.getState().activeQuests).toEqual(snapshot);
+    });
+});

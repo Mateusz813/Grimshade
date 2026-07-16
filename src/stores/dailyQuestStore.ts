@@ -3,6 +3,8 @@ import {
     getTodayKey,
     needsRefresh,
     selectDailyQuests,
+    reconcileDailyQuests,
+    isDailySliceDegraded,
     scaleRewards,
     type DailyQuestGoalType,
     type IDailyQuestDef,
@@ -37,19 +39,25 @@ export const useDailyQuestStore = create<IDailyQuestStore>()(
 
             refreshIfNeeded: (playerLevel) => {
                 const state = get();
-                if (!needsRefresh(state.lastRefreshDate)) return;
 
-                const quests = selectDailyQuests(ALL_DAILY_QUESTS, playerLevel);
-                set({
-                    lastRefreshDate: getTodayKey(),
-                    todayQuestDefs: quests,
-                    activeQuests: quests.map((q) => ({
-                        questId: q.id,
-                        progress: 0,
-                        completed: false,
-                        claimed: false,
-                    })),
-                });
+                if (needsRefresh(state.lastRefreshDate)) {
+                    const quests = selectDailyQuests(ALL_DAILY_QUESTS, playerLevel);
+                    set({
+                        lastRefreshDate: getTodayKey(),
+                        todayQuestDefs: quests,
+                        activeQuests: quests.map((q) => ({
+                            questId: q.id,
+                            progress: 0,
+                            completed: false,
+                            claimed: false,
+                        })),
+                    });
+                    return;
+                }
+
+                if (!isDailySliceDegraded(ALL_DAILY_QUESTS, playerLevel, state.todayQuestDefs, state.activeQuests)) return;
+
+                set(reconcileDailyQuests(ALL_DAILY_QUESTS, playerLevel, state.activeQuests));
             },
 
             addProgress: (goalType, amount) => {

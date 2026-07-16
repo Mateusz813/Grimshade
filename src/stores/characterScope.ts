@@ -6,7 +6,6 @@ import { useTaskStore } from './taskStore';
 import { useQuestStore } from './questStore';
 import { useBossStore } from './bossStore';
 import { useDungeonStore } from './dungeonStore';
-import { usePartyStore } from './partyStore';
 import { useSettingsStore } from './settingsStore';
 import { useDailyQuestStore } from './dailyQuestStore';
 import { useMasteryStore } from './masteryStore';
@@ -208,12 +207,12 @@ const STORE_ENTRIES: IStoreEntry[] = [
       skillLevels: {}, skillXp: {}, skillXpFraction: {}, skillUpgradeLevels: {}, unlockedSkills: {},
       activeSkillSlots: [null, null, null, null],
       offlineTrainingSkillId: null, trainingSegmentStartedAt: null,
-      trainingAccumulatedEffectiveSeconds: 0,
+      trainingAccumulatedEffectiveSeconds: 0, trainingCurrentSpeedMultiplier: 2,
     }),
     stateKeys: [
-      'skillLevels', 'skillXp', 'skillUpgradeLevels', 'unlockedSkills', 'activeSkillSlots',
+      'skillLevels', 'skillXp', 'skillXpFraction', 'skillUpgradeLevels', 'unlockedSkills', 'activeSkillSlots',
       'offlineTrainingSkillId', 'trainingSegmentStartedAt',
-      'trainingAccumulatedEffectiveSeconds',
+      'trainingAccumulatedEffectiveSeconds', 'trainingCurrentSpeedMultiplier',
     ],
   },
   {
@@ -505,9 +504,13 @@ const ensureOfflineTrainingRunning = (forceBackgroundSpeed = false): void => {
   const skillState = useSkillStore.getState();
   if (!skillState.offlineTrainingSkillId) return;
 
+  if (useOfflineHuntStore.getState().isActive) return;
+
   if (!skillState.trainingSegmentStartedAt) {
-    const speed = forceBackgroundSpeed ? 1 : skillState.trainingCurrentSpeedMultiplier;
-    skillState.startOfflineTraining(skillState.offlineTrainingSkillId, speed);
+    useSkillStore.setState({
+      trainingSegmentStartedAt: new Date().toISOString(),
+      trainingCurrentSpeedMultiplier: forceBackgroundSpeed ? 1 : skillState.trainingCurrentSpeedMultiplier,
+    });
   } else if (forceBackgroundSpeed) {
     skillState.onActivityChange(false);
   }
@@ -632,7 +635,7 @@ const startAutoSaveSubscriptions = (): void => {
     useQuestStore,
     useBossStore,
     useDungeonStore,
-    usePartyStore,
+    useCombatStore,
     useSettingsStore,
     useDailyQuestStore,
     useMasteryStore,

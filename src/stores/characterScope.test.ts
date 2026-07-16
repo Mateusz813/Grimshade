@@ -14,7 +14,7 @@ const {
     const subscribeCalls: Array<() => void> = [];
     return {
         inventoryState: { current: { bag: [], equipment: {}, deposit: [], gold: 0, consumables: {}, stones: {} } },
-        skillState: { current: { skillLevels: {}, skillXp: {}, skillUpgradeLevels: {}, unlockedSkills: {}, activeSkillSlots: [null, null, null, null], offlineTrainingSkillId: null, trainingSegmentStartedAt: null, trainingAccumulatedEffectiveSeconds: 0, trainingCurrentSpeedMultiplier: 1, startOfflineTraining: vi.fn(), onActivityChange: vi.fn() } },
+        skillState: { current: { skillLevels: {}, skillXp: {}, skillUpgradeLevels: {}, unlockedSkills: {}, activeSkillSlots: [null, null, null, null], offlineTrainingSkillId: null as string | null, trainingSegmentStartedAt: null as string | null, trainingAccumulatedEffectiveSeconds: 0, trainingCurrentSpeedMultiplier: 1, startOfflineTraining: vi.fn(), onActivityChange: vi.fn() } },
         taskState: { current: { activeTask: null, activeTasks: [], completedTasks: [] } },
         questState: { current: { activeQuests: [], completedQuestIds: [] } },
         bossState: { current: { dailyAttempts: {}, lastResult: null } },
@@ -671,3 +671,44 @@ describe('getActiveCharacterId / getActiveCharacterIdForRestore', () => {
     });
 });
 
+
+describe('ensureOfflineTrainingRunning — zachowanie zabankowanego treningu', () => {
+    it('nie restartuje spauzowanego treningu i nie kasuje zabankowanych sekund', async () => {
+        const mod = await import('./characterScope');
+        characterState.current = { character: makeCharacter({ id: 'char-TRAIN' }) };
+        await mod.switchToCharacter('char-TRAIN');
+
+        skillState.current = {
+            ...skillState.current,
+            offlineTrainingSkillId: 'sword_mastery',
+            trainingSegmentStartedAt: null,
+            trainingAccumulatedEffectiveSeconds: 120,
+        };
+
+        mod.saveCurrentCharacterStoresSync();
+
+        expect(skillState.current.startOfflineTraining).not.toHaveBeenCalled();
+        expect(skillState.current.trainingAccumulatedEffectiveSeconds).toBe(120);
+        expect(skillState.current.trainingSegmentStartedAt).not.toBeNull();
+    });
+
+    it('nie wznawia treningu spauzowanego na czas polowania offline', async () => {
+        const mod = await import('./characterScope');
+        characterState.current = { character: makeCharacter({ id: 'char-HUNT' }) };
+        await mod.switchToCharacter('char-HUNT');
+
+        offlineHuntState.current = { ...offlineHuntState.current, isActive: true };
+        skillState.current = {
+            ...skillState.current,
+            offlineTrainingSkillId: 'sword_mastery',
+            trainingSegmentStartedAt: null,
+            trainingAccumulatedEffectiveSeconds: 300,
+        };
+
+        mod.saveCurrentCharacterStoresSync();
+
+        expect(skillState.current.startOfflineTraining).not.toHaveBeenCalled();
+        expect(skillState.current.trainingSegmentStartedAt).toBeNull();
+        expect(skillState.current.trainingAccumulatedEffectiveSeconds).toBe(300);
+    });
+});

@@ -388,6 +388,10 @@ Jednorazowe, `minLevel` 5→1000, brak limitu aktywnych. Typy celów: `kill` (28
 
 **12 zadań/dzień** (`DAILY_QUEST_COUNT = 12`), unlock **poziom 25**, reset o północy lokalnie, deterministyczny wybór (seed z daty → wszyscy widzą tę samą pulę). Typy: `deal_damage` (7), `kill_any` (7), `earn_gold` (5), `complete_dungeon` (3), `use_potion` (3), `kill_boss` (2). Skalowanie nagród: `gold = floor(base.gold × (1 + lvl×0.25) × 0.6)`, `xp = floor(base.xp × (1 + lvl×0.3))`. Przykład L50, base {200,100}: gold 1620, xp 1600.
 
+**Liczba zadań zależy wyłącznie od poziomu** (`selectDailyQuests` filtruje po `minLevel`, potem tnie do 12): `<25` → 0 (zakładka zablokowana), `25–29` → 8, `30–34` → 11, `35+` → **12**. Żadna inna liczba nie jest osiągalna — jeśli gracz widzi np. 2 zadania, to znaczy że slice `dailyQuests` w zapisie jest uszkodzony, a nie że selekcja policzyła inaczej.
+
+**Self-heal uszkodzonego zestawu (1.12.1).** `needsRefresh` porównuje *wyłącznie datę*, więc zły zapis ostemplowany dzisiejszą datą zatrzaskiwał okrojoną listę do końca doby — nic go nie naprawiało. Od 1.12.1 refresh dodatkowo wykrywa zdegradowany slice (`isDailySliceDegraded` / PHP `isSliceDegraded`: inna liczba definicji niż kanoniczna selekcja, brakujące ID, albo definicja bez pary w `activeQuests`) i **rekoncyliuje go bez kasowania postępu** — `reconcileDailyQuests` przenosi istniejące wpisy `activeQuests` po `questId`, a brakujące dokłada od zera. Logika jest zduplikowana 1:1 front (`dailyQuestSystem.ts`) ↔ backend (`DailyQuestSystem.php`), bo w trybie backendu front nie odświeża questów sam. Uwaga: postęp questa, którego nie ma w kanonicznej selekcji na dziś, przepada — to świadoma cena za odzyskanie pełnej listy.
+
 ---
 
 ## 8. Mastery

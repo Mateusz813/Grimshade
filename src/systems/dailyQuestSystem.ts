@@ -68,6 +68,38 @@ export const selectDailyQuests = (
     return shuffled.slice(0, DAILY_QUEST_COUNT);
 };
 
+export const reconcileDailyQuests = (
+    allQuests: IDailyQuestDef[],
+    playerLevel: number,
+    activeQuests: IActiveDailyQuest[],
+): { todayQuestDefs: IDailyQuestDef[]; activeQuests: IActiveDailyQuest[] } => {
+    const todayQuestDefs = selectDailyQuests(allQuests, playerLevel);
+    return {
+        todayQuestDefs,
+        activeQuests: todayQuestDefs.map((def) =>
+            activeQuests.find((aq) => aq.questId === def.id) ?? {
+                questId: def.id,
+                progress: 0,
+                completed: false,
+                claimed: false,
+            },
+        ),
+    };
+};
+
+export const isDailySliceDegraded = (
+    allQuests: IDailyQuestDef[],
+    playerLevel: number,
+    todayQuestDefs: IDailyQuestDef[],
+    activeQuests: IActiveDailyQuest[],
+): boolean => {
+    const expected = selectDailyQuests(allQuests, playerLevel);
+    if (todayQuestDefs.length !== expected.length) return true;
+    const presentIds = new Set(todayQuestDefs.map((d) => d.id));
+    if (expected.some((d) => !presentIds.has(d.id))) return true;
+    return todayQuestDefs.some((d) => !activeQuests.some((aq) => aq.questId === d.id));
+};
+
 export const scaleRewards = (
     base: IDailyQuestRewards,
     playerLevel: number,
