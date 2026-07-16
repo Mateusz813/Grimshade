@@ -469,6 +469,16 @@ Wymaga: (1) monster roluje boss-rarity NA tym zabójstwie, ORAZ (2) mastery 25 n
 
 `floor(SELL_MULT × level + BASE_PRICE)`: common 5/+10, rare 20/+50, epic 60/+200, legendary 150/+500, mythic 400/+2000, heroic 800/+5000. Przykład @L100: common 510, heroic 85 000.
 
+### 9.10 Auto-sprzedaż i auto-rozkład lootu (ustawienia gracza)
+
+Konfigurowane w Ekwipunku (`settingsStore`, per-postać). Obie opcje działają **tylko na loot z walki** (`combatEngine.dropLootToInventory`) — nie ruszają przedmiotów kupionych/z marketu/z depozytu. Decyzja per-drop (kolejność):
+
+1. **Auto-sprzedaż** (`autoSellCommon..autoSellMythic`): jeśli flaga dla rzadkości włączona **i** poziom itemu ≤ `autoSellMaxLevel` (0 = bez limitu) → item sprzedany od razu za `getGeneratedSellPrice`, złoto dodane, item nie trafia do torby. Heroic nigdy nie jest auto-sprzedawany (brak flagi).
+2. **Auto-rozkład** (`autoDisassembleCommon..autoDisassembleMythic`): sprawdzany tylko gdy auto-sprzedaż NIE zadziałała. Jeśli flaga dla rzadkości włączona **i** poziom itemu ≤ `autoDisassembleMaxLevel` (0 = bez limitu) → item rozłożony (20% szansy na 1 kamień tier rzadkości, jak ręczne rozłożenie), item nie trafia do torby.
+3. W przeciwnym razie item trafia do torby (`addItem`).
+
+**Auto-sprzedaż ma priorytet nad auto-rozkładem** dla tej samej rzadkości. `autoSellMaxLevel` jest też egzekwowany w sieci bezpieczeństwa `inventoryStore.addItem`, żeby filtr poziomu nie był omijany. Podsumowanie łupu (CombatBackpackModal) grupuje osobno itemy sprzedane / rozłożone (tooltip „rozłożono (+N kamieni)").
+
 ---
 
 ## 10. Przedmioty i ulepszanie
@@ -519,7 +529,7 @@ Powyżej +20: `stones = ceil(580×1.3^(N−20))`, `gold = ceil(200M×1.5^(N−20
 
 - **Refund (`getEnhancementRefund`):** 100% złota i kamieni z ulepszeń (kolumny skumulowane z §10.3). Udane ulepszanie nigdy nie jest stratą.
 - **Sell (`getSellPrice`):** `basePrice × RARITY_SELL_MULTIPLIER + refund_gold` (legacy) lub `SELL_PRICES[rarity](level) + refund` (generated). Przykład: iron_sword common +2 = 16 + 600 = **616 g** + 2× common_stone.
-- **Rozłożenie (disassemble):** 20% szansy na 1 kamień tier itemu (pojedynczo/masowo), item zawsze zużyty.
+- **Rozłożenie (disassemble):** 20% szansy na 1 kamień tier itemu (pojedynczo/masowo/auto z lootu — patrz §9.10), item zawsze zużyty. Masowe rozłożenie zwraca `{ stonesGained, disassembled }` → UI pokazuje ile rozłożono i ile kamieni wpadło.
 - **Reroll bonusów:** 2 kamienie tier itemu (tylko rarity > common), zachowuje bazę, losuje nowe bonusy.
 - **Śmierć:** traci `max(1, floor((bag+equipped)×0.05))` itemów (5%, min 1), tylko powyżej lvl 50; depozyt bezpieczny; `amulet_of_loss` chroni.
 - Bag = 1000, depozyt = 10000.
@@ -555,10 +565,21 @@ Cooldown: flat 1000 ms, pct 500 ms. Auto-miksturki: 4 sloty (Flat-HP, Flat-MP, P
 
 ### 11.4 Eliksiry (`ELIXIRS`)
 
-- **XP:** xp_boost +50%/1h (100k), xp_boost_100 +100%/1h (200k), premium_xp_boost ×2/12h (10M). Skill: skill_xp_boost +50%/1h (20k), +100% (50k). **XP boosty działają tylko na polowanie** (nie taski/questy/lochy/bossy).
+- **XP:** xp_boost +50%/1h (100k), xp_boost_100 +100%/1h (200k), premium_xp_boost ×2/12h (10M). Skill: skill_xp_boost +50%/1h (20k), +100% (50k). **XP/skill boosty działają na WSZYSTKIE źródła XP** (polowanie, taski, questy, lochy, bossy, rajdy, transformy, offline) i **timer leci realnie od użycia** (nie pauzuje poza walką) — patrz §11.4a.
 - **Bojowe (15 min, pausable, tylko w walce):** attack_speed +20% (120k), cd_reduction −20% cooldownów/30min (150k), atk_dmg I/II/III +25/50/100% (50k/150k/500k), spell_dmg I/II/III analogicznie.
 - **Statowe:** hp_boost +500 maxHP (5k), mp_boost +500 (5k), atk_boost +50 ATK+50 DEF (80k), hp_pct_25 +25% maxHP (350k), mp_pct_25 +25% maxMP (350k).
 - **Utility/ochrona/resety:** dungeon_reset (50k, cap 5/dzień), boss_reset (80k, cap 5/dzień), death_protection zeruje karę śmierci (5M), amulet_of_loss chroni itemy (500k), stat_reset (10M), offline_training_boost (50k), utamo_vita magic shield (200k).
+
+### 11.4a XP/skill boosty — zasada „chokepoint" (2026-07-16)
+
+Eliksiry XP/skill (`xp_boost`, `xp_boost_100`, `premium_xp_boost`, `skill_xp_boost`, `skill_xp_boost_100`) mają **jeden punkt aplikacji mnożnika** — tak żeby działały wszędzie i nigdy nie liczyły się podwójnie:
+
+- **Timer realtime:** te 5 eliksirów jest `pausable: false` → `expiresAt` liczony wall-clock, tyka od momentu użycia niezależnie od walki (dawniej pauzował poza walką).
+- **Chokepoint XP postaci:** `characterStore.addXp(base)` mnoży przez `buffStore.getXpBoostMultiplier()` = (najlepszy z xp_boost_100 2.0 / xp_boost 1.5) × (premium_xp_boost 2.0). Zwraca `xpApplied` (faktycznie przyznane, po booście). **Każdy caller podaje BAZĘ** (bez eliksiru) i do wyświetlania używa `xpApplied`. Dotyczy: hunt, skip, dungeon, boss, raid, transform, offline, taski, questy, guild boss.
+- **Chokepoint XP skilli:** `skillStore.addSkillXp(base)` mnoży przez `getSkillXpBoostMultiplier()` (skill_xp_boost_100 2.0 / skill_xp_boost 1.5) z **akumulatorem ułamkowym** (`skillXpFraction`) — bo w walce skill XP wpada po ~1/atak, a `floor(1×1.5)` gubiłby boost; reszta z zaokrąglenia przechodzi na następny grant.
+- **Party/boss/raid:** do innych graczy broadcastowana jest **BAZA** (pre-eliksir), każdy członek aplikuje swój własny eliksir przez chokepoint → brak podwójnego stackowania eliksiru lidera i członka.
+- **Offline hunt:** preview pokazuje wartości boostowane (display), a do `addXp`/`addSkillXp` idzie baza; skill ma osobne pole `skillXpGrant` (baza) obok `skillXpGained` (display).
+- **Backend mode:** XP z walki/lochów/bossów liczy klient i commituje do blobu → boost działa. XP z questów/tasków liczonych po stronie Laravel wymaga analogicznego mnożnika w backendzie (patrz repo backendu).
 
 ### 11.5 Market
 

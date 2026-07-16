@@ -46,6 +46,8 @@ interface IBuffStore {
     cleanExpired: () => void;
     hasBuff: (effect: string) => boolean;
     getBuffMultiplier: (effect: string) => number;
+    getXpBoostMultiplier: () => number;
+    getSkillXpBoostMultiplier: () => number;
     getActiveBuffs: () => IActiveBuff[];
     clearCharacterBuffs: () => void;
     consumePausableTime: (effect: string, ms: number) => number;
@@ -324,6 +326,16 @@ export const useBuffStore = create<IBuffStore>()(
                 if (effect === 'offline_training_boost') return 2.0;
                 return 1;
             },
+
+            getXpBoostMultiplier: () => {
+                const base = get().hasBuff('xp_boost_100') ? 2.0 : get().hasBuff('xp_boost') ? 1.5 : 1;
+                const premium = get().hasBuff('premium_xp_boost') ? 2.0 : 1;
+                return base * premium;
+            },
+
+            getSkillXpBoostMultiplier: () => (
+                get().hasBuff('skill_xp_boost_100') ? 2.0 : get().hasBuff('skill_xp_boost') ? 1.5 : 1
+            ),
 
             getActiveBuffs: () => {
                 const charId = getCharId();

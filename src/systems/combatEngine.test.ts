@@ -127,6 +127,13 @@ const resetAllStores = (): void => {
         autoSellEpic: false,
         autoSellLegendary: false,
         autoSellMythic: false,
+        autoSellMaxLevel: 0,
+        autoDisassembleCommon: false,
+        autoDisassembleRare: false,
+        autoDisassembleEpic: false,
+        autoDisassembleLegendary: false,
+        autoDisassembleMythic: false,
+        autoDisassembleMaxLevel: 0,
         combatSpeed: 'x1',
     });
     useCooldownStore.getState().clearAll();
@@ -553,6 +560,57 @@ describe('dropLootToInventory', () => {
     it('accepts heroicDropRate=0 as default behaviour', () => {
         const monster = makeMonster({ level: 1 });
         expect(() => dropLootToInventory(monster, 'normal', 0)).not.toThrow();
+    });
+
+    it('auto-disassembles loot when disassemble flags are on (loot-only, marks disassembled, bag stays empty)', () => {
+        useSettingsStore.setState({
+            ...useSettingsStore.getState(),
+            autoDisassembleCommon: true, autoDisassembleRare: true, autoDisassembleEpic: true,
+            autoDisassembleLegendary: true, autoDisassembleMythic: true, autoDisassembleMaxLevel: 0,
+        });
+        useInventoryStore.setState({ bag: [], stones: {} });
+        const monster = makeMonster({ level: 30 });
+        for (let i = 0; i < 40; i += 1) {
+            const gearDrops = dropLootToInventory(monster, 'boss').filter((d) => d.upgradeLevel !== undefined);
+            for (const d of gearDrops) {
+                expect(d.disassembled).toBe(true);
+                expect(d.sold).toBeFalsy();
+            }
+        }
+        expect(useInventoryStore.getState().bag).toHaveLength(0);
+    });
+
+    it('respects autoDisassembleMaxLevel — loot above the cap is not disassembled', () => {
+        useSettingsStore.setState({
+            ...useSettingsStore.getState(),
+            autoDisassembleCommon: true, autoDisassembleRare: true, autoDisassembleEpic: true,
+            autoDisassembleLegendary: true, autoDisassembleMythic: true, autoDisassembleMaxLevel: 1,
+        });
+        const monster = makeMonster({ level: 200 });
+        for (let i = 0; i < 30; i += 1) {
+            const gearDrops = dropLootToInventory(monster, 'boss').filter((d) => d.upgradeLevel !== undefined);
+            for (const d of gearDrops) {
+                expect(d.disassembled).toBeFalsy();
+            }
+        }
+    });
+
+    it('auto-sell takes priority over auto-disassemble for the same rarity', () => {
+        useSettingsStore.setState({
+            ...useSettingsStore.getState(),
+            autoSellCommon: true, autoSellRare: true, autoSellEpic: true,
+            autoSellLegendary: true, autoSellMythic: true, autoSellMaxLevel: 0,
+            autoDisassembleCommon: true, autoDisassembleRare: true, autoDisassembleEpic: true,
+            autoDisassembleLegendary: true, autoDisassembleMythic: true, autoDisassembleMaxLevel: 0,
+        });
+        const monster = makeMonster({ level: 30 });
+        for (let i = 0; i < 40; i += 1) {
+            const gearDrops = dropLootToInventory(monster, 'boss').filter((d) => d.upgradeLevel !== undefined);
+            for (const d of gearDrops) {
+                expect(d.disassembled).toBeFalsy();
+                expect(d.sold).toBe(true);
+            }
+        }
     });
 
     it('accepts a heroicDropRate > 0', () => {

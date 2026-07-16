@@ -1744,8 +1744,8 @@ const rollGuildBossRewards = ({ tier, level, contribution }: IRollGuildRewardsPa
     }
     const xpAmount = Math.floor(50_000 * tier * contribution * (1 + level / 30));
     if (xpAmount > 0) {
-        useCharacterStore.getState().addXp(xpAmount);
-        out.push({ kind: 'xp', icon: 'star', label: `+${xpAmount.toLocaleString('pl-PL')} XP` });
+        const guildXpResult = useCharacterStore.getState().addXp(xpAmount);
+        out.push({ kind: 'xp', icon: 'star', label: `+${guildXpResult.xpApplied.toLocaleString('pl-PL')} XP` });
     }
     const stones = useInventoryStore.getState();
     const commonStones = Math.max(1, Math.floor(5 * tier * contribution));

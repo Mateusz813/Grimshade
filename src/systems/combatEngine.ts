@@ -23,7 +23,7 @@ import {
     MONSTER_RARITY_TASK_KILLS,
     type TMonsterRarity,
 } from './lootSystem';
-import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, type IBaseItem } from './itemSystem';
+import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, STONE_NAMES, getRequiredStoneType, type IBaseItem } from './itemSystem';
 import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from './skillSystem';
 import {
     getAtkDamageMultiplier,
@@ -529,6 +529,8 @@ export interface IDropDisplay {
     upgradeLevel?: number;
     sold?: boolean;
     soldPrice?: number;
+    disassembled?: boolean;
+    stoneGained?: string;
 }
 
 export interface ICombatEvent {
@@ -607,9 +609,18 @@ export const getEffectiveChar = (
 export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRarity, heroicDropRate: number = 0): IDropDisplay[] => {
     const lootRolls = rollLoot(monster.level, monsterRarity, heroicDropRate);
     const { addItem, addGold } = useInventoryStore.getState();
-    const { autoSellCommon, autoSellRare, autoSellEpic, autoSellLegendary, autoSellMythic } = useSettingsStore.getState();
+    const s = useSettingsStore.getState();
     const drops: IDropDisplay[] = [];
     let autoSellGold = 0;
+
+    const autoSellByRarity: Record<string, boolean> = {
+        common: s.autoSellCommon, rare: s.autoSellRare, epic: s.autoSellEpic,
+        legendary: s.autoSellLegendary, mythic: s.autoSellMythic,
+    };
+    const autoDisassembleByRarity: Record<string, boolean> = {
+        common: s.autoDisassembleCommon, rare: s.autoDisassembleRare, epic: s.autoDisassembleEpic,
+        legendary: s.autoDisassembleLegendary, mythic: s.autoDisassembleMythic,
+    };
 
     for (const roll of lootRolls) {
         const inventoryItem = generateRandomItem(roll.itemLevel, roll.rarity);
@@ -621,17 +632,24 @@ export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRa
 
         useQuestStore.getState().addProgress('drop_rarity', roll.rarity, 1);
 
-        const shouldAutoSell =
-            (roll.rarity === 'common' && autoSellCommon) ||
-            (roll.rarity === 'rare' && autoSellRare) ||
-            (roll.rarity === 'epic' && autoSellEpic) ||
-            (roll.rarity === 'legendary' && autoSellLegendary) ||
-            (roll.rarity === 'mythic' && autoSellMythic);
+        const shouldAutoSell = autoSellByRarity[roll.rarity] === true
+            && (s.autoSellMaxLevel <= 0 || roll.itemLevel <= s.autoSellMaxLevel);
+        const shouldAutoDisassemble = !shouldAutoSell
+            && autoDisassembleByRarity[roll.rarity] === true
+            && (s.autoDisassembleMaxLevel <= 0 || roll.itemLevel <= s.autoDisassembleMaxLevel);
 
         if (shouldAutoSell) {
             const sellPrice = getGeneratedSellPrice(roll.rarity, roll.itemLevel);
             autoSellGold += sellPrice;
             drops.push({ icon, name: displayName, rarity: roll.rarity, upgradeLevel: inventoryItem.upgradeLevel, sold: true, soldPrice: sellPrice });
+        } else if (shouldAutoDisassemble) {
+            let stoneGained: string | undefined;
+            if (Math.random() < 0.20) {
+                const stoneType = getRequiredStoneType(roll.rarity);
+                useInventoryStore.getState().addStones(stoneType, 1);
+                stoneGained = STONE_NAMES[stoneType] ?? stoneType;
+            }
+            drops.push({ icon, name: displayName, rarity: roll.rarity, upgradeLevel: inventoryItem.upgradeLevel, disassembled: true, stoneGained });
         } else {
             addItem(inventoryItem);
             drops.push({ icon, name: displayName, rarity: roll.rarity, upgradeLevel: inventoryItem.upgradeLevel });
@@ -793,37 +811,27 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
         'loot',
     );
     const bStore = useBuffStore.getState();
-    const has100 = bStore.hasBuff('xp_boost_100');
-    const has50 = bStore.hasBuff('xp_boost');
-    const baseXpMult = has100
-      ? bStore.getBuffMultiplier('xp_boost_100')
-      : has50 ? bStore.getBuffMultiplier('xp_boost') : 1;
-    const premiumXpMult = bStore.getBuffMultiplier('premium_xp_boost');
-    const totalXpMult = baseXpMult * premiumXpMult;
-    const finalXp = Math.floor(s.monster.xp * totalXpMult * masteryXpMult * partyXpMult);
+    const xpBoostMult = bStore.getXpBoostMultiplier();
+    const baseXp = Math.floor(s.monster.xp * masteryXpMult * partyXpMult);
     if (masteryLevel > 0) {
         const pct = Math.round((masteryXpMult - 1) * 100);
         s.addLog(`:fire: Mastery Lvl ${masteryLevel}: +${pct}% XP & Gold`, 'system');
     }
-    s.addReward(finalXp, gold);
-    if (bStore.hasBuff('premium_xp_boost')) bStore.consumePausableTime('premium_xp_boost', 2000);
-    if (has100) bStore.consumePausableTime('xp_boost_100', 2000);
-    else if (has50) bStore.consumePausableTime('xp_boost', 2000);
-    if (bStore.hasBuff('skill_xp_boost_100')) bStore.consumePausableTime('skill_xp_boost_100', 2000);
-    else if (bStore.hasBuff('skill_xp_boost')) bStore.consumePausableTime('skill_xp_boost', 2000);
     tickCombatElixirs(2000);
     const preChar = useCharacterStore.getState().character;
     const preMaxHp = preChar?.max_hp ?? 0;
-    const xpResult = useCharacterStore.getState().addXp(finalXp);
+    const xpResult = useCharacterStore.getState().addXp(baseXp);
+    const finalXp = xpResult.xpApplied;
+    s.addReward(finalXp, gold);
     if (xpResult.levelsGained > 0) {
         s.addLog(`Awans! Poziom ${xpResult.newLevel}! (+${xpResult.statPointsGained} pkt statystyk) – pełne HP/MP!`, 'system');
     }
-    if (totalXpMult > 1) {
+    if (xpBoostMult > 1) {
         const boostParts: string[] = [];
-        if (has100) boostParts.push('XP +100%');
-        else if (has50) boostParts.push('XP +50%');
-        if (premiumXpMult > 1) boostParts.push('Premium x2');
-        s.addLog(`:star: ${boostParts.join(' + ')} aktywny! ${s.monster.xp} × ${totalXpMult} = ${finalXp} XP`, 'system');
+        if (bStore.hasBuff('xp_boost_100')) boostParts.push('XP +100%');
+        else if (bStore.hasBuff('xp_boost')) boostParts.push('XP +50%');
+        if (bStore.hasBuff('premium_xp_boost')) boostParts.push('Premium x2');
+        s.addLog(`:star: ${boostParts.join(' + ')} aktywny! ${baseXp} × ${xpBoostMult} = ${finalXp} XP`, 'system');
     }
     const postChar = useCharacterStore.getState().character;
     if (xpResult.levelsGained > 0) {
@@ -856,7 +864,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     useCombatStore.getState().addSessionStats(finalXp, gold);
     useCombatStore.getState().incrementSessionKill(currentMonsterRarity);
 
-    void broadcastMonsterKillIfInParty(s.monster, currentMonsterRarity, finalXp);
+    void broadcastMonsterKillIfInParty(s.monster, currentMonsterRarity, baseXp);
 
     if (waveHasMultiple) {
         useCombatStore.getState().appendDrops(drops);
@@ -930,13 +938,14 @@ export const applyMonsterKillRewardsForMember = (
         const i = safeIcon(d.icon);
         return i ? `${i} ${d.name}` : d.name;
     }).join(', ');
+    const xpResult = useCharacterStore.getState().addXp(finalXpFromLeader);
+    const appliedXp = xpResult.xpApplied;
     s.addLog(
-        `${monster.name_pl} ginie! +${finalXpFromLeader} XP, +${gold} Gold${drops.length ? ` · Drop: ${dropNames}` : ''}`,
+        `${monster.name_pl} ginie! +${appliedXp} XP, +${gold} Gold${drops.length ? ` · Drop: ${dropNames}` : ''}`,
         'loot',
     );
 
-    s.addReward(finalXpFromLeader, gold);
-    const xpResult = useCharacterStore.getState().addXp(finalXpFromLeader);
+    s.addReward(appliedXp, gold);
     if (xpResult.levelsGained > 0) {
         s.addLog(`Awans! Poziom ${xpResult.newLevel}! (+${xpResult.statPointsGained} pkt statystyk)`, 'system');
     }
@@ -949,7 +958,7 @@ export const applyMonsterKillRewardsForMember = (
     useDailyQuestStore.getState().addProgress('earn_gold', gold);
     useMasteryStore.getState().addMasteryKills(monsterId, taskKills);
 
-    useCombatStore.getState().addSessionStats(finalXpFromLeader, gold);
+    useCombatStore.getState().addSessionStats(appliedXp, gold);
     useCombatStore.getState().incrementSessionKill(rarity);
 
     useCombatStore.getState().appendDrops(drops);
@@ -1888,24 +1897,13 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
     if (mHp <= 0) {
         const gold = 0;
         useCombatStore.getState().setLastDrops([]);
-        const skipBStore = useBuffStore.getState();
-        const skipHas100 = skipBStore.hasBuff('xp_boost_100');
-        const skipHas50 = skipBStore.hasBuff('xp_boost');
-        const skipXpMult = skipHas100
-          ? skipBStore.getBuffMultiplier('xp_boost_100')
-          : skipHas50 ? skipBStore.getBuffMultiplier('xp_boost') : 1;
-        const skipPremiumMult = skipBStore.getBuffMultiplier('premium_xp_boost');
         const skipMasteryLevel = useMasteryStore.getState().getMasteryLevel(m.id);
         const skipMasteryXpMult = getMasteryXpMultiplier(skipMasteryLevel);
-        const skipFinalXp = Math.floor(m.xp * skipXpMult * skipPremiumMult * skipMasteryXpMult * 0.75);
-        if (skipBStore.hasBuff('premium_xp_boost')) skipBStore.consumePausableTime('premium_xp_boost', 2000);
-        if (skipHas100) skipBStore.consumePausableTime('xp_boost_100', 2000);
-        else if (skipHas50) skipBStore.consumePausableTime('xp_boost', 2000);
-        if (skipBStore.hasBuff('skill_xp_boost_100')) skipBStore.consumePausableTime('skill_xp_boost_100', 2000);
-        else if (skipBStore.hasBuff('skill_xp_boost')) skipBStore.consumePausableTime('skill_xp_boost', 2000);
+        const skipBaseXp = Math.floor(m.xp * skipMasteryXpMult * 0.75);
         tickCombatElixirs(2000);
+        const xpResult = useCharacterStore.getState().addXp(skipBaseXp);
+        const skipFinalXp = xpResult.xpApplied;
         useCombatStore.getState().addReward(skipFinalXp, gold);
-        const xpResult = useCharacterStore.getState().addXp(skipFinalXp);
         if (xpResult.levelsGained > 0) {
             useCombatStore.getState().addLog(`Awans! Poziom ${xpResult.newLevel}! (+${xpResult.statPointsGained} pkt statystyk) – pełne HP/MP!`, 'system');
         }
@@ -2165,14 +2163,6 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
     let died = false;
     let timeUsed = 0;
 
-    const bStore = useBuffStore.getState();
-    const offlineHas100 = bStore.hasBuff('xp_boost_100');
-    const offlineHas50 = bStore.hasBuff('xp_boost');
-    const offlineBaseXp = offlineHas100
-      ? bStore.getBuffMultiplier('xp_boost_100')
-      : offlineHas50 ? bStore.getBuffMultiplier('xp_boost') : 1;
-    const xpMult = offlineBaseXp * bStore.getBuffMultiplier('premium_xp_boost');
-
     while (timeUsed < elapsedMs && !died) {
         const masteryBonuses = useMasteryStore.getState().getMasteryBonuses(baseMonster.id);
         const rarity = rollMonsterRarity(false, masteryBonuses);
@@ -2235,8 +2225,7 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
             const catchupMasteryXpMult = getMasteryXpMultiplier(catchupMasteryLvl);
             const catchupMasteryGoldMult = getMasteryGoldMultiplier(catchupMasteryLvl);
 
-            const fightXp = Math.floor(scaledMonster.xp * xpMult * catchupMasteryXpMult * 0.75);
-            totalXp += fightXp;
+            const fightXp = Math.floor(scaledMonster.xp * catchupMasteryXpMult * 0.75);
 
             const fightGold = Math.floor(calculateGoldDrop(scaledMonster.gold) * catchupMasteryGoldMult);
             totalGold += fightGold;
@@ -2248,16 +2237,18 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
             useDailyQuestStore.getState().addProgress('kill_any', 1);
             useMasteryStore.getState().addMasteryKills(baseMonster.id, taskKills);
 
-            useCombatStore.getState().addSessionStats(fightXp, fightGold);
-            useCombatStore.getState().incrementSessionKill(rarity);
-
             const regenPerFight = (effChar.hp_regen ?? 0) * (fightDurationMs / 1000);
             pHp = Math.min(effChar.max_hp, pHp + Math.floor(regenPerFight));
 
             const xpResult = useCharacterStore.getState().addXp(fightXp);
+            const fightXpApplied = xpResult.xpApplied;
+            totalXp += fightXpApplied;
             if (xpResult.levelsGained > 0) {
                 levelUps += xpResult.levelsGained;
             }
+
+            useCombatStore.getState().addSessionStats(fightXpApplied, fightGold);
+            useCombatStore.getState().incrementSessionKill(rarity);
 
             useInventoryStore.getState().addGold(fightGold);
 

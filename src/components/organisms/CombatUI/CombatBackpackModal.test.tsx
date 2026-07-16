@@ -104,6 +104,29 @@ describe('CombatBackpackModal — drops grouping', () => {
         const tile = screen.getByTestId('item-icon');
         expect(tile.getAttribute('title')).toMatch(/sprzedano za/);
     });
+
+    it('keeps disassembled drops as a separate stack from kept drops', () => {
+        useCombatStore.setState({
+            sessionDrops: [
+                drop({ name: 'Sword', disassembled: false }),
+                drop({ name: 'Sword', disassembled: true }),
+            ],
+        });
+        render(<CombatBackpackModal onClose={vi.fn()} />);
+        expect(screen.getAllByTestId('item-icon').length).toBe(2);
+    });
+
+    it('appends "rozłożono" + stone count to the tooltip for disassembled stacks', () => {
+        useCombatStore.setState({
+            sessionDrops: [
+                drop({ name: 'Sword', disassembled: true, stoneGained: 'Zwykły kamień' }),
+                drop({ name: 'Sword', disassembled: true, stoneGained: 'Zwykły kamień' }),
+            ],
+        });
+        render(<CombatBackpackModal onClose={vi.fn()} />);
+        const tile = screen.getByTestId('item-icon');
+        expect(tile.getAttribute('title')).toMatch(/rozłożono \(\+2 kamieni\)/);
+    });
 });
 
 describe('CombatBackpackModal — interactions', () => {

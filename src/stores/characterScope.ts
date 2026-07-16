@@ -12,6 +12,7 @@ import { useDailyQuestStore } from './dailyQuestStore';
 import { useMasteryStore } from './masteryStore';
 import { useBossScoreStore } from './bossScoreStore';
 import { useBuffStore } from './buffStore';
+import { SPELL_CHEST_LEVELS } from '../systems/skillSystem';
 import { useTransformStore } from './transformStore';
 import { useCombatStore } from './combatStore';
 import { useOfflineHuntStore } from './offlineHuntStore';
@@ -204,7 +205,7 @@ const STORE_ENTRIES: IStoreEntry[] = [
     getState: () => useSkillStore.getState(),
     setState: (d) => useSkillStore.setState(d),
     defaults: () => ({
-      skillLevels: {}, skillXp: {}, skillUpgradeLevels: {}, unlockedSkills: {},
+      skillLevels: {}, skillXp: {}, skillXpFraction: {}, skillUpgradeLevels: {}, unlockedSkills: {},
       activeSkillSlots: [null, null, null, null],
       offlineTrainingSkillId: null, trainingSegmentStartedAt: null,
       trainingAccumulatedEffectiveSeconds: 0,
@@ -257,6 +258,7 @@ const STORE_ENTRIES: IStoreEntry[] = [
       autoPotionPctHpId: 'hp_potion_great', autoPotionPctMpId: 'mp_potion_great',
       showCombatXpBar: true,
       autoSellCommon: false, autoSellRare: false, autoSellEpic: false, autoSellLegendary: false, autoSellMythic: false,
+      autoSellMaxLevel: 0, autoDisassembleCommon: false, autoDisassembleRare: false, autoDisassembleEpic: false, autoDisassembleLegendary: false, autoDisassembleMythic: false, autoDisassembleMaxLevel: 0,
       huntFilterAvailableOnly: false, huntFilterTaskedOnly: false, huntFilterMinLevel: 0, huntFilterSortDesc: false,
       dungeonFilterAvailableOnly: false, dungeonFilterMinLevel: 0, dungeonFilterSortDesc: false,
       raidFilterAvailableOnly: false, raidFilterMinLevel: 0, raidFilterSortDesc: false,
@@ -273,6 +275,7 @@ const STORE_ENTRIES: IStoreEntry[] = [
       'autoPotionPctHpId', 'autoPotionPctMpId',
       'showCombatXpBar',
       'autoSellCommon', 'autoSellRare', 'autoSellEpic', 'autoSellLegendary', 'autoSellMythic',
+      'autoSellMaxLevel', 'autoDisassembleCommon', 'autoDisassembleRare', 'autoDisassembleEpic', 'autoDisassembleLegendary', 'autoDisassembleMythic', 'autoDisassembleMaxLevel',
       'huntFilterAvailableOnly', 'huntFilterTaskedOnly', 'huntFilterMinLevel', 'huntFilterSortDesc',
       'dungeonFilterAvailableOnly', 'dungeonFilterMinLevel', 'dungeonFilterSortDesc',
       'raidFilterAvailableOnly', 'raidFilterMinLevel', 'raidFilterSortDesc',
@@ -456,6 +459,32 @@ export const applyBlobToStores = (
     useCharacterStore.getState().healCorruptedBaseStats();
   } catch (err) {
     console.error('[characterScope] base-stat heal failed', err);
+  }
+
+  try {
+    const buffs = useBuffStore.getState().allBuffs;
+    useBuffStore.setState({
+      allBuffs: buffs.filter((b) => !b.effect.startsWith('skill_charge_')),
+    });
+  } catch (err) {
+    console.error('[characterScope] skill-charge buff sanitize failed', err);
+  }
+
+  try {
+    const consumables = useInventoryStore.getState().consumables;
+    let changed = false;
+    const cleaned: Record<string, number> = {};
+    for (const [key, count] of Object.entries(consumables)) {
+      const match = /^spell_chest_(\d+)$/.exec(key);
+      if (match && !SPELL_CHEST_LEVELS.includes(Number(match[1]))) {
+        changed = true;
+        continue;
+      }
+      cleaned[key] = count;
+    }
+    if (changed) useInventoryStore.setState({ consumables: cleaned });
+  } catch (err) {
+    console.error('[characterScope] invalid spell-chest sanitize failed', err);
   }
 
   if (opts?.hydrateCharacterStats) {

@@ -15,18 +15,20 @@ interface IProps {
 interface IGroupedDrop extends IDropDisplay {
     count: number;
     totalSoldPrice: number;
+    totalStones: number;
 }
 
 const groupDrops = (drops: IDropDisplay[]): IGroupedDrop[] => {
     const map = new Map<string, IGroupedDrop>();
     for (const d of drops) {
-        const key = `${d.icon}::${d.name}::${d.rarity}::${d.upgradeLevel ?? 0}::${d.sold ? '1' : '0'}`;
+        const key = `${d.icon}::${d.name}::${d.rarity}::${d.upgradeLevel ?? 0}::${d.sold ? '1' : '0'}::${d.disassembled ? '1' : '0'}`;
         const existing = map.get(key);
         if (existing) {
             existing.count += 1;
             existing.totalSoldPrice += d.soldPrice ?? 0;
+            existing.totalStones += d.stoneGained ? 1 : 0;
         } else {
-            map.set(key, { ...d, count: 1, totalSoldPrice: d.soldPrice ?? 0 });
+            map.set(key, { ...d, count: 1, totalSoldPrice: d.soldPrice ?? 0, totalStones: d.stoneGained ? 1 : 0 });
         }
     }
     return Array.from(map.values());
@@ -115,10 +117,12 @@ const CombatBackpackModal = ({ onClose }: IProps) => {
                                 const countLabel = d.count > 1 ? ` ×${d.count}` : '';
                                 const tooltip = d.sold
                                     ? `${d.name}${countLabel} · sprzedano za ${formatGoldShort(d.totalSoldPrice)}`
-                                    : `${d.name}${countLabel}`;
+                                    : d.disassembled
+                                        ? `${d.name}${countLabel} · rozłożono${d.totalStones > 0 ? ` (+${d.totalStones} kamieni)` : ''}`
+                                        : `${d.name}${countLabel}`;
                                 return (
                                     <ItemIcon
-                                        key={`${d.icon}-${d.name}-${d.rarity}-${d.upgradeLevel ?? 0}-${d.sold ? 's' : 'k'}-${i}`}
+                                        key={`${d.icon}-${d.name}-${d.rarity}-${d.upgradeLevel ?? 0}-${d.sold ? 's' : d.disassembled ? 'd' : 'k'}-${i}`}
                                         icon={d.icon}
                                         rarity={d.rarity}
                                         upgradeLevel={d.upgradeLevel}

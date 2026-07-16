@@ -67,4 +67,5 @@ export interface IXpGainResult {
     levelsGained: number;
     statPointsGained: number;
     newLevel: number;
+    xpApplied: number;
 }

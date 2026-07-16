@@ -1,19 +1,15 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useBuffStore } from '../../../stores/buffStore';
 import { useCharacterStore } from '../../../stores/characterStore';
-import { useCombatStore } from '../../../stores/combatStore';
 import { useInventoryStore } from '../../../stores/inventoryStore';
 import { getElixirImage } from '../../../systems/spriteAssets';
 import TinyIcon from '../../ui/TinyIcon/TinyIcon';
-import GameIcon from '../../atoms/Twemoji/GameIcon';
 import './BuffPopover.scss';
 
 interface IBuffPopoverProps {
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
 }
-
-const COMBAT_ONLY_EFFECTS = new Set(['xp_boost', 'premium_xp_boost']);
 
 const formatTimeLeft = (ms: number): string => {
   if (ms <= 0) return 'wygasł';
@@ -31,7 +27,6 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
   const character = useCharacterStore((s) => s.character);
   const allBuffs = useBuffStore((s) => s.allBuffs);
   const cleanExpired = useBuffStore((s) => s.cleanExpired);
-  const combatPhase = useCombatStore((s) => s.phase);
   const consumables = useInventoryStore((s) => s.consumables);
 
   const [now, setNow] = useState(() => Date.now());
@@ -64,7 +59,6 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
 
   if (!character) return null;
 
-  const isInCombat = combatPhase === 'fighting';
   const aolCount = consumables['amulet_of_loss'] ?? 0;
   const deathProtCount = consumables['death_protection'] ?? 0;
 
@@ -114,19 +108,17 @@ const BuffPopover = ({ anchorRef, onClose }: IBuffPopoverProps) => {
               ? (buff.gameMsRemaining ?? 0)
               : (isPausable ? buff.remainingMs : Math.max(0, buff.expiresAt - now));
             const isLow = !isCharge && remaining < 60000;
-            const isCombatOnly = COMBAT_ONLY_EFFECTS.has(buff.effect);
-            const isPaused = isPausable && isCombatOnly && !isInCombat && !isCharge;
             return (
               <li
                 key={buff.id}
-                className={`buff-popover__row${isLow ? ' buff-popover__row--low' : ''}${isPaused ? ' buff-popover__row--paused' : ''}`}
+                className={`buff-popover__row${isLow ? ' buff-popover__row--low' : ''}`}
               >
                 <span className="buff-popover__row-icon"><TinyIcon icon={buff.icon} size="md" /></span>
                 <span className="buff-popover__row-name">{buff.name}</span>
                 <span className="buff-popover__row-time">
                   {isCharge
                     ? `×${buff.charges}${buff.maxCharges ? ` / ${buff.maxCharges}` : ''}`
-                    : (isPaused ? <><GameIcon name="pause-button" /> {formatTimeLeft(remaining)}</> : formatTimeLeft(remaining))}
+                    : formatTimeLeft(remaining)}
                 </span>
               </li>
             );

@@ -5,6 +5,7 @@ import classesData from '../data/classes.json';
 import { useInventoryStore, registerCharacterLevelGetter } from './inventoryStore';
 import { useSkillStore } from './skillStore';
 import { useLevelUpStore } from './levelUpStore';
+import { useBuffStore } from './buffStore';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
 import { getTrainingBonuses } from '../systems/skillSystem';
 import {
@@ -63,6 +64,7 @@ export interface IXpGainResult {
   levelsGained: number;
   statPointsGained: number;
   newLevel: number;
+  xpApplied: number;
 }
 
 type StatPointStat = 'max_hp' | 'max_mp' | 'attack' | 'defense';
@@ -164,10 +166,12 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
     })),
   addXp: (xp: number): IXpGainResult => {
     const char = get().character;
-    if (!char) return { levelsGained: 0, statPointsGained: 0, newLevel: 0 };
+    if (!char) return { levelsGained: 0, statPointsGained: 0, newLevel: 0, xpApplied: 0 };
 
+    const boostMult = useBuffStore.getState().getXpBoostMultiplier();
+    const xpApplied = Math.floor(Math.max(0, xp) * boostMult);
     const safeCurrentXp = Math.max(0, char.xp ?? 0);
-    const result = processXpGain(char.level, safeCurrentXp, xp);
+    const result = processXpGain(char.level, safeCurrentXp, xpApplied);
     const hpPerLevel = BASE_HP_PER_LEVEL[char.class] ?? 10;
     const mpPerLevel = BASE_MP_PER_LEVEL[char.class] ?? 5;
 
@@ -256,6 +260,7 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
       levelsGained: result.levelsGained,
       statPointsGained,
       newLevel: result.newLevel,
+      xpApplied,
     };
   },
   spendStatPoint: (stat: StatPointStat) => {

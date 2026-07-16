@@ -72,6 +72,7 @@ const resetSettings = (): void => {
         autoSellEpic: false,
         autoSellLegendary: false,
         autoSellMythic: false,
+        autoSellMaxLevel: 0,
     });
 };
 
@@ -106,6 +107,29 @@ describe('addItem', () => {
         const ok = useInventoryStore.getState().addItem(makeItem({ rarity: 'common' }));
         expect(ok).toBe(true);
         expect(useInventoryStore.getState().bag).toHaveLength(1);
+    });
+
+    it('does not auto-sell items above autoSellMaxLevel', () => {
+        useSettingsStore.setState({ autoSellCommon: true, autoSellMaxLevel: 50 });
+        const ok = useInventoryStore.getState().addItem(makeItem({ rarity: 'common', itemLevel: 80 }));
+        expect(ok).toBe(true);
+        expect(useInventoryStore.getState().bag).toHaveLength(1);
+    });
+
+    it('auto-sells items at or below autoSellMaxLevel', () => {
+        useSettingsStore.setState({ autoSellCommon: true, autoSellMaxLevel: 50 });
+        const initial = useInventoryStore.getState().gold;
+        const ok = useInventoryStore.getState().addItem(makeItem({ rarity: 'common', itemLevel: 50 }));
+        expect(ok).toBe(true);
+        expect(useInventoryStore.getState().bag).toHaveLength(0);
+        expect(useInventoryStore.getState().gold).toBeGreaterThan(initial);
+    });
+
+    it('autoSellMaxLevel 0 means no level cap', () => {
+        useSettingsStore.setState({ autoSellCommon: true, autoSellMaxLevel: 0 });
+        const ok = useInventoryStore.getState().addItem(makeItem({ rarity: 'common', itemLevel: 999 }));
+        expect(ok).toBe(true);
+        expect(useInventoryStore.getState().bag).toHaveLength(0);
     });
 });
 

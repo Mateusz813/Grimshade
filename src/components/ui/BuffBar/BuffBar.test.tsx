@@ -142,22 +142,23 @@ describe('BuffBar — charge / paused variants', () => {
         expect(screen.getByText('×2 / 3')).toBeTruthy();
     });
 
-    it('marks pausable combat-only buffs as paused when out of combat', () => {
+    it('renders a realtime XP boost buff without a paused indicator', () => {
         useCombatStore.setState({ phase: 'idle' });
         useBuffStore.setState({
             allBuffs: [
                 makeBuff({
                     name: 'XP Boost',
                     effect: 'xp_boost',
-                    timerMode: 'pausable',
-                    remainingMs: 120_000,
-                    expiresAt: Number.POSITIVE_INFINITY,
+                    timerMode: 'realtime',
+                    remainingMs: 0,
+                    expiresAt: Date.now() + 120_000,
                 }),
             ],
         });
         renderAt('/inventory');
         const pill = screen.getByText('XP Boost').closest('.buff-bar__pill');
-        expect(pill?.className.includes('buff-bar__pill--paused')).toBe(true);
-        expect((pill as Element)?.querySelector('svg.game-icon[data-icon="pause-button"]')).toBeTruthy();
+        expect(pill).toBeTruthy();
+        expect(pill?.className.includes('buff-bar__pill--paused')).toBe(false);
+        expect((pill as Element)?.querySelector('svg.game-icon[data-icon="pause-button"]')).toBeNull();
     });
 });

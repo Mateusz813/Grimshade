@@ -36,6 +36,7 @@ export interface ISkillUpgradeResult {
 export interface ISkillState {
     skillLevels: Record<string, number>;
     skillXp: Record<string, number>;
+    skillXpFraction: Record<string, number>;
     activeSkillSlots: [string | null, string | null, string | null, string | null];
     skillUpgradeLevels: Record<string, number>;
     unlockedSkills: Record<string, boolean>;
@@ -73,6 +74,7 @@ interface ISkillStore extends ISkillState {
 const INITIAL_STATE: ISkillState = {
     skillLevels: {},
     skillXp: {},
+    skillXpFraction: {},
     activeSkillSlots: [null, null, null, null],
     skillUpgradeLevels: {},
     unlockedSkills: {},
@@ -103,12 +105,17 @@ export const useSkillStore = create<ISkillStore>()(
 
             addSkillXp: (skillId, xpGained) => {
                 const state = get();
+                const boostMult = useBuffStore.getState().getSkillXpBoostMultiplier();
+                const carried = Math.max(0, xpGained) * boostMult + (state.skillXpFraction[skillId] ?? 0);
+                const applied = Math.floor(carried);
+                const fraction = carried - applied;
                 const currentLevel = state.skillLevels[skillId] ?? 0;
                 const currentXp = state.skillXp[skillId] ?? 0;
-                const result = processSkillXp(currentLevel, currentXp, xpGained);
+                const result = processSkillXp(currentLevel, currentXp, applied);
                 set((s) => ({
                     skillLevels: { ...s.skillLevels, [skillId]: result.newLevel },
                     skillXp: { ...s.skillXp, [skillId]: result.remainingXp },
+                    skillXpFraction: { ...s.skillXpFraction, [skillId]: fraction },
                 }));
                 return result.levelsGained;
             },

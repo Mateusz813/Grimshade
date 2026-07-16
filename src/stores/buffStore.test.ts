@@ -468,3 +468,34 @@ describe('party heal dot helpers', () => {
         expect(useBuffStore.getState().getPartyHealDotSkillId()).toBeNull();
     });
 });
+
+describe('getXpBoostMultiplier / getSkillXpBoostMultiplier', () => {
+    it('returns 1 with no XP/skill buffs active', () => {
+        expect(useBuffStore.getState().getXpBoostMultiplier()).toBe(1);
+        expect(useBuffStore.getState().getSkillXpBoostMultiplier()).toBe(1);
+    });
+
+    it('xp_boost gives 1.5x', () => {
+        useBuffStore.getState().addBuff(makeBuff({ id: 'b', effect: 'xp_boost' }), 5000);
+        expect(useBuffStore.getState().getXpBoostMultiplier()).toBe(1.5);
+    });
+
+    it('xp_boost_100 gives 2.0x and wins over xp_boost when both active', () => {
+        useBuffStore.getState().addBuff(makeBuff({ id: 'b1', effect: 'xp_boost' }), 5000);
+        useBuffStore.getState().addBuff(makeBuff({ id: 'b2', effect: 'xp_boost_100' }), 5000);
+        expect(useBuffStore.getState().getXpBoostMultiplier()).toBe(2.0);
+    });
+
+    it('premium_xp_boost stacks multiplicatively with xp_boost (1.5 × 2 = 3)', () => {
+        useBuffStore.getState().addBuff(makeBuff({ id: 'b1', effect: 'xp_boost' }), 5000);
+        useBuffStore.getState().addBuff(makeBuff({ id: 'b2', effect: 'premium_xp_boost' }), 5000);
+        expect(useBuffStore.getState().getXpBoostMultiplier()).toBe(3.0);
+    });
+
+    it('skill_xp_boost gives 1.5x, skill_xp_boost_100 wins with 2.0x', () => {
+        useBuffStore.getState().addBuff(makeBuff({ id: 's', effect: 'skill_xp_boost' }), 5000);
+        expect(useBuffStore.getState().getSkillXpBoostMultiplier()).toBe(1.5);
+        useBuffStore.getState().addBuff(makeBuff({ id: 's2', effect: 'skill_xp_boost_100' }), 5000);
+        expect(useBuffStore.getState().getSkillXpBoostMultiplier()).toBe(2.0);
+    });
+});

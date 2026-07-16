@@ -3,7 +3,7 @@ import { useTaskStore, type ITask } from './taskStore';
 
 
 const addGoldMock = vi.fn();
-const addXpMock = vi.fn();
+const addXpMock = vi.fn((xp: number) => ({ levelsGained: 0, statPointsGained: 0, newLevel: 0, xpApplied: xp }));
 
 vi.mock('./inventoryStore', () => ({
     useInventoryStore: {

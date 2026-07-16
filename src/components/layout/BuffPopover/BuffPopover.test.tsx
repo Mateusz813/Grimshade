@@ -135,7 +135,7 @@ describe('BuffPopover — buff list', () => {
         expect(screen.getByText('×2 / 3')).toBeTruthy();
     });
 
-    it('renders pausable combat-only buff as paused when out of combat', () => {
+    it('renders a realtime XP boost buff without a paused indicator', () => {
         useCombatStore.setState({ phase: 'idle' });
         useBuffStore.setState({
             allBuffs: [
@@ -143,16 +143,17 @@ describe('BuffPopover — buff list', () => {
                     name: 'XP Boost',
                     icon: 'sparkles',
                     effect: 'xp_boost',
-                    timerMode: 'pausable',
-                    remainingMs: 120_000,
-                    expiresAt: Number.POSITIVE_INFINITY,
+                    timerMode: 'realtime',
+                    remainingMs: 0,
+                    expiresAt: Date.now() + 120_000,
                 }),
             ],
         });
         render(<Harness />);
         const row = screen.getByText('XP Boost').closest('.buff-popover__row');
-        expect(row?.className.includes('buff-popover__row--paused')).toBe(true);
-        expect((row as Element).querySelector('svg.game-icon[data-icon="pause-button"]')).toBeTruthy();
+        expect(row).toBeTruthy();
+        expect(row?.className.includes('buff-popover__row--paused')).toBe(false);
+        expect((row as Element).querySelector('svg.game-icon[data-icon="pause-button"]')).toBeNull();
     });
 });
 

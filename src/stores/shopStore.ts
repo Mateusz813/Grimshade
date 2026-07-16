@@ -46,11 +46,11 @@ export const ELIXIRS: IElixir[] = [
   { id: 'mp_potion_ultimate', name_pl: 'Ultimatywny Eliksir MP',  name_en: 'Ultimate Mana Potion',    description_pl: 'Przywraca 50% maks. MP.',   price: 500000,  effect: 'heal_mp_pct_50',    icon: POTION_ICON('mp_potion_ultimate', 'droplet'), minLevel: 500 },
   { id: 'mp_potion_divine',   name_pl: 'Boski Eliksir MP',        name_en: 'Divine Mana Potion',      description_pl: 'Przywraca 100% maks. MP.',  price: 1000000, effect: 'heal_mp_pct_100',   icon: POTION_ICON('mp_potion_divine',   'droplet'), minLevel: 700 },
 
-  { id: 'xp_boost', name_pl: 'Dopalacz XP', name_en: 'XP Boost +50%', description_pl: '+50% XP z polowania na potwory przez 1h (TYLKO polowanie — nie taski/questy/dungeony/bossy/trening).', price: 100000, effect: 'xp_boost_1h', icon: ELIXIR_ICON('xp_boost', 'star'), minLevel: 1 },
-  { id: 'xp_boost_100', name_pl: 'Wielki Dopalacz XP', name_en: 'XP Boost +100%', description_pl: '+100% XP z polowania na potwory przez 1h (TYLKO polowanie). Zużywa się PRZED zwykłym +50% gdy oba aktywne.', price: 200000, effect: 'xp_boost_100_1h', icon: ELIXIR_ICON('xp_boost_100', 'glowing-star'), minLevel: 1 },
+  { id: 'xp_boost', name_pl: 'Dopalacz XP', name_en: 'XP Boost +50%', description_pl: '+50% XP ze WSZYSTKICH źródeł (polowanie, taski, questy, dungeony, bossy, rajdy) przez 1h. Czas leci realnie od użycia.', price: 100000, effect: 'xp_boost_1h', icon: ELIXIR_ICON('xp_boost', 'star'), minLevel: 1 },
+  { id: 'xp_boost_100', name_pl: 'Wielki Dopalacz XP', name_en: 'XP Boost +100%', description_pl: '+100% XP ze WSZYSTKICH źródeł przez 1h. Czas leci realnie od użycia. Zużywa się PRZED zwykłym +50% gdy oba aktywne.', price: 200000, effect: 'xp_boost_100_1h', icon: ELIXIR_ICON('xp_boost_100', 'glowing-star'), minLevel: 1 },
 
-  { id: 'skill_xp_boost', name_pl: 'Dopalacz Skilli', name_en: 'Skill XP Boost +50%', description_pl: '+50% XP skilli (walka + trening aktywny) przez 1h.', price: 20000, effect: 'skill_xp_boost_1h', icon: ELIXIR_ICON('skill_xp_boost', 'sparkles'), minLevel: 1 },
-  { id: 'skill_xp_boost_100', name_pl: 'Wielki Dopalacz Skilli', name_en: 'Skill XP Boost +100%', description_pl: '+100% XP skilli (walka + trening aktywny) przez 1h. Zużywa się PRZED +50% gdy oba aktywne.', price: 50000, effect: 'skill_xp_boost_100_1h', icon: ELIXIR_ICON('skill_xp_boost_100', 'bright-button'), minLevel: 1 },
+  { id: 'skill_xp_boost', name_pl: 'Dopalacz Skilli', name_en: 'Skill XP Boost +50%', description_pl: '+50% XP skilli ze wszystkich źródeł (walka, trening) przez 1h. Czas leci realnie od użycia.', price: 20000, effect: 'skill_xp_boost_1h', icon: ELIXIR_ICON('skill_xp_boost', 'sparkles'), minLevel: 1 },
+  { id: 'skill_xp_boost_100', name_pl: 'Wielki Dopalacz Skilli', name_en: 'Skill XP Boost +100%', description_pl: '+100% XP skilli ze wszystkich źródeł przez 1h. Czas leci realnie od użycia. Zużywa się PRZED +50% gdy oba aktywne.', price: 50000, effect: 'skill_xp_boost_100_1h', icon: ELIXIR_ICON('skill_xp_boost_100', 'bright-button'), minLevel: 1 },
 
   { id: 'attack_speed_elixir', name_pl: 'Eliksir Szybkości', name_en: 'Attack Speed Elixir', description_pl: '+20% prędkości ataku przez 15 min (TYLKO w walce).', price: 120000, effect: 'attack_speed_0.20_15m_pausable', icon: ELIXIR_ICON('attack_speed_elixir', 'high-voltage'), minLevel: 1 },
   { id: 'cd_reduction_elixir', name_pl: 'Eliksir Skupienia', name_en: 'Focus Elixir', description_pl: '-20% cooldowny spelli przez 30 min (TYLKO w walce).', price: 150000, effect: 'cooldown_reduction_0.20_30m', icon: ELIXIR_ICON('cd_reduction_elixir', 'cyclone'), minLevel: 1 },
@@ -80,7 +80,7 @@ export const ELIXIRS: IElixir[] = [
   { id: 'offline_training_boost', name_pl: 'Eliksir Treningu Offline', name_en: 'Offline Training Elixir', description_pl: 'Zwiększa nagrody z odbierania treningu offline (mnożnik godzin tylko dla skilli, nie potworów).', price: 50000, effect: 'offline_training_boost', icon: ELIXIR_ICON('offline_training_boost', 'person-lifting-weights'), minLevel: 1 },
   { id: 'utamo_vita', name_pl: 'Utamo Vita', name_en: 'Utamo Vita (Magic Shield)', description_pl: 'Tarcza magiczna — 50% otrzymywanego dmg idzie w MP zamiast HP. Pęka gdy MP=0. Czas biegnie TYLKO w walce.', price: 200000, effect: 'utamo_vita', icon: ELIXIR_ICON('utamo_vita', 'blue-circle'), minLevel: 1 },
 
-  { id: 'premium_xp_boost', name_pl: 'Premium Eliksir XP', name_en: 'Premium XP Elixir', description_pl: '×2 XP z polowania na potwory przez 12h (TYLKO polowanie). Stackuje się z Dopalaczem XP.', price: 10000000, effect: 'premium_xp_boost', icon: ELIXIR_ICON('premium_xp_boost', 'gem-stone'), minLevel: 1 },
+  { id: 'premium_xp_boost', name_pl: 'Premium Eliksir XP', name_en: 'Premium XP Elixir', description_pl: '×2 XP ze WSZYSTKICH źródeł przez 12h. Czas leci realnie od użycia. Stackuje się z Dopalaczem XP.', price: 10000000, effect: 'premium_xp_boost', icon: ELIXIR_ICON('premium_xp_boost', 'gem-stone'), minLevel: 1 },
 ];
 
 

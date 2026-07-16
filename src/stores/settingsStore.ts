@@ -27,6 +27,13 @@ interface ISettingsState {
   autoSellEpic: boolean;
   autoSellLegendary: boolean;
   autoSellMythic: boolean;
+  autoSellMaxLevel: number;
+  autoDisassembleCommon: boolean;
+  autoDisassembleRare: boolean;
+  autoDisassembleEpic: boolean;
+  autoDisassembleLegendary: boolean;
+  autoDisassembleMythic: boolean;
+  autoDisassembleMaxLevel: number;
 
   huntFilterAvailableOnly: boolean;
   huntFilterTaskedOnly: boolean;
@@ -89,6 +96,13 @@ interface ISettingsState {
   setAutoSellEpic: (val: boolean) => void;
   setAutoSellLegendary: (val: boolean) => void;
   setAutoSellMythic: (val: boolean) => void;
+  setAutoSellMaxLevel: (val: number) => void;
+  setAutoDisassembleCommon: (val: boolean) => void;
+  setAutoDisassembleRare: (val: boolean) => void;
+  setAutoDisassembleEpic: (val: boolean) => void;
+  setAutoDisassembleLegendary: (val: boolean) => void;
+  setAutoDisassembleMythic: (val: boolean) => void;
+  setAutoDisassembleMaxLevel: (val: number) => void;
 }
 
 export const useSettingsStore = create<ISettingsState>()(
@@ -118,6 +132,13 @@ export const useSettingsStore = create<ISettingsState>()(
       autoSellEpic: false,
       autoSellLegendary: false,
       autoSellMythic: false,
+      autoSellMaxLevel: 0,
+      autoDisassembleCommon: false,
+      autoDisassembleRare: false,
+      autoDisassembleEpic: false,
+      autoDisassembleLegendary: false,
+      autoDisassembleMythic: false,
+      autoDisassembleMaxLevel: 0,
 
       huntFilterAvailableOnly: false,
       huntFilterTaskedOnly: false,
@@ -193,5 +214,12 @@ export const useSettingsStore = create<ISettingsState>()(
       setAutoSellEpic: (autoSellEpic) => set({ autoSellEpic }),
       setAutoSellLegendary: (autoSellLegendary) => set({ autoSellLegendary }),
       setAutoSellMythic: (autoSellMythic) => set({ autoSellMythic }),
+      setAutoSellMaxLevel: (autoSellMaxLevel) => set({ autoSellMaxLevel: Math.max(0, Math.floor(autoSellMaxLevel)) }),
+      setAutoDisassembleCommon: (autoDisassembleCommon) => set({ autoDisassembleCommon }),
+      setAutoDisassembleRare: (autoDisassembleRare) => set({ autoDisassembleRare }),
+      setAutoDisassembleEpic: (autoDisassembleEpic) => set({ autoDisassembleEpic }),
+      setAutoDisassembleLegendary: (autoDisassembleLegendary) => set({ autoDisassembleLegendary }),
+      setAutoDisassembleMythic: (autoDisassembleMythic) => set({ autoDisassembleMythic }),
+      setAutoDisassembleMaxLevel: (autoDisassembleMaxLevel) => set({ autoDisassembleMaxLevel: Math.max(0, Math.floor(autoDisassembleMaxLevel)) }),
     }),
 );

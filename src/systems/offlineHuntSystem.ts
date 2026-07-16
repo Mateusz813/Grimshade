@@ -50,6 +50,7 @@ export interface IOfflineHuntPreview {
     xpGained: number;
     goldGained: number;
     skillXpGained: number;
+    skillXpGrant: number;
     skillId: string;
     monster: IMonster;
     speedMultiplier: number;
@@ -115,9 +116,7 @@ export const previewOfflineHunt = (): IOfflineHuntPreview | null => {
     const masteryGoldMult = getMasteryGoldMultiplier(masteryLevel);
 
     const bStore = useBuffStore.getState();
-    const xpMult = bStore.getBuffMultiplier('xp_boost');
-    const premiumMult = bStore.getBuffMultiplier('premium_xp_boost');
-    const totalXpMult = xpMult * premiumMult * masteryXpMult;
+    const totalXpMult = bStore.getXpBoostMultiplier() * masteryXpMult;
     const xpPerKill = Math.floor(monster.xp * totalXpMult);
     const xpGained = kills * xpPerKill;
 
@@ -127,11 +126,11 @@ export const previewOfflineHunt = (): IOfflineHuntPreview | null => {
 
     const skillLevel = useSkillStore.getState().skillLevels[state.trainedSkillId] ?? 0;
     const skillXpBaseRaw = calculateOfflineSkillXp(cappedSeconds, skillLevel, state.trainedSkillId);
-    const skillXpMult =
-        bStore.getBuffMultiplier('skill_xp_boost') *
+    const skillGrantMult =
         bStore.getBuffMultiplier('offline_training_boost') *
         bStore.getBuffMultiplier('premium_xp_boost');
-    const skillXpGained = Math.floor(skillXpBaseRaw * skillXpMult);
+    const skillXpGrant = Math.floor(skillXpBaseRaw * skillGrantMult);
+    const skillXpGained = Math.floor(skillXpGrant * bStore.getSkillXpBoostMultiplier());
 
     return {
         elapsedSeconds,
@@ -140,6 +139,7 @@ export const previewOfflineHunt = (): IOfflineHuntPreview | null => {
         xpGained,
         goldGained,
         skillXpGained,
+        skillXpGrant,
         skillId: state.trainedSkillId,
         monster,
         speedMultiplier,
@@ -169,8 +169,6 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const claimMasteryLevel = useMasteryStore.getState().getMasteryLevel(monster.id);
     const claimMasteryXpMult = getMasteryXpMultiplier(claimMasteryLevel);
     const claimMasteryGoldMult = getMasteryGoldMultiplier(claimMasteryLevel);
-    const bStore = useBuffStore.getState();
-    const xpMult = bStore.getBuffMultiplier('xp_boost') * bStore.getBuffMultiplier('premium_xp_boost');
 
     const killsByRarity = emptyKillsByRarity();
     const itemsByKey = new Map<string, IOfflineItemDropSummary>();
@@ -187,7 +185,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
         killsByRarity[rarity]++;
 
         const rarityXpMult = RARITY_XP_MULT[rarity] ?? 1;
-        totalXp += Math.floor(monster.xp * rarityXpMult * xpMult * claimMasteryXpMult);
+        totalXp += Math.floor(monster.xp * rarityXpMult * claimMasteryXpMult);
 
         const [gMin, gMax] = monster.gold;
         const goldBase = Math.floor((gMin + gMax) / 2);
@@ -235,11 +233,12 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const levelBefore = charBefore?.level ?? 1;
     const xpNeededAtStart = xpToNextLevel(levelBefore);
     const xpResult = useCharacterStore.getState().addXp(totalXp);
+    const xpAppliedTotal = xpResult.xpApplied;
     const charAfter = useCharacterStore.getState().character;
     const levelAfter = charAfter?.level ?? levelBefore;
     const xpProgressAfter = charAfter?.xp ?? 0;
     const xpNeededAfter = charAfter?.xp_to_next ?? xpToNextLevel(levelAfter);
-    const xpPctOfLevel = xpNeededAtStart > 0 ? (totalXp / xpNeededAtStart) * 100 : 0;
+    const xpPctOfLevel = xpNeededAtStart > 0 ? (xpAppliedTotal / xpNeededAtStart) * 100 : 0;
 
     useInventoryStore.getState().addGold(totalGold);
 
@@ -262,7 +261,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
 
     const skillLevelBefore = useSkillStore.getState().skillLevels[preview.skillId] ?? 0;
     const skillXpBeforeNeeded = skillXpToNextLevel(skillLevelBefore);
-    useSkillStore.getState().addSkillXp(preview.skillId, preview.skillXpGained);
+    useSkillStore.getState().addSkillXp(preview.skillId, preview.skillXpGrant);
     const skillLevelAfter = useSkillStore.getState().skillLevels[preview.skillId] ?? 0;
     const skillLevelsGained = Math.max(0, skillLevelAfter - skillLevelBefore);
     const skillXpPctOfLevel = skillXpBeforeNeeded > 0 ? (preview.skillXpGained / skillXpBeforeNeeded) * 100 : 0;
@@ -291,7 +290,7 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
         elapsedSeconds: preview.elapsedSeconds,
         cappedSeconds: preview.cappedSeconds,
         kills: preview.kills,
-        xpGained: totalXp,
+        xpGained: xpAppliedTotal,
         goldGained: totalGold,
         skillXpGained: preview.skillXpGained,
         skillId: preview.skillId,

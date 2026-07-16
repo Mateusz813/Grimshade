@@ -100,7 +100,7 @@ export const useTaskStore = create<ITaskStore>()(
           : { rewardGold: task.rewardGold, rewardXp: task.rewardXp };
 
         useInventoryStore.getState().addGold(fresh.rewardGold);
-        useCharacterStore.getState().addXp(fresh.rewardXp);
+        const taskXpResult = useCharacterStore.getState().addXp(fresh.rewardXp);
 
         const completed: ICompletedTask = {
           id: `completed_${Date.now()}`,
@@ -108,7 +108,7 @@ export const useTaskStore = create<ITaskStore>()(
           monsterName: task.monsterName,
           killCount: task.killCount,
           rewardGold: fresh.rewardGold,
-          rewardXp: fresh.rewardXp,
+          rewardXp: taskXpResult.xpApplied,
           completedAt: new Date().toISOString(),
         };
 

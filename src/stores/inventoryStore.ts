@@ -57,16 +57,19 @@ const applyEquipmentHpMpDelta = (
   }).catch(() => { });
 };
 
-const isAutoSellRarity = (rarity: Rarity): boolean => {
+const shouldAutoSellItem = (item: IInventoryItem): boolean => {
   const s = useSettingsStore.getState();
-  switch (rarity) {
-    case 'common':    return s.autoSellCommon;
-    case 'rare':      return s.autoSellRare;
-    case 'epic':      return s.autoSellEpic;
-    case 'legendary': return s.autoSellLegendary;
-    case 'mythic':    return s.autoSellMythic;
-    default:          return false;
+  let rarityMatch: boolean;
+  switch (item.rarity) {
+    case 'common':    rarityMatch = s.autoSellCommon; break;
+    case 'rare':      rarityMatch = s.autoSellRare; break;
+    case 'epic':      rarityMatch = s.autoSellEpic; break;
+    case 'legendary': rarityMatch = s.autoSellLegendary; break;
+    case 'mythic':    rarityMatch = s.autoSellMythic; break;
+    default:          rarityMatch = false;
   }
+  if (!rarityMatch) return false;
+  return s.autoSellMaxLevel <= 0 || (item.itemLevel ?? 1) <= s.autoSellMaxLevel;
 };
 
 export const MAX_BAG_SIZE = 1000;
@@ -155,7 +158,7 @@ export const useInventoryStore = create<IInventoryStore>()(
 
       addItem: (item) => {
         const { bag, gold } = get();
-        if (isAutoSellRarity(item.rarity)) {
+        if (shouldAutoSellItem(item)) {
           const price = getSellPrice(item);
           set({ gold: gold + price });
           return true;

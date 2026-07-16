@@ -152,6 +152,37 @@ describe('auto-sell setters', () => {
         useSettingsStore.getState().setAutoSellCommon(false);
         expect(useSettingsStore.getState().autoSellCommon).toBe(false);
     });
+
+    it('setAutoSellMaxLevel floors + clamps to >= 0', () => {
+        useSettingsStore.getState().setAutoSellMaxLevel(42.9);
+        expect(useSettingsStore.getState().autoSellMaxLevel).toBe(42);
+        useSettingsStore.getState().setAutoSellMaxLevel(-5);
+        expect(useSettingsStore.getState().autoSellMaxLevel).toBe(0);
+    });
+});
+
+describe('auto-disassemble setters', () => {
+    it('flips each rarity flag independently', () => {
+        const s = useSettingsStore.getState();
+        s.setAutoDisassembleCommon(true);
+        s.setAutoDisassembleRare(true);
+        s.setAutoDisassembleEpic(true);
+        s.setAutoDisassembleLegendary(true);
+        s.setAutoDisassembleMythic(true);
+        const state = useSettingsStore.getState();
+        expect(state.autoDisassembleCommon).toBe(true);
+        expect(state.autoDisassembleRare).toBe(true);
+        expect(state.autoDisassembleEpic).toBe(true);
+        expect(state.autoDisassembleLegendary).toBe(true);
+        expect(state.autoDisassembleMythic).toBe(true);
+    });
+
+    it('setAutoDisassembleMaxLevel floors + clamps to >= 0', () => {
+        useSettingsStore.getState().setAutoDisassembleMaxLevel(77.4);
+        expect(useSettingsStore.getState().autoDisassembleMaxLevel).toBe(77);
+        useSettingsStore.getState().setAutoDisassembleMaxLevel(-3);
+        expect(useSettingsStore.getState().autoDisassembleMaxLevel).toBe(0);
+    });
 });
 
 

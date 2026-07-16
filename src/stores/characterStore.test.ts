@@ -3,6 +3,7 @@ import { useCharacterStore, computeBaseStatFloor, type ICharacter } from './char
 import { useInventoryStore } from './inventoryStore';
 import { useSkillStore } from './skillStore';
 import { useLevelUpStore } from './levelUpStore';
+import { useBuffStore } from './buffStore';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 import { xpToNextLevel } from '../systems/levelSystem';
 
@@ -58,6 +59,7 @@ const resetStores = (): void => {
         trainingCurrentSpeedMultiplier: 2,
     });
     useLevelUpStore.setState({ event: null });
+    useBuffStore.setState({ allBuffs: [], combatSpeedMult: 1 });
 };
 
 beforeEach(() => {
@@ -112,7 +114,7 @@ describe('updateCharacter', () => {
 describe('addXp', () => {
     it('returns a zero result and does nothing when no character is set', () => {
         const result = useCharacterStore.getState().addXp(500);
-        expect(result).toEqual({ levelsGained: 0, statPointsGained: 0, newLevel: 0 });
+        expect(result).toEqual({ levelsGained: 0, statPointsGained: 0, newLevel: 0, xpApplied: 0 });
         expect(useCharacterStore.getState().character).toBeNull();
     });
 
@@ -123,6 +125,29 @@ describe('addXp', () => {
         expect(result.levelsGained).toBe(0);
         expect(useCharacterStore.getState().character?.xp).toBe(need - 1);
         expect(useCharacterStore.getState().character?.level).toBe(1);
+    });
+
+    it('returns xpApplied equal to the raw xp when no boost is active', () => {
+        useCharacterStore.getState().setCharacter(makeChar({ level: 1, xp: 0 }));
+        const result = useCharacterStore.getState().addXp(100);
+        expect(result.xpApplied).toBe(100);
+        expect(useCharacterStore.getState().character?.xp).toBe(100);
+    });
+
+    it('applies the XP boost multiplier from an active elixir (chokepoint)', () => {
+        useCharacterStore.getState().setCharacter(makeChar({ level: 1, xp: 0 }));
+        useBuffStore.getState().addBuff({ id: 'xp', name: 'XP', icon: 'star', effect: 'xp_boost' }, 60_000);
+        const result = useCharacterStore.getState().addXp(100);
+        expect(result.xpApplied).toBe(150);
+        expect(useCharacterStore.getState().character?.xp).toBe(150);
+    });
+
+    it('stacks xp_boost_100 with premium_xp_boost (2 × 2 = 4×)', () => {
+        useCharacterStore.getState().setCharacter(makeChar({ level: 1, xp: 0 }));
+        useBuffStore.getState().addBuff({ id: 'x100', name: 'XP', icon: 'star', effect: 'xp_boost_100' }, 60_000);
+        useBuffStore.getState().addBuff({ id: 'prem', name: 'Prem', icon: 'gem', effect: 'premium_xp_boost' }, 60_000);
+        const result = useCharacterStore.getState().addXp(100);
+        expect(result.xpApplied).toBe(400);
     });
 
     it('levels up, awards stat points, fully heals on level-up', () => {

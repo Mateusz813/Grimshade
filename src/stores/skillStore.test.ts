@@ -100,6 +100,20 @@ describe('addSkillXp', () => {
         expect(gained).toBe(3);
         expect(useSkillStore.getState().skillLevels['sword_fighting']).toBe(3);
     });
+
+    it('applies the skill XP boost multiplier when a skill elixir is active', () => {
+        useSkillStore.setState({ skillLevels: { sword_fighting: 0 }, skillXp: { sword_fighting: 0 }, skillXpFraction: {} });
+        useBuffStore.getState().addBuff({ id: 'sk', name: 'Skill', icon: 'sparkles', effect: 'skill_xp_boost' }, 60_000);
+        useSkillStore.getState().addSkillXp('sword_fighting', 20);
+        expect(useSkillStore.getState().skillXp['sword_fighting']).toBe(30);
+    });
+
+    it('accumulates the fractional boost across small per-attack grants (no loss to floor)', () => {
+        useSkillStore.setState({ skillLevels: { sword_fighting: 0 }, skillXp: { sword_fighting: 0 }, skillXpFraction: {} });
+        useBuffStore.getState().addBuff({ id: 'sk', name: 'Skill', icon: 'sparkles', effect: 'skill_xp_boost' }, 60_000);
+        for (let i = 0; i < 4; i++) useSkillStore.getState().addSkillXp('sword_fighting', 1);
+        expect(useSkillStore.getState().skillXp['sword_fighting']).toBe(6);
+    });
 });
 
 

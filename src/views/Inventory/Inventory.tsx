@@ -2533,17 +2533,17 @@ interface IBuffConfig {
   pausable?: boolean;
 }
 const BUFF_CONFIG: Record<string, IBuffConfig> = {
-  'xp_boost_1h':                      { id: 'xp_boost',              name: 'XP +50%',         icon: 'star',  effect: 'xp_boost',              durationMs: 3600000, pausable: true },
-  'xp_boost_100_1h':                  { id: 'xp_boost_100',          name: 'XP +100%',        icon: 'glowing-star', effect: 'xp_boost_100',          durationMs: 3600000, pausable: true },
-  'skill_xp_boost_1h':                { id: 'skill_xp_boost',        name: 'Skill XP +50%',   icon: 'sparkles',  effect: 'skill_xp_boost',        durationMs: 3600000, pausable: true },
-  'skill_xp_boost_100_1h':            { id: 'skill_xp_boost_100',    name: 'Skill XP +100%',  icon: 'bright-button', effect: 'skill_xp_boost_100',    durationMs: 3600000, pausable: true },
+  'xp_boost_1h':                      { id: 'xp_boost',              name: 'XP +50%',         icon: 'star',  effect: 'xp_boost',              durationMs: 3600000, pausable: false },
+  'xp_boost_100_1h':                  { id: 'xp_boost_100',          name: 'XP +100%',        icon: 'glowing-star', effect: 'xp_boost_100',          durationMs: 3600000, pausable: false },
+  'skill_xp_boost_1h':                { id: 'skill_xp_boost',        name: 'Skill XP +50%',   icon: 'sparkles',  effect: 'skill_xp_boost',        durationMs: 3600000, pausable: false },
+  'skill_xp_boost_100_1h':            { id: 'skill_xp_boost_100',    name: 'Skill XP +100%',  icon: 'bright-button', effect: 'skill_xp_boost_100',    durationMs: 3600000, pausable: false },
   'attack_speed_0.20_15m_pausable':   { id: 'attack_speed',          name: 'AS +20%',         icon: 'high-voltage',  effect: 'attack_speed',          durationMs: 900000,  pausable: true },
   'cooldown_reduction_0.20_30m':      { id: 'cooldown_reduction',    name: 'CD -20%',         icon: 'cyclone',  effect: 'cooldown_reduction',    durationMs: 1800000 },
   'hp_pct_25_15m':                    { id: 'hp_pct_25',             name: 'Max HP +25%',     icon: 'heart-on-fire', effect: 'hp_pct_25',     durationMs: 900000,  pausable: true },
   'mp_pct_25_15m':                    { id: 'mp_pct_25',             name: 'Max MP +25%',     icon: 'diamond-with-a-dot',  effect: 'mp_pct_25',             durationMs: 900000,  pausable: true },
   'offline_training_boost':           { id: 'offline_training_boost',name: 'Trening x2',      icon: 'person-lifting-weights', effect: 'offline_training_boost',durationMs: 3600000, pausable: true },
   'utamo_vita':                       { id: 'utamo_vita',            name: 'Utamo Vita',      icon: 'blue-circle',  effect: 'utamo_vita',            durationMs: 600000 },
-  'premium_xp_boost':                 { id: 'premium_xp_boost',      name: 'Premium XP x2',   icon: 'gem-stone',  effect: 'premium_xp_boost',      durationMs: 43200000,pausable: true },
+  'premium_xp_boost':                 { id: 'premium_xp_boost',      name: 'Premium XP x2',   icon: 'gem-stone',  effect: 'premium_xp_boost',      durationMs: 43200000,pausable: false },
   'atk_dmg_25_15m':                   { id: 'atk_dmg_25',            name: 'ATK DMG +25%',    icon: 'crossed-swords',  effect: 'atk_dmg_25',            durationMs: 900000,  pausable: true },
   'atk_dmg_50_15m':                   { id: 'atk_dmg_50',            name: 'ATK DMG +50%',    icon: 'crossed-swords',  effect: 'atk_dmg_50',            durationMs: 900000,  pausable: true },
   'atk_dmg_100_15m':                  { id: 'atk_dmg_100',           name: 'ATK DMG +100%',   icon: 'crossed-swords',  effect: 'atk_dmg_100',           durationMs: 900000,  pausable: true },
@@ -2583,6 +2583,10 @@ const Inventory = () => {
   const {
     autoSellCommon, autoSellRare, autoSellEpic, autoSellLegendary, autoSellMythic,
     setAutoSellCommon, setAutoSellRare, setAutoSellEpic, setAutoSellLegendary, setAutoSellMythic,
+    autoSellMaxLevel, setAutoSellMaxLevel,
+    autoDisassembleCommon, autoDisassembleRare, autoDisassembleEpic, autoDisassembleLegendary, autoDisassembleMythic,
+    setAutoDisassembleCommon, setAutoDisassembleRare, setAutoDisassembleEpic, setAutoDisassembleLegendary, setAutoDisassembleMythic,
+    autoDisassembleMaxLevel, setAutoDisassembleMaxLevel,
     autoPotionHpEnabled, autoPotionMpEnabled,
     autoPotionHpThreshold, autoPotionMpThreshold,
     autoPotionHpId, autoPotionMpId,
@@ -2595,7 +2599,7 @@ const Inventory = () => {
     setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled,
     setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold,
     setAutoPotionPctHpId, setAutoPotionPctMpId,
-  } = useSettingsStore(useShallow((s) => ({ autoSellCommon: s.autoSellCommon, autoSellRare: s.autoSellRare, autoSellEpic: s.autoSellEpic, autoSellLegendary: s.autoSellLegendary, autoSellMythic: s.autoSellMythic, setAutoSellCommon: s.setAutoSellCommon, setAutoSellRare: s.setAutoSellRare, setAutoSellEpic: s.setAutoSellEpic, setAutoSellLegendary: s.setAutoSellLegendary, setAutoSellMythic: s.setAutoSellMythic, autoPotionHpEnabled: s.autoPotionHpEnabled, autoPotionMpEnabled: s.autoPotionMpEnabled, autoPotionHpThreshold: s.autoPotionHpThreshold, autoPotionMpThreshold: s.autoPotionMpThreshold, autoPotionHpId: s.autoPotionHpId, autoPotionMpId: s.autoPotionMpId, setAutoPotionHpEnabled: s.setAutoPotionHpEnabled, setAutoPotionMpEnabled: s.setAutoPotionMpEnabled, setAutoPotionHpThreshold: s.setAutoPotionHpThreshold, setAutoPotionMpThreshold: s.setAutoPotionMpThreshold, setAutoPotionHpId: s.setAutoPotionHpId, setAutoPotionMpId: s.setAutoPotionMpId, autoPotionPctHpEnabled: s.autoPotionPctHpEnabled, autoPotionPctMpEnabled: s.autoPotionPctMpEnabled, autoPotionPctHpThreshold: s.autoPotionPctHpThreshold, autoPotionPctMpThreshold: s.autoPotionPctMpThreshold, autoPotionPctHpId: s.autoPotionPctHpId, autoPotionPctMpId: s.autoPotionPctMpId, setAutoPotionPctHpEnabled: s.setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled: s.setAutoPotionPctMpEnabled, setAutoPotionPctHpThreshold: s.setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold: s.setAutoPotionPctMpThreshold, setAutoPotionPctHpId: s.setAutoPotionPctHpId, setAutoPotionPctMpId: s.setAutoPotionPctMpId })));
+  } = useSettingsStore(useShallow((s) => ({ autoSellCommon: s.autoSellCommon, autoSellRare: s.autoSellRare, autoSellEpic: s.autoSellEpic, autoSellLegendary: s.autoSellLegendary, autoSellMythic: s.autoSellMythic, setAutoSellCommon: s.setAutoSellCommon, setAutoSellRare: s.setAutoSellRare, setAutoSellEpic: s.setAutoSellEpic, setAutoSellLegendary: s.setAutoSellLegendary, setAutoSellMythic: s.setAutoSellMythic, autoSellMaxLevel: s.autoSellMaxLevel, setAutoSellMaxLevel: s.setAutoSellMaxLevel, autoDisassembleCommon: s.autoDisassembleCommon, autoDisassembleRare: s.autoDisassembleRare, autoDisassembleEpic: s.autoDisassembleEpic, autoDisassembleLegendary: s.autoDisassembleLegendary, autoDisassembleMythic: s.autoDisassembleMythic, setAutoDisassembleCommon: s.setAutoDisassembleCommon, setAutoDisassembleRare: s.setAutoDisassembleRare, setAutoDisassembleEpic: s.setAutoDisassembleEpic, setAutoDisassembleLegendary: s.setAutoDisassembleLegendary, setAutoDisassembleMythic: s.setAutoDisassembleMythic, autoDisassembleMaxLevel: s.autoDisassembleMaxLevel, setAutoDisassembleMaxLevel: s.setAutoDisassembleMaxLevel, autoPotionHpEnabled: s.autoPotionHpEnabled, autoPotionMpEnabled: s.autoPotionMpEnabled, autoPotionHpThreshold: s.autoPotionHpThreshold, autoPotionMpThreshold: s.autoPotionMpThreshold, autoPotionHpId: s.autoPotionHpId, autoPotionMpId: s.autoPotionMpId, setAutoPotionHpEnabled: s.setAutoPotionHpEnabled, setAutoPotionMpEnabled: s.setAutoPotionMpEnabled, setAutoPotionHpThreshold: s.setAutoPotionHpThreshold, setAutoPotionMpThreshold: s.setAutoPotionMpThreshold, setAutoPotionHpId: s.setAutoPotionHpId, setAutoPotionMpId: s.setAutoPotionMpId, autoPotionPctHpEnabled: s.autoPotionPctHpEnabled, autoPotionPctMpEnabled: s.autoPotionPctMpEnabled, autoPotionPctHpThreshold: s.autoPotionPctHpThreshold, autoPotionPctMpThreshold: s.autoPotionPctMpThreshold, autoPotionPctHpId: s.autoPotionPctHpId, autoPotionPctMpId: s.autoPotionPctMpId, setAutoPotionPctHpEnabled: s.setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled: s.setAutoPotionPctMpEnabled, setAutoPotionPctHpThreshold: s.setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold: s.setAutoPotionPctMpThreshold, setAutoPotionPctHpId: s.setAutoPotionPctHpId, setAutoPotionPctMpId: s.setAutoPotionPctMpId })));
   const character = useCharacterStore((s) => s.character);
   const spendStatPoint = useCharacterStore((s) => s.spendStatPoint);
   const spendAllStatPoints = useCharacterStore((s) => s.spendAllStatPoints);
@@ -3094,9 +3098,18 @@ const Inventory = () => {
           return;
         }
         void (async () => {
+          let stones: Record<string, number> = {};
+          let disassembled = totalCount;
           try {
-            await backendApi.disassembleMass(character.id, uuids);
+            const res = await backendApi.disassembleMass(character.id, uuids);
             await syncFromBackend(character.id);
+            const r = res as { stonesGained?: unknown; disassembled?: unknown };
+            if (r.stonesGained && typeof r.stonesGained === 'object') {
+              stones = r.stonesGained as Record<string, number>;
+            }
+            if (typeof r.disassembled === 'number') {
+              disassembled = r.disassembled;
+            }
           } catch (e) {
             console.warn('[backend] mass disassemble failed', e);
             await syncFromBackend(character.id).catch(() => { });
@@ -3105,7 +3118,7 @@ const Inventory = () => {
           setDisassembleProgress(0);
           setDisassembleTotalItems(0);
           setDisassembleCurrentItem(null);
-          setBulkDisassembleResult({ total: totalCount, stones: {} });
+          setBulkDisassembleResult({ total: disassembled, stones });
           setSelectedUuids(new Set());
           setBulkMode('none');
         })();
@@ -4194,6 +4207,64 @@ const Inventory = () => {
           >
             Mityczne {autoSellMythic ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
           </button>
+          <label className="inventory__auto-sell-maxlvl" title="Sprzedawaj tylko przedmioty do tego poziomu (0 = bez limitu)">
+            do lvl
+            <input
+              type="number"
+              min={0}
+              value={autoSellMaxLevel || ''}
+              placeholder="&#8734;"
+              onChange={(e) => setAutoSellMaxLevel(Number(e.target.value) || 0)}
+            />
+          </label>
+        </div>
+        <div className="inventory__auto-sell inventory__auto-disassemble">
+          <span className="inventory__auto-sell-label">Auto-rozklad:</span>
+          <button
+            className={`inventory__auto-sell-btn${autoDisassembleCommon ? ' inventory__auto-sell-btn--active' : ''}`}
+            onClick={() => setAutoDisassembleCommon(!autoDisassembleCommon)}
+            title="Automatycznie rozkladaj Common przedmioty (z lupu)"
+          >
+            Zwykle {autoDisassembleCommon ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
+          </button>
+          <button
+            className={`inventory__auto-sell-btn inventory__auto-sell-btn--rare${autoDisassembleRare ? ' inventory__auto-sell-btn--active' : ''}`}
+            onClick={() => setAutoDisassembleRare(!autoDisassembleRare)}
+            title="Automatycznie rozkladaj Rare przedmioty (z lupu)"
+          >
+            Rzadkie {autoDisassembleRare ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
+          </button>
+          <button
+            className={`inventory__auto-sell-btn inventory__auto-sell-btn--epic${autoDisassembleEpic ? ' inventory__auto-sell-btn--active' : ''}`}
+            onClick={() => setAutoDisassembleEpic(!autoDisassembleEpic)}
+            title="Automatycznie rozkladaj Epic przedmioty (z lupu)"
+          >
+            Epickie {autoDisassembleEpic ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
+          </button>
+          <button
+            className={`inventory__auto-sell-btn inventory__auto-sell-btn--legendary${autoDisassembleLegendary ? ' inventory__auto-sell-btn--active' : ''}`}
+            onClick={() => setAutoDisassembleLegendary(!autoDisassembleLegendary)}
+            title="Automatycznie rozkladaj Legendary przedmioty (z lupu)"
+          >
+            Legendarne {autoDisassembleLegendary ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
+          </button>
+          <button
+            className={`inventory__auto-sell-btn inventory__auto-sell-btn--mythic${autoDisassembleMythic ? ' inventory__auto-sell-btn--active' : ''}`}
+            onClick={() => setAutoDisassembleMythic(!autoDisassembleMythic)}
+            title="Automatycznie rozkladaj Mythic przedmioty (z lupu)"
+          >
+            Mityczne {autoDisassembleMythic ? <GameIcon name="check-mark-button" /> : <GameIcon name="cross-mark" />}
+          </button>
+          <label className="inventory__auto-sell-maxlvl" title="Rozkladaj tylko przedmioty do tego poziomu (0 = bez limitu)">
+            do lvl
+            <input
+              type="number"
+              min={0}
+              value={autoDisassembleMaxLevel || ''}
+              placeholder="&#8734;"
+              onChange={(e) => setAutoDisassembleMaxLevel(Number(e.target.value) || 0)}
+            />
+          </label>
         </div>
       </div>
 

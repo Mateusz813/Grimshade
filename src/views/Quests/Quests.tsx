@@ -194,20 +194,76 @@ interface IClaimSummary {
   entries: IClaimSummaryEntry[];
 }
 
-const buildBackendClaimEntries = (res: unknown): IClaimSummaryEntry[] => {
+interface IClaimEntryHelpers {
+  elixirName: (id: string) => string;
+  elixirIcon: (id: string) => string;
+}
+
+const buildBackendClaimEntries = (res: unknown, helpers: IClaimEntryHelpers): IClaimSummaryEntry[] => {
   const entries: IClaimSummaryEntry[] = [];
-  if (res && typeof res === 'object') {
-    const obj = res as Record<string, unknown>;
-    const reward = obj.reward && typeof obj.reward === 'object'
-      ? (obj.reward as Record<string, unknown>)
-      : obj;
-    if (typeof reward.gold === 'number') {
-      entries.push({ icon: 'money-bag', label: formatGoldShort(reward.gold) });
+  const obj = res && typeof res === 'object' ? (res as Record<string, unknown>) : null;
+  const rewards = obj && obj.rewards && typeof obj.rewards === 'object'
+    ? (obj.rewards as Record<string, unknown>)
+    : null;
+
+  if (rewards) {
+    if (typeof rewards.gold === 'number' && rewards.gold > 0) {
+      entries.push({ icon: 'money-bag', label: formatGoldShort(rewards.gold) });
     }
-    if (typeof reward.xp === 'number') {
-      entries.push({ icon: 'sparkles', label: `${reward.xp.toLocaleString('pl-PL')} XP` });
+
+    let xpVal: number | null = null;
+    if (typeof rewards.xp === 'number') {
+      xpVal = rewards.xp;
+    } else if (rewards.xp && typeof rewards.xp === 'object'
+      && typeof (rewards.xp as Record<string, unknown>).gained === 'number') {
+      xpVal = (rewards.xp as { gained: number }).gained;
+    }
+    if (xpVal !== null && xpVal > 0) {
+      entries.push({ icon: 'sparkles', label: `${xpVal.toLocaleString('pl-PL')} XP` });
+    }
+
+    if (typeof rewards.elixir === 'string' && rewards.elixir) {
+      entries.push({ icon: helpers.elixirIcon(rewards.elixir), label: `${helpers.elixirName(rewards.elixir)} x1` });
+    }
+    if (Array.isArray(rewards.elixirs)) {
+      for (const raw of rewards.elixirs) {
+        if (raw && typeof raw === 'object' && typeof (raw as Record<string, unknown>).id === 'string') {
+          const el = raw as { id: string; count?: unknown };
+          const count = typeof el.count === 'number' ? el.count : 1;
+          entries.push({ icon: helpers.elixirIcon(el.id), label: `${helpers.elixirName(el.id)} x${count}` });
+        }
+      }
+    }
+
+    if (Array.isArray(rewards.stones)) {
+      for (const raw of rewards.stones) {
+        if (raw && typeof raw === 'object' && typeof (raw as Record<string, unknown>).type === 'string') {
+          const st = raw as { type: string; count?: unknown };
+          const count = typeof st.count === 'number' ? st.count : 1;
+          entries.push({ icon: STONE_ICONS[st.type] ?? 'gem-stone', label: `${STONE_NAMES[st.type] ?? st.type} x${count}` });
+        }
+      }
+    }
+
+    const bagRaw = obj && obj.inventory && typeof obj.inventory === 'object'
+      ? (obj.inventory as Record<string, unknown>).bag
+      : undefined;
+    const bag = Array.isArray(bagRaw) ? (bagRaw as Array<Record<string, unknown>>) : [];
+    const uuids: string[] = [];
+    if (Array.isArray(rewards.items)) {
+      for (const u of rewards.items) if (typeof u === 'string') uuids.push(u);
+    }
+    if (typeof rewards.giftItem === 'string') uuids.push(rewards.giftItem);
+    for (const uuid of uuids) {
+      const item = bag.find((b) => b.uuid === uuid);
+      const label = item && typeof item.name === 'string' ? item.name : 'Przedmiot';
+      const rarity = item && typeof item.rarity === 'string' ? item.rarity : undefined;
+      const itemLevel = item && typeof item.itemLevel === 'number' ? item.itemLevel : undefined;
+      const upgradeLevel = item && typeof item.upgradeLevel === 'number' ? item.upgradeLevel : undefined;
+      entries.push({ icon: 'wrapped-gift', label, rarity, itemLevel, upgradeLevel });
     }
   }
+
   if (entries.length === 0) {
     entries.push({ icon: 'wrapped-gift', label: 'Nagroda odebrana' });
   }
@@ -355,8 +411,13 @@ const Quests = () => {
 
     if (isBackendMode()) {
       try {
-        await backendApi.claimDailyQuest(character.id, questId);
+        const res = await backendApi.claimDailyQuest(character.id, questId);
         await syncFromBackend(character.id);
+        const def = todayQuestDefs.find((d) => d.id === questId);
+        setClaimSummary({
+          questName: def?.name_pl ?? 'Quest dzienny',
+          entries: buildBackendClaimEntries(res, { elixirName: getElixirName, elixirIcon: getElixirIcon }),
+        });
         return;
       } catch (e) {
         console.warn('[quests] backend claimDailyQuest failed', e);
@@ -404,7 +465,7 @@ const Quests = () => {
       try {
         const res = await backendApi.claimQuest(character.id, questId);
         await syncFromBackend(character.id);
-        setClaimSummary({ questName: quest.name_pl, entries: buildBackendClaimEntries(res) });
+        setClaimSummary({ questName: quest.name_pl, entries: buildBackendClaimEntries(res, { elixirName: getElixirName, elixirIcon: getElixirIcon }) });
         return;
       } catch (e) {
         console.warn('[quests] backend claimQuest failed', e);
@@ -548,7 +609,7 @@ const Quests = () => {
       try {
         for (const aq of claimableQuests) {
           const res = await backendApi.claimQuest(character.id, aq.questId);
-          entries.push(...buildBackendClaimEntries(res));
+          entries.push(...buildBackendClaimEntries(res, { elixirName: getElixirName, elixirIcon: getElixirIcon }));
         }
       } catch (e) {
         console.warn('[quests] backend claimQuest (bulk) failed', e);
@@ -684,12 +745,16 @@ const Quests = () => {
       for (const aq of claimable) {
         try {
           const res = await backendApi.claimDailyQuest(character.id, aq.questId);
-          entries.push(...buildBackendClaimEntries(res));
-          await syncFromBackend(character.id);
+          entries.push(...buildBackendClaimEntries(res, { elixirName: getElixirName, elixirIcon: getElixirIcon }));
           claimedCount += 1;
         } catch (e) {
           console.warn('[quests] backend claimDailyQuest (bulk item) failed', e);
         }
+      }
+      try {
+        await syncFromBackend(character.id);
+      } catch (e) {
+        console.warn('[quests] backend sync (claim-all-daily) failed', e);
       }
       if (entries.length > 0) {
         setClaimSummary({ questName: `${claimedCount} questow dziennych`, entries });

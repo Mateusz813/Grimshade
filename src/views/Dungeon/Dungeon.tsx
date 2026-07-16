@@ -940,9 +940,10 @@ const Dungeon = () => {
             const inv = useInventoryStore.getState();
             inv.addGold(gold);
             const xpResult = useCharacterStore.getState().addXp(xp);
+            const xpAwarded = xpResult.xpApplied;
             for (const gen of items) inv.addItem(buildItem(gen));
 
-            useCombatStore.getState().addSessionStats(xp, gold);
+            useCombatStore.getState().addSessionStats(xpAwarded, gold);
 
             const dungeonLvl = dungeon.level ?? 1;
             const chestDrops = rollSpellChestDrop(dungeonLvl, 'normal', true, false);
@@ -957,11 +958,11 @@ const Dungeon = () => {
             useQuestStore.getState().addProgress('complete_dungeons_any', 'any', 1);
             useDailyQuestStore.getState().addProgress('complete_dungeon', 1);
             useDailyQuestStore.getState().addProgress('earn_gold', gold);
-            addLog(`:trophy: Dungeon ukończony! +${gold.toLocaleString('pl-PL')} Gold, +${xp.toLocaleString('pl-PL')} XP`, 'system');
+            addLog(`:trophy: Dungeon ukończony! +${gold.toLocaleString('pl-PL')} Gold, +${xpAwarded.toLocaleString('pl-PL')} XP`, 'system');
             if (chestNames.length > 0) {
                 addLog(`:package: Spell Chests: ${chestNames.join(', ')}`, 'system');
             }
-            setResult({ success: true, wavesCleared: totalWaves, playerHpLeft: hp, gold, xp, items });
+            setResult({ success: true, wavesCleared: totalWaves, playerHpLeft: hp, gold, xp: xpAwarded, items });
             setResultKind('win');
             const liveCharAfter = useCharacterStore.getState().character;
             if (liveCharAfter) {

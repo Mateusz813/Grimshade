@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useBuffStore } from '../../../stores/buffStore';
-import { useCombatStore } from '../../../stores/combatStore';
 import { useInventoryStore } from '../../../stores/inventoryStore';
 import { getElixirImage } from '../../../systems/spriteAssets';
 import TinyIcon from '../TinyIcon/TinyIcon';
@@ -28,14 +27,11 @@ const formatTimeLeft = (ms: number): string => {
     return `${s}s`;
 };
 
-const COMBAT_ONLY_EFFECTS = new Set(['xp_boost', 'premium_xp_boost']);
-
 const BuffBar = () => {
     const location = useLocation();
     const cleanExpired = useBuffStore((s) => s.cleanExpired);
     const getActiveBuffs = useBuffStore((s) => s.getActiveBuffs);
     const allBuffs = useBuffStore((s) => s.allBuffs);
-    const combatPhase = useCombatStore((s) => s.phase);
     const [, setTick] = useState(0);
     const [collapsed, setCollapsed] = useState(false);
 
@@ -61,8 +57,6 @@ const BuffBar = () => {
     if (isCharacterless) return null;
     const totalCount = active.length + (aolCount > 0 ? 1 : 0) + (deathProtCount > 0 ? 1 : 0);
     if (totalCount === 0) return null;
-
-    const isInCombat = combatPhase === 'fighting';
 
     return (
         <div className={`buff-bar${collapsed ? ' buff-bar--collapsed' : ''}`}>
@@ -102,16 +96,14 @@ const BuffBar = () => {
                             ? (buff.gameMsRemaining ?? 0)
                             : (isPausable ? buff.remainingMs : (buff.expiresAt - now));
                         const isLow = !isCharge && remaining < 60000;
-                        const isCombatOnly = COMBAT_ONLY_EFFECTS.has(buff.effect);
-                        const isPaused = isPausable && isCombatOnly && !isInCombat && !isCharge;
                         return (
-                            <div key={buff.id} className={`buff-bar__pill${isLow ? ' buff-bar__pill--low' : ''}${isPaused ? ' buff-bar__pill--paused' : ''}${isCharge ? ' buff-bar__pill--charge' : ''}`}>
+                            <div key={buff.id} className={`buff-bar__pill${isLow ? ' buff-bar__pill--low' : ''}${isCharge ? ' buff-bar__pill--charge' : ''}`}>
                                 <span className="buff-bar__icon"><TinyIcon icon={buff.icon} size="sm" /></span>
                                 <span className="buff-bar__name">{buff.name}</span>
                                 <span className="buff-bar__time">
                                     {isCharge
                                         ? `×${buff.charges}${buff.maxCharges ? ` / ${buff.maxCharges}` : ''}`
-                                        : (isPaused ? <><GameIcon name="pause-button" /> {formatTimeLeft(remaining)}</> : formatTimeLeft(remaining))}
+                                        : formatTimeLeft(remaining)}
                                 </span>
                             </div>
                         );

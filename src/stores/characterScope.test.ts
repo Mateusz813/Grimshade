@@ -322,6 +322,39 @@ describe('applyBlobToStores — hydracja _characterStats (regresja: reload nie c
     });
 });
 
+describe('applyBlobToStores — sanitizery (regresja: stuck skill buff + nieprawidłowy spell chest)', () => {
+    it('usuwa buffy skill_charge_* przy wczytaniu, zachowuje pozostałe', async () => {
+        const blob = {
+            _ownerCharacterId: 'char-1',
+            buffs: {
+                allBuffs: [
+                    { id: 'a', effect: 'skill_charge_crit_buff_next', characterId: 'char-1', charges: 1 },
+                    { id: 'b', effect: 'xp_boost', characterId: 'char-1', expiresAt: 9e15 },
+                    { id: 'c', effect: 'skill_charge_dodge_next', characterId: 'char-1', charges: 1 },
+                ],
+            },
+        };
+        const mod = await import('./characterScope');
+        mod.applyBlobToStores(blob, 'char-1');
+        const effects = (buffState.current as { allBuffs: Array<{ effect: string }> })
+            .allBuffs.map((b) => b.effect);
+        expect(effects).toEqual(['xp_boost']);
+    });
+
+    it('usuwa spell_chesty spoza SPELL_CHEST_LEVELS, zachowuje poprawne + inne consumable', async () => {
+        const blob = {
+            _ownerCharacterId: 'char-1',
+            inventory: {
+                consumables: { spell_chest_200: 3, spell_chest_50: 1, spell_chest_5: 2, hp_potion_sm: 5 },
+            },
+        };
+        const mod = await import('./characterScope');
+        mod.applyBlobToStores(blob, 'char-1');
+        expect((inventoryState.current as { consumables: Record<string, number> }).consumables)
+            .toEqual({ spell_chest_50: 1, spell_chest_5: 2, hp_potion_sm: 5 });
+    });
+});
+
 describe('switchToCharacter', () => {
     it('persists the chosen character id to localStorage', async () => {
         const mod = await import('./characterScope');

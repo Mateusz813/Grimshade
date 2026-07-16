@@ -21,6 +21,7 @@ import { useConnectivityStore } from '../../../stores/connectivityStore';
 import { useDeathStore } from '../../../stores/deathStore';
 import { useArenaStore } from '../../../stores/arenaStore';
 import { generateRandomItem } from '../../../systems/itemGenerator';
+import { SPELL_CHEST_LEVELS } from '../../../systems/skillSystem';
 import skillsRaw from '../../../data/skills.json';
 import bossesRaw from '../../../data/bosses.json';
 import dungeonsRaw from '../../../data/dungeons.json';
@@ -232,7 +233,13 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
         flash(`+${n}× ${id}`);
     };
     const addSpellChest = () => {
-        const lvl = Math.max(1, Math.min(1000, parseInt(spellChestLevel, 10) || 1));
+        const raw = Math.max(1, Math.min(1000, parseInt(spellChestLevel, 10) || 1));
+        const lvl = SPELL_CHEST_LEVELS.includes(raw)
+            ? raw
+            : SPELL_CHEST_LEVELS.reduce(
+                (best, l) => (Math.abs(l - raw) < Math.abs(best - raw) ? l : best),
+                SPELL_CHEST_LEVELS[0],
+            );
         const n = Math.max(1, parseInt(spellChestCount, 10) || 1);
         useInventoryStore.getState().addConsumable(`spell_chest_${lvl}`, n);
         flash(`+${n}× Spell Chest Lv${lvl}`);

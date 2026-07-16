@@ -248,6 +248,7 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       'Plecak mieści 1000 przedmiotów; poziom przedmiotu zwykle ogranicza, kto może go założyć.',
       'Punkty statystyk (2 za każdy poziom) rozdajesz na: +5 HP, +5 MP, +1 atak lub +1 obrona za punkt.',
       'Nadmiarowe/słabe przedmioty możesz rozłożyć na kamienie (20% szansy na kamień) — pojedynczo lub masowo.',
+      'Auto-sprzedaż i auto-rozkład: włącz wybrane rzadkości, a loot z walki będzie automatycznie sprzedawany lub rozkładany na kamienie zaraz po wypadnięciu. Możesz ustawić „do lvl" — limit poziomu przedmiotu (0 = bez limitu), więc np. rozkładasz tylko niski loot, a lepszy zostaje w plecaku.',
     ],
     tables: [
       {
@@ -317,7 +318,7 @@ export const WIKI_SECTIONS: IWikiSection[] = [
     summary: 'Kupujesz tu miksturki, eliksiry i podstawowy sprzęt za złoto.',
     bullets: [
       'Miksturki HP/MP: od małych (+50 HP / +30 MP) po procentowe (leczą % maks. HP/MP) — kupuj na zapas przed trudnymi walkami.',
-      'Eliksiry XP: +50% lub +100% doświadczenia z polowania na godzinę; premium ×2 na 12 godzin.',
+      'Eliksiry XP i Skilli: +50% lub +100% doświadczenia; premium ×2 na 12 godzin. Działają na WSZYSTKIE źródła XP (polowanie, taski, questy, lochy, bossy, rajdy, transformy, offline), a czas leci realnie od momentu użycia — nie pauzuje poza walką.',
       'Eliksiry bojowe: +% obrażeń, ataku, obrony, prędkości ataku, +max HP/MP — działają w walce, zwykle 15 minut.',
       'Eliksir Ochrony przed Śmiercią chroni poziomy i statystyki; Amulet Strat chroni przedmioty (1 użycie).',
       'Resety lochów/bossów odnawiają dzienne próby (limit 5 zakupów dziennie każdego).',

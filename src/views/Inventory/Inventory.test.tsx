@@ -189,18 +189,34 @@ describe('Inventory — bag chrome', () => {
         expect(counter).toMatch(/3\s*\/\s*1000/);
     });
 
-    it('renders 5 auto-sell rarity buttons (Zwykle/Rzadkie/Epickie/Legendarne/Mityczne)', () => {
+    it('renders 5 auto-sell + 5 auto-disassemble rarity buttons', () => {
         const { container } = renderInventory();
-        const autoSellBtns = container.querySelectorAll('.inventory__auto-sell-btn');
-        expect(autoSellBtns.length).toBe(5);
+        const sellRow = container.querySelector('.inventory__auto-sell:not(.inventory__auto-disassemble)');
+        const disRow = container.querySelector('.inventory__auto-disassemble');
+        expect(sellRow?.querySelectorAll('.inventory__auto-sell-btn').length).toBe(5);
+        expect(disRow?.querySelectorAll('.inventory__auto-sell-btn').length).toBe(5);
     });
 
-    it('toggles autoSellCommon when its button is clicked', () => {
+    it('toggles autoSellCommon when the first auto-sell button is clicked', () => {
         const { container } = renderInventory();
-        const btn = container.querySelector('.inventory__auto-sell-btn') as HTMLButtonElement;
+        const btn = container.querySelector('.inventory__auto-sell:not(.inventory__auto-disassemble) .inventory__auto-sell-btn') as HTMLButtonElement;
         expect(btn.className).not.toContain('inventory__auto-sell-btn--active');
         fireEvent.click(btn);
         expect(useSettingsStore.getState().autoSellCommon).toBe(true);
+    });
+
+    it('toggles autoDisassembleCommon when the first auto-disassemble button is clicked', () => {
+        const { container } = renderInventory();
+        const btn = container.querySelector('.inventory__auto-disassemble .inventory__auto-sell-btn') as HTMLButtonElement;
+        fireEvent.click(btn);
+        expect(useSettingsStore.getState().autoDisassembleCommon).toBe(true);
+    });
+
+    it('updates autoSellMaxLevel from the "do lvl" input', () => {
+        const { container } = renderInventory();
+        const input = container.querySelector('.inventory__auto-sell:not(.inventory__auto-disassemble) .inventory__auto-sell-maxlvl input') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: '80' } });
+        expect(useSettingsStore.getState().autoSellMaxLevel).toBe(80);
     });
 });
 
