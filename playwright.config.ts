@@ -25,8 +25,9 @@ export default defineConfig({
     testDir: './tests/e2e',
     fullyParallel: true,
     forbidOnly: isCI,
-    retries: 2,
-    maxFailures: isCI ? 12 : 0,
+    globalTimeout: 90 * 60_000,
+    retries: isCI ? 1 : 0,
+    maxFailures: isCI ? 5 : 0,
     workers: 1,
     reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
     globalSetup: './tests/e2e/global-setup.ts',
@@ -34,14 +35,19 @@ export default defineConfig({
 
     use: {
         baseURL: 'http://localhost:5170',
-        trace: 'retain-on-failure',
+        trace: 'on-first-retry',
         screenshot: 'only-on-failure',
-        video: 'retain-on-failure',
+        video: 'on-first-retry',
         actionTimeout: 5_000,
         navigationTimeout: 15_000,
     },
 
-    projects: [
+    projects: isCI ? [
+        {
+            name: 'mobile-chrome',
+            use: { ...devices['Pixel 7'] },
+        },
+    ] : [
         {
             name: 'mobile-safari',
             use: { ...devices['iPhone 13'] },

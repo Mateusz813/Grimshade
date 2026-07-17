@@ -25,6 +25,8 @@ const CLASS_ICONS: Record<string, string> = {
     Rogue: 'dagger', Necromancer: 'skull', Bard: 'musical-note',
 };
 
+const CHAT_POLL_FALLBACK_MS = 30_000;
+
 interface IChatProps {
     channel: string;
     characterName: string;
@@ -130,7 +132,6 @@ const Chat = ({
                 })
                 .catch(() => { });
         };
-        let subscribedOnce = false;
         const unsub = chatApi.subscribe(
             channel,
             (msg) => {
@@ -141,18 +142,19 @@ const Chat = ({
                 });
             },
             (status) => {
-                if (status === 'SUBSCRIBED') {
-                    if (subscribedOnce) mergeFresh();
-                    subscribedOnce = true;
-                }
+                if (status === 'SUBSCRIBED') mergeFresh();
             },
         );
         const onVisible = () => {
             if (document.visibilityState === 'visible') mergeFresh();
         };
         document.addEventListener('visibilitychange', onVisible);
+        const poll = setInterval(() => {
+            if (document.visibilityState === 'visible') mergeFresh();
+        }, CHAT_POLL_FALLBACK_MS);
         return () => {
             unsub();
+            clearInterval(poll);
             document.removeEventListener('visibilitychange', onVisible);
         };
     }, [channel, characterName, onMessageReceived]);

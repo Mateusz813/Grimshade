@@ -58,10 +58,20 @@ jobs:
     # develop pushes/PRs run Typecheck + Vitest only (fast feedback); the full
     # ~40-min Playwright suite is reserved for production (master).
     if: github.ref == 'refs/heads/master' || github.base_ref == 'master'
-    # Full ~400-spec suite runs sequentially (workers: 1) against one shared
-    # Supabase, so a green run is ~60-70 min. 120 = headroom so it finishes
-    # green instead of being canceled; maxFailures still aborts a broken run
-    # far sooner — this is just the ceiling.
+    # Full suite (193 specs × 2 profile) runs sequentially (workers: 1) against
+    # one shared Supabase.
+    #
+    # UWAGA — ten sufit NIE jest bezpiecznikiem i nigdy nim nie był:
+    # gdy wystrzeli, job jest CANCELLED i NIE MA raportu ani traces (dokładnie
+    # to stało się 2026-07-16: krok E2E leciał 1h59m i został ucięty w ciemno).
+    # Realnym bezpiecznikiem jest `globalTimeout: 90 min` w playwright.config.ts —
+    # niższy od tego sufitu, więc Playwright kończy się SAM i zdąży wypluć artefakty.
+    # Ten timeout to już tylko ostatnia deska ratunku na zawieszony proces.
+    #
+    # Wcześniejszy komentarz twierdził, że "maxFailures aborts a broken run far
+    # sooner" — to NIEPRAWDA: Playwright liczy do maxFailures tylko FINALNE
+    # porażki (test uratowany przez retry = `flaky`, nie `failed`), więc przy
+    # maxFailures:12 + retries:2 bezpiecznik potrzebował ~50-100 min zanim wystrzelił.
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
@@ -87,14 +97,18 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
-      # Install BOTH browsers the config uses: chromium (mobile-chrome /
-      # Pixel 7) + webkit (mobile-safari / iPhone 13).
+      # CI odpala TYLKO projekt mobile-chrome (playwright.config.ts: `projects:
+      # isCI ? [pixel7] : [iphone13, pixel7]`) — 193 zamiast 386 wykonań, ~połowa
+      # wall-clocku. Dlatego instalujemy sam chromium; webkit byłby pobierany
+      # i nigdy nie uruchomiony. Lokalnie oba profile działają bez zmian.
+      # TRADE-OFF: WebKit/iPhone nie ma pokrycia w CI — a to realna platforma dla
+      # mobilnej PWA. Docelowo: pełna matryca w nightly (patrz TODO niżej).
       - name: Install Playwright browsers
         if: steps.e2eguard.outputs.ready == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps chromium
       - name: Install only Playwright system deps (when cache hit)
         if: steps.e2eguard.outputs.ready == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium webkit
+        run: npx playwright install-deps chromium
       - name: Run E2E
         if: steps.e2eguard.outputs.ready == 'true'
         run: npm run test:e2e

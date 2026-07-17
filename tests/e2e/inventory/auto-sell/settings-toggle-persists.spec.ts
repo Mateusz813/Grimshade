@@ -32,9 +32,10 @@ test.describe('Inventory › Auto-Sell', { tag: '@inventory' }, () => {
 
             await page.goto('/inventory');
             await expect(page.locator('.top-header')).toBeVisible({ timeout: 15_000 });
-            await expect(page.locator('.inventory__auto-sell')).toBeVisible({ timeout: 10_000 });
+            const sellRow = page.locator('.inventory__auto-sell:not(.inventory__auto-disassemble)');
+            await expect(sellRow).toBeVisible({ timeout: 10_000 });
 
-            const commonBtn = page.locator('.inventory__auto-sell-btn').filter({
+            const commonBtn = sellRow.locator('.inventory__auto-sell-btn').filter({
                 hasText: /^Zwykle/,
             });
             await expect(commonBtn).toBeVisible({ timeout: 5_000 });
@@ -52,7 +53,7 @@ test.describe('Inventory › Auto-Sell', { tag: '@inventory' }, () => {
             }
             await expect(commonBtn).toHaveClass(/inventory__auto-sell-btn--active/);
 
-            const rareBtn = page.locator('.inventory__auto-sell-btn--rare');
+            const rareBtn = sellRow.locator('.inventory__auto-sell-btn--rare');
             await expect(rareBtn).not.toHaveClass(/inventory__auto-sell-btn--active/);
             await expect(rareBtn.locator('svg.game-icon')).toHaveAttribute('data-icon', 'cross-mark');
 

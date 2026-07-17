@@ -306,3 +306,83 @@ describe('Chat — context menu (other-player nick)', () => {
         expect(screen.getByText(/Dodaj do znajomych/)).toBeTruthy();
     });
 });
+
+describe('Chat — wyscig subskrypcji Realtime', () => {
+    const getStatusCallback = (): ((status: string) => void) =>
+        subscribeMock.mock.calls[0][2] as (status: string) => void;
+
+    it('dociaga wiadomosci ktore wpadly miedzy poczatkowym GET a pierwszym SUBSCRIBED', async () => {
+        getMessagesMock.mockResolvedValueOnce([]);
+        renderChat();
+        await waitFor(() => expect(subscribeMock).toHaveBeenCalled());
+
+        const missed = baseMessage({ id: 'm-missed', content: 'wiadomosc z okna handshake' });
+        getMessagesMock.mockResolvedValue([missed]);
+
+        await act(async () => {
+            getStatusCallback()('SUBSCRIBED');
+        });
+
+        await waitFor(() => expect(screen.getByText(/wiadomosc z okna handshake/)).toBeTruthy());
+    });
+
+    it('nie duplikuje wiadomosci gdy SUBSCRIBED dociaga te, ktora juz przyszla przez Realtime', async () => {
+        getMessagesMock.mockResolvedValueOnce([]);
+        renderChat();
+        await waitFor(() => expect(subscribeMock).toHaveBeenCalled());
+
+        const msg = baseMessage({ id: 'm-dup', content: 'jedyna kopia' });
+        const onMessage = subscribeMock.mock.calls[0][1] as (m: unknown) => void;
+
+        await act(async () => {
+            onMessage(msg);
+        });
+        getMessagesMock.mockResolvedValue([msg]);
+        await act(async () => {
+            getStatusCallback()('SUBSCRIBED');
+        });
+
+        await waitFor(() => expect(screen.getAllByText(/jedyna kopia/)).toHaveLength(1));
+    });
+});
+
+describe('Chat — poll fallback (cicho zgubione zdarzenie Realtime)', () => {
+    beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('dociaga wiadomosc ktorej Realtime nigdy nie dostarczyl, po uplywie interwalu', async () => {
+        getMessagesMock.mockResolvedValue([]);
+        renderChat();
+        await waitFor(() => expect(subscribeMock).toHaveBeenCalled());
+
+        const lost = baseMessage({ id: 'm-lost', content: 'zgubiona przez realtime' });
+        getMessagesMock.mockResolvedValue([lost]);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(30_000);
+        });
+
+        await waitFor(() => expect(screen.getByText(/zgubiona przez realtime/)).toBeTruthy());
+    });
+
+    it('nie odpytuje gdy karta jest w tle', async () => {
+        getMessagesMock.mockResolvedValue([]);
+        renderChat();
+        await waitFor(() => expect(subscribeMock).toHaveBeenCalled());
+
+        const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+        getMessagesMock.mockClear();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(30_000);
+        });
+
+        expect(getMessagesMock).not.toHaveBeenCalled();
+        visibilitySpy.mockRestore();
+    });
+});
