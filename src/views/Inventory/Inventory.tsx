@@ -47,6 +47,7 @@ import {
   getTrainingBonuses,
   skillXpToNextLevel,
   getSkillUpgradeBonus,
+  skillTierMult,
   getSpellChestUnlockCost,
   getSpellChestUpgradeCost,
   getTrainableStatsForClass,
@@ -60,7 +61,7 @@ import { getSkillIcon } from '../../data/skillIcons';
 import { isUpgradeMilestone } from '../../systems/systemChatMessages';
 import skillsRaw from '../../data/skills.json';
 import { getItemFile, getStoneImage, getSpellChestImage, getPotionImage, getElixirImage } from '../../systems/spriteAssets';
-import { resolveSkillRecastMs } from '../../systems/combat';
+import { resolveSkillRecastMs, compressPlayerDamage } from '../../systems/combat';
 import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combatEngine';
 import { statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
 import type { Rarity } from '../../systems/lootSystem';
@@ -2242,10 +2243,11 @@ const ActiveSkillsPopupBody = memo(() => {
           const icon = getSkillIcon(skill.id);
           const effectDesc = describeSkillEffectInv(skill.effect);
           const upgradeMult = 1 + currentBonus;
-          const dmgMinEst = Math.max(1, Math.floor((character.attack + wepMinForSkill + innateSkillBonus) * classModForSkill * skill.damage * upgradeMult));
-          const dmgMaxEst = Math.max(1, Math.floor((character.attack + wepMaxForSkill + innateSkillBonus) * classModForSkill * skill.damage * upgradeMult));
+          const skillMult = skillTierMult(skill.damage) * upgradeMult;
+          const dmgMinEst = Math.max(1, Math.floor(compressPlayerDamage((character.attack + wepMinForSkill + innateSkillBonus) * classModForSkill) * skillMult * 0.85));
+          const dmgMaxEst = Math.max(1, Math.floor(compressPlayerDamage((character.attack + wepMaxForSkill + innateSkillBonus) * classModForSkill) * skillMult * 1.15));
           const dmgLine = skill.damage > 0
-            ? `Zadaje obrażenia ~${dmgMinEst.toLocaleString('pl-PL')}–${dmgMaxEst.toLocaleString('pl-PL')} dmg (mnożnik ${(skill.damage * upgradeMult).toFixed(2)}× bazowy + broń)`
+            ? `Zadaje obrażenia ~${dmgMinEst.toLocaleString('pl-PL')}–${dmgMaxEst.toLocaleString('pl-PL')} dmg (mnożnik ${skillMult.toFixed(2)}× bazowy + broń)`
             : 'Skill wsparcia — nie zadaje bezpośrednich obrażeń';
           const showResult = actionResult?.skillId === skill.id;
           return (
@@ -2274,7 +2276,7 @@ const ActiveSkillsPopupBody = memo(() => {
                   <div className="inventory__skills-card-stats">
                     <span>MP {skill.mpCost}</span>
                     <span>CD {(resolveSkillRecastMs(skill.id, 8000) / 1000).toFixed(1)}s</span>
-                    {skill.damage > 0 && <span>×{(skill.damage * (1 + currentBonus)).toFixed(2)} DMG{upgradeLevel > 0 && <span className="inventory__skills-card-bonus"> +{(currentBonus * 100).toFixed(0)}%</span>}</span>}
+                    {skill.damage > 0 && <span>×{skillMult.toFixed(2)} DMG{upgradeLevel > 0 && <span className="inventory__skills-card-bonus"> +{(currentBonus * 100).toFixed(0)}%</span>}</span>}
                   </div>
                 </div>
               </div>
@@ -2542,12 +2544,12 @@ const BUFF_CONFIG: Record<string, IBuffConfig> = {
   'offline_training_boost':           { id: 'offline_training_boost',name: 'Trening x2',      icon: 'person-lifting-weights', effect: 'offline_training_boost',durationMs: 3600000, pausable: true },
   'utamo_vita':                       { id: 'utamo_vita',            name: 'Utamo Vita',      icon: 'blue-circle',  effect: 'utamo_vita',            durationMs: 600000 },
   'premium_xp_boost':                 { id: 'premium_xp_boost',      name: 'Premium XP x2',   icon: 'gem-stone',  effect: 'premium_xp_boost',      durationMs: 43200000,pausable: false },
-  'atk_dmg_25_15m':                   { id: 'atk_dmg_25',            name: 'ATK DMG +25%',    icon: 'crossed-swords',  effect: 'atk_dmg_25',            durationMs: 900000,  pausable: true },
-  'atk_dmg_50_15m':                   { id: 'atk_dmg_50',            name: 'ATK DMG +50%',    icon: 'crossed-swords',  effect: 'atk_dmg_50',            durationMs: 900000,  pausable: true },
-  'atk_dmg_100_15m':                  { id: 'atk_dmg_100',           name: 'ATK DMG +100%',   icon: 'crossed-swords',  effect: 'atk_dmg_100',           durationMs: 900000,  pausable: true },
-  'spell_dmg_25_15m':                 { id: 'spell_dmg_25',          name: 'SPELL DMG +25%',  icon: 'crystal-ball',  effect: 'spell_dmg_25',          durationMs: 900000,  pausable: true },
-  'spell_dmg_50_15m':                 { id: 'spell_dmg_50',          name: 'SPELL DMG +50%',  icon: 'crystal-ball',  effect: 'spell_dmg_50',          durationMs: 900000,  pausable: true },
-  'spell_dmg_100_15m':                { id: 'spell_dmg_100',         name: 'SPELL DMG +100%', icon: 'crystal-ball',  effect: 'spell_dmg_100',         durationMs: 900000,  pausable: true },
+  'atk_dmg_25_15m':                   { id: 'atk_dmg_25',            name: 'ATK DMG +8%',     icon: 'crossed-swords',  effect: 'atk_dmg_25',            durationMs: 900000,  pausable: true },
+  'atk_dmg_50_15m':                   { id: 'atk_dmg_50',            name: 'ATK DMG +15%',    icon: 'crossed-swords',  effect: 'atk_dmg_50',            durationMs: 900000,  pausable: true },
+  'atk_dmg_100_15m':                  { id: 'atk_dmg_100',           name: 'ATK DMG +25%',    icon: 'crossed-swords',  effect: 'atk_dmg_100',           durationMs: 900000,  pausable: true },
+  'spell_dmg_25_15m':                 { id: 'spell_dmg_25',          name: 'SPELL DMG +8%',   icon: 'crystal-ball',  effect: 'spell_dmg_25',          durationMs: 900000,  pausable: true },
+  'spell_dmg_50_15m':                 { id: 'spell_dmg_50',          name: 'SPELL DMG +15%',  icon: 'crystal-ball',  effect: 'spell_dmg_50',          durationMs: 900000,  pausable: true },
+  'spell_dmg_100_15m':                { id: 'spell_dmg_100',         name: 'SPELL DMG +25%',  icon: 'crystal-ball',  effect: 'spell_dmg_100',         durationMs: 900000,  pausable: true },
   'hp_boost_500_15m':                 { id: 'hp_boost_500',          name: '+500 Max HP',     icon: 'drop-of-blood',  effect: 'hp_boost_500',          durationMs: 900000,  pausable: true },
   'mp_boost_500_15m':                 { id: 'mp_boost_500',          name: '+500 Max MP',     icon: 'large-blue-diamond',  effect: 'mp_boost_500',          durationMs: 900000,  pausable: true },
   'atk_boost_50_15m':                 { id: 'atk_boost_50',          name: '+50 ATK',         icon: 'flexed-biceps',  effect: 'atk_boost_50',          durationMs: 900000,  pausable: true },

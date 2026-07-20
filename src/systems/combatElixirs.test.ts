@@ -75,32 +75,32 @@ describe('getAtkDamageMultiplier', () => {
         expect(getAtkDamageMultiplier()).toBe(1.0);
     });
 
-    it('returns 2.0 for atk_dmg_100', () => {
+    it('returns 1.25 for atk_dmg_100', () => {
         seedPausable('atk_dmg_100');
-        expect(getAtkDamageMultiplier()).toBe(2.0);
-    });
-
-    it('returns 1.5 for atk_dmg_50', () => {
-        seedPausable('atk_dmg_50');
-        expect(getAtkDamageMultiplier()).toBe(1.5);
-    });
-
-    it('returns 1.25 for atk_dmg_25', () => {
-        seedPausable('atk_dmg_25');
         expect(getAtkDamageMultiplier()).toBe(1.25);
+    });
+
+    it('returns 1.15 for atk_dmg_50', () => {
+        seedPausable('atk_dmg_50');
+        expect(getAtkDamageMultiplier()).toBe(1.15);
+    });
+
+    it('returns 1.08 for atk_dmg_25', () => {
+        seedPausable('atk_dmg_25');
+        expect(getAtkDamageMultiplier()).toBe(1.08);
     });
 
     it('picks the highest tier when multiple tiers are active', () => {
         seedPausable('atk_dmg_25');
         seedPausable('atk_dmg_50');
         seedPausable('atk_dmg_100');
-        expect(getAtkDamageMultiplier()).toBe(2.0);
+        expect(getAtkDamageMultiplier()).toBe(1.25);
     });
 
     it('falls back to next tier when the strongest one is gone', () => {
         seedPausable('atk_dmg_25');
         seedPausable('atk_dmg_50');
-        expect(getAtkDamageMultiplier()).toBe(1.5);
+        expect(getAtkDamageMultiplier()).toBe(1.15);
     });
 });
 
@@ -110,26 +110,26 @@ describe('getSpellDamageMultiplier', () => {
         expect(getSpellDamageMultiplier()).toBe(1.0);
     });
 
-    it('returns 2.0 for spell_dmg_100', () => {
+    it('returns 1.25 for spell_dmg_100', () => {
         seedPausable('spell_dmg_100');
-        expect(getSpellDamageMultiplier()).toBe(2.0);
-    });
-
-    it('returns 1.5 for spell_dmg_50', () => {
-        seedPausable('spell_dmg_50');
-        expect(getSpellDamageMultiplier()).toBe(1.5);
-    });
-
-    it('returns 1.25 for spell_dmg_25', () => {
-        seedPausable('spell_dmg_25');
         expect(getSpellDamageMultiplier()).toBe(1.25);
+    });
+
+    it('returns 1.15 for spell_dmg_50', () => {
+        seedPausable('spell_dmg_50');
+        expect(getSpellDamageMultiplier()).toBe(1.15);
+    });
+
+    it('returns 1.08 for spell_dmg_25', () => {
+        seedPausable('spell_dmg_25');
+        expect(getSpellDamageMultiplier()).toBe(1.08);
     });
 
     it('highest tier wins when all three are active', () => {
         seedPausable('spell_dmg_25');
         seedPausable('spell_dmg_50');
         seedPausable('spell_dmg_100');
-        expect(getSpellDamageMultiplier()).toBe(2.0);
+        expect(getSpellDamageMultiplier()).toBe(1.25);
     });
 });
 

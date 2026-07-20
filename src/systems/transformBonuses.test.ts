@@ -88,7 +88,8 @@ describe('getTransformDmgMultiplier', () => {
 
     it('stacks additively across completed transforms', () => {
         setCompleted([1, 2, 3]);
-        const expected = 1 + (3 + 3 + 3) / 100;
+        const per = getClassTransformBonuses('Knight', 1);
+        const expected = 1 + (per.dmgPercent * 3) / 100;
         expect(getTransformDmgMultiplier()).toBeCloseTo(expected, 5);
     });
 
@@ -295,7 +296,7 @@ describe('getLiveTransformBreakdown', () => {
         const b = getLiveTransformBreakdown();
         expect(b.active).toBe(true);
         expect(b.baked).toBe(false);
-        expect(b.dmgPercent).toBe(6);
+        expect(b.dmgPercent).toBe(2);
         expect(b.hpPercent).toBe(8);
         expect(b.mpPercent).toBe(2);
         expect(b.defPercent).toBe(6);

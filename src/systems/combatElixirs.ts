@@ -3,17 +3,17 @@ import { useBuffStore } from '../stores/buffStore';
 
 export const getAtkDamageMultiplier = (): number => {
     const b = useBuffStore.getState();
-    if (b.hasBuff('atk_dmg_100')) return 2.0;
-    if (b.hasBuff('atk_dmg_50')) return 1.5;
-    if (b.hasBuff('atk_dmg_25')) return 1.25;
+    if (b.hasBuff('atk_dmg_100')) return 1.25;
+    if (b.hasBuff('atk_dmg_50')) return 1.15;
+    if (b.hasBuff('atk_dmg_25')) return 1.08;
     return 1.0;
 };
 
 export const getSpellDamageMultiplier = (): number => {
     const b = useBuffStore.getState();
-    if (b.hasBuff('spell_dmg_100')) return 2.0;
-    if (b.hasBuff('spell_dmg_50')) return 1.5;
-    if (b.hasBuff('spell_dmg_25')) return 1.25;
+    if (b.hasBuff('spell_dmg_100')) return 1.25;
+    if (b.hasBuff('spell_dmg_50')) return 1.15;
+    if (b.hasBuff('spell_dmg_25')) return 1.08;
     return 1.0;
 };
 

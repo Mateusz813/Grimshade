@@ -50,17 +50,19 @@ const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
 const DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80, DEF_BASE=25;
 const compress=(x)=>DMG_COMPRESS_K*Math.pow(max(0,x),DMG_COMPRESS_P);
 const mitig=(def,lvl)=>def<=0?0:min(0.75,def/(def+max(1,lvl)+DEF_BASE));
+const SKILL_MULT=2.2, CRIT_MULT=2.0, SKILL_EVERY=5;
+const SKILL_ROT=1+(SKILL_MULT*CRIT_MULT)/SKILL_EVERY;
 function basicHit(p,enemyDef){
   const m=1-mitig(enemyDef,p.L);
   if(p.dual)return 2*compress((p.attack+0.6*p.wRoll+p.csb)*p.classMod*m)*(1+p.crit);
   return compress((p.attack+p.wRoll+p.csb)*p.classMod*m)*(1+p.crit);
 }
-const playerDPS=(p,enemyDef)=>basicHit(p,enemyDef)/(getAttackMs(p.as)/1000);
+const playerDPS=(p,enemyDef)=>basicHit(p,enemyDef)*SKILL_ROT/(getAttackMs(p.as)/1000);
 
 const MON_SPEED=2.0, MON_INT=getAttackMs(MON_SPEED)/1000;
 const TTK_REF=7.0;
 const BUDGET=28;
-const SURV_HITS=35;
+const SURV_HITS=22;
 const MONR={normal:{hp:1.0,atk:1.0},strong:{hp:1.5,atk:1.4},epic:{hp:2.5,atk:2.2},legendary:{hp:4.0,atk:3.2},boss:{hp:8.0,atk:5.0}};
 function ref(L){const ng=L<=10;const ps=CLASSES.map(c=>player(c,L,L,'common',0,ng));return{dps:ps.reduce((s,p)=>s+playerDPS(p,0),0)/7,maxHp:ps.reduce((s,p)=>s+p.maxHp,0)/7,def:ps.reduce((s,p)=>s+p.defense,0)/7};}
 function calibMonster(L){const r=ref(L);return{hp:max(8,round(r.dps*TTK_REF)),attack:max(1,round(r.maxHp/SURV_HITS)),defense:max(1,round(r.def*0.15)),speed:MON_SPEED};}

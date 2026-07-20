@@ -181,7 +181,7 @@ describe('transformSystem', () => {
       const b = rewards.permanentBonuses;
       expect(b.hpPercent).toBe(4);
       expect(b.defPercent).toBe(3);
-      expect(b.dmgPercent).toBe(3);
+      expect(b.dmgPercent).toBe(1);
       expect(b.flatHp).toBe(420);
       expect(b.flatMp).toBe(70);
       expect(b.attack).toBe(9);

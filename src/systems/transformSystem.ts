@@ -82,7 +82,7 @@ export interface ICumulativeTransformBonuses {
 
 const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuses> = {
   Mage: {
-    dmgPercent: 8,
+    dmgPercent: 3,
     hpPercent: 2,
     mpPercent: 3,
     defPercent: 1,
@@ -98,7 +98,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Cleric: {
-    dmgPercent: 5,
+    dmgPercent: 2,
     hpPercent: 3,
     mpPercent: 3,
     defPercent: 2,
@@ -114,7 +114,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Necromancer: {
-    dmgPercent: 7,
+    dmgPercent: 2,
     hpPercent: 2,
     mpPercent: 3,
     defPercent: 1,
@@ -130,7 +130,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Archer: {
-    dmgPercent: 7,
+    dmgPercent: 2,
     hpPercent: 2,
     mpPercent: 1,
     defPercent: 1,
@@ -146,7 +146,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Rogue: {
-    dmgPercent: 7,
+    dmgPercent: 2,
     hpPercent: 2,
     mpPercent: 1,
     defPercent: 1,
@@ -162,7 +162,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Bard: {
-    dmgPercent: 5,
+    dmgPercent: 2,
     hpPercent: 3,
     mpPercent: 3,
     defPercent: 2,
@@ -178,7 +178,7 @@ const CLASS_TRANSFORM_BONUSES: Record<TCharacterClass, ITransformPermanentBonuse
     classSkillBonus: 0,
   },
   Knight: {
-    dmgPercent: 3,
+    dmgPercent: 1,
     hpPercent: 4,
     mpPercent: 1,
     defPercent: 3,

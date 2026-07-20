@@ -15,6 +15,7 @@ const SKILLCOEF={Knight:0.5,Mage:0.8,Cleric:0.6,Archer:0.4,Rogue:0.3,Necromancer
 const ARMOR={Knight:'heavy',Mage:'magic',Cleric:'magic',Necromancer:'magic',Archer:'light',Rogue:'light',Bard:'light'};
 const WEAPON={Knight:'sword',Mage:'staff',Cleric:'holy_wand',Archer:'bow',Rogue:'dagger',Necromancer:'dead_staff',Bard:'harp'};
 const OFFH={Knight:'shield',Mage:'spellbook',Cleric:'holy_cross',Archer:'quiver',Rogue:'dagger',Necromancer:'voodoo_doll',Bard:'talisman'};
+const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
 const CLASSES=Object.keys(CBS);
 const RMULT={common:1.0,rare:1.15,epic:1.30,legendary:1.45,mythic:1.60,heroic:2.05};
 const enh=(U)=>U<=0?1:1+U*0.10;
@@ -38,7 +39,7 @@ function player(cls,L,G,R,U){
   const oh=itemTemplates.offhands.find(t=>t.type===OFFH[cls]); if(cls!=='Rogue'&&oh){const v=upStat(baseStat(oh.scaling,G,R),U);if(oh.baseStatType==='attack')gA+=v;else gD+=v;}
   const wsc=itemTemplates.weapons.find(t=>t.type===WEAPON[cls]);
   const pts=2*max(0,L-1), atkPts=round(pts*0.5), hpPts=round(pts*0.3)*6, defPts=round(pts*0.2);
-  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:hp+gH+hpPts,wRoll:weaponAvg(wsc.scaling,G,R,U),as:b.as,dual:cls==='Rogue',U};
+  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:hp+gH+hpPts,wRoll:weaponAvg(wsc.scaling,G,R,U),as:b.as,cm:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),dual:cls==='Rogue',U};
 }
 const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
 const DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80, DEF_BASE=25;
@@ -49,17 +50,18 @@ const defPenOf=(sk)=>{const m=((sk&&sk.effect)||'').match(/(?:^|;)def_pen:(\d+)/
 function bestSkill(cls,L){let best=null,bv=-1;for(const sk of(skills.activeSkills[cls.toLowerCase()]||[])){if((sk.damage||0)<=0||((sk.unlockLevel||0)>L))continue;const v=sk.damage*(1+defPenOf(sk));if(v>bv){bv=v;best=sk;}}return best;}
 function bossDPS(p,L,bossDef){
   const m=1-mitig(bossDef,p.L);
-  const basicPerHit=compress((p.attack+p.wRoll)*m);
+  const basicPerHit=compress((p.attack+p.wRoll)*p.cm*m)*(1+p.crit);
   const basicDps=(p.dual?basicPerHit*1.2:basicPerHit)/(getAttackMs(p.as)/1000);
   const sk=bestSkill(p.cls,L); const skMult=sk?skillMultOf(sk.damage,p.U):0;
   const skillDps=skMult>0?(basicPerHit*skMult)/5:0;
   return basicDps+skillDps;
 }
 const BOSS_TTK=210;
+function refBossDPS(L){let mx=0;for(const cls of CLASSES){const p=player(cls,L,L,'legendary',3);mx=max(mx,bossDPS(p,L,round(p.attack*0.10)));}return mx;}
 function calibBoss(L){
   const ref=player('Mage',L,L,'legendary',3);
   const refDef=round(ref.attack*0.10);
-  const scaledHP=round(bossDPS(ref,L,refDef)*BOSS_TTK);
+  const scaledHP=round(refBossDPS(L)*BOSS_TTK);
   const scaledHit=round(ref.maxHp/7);
   return{hp:max(1,round(scaledHP/3.5)),attack:max(1,round(scaledHit/1.75)),defense:max(1,round(refDef/1.3))};
 }
@@ -108,7 +110,6 @@ if(process.argv.includes('--table')){
 }
 
 if(process.argv.includes('--extra')){
-  const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
   const CRIT={Knight:0.03,Mage:0.05,Cleric:0.03,Archer:0.10,Rogue:0.15,Necromancer:0.05,Bard:0.07};
   const tfBossHP=(L)=>Math.floor(95*Math.pow(L,1.1)+30)*5;
   const tfBossDef=(L)=>Math.floor(L*0.4)*3;
@@ -137,7 +138,6 @@ if(process.argv.includes('--extra')){
 }
 
 if(process.argv.includes('--qa')){
-  const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
   const CRIT={Knight:0.03,Mage:0.05,Cleric:0.03,Archer:0.10,Rogue:0.15,Necromancer:0.05,Bard:0.07};
   const tfBossHP=(L)=>Math.floor(95*Math.pow(L,1.1)+30)*5, tfBossDef=(L)=>Math.floor(L*0.4)*3;
   function tfDPS(p,L,G){const csb=floor(min(100,L)*SKILLCOEF[p.cls]);const cm=CLASSMOD[p.cls];const cr=min(MAXCRIT[p.cls],CRIT[p.cls]);

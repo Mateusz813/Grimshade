@@ -4,7 +4,7 @@
 >
 > **Ten plik MUSI być aktualizowany przy KAŻDEJ zmianie backendu lub frontu** (patrz [§30 Reguła utrzymania](#30-reguła-utrzymania-obowiązkowe)). Wersja player-facing (uproszczona) żyje w [`/wiki`](../src/views/Wiki/Wiki.tsx) i `src/data/wiki.ts` — ją też się aktualizuje.
 >
-> Ostatnia pełna synchronizacja z kodem: 2026-07-15 (gra v1.10.x). Źródła: workflow ekstrakcji 7 domen + weryfikacja adwersarialna. **Rebalans walki 2.0.0 wcielony 2026-07-19** (%-DEF, kompresja obrażeń gracza, usunięty pasywny blok/unik, zakresy skilli + ujednolicona krzywa ulepszeń, nowe mnożniki rzadkości, TTK), **model kompresji zmieniony na krzywą potęgową w 2.0.1** — podsumowanie w [§29.1](#291-rebalans-walki-200-2026-07-19).
+> Ostatnia pełna synchronizacja z kodem: 2026-07-15 (gra v1.10.x). Źródła: workflow ekstrakcji 7 domen + weryfikacja adwersarialna. **Rebalans walki 2.0.0 wcielony 2026-07-19** (%-DEF, kompresja obrażeń gracza, usunięty pasywny blok/unik, zakresy skilli + ujednolicona krzywa ulepszeń, nowe mnożniki rzadkości, TTK), **model kompresji zmieniony na krzywą potęgową w 2.0.1**, **strojenie 2.0.2 (2026-07-20): ścięte mnożniki eliksir/transform, HP potworów/bossów przekalibrowane pod rotację skilli + crit, większa presja potionów, fix duplikacji nagród daily, poprawione opisy dmg skilli** — podsumowanie w [§29.1](#291-rebalans-walki-200-2026-07-19) i [§29.2](#292-strojenie-balansu-202-2026-07-20).
 
 ## Spis treści
 
@@ -235,7 +235,7 @@ Koniec „gear L100 zabija bossa L200".
 
 ### 3.7 Mnożniki obrażeń/leczenia (eliksiry, transformacje, upgrade skilli)
 
-Eliksiry (`combatElixirs.ts`): `atk_dmg_100/50/25` = ×2.0/1.5/1.25; `spell_dmg_*` analogicznie; `hp_pct_25`/`mp_pct_25` = ×1.25 max; `atk_boost_50`/`def_boost_50` = +50 flat; `attack_speed` = ×1.20. Tiery nie mutex — kilka może być aktywnych, ale drenuje i liczy się najwyższy.
+Eliksiry (`combatElixirs.ts`): `atk_dmg_100/50/25` = ×1.25/1.15/1.08 (ścięte w 2.0.2 z ×2.0/1.5/1.25); `spell_dmg_*` analogicznie; `hp_pct_25`/`mp_pct_25` = ×1.25 max; `atk_boost_50`/`def_boost_50` = +50 flat; `attack_speed` = ×1.20. Tiery nie mutex — kilka może być aktywnych, ale drenuje i liczy się najwyższy.
 
 Upgrade skilla `getCombatSkillUpgradeMultiplier(U)` = `1 + 0.6×(1 − 0.9^U)` — malejące przyrosty, asymptota **×1.6**. +5 ≈ ×1.25, +10 ≈ ×1.39, +20 ≈ ×1.53, +30 ≈ ×1.57 (→ ×1.6). Ulepszenia nieskończone z malejącym zwrotem. **Krzywa UJEDNOLICONA (2.0.0):** display i walka używają teraz tej samej funkcji (`getSkillUpgradeBonus(U) = getCombatSkillUpgradeMultiplier(U) − 1`) — dawniej się rozjeżdżały (display `1.15^U`, walka `~+2%/lvl`).
 
@@ -581,7 +581,7 @@ Cooldown: flat 1000 ms, pct 500 ms. Auto-miksturki: 4 sloty (Flat-HP, Flat-MP, P
 ### 11.4 Eliksiry (`ELIXIRS`)
 
 - **XP:** xp_boost +50%/1h (100k), xp_boost_100 +100%/1h (200k), premium_xp_boost ×2/12h (10M). Skill: skill_xp_boost +50%/1h (20k), +100% (50k). **XP/skill boosty działają na WSZYSTKIE źródła XP** (polowanie, taski, questy, lochy, bossy, rajdy, transformy, offline) i **timer leci realnie od użycia** (nie pauzuje poza walką) — patrz §11.4a.
-- **Bojowe (15 min, pausable, tylko w walce):** attack_speed +20% (120k), cd_reduction −20% cooldownów/30min (150k), atk_dmg I/II/III +25/50/100% (50k/150k/500k), spell_dmg I/II/III analogicznie.
+- **Bojowe (15 min, pausable, tylko w walce):** attack_speed +20% (120k), cd_reduction −20% cooldownów/30min (150k), atk_dmg I/II/III +8/15/25% (50k/150k/500k; ścięte w 2.0.2 z +25/50/100%), spell_dmg I/II/III analogicznie.
 - **Statowe:** hp_boost +500 maxHP (5k), mp_boost +500 (5k), atk_boost +50 ATK+50 DEF (80k), hp_pct_25 +25% maxHP (350k), mp_pct_25 +25% maxMP (350k).
 - **Utility/ochrona/resety:** dungeon_reset (50k, cap 5/dzień), boss_reset (80k, cap 5/dzień), death_protection zeruje karę śmierci (5M), amulet_of_loss chroni itemy (500k), stat_reset (10M), offline_training_boost (50k), utamo_vita magic shield (200k).
 
@@ -779,15 +779,15 @@ Mnożniki tieru: Normal 1/1/1, Strong 2.0/1.5/1.3, Epic 4.0/2.5/1.8, Boss 5.0/3.
 
 | Klasa | dmg% | hp% | mp% | def% | atk% | flatHp | flatMp | +ATK | +DEF |
 |---|---|---|---|---|---|---|---|---|---|
-| Mage | 8 | 2 | 3 | 1 | 0 | 150 | 400 | 13 | 3 |
-| Cleric | 5 | 3 | 3 | 2 | 0 | 220 | 380 | 10 | 10 |
-| Necromancer | 7 | 2 | 3 | 1 | 0 | 180 | 380 | 12 | 5 |
-| Archer | 7 | 2 | 1 | 1 | 7 | 220 | 150 | 0 | 5 |
-| Rogue | 7 | 2 | 1 | 1 | 0 | 190 | 150 | 15 | 4 |
-| Bard | 5 | 3 | 3 | 2 | 0 | 230 | 260 | 10 | 9 |
-| Knight | 3 | 4 | 1 | 3 | 0 | 420 | 70 | 9 | 16 |
+| Mage | 3 | 2 | 3 | 1 | 0 | 150 | 400 | 13 | 3 |
+| Cleric | 2 | 3 | 3 | 2 | 0 | 220 | 380 | 10 | 10 |
+| Necromancer | 2 | 2 | 3 | 1 | 0 | 180 | 380 | 12 | 5 |
+| Archer | 2 | 2 | 1 | 1 | 7 | 220 | 150 | 0 | 5 |
+| Rogue | 2 | 2 | 1 | 1 | 0 | 190 | 150 | 15 | 4 |
+| Bard | 2 | 3 | 3 | 2 | 0 | 230 | 260 | 10 | 9 |
+| Knight | 1 | 4 | 1 | 3 | 0 | 420 | 70 | 9 | 16 |
 
-Skalowanie tieru `1 + (transformId−1)×0.3` (T11 = ×4.0) aplikowane TYLKO do flatów. Procenty stackują additively przez wszystkie ukończone transformacje.
+Skalowanie tieru `1 + (transformId−1)×0.3` (T11 = ×4.0) aplikowane TYLKO do flatów. Procenty stackują additively przez wszystkie ukończone transformacje. **`dmg%` ścięte w 2.0.2** (było Mage 8 / DPS 7 / support 5 / Knight 3) → maks transform-dmg-mult ~1.11–1.33 (zamiast 1.33–1.88), żeby burst nie eksplodował; flaty/inne % bez zmian.
 
 ### 17.4 Nagrody ukończenia (per transformacja)
 
@@ -970,6 +970,25 @@ Duża zmiana modelu walki/skilli/balansu (MAJOR). Zastępuje wcześniejsze formu
 | Efekty skilli | death_curse ×6, dark_ritual 25%, ice_lance bez slow, universe_song z party_instant_kill | death_curse ×3, dark_ritual 13%, `ice_lance enemy_slow:40:6000`, universe_song bez party_instant_kill (immortal+atk100%+as×2.2); Cleric revive obejmuje ludzi+boty (50% HP + 3s) (§12.6) |
 
 Źródło: `src/systems/combat.ts` (`DEF_K`/`DEF_CAP`/`DEF_BASE`/`DMG_COMPRESS_K`/`DMG_COMPRESS_P`/`compressPlayerDamage`, `MONSTER_STAT_MULTIPLIERS`), `skillSystem.ts` (`rollSkillDamageMult`, `getCombatSkillUpgradeMultiplier`, `getSkillUpgradeBonus`, `skillTierMult`), `lootSystem.ts`, `skills.json`, `scripts/balance/calibrate.mjs` + `calibrateContent.mjs`. **Uwaga:** parytet backendu PHP (CombatMath/HuntResolver/BossSystem/SkillSystem/SkillEffectsV2) — PENDING.
+
+---
+
+### 29.2 Strojenie balansu 2.0.2 (2026-07-20)
+
+Playtest L350 (Archer) pokazał, że spelle biją 7k+ i one-shotują wszystko, walka trwa za krótko, potiony niepotrzebne. Przyczyna: mnożniki (crit × skill × transform × eliksiry) nakładane PO kompresji stackują się ~×8–29 na skompresowanej bazie, a HP treści było skalibrowane pod DPS **tylko-basic** (bez rotacji skilli). Zmiany:
+
+| Obszar | Było (2.0.1) | Jest (2.0.2) |
+|---|---|---|
+| Eliksiry dmg | `atk_dmg`/`spell_dmg` ×2.0/1.5/1.25 (max atk×spell ×4) | ×1.25/1.15/1.08 (max ×~1.56) (§3.7, §11.4) |
+| Transform dmg% | Mage 8 / DPS 7 / support 5 / Knight 3 (max mult 1.33–1.88) | Mage 3 / reszta 2 / Knight 1 (max mult 1.11–1.33) (§17.3) |
+| Kalibracja HP potworów | model DPS = tylko basic (`playerDPS`) | + rotacja skilli `SKILL_ROT = 1 + (SKILL_MULT×CRIT)/SKILL_EVERY` (2.2×2/5 = ×1.88) → HP potworów ~×1.88, walka trwa (nie one-shot) |
+| Presja potionów | `SURV_HITS=35` (mob atak = maxHp/35) | `SURV_HITS=22` → ~40–50% HP tracone/walkę, potiony konieczne |
+| Kalibracja bossów | ref DPS = Mage (bez crit, bez classMod) | ref = **najmocniejsza klasa** z crit + classMod → boss-HP dostrojone do realnego, crit-owego gracza; Archer boss ~2.4 min + ~8–16× maxHp leczenia (potiony) |
+| Opisy skilli (Inventory) | mnożnik = surowy `skill.damage` coeff (×20) + brak kompresji | `skillTierMult(coeff)` × upgrade (~1.2–3.4×) + `compressPlayerDamage` → dmg zgodny z walką |
+
+Efekt (L350 Archer, EQ +0): spell ~1k (było 7k), mob epic ~5.5k HP → walka 10–15s / kilka–kilkanaście ciosów, ~40–55% HP/walkę; boss ~2.4–3.5 min i zjada potiony; zero one-shotów na najtrudniejszej treści. Baza kompresji nietknięta → zapas na reborny zachowany. Źródło: `combatElixirs.ts`, `transformSystem.ts`, `scripts/balance/calibrate.mjs` (`SKILL_ROT`, `SURV_HITS`) + `calibrateContent.mjs` (crit+classMod, `refBossDPS`), `Inventory.tsx`; parytet PHP: `CombatElixirs.php`, `TransformSystem.php`, `monsters.json`/`bosses.json` (skopiowane), golden fixtures zregenerowane.
+
+**Bug fix — duplikacja nagród daily (2.0.2):** „odbierz wszystkie" dawało nagrody wielokrotnie z tych samych questów. Przyczyna: zdebounce'owany commit pełnego stanu (`PUT /state`) wysyłał lokalny `dailyQuests` z `claimed=false` i nadpisywał serwerowe `claimed=true` (ustawione przez dedykowany endpoint claim) → quest znów do odbioru. Fix: `CharacterStateService::preserveClaimedDailyQuests` — commit pełnego stanu nie może cofnąć `claimed=true` w obrębie tej samej daty (`lastRefreshDate`); nowy dzień (inna data) resetuje normalnie. Serwer jest autorytatywny dla flagi claimed.
 
 ---
 
