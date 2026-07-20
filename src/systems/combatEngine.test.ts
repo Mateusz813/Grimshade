@@ -9,6 +9,7 @@ import {
     resetHuntEffects,
     isHuntPlayerStunned,
     isHuntMonsterStunned,
+    huntMonsterSlowSkips,
     getHuntMonsterStatusView,
     consumeHuntMonsterMarkAmp,
     clearHuntNecroSummons,
@@ -233,35 +234,35 @@ describe('applyRarityToMonster', () => {
         expect(result).toBe(baseMonster);
     });
 
-    it('scales strong rarity: hp ×1.5, atk ×1.2, def ×1.3, xp ×2, gold ×2', () => {
+    it('scales strong rarity: hp ×1.5, atk ×1.4, def ×1.3, xp ×2, gold ×2', () => {
         const result = applyRarityToMonster(baseMonster, 'strong');
         expect(result.hp).toBe(150);
-        expect(result.attack).toBe(12);
+        expect(result.attack).toBe(14);
         expect(result.defense).toBe(6);
         expect(result.xp).toBe(100);
         expect(result.gold).toEqual([20, 40]);
     });
 
-    it('scales epic rarity: hp ×2.5, atk ×1.6, def ×1.5, xp ×4, gold ×4', () => {
+    it('scales epic rarity: hp ×2.5, atk ×2.2, def ×1.5, xp ×4, gold ×4', () => {
         const result = applyRarityToMonster(baseMonster, 'epic');
         expect(result.hp).toBe(250);
-        expect(result.attack).toBe(16);
+        expect(result.attack).toBe(22);
         expect(result.defense).toBe(7);
         expect(result.xp).toBe(200);
         expect(result.gold).toEqual([40, 80]);
     });
 
-    it('scales legendary rarity: hp ×5, atk ×1.8, def ×1.8, xp ×10', () => {
+    it('scales legendary rarity: hp ×4, atk ×3.2, def ×1.8, xp ×10', () => {
         const result = applyRarityToMonster(baseMonster, 'legendary');
-        expect(result.hp).toBe(500);
-        expect(result.attack).toBe(18);
+        expect(result.hp).toBe(400);
+        expect(result.attack).toBe(32);
         expect(result.xp).toBe(500);
     });
 
-    it('scales boss rarity: hp ×10, atk ×2.5, def ×2, xp ×30, gold ×30', () => {
+    it('scales boss rarity: hp ×8, atk ×5, def ×2, xp ×30, gold ×30', () => {
         const result = applyRarityToMonster(baseMonster, 'boss');
-        expect(result.hp).toBe(1000);
-        expect(result.attack).toBe(25);
+        expect(result.hp).toBe(800);
+        expect(result.attack).toBe(50);
         expect(result.defense).toBe(10);
         expect(result.xp).toBe(1500);
         expect(result.gold).toEqual([300, 600]);
@@ -271,7 +272,7 @@ describe('applyRarityToMonster', () => {
         const m: IMonster = makeMonster({ hp: 3, attack: 3, defense: 3, xp: 3, gold: [3, 7] });
         const result = applyRarityToMonster(m, 'strong');
         expect(result.hp).toBe(4);
-        expect(result.attack).toBe(3);
+        expect(result.attack).toBe(4);
     });
 
     it('preserves non-stat fields like name_pl, icon, level', () => {
@@ -385,6 +386,13 @@ describe('isHuntMonsterStunned', () => {
     it('returns false for negative slot', () => {
         resetHuntEffects();
         expect(isHuntMonsterStunned(-1, 'rat')).toBe(false);
+    });
+});
+
+describe('huntMonsterSlowSkips', () => {
+    it('returns false when the monster has no status entry (never slowed)', () => {
+        resetHuntEffects();
+        expect(huntMonsterSlowSkips(0, 'rat', () => 0)).toBe(false);
     });
 });
 

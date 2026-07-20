@@ -65,7 +65,7 @@ const APPLY_CASES: Array<[string, string | null]> = [
     ['shadow_clone', 'dmg_amp_next:2:1'],
     ['god_slash', 'aggro_steal;crit_next:1:1;dmg_amp_next:5:1'],
     ['divine_melody', 'party_as_up:2:10000;party_attack_up:40:10000'],
-    ['universe_song', 'party_instant_kill_chance_next:3:5;party_immortal:3000;party_attack_up:100:30000;party_as_up:2.2:10000'],
+    ['universe_song', 'party_immortal:3000;party_attack_up:100:30000;party_as_up:2.2:10000'],
     ['god_ballad', 'aoe;party_attack_up:50:30000'],
     ['apocalypse_spell', 'aoe;immortal:5000'],
     ['holy_apocalypse', 'aoe;party_immortal:5000;revive_party:5000:10000'],
@@ -94,7 +94,6 @@ const APPLY_CASES: Array<[string, string | null]> = [
     ['syn_lifesteal_1arg', 'party_lifesteal_next:100'],
     ['syn_critbuffnext_extra', 'crit_buff_next:30:99'],
     ['syn_block_bare', 'block_next_party'],
-    ['syn_pik_alone', 'party_instant_kill_chance_next:3:5'],
     ['syn_crit_next_2', 'crit_next:2:1'],
     ['syn_next_ally_float', 'next_ally_heal:5:3.9'],
     ['syn_dodge_float_charge', 'dodge_next:2.9:non_magic'],
@@ -125,7 +124,6 @@ const CHARGE_KEY_HEADS = [
     'block_next_party',
     'next_ally_heal',
     'party_lifesteal_next',
-    'party_instant_kill_chance_next',
     'arbitrary_head',
 ];
 

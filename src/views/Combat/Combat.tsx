@@ -19,7 +19,7 @@ import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import Icon from '../../components/atoms/Icon/Icon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import EmojiText from '../../components/atoms/Twemoji/EmojiText';
-import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
+import { getTrainingBonuses, rollSkillDamageMult } from '../../systems/skillSystem';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
@@ -609,9 +609,7 @@ const Combat = () => {
             const humanIdx = orderedHumanIds.indexOf(casterId);
             if (humanIdx < 0) continue;
             const allySlot = humanIdx + 1;
-            if (cast.isDamageHit && typeof cast.targetIdx === 'number') {
-                fx.triggerEnemySkillAnim(cast.targetIdx, cast.skillId);
-            } else {
+            if (!(cast.isDamageHit && typeof cast.targetIdx === 'number')) {
                 fx.triggerAllySkillAnim(allySlot, cast.skillId);
             }
         }
@@ -746,7 +744,6 @@ const Combat = () => {
                 if (!targetsEnemyEvt) {
                     fx.triggerAllySkillAnim(0, skillId);
                 } else {
-                    fx.triggerEnemySkillAnim(idx, skillId);
                     if (executeBurstDmgEvt > 0) {
                         fx.pushEnemyFloat(idx, executeBurstDmgEvt, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                     } else if (dmg > 0) {
@@ -762,7 +759,6 @@ const Combat = () => {
                         fx.pushEnemyFloat(idx, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                     }
                     for (const aIdx of aoeTargets) {
-                        fx.triggerEnemySkillAnim(aIdx, skillId);
                         if (splashDmg > 0) fx.pushEnemyFloat(aIdx, splashDmg, 'spell', { icon: getSkillIcon(skillId), isCrit });
                     }
                 }
@@ -871,18 +867,17 @@ const Combat = () => {
         const defPenFrac = Math.max(0, Math.min(1, (effApply?.defPenPct ?? 0) / 100));
         const effectiveEnemyDef = Math.max(0, Math.floor(s.monster.defense * (1 - defPenFrac)));
 
-        const skillUpgradeMult = getCombatSkillUpgradeMultiplier(
-            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-        );
+        const skillUpgradeLevel = useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0;
         const r = calculateDamage({
             baseAtk: skillAtk, weaponAtk: rollWeaponDamage(),
             skillBonus: Math.floor(skillAtk * 0.5),
             classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
             enemyDefense: effectiveEnemyDef,
+            attackerLevel: char.level, playerSource: true,
             critChance: 0.20,
             maxCritChance: maxCrit,
             damageMultiplier: isDamageHit
-                ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillDmgMult * skillUpgradeMult
+                ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * rollSkillDamageMult(skillDmgMult, skillUpgradeLevel)
                 : 0,
         });
 
@@ -924,7 +919,6 @@ const Combat = () => {
                             const ikDmg = Math.max(splashDmg, Math.floor(wave[ii].maxHp * 12 / 100));
                             useCombatStore.getState().damageWaveMonster(ii, ikDmg);
                             totalDmgDealtThisCast += ikDmg;
-                            fx.triggerEnemySkillAnim(ii, skillId);
                             fx.pushEnemyFloat(ii, ikDmg, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
                             let thisSplash = splashDmg;
@@ -934,7 +928,6 @@ const Combat = () => {
                             }
                             useCombatStore.getState().damageWaveMonster(ii, thisSplash);
                             totalDmgDealtThisCast += thisSplash;
-                            fx.triggerEnemySkillAnim(ii, skillId);
                             fx.pushEnemyFloat(ii, thisSplash, 'spell', { icon: getSkillIcon(skillId), isCrit: r.isCrit });
                         }
                     }
@@ -1029,7 +1022,6 @@ const Combat = () => {
         triggerSkillAnim(skillId);
         const tgtIdx = useCombatStore.getState().activeTargetIdx;
         if (targetsEnemy) {
-            fx.triggerEnemySkillAnim(tgtIdx, skillId);
             if (isDamageHit) {
                 fx.pushEnemyFloat(tgtIdx, r.finalDamage, 'spell', { icon: getSkillIcon(skillId), isCrit: r.isCrit });
             }
@@ -1080,6 +1072,7 @@ const Combat = () => {
                         skillBonus: Math.floor(skillAtk * 0.5),
                         classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                         enemyDefense: effectiveEnemyDef,
+                        attackerLevel: char.level, playerSource: true,
                         critChance: (char.crit_chance ?? 0.05),
                         maxCritChance: maxCrit,
                         damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -1916,7 +1909,6 @@ const Combat = () => {
                         hitMonsterIdx === i && attackingClassName
                             ? `attack-${attackingClassName}`
                             : null,
-                    skillAnim: fx.enemySkill[i] ?? null,
                     floats: fx.enemyFloats[i] ?? [],
                     statusOverlay: getHuntMonsterStatusView(i, w.monster.id),
                 }));

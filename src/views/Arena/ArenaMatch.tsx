@@ -23,6 +23,7 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import skillsData from '../../data/skills.json';
 import { getEffectiveChar } from '../../systems/combatEngine';
 import { ARENA_DAMAGE_MULTIPLIER, getArenaCastableSkills } from '../../systems/arenaSystem';
+import { mitigateDamage } from '../../systems/combat';
 import {
     parseEffects,
     applyEffects,
@@ -314,9 +315,9 @@ const ArenaMatch = () => {
                     } else {
                         const effDef = target.defense * (1 - apply.defPenPct / 100);
                         const baseDmg = caster.attack * chosen.damage;
-                        let finalDmg = Math.max(1, Math.floor(
-                            baseDmg * ARENA_DAMAGE_MULTIPLIER * apply.castDmgMult - effDef * 0.3,
-                        ));
+                        let finalDmg = mitigateDamage(
+                            baseDmg * ARENA_DAMAGE_MULTIPLIER * apply.castDmgMult, effDef * 0.3, caster.level, true,
+                        );
                         if ((apply.executeBurstPct ?? 0) > 0) {
                             finalDmg = Math.max(finalDmg, Math.floor(target.maxHp * (apply.executeBurstPct ?? 0) / 100));
                         }
@@ -354,7 +355,7 @@ const ArenaMatch = () => {
                 const hit = resolveBasicHit(caster.status, caster.class, baseDmg, target.status);
                 if (hit.dodged) return 0;
                 const effDef = target.defense * (1 - caster.status.defPenPct / 100);
-                let finalDmg = Math.max(1, Math.floor(hit.damage * ARENA_DAMAGE_MULTIPLIER - effDef * 0.5));
+                let finalDmg = mitigateDamage(hit.damage * ARENA_DAMAGE_MULTIPLIER, effDef * 0.5, caster.level, true);
                 if (hit.instantKill) {
                     target.hp = 0;
                     return target.maxHp;
@@ -414,7 +415,6 @@ const ArenaMatch = () => {
                 window.setTimeout(() => setOpponentAttackingClass(null), ATTACK_FLASH_MS);
             }
             if (mySkillRes.skillId) {
-                fx.triggerEnemySkillAnim(0, mySkillRes.skillId);
                 fx.pushEnemyFloat(0, mySkill, 'spell', { icon: getSkillIcon(mySkillRes.skillId) });
             }
             if (opBasic > 0) {
@@ -514,7 +514,6 @@ const ArenaMatch = () => {
             isTargetedByPlayer: true,
             hitPulse: opponentHitPulse,
             attackingClassName: opponentAttackingClass,
-            skillAnim: fx.enemySkill[0] ?? null,
             floats: opponentMergedFloats as never,
             imageUrl: getCharacterAvatar(op.class as never, opponentTransforms),
             imageObjectFit: 'cover' as const,

@@ -11,10 +11,10 @@ const CAPS: Record<NecroSummonType, number> = {
     lich: 2,
 };
 const DMG_MULT: Record<NecroSummonType, number> = {
-    skeleton: 0.25,
-    ghost: 0.50,
-    demon: 1.20,
-    lich: 2.00,
+    skeleton: 0.10,
+    ghost: 0.18,
+    demon: 0.35,
+    lich: 0.50,
 };
 const HP_FRAC: Record<NecroSummonType, number> = {
     skeleton: 0.25,
@@ -263,7 +263,7 @@ describe('totalAttackBonus', () => {
     it('sums floor(necroAttack * dmgMult) across all summons', () => {
         useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 2, 100, 400);
         useNecroSummonStore.getState().spawn(NECRO, 'demon', 1, 100, 400);
-        expect(useNecroSummonStore.getState().totalAttackBonus(NECRO, 100)).toBe(170);
+        expect(useNecroSummonStore.getState().totalAttackBonus(NECRO, 100)).toBe(55);
     });
 
     it('returns 0 when no summons exist', () => {
@@ -271,8 +271,8 @@ describe('totalAttackBonus', () => {
     });
 
     it('floors fractional results per summon', () => {
-        useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 1, 7, 400);
-        expect(useNecroSummonStore.getState().totalAttackBonus(NECRO, 7)).toBe(1);
+        useNecroSummonStore.getState().spawn(NECRO, 'skeleton', 1, 15, 400);
+        expect(useNecroSummonStore.getState().totalAttackBonus(NECRO, 15)).toBe(1);
     });
 });
 

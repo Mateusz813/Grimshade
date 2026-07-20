@@ -470,19 +470,19 @@ describe('clearCharacter', () => {
 
 describe('computeBaseStatFloor', () => {
     it('Knight lvl 1 = pure base stats (no per-level / milestone yet)', () => {
-        expect(computeBaseStatFloor('Knight', 1)).toEqual({ max_hp: 200, max_mp: 50 });
+        expect(computeBaseStatFloor('Knight', 1)).toEqual({ max_hp: 150, max_mp: 40 });
     });
 
     it('Knight lvl 30 = base + 29 levels + 3 milestones', () => {
-        expect(computeBaseStatFloor('Knight', 30)).toEqual({ max_hp: 522, max_mp: 123 });
+        expect(computeBaseStatFloor('Knight', 30)).toEqual({ max_hp: 472, max_mp: 113 });
     });
 
     it('Mage lvl 109 = base + 108 levels + 10 milestones (Krasek case)', () => {
-        expect(computeBaseStatFloor('Mage', 109)).toEqual({ max_hp: 524, max_mp: 1314 });
+        expect(computeBaseStatFloor('Mage', 109)).toEqual({ max_hp: 514, max_mp: 1314 });
     });
 
     it('clamps a sub-1 / missing level up to 1 (defensive)', () => {
-        expect(computeBaseStatFloor('Knight', 0)).toEqual({ max_hp: 200, max_mp: 50 });
+        expect(computeBaseStatFloor('Knight', 0)).toEqual({ max_hp: 150, max_mp: 40 });
     });
 });
 
@@ -512,7 +512,7 @@ describe('healCorruptedBaseStats', () => {
         );
         expect(useCharacterStore.getState().healCorruptedBaseStats()).toBe(true);
         const c = useCharacterStore.getState().character!;
-        expect(c.max_hp).toBe(524);
+        expect(c.max_hp).toBe(514);
         expect(c.max_mp).toBe(1314);
     });
 

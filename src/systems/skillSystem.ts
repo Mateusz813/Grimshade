@@ -28,14 +28,11 @@ export const doesClassGainMlvlFromAttacks = (cls: CharacterClass): boolean =>
     MLVL_FROM_ATTACKS_CLASSES.includes(cls);
 
 
-export const shieldingXpPerBlock = (shieldingLevel: number): number =>
+export const shieldingXpPerHit = (shieldingLevel: number): number =>
     Math.max(1, Math.floor(15 / (1 + shieldingLevel * 0.06)));
 
 export const getShieldingDefBonus = (shieldingLevel: number): number =>
     Math.floor(shieldingLevel / 2);
-
-export const getShieldingBlockBonus = (shieldingLevel: number): number =>
-    shieldingLevel * 0.005;
 
 export const MAX_OFFLINE_TRAINING_SECONDS = 24 * 60 * 60;
 
@@ -284,18 +281,25 @@ export const getSkillUpgradeCost = (targetLevel: number): ISkillUpgradeCost => {
     };
 };
 
-export const getSkillUpgradeBonus = (upgradeLevel: number): number => {
-    if (upgradeLevel <= 0) return 0;
-    const mult = upgradeLevel <= 10
-        ? Math.pow(1.15, upgradeLevel)
-        : Math.pow(1.15, 10) * Math.pow(1.08, upgradeLevel - 10);
-    return mult - 1;
-};
-
 export const getCombatSkillUpgradeMultiplier = (upgradeLevel: number): number =>
-    upgradeLevel <= 0
-        ? 1
-        : 1 + Math.min(upgradeLevel, 10) * 0.02 + Math.max(0, upgradeLevel - 10) * 0.01;
+    upgradeLevel <= 0 ? 1 : 1 + 0.6 * (1 - Math.pow(0.9, upgradeLevel));
+
+export const getSkillUpgradeBonus = (upgradeLevel: number): number =>
+    getCombatSkillUpgradeMultiplier(upgradeLevel) - 1;
+
+export const skillTierMult = (skillDamageCoeff: number): number =>
+    skillDamageCoeff <= 0 ? 0 : Math.min(2.1, Math.max(1.2, 1.2 + (skillDamageCoeff - 5.4) / 10 * 0.9));
+
+export const rollSkillDamageMult = (
+    skillDamageCoeff: number,
+    upgradeLevel: number,
+    rng: () => number = Math.random,
+): number => {
+    const tier = skillTierMult(skillDamageCoeff);
+    if (tier <= 0) return 0;
+    const mid = tier * getCombatSkillUpgradeMultiplier(upgradeLevel);
+    return mid * (0.85 + rng() * 0.30);
+};
 
 
 export const SPELL_CHEST_LEVELS: number[] = [5, 10, 20, 30, 40, 50, 60, 70, 80, 100, 150, 300, 600, 800, 1000];

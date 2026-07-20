@@ -4,8 +4,10 @@ import {
     needsRefresh,
     selectDailyQuests,
     scaleRewards,
+    mergeDailyForDisplay,
     DAILY_QUEST_COUNT,
     type IDailyQuestDef,
+    type IActiveDailyQuest,
 } from './dailyQuestSystem';
 
 const makeMockQuest = (id: string, minLevel: number, goalType: string = 'kill_any', count: number = 10): IDailyQuestDef => ({
@@ -125,5 +127,35 @@ describe('scaleRewards', () => {
     it('preserves elixir reward', () => {
         const scaled = scaleRewards({ gold: 300, xp: 100, elixir: 'xp_elixir' }, 50);
         expect(scaled.elixir).toBe('xp_elixir');
+    });
+});
+
+describe('mergeDailyForDisplay', () => {
+    const defs = [MOCK_QUESTS[0], MOCK_QUESTS[1], MOCK_QUESTS[2]];
+
+    it('surfaces EVERY today def even when activeQuests is missing some (no silent skip)', () => {
+        const partialActive: IActiveDailyQuest[] = [
+            { questId: 'q1', progress: 3, completed: false, claimed: false },
+        ];
+        const merged = mergeDailyForDisplay(defs, partialActive);
+        expect(merged).toHaveLength(3);
+        expect(merged.map((m) => m.def.id)).toEqual(['q1', 'q2', 'q3']);
+    });
+
+    it('uses a zero-progress default active for defs lacking a match', () => {
+        const merged = mergeDailyForDisplay(defs, []);
+        expect(merged).toHaveLength(3);
+        for (const m of merged) {
+            expect(m.active).toEqual({ questId: m.def.id, progress: 0, completed: false, claimed: false });
+        }
+    });
+
+    it('keeps the real active (progress/completed/claimed) when present', () => {
+        const active: IActiveDailyQuest[] = [
+            { questId: 'q2', progress: 10, completed: true, claimed: true },
+        ];
+        const merged = mergeDailyForDisplay(defs, active);
+        expect(merged.find((m) => m.def.id === 'q2')?.active).toEqual(active[0]);
+        expect(merged.find((m) => m.def.id === 'q1')?.active.progress).toBe(0);
     });
 });

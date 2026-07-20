@@ -17,6 +17,7 @@ export const usePartyCombatSync = (): void => {
     const clear     = usePartyCombatSyncStore((s) => s.clear);
 
     const cleanupRef = useRef<(() => void) | null>(null);
+    const reviveProtectUntilRef = useRef<number>(0);
 
     useEffect(() => {
         if (!party?.id || !character) {
@@ -157,6 +158,7 @@ export const usePartyCombatSync = (): void => {
             if (hit === prev.lastMemberHit) return;
 
             if (hit.memberId === character.id) {
+                if (Date.now() < reviveProtectUntilRef.current) return;
                 const cs = useCombatStore.getState();
                 const newHp = Math.max(0, cs.playerCurrentHp - hit.damage);
                 useCombatStore.getState().setHps(cs.monsterCurrentHp, newHp);
@@ -171,7 +173,6 @@ export const usePartyCombatSync = (): void => {
                     data: {
                         damage: hit.damage,
                         isCrit: false,
-                        isBlocked: false,
                         hpDamage: hit.damage,
                         mpDamage: 0,
                         attackerWaveIdx: hit.sourceMonsterIdx,
@@ -179,6 +180,33 @@ export const usePartyCombatSync = (): void => {
                     timestamp: Date.now(),
                 });
             }
+        });
+        return () => { unsub(); };
+    }, [party?.id, character?.id]);
+
+    useEffect(() => {
+        if (!party?.id || !character) return;
+
+        const unsub = usePartyCombatSyncStore.subscribe((s, prev) => {
+            const revive = s.lastMemberRevive;
+            if (!revive) return;
+            if (revive === prev.lastMemberRevive) return;
+            if (revive.memberId !== character.id) return;
+
+            const cs = useCombatStore.getState();
+            if (cs.playerCurrentHp > 0) return;
+
+            const ch = useCharacterStore.getState().character;
+            const maxHp = ch?.max_hp ?? 0;
+            if (maxHp <= 0) return;
+            const restoredHp = Math.max(1, Math.floor(maxHp * revive.hpPct));
+            reviveProtectUntilRef.current = Date.now() + revive.protectMs;
+            useCombatStore.getState().setHps(cs.monsterCurrentHp, restoredHp);
+            useCharacterStore.getState().updateCharacter({ hp: restoredHp });
+            useCombatStore.getState().addLog(
+                `:sparkles: Zostajesz wskrzeszony! +${restoredHp} HP (ochrona ${Math.round(revive.protectMs / 1000)}s)`,
+                'system',
+            );
         });
         return () => { unsub(); };
     }, [party?.id, character?.id]);

@@ -353,11 +353,13 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       'Skrzynie Czarów zdobywasz z łupów, questów i handlu — trzymają się jako osobne stacki w plecaku.',
       'Masz 4 sloty na aktywne czary — wybierasz, których 4 używasz w walce (tego samego nie wstawisz dwa razy).',
       'Czary rzucają się automatycznie (tryb auto) lub ręcznie; każdy kosztuje MP i ma cooldown.',
-      'Czary możesz też ULEPSZAĆ (za Skrzynie Czarów + złoto) — wyższy poziom = większe obrażenia czaru, ale szansa powodzenia spada.',
+      'Czary zadają obrażenia w pewnym zakresie (od–do, z losowym rozrzutem), zwykle mocniej niż zwykły atak.',
+      'Czary możesz też ULEPSZAĆ (za Skrzynie Czarów + złoto) — wyższy poziom = większe obrażenia czaru, ale każdy kolejny poziom dokłada coraz mniej (malejące przyrosty), a szansa powodzenia spada.',
       'Efekty czarów to m.in. obrażenia obszarowe (AOE), ogłuszenie, przebicie obrony, leczenie drużyny, przywołania, dobicie wroga poniżej progu HP.',
     ],
     note:
-      'Instant-kill (natychmiastowe zabicie) jest ograniczone do 12% maks. HP celu — nie ma już „one-shotowania" bossów. ' +
+      'Umiejętność „Śmiertelny Cios" (dawniej „Błyskawiczne Zabójstwo") NIE zabija od razu — daje szansę na duże, ' +
+      'jednorazowe uderzenie za ~12% maks. HP celu. Koniec z „one-shotowaniem" bossów. ' +
       'Efekty „dobij poniżej X% HP" nadal działają jako pełne wykończenie.',
   },
   {
@@ -369,7 +371,7 @@ export const WIKI_SECTIONS: IWikiSection[] = [
     bullets: [
       'Klasy bronią (Rycerz, Łucznik, Łotr, Bard) rozwijają umiejętność broni ze zwykłych ataków.',
       'Klasy magiczne (Mag, Kleryk, Nekromanta) rozwijają Magic Level z ataków i rzucania czarów.',
-      'Rycerz ma dodatkowo „Shielding" — rośnie od blokowania ataków i daje więcej obrony oraz szansy na blok.',
+      'Rycerz ma dodatkowo „Shielding" — rośnie, gdy obrywasz w walce, i daje dodatkową, stałą obronę (już nie szansę na blok).',
       'Każdy poziom umiejętności broni to stały bonus do obrażeń (4–8% na poziom, zależnie od klasy), aż do poziomu 100.',
       'Umiejętności możesz też trenować u Trenera i offline (trening offline do 24 godzin).',
       'Poziomy broni mają własne zakładki w rankingu (Miecz, Sztylet, Dystans, Magic Level, Bard, Shielding).',
@@ -399,11 +401,11 @@ export const WIKI_SECTIONS: IWikiSection[] = [
     title: 'Klasy postaci (7)',
     summary: 'Każda z 7 klas ma inne statystyki bazowe, broń i styl gry. Na koncie zmieścisz do 7 postaci.',
     bullets: [
-      'Rycerz — twardy tank z tarczą, jako jedyny blokuje ataki i chroni drużynę.',
+      'Rycerz — najtwardszy tank: najwyższa obrona (redukuje obrażenia procentowo, maks. ~75%) i aktywne umiejętności osłaniające drużynę.',
       'Mag — najwyższe obrażenia magiczne (mnożnik 1,3×), ale mało HP.',
-      'Kleryk — leczenie i wsparcie drużyny, dużo many.',
-      'Łucznik — zasięgowy, może osiągnąć 100% szansy na krytyk, potrafi unikać.',
-      'Łotr — walczy dwoma sztyletami, wysoki krytyk (do 100%) i uniki.',
+      'Kleryk — leczenie i wsparcie drużyny, dużo many; potrafi wskrzeszać poległych członków drużyny (zarówno boty, jak i graczy).',
+      'Łucznik — zasięgowy, najwyższe stałe obrażenia jednocelowe dzięki krytykom (do 100% szansy).',
+      'Łotr — walczy dwoma sztyletami, wysoki krytyk (do 100%); specjalizuje się w dobijaniu wrogów z niskim HP.',
       'Nekromanta — przyzywa sługi (szkielety, duchy, demony, licza), które przyjmują obrażenia i dobijają wrogów.',
       'Bard — wsparcie: pieśni dają całej drużynie bonusy do ataku, prędkości i krytyka.',
     ],

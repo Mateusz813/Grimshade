@@ -134,17 +134,17 @@ describe('pickAggroTarget', () => {
 
 describe('calculateAoeDamage', () => {
     it('should return 50% of base damage', () => {
-        const dmg = calculateAoeDamage(100, 20);
-        expect(dmg).toBe(40);
+        const dmg = calculateAoeDamage(100, 20, 80);
+        expect(dmg).toBe(42);
     });
 
     it('should return minimum 1 damage', () => {
-        const dmg = calculateAoeDamage(1, 1000);
+        const dmg = calculateAoeDamage(1, 1000, 1);
         expect(dmg).toBeGreaterThanOrEqual(1);
     });
 
     it('should never return NaN', () => {
-        const dmg = calculateAoeDamage(0, 0);
+        const dmg = calculateAoeDamage(0, 0, 1);
         expect(Number.isNaN(dmg)).toBe(false);
     });
 });

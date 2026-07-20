@@ -30,10 +30,10 @@ export const MONSTER_RARITY_CHANCES: Record<TMonsterRarity, number> = {
 
 export const MONSTER_RARITY_MULTIPLIERS: Record<TMonsterRarity, { hp: number; atk: number; def: number; xp: number; gold: number }> = {
     normal:    { hp: 1.0,  atk: 1.0,  def: 1.0,  xp: 1.0,  gold: 1.0 },
-    strong:    { hp: 1.5,  atk: 1.2, def: 1.3,  xp: 2.0,  gold: 2.0 },
-    epic:      { hp: 2.5,  atk: 1.6, def: 1.5,  xp: 4.0,  gold: 4.0 },
-    legendary: { hp: 5.0,  atk: 1.8, def: 1.8,  xp: 10.0, gold: 10.0 },
-    boss:      { hp: 10.0, atk: 2.5, def: 2.0,  xp: 30.0, gold: 30.0 },
+    strong:    { hp: 1.5,  atk: 1.4, def: 1.3,  xp: 2.0,  gold: 2.0 },
+    epic:      { hp: 2.5,  atk: 2.2, def: 1.5,  xp: 4.0,  gold: 4.0 },
+    legendary: { hp: 4.0,  atk: 3.2, def: 1.8,  xp: 10.0, gold: 10.0 },
+    boss:      { hp: 8.0,  atk: 5.0, def: 2.0,  xp: 30.0, gold: 30.0 },
 };
 
 export const MONSTER_RARITY_TASK_KILLS: Record<TMonsterRarity, number> = {

@@ -120,6 +120,7 @@ const runBackendCommit = (): void => {
   clearBackendCommitTimers();
   const charId = _activeCharacterId;
   if (!charId || !isBackendMode()) return;
+  if (_switchInProgress) return;
   flushStoresToLocalStorage();
   void commitStateToBackend(charId).then((ok) => {
     if (ok) _dirtySinceCommit = false;
@@ -128,6 +129,7 @@ const runBackendCommit = (): void => {
 
 const scheduleBackendCommit = (): void => {
   if (!isBackendMode() || !_activeCharacterId) return;
+  if (_switchInProgress) return;
   const cs = useCombatStore.getState() as { phase?: string; backgroundActive?: boolean; autoFight?: boolean };
   const autoHunting = ((cs.phase === 'fighting' || cs.phase === 'victory') && !!cs.autoFight) || !!cs.backgroundActive;
   if (autoHunting) {
@@ -143,6 +145,7 @@ const scheduleBackendCommit = (): void => {
 
 const flushBackendCommitNow = async (): Promise<void> => {
   if (!isBackendMode() || !_activeCharacterId) return;
+  if (_switchInProgress) return;
   clearBackendCommitTimers();
   if (!_dirtySinceCommit) return;
   flushStoresToLocalStorage();
@@ -153,6 +156,7 @@ setPendingCommitFlusher(flushBackendCommitNow);
 
 export const commitCombatEventNow = (event: ICombatEvent): void => {
   if (!isBackendMode() || !_activeCharacterId) return;
+  if (_switchInProgress) return;
   clearBackendCommitTimers();
   flushStoresToLocalStorage();
   void commitStateToBackend(_activeCharacterId, event).then((ok) => {
@@ -166,6 +170,7 @@ const hookBackendCommitOnHide = (): void => {
   _hideHooked = true;
   const flushOnHide = (): void => {
     if (!isBackendMode() || !_activeCharacterId) return;
+    if (_switchInProgress) return;
     flushStoresToLocalStorage();
     commitStateViaKeepalive(_activeCharacterId);
   };

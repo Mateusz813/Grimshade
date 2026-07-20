@@ -311,14 +311,6 @@ describe('applySkillBuff — special atoms', () => {
         expect(b.gameMsRemaining).toBe(2000);
     });
 
-    it('party_instant_kill_chance_next is registered as a charge buff', () => {
-        applySkillBuff('s', { effect: 'party_instant_kill_chance_next:20:5' });
-        const b = charBuffs()[0];
-        expect(b.effect).toBe('skill_charge_party_instant_kill_chance_next');
-        expect(b.gameMsRemaining).toBeUndefined();
-        expect(b.charges).toBe(20);
-        expect(b.maxCharges).toBe(40);
-    });
 });
 
 

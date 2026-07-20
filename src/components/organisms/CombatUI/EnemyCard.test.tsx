@@ -196,15 +196,4 @@ describe('EnemyCard — floats & hit pulse', () => {
         rerender(<EnemyCard enemy={makeEnemy({ hitPulse: 2 })} />);
         expect(container.querySelector('.combat-ui__enemy-hit-pulse--strike-r')).toBeTruthy();
     });
-
-    it('renders skill animation overlay with the css class', () => {
-        const { container } = render(
-            <EnemyCard
-                enemy={makeEnemy({
-                    skillAnim: { id: 7, emoji: 'fire', cssClass: 'skill-anim--fire' },
-                })}
-            />,
-        );
-        expect(container.querySelector('.skill-anim-overlay.skill-anim--fire')).toBeTruthy();
-    });
 });

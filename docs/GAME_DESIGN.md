@@ -4,7 +4,7 @@
 >
 > **Ten plik MUSI być aktualizowany przy KAŻDEJ zmianie backendu lub frontu** (patrz [§30 Reguła utrzymania](#30-reguła-utrzymania-obowiązkowe)). Wersja player-facing (uproszczona) żyje w [`/wiki`](../src/views/Wiki/Wiki.tsx) i `src/data/wiki.ts` — ją też się aktualizuje.
 >
-> Ostatnia pełna synchronizacja z kodem: 2026-07-15 (gra v1.10.x). Źródła: workflow ekstrakcji 7 domen + weryfikacja adwersarialna.
+> Ostatnia pełna synchronizacja z kodem: 2026-07-15 (gra v1.10.x). Źródła: workflow ekstrakcji 7 domen + weryfikacja adwersarialna. **Rebalans walki 2.0.0 wcielony 2026-07-19** (%-DEF, kompresja obrażeń gracza, usunięty pasywny blok/unik, zakresy skilli + ujednolicona krzywa ulepszeń, nowe mnożniki rzadkości, TTK), **model kompresji zmieniony na krzywą potęgową w 2.0.1** — podsumowanie w [§29.1](#291-rebalans-walki-200-2026-07-19).
 
 ## Spis treści
 
@@ -92,6 +92,8 @@ Po utworzeniu postaci `characterStore` wykrywa niższe HP/MP jako „uszkodzone"
 
 `classModifier` mnoży obrażenia gracza. `maxCritChance` to twardy cap % krytyka klasy (Archer/Rogue 100%, reszta 30%) — osobny od globalnego capu agregacji krytyka 50% (patrz §3).
 
+> **2.0.0:** `canBlock`/`canDodge` to już tylko historyczne flagi z `classes.json` — **pasywny blok (Knight) i pasywny unik (Archer/Rogue/Bard) zostały USUNIĘTE** (patrz §3.2). Knight `Shielding` daje teraz FLAT DEF, a Archer/Rogue polegają na krytyku (maxCrit 100%). Zostały tylko AKTYWNE obrony skillowe.
+
 ### 2.3 Przyrost na poziom (REALNY — `levelSystem.ts:160-168`)
 
 `classes.json hpPerLevel/mpPerLevel` są **przestarzałe (tylko wyświetlanie na ekranie tworzenia)**. Realny przyrost:
@@ -151,25 +153,31 @@ Wszystkie obrażenia (gracz→potwór, potwór→gracz, boty, arena) przechodzą
 
 ```
 baseDamage  = (baseAtk + weaponAtk + skillBonus) × classModifier
-finalDamage = max(1, baseDamage − enemyDefense)        // podłoga mitygacji = 1
-if isDodged:  finalDamage = 0
-if isCrit:    finalDamage ×= critDmgMult (domyślnie 2.0)
-if isBlocked: finalDamage  = floor(finalDamage × 0.5)  // blok = −50%
-if dmgMult≠1: finalDamage ×= damageMultiplier
+mitigation  = min(0.75, enemyDefense / (enemyDefense + 1.0 × attackerLevel + 25))  // %-DEF: DEF_CAP=0.75, DEF_K=1.0, DEF_BASE=25
+mitigated   = baseDamage × (1 − mitigation)
+if playerSource: finalDamage = 0.48 × mitigated^0.80                          // compressPlayerDamage: DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80 — TYLKO obrażenia gracza
+else:            finalDamage = max(1, mitigated)                              // potwór→gracz: brak kompresji, podłoga = 1
+if isCrit:       finalDamage ×= critDmgMult (domyślnie 2.0)
+if dmgMult≠1:    finalDamage ×= damageMultiplier
 return max(1, floor(finalDamage))
 ```
 
-Domyślne wartości parametrów: `critChance 0.05`, `critDmg 2.0`, `blockChance 0`, `dodgeChance 0`, `maxCritChance 1.0`, `classModifier 1`, `damageMultiplier 1`. Kolejność: dodge → crit → block → mnożnik. Mitygacja floor = 1 (każdy cios trafia min. za 1).
+**Procentowa obrona (%-DEF) — zamiast płaskiego odejmowania (2.0.0).** DEF nie jest już odejmowane płasko (`max(1, dmg − def)`), tylko redukuje procent obrażeń: `mitigation = min(DEF_CAP, def / (def + DEF_K × attackerLevel + DEF_BASE))`, gdzie `DEF_K = 1.0`, `DEF_BASE = 25`, `DEF_CAP = 0.75`, `attackerLevel` = poziom atakującego (poziom potwora gdy bije gracza; poziom gracza gdy bije potwora). Efekt: DEF pozostaje istotne na KAŻDYM poziomie (licznik i mianownik skalują się z poziomem); tank redukuje ~30% wejścia (cap 75% — nigdy nieśmiertelny), squishy Mage ~15%. **Człon bazowy `DEF_BASE = 25`** studzi mitygację przy niskich DEF/poziomach: bez niego szczur o def 1 vs gracz L1 tłumił 50% (`1/(1+1)`); z `DEF_BASE=25` to ~4% (`1/(1+1+25)`). Wysokopoziomowe tanki są nietknięte — gdy `def + level >> 25`, człon jest pomijalny (Knight ~2118 def na L1000 wciąż ~67%).
 
-**Gracz → potwór (`combatEngine.ts:1083-1165`):** `baseAtk = char.attack` (efektywny), `weaponAtk = floor(rollWeaponDamage() × dmgPercent)`, `skillBonus = getClassSkillBonus(...)`, `classModifier`, `enemyDefense = monster.defense`, `critChance = char.crit_chance + bonusy`, `maxCritChance = classConfig.maxCritChance/100`, `damageMultiplier = atkDmg × transform × mods`.
+**Kompresja obrażeń GRACZA — sub-liniowa krzywa potęgowa (2.0.1).** Zamiast płaskiego mnożnika obrażenia gracza są kompresowane funkcją potęgową: `compressPlayerDamage(mitigated) = DMG_COMPRESS_K × mitigated^DMG_COMPRESS_P`, gdzie `DMG_COMPRESS_K = 0.48`, `DMG_COMPRESS_P = 0.80`. Nakładana WYŁĄCZNIE na obrażenia zadawane przez gracza (gracz→potwór, skille, summony necro, boty→potwór) przez flagę `playerSource` / `mitigateDamage(..., true)`, na zmitygowaną bazę **PRZED** crit/damageMultiplier — więc crit ×2 i mnożniki eliksir/transform mnożą już SKOMPRESOWANĄ wartość. NIE dotyczy potwór→gracz (ataki potworów są realne; HP potworów jest skalibrowane pod skompresowany DPS gracza). Krzywa utrzymuje niskopoziomowe ciosy WIDOCZNE (L1 basic ≈ 5–9, szczur ginie po kilku widocznych ciosach) i JEDNOCZEŚNIE ściska sufit (L1000 heroic+7 basic ≈ 1,5k, spell ≈ 3k). Stary płaski `×0.065` nakładany na końcu tego nie potrafił — dół podłogował do 1 (L1 Mage z bronią 3–6 bił szczura tylko za 1). **Reborn (PRZYSZŁOŚĆ, nie wdrożone):** globalny mnożnik na skompresowaną bazę, zachowuje proporcje → reborn 25 ≈ 50–100k. Zero pracy teraz; design zostawia zapas.
 
-**Potwór → gracz (`combatEngine.ts:1622-1629`):** `baseAtk = rollMonsterDamage(monster)`, `weaponAtk=0`, `skillBonus=0`, `classModifier=1.0`, `enemyDefense = floor(char.defense × defBuffMult)`, plus block/dodge gracza. Potwory nie mają weapon roll/skill/class-mod, ale mają **latentne 5% krytyka** (domyślny `critChance 0.05` w `calculateDamage`).
+Domyślne wartości parametrów: `critChance 0.05`, `critDmg 2.0`, `maxCritChance 1.0`, `classModifier 1`, `damageMultiplier 1`, `playerSource false`. Kolejność (playerSource): %-DEF mitygacja → `compressPlayerDamage` → crit → damageMultiplier → `floor(max 1)`. Dla potwór→gracz kompresji nie ma, a floor = 1 stosuje się od razu po mitygacji (każdy cios trafia min. za 1).
 
-### 3.2 Krytyk, blok, unik
+**Gracz → potwór (`combatEngine.ts:1083-1165`):** `baseAtk = char.attack` (efektywny), `weaponAtk = floor(rollWeaponDamage() × dmgPercent)`, `skillBonus = getClassSkillBonus(...)`, `classModifier`, `enemyDefense = monster.defense`, `attackerLevel = char.level`, `critChance = char.crit_chance + bonusy`, `maxCritChance = classConfig.maxCritChance/100`, `damageMultiplier = atkDmg × transform × mods`, **`playerSource = true` (kompresja krzywą potęgową `compressPlayerDamage`)**.
 
-- **Krytyk — dwa capy:** (1) cap agregacji `min(0.5, ...)` w `getEffectiveChar` → widoczny efektywny krytyk max 50%; (2) cap klasowy przy trafieniu `min(critChance, maxCritChance)` (Archer/Rogue 100%, reszta 30%). Netto: Archer/Rogue mogą wykorzystać pełne 50%, reszta jest ograniczona do 30%. Domyślny krytyk = 5%. Auto-cast skilla ma zaszyty krytyk 20%. Mnożnik krytyka domyślnie ×2.0 (bez capu, additive z gearu/treningu).
-- **Blok (tylko Knight, fizyczne):** `min(0.25, 0.05 + shieldingLevel × 0.005)` — baza 5%, +0.5%/lvl Shielding, max **25%**. Blok = obrażenia ×0.5.
-- **Unik (Archer/Rogue/Bard, fizyczne):** baza 5% + per poziom agility → Archer +0.4%/lvl (max 20%), Rogue +0.5%/lvl (max 20%), Bard +0.3%/lvl (max 15%). Unik = obrażenia 0.
+**Potwór → gracz (`combatEngine.ts:1622-1629`):** `baseAtk = rollMonsterDamage(monster)`, `weaponAtk=0`, `skillBonus=0`, `classModifier=1.0`, `enemyDefense = floor(char.defense × defBuffMult)`, `attackerLevel = monster.level`, **`playerSource = false` (obrażenia potwora NIE są kompresowane)**. Potwory nie mają weapon roll/skill/class-mod, ale mają **latentne 5% krytyka** (domyślny `critChance 0.05` w `calculateDamage`).
+
+### 3.2 Krytyk i obrona (pasywny blok/unik USUNIĘTE w 2.0.0)
+
+- **Krytyk — dwa capy (bez zmian):** (1) cap agregacji `min(0.5, ...)` w `getEffectiveChar` → widoczny efektywny krytyk max 50%; (2) cap klasowy przy trafieniu `min(critChance, maxCritChance)` (Archer/Rogue 100%, reszta 30%). Netto: Archer/Rogue mogą wykorzystać pełne 50%, reszta jest ograniczona do 30%. Domyślny krytyk = 5%. Auto-cast skilla ma zaszyty krytyk 20%. Mnożnik krytyka domyślnie ×2.0 (bez capu, additive z gearu/treningu).
+- **Pasywny blok/unik USUNIĘTE.** `calculateBlockChance`/`calculateDodgeChance` zostały wycięte; `isBlocked`/`isDodged`/`blockChance`/`dodgeChance` zniknęły z `ICombatParams`/`ICombatResult`. Nie ma już „×0.5 przy bloku" ani „0 przy uniku".
+- **Knight `Shielding` = FLAT DEF** (zamiast szansy bloku): `getShieldingDefBonus(lvl) = floor(lvl/2)`. XP-on-hit przez `shieldingXpPerHit` (dawniej `perBlock`). Archer/Rogue polegają na krytyku (maxCrit 100%).
+- **Zostały AKTYWNE obrony skillowe:** `mana_shield`, `immortal`/`party_immortal`, aktywne uniki (`shadow_step`, `evasion`) i `smoke_bomb` (`dodge_buff`), party block (`block_next_party` przez Cleric `divine_shield`).
 
 ### 3.3 Dual wield (Rogue) — `combat.ts:90-104`
 
@@ -229,9 +237,9 @@ Koniec „gear L100 zabija bossa L200".
 
 Eliksiry (`combatElixirs.ts`): `atk_dmg_100/50/25` = ×2.0/1.5/1.25; `spell_dmg_*` analogicznie; `hp_pct_25`/`mp_pct_25` = ×1.25 max; `atk_boost_50`/`def_boost_50` = +50 flat; `attack_speed` = ×1.20. Tiery nie mutex — kilka może być aktywnych, ale drenuje i liczy się najwyższy.
 
-Upgrade skilla w walce `getCombatSkillUpgradeMultiplier(U)` = `1 + min(U,10)×0.02 + max(0,U−10)×0.01` → +5 = ×1.10, +10 = ×1.20, +20 = ×1.30, +30 = ×1.40.
+Upgrade skilla `getCombatSkillUpgradeMultiplier(U)` = `1 + 0.6×(1 − 0.9^U)` — malejące przyrosty, asymptota **×1.6**. +5 ≈ ×1.25, +10 ≈ ×1.39, +20 ≈ ×1.53, +30 ≈ ×1.57 (→ ×1.6). Ulepszenia nieskończone z malejącym zwrotem. **Krzywa UJEDNOLICONA (2.0.0):** display i walka używają teraz tej samej funkcji (`getSkillUpgradeBonus(U) = getCombatSkillUpgradeMultiplier(U) − 1`) — dawniej się rozjeżdżały (display `1.15^U`, walka `~+2%/lvl`).
 
-**Capy anty-one-shot:** instant-kill na splash AOE = `max(splashDmg, 12% max HP)`; Necro `death_apocalypse` = 12% max HP; `execute_below` dobija tylko cele <20% HP; `def_pen` cap 60%.
+**Capy anty-one-shot:** `instant_kill_chance:N` = N% szansy na BURST 12% max HP (**NIE zabicie**); instant-kill na splash AOE = `max(splashDmg, 12% max HP)`; Necro `death_apocalypse` = 12% max HP (bez kosztu własnego HP); `execute_below` dobija tylko cele <20% HP; `def_pen` cap 60%.
 
 ### 3.8 HP/MP regen (`useMpRegen.ts`, tick 1000 ms)
 
@@ -257,11 +265,12 @@ Mnożniki statystyk `MONSTER_RARITY_MULTIPLIERS` (`lootSystem.ts:31`, hunt):
 | Rzadkość | HP× | ATK× | DEF× | XP× | Gold× | task-kills | max item rarity | kamień |
 |---|---|---|---|---|---|---|---|---|
 | normal | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1 | common | common_stone |
-| strong | 1.5 | 1.2 | 1.3 | 2.0 | 2.0 | 3 | rare | rare_stone |
-| epic | 2.5 | 1.6 | 1.5 | 4.0 | 4.0 | 10 | epic | epic_stone |
-| legendary | 5.0 | 1.8 | 1.8 | 10.0 | 10.0 | 50 | legendary | legendary_stone |
-| boss | 10.0 | 2.5 | 2.0 | 30.0 | 30.0 | 200 | mythic | mythic_stone |
+| strong | 1.5 | 1.4 | 1.3 | 2.0 | 2.0 | 3 | rare | rare_stone |
+| epic | 2.5 | 2.2 | 1.5 | 4.0 | 4.0 | 10 | epic | epic_stone |
+| legendary | 4.0 | 3.2 | 1.8 | 10.0 | 10.0 | 50 | legendary | legendary_stone |
+| boss | 8.0 | 5.0 | 2.0 | 30.0 | 30.0 | 200 | mythic | mythic_stone |
 
+> **2.0.0 — przekalibrowane mnożniki ATK/HP/DEF.** Rzadsze warianty biją mocniej progresywnie (strong atk ×1.4, epic ×2.2, legendary ×3.2, boss ×5.0), a górne HP obniżone (legendary 5.0→4.0, boss 10.0→8.0). HP/ATK/DEF są teraz IDENTYCZNE między tabelą hunt (`lootSystem`) a `combat.ts MONSTER_STAT_MULTIPLIERS` (raid) — różnią się tylko XP/gold. Potwory zachowują zakres ataku MIN–MAX (~×0.8–1.2, patrz §4.2).
 > **UWAGA — trzy różne tabele XP/gold rzadkości** (patrz §29): hunt (powyżej, boss ×30/30), raid `combat.ts MONSTER_STAT_MULTIPLIERS` (boss ×10 XP / ×15 gold), offline-hunt `RARITY_*_MULT` (boss ×8/8). Task/mastery kill-weights są jednak wspólne: 1/3/10/50/200.
 
 Bonusy mastery do rzadkości (per poziom mastery danego potwora): strong +1%/lvl, epic +0.5%, legendary +0.25%, boss +0.1% (max mastery 25 → strong 32%, epic 14%, legendary 7.25%, boss 3%).
@@ -276,23 +285,25 @@ Reprezentatywny wycinek (pełna tabela w `monsters.json`). `gold` = zakres [min,
 
 | id | Lvl | HP | ATK | DEF | XP | Gold |
 |---|---|---|---|---|---|---|
-| rat | 1 | 60 | 8 | 1 | 3 | 1–1 |
-| orc | 5 | 69 | 9 | 1 | 18 | 2–5 |
-| dark_elf | 10 | 83 | 13 | 1 | 41 | 5–10 |
-| bandit | 11 | 243 | 52 | 4 | 46 | 5–11 |
-| cyclops | 15 | 306 | 65 | 5 | 67 | 7–15 |
-| dark_mage | 20 | 389 | 83 | 6 | 76 | 10–20 |
-| demon_imp | 30 | 541 | 115 | 8 | 119 | 15–30 |
-| greater_demon | 50 | 846 | 178 | 13 | 209 | 25–50 |
-| infernal_warlord | 100 | 1606 | 337 | 24 | 451 | 50–100 |
-| chaos_titan | 200 | 2933 | 654 | 46 | 977 | 100–200 |
-| death_knight | 300 | 4260 | 971 | 69 | 1538 | 150–300 |
-| celestial_destroyer | 500 | 6914 | 1606 | 114 | 2732 | 250–500 |
-| storm_titan | 600 | 8242 | 1923 | 136 | 3356 | 300–600 |
-| ancient_god_spawn | 800 | 10897 | 2558 | 181 | 4645 | 400–800 |
-| world_ender | 1000 | 13550 | 3192 | 226 | 5981 | 500–1000 |
+| rat | 1 | 8 | 3 | 1 | 3 | 1–1 |
+| orc | 5 | 10 | 4 | 1 | 18 | 2–5 |
+| dark_elf | 10 | 14 | 6 | 1 | 41 | 5–10 |
+| bandit | 11 | 33 | 16 | 4 | 46 | 5–11 |
+| cyclops | 15 | 41 | 19 | 6 | 67 | 7–15 |
+| dark_mage | 20 | 53 | 25 | 7 | 76 | 10–20 |
+| demon_imp | 30 | 75 | 34 | 10 | 119 | 15–30 |
+| greater_demon | 50 | 118 | 54 | 16 | 209 | 25–50 |
+| infernal_warlord | 100 | 226 | 102 | 30 | 451 | 50–100 |
+| chaos_titan | 200 | 420 | 198 | 59 | 977 | 100–200 |
+| death_knight | 300 | 613 | 294 | 87 | 1538 | 150–300 |
+| celestial_destroyer | 500 | 1001 | 487 | 144 | 2732 | 250–500 |
+| storm_titan | 600 | 1195 | 583 | 173 | 3356 | 300–600 |
+| ancient_god_spawn | 800 | 1583 | 776 | 230 | 4645 | 400–800 |
+| world_ender | 1000 | 1970 | 969 | 287 | 5981 | 500–1000 |
 
-**Strefa startowa L1–10** (rat→dark_elf, HP 60→83, ATK 8→13) jest kalibrowana **bez gearu** — ubijalna gołymi rękami. Skok następuje na L11 (`bandit` HP 243, ATK 52), gdzie kalibrator zakłada, że gracz ma już sprzęt. Powyżej L11: HP ~13/lvl, ATK ~3.2/lvl, DEF ~0.23/lvl, XP ~5.9/lvl, gold max = poziom potwora.
+> **2.0.1 — `monsters.json` PRZEGENEROWANE.** HP/ATK/DEF zostały przeliczone przez kalibrator pod nowy model (%-DEF z `DEF_BASE=25` + kompresja obrażeń gracza krzywą potęgową `compressPlayerDamage` `DMG_COMPRESS_K=0.48`/`DMG_COMPRESS_P=0.80` + skalibrowana rotacja skilli) i cele TTK. Ponieważ niskopoziomowe ciosy gracza są znów widoczne (nie podłogują do 1), niskopoziomowe HP urosło względem starego płaskiego `×0.065` (np. `rat` 8→31, `bandit` L11 = 99), a wyżej pozostaje ściśnięte (`world_ender` L1000 = 2632). **`monster.xp` i `gold` NIE są ruszane przez kalibrator** (przelicza tylko HP/ATK/DEF), więc kolumny XP/Gold w danych zostają bez zmian. Ponieważ TTK wzrosło (mob ~6–9s zamiast one-shotów), naliczana XP z zabicia w **huncie zależnym od TTK** (żywa walka auto + `simulateOfflineCombat` background catch-up) jest mnożona ×`KILL_XP_TTK_MULT` (=1.75, `combat.ts`), żeby tempo levelowania z polowań zostało zachowane. **NIE skalowane:** SKIP (rozstrzyga natychmiast — rate niezależny od TTK) ani dedykowany offline-hunt (`offlineHuntSystem.ts` ma stały `killsPerSecond`, niezależny od TTK) — ich tempo już jest „jak dziś". Nagrody z TASKÓW liczą z surowego `monster.xp` (bez mnożnika) → **zostają bez zmian** (odsprzężone).
+
+**Strefa startowa L1–10** (rat→dark_elf, HP 8→14, ATK 3→6) jest kalibrowana **bez gearu** — ubijalna gołymi rękami (przy skompresowanych obrażeniach gracza). Skok następuje na L11 (`bandit` HP 33, ATK 16), gdzie kalibrator zakłada, że gracz ma już sprzęt. Powyżej L11: HP ~2/lvl, ATK ~0.96/lvl, DEF ~0.29/lvl, XP ~5.9/lvl, gold max = poziom potwora.
 
 ---
 
@@ -329,7 +340,7 @@ Kotwice (`levelSystem.ts:4`): 100 → 300 000, 200 → 7 327 500, 400 → 31 875
 - **2 punkty statystyk** (każda klasa; rozdawane: +5 HP / +5 MP / +1 ATK / +1 DEF za punkt).
 - Przyrost HP/MP wg §2.3, milestone co 10 poziomów wg §2.4.
 - Tylko za poziomy powyżej `highest_level` (anti-exploit po śmierci).
-- XP z zabicia potwora = statyczny `monster.xp` × mnożnik rzadkości × mnożnik mastery × modyfikatory transformacji (brak formuły — wartości precomputowane w `monsters.json`).
+- XP z zabicia potwora = statyczny `monster.xp` × `KILL_XP_TTK_MULT` (1.75, tylko hunt zależny od TTK: żywa walka auto + background catch-up; NIE SKIP, NIE offline-hunt) × mnożnik rzadkości × mnożnik mastery × modyfikatory transformacji (bazowe wartości precomputowane w `monsters.json`).
 
 ---
 
@@ -620,40 +631,57 @@ Skille nie są dawane automatycznie — odblokowuje się je za **1 Skrzynię Cza
 
 - Tryb globalny `skillMode` (auto domyślnie). Auto-cast crit = 20%. Auto próg cooldownu `SKILL_COOLDOWN_MS = 8000` skalowany prędkością.
 - MP: `getSkillMpCost` = `mpCost` z JSON, podłoga 15.
-- `resolveSkillRecastMs`: shadow_step używa pełnego cooldownu z JSON (20000), reszta wspólnego progu.
+- `resolveSkillRecastMs`: shadow_step używa pełnego cooldownu z JSON (40000 po 2.0.0), reszta wspólnego progu.
 
 ### 12.4 Obliczenie obrażeń skilla
 
-`damageMultiplier = atkDmg × spellDmg × transformDmg × skillDamage(JSON) × skillUpgradeMult`. AOE splash = 75% obrażeń primary. def_pen: efektywna obrona wroga = `floor(def × (1 − defPen))`, cap 60%.
+**Model 2.0.0 — skill = trafienie podstawowe × `rollSkillDamageMult(coeff, U)`** (`skillSystem.ts`):
+- `skillTierMult(coeff) = clamp(1.2 .. 2.1, 1.2 + (coeff−5.4)/10×0.9)` — mapuje dawne współczynniki `skillDamage` z JSON na **1.2–2.1× zwykłego ciosu**,
+- `× getCombatSkillUpgradeMultiplier(U)` — ujednolicona krzywa ulepszeń (§3.7, asymptota ×1.6),
+- `× rangeRoll = 0.85 + rng×0.30` (±15%).
+
+Skill bije więc ~1.2–2.1× zwykłego ciosu na bazie, do **~3.3× w pełni ulepszony** (whale). **Skille rolują ZAKRES MIN–MAX, nie stałą wartość.** Do tego globalne mnożniki: `atkDmg × spellDmg × transformDmg` oraz kompresja krzywą potęgową `compressPlayerDamage` (`DMG_COMPRESS_K=0.48`, `DMG_COMPRESS_P=0.80`; bo skill to obrażenia gracza). AOE splash = 75% obrażeń primary. def_pen: efektywna obrona wroga = `floor(def × (1 − defPen))`, cap 60%.
 
 ### 12.5 Ulepszanie aktywnego skilla (Spell Chest)
 
-`SPELL_CHEST_UPGRADE_TABLE`: target 1 (1 skrzynia/100g/100%), 2 (1/500/90%), 3 (2/1500/75%), 4 (3/5000/60%), 5 (4/15000/45%), 6 (5/50000/30%), 7 (7/150000/20%), 8 (10/500000/15%), 9 (15/1.5M/10%), 10 (20/5M/5%), >10: `20×2^(t−10)` skrzyń / `5M×2^(t−10)` / `max(0.1, 5×0.5^(t−10))`%. Porażka zużywa zasoby. Efekt w walce: `getCombatSkillUpgradeMultiplier` (§3.7).
+`SPELL_CHEST_UPGRADE_TABLE`: target 1 (1 skrzynia/100g/100%), 2 (1/500/90%), 3 (2/1500/75%), 4 (3/5000/60%), 5 (4/15000/45%), 6 (5/50000/30%), 7 (7/150000/20%), 8 (10/500000/15%), 9 (15/1.5M/10%), 10 (20/5M/5%), >10: `20×2^(t−10)` skrzyń / `5M×2^(t−10)` / `max(0.1, 5×0.5^(t−10))`%. Porażka zużywa zasoby. Efekt w walce: `getCombatSkillUpgradeMultiplier` (§3.7) — ujednolicona krzywa `1 + 0.6×(1 − 0.9^U)` (asymptota ×1.6), taka sama w display i w walce; ulepszenia nieskończone, malejący zwrot.
 
 ### 12.6 Typy efektów (`skillEffectsV2.ts`)
 
-Obrażeniowe: aoe, def_pen, dot, stun/paralyze, multistrike, mark_amp. Instant-kill: `instant_kill_chance` (burst 12% max HP), `execute_below` (dobicie <20%), `death_apocalypse` (12% max HP, necro na 20% HP). Self: heal_self, immortal, mana_shield, dodge/crit/dmg buffy. Party (Bard/Cleric/Knight): party_attack_up, party_as_up (mnożnik AS), party_defense_up, party_crit_up, party_def_pen, party_immortal, heal_party_*, revive_party. Summon (Necro): skeleton/ghost/demon/lich.
+Obrażeniowe: aoe, def_pen, dot, stun/paralyze, multistrike, mark_amp, **enemy_slow**. Instant-kill: `instant_kill_chance` (burst 12% max HP, **NIE zabicie**), `execute_below` (dobicie <20%), `death_apocalypse` (12% max HP, bez kosztu własnego HP). Self: heal_self, immortal, mana_shield, dodge/crit/dmg buffy. Party (Bard/Cleric/Knight): party_attack_up, party_as_up (mnożnik AS), party_defense_up, party_crit_up, party_def_pen, party_immortal, heal_party_*, revive_party. Summon (Necro): skeleton/ghost/demon/lich.
+
+**Zmiany efektów 2.0.0:**
+- **DoT = `% max HP na sekundę` (NIE liczba ticków).** Format `dot:MS:B`, gdzie `B` = % max HP/s. Wartości obniżone do **4%/s** (było 5), np. `dot:5000:4` = 4%/s przez 5s (~20% total).
+- **`instant_kill_chance:N`** = N% szansy na burst 12% max HP (to NIE jest zabicie). `execute_below:N` = realne dobicie poniżej N% HP. `death_apocalypse` = 12% max HP do celu (bez kosztu HP rzucającego).
+- **`death_curse`** mark_amp ×6 → **×3**. **`dark_ritual`** 25% → **13%** (`dark_ritual:10000:13`).
+- **`ice_lance`** dostał `enemy_slow:40:6000` — 40% szansy, że cel traci swój atak (≈ −40% AS) na 6s (konsumowane w pętli hunt przez `huntMonsterSlowSkips`), single-target (cała fala tylko jeśli aoe).
+- **`smoke_bomb`** dodge_buff 50→**40%**, cooldown 25→**35s**; **`shadow_step`** cooldown 20→**40s**; **`evasion`** cooldown 18→**40s**.
+- **Cleric revive** (resurrection_aura, holy_apocalypse) wskrzesza teraz martwe BOTY **oraz** martwych ludzkich członków party — każdy na 50% max HP z 3s oknem ochrony (immortal). Boty: `immortalMs = REVIVE_PROTECT_MS(3000)`; ludzie: event realtime `member-revive`.
+- **`universe_song`** (Bard): martwy `party_instant_kill_chance_next` usunięty całkowicie; ultimate zostawia `party_immortal` + `party_attack_up:100` + `party_as_up:2.2`.
+- **`instant_kill`** (Rogue) przemianowany „Błyskawiczne Zabójstwo/Instant Kill" → **„Śmiertelny Cios/Deadly Strike"** (nazwa była myląca — to 3% szansy na burst 12% HP, nie zabicie).
 
 ### 12.7 Przykładowe skille per klasa (unlockLevel, mp, cd, dmg×ATK)
 
 - **Knight:** shield_bash (5, stun), whirlwind (20, aoe+aggro), execute (70, execute_below:25), absolute_cleave (1000, immortal:10000).
 - **Mage:** fireball (5, dmg 6.6), meteor (60, aoe+stun), reality_rend (300, def_pen:50), big_bang (1000, aoe+stun+immortal).
-- **Cleric:** heal (10, heal_lowest 20%), resurrection_aura (50, revive), celestial_heal (300, heal_party 60%), holy_apocalypse (1000, revive+immortal).
-- **Archer:** precise_shot (5), sniper_shot (70, def_pen:60), death_arrow (100, instant_kill_chance:3), universe_arrow (1000, instant_kill:5).
-- **Rogue:** backstab (5, crit_next), assassinate (50, execute_below:20), absolute_death (1000, instant_kill:8).
-- **Necromancer:** summon_skeleton (10), army_of_darkness (80, ×5 szkielety), lich_transformation (800), death_apocalypse (1000).
-- **Bard:** battle_hymn (5, party_atk 15%), divine_melody (150, party_as ×2), universe_song (1000, party_instant_kill+immortal+atk 100%).
+- **Cleric:** heal (10, heal_lowest 20%), resurrection_aura (50, revive — boty **i** ludzie, 50% HP + 3s ochrony), celestial_heal (300, heal_party 60%), holy_apocalypse (1000, revive+immortal).
+- **Archer:** precise_shot (5), sniper_shot (70, def_pen:60), death_arrow (100, instant_kill_chance:3), universe_arrow (1000, aoe+instant_kill_chance:5).
+- **Rogue:** backstab (5, crit_next), assassinate (50, execute_below:20), „Śmiertelny Cios" instant_kill (instant_kill_chance:3), absolute_death (1000, instant_kill_chance:8).
+- **Necromancer:** summon_skeleton (10), army_of_darkness (80, ×5 szkielety), lich_transformation (800), death_apocalypse (1000, 12% max HP + summon, bez kosztu HP).
+- **Bard:** battle_hymn (5, party_atk 15%), divine_melody (150, party_as ×2), universe_song (1000, party_immortal + party_atk 100% + party_as ×2.2).
 
 ### 12.8 Summony Necromanty (`necroSummonStore.ts`)
 
-| Typ | Cap | dmgMult | HP/MP (× necro) |
-|---|---|---|---|
-| skeleton | 10 | 0.25 | 0.25 |
-| ghost | 6 | 0.50 | 0.50 |
-| demon | 2 | 1.20 | 1.00 |
-| lich | 2 | 2.00 | 2.00 |
+| Typ | Cap | dmgMult | % ciosu Necro | HP/MP (× necro) |
+|---|---|---|---|---|
+| skeleton | 10 | 0.10 | ~6% | 0.25 |
+| ghost | 6 | 0.18 | ~10% | 0.50 |
+| demon | 2 | 0.35 | ~20% | 1.00 |
+| lich | 2 | 0.50 | ~29% | 2.00 |
 
-Sługi przyjmują obrażenia pierwsze (tank-wall) i dokładają obrażenia do ataków necro.
+Sługi przyjmują obrażenia pierwsze (tank-wall, HP-frac bez zmian) i dokładają obrażenia do ataków necro (ten sam takt co cios podstawowy; `char.attack × dmgMult`, mitygacja z połową DEF wroga, kompresja krzywą potęgową `compressPlayerDamage`, bez crita).
+
+> **Rebalans dmgMult 2.0.0.** Stare wartości (0.25/0.50/1.20/2.00) dawały **lich bijący 118% ciosu Necro** (sługa mocniejsza od pana!) i Necro z realną armią (6 szkiel/4 duchy/1 demon/1 lich) robił **~2.8–5.5× DPS** innych klas DPS — a kalibracja HP treści w ogóle nie modeluje sług, więc Necro topił contenty 3× szybciej niż przewidziano. Nowe wartości: żadna sługa nie przebija Necro (max ~29%), realna armia dokłada **~1.24 ciosu/turę**, a Necro ląduje na **~1.5× top-DPS klasy** — czyli **najwyższy ŁĄCZNY dmg** (nisza opcja A), ale bez rozwalonego balansu. Rozkład celowy: szkielet = tania fodder w stadzie, lich = najmocniejszy singiel.
 
 ---
 
@@ -662,7 +690,7 @@ Sługi przyjmują obrażenia pierwsze (tank-wall) i dokładają obrażenia do at
 Źródło: `skillSystem.ts`, `skillStore.ts`.
 
 - **Osobny system od per-monster mastery.** Każda klasa ma 1 weapon skill (Knight dodatkowo shielding). damageBonus/lvl: Knight sword 5%, Archer dist 6%, Rogue dagger 7%, magiczni (magic_level) 8%, Bard 4%. maxLevel 100. `getSkillDamageBonus = level × damageBonus` (sword lvl 50 = +250% DMG).
-- **Zdobywanie:** klasy magiczne (Mage/Cleric/Necro) rosną Magic Level z ataków i castów; klasy broni (Knight/Archer/Rogue/Bard) rosną z ataków (+1 XP/atak); Knight shielding rośnie z bloków.
+- **Zdobywanie:** klasy magiczne (Mage/Cleric/Necro) rosną Magic Level z ataków i castów; klasy broni (Knight/Archer/Rogue/Bard) rosną z ataków (+1 XP/atak); Knight shielding rośnie z trafień (`shieldingXpPerHit`, po 2.0.0 — dawniej z bloków).
 - **Krzywa XP skilla:** `skillXpToNextLevel(L) = ceil(100 × L^1.8)` (L≤0 → 100). L10→11 ~6310, L50→51 ~112 800, L100→101 ~398 107.
 - **Kara śmierci:** 25% skumulowanego XP każdego skilla (może obniżyć poziom skilla).
 - **Trening u Trenera + offline (do 24h).** Trenowalne staty: attack_speed (×0.1/lvl), max_hp/max_mp (+5), defense (+1), crit_chance (+0.5%), crit_dmg (+2%), hp_regen/mp_regen (× class rate). Offline: `offlineXpRate(lvl) = max(0.05, 2.0/(1+lvl×0.1))`, mnożniki prędkości per skill, aktywny gracz ×2.
@@ -680,9 +708,9 @@ Sługi przyjmują obrażenia pierwsze (tank-wall) i dokładają obrażenia do at
 - **3 próby/dzień**, cooldown `86400/3 = 8h` (odnawialny „Reset Bossa"). Gate: `charLevel ≥ boss.level`. Rekomendowany poziom = `boss.level + 5`.
 - **Nagrody (z poziomu, NIE z JSON):** `xp = floor(xpToNext(level) × (0.005 + 0.19/(1 + level/80)))` (~18% poziomu na L10, ~1.8% na L1000); `goldMid = floor(38 × level^1.8)`, zakres [0.6×, 1.6×]. Skalowane mastery bossa.
 - **Loot:** boss ma `dropTable` (`{itemId, chance, rarity}`), roll per wpis tylko na wygranej. `heroicDropChance` per boss 0.01→0.18 (najwyższy na mid-tier, np. L25 Pan Cieni 0.18).
-- **BALANS solo z miksturkami:** DPS-klasy próg ≈ **legendary+3** (~2-3 min), support (Bard/Cleric) ≈ **mythic+3**, rare+3 wolno, **heroic+7 szybko**. Cios bossa ≈ maxHp najsłabszej klasy / 7 (bez one-shotów).
+- **BALANS solo z miksturkami:** DPS-klasy próg ≈ **legendary+3**, support (Bard/Cleric) ≈ **mythic+3**, rare+3 wolno, **heroic+7 szybko**. **TTK bossa (cel kalibracji `BOSS_TTK=210`) ≈ 3–4 min.** Cios bossa ≈ maxHp najsłabszej klasy / 7 (bez one-shotów).
 
-Przykładowe staty (in-combat = base × mnożniki): L10 Król Kanałów 16 754 HP / 155 ATK; L100 Król Demonów 99 988 / 882; L500 Niebiański Niszczyciel 538 793 / 4091; L1000 Koniec Wszystkiego 1 063 324 / 8099.
+Przykładowe staty (in-combat = base × mnożniki ×3.5/×1.75/×1.3; `bosses.json` PRZEGENEROWANE w 2.0.0): L10 Król Kanałów 1001 HP / 96 ATK; L100 Król Demonów 8802 / 705; L500 Niebiański Niszczyciel 42 654 / 3403; L1000 Koniec Wszystkiego 84 910 / 6770.
 
 ---
 
@@ -706,7 +734,7 @@ Przykładowe staty (in-combat = base × mnożniki): L10 Król Kanałów 16 754 H
 
 - **Generowane z lochów** (77 rajdów, 1:1). Wymagają party. Lider startuje.
 - **Fale wg poziomu:** ≤10 → 1, ≤50 → 2, ≤200 → 3, ≤500 → 4, >500 → 5. **4 boss-tier mobki/fala** (slots = fale × 4).
-- **5 prób/dzień.** Bossy: `base = najwyższy monster ≤ raid.level`, `mult = (1 + gap×0.05)(1 + waveIdx×0.15)`, staty × BOSS_TIER (hp 10, atk 2.5, def 2.0).
+- **5 prób/dzień.** Bossy: `base = najwyższy monster ≤ raid.level`, `mult = (1 + gap×0.05)(1 + waveIdx×0.15)`, staty × BOSS_TIER (= `MONSTER_STAT_MULTIPLIERS.boss`, po 2.0.0: hp 8.0, atk 5.0, def 2.0; XP ×10, gold ×15).
 - **Nagrody (per-member loot + shared XP), `RAID_REWARD_MULTIPLIER = 12`:** `xp = floor(base.xp×10) × bossów × 12 + (cleared ? level² : 0)`, gold analogicznie z `×15`. Item rarity per boss: heroic 0.5%, mythic 5%, legendary 10%, epic 20%, rare 50%, common 14.5%. Kamień per boss: heroic 1%, mythic 15%, legendary 25%, epic 40%, rare 10%, common 9%. Skrzynie: 0.25%/tier/boss. **Gwarantowany bonus item na pełny clear** (heroic 1.5% / mythic 8% / legendary 15% / epic 25% / rare 40% / common 10.5%).
 - Niedostępne offline.
 
@@ -884,10 +912,12 @@ Nieśmiertelne manekiny (1–4), HP nigdy nie spada (sandbox HP/MP nie zapisywan
 
 Źródło: `scripts/balance/calibrate.mjs`, `calibrateContent.mjs`.
 
+- **TTK (cele kalibracji 2.0.0):** normal mob ≈ **6–9s** (`TTK_REF=7`), boss ≈ **3–4 min** (`BOSS_TTK=210`). Kalibrator raportuje `one-shot cells: 0` — żaden potwór/boss na poziomie gracza nie one-shotuje common+0.
 - **Common+0 na swój poziom** ubija: normal 5–10, strong 3–8, epic 2–5, legendary 1–3, boss 0–1 (DPS góra, tank/support dół).
 - **Skalowanie gearu:** +1 ulepszenie ≈ +10% zabić, +1 rarity ≈ +15%, heroic ≈ +105% (statMult 2.05).
 - **Strefa startowa L≤10** ubijalna bez gearu (cel 5–7 zabójstw szczura/klasę bez potek). Żaden potwór nie one-shotuje common+0.
-- **Bossy solo z potkami:** DPS ≈ legendary+3, support ≈ mythic+3, heroic+7 szybko. Cios bossa ≈ maxHp najsłabszej klasy / 7.
+- **Bossy solo z potkami:** DPS ≈ legendary+3, support ≈ mythic+3, heroic+7 szybko, ~3–4 min. Cios bossa ≈ maxHp najsłabszej klasy / 7.
+- **Model walki (2.0.1):** %-DEF (`DEF_K=1.0`, `DEF_BASE=25`, cap 0.75) + kompresja obrażeń gracza krzywą potęgową `compressPlayerDamage` (`DMG_COMPRESS_K=0.48`, `DMG_COMPRESS_P=0.80`; dół widoczny — L1 basic ≈ 5–9, sufit L1000 heroic+7 ≈ 1,5k basic / 3k spell) — patrz §3.1. Reborn (przyszłość) = globalny mnożnik zachowujący proporcje.
 - **Guild boss** clearowalny na każdym tierze (obrażenia rosną z tierem).
 
 ---
@@ -919,6 +949,27 @@ Wykryte przez ekstrakcję + audyt adwersarialny (kod/dane zawsze wygrywają):
 | Trzy tabele rarity XP/gold | jedna | hunt boss ×30/30, raid ×10/15, offline ×8/8 |
 | Bronie startowe | `itemTemplates.json starterWeapons` | `CharacterCreate STARTER_WEAPONS` (inny zestaw; itemTemplates nieużywany) |
 | Monster crit | brak | latentne 5% (`calculateDamage` default) |
+
+### 29.1 Rebalans walki 2.0.0 (2026-07-19)
+
+Duża zmiana modelu walki/skilli/balansu (MAJOR). Zastępuje wcześniejsze formuły płaskiej obrony i pasywnego bloku/uniku:
+
+| Obszar | Było | Jest (2.0.0) |
+|---|---|---|
+| Obrona | płaskie `max(1, dmg − def)` | **%-DEF**: `mitigation = min(0.75, def / (def + 1.0×attackerLevel + 25))`, `DEF_BASE=25` studzi mitygację przy niskich DEF (szczur def 1 vs L1 ~4% zamiast 50%), floor 1 (§3.1) |
+| Skala obrażeń gracza | płaski `×0.065` na końcu (dół podłogował do 1) | **krzywa potęgowa** `compressPlayerDamage = 0.48 × mitigated^0.80` (`DMG_COMPRESS_K=0.48`, `DMG_COMPRESS_P=0.80`), nakładana na zmitygowaną bazę PRZED crit/mnożnikiem — tylko obrażenia gracza; dół widoczny (L1 basic ≈ 5–9), sufit L1000 heroic+7 ≈ 1,5k basic / 3k spell. Reborn = przyszły globalny mnożnik zachowujący proporcje |
+| Blok / unik pasywny | Knight blok max 25%, Archer/Rogue/Bard unik | **USUNIĘTE** (`calculateBlockChance`/`calculateDodgeChance` wycięte). Knight Shielding = FLAT DEF `floor(lvl/2)`; Archer/Rogue na krytyku. Zostały aktywne obrony skillowe (§3.2) |
+| Obrażenia skilla | stały mnożnik `skillDamage(JSON)` | **zakres MIN–MAX**: `skillTierMult(coeff)` 1.2–2.1× zwykłego ciosu × krzywa ulepszeń × rangeRoll ±15%; do ~3.3× w pełni ulepszony (§12.4) |
+| Krzywa ulepszeń skilla | display `1.15^U`, walka `~+2%/lvl` (rozjazd) | **UJEDNOLICONA** `1 + 0.6×(1 − 0.9^U)`, asymptota ×1.6 (§3.7) |
+| Mnożniki rzadkości (atk/hp) | strong 1.2 / epic 1.6 / legendary 1.8 / boss 2.5 atk; legendary 5.0 / boss 10.0 hp | atk 1.4 / 2.2 / 3.2 / 5.0; hp legendary 4.0 / boss 8.0 (§4.1); raid BOSS_TIER dziedziczy nowe wartości (§16) |
+| `monsters.json` / `bosses.json` | stare HP/ATK/DEF | **PRZEGENEROWANE** pod nową krzywę+DEF i cele TTK (kalibrator zgodny). Niskopoziomowe HP urosło, bo ciosy gracza są znów widoczne (szczur 8→31); wyżej pozostaje ściśnięte (bandit L11 = 99, world_ender L1000 = 2632, boss L1000 in-combat ≈ 111k HP). TTK zachowane. XP/gold w danych nietknięte |
+| per-kill hunt XP | brak kompensacji | `KILL_XP_TTK_MULT`=1.75 na naliczaniu XP w huncie zależnym od TTK (żywa walka auto + background catch-up); SKIP i offline-hunt NIE skalowane (stały rate). Kompensuje dłuższe TTK, tempo lvlowania zachowane; TASKI liczą z surowego `monster.xp` → bez zmian |
+| TTK | — | normal mob ~6–9s (`TTK_REF=7`), boss ~3–4 min (`BOSS_TTK=210`), `one-shot cells: 0` (§28) |
+| „Instant kill" | traktowany jak realne zabicie | `instant_kill_chance` = szansa na **burst 12% max HP** (nie zabicie); skill „instant_kill" → **„Śmiertelny Cios/Deadly Strike"** |
+| DoT | (opisywany jako ticki) | **`% max HP/s`**, obniżone do 4%/s (§12.6) |
+| Efekty skilli | death_curse ×6, dark_ritual 25%, ice_lance bez slow, universe_song z party_instant_kill | death_curse ×3, dark_ritual 13%, `ice_lance enemy_slow:40:6000`, universe_song bez party_instant_kill (immortal+atk100%+as×2.2); Cleric revive obejmuje ludzi+boty (50% HP + 3s) (§12.6) |
+
+Źródło: `src/systems/combat.ts` (`DEF_K`/`DEF_CAP`/`DEF_BASE`/`DMG_COMPRESS_K`/`DMG_COMPRESS_P`/`compressPlayerDamage`, `MONSTER_STAT_MULTIPLIERS`), `skillSystem.ts` (`rollSkillDamageMult`, `getCombatSkillUpgradeMultiplier`, `getSkillUpgradeBonus`, `skillTierMult`), `lootSystem.ts`, `skills.json`, `scripts/balance/calibrate.mjs` + `calibrateContent.mjs`. **Uwaga:** parytet backendu PHP (CombatMath/HuntResolver/BossSystem/SkillSystem/SkillEffectsV2) — PENDING.
 
 ---
 

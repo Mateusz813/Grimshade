@@ -39,7 +39,6 @@ const FLOAT_LIFETIME_MS = 1500;
 export const useCombatFx = () => {
     const [enemyFloats, setEnemyFloats] = useState<Record<number, ICombatFloat[]>>({});
     const [allyFloats,  setAllyFloats]  = useState<Record<number, ICombatFloat[]>>({});
-    const [enemySkill,  setEnemySkill]  = useState<Record<number, ICombatSkillAnim>>({});
     const [allySkill,   setAllySkill]   = useState<Record<number, ICombatSkillAnim>>({});
     const [allySummonSpawn, setAllySummonSpawn] = useState<Record<number, ICombatSummonSpawn>>({});
     const idRef = useRef(0);
@@ -90,18 +89,6 @@ export const useCombatFx = () => {
         const ic = getSkillIcon(skillId);
         return isImageUrl(ic) ? ic : fallback;
     };
-    const triggerEnemySkillAnim = useCallback((slot: number, skillId: string): void => {
-        const animData = getSkillAnimation(skillId);
-        if (!animData) return;
-        const id = nextId();
-        const emoji = resolveAnimEmoji(skillId, animData.emoji);
-        const next: ICombatSkillAnim = { id, emoji, cssClass: animData.cssClass };
-        setEnemySkill((prev) => ({ ...prev, [slot]: next }));
-        window.setTimeout(() => {
-            setEnemySkill((prev) => (prev[slot]?.id === id ? { ...prev, [slot]: undefined as unknown as ICombatSkillAnim } : prev));
-        }, animData.duration);
-    }, []);
-
     const triggerAllySkillAnim = useCallback((slot: number, skillId: string): void => {
         const animData = getSkillAnimation(skillId);
         if (!animData) return;
@@ -127,7 +114,6 @@ export const useCombatFx = () => {
     const resetFx = useCallback(() => {
         setEnemyFloats({});
         setAllyFloats({});
-        setEnemySkill({});
         setAllySkill({});
         setAllySummonSpawn({});
     }, []);
@@ -141,12 +127,10 @@ export const useCombatFx = () => {
     return {
         enemyFloats,
         allyFloats,
-        enemySkill,
         allySkill,
         allySummonSpawn,
         pushEnemyFloat,
         pushAllyFloat,
-        triggerEnemySkillAnim,
         triggerAllySkillAnim,
         triggerAllySummonSpawn,
         resetFx,

@@ -38,9 +38,9 @@ export type EffectKey =
     | 'revive_party'
     | 'next_ally_heal'
     | 'party_lifesteal_next'
-    | 'party_instant_kill_chance_next'
     | 'aggro_steal'
     | 'enemy_atk_down'
+    | 'enemy_slow'
     | 'enemy_no_heal'
     | 'summon'
     | 'dark_ritual'
@@ -117,10 +117,11 @@ export interface IStatusState {
     markNoHealMs: number;
     enemyAtkDownPct: number;
     enemyAtkDownMs: number;
+    enemySlowPct: number;
+    enemySlowMs: number;
     enemyNoHealMs: number;
     lifestealNext: Array<{ pct: number; count: number; ownerId?: string }>;
     nextAllyHeal: Array<{ pct: number; count: number }>;
-    nextAllyInstantKillPct: Array<{ pct: number; count: number }>;
     manaShieldMs: number;
     darkRitualPending: Array<{ triggerInMs: number; pctOfMaxHp: number }>;
 }
@@ -154,10 +155,11 @@ export const newStatusState = (): IStatusState => ({
     markNoHealMs: 0,
     enemyAtkDownPct: 0,
     enemyAtkDownMs: 0,
+    enemySlowPct: 0,
+    enemySlowMs: 0,
     enemyNoHealMs: 0,
     lifestealNext: [],
     nextAllyHeal: [],
-    nextAllyInstantKillPct: [],
     manaShieldMs: 0,
     darkRitualPending: [],
 });
@@ -187,6 +189,8 @@ export const tickStatus = (s: IStatusState, deltaMs: number, targetMaxHp: number
     s.markNoHealMs = drain(s.markNoHealMs);
     s.enemyAtkDownMs = drain(s.enemyAtkDownMs);
     if (s.enemyAtkDownMs <= 0) s.enemyAtkDownPct = 0;
+    s.enemySlowMs = drain(s.enemySlowMs);
+    if (s.enemySlowMs <= 0) s.enemySlowPct = 0;
     s.enemyNoHealMs = drain(s.enemyNoHealMs);
 
     s.markAmp = s.markAmp
@@ -539,11 +543,6 @@ export const applyEffects = (
                 }
                 break;
             }
-            case 'party_instant_kill_chance_next':
-                for (const p of partyStatus) {
-                    p.nextAllyInstantKillPct.push({ pct: e.a ?? 0, count: e.b ?? 0 });
-                }
-                break;
             case 'aggro_steal':
                 r.aggroSteal = true;
                 break;
@@ -553,6 +552,14 @@ export const applyEffects = (
                     en.enemyAtkDownMs = Math.max(en.enemyAtkDownMs, e.b ?? 0);
                 }
                 break;
+            case 'enemy_slow': {
+                const slowTargets = isAoeCast ? enemyStatus : (targetStatus ? [targetStatus] : []);
+                for (const en of slowTargets) {
+                    en.enemySlowPct = Math.max(en.enemySlowPct, e.a ?? 0);
+                    en.enemySlowMs = Math.max(en.enemySlowMs, e.b ?? 0);
+                }
+                break;
+            }
             case 'enemy_no_heal':
                 for (const en of enemyStatus) {
                     en.enemyNoHealMs = Math.max(en.enemyNoHealMs, e.a ?? 0);
@@ -688,12 +695,6 @@ export const resolveBasicHit = (
         top.count -= 1;
         if (top.count <= 0) attackerStatus.nextAllyHeal.shift();
     }
-    if (attackerStatus.nextAllyInstantKillPct.length > 0) {
-        const top = attackerStatus.nextAllyInstantKillPct[0];
-        if (Math.random() * 100 < top.pct) out.executeBurstPct = 12;
-        top.count -= 1;
-        if (top.count <= 0) attackerStatus.nextAllyInstantKillPct.shift();
-    }
     out.damage = Math.floor(out.damage);
     if (out.damage < 0) out.damage = 0;
     return out;
@@ -741,7 +742,7 @@ export const applyIncomingHeal = (
 const ENEMY_AFFINITY_HEADS = new Set<string>([
     'aoe', 'def_pen', 'dot', 'stun', 'stun_chance', 'paralyze',
     'instant_kill_chance', 'execute_below', 'mark_amp', 'mark_amp_all',
-    'mark_no_heal', 'mark_heal_to_dmg', 'enemy_atk_down', 'enemy_no_heal',
+    'mark_no_heal', 'mark_heal_to_dmg', 'enemy_atk_down', 'enemy_slow', 'enemy_no_heal',
     'multistrike', 'dark_ritual', 'death_apocalypse',
 ]);
 export const skillTargetsEnemy = (effect: string | null | undefined): boolean => {

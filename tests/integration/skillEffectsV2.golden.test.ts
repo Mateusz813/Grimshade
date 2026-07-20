@@ -320,9 +320,6 @@ const buildGolden = (): Record<string, unknown> => ({
         resolveCase({ attackerClass: 'Cleric', baseDmg: 100, attacker: { nextAllyHeal: [{ pct: 50, count: 1 }] } }),
         resolveCase({ attackerClass: 'Knight', baseDmg: -50 }),
         resolveCase({ attackerClass: 'Knight', baseDmg: 100, attacker: { dmgAmpNext: [{ mult: 4, count: 1 }] } }),
-        ...SEEDS.map((seed) => resolveCase({ attackerClass: 'Knight', baseDmg: 100, attacker: { nextAllyInstantKillPct: [{ pct: 50, count: 1 }] }, seed })),
-        resolveCase({ attackerClass: 'Knight', baseDmg: 100, attacker: { nextAllyInstantKillPct: [{ pct: 100, count: 1 }] } }),
-        resolveCase({ attackerClass: 'Knight', baseDmg: 100, attacker: { nextAllyInstantKillPct: [{ pct: 0, count: 1 }] } }),
         resolveCase({
             attackerClass: 'Knight', baseDmg: 100,
             attacker: {
@@ -389,7 +386,6 @@ const buildGolden = (): Record<string, unknown> => ({
         applyCase({ effect: 'next_ally_heal:7.5:3' }),
         applyCase({ effect: 'next_ally_heal:7.5:3', caster: { nextAllyHeal: [{ pct: 7.5, count: 2 }] } }),
         applyCase({ effect: 'party_lifesteal_next:100:5', party: twoAllies() }),
-        applyCase({ effect: 'party_instant_kill_chance_next:15:2', party: twoAllies() }),
         applyCase({ effect: 'aggro_steal' }),
         applyCase({ effect: 'enemy_atk_down:20:5000', enemy: threeEnemies() }),
         applyCase({ effect: 'enemy_no_heal:5000', enemy: threeEnemies() }),

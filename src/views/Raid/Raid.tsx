@@ -38,7 +38,7 @@ import Icon from '../../components/atoms/Icon/Icon';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import { STONE_GENERIC_ICON, STONE_ICONS, getEquippedGearLevel, getGearGapMultiplier } from '../../systems/itemSystem';
 import ItemIcon from '../../components/ui/ItemIcon/ItemIcon';
-import { SPELL_CHEST_LEVELS, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
+import { SPELL_CHEST_LEVELS, rollSkillDamageMult } from '../../systems/skillSystem';
 import dungeonsData from '../../data/dungeons.json';
 import { getSkillIcon } from '../../data/skillIcons';
 import { useCombatFx } from '../../hooks/useCombatFx';
@@ -58,6 +58,7 @@ import { consumeDeathProtection } from '../../systems/deathProtection';
 import { applyCombatLeaveDeath } from '../../systems/combatLeavePenalty';
 import { deathsApi } from '../../api/v1/deathsApi';
 import { getEffectiveChar } from '../../systems/combatEngine';
+import { mitigateDamage } from '../../systems/combat';
 import { ELIXIRS } from '../../stores/shopStore';
 import { getPartyGateLevel } from '../../systems/partySystem';
 import { getCharacterAvatar } from '../../data/classAvatars';
@@ -1080,7 +1081,6 @@ const Raid = () => {
                             flashBossAttacker(ev.targetId, ev.attackerClass);
                         }
                         if (ev.skillId) {
-                            fx.triggerEnemySkillAnim(bossSlot, ev.skillId);
                             const skillIdCap = ev.skillId;
                             setSkillFx((prev) => [
                                 ...prev,
@@ -1299,11 +1299,11 @@ const Raid = () => {
                         const isMe = mem.id === character?.id;
                         const targetSlot = nextBosses.indexOf(target);
                         const computeDmg = (pct: number): number => {
-                            let d = Math.max(1, Math.floor(mem.attack * pct) - Math.floor(target.defense * 0.5));
+                            let d = mitigateDamage(Math.floor(mem.attack * pct), Math.floor(target.defense * 0.5), mem.level, true);
                             if (mem.class === 'Necromancer') {
                                 const summonBonus = useNecroSummonStore.getState().totalAttackBonus(mem.id, mem.attack);
                                 if (summonBonus > 0) {
-                                    d += Math.max(1, Math.floor(summonBonus * pct) - Math.floor(target.defense * 0.5));
+                                    d += mitigateDamage(Math.floor(summonBonus * pct), Math.floor(target.defense * 0.5), mem.level, true);
                                 }
                             }
                             return d;
@@ -1488,12 +1488,8 @@ const Raid = () => {
                         const targets = aoe
                             ? nextBosses.map((b, i) => (b.isDead ? -1 : i)).filter((i) => i >= 0)
                             : (firstAliveIdx >= 0 ? [firstAliveIdx] : []);
-                        const skillUpgradeMult = isPlayer
-                            ? getCombatSkillUpgradeMultiplier(
-                                useSkillStore.getState().skillUpgradeLevels[chosen.id] ?? 0,
-                            )
-                            : 1;
-                        const baseDmg = Math.floor(mem.attack * chosen.damage * apply.castDmgMult * skillUpgradeMult);
+                        const skillDmgMult = rollSkillDamageMult(chosen.damage, isPlayer ? (useSkillStore.getState().skillUpgradeLevels[chosen.id] ?? 0) : 0);
+                        const baseDmg = Math.floor(mem.attack * skillDmgMult * apply.castDmgMult);
                         void apply.multistrike;
                         if (apply.summons.length > 0 && mem.class === 'Necromancer') {
                             const store = useNecroSummonStore.getState();
@@ -1580,7 +1576,7 @@ const Raid = () => {
                         for (const ti of enemyTargets) {
                             const t = nextBosses[ti];
                             if (!t || t.isDead) continue;
-                            const normalDmgRaid = Math.max(1, baseDmg - Math.floor(t.defense * 0.3));
+                            const normalDmgRaid = mitigateDamage(baseDmg, Math.floor(t.defense * 0.3), effectiveLevel, true);
                             let dmg = apply.instantKill
                                 ? Math.max(1, t.currentHp)
                                 : ((apply.executeBurstPct ?? 0) > 0
@@ -1596,7 +1592,6 @@ const Raid = () => {
                             t.currentHp = Math.max(0, t.currentHp - dmg);
                             totalDmgDealtThisCast += dmg;
                             skillPulseBumps.push(t.id);
-                            fx.triggerEnemySkillAnim(ti, chosen.id);
                             fx.pushEnemyFloat(ti, dmg, skillKind, { icon: skillIcon });
                             if (isLeaderInPartyCombat) {
                                 const dmgCap = dmg;
@@ -1796,7 +1791,7 @@ const Raid = () => {
                             continue;
                         }
                     }
-                    const rawDmg = Math.max(1, boss.attack - Math.floor(tgt.defense * 0.4));
+                    const rawDmg = mitigateDamage(boss.attack, Math.floor(tgt.defense * 0.4), boss.level);
                     let appliedDmg = rawDmg;
                     if (tgt.class === 'Necromancer' && rawDmg > 0) {
                         const store = useNecroSummonStore.getState();
@@ -3026,7 +3021,6 @@ const Raid = () => {
             attackingClassName: bossAttackerClass[b.id]
                 ? `attack-${bossAttackerClass[b.id].className}`
                 : null,
-            skillAnim: fx.enemySkill[slot] ?? null,
             floats: fx.enemyFloats[slot] ?? [],
             statusOverlay: (() => {
                 const st = effectsRef.current.statuses.get(b.id);

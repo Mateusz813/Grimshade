@@ -21,6 +21,7 @@ const BASELINE = {
     lastDamageByAttacker: {} as Record<string, never>,
     lastAttackAction: null as null,
     lastMemberHit: null as null,
+    lastMemberRevive: null as null,
     lastMonsterKilled: null as null,
     lastBossState: null as null,
     lastRaidState: null as null,
@@ -622,6 +623,31 @@ describe('publishMemberHit', () => {
                 sourceMonsterIdx: 0,
             });
         }).not.toThrow();
+    });
+});
+
+describe('publishMemberRevive', () => {
+    it('does not throw with channel + memberId set', () => {
+        const unsub = usePartyCombatSyncStore.getState().subscribe('party-1');
+        expect(() => {
+            usePartyCombatSyncStore.getState().publishMemberRevive({
+                memberId: 'char-1',
+                hpPct: 0.5,
+                protectMs: 3000,
+            });
+        }).not.toThrow();
+        unsub();
+    });
+
+    it('is a no-op when no channel is open (does not touch lastMemberRevive mirror)', () => {
+        expect(() => {
+            usePartyCombatSyncStore.getState().publishMemberRevive({
+                memberId: 'char-1',
+                hpPct: 0.5,
+                protectMs: 3000,
+            });
+        }).not.toThrow();
+        expect(usePartyCombatSyncStore.getState().lastMemberRevive).toBeNull();
     });
 });
 

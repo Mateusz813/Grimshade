@@ -57,7 +57,6 @@ const buffFromAtom = (atom: string, skillIcon: string): IBuffSpec | null => {
         case 'crit_next':          return { label: `Gwarant. crit ×${n2 || 1}`,      icon: ic('collision'), durationMs: 6000 };
         case 'dmg_amp_next':       return { label: `× ${n1} DMG (next ${n2 || 1})`,  icon: ic('fire'), durationMs: 6000 };
         case 'dodge_next':         return { label: `Unik 100% (next ${n1})`,         icon: ic('dashing-away'), durationMs: 6000 };
-        case 'party_instant_kill_chance_next': return { label: `Party IK ${n1.toFixed(0)}% (next ${n2 || 1})`,      icon: ic('skull'), durationMs: 10000 };
         default:
             return null;
     }
@@ -68,7 +67,6 @@ const chargeStackCap = (chargesToAdd: number): number => Math.max(1, chargesToAd
 const CHARGE_ATOMS = new Set<string>([
     'dodge_next', 'dmg_amp_next', 'crit_next', 'crit_buff_next',
     'block_next_party', 'next_ally_heal', 'party_lifesteal_next',
-    'party_instant_kill_chance_next',
 ]);
 
 export const CHARGE_BUFF_EFFECT_KEY = (atomHead: string): string =>

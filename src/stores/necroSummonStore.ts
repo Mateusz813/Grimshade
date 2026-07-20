@@ -43,10 +43,10 @@ const CAPS: Record<NecroSummonType, number> = {
 };
 
 const DMG_MULT: Record<NecroSummonType, number> = {
-    skeleton: 0.25,
-    ghost:    0.50,
-    demon:    1.20,
-    lich:     2.00,
+    skeleton: 0.10,
+    ghost:    0.18,
+    demon:    0.35,
+    lich:     0.50,
 };
 
 const HP_FRAC_OF_NECRO: Record<NecroSummonType, number> = {

@@ -78,7 +78,7 @@ import {
     type IBossResult,
     type IBossUniqueItem,
 } from '../../systems/bossSystem';
-import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs, mitigateDamage } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
@@ -97,7 +97,7 @@ import { getPotionDropInfo, rollPotionDrop, rollSpellChestDrop, getSpellChestIco
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import Icon from '../../components/atoms/Icon/Icon';
-import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
+import { getTrainingBonuses, rollSkillDamageMult } from '../../systems/skillSystem';
 import { useTaskStore } from '../../stores/taskStore';
 import { useQuestStore } from '../../stores/questStore';
 import { useDailyQuestStore } from '../../stores/dailyQuestStore';
@@ -1398,13 +1398,10 @@ const Boss = () => {
             enemyIds: [BOSS_FX_ID],
         });
         const defPenFracBoss = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-        const skillUpgradeMultBoss = getCombatSkillUpgradeMultiplier(
-            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-        );
         const partyAtkMultManual = 1 + getActivePartyAtkPct() / 100;
         const baseDmg = isDamageHit ? Math.max(
             1,
-            Math.floor(charAtk * 0.15 * skillBaseMult * partyAtkMultManual * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracBoss) * skillUpgradeMultBoss),
+            Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * partyAtkMultManual * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracBoss)),
         ) : 0;
         const normalSkillDmgBoss = Math.floor(baseDmg * apply.castDmgMult);
         let skillDmg = isDamageHit
@@ -1520,7 +1517,6 @@ const Boss = () => {
                 }).catch(() => { });
             }
         } else {
-            fx.triggerEnemySkillAnim(0, skillId);
             if (isDamageHit) {
                 fx.pushEnemyFloat(0, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
                 showFloatingDmg(`-${skillDmg}`, 'player');
@@ -1572,7 +1568,7 @@ const Boss = () => {
                 window.setTimeout(() => {
                     if (phaseRef.current !== 'fighting' || bossHpRef.current <= 0) return;
                     const wRoll = rollWeaponDamage();
-                    const followup = Math.max(1, Math.floor((charAtk + wRoll - Math.max(0, scaledBossRef.current.defense * (1 - defPenFracBoss))) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
+                    const followup = Math.max(1, Math.floor(mitigateDamage(charAtk + wRoll, Math.max(0, scaledBossRef.current.defense * (1 - defPenFracBoss)), character?.level ?? 1, true) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
                     bossHpRef.current = Math.max(0, bossHpRef.current - followup);
                     setBossHp(bossHpRef.current);
                     fx.pushEnemyFloat(0, followup, 'basic');
@@ -1605,7 +1601,7 @@ const Boss = () => {
             if (bossHpRef.current <= 0 || phaseRef.current !== 'fighting') return 0;
             const wRoll = Math.floor(weaponRollFn() * dmgPercent);
             const totalAtk = charAtk + wRoll;
-            const baseDmg = Math.max(1, totalAtk - sDef);
+            const baseDmg = mitigateDamage(totalAtk, sDef, character?.level ?? 1, true);
             const variance = Math.floor(baseDmg * 0.2);
             const rolledDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
             const playerStatus = ensureStatus(effectsRef.current, PLAYER_FX_ID);
@@ -1672,7 +1668,7 @@ const Boss = () => {
                 }
             }, 150);
         } else {
-            const baseDmg = Math.max(1, charAtk - sDef);
+            const baseDmg = mitigateDamage(charAtk, sDef, character?.level ?? 1, true);
             const variance = Math.floor(baseDmg * 0.2);
             const rolledDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
             const partyAtkMult = 1 + getActivePartyAtkPct() / 100;
@@ -1723,7 +1719,7 @@ const Boss = () => {
                     setTimeout(() => {
                         if (phaseRef.current !== 'fighting' || bossHpRef.current <= 0) return;
                         const summonRaw = Math.floor(charAtk * sm.dmgMult);
-                        let summonDmg = Math.max(1, summonRaw - Math.floor(sDef * 0.5));
+                        let summonDmg = mitigateDamage(summonRaw, Math.floor(sDef * 0.5), character?.level ?? 1, true);
                         const bossStSum = ensureStatus(effectsRef.current, BOSS_FX_ID);
                         const ampSum = consumeTargetMarkAmp(bossStSum);
                         if (ampSum.mult !== 1) {
@@ -1791,11 +1787,8 @@ const Boss = () => {
                     allyIds: [PLAYER_FX_ID],
                     enemyIds: [BOSS_FX_ID],
                 });
-                const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
-                    useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-                );
                 const partyAtkMultAuto = 1 + getActivePartyAtkPct() / 100;
-                let skillDmg = isPureBuff ? 0 : Math.max(1, Math.floor(charAtk * 0.15 * skillBaseMult * partyAtkMultAuto * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillUpgradeMultAuto));
+                let skillDmg = isPureBuff ? 0 : Math.max(1, Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * partyAtkMultAuto * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
                 if (!isPureBuff && skillDmg > 0) {
                     const bossSt = ensureStatus(effectsRef.current, BOSS_FX_ID);
                     const ampAuto = consumeTargetMarkAmp(bossSt);
@@ -1818,7 +1811,6 @@ const Boss = () => {
                     fx.triggerAllySkillAnim(0, skillId);
                     addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
                 } else {
-                    fx.triggerEnemySkillAnim(0, skillId);
                     fx.pushEnemyFloat(0, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
                     addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
                 }
@@ -2111,7 +2103,7 @@ const Boss = () => {
         if (isBossAoeTurn(bossTurnCounterRef.current)) {
             addLog(`:collision: ${boss.name_pl} wykonuje ATAK OBSZAROWY!`, 'boss-spell');
 
-            const aoeDmgPlayer = calculateAoeDamage(Math.floor(sAtk * phaseMult), charDef);
+            const aoeDmgPlayer = calculateAoeDamage(Math.floor(sAtk * phaseMult), charDef, boss.level);
             if (character?.class === 'Necromancer' && useNecroSummonStore.getState().count(PLAYER_FX_ID) > 0) {
                 useNecroSummonStore.getState().damageAll(PLAYER_FX_ID, aoeDmgPlayer);
             }
@@ -2141,7 +2133,7 @@ const Boss = () => {
             for (let bIdx = 0; bIdx < currentBots.length; bIdx++) {
                 const bot = currentBots[bIdx];
                 if (!bot.alive) continue;
-                const aoeDmgBot = calculateAoeDamage(Math.floor(sAtk * phaseMult), bot.defense);
+                const aoeDmgBot = calculateAoeDamage(Math.floor(sAtk * phaseMult), bot.defense, boss.level);
                 const newBotHp = Math.max(0, bot.hp - aoeDmgBot);
                 updateBotHp(bot.id, newBotHp);
                 setBotHitPulses((prev) => ({ ...prev, [bot.id]: (prev[bot.id] ?? 0) + 1 }));
@@ -2192,7 +2184,7 @@ const Boss = () => {
 
             if (spell.type === 'damage') {
                 const target = aggroTargetRef.current;
-                const baseDmg = Math.max(1, sAtk - (target === 'player' ? charDef : (botsRef.current.find((b) => b.id === target)?.defense ?? 0)));
+                const baseDmg = mitigateDamage(sAtk, target === 'player' ? charDef : (botsRef.current.find((b) => b.id === target)?.defense ?? 0), boss.level);
                 const spellDmg = Math.max(1, Math.floor(baseDmg * spell.power));
 
                 const ptyForSpell = usePartyStore.getState().party;
@@ -2308,7 +2300,7 @@ const Boss = () => {
             attack_min: scaledBossRef.current.attack_min,
             attack_max: scaledBossRef.current.attack_max,
         });
-        const finalDmg = Math.max(1, Math.floor((rolled - targetDef) * phaseMult));
+        const finalDmg = Math.max(1, Math.floor(mitigateDamage(rolled, targetDef, boss.level) * phaseMult));
         const enragedText = phaseMult > 1 ? ' \uD83D\uDD25' : '';
 
         if (target === 'player') {
@@ -2441,7 +2433,6 @@ const Boss = () => {
                 const newMp = Math.max(0, bot.mp - botForAction.skillMpCost);
                 updateBotMp(bot.id, newMp);
                 addLog(`${icon} ${bot.name} rzuca ${action.skillName}: ${action.damage} dmg (Boss HP: ${newBossHp.toLocaleString('pl-PL')})`, 'player');
-                fx.triggerEnemySkillAnim(0, botForAction.skillId);
                 fx.pushEnemyFloat(0, action.damage, 'ally-spell', { icon: getSkillIcon(botForAction.skillId) });
                 void import('../../stores/partyDamageStore').then(({ usePartyDamageStore }) => {
                     usePartyDamageStore.getState().addDamage(dmgAttributedTo, action.damage);
@@ -2680,9 +2671,6 @@ const Boss = () => {
                                 () => setBotAttackingClass((c) => c === ev.attackerClass ? null : c),
                                 animMs,
                             );
-                        }
-                        if (ev.skillId) {
-                            fx.triggerEnemySkillAnim(0, ev.skillId);
                         }
                     }
                     if (ev.attackerId === 'boss') {
@@ -3527,7 +3515,6 @@ const Boss = () => {
                                 : botAttackingClass
                                     ? `attack-${botAttackingClass}`
                                     : null,
-                            skillAnim: fx.enemySkill[0] ?? null,
                             floats: fx.enemyFloats[0] ?? [],
                             statusOverlay: (() => {
                                 const st = effectsRef.current.statuses.get(BOSS_FX_ID);

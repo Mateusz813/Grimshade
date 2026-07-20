@@ -313,6 +313,7 @@ const OfflineHunt = () => {
         if (!monster) return;
         startHunt(monster, pickedSkillId);
         setClaimResult(null);
+        commitCombatEventNow({ type: 'offline-hunt' });
     };
 
     const handleClaim = async (): Promise<void> => {

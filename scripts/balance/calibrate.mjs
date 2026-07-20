@@ -7,7 +7,7 @@ const monsters=require(P('monsters.json')), itemTemplates=require(P('itemTemplat
 const floor=Math.floor,max=Math.max,min=Math.min,round=Math.round;
 const APPLY=process.argv.includes('--apply');
 
-const CBS={Knight:{hp:120,mp:30,attack:10,defense:5,as:1.5,crit:0.03},Mage:{hp:80,mp:200,attack:6,defense:2,as:2.0,crit:0.05},Cleric:{hp:100,mp:150,attack:7,defense:4,as:2.0,crit:0.03},Archer:{hp:100,mp:80,attack:10,defense:3,as:2.5,crit:0.10},Rogue:{hp:90,mp:60,attack:9,defense:3,as:2.5,crit:0.15},Necromancer:{hp:85,mp:180,attack:6,defense:2,as:1.8,crit:0.05},Bard:{hp:95,mp:120,attack:8,defense:3,as:2.0,crit:0.07}};
+const CBS={Knight:{hp:150,mp:40,attack:12,defense:8,as:1.5,crit:0.03},Mage:{hp:90,mp:200,attack:9,defense:3,as:2.0,crit:0.05},Cleric:{hp:115,mp:155,attack:8,defense:6,as:2.0,crit:0.03},Archer:{hp:110,mp:80,attack:11,defense:4,as:2.5,crit:0.10},Rogue:{hp:100,mp:75,attack:10,defense:4,as:2.5,crit:0.15},Necromancer:{hp:88,mp:200,attack:9,defense:3,as:1.8,crit:0.05},Bard:{hp:105,mp:125,attack:9,defense:4,as:2.0,crit:0.07}};
 const HPL={Knight:8,Mage:3,Cleric:5,Archer:4,Rogue:4,Necromancer:3,Bard:4};
 const MILEHP={Knight:30,Mage:10,Cleric:15,Archer:15,Rogue:15,Necromancer:12,Bard:15};
 const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
@@ -43,25 +43,30 @@ function player(cls,L,G,R,U,noGear=false){
   const wsc=itemTemplates.weapons.find(t=>t.type===WEAPON[cls]);
   const wRoll=noGear?weaponAvg(wsc.scaling,1,'common',0):weaponAvg(wsc.scaling,G,R,U);
   const wskill=min(100,L), csb=floor(wskill*SKILLCOEF[cls]);
-  return{cls,attack:atk+gA,defense:def+gD,maxHp:hp+gH,wRoll,csb,classMod:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),as:b.as,dual:cls==='Rogue'};
+  const pts=2*max(0,L-1), atkPts=round(pts*0.5), hpPts=round(pts*0.3)*6, defPts=round(pts*0.2);
+  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:hp+gH+hpPts,wRoll,csb,classMod:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),as:b.as,dual:cls==='Rogue'};
 }
 const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
+const DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80, DEF_BASE=25;
+const compress=(x)=>DMG_COMPRESS_K*Math.pow(max(0,x),DMG_COMPRESS_P);
+const mitig=(def,lvl)=>def<=0?0:min(0.75,def/(def+max(1,lvl)+DEF_BASE));
 function basicHit(p,enemyDef){
-  if(p.dual)return 2*max(1,(p.attack+0.6*p.wRoll+p.csb)*p.classMod-enemyDef)*(1+p.crit);
-  return max(1,(p.attack+p.wRoll+p.csb)*p.classMod-enemyDef)*(1+p.crit);
+  const m=1-mitig(enemyDef,p.L);
+  if(p.dual)return 2*compress((p.attack+0.6*p.wRoll+p.csb)*p.classMod*m)*(1+p.crit);
+  return compress((p.attack+p.wRoll+p.csb)*p.classMod*m)*(1+p.crit);
 }
 const playerDPS=(p,enemyDef)=>basicHit(p,enemyDef)/(getAttackMs(p.as)/1000);
 
 const MON_SPEED=2.0, MON_INT=getAttackMs(MON_SPEED)/1000;
-const TTK_REF=4.0;
+const TTK_REF=7.0;
 const BUDGET=28;
-const SURV_HITS=18;
-const MONR={normal:{hp:1.0,atk:1.0},strong:{hp:1.4,atk:1.1},epic:{hp:2.0,atk:1.25},legendary:{hp:3.5,atk:1.4},boss:{hp:14,atk:1.6}};
+const SURV_HITS=35;
+const MONR={normal:{hp:1.0,atk:1.0},strong:{hp:1.5,atk:1.4},epic:{hp:2.5,atk:2.2},legendary:{hp:4.0,atk:3.2},boss:{hp:8.0,atk:5.0}};
 function ref(L){const ng=L<=10;const ps=CLASSES.map(c=>player(c,L,L,'common',0,ng));return{dps:ps.reduce((s,p)=>s+playerDPS(p,0),0)/7,maxHp:ps.reduce((s,p)=>s+p.maxHp,0)/7,def:ps.reduce((s,p)=>s+p.defense,0)/7};}
-function calibMonster(L){const r=ref(L);return{hp:max(8,round(r.dps*TTK_REF)),attack:max(1,round(r.maxHp/SURV_HITS+r.def)),defense:max(1,round(r.def*0.15)),speed:MON_SPEED};}
+function calibMonster(L){const r=ref(L);return{hp:max(8,round(r.dps*TTK_REF)),attack:max(1,round(r.maxHp/SURV_HITS)),defense:max(1,round(r.def*0.15)),speed:MON_SPEED};}
 function enemyAt(L,rarity){const b=calibMonster(L),R=MONR[rarity];return{hp:floor(b.hp*R.hp),attack:floor(b.attack*R.atk),defense:b.defense};}
 function killsRate(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);return ttk>0?round(BUDGET/ttk):0;}
-function killsNoPotion(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);const monHit=max(1,e.attack-p.defense)*1.05;if(monHit>=p.maxHp)return 0;const monDPS=monHit/MON_INT;const surv=p.maxHp/monDPS;return min(round(BUDGET/ttk),floor(surv/ttk));}
+function killsNoPotion(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);const monHit=max(1,e.attack*(1-mitig(p.defense,L)))*1.05;if(monHit>=p.maxHp)return 0;const monDPS=monHit/MON_INT;const surv=p.maxHp/monDPS;return min(round(BUDGET/ttk),floor(surv/ttk));}
 
 console.log('=== common+0, char=item=lvl — kills WITH potions (rate) per class/monster-rarity ===');
 console.log('lvl | class       | normal strong epic legend boss');
@@ -85,7 +90,7 @@ console.log('\n=== SANITY: Mage L15 epic+5 vs L15 STRONG (must be >0) ===');
 console.log(`  Mage L15 epic+5 strong: ${killsRate(player('Mage',15,15,'epic',5),15,'strong')} kills`);
 
 console.log('\n=== one-shot check: does any level-matched monster one-shot a common+0 player? ===');
-let os=0;for(const L of[1,10,50,100,500,1000])for(const cls of CLASSES)for(const r of['normal','strong','epic','legendary','boss']){const p=player(cls,L,L,'common',0);const e=enemyAt(L,r);if(max(1,e.attack-p.defense)*2>=p.maxHp)os++;}
+let os=0;for(const L of[1,10,50,100,500,1000])for(const cls of CLASSES)for(const r of['normal','strong','epic','legendary','boss']){const p=player(cls,L,L,'common',0);const e=enemyAt(L,r);if(max(1,e.attack*(1-mitig(p.defense,L)))*2>=p.maxHp)os++;}
 console.log(`  one-shot cells: ${os} (want 0)`);
 
 if(APPLY){for(const m of monsters){const c=calibMonster(m.level);m.hp=c.hp;m.attack=c.attack;m.defense=c.defense;m.speed=c.speed;}writeFileSync(P('monsters.json'),JSON.stringify(monsters,null,2)+'\n');console.log('\nAPPLIED monsters.json. NOTE: also set itemTemplates rarityMultipliers + itemSystem enh to match (see RMULT/enh above).');}
@@ -105,4 +110,15 @@ if(process.argv.includes('--table')){
     console.log('EQ'.padEnd(12)+['normal','strong','epic','legend','boss'].map(s=>s.padStart(8)).join(''));
     for(const [r,u] of gears) console.log(`${r.slice(0,4)}+${u}`.padEnd(12)+['normal','strong','epic','legendary','boss'].map(mr=>String(killsRate(player(cls,100,100,r,u),100,mr)).padStart(8)).join(''));
   }
+}
+
+if(process.argv.includes('--scale')){
+  console.log('\n=== SUROWY top basic hit (vs 0 def), DMG_SCALE=1.0 — do ustawienia DMG_SCALE ===');
+  const rows=[['common',0],['common',5],['legendary',7],['heroic',7],['heroic',30]];
+  for(const L of [10,100,500,1000]){
+    console.log(`\n  L${L}:`);
+    for(const [r,u] of rows){let mx=0,mxCls='';for(const cls of CLASSES){const h=basicHit(player(cls,L,L,r,u),0);if(h>mx){mx=h;mxCls=cls;}}console.log(`    ${r.slice(0,4)}+${u}`.padEnd(14)+`max basic ≈ ${String(round(mx)).padStart(8)} (${mxCls})`);}
+  }
+  const top=(()=>{let mx=0;for(const cls of CLASSES)mx=max(mx,basicHit(player(cls,1000,1000,'heroic',7),0));return mx;})();
+  console.log(`\n  TOP realistyczny (heroic+7 L1000) ≈ ${round(top)} → DMG_SCALE ≈ ${(1500/top).toFixed(4)} (basic ~1500, spell ~2× → ~3k)`);
 }

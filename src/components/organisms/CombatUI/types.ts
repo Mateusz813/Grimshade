@@ -23,7 +23,6 @@ export interface ICombatEnemy {
     isHit?: boolean;
     hitPulse?: number;
     attackingClassName?: string | null;
-    skillAnim?: ICombatSkillAnim | null;
     floats?: ICombatFloat[];
     statusOverlay?: {
         stunMs?: number;

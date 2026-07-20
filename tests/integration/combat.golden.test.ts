@@ -4,8 +4,6 @@ import { dirname, resolve } from 'node:path';
 import {
     calculateDamage,
     calculateDualWieldDamage,
-    calculateBlockChance,
-    calculateDodgeChance,
     calculateSkillDamageWithMlvl,
     calculateSkillDamage,
     calculateAttackInterval,
@@ -22,26 +20,21 @@ import {
 
 
 const DAMAGE_CASES: ICombatParams[] = [
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, isCrit: false, isBlocked: false, isDodged: false, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 10, classModifier: 1, enemyDefense: 20, isCrit: true, isBlocked: false, isDodged: false, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, isCrit: false, isBlocked: true, isDodged: false, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, isCrit: false, isBlocked: false, isDodged: true, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, isCrit: true, isBlocked: true, isDodged: false, critDmg: 2.5 },
-    { baseAtk: 10, weaponAtk: 5, skillBonus: 0, classModifier: 1, enemyDefense: 999, isCrit: false, isBlocked: false, isDodged: false, critDmg: 2 },
-    { baseAtk: 100, weaponAtk: 50, skillBonus: 25, classModifier: 1.3, enemyDefense: 40, isCrit: true, isBlocked: false, isDodged: false, critDmg: 2, damageMultiplier: 1.5 },
-    { baseAtk: 80, weaponAtk: 40, skillBonus: 0, classModifier: 1, enemyDefense: 10, isCrit: false, isBlocked: false, isDodged: false, critDmg: 2, damageMultiplier: 0.5 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, attackerLevel: 20, isCrit: false, critDmg: 2 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 10, classModifier: 1, enemyDefense: 20, attackerLevel: 20, isCrit: true, critDmg: 2 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 100, attackerLevel: 100, isCrit: false, critDmg: 2 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 200, attackerLevel: 100, isCrit: false, critDmg: 2 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 300, attackerLevel: 100, isCrit: true, critDmg: 2.5 },
+    { baseAtk: 10, weaponAtk: 5, skillBonus: 0, classModifier: 1, enemyDefense: 999, attackerLevel: 1, isCrit: false, critDmg: 2 },
+    { baseAtk: 100, weaponAtk: 50, skillBonus: 25, classModifier: 1.3, enemyDefense: 40, attackerLevel: 40, isCrit: true, critDmg: 2, damageMultiplier: 1.5 },
+    { baseAtk: 80, weaponAtk: 40, skillBonus: 0, classModifier: 1, enemyDefense: 10, attackerLevel: 10, isCrit: false, critDmg: 2, damageMultiplier: 0.5 },
 ];
 
 const DUAL_CASES: Array<ICombatParams & { offHandAtk: number }> = [
-    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, isCrit: false, isBlocked: false, isDodged: false, critDmg: 2 },
-    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, isCrit: true, isBlocked: false, isDodged: false, critDmg: 2 },
+    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, attackerLevel: 15, isCrit: false, critDmg: 2 },
+    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, attackerLevel: 15, isCrit: true, critDmg: 2 },
 ];
 
-const BLOCK_CASES: Array<[number, boolean]> = [[0, true], [10, true], [40, true], [100, true], [10, false]];
-const DODGE_CASES: Array<[string, number, boolean]> = [
-    ['Archer', 0, true], ['Archer', 50, true], ['Rogue', 30, true], ['Bard', 40, true],
-    ['Knight', 50, true], ['Archer', 10, false],
-];
 const MLVL_CASES: Array<[number, number, number, number]> = [[100, 50, 20, 1], [100, 0, 20, 1.3], [50, 25, 200, 1]];
 const SKILL_DMG_CASES: Array<[number, number, number, number]> = [[80, 2.5, 20, 1], [80, 1, 200, 1.3], [50, 3, 10, 1]];
 const INTERVAL_CASES = [0.5, 1, 2, 3, 4, 8];
@@ -63,8 +56,6 @@ const buildGolden = (): Record<string, unknown> => ({
     note: 'Generowane z src/systems/combat.ts (czysty podzbiór). NIE edytuj ręcznie.',
     calculateDamage: DAMAGE_CASES.map((params) => ({ params, result: calculateDamage(params) })),
     calculateDualWieldDamage: DUAL_CASES.map((params) => ({ params, result: calculateDualWieldDamage(params) })),
-    calculateBlockChance: BLOCK_CASES.map(([lvl, phys]) => ({ lvl, phys, value: calculateBlockChance(lvl, phys) })),
-    calculateDodgeChance: DODGE_CASES.map(([cls, agi, phys]) => ({ cls, agi, phys, value: calculateDodgeChance(cls, agi, phys) })),
     calculateSkillDamageWithMlvl: MLVL_CASES.map(([d, m, e, c]) => ({ args: [d, m, e, c], value: calculateSkillDamageWithMlvl(d, m, e, c) })),
     calculateSkillDamage: SKILL_DMG_CASES.map(([a, s, e, c]) => ({ args: [a, s, e, c], value: calculateSkillDamage(a, s, e, c) })),
     calculateAttackInterval: INTERVAL_CASES.map((speed) => ({ speed, value: calculateAttackInterval(speed) })),

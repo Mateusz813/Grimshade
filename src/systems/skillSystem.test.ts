@@ -9,9 +9,8 @@ import {
     getSkillDamageBonus,
     getClassWeaponSkills,
     skillXpProgress,
-    shieldingXpPerBlock,
+    shieldingXpPerHit,
     getShieldingDefBonus,
-    getShieldingBlockBonus,
     mlvlXpPerAttack,
     mlvlXpPerSkillUse,
     doesClassGainMlvlFromAttacks,
@@ -164,14 +163,14 @@ describe('getClassWeaponSkills', () => {
 });
 
 
-describe('shieldingXpPerBlock', () => {
+describe('shieldingXpPerHit', () => {
     it('returns at least 1 at any level', () => {
-        expect(shieldingXpPerBlock(0)).toBeGreaterThanOrEqual(1);
-        expect(shieldingXpPerBlock(100)).toBeGreaterThanOrEqual(1);
+        expect(shieldingXpPerHit(0)).toBeGreaterThanOrEqual(1);
+        expect(shieldingXpPerHit(100)).toBeGreaterThanOrEqual(1);
     });
 
     it('gives more XP at lower shielding levels', () => {
-        expect(shieldingXpPerBlock(1)).toBeGreaterThan(shieldingXpPerBlock(50));
+        expect(shieldingXpPerHit(1)).toBeGreaterThan(shieldingXpPerHit(50));
     });
 });
 
@@ -184,17 +183,6 @@ describe('getShieldingDefBonus', () => {
         expect(getShieldingDefBonus(2)).toBe(1);
         expect(getShieldingDefBonus(10)).toBe(5);
         expect(getShieldingDefBonus(20)).toBe(10);
-    });
-});
-
-describe('getShieldingBlockBonus', () => {
-    it('returns 0 at level 0', () => {
-        expect(getShieldingBlockBonus(0)).toBe(0);
-    });
-
-    it('returns 0.5% per level', () => {
-        expect(getShieldingBlockBonus(10)).toBeCloseTo(0.05, 4);
-        expect(getShieldingBlockBonus(20)).toBeCloseTo(0.10, 4);
     });
 });
 
@@ -300,16 +288,17 @@ describe('getSkillUpgradeBonus', () => {
         expect(getSkillUpgradeBonus(0)).toBe(0);
     });
 
-    it('follows the 1.15^level enhancement curve', () => {
-        expect(getSkillUpgradeBonus(1)).toBeCloseTo(0.15, 2);
-        expect(getSkillUpgradeBonus(5)).toBeCloseTo(Math.pow(1.15, 5) - 1, 2);
-        expect(getSkillUpgradeBonus(10)).toBeCloseTo(Math.pow(1.15, 10) - 1, 2);
+    it('follows the diminishing 0.6·(1 − 0.9^U) curve', () => {
+        expect(getSkillUpgradeBonus(1)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 1)), 6);
+        expect(getSkillUpgradeBonus(5)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 5)), 6);
+        expect(getSkillUpgradeBonus(10)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 10)), 6);
     });
 
-    it('continues at 1.08^(level-10) beyond +10', () => {
-        const base = Math.pow(1.15, 10);
-        expect(getSkillUpgradeBonus(15)).toBeCloseTo(base * Math.pow(1.08, 5) - 1, 2);
-        expect(getSkillUpgradeBonus(20)).toBeCloseTo(base * Math.pow(1.08, 10) - 1, 2);
+    it('keeps rising with diminishing returns, approaching the 0.6 asymptote', () => {
+        expect(getSkillUpgradeBonus(15)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 15)), 6);
+        expect(getSkillUpgradeBonus(20)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 20)), 6);
+        expect(getSkillUpgradeBonus(20)).toBeGreaterThan(getSkillUpgradeBonus(15));
+        expect(getSkillUpgradeBonus(1000)).toBeCloseTo(0.6, 6);
     });
 });
 
@@ -319,12 +308,12 @@ describe('getCombatSkillUpgradeMultiplier', () => {
         expect(getCombatSkillUpgradeMultiplier(-5)).toBe(1);
     });
 
-    it('matches the modest capped sample points', () => {
-        expect(getCombatSkillUpgradeMultiplier(1)).toBeCloseTo(1.02, 6);
-        expect(getCombatSkillUpgradeMultiplier(5)).toBeCloseTo(1.10, 6);
-        expect(getCombatSkillUpgradeMultiplier(10)).toBeCloseTo(1.20, 6);
-        expect(getCombatSkillUpgradeMultiplier(20)).toBeCloseTo(1.30, 6);
-        expect(getCombatSkillUpgradeMultiplier(30)).toBeCloseTo(1.40, 6);
+    it('matches the diminishing-returns sample points', () => {
+        expect(getCombatSkillUpgradeMultiplier(1)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 1)), 6);
+        expect(getCombatSkillUpgradeMultiplier(5)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 5)), 6);
+        expect(getCombatSkillUpgradeMultiplier(10)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 10)), 6);
+        expect(getCombatSkillUpgradeMultiplier(20)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 20)), 6);
+        expect(getCombatSkillUpgradeMultiplier(30)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 30)), 6);
     });
 
     it('is monotonically non-decreasing across levels 0..40', () => {
@@ -334,8 +323,10 @@ describe('getCombatSkillUpgradeMultiplier', () => {
         }
     });
 
-    it('stays modest — far below the Inventory-preview getSkillUpgradeBonus curve', () => {
-        expect(getCombatSkillUpgradeMultiplier(10) - 1).toBeLessThan(getSkillUpgradeBonus(10));
+    it('is unified with the Inventory-preview getSkillUpgradeBonus curve', () => {
+        for (const lvl of [1, 5, 10, 20, 40]) {
+            expect(getCombatSkillUpgradeMultiplier(lvl) - 1).toBeCloseTo(getSkillUpgradeBonus(lvl), 6);
+        }
     });
 });
 

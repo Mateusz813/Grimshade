@@ -1,4 +1,5 @@
 import { xpToNextLevel } from './levelSystem';
+import { mitigateDamage } from './combat';
 
 
 export interface IBossDropEntry {
@@ -160,8 +161,8 @@ export const resolveBoss = (
   let playerHp = character.max_hp;
   let bossHp   = scaled.hp;
   const bossMaxHp    = scaled.hp;
-  const playerDmg    = Math.max(1, character.attack - scaled.defense);
-  const baseBossDmg  = Math.max(1, scaled.attack - character.defense);
+  const playerDmg    = mitigateDamage(character.attack, scaled.defense, character.level, true);
+  const baseBossDmg  = mitigateDamage(scaled.attack, character.defense, boss.level);
   let turns = 0;
 
   while (bossHp > 0 && playerHp > 0 && turns < 100_000) {

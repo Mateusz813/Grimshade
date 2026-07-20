@@ -1310,7 +1310,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                 liveBossHpRef.current = Math.max(backendFloor, liveBossHpRef.current - cappedDmg);
                 setBoss((b) => (b ? { ...b, boss_current_hp: liveBossHpRef.current } : b));
                 setBossHitPulse((p) => p + 1);
-                fx.triggerEnemySkillAnim(0, def.id);
                 fx.pushEnemyFloat(0, cappedDmg, 'spell', {
                     icon: getSkillIcon(def.id),
                 });
@@ -1521,7 +1520,6 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
                             isTargetedByPlayer: true,
                             hitPulse: bossHitPulse,
                             attackingClassName: bossAttackingPulse,
-                            skillAnim: fx.enemySkill[0] ?? null,
                             floats: fx.enemyFloats[0] ?? [],
                         };
                         const playerAlly: ICombatAlly = {

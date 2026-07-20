@@ -153,20 +153,6 @@ const EnemyCard = ({ enemy, onTarget }: IProps) => {
                 />
             )}
 
-            {enemy.skillAnim && (
-                <span
-                    key={`skill-${enemy.skillAnim.id}`}
-                    className={`skill-anim-overlay ${enemy.skillAnim.cssClass}`}
-                    aria-hidden="true"
-                >
-                    {isImageUrl(enemy.skillAnim.emoji) ? (
-                        <img className="skill-anim-emoji skill-anim-emoji--img" src={enemy.skillAnim.emoji} alt="" draggable={false} />
-                    ) : (
-                        <span className="skill-anim-emoji"><TinyIcon icon={enemy.skillAnim.emoji} /></span>
-                    )}
-                </span>
-            )}
-
             {enemy.floats && enemy.floats.length > 0 && (
                 <div className="combat-ui__floats" aria-hidden="true">
                     {enemy.floats.map((f) => {

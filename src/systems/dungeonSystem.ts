@@ -1,6 +1,7 @@
 import type { Rarity, IGeneratedItem } from './lootSystem';
 import type { IBaseItem } from './itemSystem';
 import { generateRandomItem } from './itemGenerator';
+import { mitigateDamage } from './combat';
 
 
 export interface IDungeonDropEntry {
@@ -343,14 +344,16 @@ export const resolveWave = (
   playerHp: number,
   playerAtk: number,
   playerDef: number,
+  playerLevel: number,
   monsterHp: number,
   monsterAtk: number,
   monsterDef: number,
+  monsterLevel: number,
 ): IResolveWaveResult => {
   let pHp = playerHp;
   let mHp = monsterHp;
-  const pDmg = Math.max(1, playerAtk - monsterDef);
-  const mDmg = Math.max(1, monsterAtk - playerDef);
+  const pDmg = mitigateDamage(playerAtk, monsterDef, playerLevel, true);
+  const mDmg = mitigateDamage(monsterAtk, playerDef, monsterLevel);
 
   for (let i = 0; i < 10_000; i++) {
     mHp -= pDmg;
@@ -411,8 +414,8 @@ export const resolveDungeon = (
 
     const { playerHpLeft, won } = resolveWave(
       playerHp,
-      character.attack, character.defense,
-      monster.hp, monster.attack, monster.defense,
+      character.attack, character.defense, character.level,
+      monster.hp, monster.attack, monster.defense, monster.level,
     );
 
     playerHp = playerHpLeft;

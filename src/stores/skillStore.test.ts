@@ -5,7 +5,7 @@ import { useCharacterStore, type ICharacter } from './characterStore';
 import {
     skillXpToNextLevel,
     mlvlXpPerAttack,
-    shieldingXpPerBlock,
+    shieldingXpPerHit,
 } from '../systems/skillSystem';
 import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
 
@@ -355,18 +355,18 @@ describe('upgradeActiveSkill', () => {
 });
 
 
-describe('addShieldingXpOnBlock', () => {
+describe('addShieldingXpOnHit', () => {
     it('grants shielding XP scaled by current level', () => {
         useSkillStore.setState({
             skillLevels: { shielding: 0 },
             skillXp: { shielding: 0 },
         });
-        const gained = useSkillStore.getState().addShieldingXpOnBlock();
+        const gained = useSkillStore.getState().addShieldingXpOnHit();
         expect(gained).toBeGreaterThanOrEqual(0);
         const xp = useSkillStore.getState().skillXp['shielding'] ?? 0;
         const level = useSkillStore.getState().skillLevels['shielding'] ?? 0;
         expect(xp + level).toBeGreaterThan(0);
-        expect(xp + level).toBe(shieldingXpPerBlock(0));
+        expect(xp + level).toBe(shieldingXpPerHit(0));
     });
 });
 

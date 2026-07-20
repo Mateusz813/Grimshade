@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
     calculateDamage,
     calculateDualWieldDamage,
-    calculateBlockChance,
-    calculateDodgeChance,
     calculateSkillDamage,
     calculateSkillDamageWithMlvl,
     calculateAttackInterval,
@@ -14,45 +12,103 @@ import {
     getSpeedScaledCooldownMs,
     resolveSkillRecastMs,
     REAL_COOLDOWN_SKILL_IDS,
+    KILL_XP_TTK_MULT,
+    compressPlayerDamage,
+    defMitigation,
+    DMG_COMPRESS_K,
+    DMG_COMPRESS_P,
+    DEF_BASE,
 } from './combat';
 import skillsData from '../data/skills.json';
 
+describe('compressPlayerDamage (sub-linear player-damage compression)', () => {
+    it('is the power curve K·raw^P (K=0.48, P=0.80)', () => {
+        expect(DMG_COMPRESS_K).toBe(0.48);
+        expect(DMG_COMPRESS_P).toBe(0.80);
+        expect(compressPlayerDamage(1000)).toBeCloseTo(0.48 * Math.pow(1000, 0.80), 6);
+    });
+
+    it('keeps low-level hits VISIBLE (a ~17 raw hit compresses to a few, not floored to 1)', () => {
+        const lowHit = Math.floor(compressPlayerDamage(17));
+        expect(lowHit).toBeGreaterThanOrEqual(4);
+        expect(lowHit).toBeLessThan(12);
+    });
+
+    it('still caps the top: a ~23000 raw endgame hit compresses to ~1.5k (not millions)', () => {
+        const topHit = Math.floor(compressPlayerDamage(23000));
+        expect(topHit).toBeGreaterThan(1200);
+        expect(topHit).toBeLessThan(1800);
+    });
+
+    it('is monotonic — bigger raw always compresses to bigger (or equal) output', () => {
+        for (let x = 1; x < 5000; x += 137) {
+            expect(compressPlayerDamage(x + 137)).toBeGreaterThan(compressPlayerDamage(x));
+        }
+    });
+});
+
+describe('defMitigation with DEF_BASE (low-level DEF fix)', () => {
+    it('DEF_BASE is 25', () => {
+        expect(DEF_BASE).toBe(25);
+    });
+
+    it('a rat DEF 1 at level 1 mitigates ~4%, NOT 50% (the old def/(def+level) explosion)', () => {
+        const mit = defMitigation(1, 1);
+        expect(mit).toBeCloseTo(1 / (1 + 1 + 25), 6);
+        expect(mit).toBeLessThan(0.06);
+    });
+
+    it('high-level tanks stay tanky (DEF_BASE is negligible when def+level >> 25)', () => {
+        const mit = defMitigation(2118, 1000);
+        expect(mit).toBeGreaterThan(0.6);
+    });
+});
+
+
+describe('KILL_XP_TTK_MULT', () => {
+    it('is 1.75 (per-kill hunt XP compensation for the longer post-rebalance TTK)', () => {
+        expect(KILL_XP_TTK_MULT).toBe(1.75);
+    });
+});
 
 describe('calculateDamage', () => {
     it('should return minimum 1 damage', () => {
-        const result = calculateDamage({ baseAtk: 5, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 100, isCrit: false, isBlocked: false, isDodged: false });
+        const result = calculateDamage({ baseAtk: 5, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 100, attackerLevel: 1, isCrit: false });
         expect(result.finalDamage).toBe(1);
     });
 
     it('should double damage on crit (default critDmg = 2.0)', () => {
-        const result = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true, isBlocked: false, isDodged: false });
+        const result = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true });
         expect(result.finalDamage).toBe(100);
     });
 
     it('should use custom critDmg multiplier', () => {
-        const result = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true, isBlocked: false, isDodged: false, critDmg: 3.0 });
+        const result = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true, critDmg: 3.0 });
         expect(result.finalDamage).toBe(150);
     });
 
-    it('should halve damage when blocked', () => {
-        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false, isBlocked: true, isDodged: false });
+    it('mitigates by percentage: def == level + DEF_BASE -> 50% reduction', () => {
+        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 100, attackerLevel: 75, isCrit: false });
         expect(result.finalDamage).toBe(50);
     });
 
-    it('should return 0 finalDamage when dodged', () => {
-        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false, isBlocked: false, isDodged: true });
-        expect(result.finalDamage).toBe(0);
-        expect(result.isDodged).toBe(true);
-        expect(result.isCrit).toBe(false);
+    it('caps mitigation at DEF_CAP (0.75) -> 25% damage gets through', () => {
+        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 100000, attackerLevel: 1, isCrit: false });
+        expect(result.finalDamage).toBe(25);
+    });
+
+    it('no mitigation when enemyDefense is 0', () => {
+        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false });
+        expect(result.finalDamage).toBe(100);
     });
 
     it('should apply class modifier', () => {
-        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1.3, enemyDefense: 0, isCrit: false, isBlocked: false, isDodged: false });
+        const result = calculateDamage({ baseAtk: 100, weaponAtk: 0, skillBonus: 0, classModifier: 1.3, enemyDefense: 0, isCrit: false });
         expect(result.finalDamage).toBe(130);
     });
 
     it('should include weaponAtk and skillBonus', () => {
-        const result = calculateDamage({ baseAtk: 10, weaponAtk: 20, skillBonus: 5, classModifier: 1, enemyDefense: 0, isCrit: false, isBlocked: false, isDodged: false });
+        const result = calculateDamage({ baseAtk: 10, weaponAtk: 20, skillBonus: 5, classModifier: 1, enemyDefense: 0, isCrit: false });
         expect(result.finalDamage).toBe(35);
     });
 
@@ -71,81 +127,32 @@ describe('calculateDamage', () => {
 
 describe('calculateDualWieldDamage', () => {
     it('should return two hits', () => {
-        const result = calculateDualWieldDamage({ baseAtk: 50, weaponAtk: 100, offHandAtk: 100, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false, isBlocked: false, isDodged: false });
+        const result = calculateDualWieldDamage({ baseAtk: 50, weaponAtk: 100, offHandAtk: 100, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false });
         expect(result.hit1).toBeDefined();
         expect(result.hit2).toBeDefined();
     });
 
     it('should use 60% weapon ATK for each hit independently', () => {
-        const result = calculateDualWieldDamage({ baseAtk: 0, weaponAtk: 100, offHandAtk: 80, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false, isBlocked: false, isDodged: false });
+        const result = calculateDualWieldDamage({ baseAtk: 0, weaponAtk: 100, offHandAtk: 80, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false });
         expect(result.hit1.finalDamage).toBe(60);
         expect(result.hit2.finalDamage).toBe(48);
         expect(result.totalDamage).toBe(108);
     });
 
     it('should use same weapon for both if offHand equals mainHand', () => {
-        const result = calculateDualWieldDamage({ baseAtk: 0, weaponAtk: 100, offHandAtk: 100, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false, isBlocked: false, isDodged: false });
+        const result = calculateDualWieldDamage({ baseAtk: 0, weaponAtk: 100, offHandAtk: 100, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false });
         expect(result.hit1.finalDamage).toBe(60);
         expect(result.hit2.finalDamage).toBe(60);
         expect(result.totalDamage).toBe(120);
     });
 
     it('should have separate crit rolls for each hit', () => {
-        const result = calculateDualWieldDamage({ baseAtk: 50, weaponAtk: 100, offHandAtk: 100, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true, isBlocked: false, isDodged: false });
+        const result = calculateDualWieldDamage({ baseAtk: 50, weaponAtk: 100, offHandAtk: 100, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true });
         expect(result.hit1.isCrit).toBe(true);
         expect(result.hit2.isCrit).toBe(true);
     });
 });
 
-
-describe('calculateBlockChance', () => {
-    it('should return 5% base at shielding 0', () => {
-        expect(calculateBlockChance(0)).toBe(0.05);
-    });
-
-    it('should scale with shielding level', () => {
-        expect(calculateBlockChance(10)).toBeCloseTo(0.10, 4);
-    });
-
-    it('should cap at 25%', () => {
-        expect(calculateBlockChance(1000)).toBe(0.25);
-    });
-
-    it('should return 0 for non-physical attacks', () => {
-        expect(calculateBlockChance(100, false)).toBe(0);
-    });
-});
-
-
-describe('calculateDodgeChance', () => {
-    it('should return 5% base for Archer at agility 0', () => {
-        expect(calculateDodgeChance('Archer', 0)).toBe(0.05);
-    });
-
-    it('should return 5% base for Rogue at agility 0', () => {
-        expect(calculateDodgeChance('Rogue', 0)).toBe(0.05);
-    });
-
-    it('should cap Archer at 20%', () => {
-        expect(calculateDodgeChance('Archer', 1000)).toBe(0.20);
-    });
-
-    it('should cap Bard at 15%', () => {
-        expect(calculateDodgeChance('Bard', 1000)).toBe(0.15);
-    });
-
-    it('should return 0 for Knight (no dodge)', () => {
-        expect(calculateDodgeChance('Knight', 100)).toBe(0);
-    });
-
-    it('should return 0 for Mage (no dodge)', () => {
-        expect(calculateDodgeChance('Mage', 100)).toBe(0);
-    });
-
-    it('should return 0 for non-physical attacks', () => {
-        expect(calculateDodgeChance('Archer', 100, false)).toBe(0);
-    });
-});
 
 
 describe('calculateSkillDamage', () => {
@@ -262,20 +269,20 @@ describe('applyMonsterRarity', () => {
         expect(result.attack).toBe(10);
     });
 
-    it('should multiply HP by 1.5 and ATK by 1.2 for strong rarity', () => {
+    it('should multiply HP by 1.5 and ATK by 1.4 for strong rarity', () => {
         const result = applyMonsterRarity(baseStats, 'strong');
         expect(result.hp).toBe(150);
-        expect(result.attack).toBe(12);
+        expect(result.attack).toBe(14);
         expect(result.defense).toBe(6);
         expect(result.xp).toBe(90);
         expect(result.goldMin).toBe(20);
         expect(result.goldMax).toBe(40);
     });
 
-    it('should multiply HP by 10.0 and gold by 15.0 for boss rarity', () => {
+    it('should multiply HP by 8.0 and gold by 15.0 for boss rarity', () => {
         const result = applyMonsterRarity(baseStats, 'boss');
-        expect(result.hp).toBe(1000);
-        expect(result.attack).toBe(25);
+        expect(result.hp).toBe(800);
+        expect(result.attack).toBe(50);
         expect(result.defense).toBe(10);
         expect(result.xp).toBe(500);
         expect(result.goldMin).toBe(150);
@@ -328,20 +335,20 @@ describe('getSpeedScaledCooldownMs', () => {
 });
 
 describe('resolveSkillRecastMs (per-skill recast override)', () => {
-    it('shadow_step has a 20s (20000ms) cooldown in skills.json', () => {
+    it('shadow_step has a 40s (40000ms) cooldown in skills.json', () => {
         const archer = (skillsData as { activeSkills: Record<string, Array<{ id: string; cooldown: number }>> })
             .activeSkills.archer;
         const shadowStep = archer.find((s) => s.id === 'shadow_step');
-        expect(shadowStep?.cooldown).toBe(20000);
+        expect(shadowStep?.cooldown).toBe(40000);
     });
 
     it('honors shadow_step real cooldown (returns the LONGER of flat vs real)', () => {
-        expect(resolveSkillRecastMs('shadow_step', 5000)).toBe(20000);
-        expect(resolveSkillRecastMs('shadow_step', 8000)).toBe(20000);
+        expect(resolveSkillRecastMs('shadow_step', 5000)).toBe(40000);
+        expect(resolveSkillRecastMs('shadow_step', 8000)).toBe(40000);
     });
 
     it('never SHORTENS below the flat recast', () => {
-        expect(resolveSkillRecastMs('shadow_step', 25000)).toBe(25000);
+        expect(resolveSkillRecastMs('shadow_step', 25000)).toBe(40000);
     });
 
     it('returns the flat value unchanged for non-honored skills', () => {

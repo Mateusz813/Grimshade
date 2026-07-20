@@ -367,9 +367,6 @@ const Trainer = () => {
                         window.setTimeout(() => setDummyAttackingClass(null), ATTACK_FLASH_MS);
                     }
                     if (ev.skillId) {
-                        if (!isBuffCast) {
-                            fx.triggerEnemySkillAnim(ev.dummyIdx ?? 0, ev.skillId);
-                        }
                         const slot = slotOfMemberLive(ev.attackerId);
                         if (slot >= 0) fx.triggerAllySkillAnim(slot, ev.skillId);
                         if (isBuffCast && slot >= 0) {
@@ -563,20 +560,6 @@ const Trainer = () => {
                     if (playerStatus.defPenMs > 0 && playerStatus.defPenPct > 0) {
                         dmg = Math.max(1, Math.floor(dmg * (1 + playerStatus.defPenPct / 100)));
                     }
-                    let universeIK = false;
-                    if (playerStatus.nextAllyInstantKillPct.length > 0) {
-                        const top = playerStatus.nextAllyInstantKillPct[0];
-                        if (top.count > 0) {
-                            if (Math.random() * 100 < top.pct) universeIK = true;
-                            top.count -= 1;
-                            if (top.count <= 0) playerStatus.nextAllyInstantKillPct.shift();
-                            useBuffStore.getState().consumeBuffCharge('skill_charge_party_instant_kill_chance_next');
-                        }
-                    }
-                    if (universeIK) {
-                        fx.pushEnemyFloat(0, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
-                        addLog(`:skull: Pieśń Wszechświata: DEATH ATTACK!`);
-                    }
                     const dummySt = ensureStatus(effectsRef.current, TRAINER_DUMMY_FX_ID(0));
                     const ampBasic = consumeTargetMarkAmp(dummySt);
                     if (ampBasic.mult !== 1) {
@@ -751,14 +734,8 @@ const Trainer = () => {
                             }).catch(() => { });
                         }
                     } else {
-                        fx.triggerEnemySkillAnim(0, ready.id);
                         fx.triggerAllySkillAnim(mySlot, ready.id);
                         setDummyHitPulse((p) => p + 1);
-                        if (isAoeAuto && !isDamageHitAuto) {
-                            for (let i = 1; i < trainerCount; i++) {
-                                fx.triggerEnemySkillAnim(i, ready.id);
-                            }
-                        }
                         if (isDamageHitAuto) {
                             pushDamage(dmgAuto);
                             totalDmgAuto += dmgAuto;
@@ -789,7 +766,6 @@ const Trainer = () => {
                                     if (ampSplashAutoT.mult !== 1) {
                                         splashFinalAuto = Math.max(1, Math.floor(splashFinalAuto * ampSplashAutoT.mult));
                                     }
-                                    fx.triggerEnemySkillAnim(i, ready.id);
                                     fx.pushEnemyFloat(i, splashFinalAuto, 'spell', { icon: getSkillIcon(ready.id) });
                                     pushDamage(splashFinalAuto);
                                     totalDmgAuto += splashFinalAuto;
@@ -1035,19 +1011,6 @@ const Trainer = () => {
                             dmg = Math.floor(dmg * 2);
                         }
                     }
-                    let universeIKAlly = false;
-                    if (allyStBuff && allyStBuff.nextAllyInstantKillPct.length > 0) {
-                        const topIK = allyStBuff.nextAllyInstantKillPct[0];
-                        if (topIK.count > 0) {
-                            if (Math.random() * 100 < topIK.pct) universeIKAlly = true;
-                            topIK.count -= 1;
-                            if (topIK.count <= 0) allyStBuff.nextAllyInstantKillPct.shift();
-                        }
-                    }
-                    if (universeIKAlly) {
-                        fx.pushEnemyFloat(0, 0, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
-                        addLog(`:skull: ${ally.name ?? 'Sojusznik'}: DEATH ATTACK!`);
-                    }
                     const dummyStAlly = ensureStatus(effectsRef.current, TRAINER_DUMMY_FX_ID(0));
                     const ampAlly = consumeTargetMarkAmp(dummyStAlly);
                     if (ampAlly.mult !== 1) {
@@ -1107,7 +1070,6 @@ const Trainer = () => {
                     }
                     pushDamage(dmg);
                     setDummyHitPulse((p) => p + 1);
-                    fx.triggerEnemySkillAnim(0, sk.id);
                     fx.pushEnemyFloat(0, dmg, 'ally-spell', { icon: getSkillIcon(sk.id), isCrit: isCritSp });
                     break;
                 }
@@ -1438,14 +1400,8 @@ const Trainer = () => {
                 }).catch(() => { });
             }
         } else {
-            fx.triggerEnemySkillAnim(0, def.id);
             fx.triggerAllySkillAnim(mySlot, def.id);
             setDummyHitPulse((p) => p + 1);
-            if (isAoe && !isDamageHit) {
-                for (let i = 1; i < trainerCount; i++) {
-                    fx.triggerEnemySkillAnim(i, def.id);
-                }
-            }
             let totalDmgDealtThisCast = 0;
             if (isDamageHit) {
                 pushDamage(dmg);
@@ -1474,7 +1430,6 @@ const Trainer = () => {
                     const trainerPseudoMaxHpSplash = Math.max(100, myAttack * 4);
                     for (let i = 1; i < trainerCount; i++) {
                         const splashIk = splashIkPctT > 0 && Math.random() * 100 < splashIkPctT;
-                        fx.triggerEnemySkillAnim(i, def.id);
                         if (splashIk) {
                             const splashBurst = Math.max(splashDmgT, Math.floor(trainerPseudoMaxHpSplash * 12 / 100));
                             fx.pushEnemyFloat(i, splashBurst, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
@@ -1836,7 +1791,6 @@ const Trainer = () => {
                     isTargetedByPlayer: i === 0,
                     hitPulse: i === 0 ? dummyHitPulse : 0,
                     attackingClassName: i === 0 ? dummyAttackingClass : null,
-                    skillAnim: fx.enemySkill[i] ?? null,
                     floats: fx.enemyFloats[i] ?? [],
                     imageUrl: trainerImg,
                     imageObjectFit: 'cover' as const,

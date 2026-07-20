@@ -100,6 +100,20 @@ export const isDailySliceDegraded = (
     return todayQuestDefs.some((d) => !activeQuests.some((aq) => aq.questId === d.id));
 };
 
+export const mergeDailyForDisplay = (
+    todayQuestDefs: IDailyQuestDef[],
+    activeQuests: IActiveDailyQuest[],
+): Array<{ def: IDailyQuestDef; active: IActiveDailyQuest }> =>
+    todayQuestDefs.map((def) => ({
+        def,
+        active: activeQuests.find((a) => a.questId === def.id) ?? {
+            questId: def.id,
+            progress: 0,
+            completed: false,
+            claimed: false,
+        },
+    }));
+
 export const scaleRewards = (
     base: IDailyQuestRewards,
     playerLevel: number,

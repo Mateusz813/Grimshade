@@ -419,13 +419,13 @@ const BASE_STAT_META: Record<keyof IStatValues, { icon: string; label: string; c
 };
 
 const CLASS_BASE_STATS: Record<string, { attack: number; defense: number; max_hp: number; max_mp: number }> = {
-  Knight:      { attack: 10, defense: 5,  max_hp: 120, max_mp: 30 },
-  Mage:        { attack: 6,  defense: 2,  max_hp: 80,  max_mp: 200 },
-  Cleric:      { attack: 7,  defense: 4,  max_hp: 100, max_mp: 150 },
-  Archer:      { attack: 10, defense: 3,  max_hp: 100, max_mp: 80 },
-  Rogue:       { attack: 9,  defense: 3,  max_hp: 90,  max_mp: 60 },
-  Necromancer: { attack: 6,  defense: 2,  max_hp: 85,  max_mp: 180 },
-  Bard:        { attack: 8,  defense: 3,  max_hp: 95,  max_mp: 120 },
+  Knight:      { attack: 12, defense: 8,  max_hp: 150, max_mp: 40 },
+  Mage:        { attack: 9,  defense: 3,  max_hp: 90,  max_mp: 200 },
+  Cleric:      { attack: 8,  defense: 6,  max_hp: 115, max_mp: 155 },
+  Archer:      { attack: 11, defense: 4,  max_hp: 110, max_mp: 80 },
+  Rogue:       { attack: 10, defense: 4,  max_hp: 100, max_mp: 75 },
+  Necromancer: { attack: 9,  defense: 3,  max_hp: 88,  max_mp: 200 },
+  Bard:        { attack: 9,  defense: 4,  max_hp: 105, max_mp: 125 },
 };
 
 const handleStatReset = () => {
@@ -1996,27 +1996,28 @@ const describeSkillEffectInv = (effect: string | null): string | null => {
     const n3 = parseFloat(p3);
     switch (head) {
       case 'aoe':              return 'Atak obszarowy (trafia wszystkich wrogów)';
-      case 'aggro_steal':      return 'Przejmuje agresję wszystkich wrogów (wycelowane w gracza ataki teraz idą w niego)';
+      case 'aggro_steal':      return 'Prowokacja — wszyscy wrogowie zaczynają atakować rzucającego (ściąga aggro z sojuszników na siebie)';
       case 'def_pen':          return `Ignoruje ${pct(n1)} obrony celu`;
-      case 'dot':              return `Trucizna / DOT przez ${sec(n1)} (${n2} ticków)`;
+      case 'dot':              return `Trucizna / DOT przez ${sec(n1)} (${pct(n2)} maks. HP/s)`;
       case 'stun':             return `Ogłusza wroga na ${sec(n1)} (blokuje ataki i spelle)`;
       case 'stun_chance':      return `Szansa ${pct(n1)} na ogłuszenie na ${sec(n2)} (blokuje ataki i spelle)`;
       case 'paralyze':         return `Paraliżuje wroga na ${sec(n1)} (blokuje ataki i spelle)`;
       case 'execute_below':    return `Natychmiastowe zabicie wroga z HP poniżej ${pct(n1)}`;
-      case 'instant_kill_chance': return `Szansa ${pct(n1)} na natychmiastowe zabicie wroga`;
-      case 'multistrike':      return `Atakuje ${n1} razy w jednej akcji`;
+      case 'instant_kill_chance': return `Szansa ${pct(n1)} na potężny cios — co najmniej 12% maks. HP celu`;
+      case 'multistrike':      return `Atakuje ${(n1 + 1).toFixed(0)} razy w jednej akcji (główny cios + ${n1} dodatkowe uderzenia)`;
       case 'crit_buff':        return `+${pct(n1)} szansy na crit przez ${sec(n2)}`;
       case 'crit_buff_next':   return `Następny atak z +${pct(n1)} szansą na crit (gwarantowany jeśli ≥100%)`;
-      case 'crit_next':        return n2 >= 1
-        ? `Następne ${n1} ataków podstawowych zawsze crit`
-        : `Następne ${n1} ataków z +${(n2 * 100).toFixed(0)}% szansą na crit`;
+      case 'crit_next':        return n1 >= 1
+        ? `Następne ${n2} ataków podstawowych zawsze crit`
+        : `Następne ${n2} ataków z +${(n1 * 100).toFixed(0)}% szansą na crit`;
       case 'attack_up':        return `+${pct(n1)} ATK przez ${sec(n2)}`;
       case 'enemy_atk_down':   return `Wróg ma −${pct(n1)} ATK przez ${sec(n2)}`;
+      case 'enemy_slow':       return `Spowolnienie — wróg ma ${pct(n1)} szansy na utratę ataku przez ${sec(n2)}`;
       case 'enemy_no_heal':    return `Wszyscy wrogowie nie mogą się leczyć przez ${sec(n1)} (AOE)`;
-      case 'mark_no_heal':     return `Cel oznaczony — nie może się leczyć przez ${sec(n1)}`;
+      case 'mark_no_heal':     return `Cel oznaczony — każde leczenie obraca się w obrażenia (100% wartości) przez ${sec(n1)}`;
       case 'mark_heal_to_dmg': return `Cel oznaczony — każde leczenie obraca się w obrażenia (100% wartości) przez ${sec(n1)}`;
-      case 'mark_amp':         return `Każdy kolejny atak na cel zadaje +${(n1 * 100).toFixed(0)}% DMG (max ${n2} stacków, ${sec(n3)})`;
-      case 'mark_amp_all':     return `Wszyscy wrogowie otrzymują +${(n1 * 100).toFixed(0)}% DMG przez ${sec(n2)}`;
+      case 'mark_amp':         return `Następne ${n2} trafień w cel zadaje × ${n1} DMG (${sec(n3)})`;
+      case 'mark_amp_all':     return `Wszyscy wrogowie otrzymują × ${n1} obrażeń przez ${sec(n2)}`;
       case 'dmg_amp_next':     return `Następne ${n2} ataków zadaje × ${n1} DMG`;
       case 'dodge_buff':       return `+${pct(n1)} szansy na unik przez ${sec(n2)}`;
       case 'dodge_next':       {
@@ -2029,23 +2030,20 @@ const describeSkillEffectInv = (effect: string | null): string | null => {
       case 'mana_shield':      return `Tarcza Many: przez ${sec(n1)} obrażenia idą najpierw w MP (100%), HP traci tylko nadmiar gdy MP się skończy. Tylko na siebie.`;
       case 'party_immortal':   return `Cała drużyna niewrażliwa na obrażenia przez ${sec(n1)}`;
       case 'block_next_party': return `Sojusznicy blokują następne ${n1} ataków`;
-      case 'revive_party':     return n1 > 0
-        ? `Wskrzesza poległych po ${sec(n1)} z ${sec(n2)} HP`
-        : `Wskrzesza poległych członków drużyny`;
+      case 'revive_party':     return `Wskrzesza poległych sojuszników (boty i graczy) z 50% maks. HP i 3s ochroną (niewrażliwość)`;
       case 'heal_party_pct':   return `Leczy całą drużynę o ${pct(n1)} maks. HP`;
-      case 'heal_party_dot':   return `Regeneracja drużyny przez ${sec(n1)} (${n2} ticków)`;
+      case 'heal_party_dot':   return `Regeneracja drużyny — ${pct(n2)} maks. HP/s przez ${sec(n1)}`;
       case 'heal_lowest_ally_pct': return `Leczy sojusznika z najniższym HP o ${pct(n1)} maks. HP`;
       case 'heal_self_pct_dmg':    return `Leczy się o ${pct(n1)} zadanych obrażeń`;
-      case 'next_ally_heal':       return `Następne ${n2} ataków sojusznika leczy ${n1}× obrażeń`;
+      case 'next_ally_heal':       return `Następne ${n2} ataków leczy sojusznika z najniższym HP o ${n1}% maks. HP`;
       case 'party_attack_up':      return `+${pct(n1)} ATK całej drużyny przez ${sec(n2)}`;
       case 'party_defense_up':     return `+${pct(n1)} DEF całej drużyny przez ${sec(n2)}`;
       case 'party_def_pen':        return `Drużyna ignoruje ${pct(n1)} obrony przez ${sec(n2)}`;
       case 'party_as_up':          return `× ${n1} prędkości ataku drużyny przez ${sec(n2)}`;
       case 'party_crit_up':        return `+${pct(n1)} szansy na crit drużyny przez ${sec(n2)}`;
       case 'party_lifesteal_next': return `Następne ${n2} ataków drużyny ma ${pct(n1)} lifesteal`;
-      case 'party_instant_kill_chance_next': return `Następne ${n2} ataków drużyny ma ${pct(n1)} szansy na natychmiastowe zabicie`;
       case 'summon':           return `Przyzywa ${summonName(p1, parseInt(p2 || '1', 10) || 1)}`;
-      case 'death_apocalypse': return 'Apokalipsa Śmierci — tracisz HP do 20% maks. (lub do 2% gdy już poniżej 20%) i zadajesz 50% maks. HP przeciwnika';
+      case 'death_apocalypse': return 'Apokalipsa Śmierci — zadajesz 12% maks. HP przeciwnika';
       case 'dark_ritual':      return `Mroczny rytuał — po ${sec(n1)} przeciwnik traci ${n2}% maks. HP`;
       default: return null;
     }

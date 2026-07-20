@@ -242,11 +242,11 @@ describe('Knight skills: each skill matches its declared effect', () => {
         expect(h.caster.critNext[0]).toMatchObject({ mult: 1, count: 1 });
     });
 
-    it('sword_mastery: dot:5000:5 applies a 5-second DOT dealing 5% max HP/s', () => {
+    it('sword_mastery: dot:5000:4 applies a 5-second DOT dealing 4% max HP/s', () => {
         const s = find('sword_mastery');
         const h = applySkill(s.effect);
         expect(h.target.dots).toHaveLength(1);
-        expect(h.target.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 5 });
+        expect(h.target.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 4 });
     });
 
     it('titan_cleave: aoe;def_pen:40 — AOE flag + 40% defence-pen on this cast', () => {
@@ -293,10 +293,13 @@ describe('Mage skills: each skill matches its declared effect', () => {
         expect(h.result.aoe).toBe(false);
     });
 
-    it('ice_lance: effect null + damage 6.6× weapon', () => {
+    it('ice_lance: enemy_slow:40:6000 — 40% attack-skip on target for 6s + damage 6.6× weapon', () => {
         const s = find('ice_lance');
-        expect(s.effect).toBeNull();
+        expect(s.effect).toBe('enemy_slow:40:6000');
         expect(s.damage).toBe(6.6);
+        const h = applySkill(s.effect);
+        expect(h.target.enemySlowPct).toBe(40);
+        expect(h.target.enemySlowMs).toBe(6000);
     });
 
     it('thunder_strike: aoe + damage 6.6× weapon', () => {
@@ -545,11 +548,11 @@ describe('Archer skills: each skill matches its declared effect', () => {
         expect(h.caster.critBuffNext).toBe(30);
     });
 
-    it('poison_arrow: dot:5000:5 — 5-second DOT at 5% max HP/s', () => {
+    it('poison_arrow: dot:5000:4 — 5-second DOT at 4% max HP/s', () => {
         const s = find('poison_arrow');
         const h = applySkill(s.effect);
         expect(h.target.dots).toHaveLength(1);
-        expect(h.target.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 5 });
+        expect(h.target.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 4 });
     });
 
     it('eagle_eye: crit_buff:30:10000 — +30% crit chance window for 10s', () => {
@@ -672,10 +675,10 @@ describe('Rogue skills: each skill matches its declared effect', () => {
         expect(h.caster.critNext[0]).toMatchObject({ mult: 1, count: 1 });
     });
 
-    it('poison_blade: dot:5000:5 — 5s DOT at 5% max HP/s', () => {
+    it('poison_blade: dot:5000:4 — 5s DOT at 4% max HP/s', () => {
         const s = find('poison_blade');
         const h = applySkill(s.effect);
-        expect(h.target.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 5 });
+        expect(h.target.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 4 });
     });
 
     it('evasion: dodge_next:3:non_magic — 3 non_magic dodges queued', () => {
@@ -710,10 +713,10 @@ describe('Rogue skills: each skill matches its declared effect', () => {
         }
     });
 
-    it('smoke_bomb: dodge_buff:50:4000 — +50% dodge for 4s', () => {
+    it('smoke_bomb: dodge_buff:40:4000 — +40% dodge for 4s', () => {
         const s = find('smoke_bomb');
         const h = applySkill(s.effect);
-        expect(h.caster.dodgeBuffPct).toBe(50);
+        expect(h.caster.dodgeBuffPct).toBe(40);
         expect(h.caster.dodgeBuffMs).toBe(4000);
     });
 
@@ -824,11 +827,11 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         expect(h.result.summons).toEqual([{ type: 'skeleton', count: 1 }]);
     });
 
-    it('death_curse: mark_amp:6:1:15000 — target.markAmp gets {mult:6, count:1, remainingMs:15000}', () => {
+    it('death_curse: mark_amp:3:1:15000 — target.markAmp gets {mult:3, count:1, remainingMs:15000}', () => {
         const s = find('death_curse');
         const h = applySkill(s.effect);
         expect(h.target.markAmp).toHaveLength(1);
-        expect(h.target.markAmp[0]).toEqual({ mult: 6, count: 1, remainingMs: 15000 });
+        expect(h.target.markAmp[0]).toEqual({ mult: 3, count: 1, remainingMs: 15000 });
     });
 
     it('bone_spear: aoe + damage 5.7× weapon', () => {
@@ -838,13 +841,13 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         expect(h.result.aoe).toBe(true);
     });
 
-    it('plague: aoe;dot:5000:5 — AOE + 5s DOT at 5% max HP/s on EVERY enemy', () => {
+    it('plague: aoe;dot:5000:4 — AOE + 5s DOT at 4% max HP/s on EVERY enemy', () => {
         const s = find('plague');
         const h = applySkill(s.effect, { enemies: 3 });
         expect(h.result.aoe).toBe(true);
         for (const e of h.enemies) {
             expect(e.dots).toHaveLength(1);
-            expect(e.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 5 });
+            expect(e.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 4 });
         }
     });
 
@@ -861,11 +864,11 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         expect(h.result.healCasterPctOfDmg).toBe(50);
     });
 
-    it('dark_ritual: dark_ritual:10000:25 — pushes pending ritual entry on target (10s/25%)', () => {
+    it('dark_ritual: dark_ritual:10000:13 — pushes pending ritual entry on target (10s/13%)', () => {
         const s = find('dark_ritual');
         const h = applySkill(s.effect);
         expect(h.target.darkRitualPending).toHaveLength(1);
-        expect(h.target.darkRitualPending[0]).toEqual({ triggerInMs: 10000, pctOfMaxHp: 25 });
+        expect(h.target.darkRitualPending[0]).toEqual({ triggerInMs: 10000, pctOfMaxHp: 13 });
     });
 
     it('dark_ritual: tickStatus drains the ritual timer + fires damage at trigger', () => {
@@ -876,7 +879,7 @@ describe('Necromancer skills: each skill matches its declared effect', () => {
         expect(h.target.darkRitualPending[0].triggerInMs).toBe(5000);
         const fire = tickStatus(h.target, 5000, 10000);
         expect(fire.darkRitualTriggered).toBe(true);
-        expect(fire.darkRitualDamage).toBe(2500);
+        expect(fire.darkRitualDamage).toBe(1300);
         expect(h.target.darkRitualPending).toEqual([]);
     });
 
@@ -1063,12 +1066,10 @@ describe('Bard skills: each skill matches its declared effect', () => {
         }
     });
 
-    it('universe_song: 4-atom mega-buff fires every component (IK + immortal + ATK + AS)', () => {
+    it('universe_song: 3-atom mega-buff fires every component (immortal + ATK + AS)', () => {
         const s = find('universe_song');
         const h = applySkill(s.effect, { party: 4 });
         for (const p of h.party) {
-            expect(p.nextAllyInstantKillPct).toHaveLength(1);
-            expect(p.nextAllyInstantKillPct[0]).toMatchObject({ pct: 3, count: 5 });
             expect(p.immortalMs).toBe(3000);
             expect(p.atkBuffPct).toBe(100);
             expect(p.atkBuffMs).toBe(30000);
@@ -1164,7 +1165,7 @@ describe('castSkill (combatEffectsHelpers): session-level integration', () => {
         for (const id of ['mob0', 'mob1', 'mob2']) {
             const st = session.statuses.get(id);
             expect(st?.dots, `${id} missing DOT`).toHaveLength(1);
-            expect(st?.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 5 });
+            expect(st?.dots[0]).toEqual({ remainingMs: 5000, pctPerSec: 4 });
         }
     });
 
@@ -1290,8 +1291,6 @@ describe('castSkill (combatEffectsHelpers): session-level integration', () => {
             expect(st?.atkBuffMs).toBe(30000);
             expect(st?.asMult).toBe(2.2);
             expect(st?.asMultMs).toBe(10000);
-            expect(st?.nextAllyInstantKillPct).toHaveLength(1);
-            expect(st?.nextAllyInstantKillPct[0]).toMatchObject({ pct: 3, count: 5 });
         }
     });
 });

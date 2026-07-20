@@ -14,7 +14,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { getMonsterUnlockStatus } from '../../systems/progression';
 import { computeTaskRewards } from '../../systems/taskRewards';
 import tasksRaw from '../../data/tasks.json';
-import { scaleRewards } from '../../systems/dailyQuestSystem';
+import { scaleRewards, mergeDailyForDisplay } from '../../systems/dailyQuestSystem';
 import { generateRandomItemForClass } from '../../systems/itemGenerator';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
 import { ELIXIRS } from '../../stores/shopStore';
@@ -374,7 +374,6 @@ const Quests = () => {
   const backendCharId = character?.id ?? null;
 
   useEffect(() => {
-    if (isBackendMode()) return;
     if (character) {
       refreshIfNeeded(character.level);
     }
@@ -389,8 +388,10 @@ const Quests = () => {
       } catch (e) {
         console.warn('[quests] backend refreshDailyQuests failed', e);
       }
+      const lvl = useCharacterStore.getState().character?.level;
+      if (typeof lvl === 'number') refreshIfNeeded(lvl);
     })();
-  }, [backendCharId]);
+  }, [backendCharId, refreshIfNeeded]);
 
   const charLevel = character?.level ?? 0;
 
@@ -830,9 +831,7 @@ const Quests = () => {
           </div>
         )}
         <div className="quests__daily-list">
-        {todayQuestDefs.map((def) => {
-          const active = dailyActiveQuests.find((a) => a.questId === def.id);
-          if (!active) return null;
+        {mergeDailyForDisplay(todayQuestDefs, dailyActiveQuests).map(({ def, active }) => {
           const rewards = scaleRewards(def.rewards, character.level);
           const pct = Math.min(1, active.progress / def.goal.count);
 

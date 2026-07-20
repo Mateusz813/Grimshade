@@ -28,7 +28,7 @@ import {
     type IDungeonResult,
     type DungeonMonsterType,
 } from '../../systems/dungeonSystem';
-import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs, mitigateDamage } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
@@ -43,7 +43,7 @@ import {
 import { getTransformDmgMultiplier } from '../../systems/transformBonuses';
 import { buildItem, flattenItemsData, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, formatItemName, STONE_GENERIC_ICON, STONE_ICONS, type IBaseItem } from '../../systems/itemSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
-import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
+import { getTrainingBonuses, rollSkillDamageMult } from '../../systems/skillSystem';
 import { getPotionDropInfo, rollPotionDrop, rollSpellChestDrop, getSpellChestIcon, getSpellChestEmoji, getSpellChestDisplayName, getSpellChestDropInfo, type IGeneratedItem, type TMonsterRarity } from '../../systems/lootSystem';
 import TinyIcon from '../../components/ui/TinyIcon/TinyIcon';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
@@ -1182,12 +1182,9 @@ const Dungeon = () => {
             enemyIds: aliveEnemyIds,
         });
         const defPenFracDng = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-        const skillUpgradeMultDng = getCombatSkillUpgradeMultiplier(
-            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-        );
         const baseDmg = isDamageHit ? Math.max(
             1,
-            Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracDng) * skillUpgradeMultDng),
+            Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracDng)),
         ) : 0;
         const normalSkillDmgDng = Math.floor(baseDmg * apply.castDmgMult);
         let skillDmg = isDamageHit
@@ -1247,7 +1244,6 @@ const Dungeon = () => {
             fx.triggerAllySkillAnim(0, skillId);
             addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
         } else {
-            fx.triggerEnemySkillAnim(targetSlot, skillId);
             if (isDamageHit) {
                 fx.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
                 showFloatingDmg(`-${skillDmg}`, 'player');
@@ -1282,7 +1278,7 @@ const Dungeon = () => {
                     const slot = currentMonstersRef.current[targetSlot];
                     if (!slot || slot.currentHp <= 0) return;
                     const wRoll = rollWeaponDamage();
-                    const followup = Math.max(1, Math.floor((charAtk + wRoll - Math.max(0, slot.monster.defense * (1 - defPenFracDng))) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
+                    const followup = Math.max(1, Math.floor(mitigateDamage(charAtk + wRoll, Math.max(0, slot.monster.defense * (1 - defPenFracDng)), character?.level ?? 1, true) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
                     const after = applyDamageToSlot(targetSlot, followup);
                     fx.pushEnemyFloat(targetSlot, followup, 'basic');
                     addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`, 'player');
@@ -1310,7 +1306,6 @@ const Dungeon = () => {
                 }
                 const splashAfter = applyDamageToSlot(i, splashApplied);
                 totalDmgDealtThisCast += splashApplied;
-                fx.triggerEnemySkillAnim(i, skillId);
                 if (splashIk) {
                     fx.pushEnemyFloat(i, splashApplied, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                 } else {
@@ -1374,7 +1369,7 @@ const Dungeon = () => {
 
             const wRoll = Math.floor(weaponRollFn() * dmgPercent);
             const totalAtk = charAtk + wRoll;
-            const baseDmg = Math.max(1, totalAtk - slotData.monster.defense);
+            const baseDmg = mitigateDamage(totalAtk, slotData.monster.defense, character?.level ?? 1, true);
             const variance = Math.floor(baseDmg * 0.2);
             const rolledDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
             const playerStatus = ensureStatus(effectsRef.current, PLAYER_FX_ID);
@@ -1422,7 +1417,7 @@ const Dungeon = () => {
             const slot = getFirstAliveSlot();
             const slotData = currentMonstersRef.current[slot];
             if (slot >= 0 && slotData) {
-                const baseDmg = Math.max(1, charAtk - slotData.monster.defense);
+                const baseDmg = mitigateDamage(charAtk, slotData.monster.defense, character?.level ?? 1, true);
                 const variance = Math.floor(baseDmg * 0.2);
                 const rolledDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
                 const finalDmg = Math.max(1, Math.floor(rolledDmg * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
@@ -1457,7 +1452,7 @@ const Dungeon = () => {
             if (summonBonus > 0 && tgt >= 0) {
                 const slotMon = currentMonstersRef.current[tgt];
                 if (slotMon && slotMon.currentHp > 0) {
-                    let dmg = Math.max(1, summonBonus - Math.floor(slotMon.monster.defense * 0.5));
+                    let dmg = mitigateDamage(summonBonus, Math.floor(slotMon.monster.defense * 0.5), character?.level ?? 1, true);
                     const monStSum = ensureStatus(effectsRef.current, monsterFxId(currentWaveRef.current, tgt));
                     const ampSum = consumeTargetMarkAmp(monStSum);
                     if (ampSum.mult !== 1) {
@@ -1524,10 +1519,7 @@ const Dungeon = () => {
                 const isDamageHitAuto = skillBaseMult > 0;
                 const targetsEnemyAuto = isDamageHitAuto || skillTargetsEnemy(sDef?.effect ?? null);
                 const defPenFracAuto = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-                const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
-                    useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-                );
-                const baseDmg = isDamageHitAuto ? Math.max(1, Math.floor(charAtk * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracAuto) * skillUpgradeMultAuto)) : 0;
+                const baseDmg = isDamageHitAuto ? Math.max(1, Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracAuto))) : 0;
                 const normalSkillDmgAuto = Math.floor(baseDmg * apply.castDmgMult);
                 let skillDmg = isDamageHitAuto
                     ? (apply.instantKill
@@ -1555,7 +1547,6 @@ const Dungeon = () => {
                     fx.triggerAllySkillAnim(0, skillId);
                     addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'player');
                 } else {
-                    fx.triggerEnemySkillAnim(tgt, skillId);
                     if (isDamageHitAuto) {
                         fx.pushEnemyFloat(tgt, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
                         addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'player');
@@ -1584,7 +1575,7 @@ const Dungeon = () => {
                             const slot = currentMonstersRef.current[tgt];
                             if (!slot || slot.currentHp <= 0) return;
                             const wRoll = rollWeaponDamage();
-                            const followup = Math.max(1, Math.floor((charAtk + wRoll - Math.max(0, slot.monster.defense * (1 - defPenFracAuto))) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
+                            const followup = Math.max(1, Math.floor(mitigateDamage(charAtk + wRoll, Math.max(0, slot.monster.defense * (1 - defPenFracAuto)), character?.level ?? 1, true) * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
                             const after = applyDamageToSlot(tgt, followup);
                             fx.pushEnemyFloat(tgt, followup, 'basic');
                             addLog(`:bow-and-arrow:×${n + 2} ${followup} dmg`, 'player');
@@ -1613,7 +1604,6 @@ const Dungeon = () => {
                         }
                         const splashAfter = applyDamageToSlot(j, splashApplied);
                         totalDmgAuto += splashApplied;
-                        fx.triggerEnemySkillAnim(j, skillId);
                         if (splashIk) {
                             fx.pushEnemyFloat(j, splashApplied, 'spell', { icon: 'skull', label: 'DEATH ATTACK', isCrit: true });
                         } else {
@@ -1699,7 +1689,7 @@ const Dungeon = () => {
         }
 
         const mAtk = rollMonsterDamage(slotData.monster);
-        const rawDmg = Math.max(1, mAtk - effPlayerDef);
+        const rawDmg = mitigateDamage(mAtk, effPlayerDef, slotData.monster.level);
 
         let hpDmg = rawDmg;
         let mpDmg = 0;
@@ -2206,7 +2196,6 @@ const Dungeon = () => {
                             attackingClassName: playerAttackingSlot === m.slot
                                 ? `attack-${character.class}`
                                 : null,
-                            skillAnim: fx.enemySkill[m.slot] ?? null,
                             floats: fx.enemyFloats[m.slot] ?? [],
                             statusOverlay: (() => {
                                 const st = effectsRef.current.statuses.get(monsterFxId(currentWave, m.slot));

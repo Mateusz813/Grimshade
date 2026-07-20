@@ -60,8 +60,7 @@ import { syncFromBackend } from '../../api/backend/syncState';
 import {
   calculateDamage,
   calculateDualWieldDamage,
-  calculateBlockChance,
-  calculateDodgeChance,
+  mitigateDamage,
   rollMonsterDamage,
   getSpeedScaledCooldownMs,
   resolveSkillRecastMs,
@@ -74,7 +73,7 @@ import {
   flattenItemsData,
 } from '../../systems/itemSystem';
 import { getItemDisplayInfo } from '../../systems/itemGenerator';
-import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from '../../systems/skillSystem';
+import { getTrainingBonuses, rollSkillDamageMult } from '../../systems/skillSystem';
 import {
   getAtkDamageMultiplier,
   getSpellDamageMultiplier,
@@ -1147,6 +1146,7 @@ const Transform = () => {
           skillBonus,
           classModifier: CLASS_MODIFIER[latestChar.class] ?? 1,
           enemyDefense: target.monster.defense,
+          attackerLevel: latestChar.level, playerSource: true,
           critChance: eff.crit_chance + basicCritBoost,
           critDmg: eff.crit_damage,
           maxCritChance: classData.maxCritChance ?? 0.5,
@@ -1160,18 +1160,15 @@ const Transform = () => {
           dual.hit1.isCrit || dual.hit2.isCrit ? 'crit' : 'dualwield',
         );
       } else {
-        const canBlock = !!classData.canBlock;
-        const canDodge = !!classData.canDodge;
         const result = calculateDamage({
           baseAtk: eff.attack,
           weaponAtk: weaponDmg,
           skillBonus,
           classModifier: CLASS_MODIFIER[latestChar.class] ?? 1,
           enemyDefense: target.monster.defense,
+          attackerLevel: latestChar.level, playerSource: true,
           critChance: eff.crit_chance + basicCritBoost,
           critDmg: eff.crit_damage,
-          blockChance: canBlock ? calculateBlockChance(skillLevels['shielding'] ?? 0) : 0,
-          dodgeChance: canDodge ? calculateDodgeChance(latestChar.class) : 0,
           maxCritChance: classData.maxCritChance ?? 0.5,
           isCrit: basicForceCrit ? true : undefined,
           damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier() * basicDmgMult,
@@ -1243,10 +1240,7 @@ const Transform = () => {
             allyIds: [PLAYER_FX_ID],
             enemyIds: [OPPONENT_FX_ID],
           });
-          const skillUpgradeMultAuto = getCombatSkillUpgradeMultiplier(
-            useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-          );
-          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillUpgradeMultAuto));
+          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(eff.attack * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
           const normalSkillDmgTf = Math.floor(baseDmg * apply.castDmgMult);
           let skillDmg = isPureBuff
             ? 0
@@ -1274,7 +1268,6 @@ const Transform = () => {
             fxRef.current.triggerAllySkillAnim(0, skillId);
             addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
           } else {
-            fxRef.current.triggerEnemySkillAnim(targetSlot, skillId);
             fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
             addLog(`:sparkles: ${formatSkillName(skillId)}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
           }
@@ -1364,7 +1357,7 @@ const Transform = () => {
       if (latestChar.class === 'Necromancer' && newHp > 0) {
         const summonBonus = useNecroSummonStore.getState().totalAttackBonus(PLAYER_FX_ID, eff.attack);
         if (summonBonus > 0) {
-          let dmg = Math.max(1, summonBonus - Math.floor(target.monster.defense * 0.5));
+          let dmg = mitigateDamage(summonBonus, Math.floor(target.monster.defense * 0.5), latestChar.level, true);
           const oppStSum = ensureStatus(effectsRef.current, OPPONENT_FX_ID);
           const ampSum = consumeTargetMarkAmp(oppStSum);
           if (ampSum.mult !== 1) {
@@ -1434,7 +1427,7 @@ const Transform = () => {
       let totalDmg = 0;
       for (const a of attackers) {
         const rawDmg = rollMonsterDamage(a.monster);
-        const dmg = Math.max(1, rawDmg - eff.defense);
+        const dmg = mitigateDamage(rawDmg, eff.defense, a.monster.level);
         totalDmg += dmg;
         fxRef.current.pushAllyFloat(0, dmg, 'monster');
         addLog(
@@ -1969,12 +1962,9 @@ const Transform = () => {
       allyIds: [PLAYER_FX_ID],
       enemyIds: [OPPONENT_FX_ID],
     });
-    const skillUpgradeMultManual = getCombatSkillUpgradeMultiplier(
-      useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-    );
     const baseDmg = isPureBuff ? 0 : Math.max(
       1,
-      Math.floor(eff.attack * 0.15 * skillBaseMult * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillUpgradeMultManual),
+      Math.floor(eff.attack * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
     );
     const normalSkillDmgTfManual = Math.floor(baseDmg * apply.castDmgMult);
     let skillDmg = isPureBuff
@@ -2054,7 +2044,6 @@ const Transform = () => {
       fxRef.current.triggerAllySkillAnim(0, skillId);
       addLog(`:sparkles: ${formatSkillName(skillId)}: BUFF (-${SKILL_MP_COST} MP)`, 'crit');
     } else {
-      fxRef.current.triggerEnemySkillAnim(targetSlot, skillId);
       fxRef.current.pushEnemyFloat(targetSlot, skillDmg, 'spell', { icon: getSkillIcon(skillId) });
       addLog(`:sparkles: ${formatSkillName(skillId)} -> ${targetName}: ${skillDmg} dmg (-${SKILL_MP_COST} MP)`, 'crit');
     }
@@ -2157,7 +2146,6 @@ const Transform = () => {
         isTargetedByPlayer: firstAliveSlot === slot,
         hitPulse: monsterHitPulses[slot] ?? 0,
         attackingClassName: playerAttacking && firstAliveSlot === slot ? `attack-${character.class}` : null,
-        skillAnim: fx.enemySkill[slot] ?? null,
         floats: fx.enemyFloats[slot] ?? [],
       };
     };
@@ -2181,7 +2169,6 @@ const Transform = () => {
         isTargetedByPlayer: firstAliveSlot === 3,
         hitPulse: monsterHitPulses[3] ?? 0,
         attackingClassName: playerAttacking && firstAliveSlot === 3 ? `attack-${character.class}` : null,
-        skillAnim: fx.enemySkill[3] ?? null,
         floats: fx.enemyFloats[3] ?? [],
         statusOverlay: (() => {
           const st = effectsRef.current.statuses.get(OPPONENT_FX_ID);

@@ -319,6 +319,18 @@ describe('tickStatus DOTs', () => {
         expect(s.atkBuffPct).toBe(0);
     });
 
+    it('drains enemySlow duration and clears the pct when expired', () => {
+        const s = newStatusState();
+        s.enemySlowPct = 40;
+        s.enemySlowMs = 800;
+        tickStatus(s, 500, 100);
+        expect(s.enemySlowMs).toBe(300);
+        expect(s.enemySlowPct).toBe(40);
+        tickStatus(s, 500, 100);
+        expect(s.enemySlowMs).toBe(0);
+        expect(s.enemySlowPct).toBe(0);
+    });
+
     it('decays markAmp duration and prunes when 0 or count <= 0', () => {
         const s = newStatusState();
         s.markAmp = [
@@ -450,37 +462,6 @@ describe('resolveBasicHit', () => {
         expect(a.dmgAmpNext.length).toBe(0);
     });
 
-    it('party instant-kill buff (nextAllyInstantKillPct) success → finite executeBurstPct=12, NOT a true instantKill', () => {
-        const a = newStatusState();
-        a.nextAllyInstantKillPct = [{ pct: 100, count: 1 }];
-        const t = newStatusState();
-        const orig = Math.random;
-        Math.random = () => 0;
-        try {
-            const r = resolveBasicHit(a, 'Knight', 100, t);
-            expect(r.executeBurstPct).toBe(12);
-            expect(r.instantKill).toBe(false);
-            expect(a.nextAllyInstantKillPct.length).toBe(0);
-        } finally {
-            Math.random = orig;
-        }
-    });
-
-    it('party instant-kill buff roll failure → no executeBurst, no instantKill', () => {
-        const a = newStatusState();
-        a.nextAllyInstantKillPct = [{ pct: 10, count: 1 }];
-        const t = newStatusState();
-        const orig = Math.random;
-        Math.random = () => 0.99;
-        try {
-            const r = resolveBasicHit(a, 'Knight', 100, t);
-            expect(r.executeBurstPct).toBe(0);
-            expect(r.instantKill).toBe(false);
-            expect(a.nextAllyInstantKillPct.length).toBe(0);
-        } finally {
-            Math.random = orig;
-        }
-    });
 });
 
 describe('consumeTargetMarkAmp', () => {

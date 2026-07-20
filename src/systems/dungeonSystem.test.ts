@@ -91,25 +91,25 @@ describe('getDungeonRemainingMs', () => {
 
 describe('resolveWave', () => {
   it('player wins when much stronger than monster', () => {
-    const result = resolveWave(1000, 100, 50, 20, 3, 1);
+    const result = resolveWave(1000, 100, 50, 50, 20, 3, 1, 5);
     expect(result.won).toBe(true);
     expect(result.playerHpLeft).toBeGreaterThan(0);
     expect(result.playerHpLeft).toBeLessThanOrEqual(1000);
   });
 
   it('player loses when monster is much stronger', () => {
-    const result = resolveWave(1, 1, 0, 1000, 999, 0);
+    const result = resolveWave(1, 1, 0, 1, 1000, 999, 0, 100);
     expect(result.won).toBe(false);
     expect(result.playerHpLeft).toBe(0);
   });
 
   it('player with exactly enough HP barely wins', () => {
-    const result = resolveWave(100, 10, 0, 9, 5, 0);
+    const result = resolveWave(100, 10, 0, 10, 9, 5, 0, 5);
     expect(result.won).toBe(true);
   });
 
   it('damage is always at least 1', () => {
-    const result = resolveWave(10000, 1, 0, 1, 0, 9999);
+    const result = resolveWave(10000, 1, 0, 1, 1, 0, 9999, 100);
     expect(result.won).toBe(true);
   });
 });

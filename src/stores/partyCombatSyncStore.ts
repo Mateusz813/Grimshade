@@ -62,6 +62,13 @@ export interface IPartyMemberHit {
     sentAt: number;
 }
 
+export interface IPartyMemberRevive {
+    memberId: string;
+    hpPct: number;
+    protectMs: number;
+    sentAt: number;
+}
+
 export interface IPartyBossDamageEvent {
     attackerId: 'player' | 'boss' | string;
     attackerClass?: import('../types/character').TCharacterClass;
@@ -182,6 +189,7 @@ interface IPartyCombatSyncState {
     lastDamageByAttacker: Record<string, IPartyDamageEvent>;
     lastAttackAction: IPartyAttackAction | null;
     lastMemberHit: IPartyMemberHit | null;
+    lastMemberRevive: IPartyMemberRevive | null;
     lastMonsterKilled: IPartyMonsterKilled | null;
     lastBossState: IPartyBossState | null;
     lastRaidState: IPartyRaidState | null;
@@ -196,6 +204,7 @@ interface IPartyCombatSyncState {
     publishAttackAction: (action: Omit<IPartyAttackAction, 'sentAt'>) => void;
     publishDamageEvent: (event: Omit<IPartyDamageEvent, 'sentAt'>) => void;
     publishMemberHit: (hit: Omit<IPartyMemberHit, 'sentAt'>) => void;
+    publishMemberRevive: (revive: Omit<IPartyMemberRevive, 'sentAt'>) => void;
     publishMonsterKilled: (k: Omit<IPartyMonsterKilled, 'sentAt' | 'seq'>) => void;
     publishBossState: (s: Omit<IPartyBossState, 'sentAt' | 'seq'>) => void;
     publishBossEntrySkip: () => void;
@@ -264,6 +273,7 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
     lastDamageByAttacker: {},
     lastAttackAction: null,
     lastMemberHit: null,
+    lastMemberRevive: null,
     lastMonsterKilled: null,
     lastBossState: null,
     lastRaidState: null,
@@ -349,6 +359,12 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
             const hit = payload as IPartyMemberHit;
             if (!hit?.memberId) return;
             set({ lastMemberHit: hit });
+        });
+
+        channel.on('broadcast', { event: 'member-revive' }, ({ payload }) => {
+            const revive = payload as IPartyMemberRevive;
+            if (!revive?.memberId) return;
+            set({ lastMemberRevive: revive });
         });
 
         channel.on('broadcast', { event: 'monster-killed' }, ({ payload }) => {
@@ -440,6 +456,7 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
             lastRaidDamageByAttacker: {},
             lastAttackAction: null,
             lastMemberHit: null,
+            lastMemberRevive: null,
             lastBossState: null,
             lastRaidState: null,
             lastTrainerState: null,
@@ -460,6 +477,7 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
                 lastBossDamageByAttacker: {},
                 lastAttackAction: null,
                 lastMemberHit: null,
+                lastMemberRevive: null,
                 lastBossState: null,
                 lastRaidState: null,
                 lastTrainerState: null,
@@ -562,6 +580,17 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
             type: 'broadcast',
             event: 'member-hit',
             payload: { ...hit, sentAt: now } satisfies IPartyMemberHit,
+        });
+    },
+
+    publishMemberRevive: (revive) => {
+        const { channel } = get();
+        if (!channel) return;
+        const now = Date.now();
+        void channel.send({
+            type: 'broadcast',
+            event: 'member-revive',
+            payload: { ...revive, sentAt: now } satisfies IPartyMemberRevive,
         });
     },
 
@@ -762,6 +791,7 @@ export const usePartyCombatSyncStore = create<IPartyCombatSyncState>()((set, get
             lastRaidDamageByAttacker: {},
             lastAttackAction: null,
             lastMemberHit: null,
+            lastMemberRevive: null,
             lastMonsterKilled: null,
             lastBossState: null,
             lastRaidState: null,

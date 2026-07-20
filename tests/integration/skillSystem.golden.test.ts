@@ -11,9 +11,8 @@ import {
     mlvlXpPerAttack,
     mlvlXpPerSkillUse,
     doesClassGainMlvlFromAttacks,
-    shieldingXpPerBlock,
+    shieldingXpPerHit,
     getShieldingDefBonus,
-    getShieldingBlockBonus,
     MAX_OFFLINE_TRAINING_SECONDS,
     OFFLINE_TRAINING_SPEED_MULTIPLIER,
     offlineXpRate,
@@ -149,9 +148,8 @@ const buildGolden = (): Record<string, unknown> => ({
     mlvlXpPerSkillUse: MLVL_LEVELS.flatMap((mlvl) =>
         CLASSES.map((cls) => ({ mlvl, class: cls, value: mlvlXpPerSkillUse(mlvl, cls) }))),
     doesClassGainMlvlFromAttacks: CLASSES.map((cls) => ({ class: cls, value: doesClassGainMlvlFromAttacks(cls) })),
-    shieldingXpPerBlock: SKILL_LEVELS.map((level) => ({ level, value: shieldingXpPerBlock(level) })),
+    shieldingXpPerHit: SKILL_LEVELS.map((level) => ({ level, value: shieldingXpPerHit(level) })),
     getShieldingDefBonus: SKILL_LEVELS.map((level) => ({ level, value: getShieldingDefBonus(level) })),
-    getShieldingBlockBonus: SKILL_LEVELS.map((level) => ({ level, value: getShieldingBlockBonus(level) })),
     offlineXpRate: SKILL_LEVELS.map((level) => ({ level, value: offlineXpRate(level) })),
     offlineXpRateForStat: OFFLINE_RATE_STAT_CASES.map(([level, skillId]) => ({
         level, skillId, value: offlineXpRateForStat(level, skillId),

@@ -86,23 +86,6 @@ describe('useCombatFx — floats', () => {
 });
 
 describe('useCombatFx — skill anims', () => {
-    it('triggerEnemySkillAnim sets state for a known skill', () => {
-        const { result } = renderHook(() => useCombatFx());
-        act(() => {
-            result.current.triggerEnemySkillAnim(0, 'fireball');
-        });
-        expect(result.current.enemySkill[0]).toBeDefined();
-        expect(result.current.enemySkill[0].cssClass).toMatch(/skill-anim--fire/);
-    });
-
-    it('silently no-ops for unknown skill IDs', () => {
-        const { result } = renderHook(() => useCombatFx());
-        act(() => {
-            result.current.triggerEnemySkillAnim(0, 'definitely_not_a_real_skill');
-        });
-        expect(result.current.enemySkill[0]).toBeUndefined();
-    });
-
     it('triggerAllySkillAnim mirrors the enemy path on the ally state', () => {
         const { result } = renderHook(() => useCombatFx());
         act(() => {
@@ -112,16 +95,24 @@ describe('useCombatFx — skill anims', () => {
         expect(result.current.allySkill[1].cssClass).toMatch(/skill-anim--ice/);
     });
 
+    it('silently no-ops for unknown skill IDs', () => {
+        const { result } = renderHook(() => useCombatFx());
+        act(() => {
+            result.current.triggerAllySkillAnim(1, 'definitely_not_a_real_skill');
+        });
+        expect(result.current.allySkill[1]).toBeUndefined();
+    });
+
     it('expires the anim entry after the configured duration', () => {
         const { result } = renderHook(() => useCombatFx());
         act(() => {
-            result.current.triggerEnemySkillAnim(0, 'fireball');
+            result.current.triggerAllySkillAnim(1, 'ice_lance');
         });
-        expect(result.current.enemySkill[0]).toBeDefined();
+        expect(result.current.allySkill[1]).toBeDefined();
         act(() => {
             vi.advanceTimersByTime(1000);
         });
-        expect(result.current.enemySkill[0]).toBeUndefined();
+        expect(result.current.allySkill[1]).toBeUndefined();
     });
 });
 
@@ -146,7 +137,6 @@ describe('useCombatFx — reset helpers', () => {
         act(() => {
             result.current.pushEnemyFloat(0, 1, 'basic');
             result.current.pushAllyFloat(1, 2, 'monster');
-            result.current.triggerEnemySkillAnim(0, 'fireball');
             result.current.triggerAllySkillAnim(1, 'ice_lance');
             result.current.triggerAllySummonSpawn(2, 'ghost');
         });
@@ -155,7 +145,6 @@ describe('useCombatFx — reset helpers', () => {
         });
         expect(result.current.enemyFloats).toEqual({});
         expect(result.current.allyFloats).toEqual({});
-        expect(result.current.enemySkill).toEqual({});
         expect(result.current.allySkill).toEqual({});
         expect(result.current.allySummonSpawn).toEqual({});
     });
@@ -185,19 +174,6 @@ const ALL_ACTIVE_SKILL_IDS: string[] = Object.values(
 describe('useCombatFx — #14 every skill renders on own + ally screen', () => {
     it('there are 105 active skill ids to exercise', () => {
         expect(ALL_ACTIVE_SKILL_IDS.length).toBe(105);
-    });
-
-    it('triggerEnemySkillAnim (own screen) sets a non-empty overlay for ALL 105 skills', () => {
-        const { result } = renderHook(() => useCombatFx());
-        for (const id of ALL_ACTIVE_SKILL_IDS) {
-            act(() => {
-                result.current.triggerEnemySkillAnim(0, id);
-            });
-            const s = result.current.enemySkill[0];
-            expect(s, `own-screen (enemy slot) overlay missing for skill "${id}"`).toBeDefined();
-            expect(s.emoji.length, `own-screen overlay glyph empty for "${id}"`).toBeGreaterThan(0);
-            expect(s.cssClass).toMatch(/^skill-anim--/);
-        }
     });
 
     it('triggerAllySkillAnim (ally screen) sets a non-empty overlay for ALL 105 skills', () => {

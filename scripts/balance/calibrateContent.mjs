@@ -7,7 +7,7 @@ const bosses=require(P('bosses.json')), itemTemplates=require(P('itemTemplates.j
 const floor=Math.floor,max=Math.max,min=Math.min,round=Math.round,pow=Math.pow;
 const APPLY=process.argv.includes('--apply');
 
-const CBS={Knight:{hp:120,mp:30,attack:10,defense:5,as:1.5,crit:0.03},Mage:{hp:80,mp:200,attack:6,defense:2,as:2.0,crit:0.05},Cleric:{hp:100,mp:150,attack:7,defense:4,as:2.0,crit:0.03},Archer:{hp:100,mp:80,attack:10,defense:3,as:2.5,crit:0.10},Rogue:{hp:90,mp:60,attack:9,defense:3,as:2.5,crit:0.15},Necromancer:{hp:85,mp:180,attack:6,defense:2,as:1.8,crit:0.05},Bard:{hp:95,mp:120,attack:8,defense:3,as:2.0,crit:0.07}};
+const CBS={Knight:{hp:150,mp:40,attack:12,defense:8,as:1.5,crit:0.03},Mage:{hp:90,mp:200,attack:9,defense:3,as:2.0,crit:0.05},Cleric:{hp:115,mp:155,attack:8,defense:6,as:2.0,crit:0.03},Archer:{hp:110,mp:80,attack:11,defense:4,as:2.5,crit:0.10},Rogue:{hp:100,mp:75,attack:10,defense:4,as:2.5,crit:0.15},Necromancer:{hp:88,mp:200,attack:9,defense:3,as:1.8,crit:0.05},Bard:{hp:105,mp:125,attack:9,defense:4,as:2.0,crit:0.07}};
 const HPL={Knight:8,Mage:3,Cleric:5,Archer:4,Rogue:4,Necromancer:3,Bard:4};
 const MILEHP={Knight:30,Mage:10,Cleric:15,Archer:15,Rogue:15,Necromancer:12,Bard:15};
 const MAXCRIT={Knight:0.30,Mage:0.30,Cleric:0.30,Archer:1.0,Rogue:1.0,Necromancer:0.30,Bard:0.30};
@@ -37,25 +37,31 @@ function player(cls,L,G,R,U){
   if(neck)gD+=upStat(baseStat(neck.scaling,G,R),U); if(ear)gD+=upStat(baseStat(ear.scaling,G,R),U);
   const oh=itemTemplates.offhands.find(t=>t.type===OFFH[cls]); if(cls!=='Rogue'&&oh){const v=upStat(baseStat(oh.scaling,G,R),U);if(oh.baseStatType==='attack')gA+=v;else gD+=v;}
   const wsc=itemTemplates.weapons.find(t=>t.type===WEAPON[cls]);
-  return{cls,attack:atk+gA,defense:def+gD,maxHp:hp+gH,wRoll:weaponAvg(wsc.scaling,G,R,U),as:b.as,dual:cls==='Rogue',U};
+  const pts=2*max(0,L-1), atkPts=round(pts*0.5), hpPts=round(pts*0.3)*6, defPts=round(pts*0.2);
+  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:hp+gH+hpPts,wRoll:weaponAvg(wsc.scaling,G,R,U),as:b.as,dual:cls==='Rogue',U};
 }
 const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
+const DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80, DEF_BASE=25;
+const compress=(x)=>DMG_COMPRESS_K*pow(max(0,x),DMG_COMPRESS_P);
+const mitig=(def,lvl)=>def<=0?0:min(0.75,def/(def+max(1,lvl)+DEF_BASE));
+const skillMultOf=(coeff,U)=>coeff<=0?0:min(2.1,max(1.2,1.2+(coeff-5.4)/10*0.9))*(U<=0?1:1+0.6*(1-pow(0.9,U)));
 const defPenOf=(sk)=>{const m=((sk&&sk.effect)||'').match(/(?:^|;)def_pen:(\d+)/);return m?min(0.6,+m[1]/100):0;};
 function bestSkill(cls,L){let best=null,bv=-1;for(const sk of(skills.activeSkills[cls.toLowerCase()]||[])){if((sk.damage||0)<=0||((sk.unlockLevel||0)>L))continue;const v=sk.damage*(1+defPenOf(sk));if(v>bv){bv=v;best=sk;}}return best;}
 function bossDPS(p,L,bossDef){
-  const sk=bestSkill(p.cls,L); const skMult=sk?sk.damage:0; const dp=sk?defPenOf(sk):0;
-  const skillHit=floor(p.attack*0.15*skMult*(1+dp)*spUp(p.U));
-  const basic=max(1,(p.dual?p.attack+0.6*p.wRoll:p.attack)-bossDef)*(p.dual?2:1);
-  return basic/(getAttackMs(p.as)/1000) + (skillHit>0?skillHit/5:0);
+  const m=1-mitig(bossDef,p.L);
+  const basicPerHit=compress((p.attack+p.wRoll)*m);
+  const basicDps=(p.dual?basicPerHit*1.2:basicPerHit)/(getAttackMs(p.as)/1000);
+  const sk=bestSkill(p.cls,L); const skMult=sk?skillMultOf(sk.damage,p.U):0;
+  const skillDps=skMult>0?(basicPerHit*skMult)/5:0;
+  return basicDps+skillDps;
 }
-const BOSS_TTK=180;
+const BOSS_TTK=210;
 function calibBoss(L){
-  const refDef=round(player('Mage',L,L,'legendary',3).attack*0.10);
   const ref=player('Mage',L,L,'legendary',3);
+  const refDef=round(ref.attack*0.10);
   const scaledHP=round(bossDPS(ref,L,refDef)*BOSS_TTK);
-  const squishHp=player('Mage',L,L,'legendary',3).maxHp;
-  const scaledHit=round(squishHp/7);
-  return{hp:max(1,round(scaledHP/3.5)),attack:max(1,round((scaledHit+ref.defense)/1.75)),defense:max(1,round(refDef/1.3))};
+  const scaledHit=round(ref.maxHp/7);
+  return{hp:max(1,round(scaledHP/3.5)),attack:max(1,round(scaledHit/1.75)),defense:max(1,round(refDef/1.3))};
 }
 function bossSolo(cls,L,R,U){
   const p=player(cls,L,L,R,U); const c=calibBoss(L);

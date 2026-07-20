@@ -7,28 +7,47 @@ const safeN = (v: number | null | undefined, fallback = 0): number => {
 };
 
 
+export const DEF_K = 1.0;
+export const DEF_CAP = 0.75;
+export const DEF_BASE = 25;
+export const DMG_COMPRESS_K = 0.48;
+export const DMG_COMPRESS_P = 0.80;
+export const KILL_XP_TTK_MULT = 1.75;
+
+export const compressPlayerDamage = (mitigatedDamage: number): number =>
+    DMG_COMPRESS_K * Math.pow(Math.max(0, safeN(mitigatedDamage)), DMG_COMPRESS_P);
+
+export const defMitigation = (enemyDef: number, attackerLevel: number): number => {
+    const def = Math.max(0, safeN(enemyDef));
+    const lvl = Math.max(1, safeN(attackerLevel, 1));
+    if (def <= 0) return 0;
+    return Math.min(DEF_CAP, def / (def + DEF_K * lvl + DEF_BASE));
+};
+
+export const mitigateDamage = (rawDamage: number, enemyDef: number, attackerLevel: number, playerSource = false): number => {
+    const m = safeN(rawDamage) * (1 - defMitigation(enemyDef, attackerLevel));
+    return Math.max(1, Math.floor(playerSource ? compressPlayerDamage(m) : m));
+};
+
+
 export interface ICombatParams {
     baseAtk: number;
     weaponAtk: number;
     skillBonus: number;
     classModifier: number;
     enemyDefense: number;
+    attackerLevel?: number;
     isCrit?: boolean;
-    isBlocked?: boolean;
-    isDodged?: boolean;
     critChance?: number;
     critDmg?: number;
-    blockChance?: number;
-    dodgeChance?: number;
     maxCritChance?: number;
     damageMultiplier?: number;
+    playerSource?: boolean;
 }
 
 export interface ICombatResult {
     damage: number;
     isCrit: boolean;
-    isBlocked: boolean;
-    isDodged: boolean;
     finalDamage: number;
 }
 
@@ -48,40 +67,23 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     const enemyDef     = safeN(params.enemyDefense);
     const critChance   = safeN(params.critChance, 0.05);
     const critDmgMult  = safeN(params.critDmg, 2.0);
-    const blockChance  = safeN(params.blockChance, 0);
-    const dodgeChance  = safeN(params.dodgeChance, 0);
     const maxCrit      = safeN(params.maxCritChance, 1.0);
 
     const effectiveCritChance = Math.min(critChance, maxCrit);
 
     const baseDamage = (baseAtk + weaponAtk + skillBonus) * classMod;
-    let finalDamage  = Math.max(1, baseDamage - enemyDef);
+    const mitigated  = baseDamage * (1 - defMitigation(enemyDef, params.attackerLevel ?? 1));
+    let finalDamage  = params.playerSource ? compressPlayerDamage(mitigated) : Math.max(1, mitigated);
 
-    const isDodged = params.isDodged ?? Math.random() < dodgeChance;
-    if (isDodged) {
-        return {
-            damage: Math.max(1, Math.floor(baseDamage - enemyDef)),
-            isCrit: false,
-            isBlocked: false,
-            isDodged: true,
-            finalDamage: 0,
-        };
-    }
-
-    const isCrit    = params.isCrit ?? Math.random() < effectiveCritChance;
-    const isBlocked = params.isBlocked ?? Math.random() < blockChance;
-
-    if (isCrit)    finalDamage *= critDmgMult;
-    if (isBlocked) finalDamage  = Math.floor(finalDamage * 0.5);
+    const isCrit = params.isCrit ?? Math.random() < effectiveCritChance;
+    if (isCrit) finalDamage *= critDmgMult;
 
     const dmgMult = safeN(params.damageMultiplier, 1);
     if (dmgMult !== 1) finalDamage *= dmgMult;
 
     return {
-        damage:      Math.max(1, Math.floor(baseDamage - enemyDef)),
+        damage:      Math.max(1, Math.floor(mitigated)),
         isCrit,
-        isBlocked,
-        isDodged: false,
         finalDamage: Math.max(1, Math.floor(finalDamage)),
     };
 };
@@ -101,40 +103,6 @@ export const calculateDualWieldDamage = (
         hit2,
         totalDamage: hit1.finalDamage + hit2.finalDamage,
     };
-};
-
-
-export const calculateBlockChance = (
-    shieldingLevel: number,
-    isPhysicalAttack: boolean = true,
-): number => {
-    if (!isPhysicalAttack) return 0;
-
-    const base = 0.05;
-    const perLevel = 0.005;
-    const max = 0.25;
-
-    return Math.min(max, base + safeN(shieldingLevel) * perLevel);
-};
-
-
-export const calculateDodgeChance = (
-    characterClass: string,
-    agilityLevel: number = 0,
-    isPhysicalAttack: boolean = true,
-): number => {
-    if (!isPhysicalAttack) return 0;
-
-    const classConfig: Record<string, { base: number; perLevel: number; max: number }> = {
-        Archer: { base: 0.05, perLevel: 0.004, max: 0.20 },
-        Rogue:  { base: 0.05, perLevel: 0.005, max: 0.20 },
-        Bard:   { base: 0.05, perLevel: 0.003, max: 0.15 },
-    };
-
-    const config = classConfig[characterClass];
-    if (!config) return 0;
-
-    return Math.min(config.max, config.base + safeN(agilityLevel) * config.perLevel);
 };
 
 
@@ -281,10 +249,10 @@ export type TMonsterRarity = 'normal' | 'strong' | 'epic' | 'legendary' | 'boss'
 
 export const MONSTER_STAT_MULTIPLIERS: Record<TMonsterRarity, { hp: number; atk: number; def: number; xp: number; gold: number }> = {
     normal:    { hp: 1.0,  atk: 1.0,  def: 1.0,  xp: 1.0,  gold: 1.0 },
-    strong:    { hp: 1.5,  atk: 1.2, def: 1.3,  xp: 1.8,  gold: 2.0 },
-    epic:      { hp: 2.5,  atk: 1.6, def: 1.5,  xp: 3.0,  gold: 4.0 },
-    legendary: { hp: 5.0,  atk: 1.8, def: 1.8,  xp: 5.0,  gold: 8.0 },
-    boss:      { hp: 10.0, atk: 2.5, def: 2.0,  xp: 10.0, gold: 15.0 },
+    strong:    { hp: 1.5,  atk: 1.4, def: 1.3,  xp: 1.8,  gold: 2.0 },
+    epic:      { hp: 2.5,  atk: 2.2, def: 1.5,  xp: 3.0,  gold: 4.0 },
+    legendary: { hp: 4.0,  atk: 3.2, def: 1.8,  xp: 5.0,  gold: 8.0 },
+    boss:      { hp: 8.0,  atk: 5.0, def: 2.0,  xp: 10.0, gold: 15.0 },
 };
 
 export const applyMonsterRarity = (

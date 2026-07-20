@@ -3,6 +3,7 @@ import type { IBot, IBotAction } from '../types/bot';
 import type { IBoss } from './bossSystem';
 import classesData from '../data/classes.json';
 import skillsData from '../data/skills.json';
+import { mitigateDamage, compressPlayerDamage } from './combat';
 
 
 interface IClassData {
@@ -217,12 +218,12 @@ export const calculateBotAction = (
     boss: IBoss,
     canUseSkill: boolean,
 ): IBotAction => {
-    const baseDmg = Math.max(1, bot.attack - boss.defense);
+    const baseDmg = mitigateDamage(bot.attack, boss.defense, bot.level, true);
     const variance = Math.floor(baseDmg * 0.2);
     const finalBaseDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
 
     if (canUseSkill && bot.skillId && bot.mp >= bot.skillMpCost && bot.skillDamageMultiplier > 0) {
-        const skillDmg = Math.max(1, Math.floor(bot.attack * bot.skillDamageMultiplier * 0.15));
+        const skillDmg = Math.max(1, Math.floor(compressPlayerDamage(bot.attack * bot.skillDamageMultiplier * 0.15)));
         const skillInfo = FIRST_SKILLS[bot.class];
         return {
             botId: bot.id,
@@ -266,8 +267,9 @@ export function pickAggroTarget(arg: string[] | IAggroCandidate[]): string {
 export const calculateAoeDamage = (
     bossAttack: number,
     targetDefense: number,
+    bossLevel: number,
 ): number => {
-    const baseDmg = Math.max(1, bossAttack - targetDefense);
+    const baseDmg = mitigateDamage(bossAttack, targetDefense, bossLevel);
     return Math.max(1, Math.floor(baseDmg * 0.5));
 };
 

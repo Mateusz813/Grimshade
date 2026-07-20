@@ -3,7 +3,7 @@ import {
     processSkillXp,
     getClassWeaponSkills,
     calculateOfflineSkillXp,
-    shieldingXpPerBlock,
+    shieldingXpPerHit,
     mlvlXpPerAttack,
     mlvlXpPerSkillUse,
     doesClassGainMlvlFromAttacks,
@@ -58,7 +58,7 @@ interface ISkillStore extends ISkillState {
     onActivityChange: (isActive: boolean) => void;
     pauseTraining: () => void;
     resumeTraining: () => void;
-    addShieldingXpOnBlock: () => number;
+    addShieldingXpOnHit: () => number;
     addMlvlXpFromAttack: (cls: CharacterClass) => number;
     addWeaponSkillXpFromAttack: (cls: CharacterClass) => number;
     addMlvlXpFromSkill: (cls: CharacterClass) => number;
@@ -286,10 +286,10 @@ export const useSkillStore = create<ISkillStore>()(
                 return xpEarned;
             },
 
-            addShieldingXpOnBlock: () => {
+            addShieldingXpOnHit: () => {
                 const state = get();
                 const shieldingLevel = state.skillLevels['shielding'] ?? 0;
-                const xpGain = shieldingXpPerBlock(shieldingLevel);
+                const xpGain = shieldingXpPerHit(shieldingLevel);
                 return get().addSkillXp('shielding', xpGain);
             },
 

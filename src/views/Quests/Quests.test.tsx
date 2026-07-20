@@ -188,15 +188,18 @@ describe('Quests — claimable dot on hub tiles', () => {
 });
 
 describe('Quests — Daily sub-view (unlocked)', () => {
-    it('renders the empty-list message when todayQuestDefs is empty', () => {
+    it('self-heals an empty daily slice on mount (unlocked char gets quests, no empty message)', () => {
         vi.mocked(isBackendMode).mockReturnValue(true);
+        useDailyQuestStore.setState({ lastRefreshDate: null, activeQuests: [], todayQuestDefs: [] });
         const { container } = renderQuests();
         fireEvent.click(container.querySelector('.quests__hub-tile--daily') as HTMLButtonElement);
+        const cards = container.querySelectorAll('.quests__daily-quest');
+        expect(cards.length).toBeGreaterThan(0);
         const empties = container.querySelectorAll('.quests__empty');
         const hasEmpty = Array.from(empties).some(
             (n) => n.textContent?.includes('Brak questow'),
         );
-        expect(hasEmpty).toBe(true);
+        expect(hasEmpty).toBe(false);
     });
 
     it('renders one quest card per todayQuestDef when active', () => {

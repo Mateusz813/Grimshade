@@ -6,6 +6,7 @@ import {
     TASK_XP_GEOMETRIC_RATIO,
     type IMonsterRewardSource,
 } from './taskRewards';
+import { KILL_XP_TTK_MULT } from './combat';
 import monstersData from '../data/monsters.json';
 import tasksData from '../data/tasks.json';
 
@@ -88,6 +89,13 @@ describe('computeTaskRewards', () => {
         const monster = makeMonster({ level: 5, xp: 10, gold: [2, 4] });
         const result = computeTaskRewards(monster, 100);
         expect(result.rewardXp).toBe(1500);
+    });
+
+    it('task XP is decoupled from the hunt-only KILL_XP_TTK_MULT (uses raw monster.xp)', () => {
+        const monster = makeMonster({ level: 5, xp: 10, gold: [2, 4] });
+        const result = computeTaskRewards(monster, 100);
+        expect(result.rewardXp).toBe(1500);
+        expect(result.rewardXp).not.toBe(Math.floor(10 * KILL_XP_TTK_MULT * 100 * 1.5));
     });
 
     it('computes gold = floor(maxGold * killCount * 3)', () => {

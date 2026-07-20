@@ -1,9 +1,9 @@
 import {
     calculateDamage,
     calculateDualWieldDamage,
-    calculateBlockChance,
-    calculateDodgeChance,
+    mitigateDamage,
     rollMonsterDamage,
+    KILL_XP_TTK_MULT,
 } from './combat';
 import { applyDeathPenalty } from './levelSystem';
 import { consumeDeathProtection } from './deathProtection';
@@ -24,7 +24,7 @@ import {
     type TMonsterRarity,
 } from './lootSystem';
 import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, STONE_NAMES, getRequiredStoneType, type IBaseItem } from './itemSystem';
-import { getTrainingBonuses, getCombatSkillUpgradeMultiplier } from './skillSystem';
+import { getTrainingBonuses, rollSkillDamageMult, getShieldingDefBonus } from './skillSystem';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
@@ -129,6 +129,7 @@ export const getSkillMpCost = (skillId?: string | null): number => {
     }
 };
 const SKILL_COOLDOWN_MS = 8000;
+export const REVIVE_PROTECT_MS = 3000;
 
 let huntEffects: ICombatEffectsSession = newCombatEffectsSession();
 const HUNT_PLAYER_FX_ID = 'player';
@@ -157,6 +158,12 @@ export const isHuntPlayerStunned = (): boolean =>
 
 export const isHuntMonsterStunned = (slot: number, id: string): boolean =>
     isCombatantStunned(huntEffects, huntMonsterFxId(slot, id));
+
+export const huntMonsterSlowSkips = (slot: number, id: string, rng: () => number = Math.random): boolean => {
+    const st = huntEffects.statuses.get(huntMonsterFxId(slot, id));
+    if (!st || st.enemySlowMs <= 0 || st.enemySlowPct <= 0) return false;
+    return rng() * 100 < st.enemySlowPct;
+};
 
 export const getHuntMonsterStatusView = (slot: number, id: string): {
     stunMs: number;
@@ -588,7 +595,7 @@ export const getEffectiveChar = (
     const baseAttackSpeed = baseAttackSpeedV + eq.speed * 0.01 + tb.attack_speed;
     const rawMaxHp = baseMaxHp + eq.hp + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
     const rawMaxMp = baseMaxMp + eq.mp + tb.max_mp + getElixirMpBonus() + getTransformFlatMp();
-    const rawDefense = baseDefense + eq.defense + tb.defense + getElixirDefBonus() + getTransformFlatDefense();
+    const rawDefense = baseDefense + eq.defense + tb.defense + getShieldingDefBonus(skillLevels['shielding'] ?? 0) + getElixirDefBonus() + getTransformFlatDefense();
     const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), contentLevel);
     const rawAttack = (baseAttack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack()) * gearGapMult;
     return {
@@ -812,7 +819,7 @@ export const handleMonsterDeath = (currentMonsterRarity: TMonsterRarity): void =
     );
     const bStore = useBuffStore.getState();
     const xpBoostMult = bStore.getXpBoostMultiplier();
-    const baseXp = Math.floor(s.monster.xp * masteryXpMult * partyXpMult);
+    const baseXp = Math.floor(s.monster.xp * KILL_XP_TTK_MULT * masteryXpMult * partyXpMult);
     if (masteryLevel > 0) {
         const pct = Math.round((masteryXpMult - 1) * 100);
         s.addLog(`:fire: Mastery Lvl ${masteryLevel}: +${pct}% XP & Gold`, 'system');
@@ -1123,6 +1130,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             baseAtk: char.attack, weaponAtk: wRoll, skillBonus: classBonus.skillBonus,
             classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
             enemyDefense: freshS.monster.defense,
+            attackerLevel: char.level, playerSource: true,
             critChance: (char.crit_chance ?? 0.05) + classBonus.extraCritChance + mods.extraCritChance,
             maxCritChance: maxCrit,
             isCrit: mods.forceCrit ? true : undefined,
@@ -1137,14 +1145,12 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
         const handPrefix = hand === 'left' ? '[Lewa] ' : hand === 'right' ? '[Prawa] ' : '';
         let text = `${handPrefix}Atakujesz ${freshS.monster.name_pl} za ${r.finalDamage} dmg`;
         if (r.isCrit) text += ' :high-voltage:KRYTYK!';
-        if (r.isBlocked) text += ' (zablokowane)';
         freshS.addLog(text, hand ? (r.isCrit ? 'crit' : 'dualwield') : (r.isCrit ? 'crit' : 'player'));
         useCombatStore.getState().emitCombatEvent({
             type: 'monsterHit',
             data: {
                 damage: r.finalDamage,
                 isCrit: r.isCrit,
-                isBlocked: r.isBlocked,
                 hand: hand ?? null,
                 targetIdx: freshS.activeTargetIdx,
             },
@@ -1180,6 +1186,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             baseAtk: char.attack, weaponAtk: wRoll, skillBonus: classBonus.skillBonus,
             classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
             enemyDefense: s.monster.defense,
+            attackerLevel: char.level, playerSource: true,
             critChance: (char.crit_chance ?? 0.05) + classBonus.extraCritChance,
             maxCritChance: maxCrit,
             damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -1239,7 +1246,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     const targetIdx = freshS.activeTargetIdx;
                     const wm = freshS.waveMonsters[targetIdx];
                     if (!wm || wm.isDead) return;
-                    let dmg = Math.max(1, Math.floor(char.attack * sm.dmgMult) - Math.floor(freshS.monster.defense * 0.5));
+                    let dmg = mitigateDamage(Math.floor(char.attack * sm.dmgMult), Math.floor(freshS.monster.defense * 0.5), char.level, true);
                     const ampSum = consumeHuntMonsterMarkAmp(targetIdx, freshS.monster.id);
                     if (ampSum.mult !== 1) {
                         dmg = Math.max(1, Math.floor(dmg * ampSum.mult));
@@ -1249,7 +1256,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     useCombatStore.getState().emitCombatEvent({
                         type: 'monsterHit',
                         data: {
-                            damage: dmg, isCrit: false, isBlocked: false,
+                            damage: dmg, isCrit: false,
                             hand: null, targetIdx,
                             isSummon: true,
                             summonType: sm.type,
@@ -1286,18 +1293,17 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             if (effApply === null) continue;
             const autoDefPenFrac = Math.max(0, Math.min(1, (effApply?.defPenPct ?? 0) / 100));
             const autoEffectiveDef = Math.max(0, Math.floor(s.monster.defense * (1 - autoDefPenFrac)));
-            const skillUpgradeMult = getCombatSkillUpgradeMultiplier(
-                useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0,
-            );
+            const skillUpgradeLevel = useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0;
             const sr = calculateDamage({
                 baseAtk: char.attack, weaponAtk: rollWeaponDamage(),
                 skillBonus: Math.floor(char.attack * 0.5),
                 classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                 enemyDefense: autoEffectiveDef,
+                attackerLevel: char.level, playerSource: true,
                 critChance: 0.20,
                 maxCritChance: maxCrit,
                 damageMultiplier: isDamageHit
-                    ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * skillMult * skillUpgradeMult
+                    ? getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * rollSkillDamageMult(skillMult, skillUpgradeLevel)
                     : 0,
             });
             const aoeTargetIdxs: number[] = [];
@@ -1415,11 +1421,26 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                     if (!bot.alive) {
                         const reviveHp = Math.max(1, Math.floor(bot.maxHp * 0.5));
                         useBotStore.getState().updateBotHp(bot.id, reviveHp);
+                        ensureStatus(huntEffects, bot.id).immortalMs = REVIVE_PROTECT_MS;
                         revivedNames.push(bot.name);
                     }
                 }
+                const humanMemberIds = usePartyStore.getState().party?.members
+                    .filter((m) => !m.isBot && m.id !== char.id)
+                    .map((m) => m.id) ?? [];
+                if (humanMemberIds.length > 0) {
+                    import('../stores/partyCombatSyncStore').then(({ usePartyCombatSyncStore }) => {
+                        for (const memberId of humanMemberIds) {
+                            usePartyCombatSyncStore.getState().publishMemberRevive({
+                                memberId,
+                                hpPct: 0.5,
+                                protectMs: REVIVE_PROTECT_MS,
+                            });
+                        }
+                    }).catch(() => { });
+                }
                 if (revivedNames.length > 0) {
-                    s.addLog(`:sparkles: ${skillId}: wskrzeszono ${revivedNames.join(', ')}`, 'system');
+                    s.addLog(`:sparkles: ${skillId}: wskrzeszono ${revivedNames.join(', ')} (ochrona ${Math.round(REVIVE_PROTECT_MS / 1000)}s)`, 'system');
                 }
             }
             if ((effApply?.multistrike ?? 0) > 0) {
@@ -1436,6 +1457,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
                             baseAtk: char.attack, weaponAtk: wRoll, skillBonus: classBonus.skillBonus,
                             classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                             enemyDefense: autoEffectiveDef,
+                            attackerLevel: char.level, playerSource: true,
                             critChance: (char.crit_chance ?? 0.05),
                             maxCritChance: maxCrit,
                             damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -1517,11 +1539,6 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
     const char = getEffectiveChar(useCharacterStore.getState().character);
     if (!char) return false;
 
-    const classConfig = getClassConfig(char.class);
-    const skillLevels = useSkillStore.getState().skillLevels;
-    const shieldingLevel = skillLevels['shielding'] ?? 0;
-    const isPhysical = !monster.magical;
-
     const partyStateForAggro = usePartyStore.getState().party;
     const hasBots = useBotStore.getState().bots.some((b) => b.alive);
     const iAmLeader = !!(
@@ -1537,7 +1554,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
         const memberId = targetId.slice('human_'.length);
         const rolledAtkM = rollMonsterDamage(monster);
         const approxMemberDef = Math.floor(char.defense * 0.75);
-        const dmgM = Math.max(1, rolledAtkM - approxMemberDef);
+        const dmgM = mitigateDamage(rolledAtkM, approxMemberDef, monster.level);
         useCombatStore.getState().addLog(
             `${monster.name_pl} atakuje sojusznika za ${dmgM} dmg`,
             'monster',
@@ -1576,7 +1593,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
             ? 1 + (botStatus.defBuffPct / 100) : 1;
         const effBotDef = Math.floor(bot.defense * botDefMult);
         const rolledAtkBot = rollMonsterDamage(monster);
-        const dmg = Math.max(1, rolledAtkBot - effBotDef);
+        const dmg = mitigateDamage(rolledAtkBot, effBotDef, monster.level);
         const newHp = Math.max(0, bot.hp - dmg);
         useBotStore.getState().updateBotHp(bot.id, newHp);
 
@@ -1607,7 +1624,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
         s.addLog(`:shield: Boska Tarcza! Blok ${monster.name_pl}!`, 'system');
         useCombatStore.getState().emitCombatEvent({
             type: 'playerHit',
-            data: { damage: 0, isCrit: false, isBlocked: false, hpDamage: 0, mpDamage: 0, isImmortal: true },
+            data: { damage: 0, isCrit: false, hpDamage: 0, mpDamage: 0, isImmortal: true },
             timestamp: Date.now(),
         });
         return false;
@@ -1620,9 +1637,6 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
             return false;
         }
     }
-    const blockChance = classConfig.canBlock ? calculateBlockChance(shieldingLevel, isPhysical) : 0;
-    const dodgeChance = classConfig.canDodge ? calculateDodgeChance(char.class, skillLevels['agility'] ?? 0, isPhysical) : 0;
-
     const playerStatusForDef = ensureStatus(huntEffects, HUNT_PLAYER_FX_ID);
     const defBuffMult = (playerStatusForDef.defBuffMs > 0 && playerStatusForDef.defBuffPct > 0)
         ? 1 + (playerStatusForDef.defBuffPct / 100) : 1;
@@ -1633,21 +1647,14 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
         baseAtk: rolledAtk, weaponAtk: 0, skillBonus: 0,
         classModifier: 1.0,
         enemyDefense: effectivePlayerDef,
-        blockChance,
-        dodgeChance,
+        attackerLevel: monster.level,
     });
-
-    if (r.isDodged) {
-        s.addLog(`${monster.name_pl} atakuje – unikasz ataku!`, 'dodge');
-        useCombatStore.getState().emitCombatEvent({ type: 'playerDodge', timestamp: Date.now() });
-        return false;
-    }
 
     if (playerStatusForDef.immortalMs > 0) {
         s.addLog(`${monster.name_pl} atakuje – BLOCK! Niewrażliwość!`, 'block');
         useCombatStore.getState().emitCombatEvent({
             type: 'playerHit',
-            data: { damage: 0, isCrit: false, isBlocked: false, hpDamage: 0, mpDamage: 0, isImmortal: true },
+            data: { damage: 0, isCrit: false, hpDamage: 0, mpDamage: 0, isImmortal: true },
             timestamp: Date.now(),
         });
         return false;
@@ -1664,7 +1671,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
             s.addLog(`:shield: Tarcza Many pochłania ${manaShieldSplit.mpDmg} MP`, 'block');
             useCombatStore.getState().emitCombatEvent({
                 type: 'playerHit',
-                data: { damage: 0, mpDamage: manaShieldSplit.mpDmg, hpDamage: 0, isCrit: false, isBlocked: false, isManaShield: true },
+                data: { damage: 0, mpDamage: manaShieldSplit.mpDmg, hpDamage: 0, isCrit: false, isManaShield: true },
                 timestamp: Date.now(),
             });
         }
@@ -1699,10 +1706,9 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
     const newPHp = Math.max(0, live.playerCurrentHp - hpDamage);
     if (hpDamage > 0) useCombatStore.getState().dealToPlayer(hpDamage);
 
-    if (r.isBlocked) {
-        s.addLog(`${monster.name_pl} atakuje za ${r.finalDamage} dmg :shield: ZABLOKOWANE! (${r.damage} -> ${r.finalDamage})`, 'block');
-        useSkillStore.getState().addShieldingXpOnBlock();
-    } else {
+    if (char.class === 'Knight') useSkillStore.getState().addShieldingXpOnHit();
+
+    {
         const utamoSuffix = hasUtamo && mpDamage > 0 ? ` :blue-circle: (${hpDamage} HP / ${mpDamage} MP)` : '';
         let text = `${monster.name_pl} atakuje cię za ${r.finalDamage} dmg`;
         if (r.isCrit) text += ' :high-voltage:KRYTYK!';
@@ -1712,7 +1718,7 @@ const doSingleWaveMonsterAttack = (waveIdx: number): boolean => {
 
     useCombatStore.getState().emitCombatEvent({
         type: 'playerHit',
-        data: { damage: r.finalDamage, isCrit: r.isCrit, isBlocked: r.isBlocked, hpDamage, mpDamage },
+        data: { damage: r.finalDamage, isCrit: r.isCrit, hpDamage, mpDamage },
         timestamp: Date.now(),
     });
 
@@ -1762,6 +1768,10 @@ export const doMonsterAttackTick = (): void => {
         if (useCombatStore.getState().phase !== 'fighting') return;
         const wm = useCombatStore.getState().waveMonsters[idx];
         if (wm && isHuntMonsterStunned(idx, wm.monster.id)) continue;
+        if (wm && huntMonsterSlowSkips(idx, wm.monster.id)) {
+            useCombatStore.getState().addLog(`${wm.monster.name_pl} jest spowolniony i traci atak`, 'system');
+            continue;
+        }
         const died = doSingleWaveMonsterAttack(idx);
         if (died) return;
     }
@@ -1786,7 +1796,7 @@ export const doBotAttackTick = (): void => {
             ? botStatus.partyCritPct : 0;
 
         const buffedAtk = Math.floor(bot.attack * botAtkBuffMult);
-        const baseDmg = Math.max(1, buffedAtk - live.monster.defense);
+        const baseDmg = mitigateDamage(buffedAtk, live.monster.defense, bot.level, true);
         const variance = Math.floor(baseDmg * 0.2);
         const finalDmg = Math.max(1, baseDmg - variance + Math.floor(Math.random() * (variance * 2 + 1)));
 
@@ -1835,7 +1845,6 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
     const monsterMs = getAttackMs(m.speed || 1);
     const skipSkillLevels = useSkillStore.getState().skillLevels;
     const skipClassBonus = getClassSkillBonus(char.class, skipSkillLevels);
-    const shieldingLevel = skipSkillLevels['shielding'] ?? 0;
 
     let mHp = m.hp;
     let pHp = Math.max(1, startHp);
@@ -1854,6 +1863,7 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
                     skillBonus: skipClassBonus.skillBonus,
                     classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                     enemyDefense: m.defense,
+                    attackerLevel: char.level, playerSource: true,
                     critChance: (char.crit_chance ?? 0.05) + skipClassBonus.extraCritChance,
                     maxCritChance: maxCrit,
                     damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -1866,6 +1876,7 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
                     skillBonus: skipClassBonus.skillBonus,
                     classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                     enemyDefense: m.defense,
+                    attackerLevel: char.level, playerSource: true,
                     critChance: (char.crit_chance ?? 0.05) + skipClassBonus.extraCritChance,
                     maxCritChance: maxCrit,
                     damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -1875,13 +1886,10 @@ export const resolveInstantFight = (m: IMonster, startHp: number, startMp: numbe
             }
             nextPlayer += playerMs;
         } else {
-            const isPhysical = !m.magical;
-            const blockChance = classConfig.canBlock ? calculateBlockChance(shieldingLevel, isPhysical) : 0;
-            const dodgeChance = classConfig.canDodge ? calculateDodgeChance(char.class, skipSkillLevels['agility'] ?? 0, isPhysical) : 0;
             const r = calculateDamage({
                 baseAtk: rollMonsterDamage(m), weaponAtk: 0, skillBonus: 0,
                 classModifier: 1.0, enemyDefense: char.defense,
-                blockChance, dodgeChance,
+                attackerLevel: m.level,
             });
             pHp = Math.max(0, pHp - r.finalDamage);
             nextMonster += monsterMs;
@@ -2148,7 +2156,6 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
     const classConfig = getClassConfig(char.class);
     const skillLevels = useSkillStore.getState().skillLevels;
     const classBonus = getClassSkillBonus(char.class, skillLevels);
-    const shieldingLevel = skillLevels['shielding'] ?? 0;
     const maxCrit = (classConfig.maxCritChance ?? 30) / 100;
 
     const playerAttackMs = Math.max(200, getAttackMs(effChar.attack_speed ?? 1) / speedMult);
@@ -2182,6 +2189,7 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
                         skillBonus: classBonus.skillBonus,
                         classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                         enemyDefense: scaledMonster.defense,
+                        attackerLevel: effChar.level, playerSource: true,
                         critChance: (effChar.crit_chance ?? 0.05) + classBonus.extraCritChance,
                         maxCritChance: maxCrit,
                         damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -2193,6 +2201,7 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
                         skillBonus: classBonus.skillBonus,
                         classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                         enemyDefense: scaledMonster.defense,
+                        attackerLevel: effChar.level, playerSource: true,
                         critChance: (effChar.crit_chance ?? 0.05) + classBonus.extraCritChance,
                         maxCritChance: maxCrit,
                         damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier(),
@@ -2201,13 +2210,10 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
                 }
                 nextPlayer += playerAttackMs;
             } else {
-                const isPhysical = !scaledMonster.magical;
-                const blockChance = classConfig.canBlock ? calculateBlockChance(shieldingLevel, isPhysical) : 0;
-                const dodgeChance = classConfig.canDodge ? calculateDodgeChance(char.class, skillLevels['agility'] ?? 0, isPhysical) : 0;
                 const r = calculateDamage({
                     baseAtk: rollMonsterDamage(scaledMonster), weaponAtk: 0, skillBonus: 0,
                     classModifier: 1.0, enemyDefense: effChar.defense,
-                    blockChance, dodgeChance,
+                    attackerLevel: baseMonster.level,
                 });
                 fightPHp = Math.max(0, fightPHp - r.finalDamage);
                 nextMonster += monsterAttackMs;
@@ -2225,7 +2231,7 @@ export const simulateOfflineCombat = (elapsedMs: number): IOfflineCombatResult |
             const catchupMasteryXpMult = getMasteryXpMultiplier(catchupMasteryLvl);
             const catchupMasteryGoldMult = getMasteryGoldMultiplier(catchupMasteryLvl);
 
-            const fightXp = Math.floor(scaledMonster.xp * catchupMasteryXpMult * 0.75);
+            const fightXp = Math.floor(scaledMonster.xp * KILL_XP_TTK_MULT * catchupMasteryXpMult * 0.75);
 
             const fightGold = Math.floor(calculateGoldDrop(scaledMonster.gold) * catchupMasteryGoldMult);
             totalGold += fightGold;

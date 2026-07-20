@@ -17,7 +17,12 @@ vi.mock('framer-motion', async () => {
     };
 });
 
+vi.mock('../../stores/characterScope', () => ({
+    commitCombatEventNow: vi.fn(),
+}));
+
 import OfflineHunt, { RewardModal } from './OfflineHunt';
+import { commitCombatEventNow } from '../../stores/characterScope';
 import type { IOfflineHuntClaimResult } from '../../systems/offlineHuntSystem';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useSkillStore } from '../../stores/skillStore';
@@ -143,6 +148,16 @@ describe('OfflineHunt — start CTA', () => {
         const monsterRow = container.querySelector('.oh__monster-row') as HTMLButtonElement;
         fireEvent.click(monsterRow);
         expect(monsterRow.className).toContain('oh__monster-row--active');
+    });
+
+    it('forces an immediate persist on start so a briefly-open session cannot lose the hunt', () => {
+        vi.mocked(commitCombatEventNow).mockClear();
+        const { container } = renderOfflineHunt();
+        fireEvent.click(container.querySelector('.oh__skill-chip') as HTMLButtonElement);
+        fireEvent.click(container.querySelector('.oh__monster-row') as HTMLButtonElement);
+        fireEvent.click(container.querySelector('.oh__btn--start') as HTMLButtonElement);
+        expect(useOfflineHuntStore.getState().isActive).toBe(true);
+        expect(vi.mocked(commitCombatEventNow)).toHaveBeenCalledWith({ type: 'offline-hunt' });
     });
 });
 

@@ -8,14 +8,14 @@ WITH c AS (
     GREATEST(highest_level, level) AS hl,
     GREATEST(0, 2 * (GREATEST(highest_level, level) - 1) - COALESCE(stat_points, 0)) AS spent_points,
     floor(GREATEST(highest_level, level) / 10) AS milestones,
-    (CASE class WHEN 'Knight' THEN 200 WHEN 'Mage' THEN 100 WHEN 'Cleric' THEN 130
-       WHEN 'Archer' THEN 120 WHEN 'Rogue' THEN 110 WHEN 'Necromancer' THEN 90 WHEN 'Bard' THEN 115 ELSE 100 END) AS base_hp,
-    (CASE class WHEN 'Knight' THEN 50 WHEN 'Mage' THEN 200 WHEN 'Cleric' THEN 160
-       WHEN 'Archer' THEN 80 WHEN 'Rogue' THEN 90 WHEN 'Necromancer' THEN 220 WHEN 'Bard' THEN 130 ELSE 100 END) AS base_mp,
-    (CASE class WHEN 'Knight' THEN 25 WHEN 'Mage' THEN 40 WHEN 'Cleric' THEN 20
-       WHEN 'Archer' THEN 35 WHEN 'Rogue' THEN 22 WHEN 'Necromancer' THEN 35 WHEN 'Bard' THEN 22 ELSE 20 END) AS base_atk,
-    (CASE class WHEN 'Knight' THEN 20 WHEN 'Mage' THEN 8 WHEN 'Cleric' THEN 12
-       WHEN 'Archer' THEN 10 WHEN 'Rogue' THEN 9 WHEN 'Necromancer' THEN 7 WHEN 'Bard' THEN 11 ELSE 10 END) AS base_def,
+    (CASE class WHEN 'Knight' THEN 150 WHEN 'Mage' THEN 90 WHEN 'Cleric' THEN 115
+       WHEN 'Archer' THEN 110 WHEN 'Rogue' THEN 100 WHEN 'Necromancer' THEN 88 WHEN 'Bard' THEN 105 ELSE 100 END) AS base_hp,
+    (CASE class WHEN 'Knight' THEN 40 WHEN 'Mage' THEN 200 WHEN 'Cleric' THEN 155
+       WHEN 'Archer' THEN 80 WHEN 'Rogue' THEN 75 WHEN 'Necromancer' THEN 200 WHEN 'Bard' THEN 125 ELSE 100 END) AS base_mp,
+    (CASE class WHEN 'Knight' THEN 12 WHEN 'Mage' THEN 9 WHEN 'Cleric' THEN 8
+       WHEN 'Archer' THEN 11 WHEN 'Rogue' THEN 10 WHEN 'Necromancer' THEN 9 WHEN 'Bard' THEN 9 ELSE 12 END) AS base_atk,
+    (CASE class WHEN 'Knight' THEN 8 WHEN 'Mage' THEN 3 WHEN 'Cleric' THEN 6
+       WHEN 'Archer' THEN 4 WHEN 'Rogue' THEN 4 WHEN 'Necromancer' THEN 3 WHEN 'Bard' THEN 4 ELSE 8 END) AS base_def,
     (CASE class WHEN 'Knight' THEN 8 WHEN 'Mage' THEN 3 WHEN 'Cleric' THEN 5
        WHEN 'Archer' THEN 4 WHEN 'Rogue' THEN 4 WHEN 'Necromancer' THEN 3 WHEN 'Bard' THEN 4 ELSE 5 END) AS per_hp,
     (CASE class WHEN 'Knight' THEN 2 WHEN 'Mage' THEN 8 WHEN 'Cleric' THEN 6
