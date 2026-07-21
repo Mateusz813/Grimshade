@@ -1240,7 +1240,8 @@ const Transform = () => {
             allyIds: [PLAYER_FX_ID],
             enemyIds: [OPPONENT_FX_ID],
           });
-          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(eff.attack * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
+          const defPenFracTfAuto = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
+          const baseDmg = isPureBuff ? 0 : Math.max(1, Math.floor(mitigateDamage(eff.attack, Math.max(0, target.monster.defense * (1 - defPenFracTfAuto)), latestChar.level, true) * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
           const normalSkillDmgTf = Math.floor(baseDmg * apply.castDmgMult);
           let skillDmg = isPureBuff
             ? 0
@@ -1962,9 +1963,11 @@ const Transform = () => {
       allyIds: [PLAYER_FX_ID],
       enemyIds: [OPPONENT_FX_ID],
     });
+    const tfManualDef = isBossTarget ? (currentMonsterRef.current?.defense ?? 0) : (escorts[targetSlot]?.monster?.defense ?? 0);
+    const defPenFracTfManual = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
     const baseDmg = isPureBuff ? 0 : Math.max(
       1,
-      Math.floor(eff.attack * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
+      Math.floor(mitigateDamage(eff.attack, Math.max(0, tfManualDef * (1 - defPenFracTfManual)), useCharacterStore.getState().character?.level ?? 1, true) * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
     );
     const normalSkillDmgTfManual = Math.floor(baseDmg * apply.castDmgMult);
     let skillDmg = isPureBuff

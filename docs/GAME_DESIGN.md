@@ -4,7 +4,7 @@
 >
 > **Ten plik MUSI być aktualizowany przy KAŻDEJ zmianie backendu lub frontu** (patrz [§30 Reguła utrzymania](#30-reguła-utrzymania-obowiązkowe)). Wersja player-facing (uproszczona) żyje w [`/wiki`](../src/views/Wiki/Wiki.tsx) i `src/data/wiki.ts` — ją też się aktualizuje.
 >
-> Ostatnia pełna synchronizacja z kodem: 2026-07-15 (gra v1.10.x). Źródła: workflow ekstrakcji 7 domen + weryfikacja adwersarialna. **Rebalans walki 2.0.0 wcielony 2026-07-19** (%-DEF, kompresja obrażeń gracza, usunięty pasywny blok/unik, zakresy skilli + ujednolicona krzywa ulepszeń, nowe mnożniki rzadkości, TTK), **model kompresji zmieniony na krzywą potęgową w 2.0.1**, **strojenie 2.0.2 (2026-07-20): ścięte mnożniki eliksir/transform, HP potworów/bossów przekalibrowane pod rotację skilli + crit, większa presja potionów, fix duplikacji nagród daily, poprawione opisy dmg skilli** — podsumowanie w [§29.1](#291-rebalans-walki-200-2026-07-19) i [§29.2](#292-strojenie-balansu-202-2026-07-20).
+> Ostatnia pełna synchronizacja z kodem: 2026-07-15 (gra v1.10.x). Źródła: workflow ekstrakcji 7 domen + weryfikacja adwersarialna. **Rebalans walki 2.0.0 wcielony 2026-07-19** (%-DEF, kompresja obrażeń gracza, usunięty pasywny blok/unik, zakresy skilli + ujednolicona krzywa ulepszeń, nowe mnożniki rzadkości, TTK), **model kompresji zmieniony na krzywą potęgową w 2.0.1**, **strojenie 2.0.2 (2026-07-20): ścięte mnożniki eliksir/transform, HP potworów/bossów przekalibrowane pod rotację skilli + crit, większa presja potionów, fix duplikacji nagród daily, poprawione opisy dmg skilli**, **przeprojektowanie skali 2.0.3 (2026-07-20): fix skilli omijających kompresję w boss/dungeon/transform (koniec 27× atak vs skill), `DMG_COMPRESS_K` 0.48→2.3 (czytelne liczby), `GEAR_HP_SCALE` 0.25 (HP 18k→~9.5k), rekalibracja pod Archer mythic+0** — podsumowanie w [§29.1](#291-rebalans-walki-200-2026-07-19), [§29.2](#292-strojenie-balansu-202-2026-07-20) i [§29.3](#293-przeprojektowanie-skali-obrazenhp-203-2026-07-20).
 
 ## Spis treści
 
@@ -155,7 +155,7 @@ Wszystkie obrażenia (gracz→potwór, potwór→gracz, boty, arena) przechodzą
 baseDamage  = (baseAtk + weaponAtk + skillBonus) × classModifier
 mitigation  = min(0.75, enemyDefense / (enemyDefense + 1.0 × attackerLevel + 25))  // %-DEF: DEF_CAP=0.75, DEF_K=1.0, DEF_BASE=25
 mitigated   = baseDamage × (1 − mitigation)
-if playerSource: finalDamage = 0.48 × mitigated^0.80                          // compressPlayerDamage: DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80 — TYLKO obrażenia gracza
+if playerSource: finalDamage = 2.3 × mitigated^0.80                           // compressPlayerDamage: DMG_COMPRESS_K=2.3 (2.0.3), DMG_COMPRESS_P=0.80 — TYLKO obrażenia gracza
 else:            finalDamage = max(1, mitigated)                              // potwór→gracz: brak kompresji, podłoga = 1
 if isCrit:       finalDamage ×= critDmgMult (domyślnie 2.0)
 if dmgMult≠1:    finalDamage ×= damageMultiplier
@@ -164,7 +164,7 @@ return max(1, floor(finalDamage))
 
 **Procentowa obrona (%-DEF) — zamiast płaskiego odejmowania (2.0.0).** DEF nie jest już odejmowane płasko (`max(1, dmg − def)`), tylko redukuje procent obrażeń: `mitigation = min(DEF_CAP, def / (def + DEF_K × attackerLevel + DEF_BASE))`, gdzie `DEF_K = 1.0`, `DEF_BASE = 25`, `DEF_CAP = 0.75`, `attackerLevel` = poziom atakującego (poziom potwora gdy bije gracza; poziom gracza gdy bije potwora). Efekt: DEF pozostaje istotne na KAŻDYM poziomie (licznik i mianownik skalują się z poziomem); tank redukuje ~30% wejścia (cap 75% — nigdy nieśmiertelny), squishy Mage ~15%. **Człon bazowy `DEF_BASE = 25`** studzi mitygację przy niskich DEF/poziomach: bez niego szczur o def 1 vs gracz L1 tłumił 50% (`1/(1+1)`); z `DEF_BASE=25` to ~4% (`1/(1+1+25)`). Wysokopoziomowe tanki są nietknięte — gdy `def + level >> 25`, człon jest pomijalny (Knight ~2118 def na L1000 wciąż ~67%).
 
-**Kompresja obrażeń GRACZA — sub-liniowa krzywa potęgowa (2.0.1).** Zamiast płaskiego mnożnika obrażenia gracza są kompresowane funkcją potęgową: `compressPlayerDamage(mitigated) = DMG_COMPRESS_K × mitigated^DMG_COMPRESS_P`, gdzie `DMG_COMPRESS_K = 0.48`, `DMG_COMPRESS_P = 0.80`. Nakładana WYŁĄCZNIE na obrażenia zadawane przez gracza (gracz→potwór, skille, summony necro, boty→potwór) przez flagę `playerSource` / `mitigateDamage(..., true)`, na zmitygowaną bazę **PRZED** crit/damageMultiplier — więc crit ×2 i mnożniki eliksir/transform mnożą już SKOMPRESOWANĄ wartość. NIE dotyczy potwór→gracz (ataki potworów są realne; HP potworów jest skalibrowane pod skompresowany DPS gracza). Krzywa utrzymuje niskopoziomowe ciosy WIDOCZNE (L1 basic ≈ 5–9, szczur ginie po kilku widocznych ciosach) i JEDNOCZEŚNIE ściska sufit (L1000 heroic+7 basic ≈ 1,5k, spell ≈ 3k). Stary płaski `×0.065` nakładany na końcu tego nie potrafił — dół podłogował do 1 (L1 Mage z bronią 3–6 bił szczura tylko za 1). **Reborn (PRZYSZŁOŚĆ, nie wdrożone):** globalny mnożnik na skompresowaną bazę, zachowuje proporcje → reborn 25 ≈ 50–100k. Zero pracy teraz; design zostawia zapas.
+**Kompresja obrażeń GRACZA — sub-liniowa krzywa potęgowa (2.0.1, `K` przestrojone w 2.0.3 → §29.3).** Zamiast płaskiego mnożnika obrażenia gracza są kompresowane funkcją potęgową: `compressPlayerDamage(mitigated) = DMG_COMPRESS_K × mitigated^DMG_COMPRESS_P`, gdzie `DMG_COMPRESS_K = 2.3` (było 0.48; podniesione dla czytelnych liczb), `DMG_COMPRESS_P = 0.80`. Nakładana WYŁĄCZNIE na obrażenia zadawane przez gracza (gracz→potwór, skille, summony necro, boty→potwór) przez flagę `playerSource` / `mitigateDamage(..., true)`, na zmitygowaną bazę **PRZED** crit/damageMultiplier — więc crit ×2 i mnożniki eliksir/transform mnożą już SKOMPRESOWANĄ wartość. NIE dotyczy potwór→gracz (ataki potworów są realne; HP potworów jest skalibrowane pod skompresowany DPS gracza). Krzywa utrzymuje niskopoziomowe ciosy WIDOCZNE (L1 basic ≈ 5–9, szczur ginie po kilku widocznych ciosach) i JEDNOCZEŚNIE ściska sufit (L1000 heroic+7 basic ≈ 1,5k, spell ≈ 3k). Stary płaski `×0.065` nakładany na końcu tego nie potrafił — dół podłogował do 1 (L1 Mage z bronią 3–6 bił szczura tylko za 1). **Reborn (PRZYSZŁOŚĆ, nie wdrożone):** globalny mnożnik na skompresowaną bazę, zachowuje proporcje → reborn 25 ≈ 50–100k. Zero pracy teraz; design zostawia zapas.
 
 Domyślne wartości parametrów: `critChance 0.05`, `critDmg 2.0`, `maxCritChance 1.0`, `classModifier 1`, `damageMultiplier 1`, `playerSource false`. Kolejność (playerSource): %-DEF mitygacja → `compressPlayerDamage` → crit → damageMultiplier → `floor(max 1)`. Dla potwór→gracz kompresji nie ma, a floor = 1 stosuje się od razu po mitygacji (każdy cios trafia min. za 1).
 
@@ -237,7 +237,7 @@ Koniec „gear L100 zabija bossa L200".
 
 Eliksiry (`combatElixirs.ts`): `atk_dmg_100/50/25` = ×1.25/1.15/1.08 (ścięte w 2.0.2 z ×2.0/1.5/1.25); `spell_dmg_*` analogicznie; `hp_pct_25`/`mp_pct_25` = ×1.25 max; `atk_boost_50`/`def_boost_50` = +50 flat; `attack_speed` = ×1.20. Tiery nie mutex — kilka może być aktywnych, ale drenuje i liczy się najwyższy.
 
-Upgrade skilla `getCombatSkillUpgradeMultiplier(U)` = `1 + 0.6×(1 − 0.9^U)` — malejące przyrosty, asymptota **×1.6**. +5 ≈ ×1.25, +10 ≈ ×1.39, +20 ≈ ×1.53, +30 ≈ ×1.57 (→ ×1.6). Ulepszenia nieskończone z malejącym zwrotem. **Krzywa UJEDNOLICONA (2.0.0):** display i walka używają teraz tej samej funkcji (`getSkillUpgradeBonus(U) = getCombatSkillUpgradeMultiplier(U) − 1`) — dawniej się rozjeżdżały (display `1.15^U`, walka `~+2%/lvl`).
+Upgrade skilla `getCombatSkillUpgradeMultiplier(U)` = `1 + 0.4×(1 − 0.9^U)` — malejące przyrosty, asymptota **×1.4** (obniżone z 0.6/×1.6 w 2.0.3, by skill ≈ 1.8× atak). `skillTierMult` cap **1.7** (było 2.1). Ulepszenia nieskończone z malejącym zwrotem. **Krzywa UJEDNOLICONA (2.0.0):** display i walka używają teraz tej samej funkcji (`getSkillUpgradeBonus(U) = getCombatSkillUpgradeMultiplier(U) − 1`) — dawniej się rozjeżdżały (display `1.15^U`, walka `~+2%/lvl`).
 
 **Capy anty-one-shot:** `instant_kill_chance:N` = N% szansy na BURST 12% max HP (**NIE zabicie**); instant-kill na splash AOE = `max(splashDmg, 12% max HP)`; Necro `death_apocalypse` = 12% max HP (bez kosztu własnego HP); `execute_below` dobija tylko cele <20% HP; `def_pen` cap 60%.
 
@@ -640,7 +640,7 @@ Skille nie są dawane automatycznie — odblokowuje się je za **1 Skrzynię Cza
 - `× getCombatSkillUpgradeMultiplier(U)` — ujednolicona krzywa ulepszeń (§3.7, asymptota ×1.6),
 - `× rangeRoll = 0.85 + rng×0.30` (±15%).
 
-Skill bije więc ~1.2–2.1× zwykłego ciosu na bazie, do **~3.3× w pełni ulepszony** (whale). **Skille rolują ZAKRES MIN–MAX, nie stałą wartość.** Do tego globalne mnożniki: `atkDmg × spellDmg × transformDmg` oraz kompresja krzywą potęgową `compressPlayerDamage` (`DMG_COMPRESS_K=0.48`, `DMG_COMPRESS_P=0.80`; bo skill to obrażenia gracza). AOE splash = 75% obrażeń primary. def_pen: efektywna obrona wroga = `floor(def × (1 − defPen))`, cap 60%.
+Skill bije więc ~1.2–1.7× zwykłego ciosu na bazie, do **~2.4× w pełni ulepszony** (2.0.3: cap 2.1→1.7, asymptota ×1.6→×1.4). **Skille rolują ZAKRES MIN–MAX, nie stałą wartość.** Do tego globalne mnożniki: `atkDmg × spellDmg × transformDmg` oraz kompresja krzywą potęgową `compressPlayerDamage` (`DMG_COMPRESS_K=2.3`, `DMG_COMPRESS_P=0.80`; bo skill to obrażenia gracza). AOE splash = 75% obrażeń primary. def_pen: efektywna obrona wroga = `floor(def × (1 − defPen))`, cap 60%.
 
 ### 12.5 Ulepszanie aktywnego skilla (Spell Chest)
 
@@ -708,7 +708,7 @@ Sługi przyjmują obrażenia pierwsze (tank-wall, HP-frac bez zmian) i dokładaj
 - **3 próby/dzień**, cooldown `86400/3 = 8h` (odnawialny „Reset Bossa"). Gate: `charLevel ≥ boss.level`. Rekomendowany poziom = `boss.level + 5`.
 - **Nagrody (z poziomu, NIE z JSON):** `xp = floor(xpToNext(level) × (0.005 + 0.19/(1 + level/80)))` (~18% poziomu na L10, ~1.8% na L1000); `goldMid = floor(38 × level^1.8)`, zakres [0.6×, 1.6×]. Skalowane mastery bossa.
 - **Loot:** boss ma `dropTable` (`{itemId, chance, rarity}`), roll per wpis tylko na wygranej. `heroicDropChance` per boss 0.01→0.18 (najwyższy na mid-tier, np. L25 Pan Cieni 0.18).
-- **BALANS solo z miksturkami:** DPS-klasy próg ≈ **legendary+3**, support (Bard/Cleric) ≈ **mythic+3**, rare+3 wolno, **heroic+7 szybko**. **TTK bossa (cel kalibracji `BOSS_TTK=210`) ≈ 3–4 min.** Cios bossa ≈ maxHp najsłabszej klasy / 7 (bez one-shotów).
+- **BALANS solo z miksturkami:** DPS-klasy próg ≈ **legendary+3**, support (Bard/Cleric) ≈ **mythic+3**, rare+3 wolno, **heroic+7 szybko**. **TTK bossa (cel kalibracji `BOSS_TTK=100`) ≈ 2–6 min (DPS-klasy ~2–3 min, tanki ~5–6).** Cios bossa ≈ maxHp najsłabszej klasy / 7 (bez one-shotów).
 
 Przykładowe staty (in-combat = base × mnożniki ×3.5/×1.75/×1.3; `bosses.json` PRZEGENEROWANE w 2.0.0): L10 Król Kanałów 1001 HP / 96 ATK; L100 Król Demonów 8802 / 705; L500 Niebiański Niszczyciel 42 654 / 3403; L1000 Koniec Wszystkiego 84 910 / 6770.
 
@@ -912,12 +912,12 @@ Nieśmiertelne manekiny (1–4), HP nigdy nie spada (sandbox HP/MP nie zapisywan
 
 Źródło: `scripts/balance/calibrate.mjs`, `calibrateContent.mjs`.
 
-- **TTK (cele kalibracji 2.0.0):** normal mob ≈ **6–9s** (`TTK_REF=7`), boss ≈ **3–4 min** (`BOSS_TTK=210`). Kalibrator raportuje `one-shot cells: 0` — żaden potwór/boss na poziomie gracza nie one-shotuje common+0.
+- **TTK (cele kalibracji 2.0.0):** normal mob ≈ **6–9s** (`TTK_REF=7`), boss ≈ **2–6 min** (`BOSS_TTK=100`). Kalibrator raportuje `one-shot cells: 0` — żaden potwór/boss na poziomie gracza nie one-shotuje common+0.
 - **Common+0 na swój poziom** ubija: normal 5–10, strong 3–8, epic 2–5, legendary 1–3, boss 0–1 (DPS góra, tank/support dół).
 - **Skalowanie gearu:** +1 ulepszenie ≈ +10% zabić, +1 rarity ≈ +15%, heroic ≈ +105% (statMult 2.05).
 - **Strefa startowa L≤10** ubijalna bez gearu (cel 5–7 zabójstw szczura/klasę bez potek). Żaden potwór nie one-shotuje common+0.
 - **Bossy solo z potkami:** DPS ≈ legendary+3, support ≈ mythic+3, heroic+7 szybko, ~3–4 min. Cios bossa ≈ maxHp najsłabszej klasy / 7.
-- **Model walki (2.0.1):** %-DEF (`DEF_K=1.0`, `DEF_BASE=25`, cap 0.75) + kompresja obrażeń gracza krzywą potęgową `compressPlayerDamage` (`DMG_COMPRESS_K=0.48`, `DMG_COMPRESS_P=0.80`; dół widoczny — L1 basic ≈ 5–9, sufit L1000 heroic+7 ≈ 1,5k basic / 3k spell) — patrz §3.1. Reborn (przyszłość) = globalny mnożnik zachowujący proporcje.
+- **Model walki (2.0.1):** %-DEF (`DEF_K=1.0`, `DEF_BASE=25`, cap 0.75) + kompresja obrażeń gracza krzywą potęgową `compressPlayerDamage` (`DMG_COMPRESS_K=2.3` (2.0.3), `DMG_COMPRESS_P=0.80`; atak L350 ~1–2k, L1000 heroic+7 ~5,7k basic / ~15k spell) — patrz §3.1. Reborn (przyszłość) = globalny mnożnik zachowujący proporcje.
 - **Guild boss** clearowalny na każdym tierze (obrażenia rosną z tierem).
 
 ---
@@ -964,7 +964,7 @@ Duża zmiana modelu walki/skilli/balansu (MAJOR). Zastępuje wcześniejsze formu
 | Mnożniki rzadkości (atk/hp) | strong 1.2 / epic 1.6 / legendary 1.8 / boss 2.5 atk; legendary 5.0 / boss 10.0 hp | atk 1.4 / 2.2 / 3.2 / 5.0; hp legendary 4.0 / boss 8.0 (§4.1); raid BOSS_TIER dziedziczy nowe wartości (§16) |
 | `monsters.json` / `bosses.json` | stare HP/ATK/DEF | **PRZEGENEROWANE** pod nową krzywę+DEF i cele TTK (kalibrator zgodny). Niskopoziomowe HP urosło, bo ciosy gracza są znów widoczne (szczur 8→31); wyżej pozostaje ściśnięte (bandit L11 = 99, world_ender L1000 = 2632, boss L1000 in-combat ≈ 111k HP). TTK zachowane. XP/gold w danych nietknięte |
 | per-kill hunt XP | brak kompensacji | `KILL_XP_TTK_MULT`=1.75 na naliczaniu XP w huncie zależnym od TTK (żywa walka auto + background catch-up); SKIP i offline-hunt NIE skalowane (stały rate). Kompensuje dłuższe TTK, tempo lvlowania zachowane; TASKI liczą z surowego `monster.xp` → bez zmian |
-| TTK | — | normal mob ~6–9s (`TTK_REF=7`), boss ~3–4 min (`BOSS_TTK=210`), `one-shot cells: 0` (§28) |
+| TTK | — | normal mob ~6–9s (`TTK_REF=7`), boss ~2–6 min (`BOSS_TTK=100`), `one-shot cells: 0` (§28) |
 | „Instant kill" | traktowany jak realne zabicie | `instant_kill_chance` = szansa na **burst 12% max HP** (nie zabicie); skill „instant_kill" → **„Śmiertelny Cios/Deadly Strike"** |
 | DoT | (opisywany jako ticki) | **`% max HP/s`**, obniżone do 4%/s (§12.6) |
 | Efekty skilli | death_curse ×6, dark_ritual 25%, ice_lance bez slow, universe_song z party_instant_kill | death_curse ×3, dark_ritual 13%, `ice_lance enemy_slow:40:6000`, universe_song bez party_instant_kill (immortal+atk100%+as×2.2); Cleric revive obejmuje ludzi+boty (50% HP + 3s) (§12.6) |
@@ -989,6 +989,25 @@ Playtest L350 (Archer) pokazał, że spelle biją 7k+ i one-shotują wszystko, w
 Efekt (L350 Archer, EQ +0): spell ~1k (było 7k), mob epic ~5.5k HP → walka 10–15s / kilka–kilkanaście ciosów, ~40–55% HP/walkę; boss ~2.4–3.5 min i zjada potiony; zero one-shotów na najtrudniejszej treści. Baza kompresji nietknięta → zapas na reborny zachowany. Źródło: `combatElixirs.ts`, `transformSystem.ts`, `scripts/balance/calibrate.mjs` (`SKILL_ROT`, `SURV_HITS`) + `calibrateContent.mjs` (crit+classMod, `refBossDPS`), `Inventory.tsx`; parytet PHP: `CombatElixirs.php`, `TransformSystem.php`, `monsters.json`/`bosses.json` (skopiowane), golden fixtures zregenerowane.
 
 **Bug fix — duplikacja nagród daily (2.0.2):** „odbierz wszystkie" dawało nagrody wielokrotnie z tych samych questów. Przyczyna: zdebounce'owany commit pełnego stanu (`PUT /state`) wysyłał lokalny `dailyQuests` z `claimed=false` i nadpisywał serwerowe `claimed=true` (ustawione przez dedykowany endpoint claim) → quest znów do odbioru. Fix: `CharacterStateService::preserveClaimedDailyQuests` — commit pełnego stanu nie może cofnąć `claimed=true` w obrębie tej samej daty (`lastRefreshDate`); nowy dzień (inna data) resetuje normalnie. Serwer jest autorytatywny dla flagi claimed.
+
+---
+
+### 29.3 Przeprojektowanie skali obrażeń/HP 2.0.3 (2026-07-20)
+
+Playtest L350 (Archer) po 2.0.2: skill bił ~4k, zwykły atak ~150 (**27× różnica** — atak z broni bez sensu), liczby nieczytelne (kompresja dławiła atak do 150), HP 18k za dużo. **Root cause (znaleziony analizą 6 agentów):** skille w **bossie / dungeonie / transformie** liczyły się jako surowe `charAtk × rollSkillDamageMult` — **omijały kompresję ORAZ %-DEF** (Boss.tsx:1404/1791, Dungeon.tsx:1187/1522, Transform.tsx:1243/1967), a zwykły atak był kompresowany → 27× rozjazd. (Polowanie i raid kompresowały oba — tam buga nie było.) Dodatkowo gear nigdy nie był migrowany → HP z pancerza (`ARMOR_HP_MULTIPLIER=6`) dawało ~14k z 18k.
+
+| Obszar | Było (2.0.2) | Jest (2.0.3) |
+|---|---|---|
+| Skille boss/dungeon/transform | surowe `charAtk × mult` (bez kompresji, bez %-DEF) | przez `mitigateDamage(charAtk, def×(1−defPen), lvl, true)` → **skompresowane jak atak** (wzorzec z raida). Koniec 27× → skill ≈ **1.8–2× atak** |
+| Kompresja `DMG_COMPRESS_K` | 0.48 | **2.3** (kształt `P=0.80` bez zmian) — liczby czytelne: atak L350 ~1–2k, L1000 heroic+7 **~5.7k** (było ~150) |
+| Mnożnik skilla | `skillTierMult` cap 2.1 × upgrade asymptota 1.6 (do ~3.9×) | cap **1.7** × asymptota **1.4** (do ~2.4×) → skill ~1.8× atak, nie 27× |
+| HP z gearu | pełne (`eq.hp`) → 18k @ L350 | ×`GEAR_HP_SCALE`=**0.25** na żywo przy agregacji (`combatEngine`/`characterStore`/`inventoryStore`/`useMpRegen` + backend `EffectiveStats`) → Krasek **18k → ~9.5k**, bez migracji danych (działa na starych i nowych postaciach) |
+| Kalibracja normal-mob HP | rotacja skilli, ref = avg klasa | ref = **Archer mythic+0** (`refP`), `HP = basicRaw × HUNT_HITS(5.5)` → normal L350 ~8k (mythic+0 Archer = **5.5 ciosów z ręki**); `SURV_HITS` 22→**20** (mob atak ~478 @ L350) |
+| Kalibracja player (calibrate/calibrateContent) | bez skali gearu | `hpPts ×6→×5`, gear HP `×0.25`, transformy skalowane poziomem (`nTf=min(11,round(L/60))`), `tDmg` w bazie |
+
+Efekt (L350 Archer mythic+0, skille+5): atak ~1.5k, skill ~2.8k (skill ~1.9× atak), HP ~9.5k, normal mob ~5.5 ciosów; boss ~2,5 min (Archer) do ~6 min (Knight) i zjada potiony; **4× BOSS (raid): epic+0 = nie do przejścia, mythic+3 = na styk, heroic+7 = ciężko** (zgodnie z playtestem). Baza kompresji + reborn-zapas zachowane. Pełne tabele (klasa × gear × poziom × tryb) generuje `scripts/balance/model-v203` (scratchpad). Parytet PHP: `CombatMath.php`/`BotSystem.php` (K), `SkillSystem.php` (asymptota 0.4), `EffectiveStats.php` (`GEAR_HP_SCALE`), `monsters.json`/`bosses.json` skopiowane, golden zregenerowane.
+
+**Znany kompromis (`GEAR_HP_SCALE`):** stored bonus HP itemu jest surowy (np. pancerz „+2718 HP"), a wkład do postaci to ×0.25 (~680) — tooltip pokazuje surową rolkę, realne HP jest skalowane. Wybór świadomy: brak ryzykownej migracji danych (nie da się uszkodzić gearu), Krasek naprawiony natychmiast. Do rozważenia follow-up: skalować wyświetlaną wartość HP itemu albo migracja `ARMOR_HP_MULTIPLIER`.
 
 ---
 

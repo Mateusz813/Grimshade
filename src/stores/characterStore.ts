@@ -8,6 +8,7 @@ import { useLevelUpStore } from './levelUpStore';
 import { useBuffStore } from './buffStore';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
 import { getTrainingBonuses } from '../systems/skillSystem';
+import { GEAR_HP_SCALE } from '../systems/combat';
 import {
     getElixirHpBonus,
     getElixirMpBonus,
@@ -30,7 +31,7 @@ const getEffectiveMaxValues = (baseMaxHp: number, baseMaxMp: number): { maxHp: n
         const eq = getTotalEquipmentStats(equipment, ALL_ITEMS_FOR_HEAL);
         const { skillLevels } = useSkillStore.getState();
         const tb = getTrainingBonuses(skillLevels);
-        const rawMaxHp = baseMaxHp + (eq.hp ?? 0) + (tb.max_hp ?? 0) + getElixirHpBonus() + getTransformFlatHp();
+        const rawMaxHp = baseMaxHp + Math.floor((eq.hp ?? 0) * GEAR_HP_SCALE) + (tb.max_hp ?? 0) + getElixirHpBonus() + getTransformFlatHp();
         const rawMaxMp = baseMaxMp + (eq.mp ?? 0) + (tb.max_mp ?? 0) + getElixirMpBonus() + getTransformFlatMp();
         return {
             maxHp: Math.floor(rawMaxHp * getElixirHpPctMultiplier() * getTransformHpPctMultiplier()),
@@ -48,7 +49,7 @@ const getEffectiveMaxBonuses = (): { hpBonus: number; mpBonus: number } => {
         const { skillLevels } = useSkillStore.getState();
         const tb = getTrainingBonuses(skillLevels);
         return {
-            hpBonus: (eq.hp ?? 0) + (tb.max_hp ?? 0),
+            hpBonus: Math.floor((eq.hp ?? 0) * GEAR_HP_SCALE) + (tb.max_hp ?? 0),
             mpBonus: (eq.mp ?? 0) + (tb.max_mp ?? 0),
         };
     } catch {

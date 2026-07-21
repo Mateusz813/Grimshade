@@ -22,22 +22,22 @@ import {
 import skillsData from '../data/skills.json';
 
 describe('compressPlayerDamage (sub-linear player-damage compression)', () => {
-    it('is the power curve K·raw^P (K=0.48, P=0.80)', () => {
-        expect(DMG_COMPRESS_K).toBe(0.48);
+    it('is the power curve K·raw^P (K=2.3, P=0.80)', () => {
+        expect(DMG_COMPRESS_K).toBe(2.3);
         expect(DMG_COMPRESS_P).toBe(0.80);
-        expect(compressPlayerDamage(1000)).toBeCloseTo(0.48 * Math.pow(1000, 0.80), 6);
+        expect(compressPlayerDamage(1000)).toBeCloseTo(DMG_COMPRESS_K * Math.pow(1000, DMG_COMPRESS_P), 6);
     });
 
-    it('keeps low-level hits VISIBLE (a ~17 raw hit compresses to a few, not floored to 1)', () => {
+    it('keeps low-level hits VISIBLE (a ~17 raw hit compresses to a legible number, not floored to 1)', () => {
         const lowHit = Math.floor(compressPlayerDamage(17));
-        expect(lowHit).toBeGreaterThanOrEqual(4);
-        expect(lowHit).toBeLessThan(12);
+        expect(lowHit).toBeGreaterThanOrEqual(15);
+        expect(lowHit).toBeLessThan(30);
     });
 
-    it('still caps the top: a ~23000 raw endgame hit compresses to ~1.5k (not millions)', () => {
+    it('still bounds the top: a ~23000 raw endgame hit compresses to ~7k (not millions)', () => {
         const topHit = Math.floor(compressPlayerDamage(23000));
-        expect(topHit).toBeGreaterThan(1200);
-        expect(topHit).toBeLessThan(1800);
+        expect(topHit).toBeGreaterThan(6000);
+        expect(topHit).toBeLessThan(8000);
     });
 
     it('is monotonic — bigger raw always compresses to bigger (or equal) output', () => {

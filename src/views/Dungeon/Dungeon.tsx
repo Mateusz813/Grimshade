@@ -1184,7 +1184,7 @@ const Dungeon = () => {
         const defPenFracDng = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
         const baseDmg = isDamageHit ? Math.max(
             1,
-            Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracDng)),
+            Math.floor(mitigateDamage(charAtk, Math.max(0, (targetSlotData?.monster?.defense ?? 0) * (1 - defPenFracDng)), character?.level ?? 1, true) * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
         ) : 0;
         const normalSkillDmgDng = Math.floor(baseDmg * apply.castDmgMult);
         let skillDmg = isDamageHit
@@ -1519,7 +1519,7 @@ const Dungeon = () => {
                 const isDamageHitAuto = skillBaseMult > 0;
                 const targetsEnemyAuto = isDamageHitAuto || skillTargetsEnemy(sDef?.effect ?? null);
                 const defPenFracAuto = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
-                const baseDmg = isDamageHitAuto ? Math.max(1, Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracAuto))) : 0;
+                const baseDmg = isDamageHitAuto ? Math.max(1, Math.floor(mitigateDamage(charAtk, Math.max(0, (tgtSlotData?.monster?.defense ?? 0) * (1 - defPenFracAuto)), character?.level ?? 1, true) * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier())) : 0;
                 const normalSkillDmgAuto = Math.floor(baseDmg * apply.castDmgMult);
                 let skillDmg = isDamageHitAuto
                     ? (apply.instantKill

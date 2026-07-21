@@ -1401,7 +1401,7 @@ const Boss = () => {
         const partyAtkMultManual = 1 + getActivePartyAtkPct() / 100;
         const baseDmg = isDamageHit ? Math.max(
             1,
-            Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * partyAtkMultManual * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier() * (1 + defPenFracBoss)),
+            Math.floor(mitigateDamage(charAtk, Math.max(0, scaledBossRef.current.defense * (1 - defPenFracBoss)), character?.level ?? 1, true) * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * partyAtkMultManual * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()),
         ) : 0;
         const normalSkillDmgBoss = Math.floor(baseDmg * apply.castDmgMult);
         let skillDmg = isDamageHit
@@ -1788,7 +1788,8 @@ const Boss = () => {
                     enemyIds: [BOSS_FX_ID],
                 });
                 const partyAtkMultAuto = 1 + getActivePartyAtkPct() / 100;
-                let skillDmg = isPureBuff ? 0 : Math.max(1, Math.floor(charAtk * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * partyAtkMultAuto * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
+                const defPenFracAuto = Math.max(0, Math.min(1, (apply.defPenPct ?? 0) / 100));
+                let skillDmg = isPureBuff ? 0 : Math.max(1, Math.floor(mitigateDamage(charAtk, Math.max(0, scaledBossRef.current.defense * (1 - defPenFracAuto)), character?.level ?? 1, true) * rollSkillDamageMult(skillBaseMult, useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0) * partyAtkMultAuto * getAtkDamageMultiplier() * getSpellDamageMultiplier() * getTransformDmgMultiplier()));
                 if (!isPureBuff && skillDmg > 0) {
                     const bossSt = ensureStatus(effectsRef.current, BOSS_FX_ID);
                     const ampAuto = consumeTargetMarkAmp(bossSt);

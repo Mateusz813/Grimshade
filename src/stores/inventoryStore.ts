@@ -14,6 +14,7 @@ import {
   type Rarity,
 } from '../systems/itemSystem';
 import itemsRaw from '../data/items.json';
+import { GEAR_HP_SCALE } from '../systems/combat';
 import { useSettingsStore } from './settingsStore';
 import { isHpMpPotionId, getPotionMinLevel } from '../systems/potionGating';
 import { losesItemsOnDeath } from '../systems/levelSystem';
@@ -39,13 +40,13 @@ const applyEquipmentHpMpDelta = (
   } catch {
     return;
   }
-  const deltaHp = (newStats.hp ?? 0) - (oldStats.hp ?? 0);
+  const deltaHp = Math.floor((newStats.hp ?? 0) * GEAR_HP_SCALE) - Math.floor((oldStats.hp ?? 0) * GEAR_HP_SCALE);
   const deltaMp = (newStats.mp ?? 0) - (oldStats.mp ?? 0);
   if (deltaHp === 0 && deltaMp === 0) return;
   void import('./characterStore').then(({ useCharacterStore }) => {
     const ch = useCharacterStore.getState().character;
     if (!ch) return;
-    const newMaxHp = (ch.max_hp ?? 0) + (newStats.hp ?? 0);
+    const newMaxHp = (ch.max_hp ?? 0) + Math.floor((newStats.hp ?? 0) * GEAR_HP_SCALE);
     const newMaxMp = (ch.max_mp ?? 0) + (newStats.mp ?? 0);
     const nextHp = Math.max(0, Math.min(newMaxHp, (ch.hp ?? 0) + deltaHp));
     const nextMp = Math.max(0, Math.min(newMaxMp, (ch.mp ?? 0) + deltaMp));

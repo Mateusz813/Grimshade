@@ -282,13 +282,13 @@ export const getSkillUpgradeCost = (targetLevel: number): ISkillUpgradeCost => {
 };
 
 export const getCombatSkillUpgradeMultiplier = (upgradeLevel: number): number =>
-    upgradeLevel <= 0 ? 1 : 1 + 0.6 * (1 - Math.pow(0.9, upgradeLevel));
+    upgradeLevel <= 0 ? 1 : 1 + 0.4 * (1 - Math.pow(0.9, upgradeLevel));
 
 export const getSkillUpgradeBonus = (upgradeLevel: number): number =>
     getCombatSkillUpgradeMultiplier(upgradeLevel) - 1;
 
 export const skillTierMult = (skillDamageCoeff: number): number =>
-    skillDamageCoeff <= 0 ? 0 : Math.min(2.1, Math.max(1.2, 1.2 + (skillDamageCoeff - 5.4) / 10 * 0.9));
+    skillDamageCoeff <= 0 ? 0 : Math.min(1.7, Math.max(1.2, 1.2 + (skillDamageCoeff - 5.4) / 10 * 0.9));
 
 export const rollSkillDamageMult = (
     skillDamageCoeff: number,

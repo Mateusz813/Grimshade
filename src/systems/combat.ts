@@ -10,9 +10,10 @@ const safeN = (v: number | null | undefined, fallback = 0): number => {
 export const DEF_K = 1.0;
 export const DEF_CAP = 0.75;
 export const DEF_BASE = 25;
-export const DMG_COMPRESS_K = 0.48;
+export const DMG_COMPRESS_K = 2.3;
 export const DMG_COMPRESS_P = 0.80;
 export const KILL_XP_TTK_MULT = 1.75;
+export const GEAR_HP_SCALE = 0.25;
 
 export const compressPlayerDamage = (mitigatedDamage: number): number =>
     DMG_COMPRESS_K * Math.pow(Math.max(0, safeN(mitigatedDamage)), DMG_COMPRESS_P);

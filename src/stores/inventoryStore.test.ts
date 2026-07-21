@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useInventoryStore, MAX_BAG_SIZE, MAX_DEPOSIT_SIZE } from './inventoryStore';
 import { useCharacterStore, type ICharacter } from './characterStore';
+import { GEAR_HP_SCALE } from '../systems/combat';
 import { useSettingsStore } from './settingsStore';
 import {
     EMPTY_EQUIPMENT,
@@ -213,7 +214,7 @@ describe('equipItem', () => {
         useInventoryStore.getState().equipItem(weapon.uuid, 'mainHand');
         await new Promise((resolve) => setTimeout(resolve, 0));
         const c = useCharacterStore.getState().character!;
-        expect(c.hp).toBe(75);
+        expect(c.hp).toBe(50 + Math.floor(25 * GEAR_HP_SCALE));
     });
 });
 

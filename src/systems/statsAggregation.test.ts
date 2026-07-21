@@ -1,6 +1,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getEffectiveChar } from './combatEngine';
+import { GEAR_HP_SCALE } from './combat';
 import {
     getTotalEquipmentStats,
     EMPTY_EQUIPMENT,
@@ -109,7 +110,7 @@ describe('getEffectiveChar — identity (no modifiers)', () => {
 describe('getEffectiveChar — equipment source (additive)', () => {
     beforeEach(() => resetStores());
 
-    it('+20 HP gear adds exactly +20 to max_hp', () => {
+    it('+20 HP gear contributes +20×GEAR_HP_SCALE to max_hp', () => {
         const ch = makeCharacter({ max_hp: 100 });
         const helmet: IInventoryItem = {
             uuid: 'h-1',
@@ -123,7 +124,7 @@ describe('getEffectiveChar — equipment source (additive)', () => {
             equipment: { ...s.equipment, helmet },
         }));
         const eff = getEffectiveChar(ch);
-        expect(eff?.max_hp).toBe(120);
+        expect(eff?.max_hp).toBe(100 + Math.floor(20 * GEAR_HP_SCALE));
     });
 
     it('+15 attack weapon adds exactly +15 to attack', () => {
@@ -160,7 +161,7 @@ describe('getEffectiveChar — equipment source (additive)', () => {
         expect(eff?.defense).toBe(20);
     });
 
-    it('multi-slot stacking: helmet +20 HP + armor +30 HP -> +50 HP total', () => {
+    it('multi-slot stacking: helmet +20 HP + armor +30 HP scaled by GEAR_HP_SCALE', () => {
         const ch = makeCharacter({ max_hp: 100 });
         const helmet: IInventoryItem = {
             uuid: 'h-1', itemId: 'unknown_helmet_id', rarity: 'common',
@@ -175,7 +176,7 @@ describe('getEffectiveChar — equipment source (additive)', () => {
             equipment: { ...s.equipment, helmet, armor },
         }));
         const eff = getEffectiveChar(ch);
-        expect(eff?.max_hp).toBe(150);
+        expect(eff?.max_hp).toBe(100 + Math.floor(50 * GEAR_HP_SCALE));
     });
 });
 
@@ -228,7 +229,7 @@ describe('getEffectiveChar — training source (additive)', () => {
 describe('getEffectiveChar — equipment + training combined', () => {
     beforeEach(() => resetStores());
 
-    it('base 100 + eq +20 + training +20 = 140 HP', () => {
+    it('base 100 + eq +20 (scaled) + training +20 HP', () => {
         const ch = makeCharacter({ max_hp: 100 });
         useInventoryStore.setState((s) => ({
             ...s,
@@ -245,7 +246,7 @@ describe('getEffectiveChar — equipment + training combined', () => {
             skillLevels: { max_hp: 4 },
         });
         const eff = getEffectiveChar(ch);
-        expect(eff?.max_hp).toBe(140);
+        expect(eff?.max_hp).toBe(100 + Math.floor(20 * GEAR_HP_SCALE) + 20);
     });
 
     it('base attack 20 + eq +15 = 35 attack (training does not add attack — only hp/mp/def/as/crit)', () => {

@@ -4,6 +4,7 @@ import {
     mitigateDamage,
     rollMonsterDamage,
     KILL_XP_TTK_MULT,
+    GEAR_HP_SCALE,
 } from './combat';
 import { applyDeathPenalty } from './levelSystem';
 import { consumeDeathProtection } from './deathProtection';
@@ -593,7 +594,7 @@ export const getEffectiveChar = (
     const baseAttackSpeedV = char.attack_speed ?? 0;
     const baseCritChance   = char.crit_chance  ?? 0;
     const baseAttackSpeed = baseAttackSpeedV + eq.speed * 0.01 + tb.attack_speed;
-    const rawMaxHp = baseMaxHp + eq.hp + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
+    const rawMaxHp = baseMaxHp + Math.floor(eq.hp * GEAR_HP_SCALE) + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
     const rawMaxMp = baseMaxMp + eq.mp + tb.max_mp + getElixirMpBonus() + getTransformFlatMp();
     const rawDefense = baseDefense + eq.defense + tb.defense + getShieldingDefBonus(skillLevels['shielding'] ?? 0) + getElixirDefBonus() + getTransformFlatDefense();
     const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), contentLevel);

@@ -13,6 +13,7 @@ const MILEHP={Knight:30,Mage:10,Cleric:15,Archer:15,Rogue:15,Necromancer:12,Bard
 const CLASSMOD={Knight:1.0,Mage:1.3,Cleric:1.0,Archer:1.2,Rogue:1.0,Necromancer:1.2,Bard:1.0};
 const MAXCRIT={Knight:0.30,Mage:0.30,Cleric:0.30,Archer:1.0,Rogue:1.0,Necromancer:0.30,Bard:0.30};
 const SKILLCOEF={Knight:0.5,Mage:0.8,Cleric:0.6,Archer:0.4,Rogue:0.3,Necromancer:0.8,Bard:0.5};
+const TDMG={Knight:0.01,Mage:0.03,Cleric:0.02,Archer:0.02,Rogue:0.02,Necromancer:0.02,Bard:0.02};
 const ARMOR={Knight:'heavy',Mage:'magic',Cleric:'magic',Necromancer:'magic',Archer:'light',Rogue:'light',Bard:'light'};
 const WEAPON={Knight:'sword',Mage:'staff',Cleric:'holy_wand',Archer:'bow',Rogue:'dagger',Necromancer:'dead_staff',Bard:'harp'};
 const OFFH={Knight:'shield',Mage:'spellbook',Cleric:'holy_cross',Archer:'quiver',Rogue:'dagger',Necromancer:'voodoo_doll',Bard:'talisman'};
@@ -43,29 +44,31 @@ function player(cls,L,G,R,U,noGear=false){
   const wsc=itemTemplates.weapons.find(t=>t.type===WEAPON[cls]);
   const wRoll=noGear?weaponAvg(wsc.scaling,1,'common',0):weaponAvg(wsc.scaling,G,R,U);
   const wskill=min(100,L), csb=floor(wskill*SKILLCOEF[cls]);
-  const pts=2*max(0,L-1), atkPts=round(pts*0.5), hpPts=round(pts*0.3)*6, defPts=round(pts*0.2);
-  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:hp+gH+hpPts,wRoll,csb,classMod:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),as:b.as,dual:cls==='Rogue'};
+  const pts=2*max(0,L-1), atkPts=round(pts*0.5), hpPts=round(pts*0.3)*5, defPts=round(pts*0.2);
+  const nTf=min(11,round(L/60)), tFlat=round(220*nTf*1.5), tHpPct=1+nTf*0.02, tDmg=1+nTf*(TDMG[cls]||0.02);
+  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:round((hp+round(gH*GEAR_HP_SCALE)+hpPts+tFlat)*tHpPct),wRoll,csb,classMod:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),as:b.as,dual:cls==='Rogue',tDmg};
 }
 const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
-const DMG_COMPRESS_K=0.48, DMG_COMPRESS_P=0.80, DEF_BASE=25;
+const DMG_COMPRESS_K=2.3, DMG_COMPRESS_P=0.80, DEF_BASE=25, GEAR_HP_SCALE=0.25;
 const compress=(x)=>DMG_COMPRESS_K*Math.pow(max(0,x),DMG_COMPRESS_P);
 const mitig=(def,lvl)=>def<=0?0:min(0.75,def/(def+max(1,lvl)+DEF_BASE));
-const SKILL_MULT=2.2, CRIT_MULT=2.0, SKILL_EVERY=5;
-const SKILL_ROT=1+(SKILL_MULT*CRIT_MULT)/SKILL_EVERY;
-function basicHit(p,enemyDef){
+const SKILL_OVER_BASIC=1.9, SKILL_EVERY=5;
+const SKILL_ROT=1+SKILL_OVER_BASIC/SKILL_EVERY;
+function basicRaw(p,enemyDef){
   const m=1-mitig(enemyDef,p.L);
-  if(p.dual)return 2*compress((p.attack+0.6*p.wRoll+p.csb)*p.classMod*m)*(1+p.crit);
-  return compress((p.attack+p.wRoll+p.csb)*p.classMod*m)*(1+p.crit);
+  return compress((p.attack+(p.dual?0.6*p.wRoll:p.wRoll)+p.csb)*p.classMod*m)*(p.dual?2:1)*(p.tDmg||1);
 }
+function basicHit(p,enemyDef){return basicRaw(p,enemyDef)*(1+p.crit);}
 const playerDPS=(p,enemyDef)=>basicHit(p,enemyDef)*SKILL_ROT/(getAttackMs(p.as)/1000);
 
 const MON_SPEED=2.0, MON_INT=getAttackMs(MON_SPEED)/1000;
-const TTK_REF=7.0;
+const HUNT_HITS=5.5;
 const BUDGET=28;
-const SURV_HITS=22;
+const SURV_HITS=20;
 const MONR={normal:{hp:1.0,atk:1.0},strong:{hp:1.5,atk:1.4},epic:{hp:2.5,atk:2.2},legendary:{hp:4.0,atk:3.2},boss:{hp:8.0,atk:5.0}};
-function ref(L){const ng=L<=10;const ps=CLASSES.map(c=>player(c,L,L,'common',0,ng));return{dps:ps.reduce((s,p)=>s+playerDPS(p,0),0)/7,maxHp:ps.reduce((s,p)=>s+p.maxHp,0)/7,def:ps.reduce((s,p)=>s+p.defense,0)/7};}
-function calibMonster(L){const r=ref(L);return{hp:max(8,round(r.dps*TTK_REF)),attack:max(1,round(r.maxHp/SURV_HITS)),defense:max(1,round(r.def*0.15)),speed:MON_SPEED};}
+const monDef=(L)=>max(1,round(L*0.29));
+const refP=(L)=>player('Archer',L,L,'mythic',0,L<=10);
+function calibMonster(L){const rp=refP(L),d=monDef(L);return{hp:max(8,round(basicRaw(rp,d)*HUNT_HITS)),attack:max(1,round(rp.maxHp/SURV_HITS)),defense:d,speed:MON_SPEED};}
 function enemyAt(L,rarity){const b=calibMonster(L),R=MONR[rarity];return{hp:floor(b.hp*R.hp),attack:floor(b.attack*R.atk),defense:b.defense};}
 function killsRate(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);return ttk>0?round(BUDGET/ttk):0;}
 function killsNoPotion(p,L,rarity){const e=enemyAt(L,rarity);const ttk=e.hp/playerDPS(p,e.defense);const monHit=max(1,e.attack*(1-mitig(p.defense,L)))*1.05;if(monHit>=p.maxHp)return 0;const monDPS=monHit/MON_INT;const surv=p.maxHp/monDPS;return min(round(BUDGET/ttk),floor(surv/ttk));}

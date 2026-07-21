@@ -7,6 +7,9 @@ import {
     buildItem,
     type IInventoryItem,
 } from '../../src/systems/itemSystem';
+import { GEAR_HP_SCALE } from '../../src/systems/combat';
+
+const gHp = (raw: number): number => Math.floor(raw * GEAR_HP_SCALE);
 
 
 const makeChar = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -68,7 +71,7 @@ beforeEach(() => {
 
 
 describe('equip flow: HP delta tracks the cap', () => {
-    it('equipping +500 HP gear raises current HP by 500', async () => {
+    it('equipping +500 HP gear raises current HP by 500×GEAR_HP_SCALE', async () => {
         useCharacterStore.getState().setCharacter(makeChar({ hp: 1000, max_hp: 1000 }));
         const armor = makeArmor(500);
         useInventoryStore.setState({
@@ -81,12 +84,12 @@ describe('equip flow: HP delta tracks the cap', () => {
         await flushDeltaMicrotask();
 
         const ch = useCharacterStore.getState().character!;
-        expect(ch.hp).toBe(1500);
+        expect(ch.hp).toBe(1000 + gHp(500));
     });
 
-    it('unequipping the same gear drops current HP by 500', async () => {
+    it('unequipping the same gear drops current HP by 500×GEAR_HP_SCALE', async () => {
         const armor = makeArmor(500);
-        useCharacterStore.getState().setCharacter(makeChar({ hp: 1500, max_hp: 1000 }));
+        useCharacterStore.getState().setCharacter(makeChar({ hp: 1000 + gHp(500), max_hp: 1000 }));
         useInventoryStore.setState({
             bag: [],
             equipment: { ...EMPTY_EQUIPMENT, armor },
@@ -100,10 +103,10 @@ describe('equip flow: HP delta tracks the cap', () => {
         expect(ch.hp).toBe(1000);
     });
 
-    it('replacing +500 with +1000 raises current HP by the delta (+500)', async () => {
+    it('replacing +500 with +1000 raises current HP by the scaled delta', async () => {
         const armor500 = makeArmor(500, 'a');
         const armor1000 = makeArmor(1000, 'b');
-        useCharacterStore.getState().setCharacter(makeChar({ hp: 1500, max_hp: 1000 }));
+        useCharacterStore.getState().setCharacter(makeChar({ hp: 1000 + gHp(500), max_hp: 1000 }));
         useInventoryStore.setState({
             bag: [armor1000],
             equipment: { ...EMPTY_EQUIPMENT, armor: armor500 },
@@ -114,14 +117,14 @@ describe('equip flow: HP delta tracks the cap', () => {
         await flushDeltaMicrotask();
 
         const ch = useCharacterStore.getState().character!;
-        expect(ch.hp).toBe(2000);
+        expect(ch.hp).toBe(1000 + gHp(1000));
         expect(useInventoryStore.getState().bag.some(i => i.uuid === armor500.uuid)).toBe(true);
     });
 
-    it('replacing +1000 with +500 drops current HP by the delta (-500)', async () => {
+    it('replacing +1000 with +500 drops current HP by the scaled delta', async () => {
         const armor500 = makeArmor(500, 'a');
         const armor1000 = makeArmor(1000, 'b');
-        useCharacterStore.getState().setCharacter(makeChar({ hp: 2000, max_hp: 1000 }));
+        useCharacterStore.getState().setCharacter(makeChar({ hp: 1000 + gHp(1000), max_hp: 1000 }));
         useInventoryStore.setState({
             bag: [armor500],
             equipment: { ...EMPTY_EQUIPMENT, armor: armor1000 },
@@ -132,7 +135,7 @@ describe('equip flow: HP delta tracks the cap', () => {
         await flushDeltaMicrotask();
 
         const ch = useCharacterStore.getState().character!;
-        expect(ch.hp).toBe(1500);
+        expect(ch.hp).toBe(1000 + gHp(500));
     });
 
     it('replacing equal-HP gear leaves HP untouched (delta=0 short-circuits)', async () => {
@@ -166,8 +169,8 @@ describe('equip flow: HP delta tracks the cap', () => {
         await flushDeltaMicrotask();
 
         const ch = useCharacterStore.getState().character!;
-        expect(ch.hp).toBe(1500);
-        expect(ch.hp).toBeLessThanOrEqual((ch.max_hp ?? 0) + 500);
+        expect(ch.hp).toBe(1000 + gHp(500));
+        expect(ch.hp).toBeLessThanOrEqual((ch.max_hp ?? 0) + gHp(500));
     });
 
     it('hp cannot go negative when unequipping more HP than the player has', async () => {

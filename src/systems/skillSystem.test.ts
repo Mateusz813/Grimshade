@@ -288,17 +288,17 @@ describe('getSkillUpgradeBonus', () => {
         expect(getSkillUpgradeBonus(0)).toBe(0);
     });
 
-    it('follows the diminishing 0.6·(1 − 0.9^U) curve', () => {
-        expect(getSkillUpgradeBonus(1)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 1)), 6);
-        expect(getSkillUpgradeBonus(5)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 5)), 6);
-        expect(getSkillUpgradeBonus(10)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 10)), 6);
+    it('follows the diminishing 0.4·(1 − 0.9^U) curve', () => {
+        expect(getSkillUpgradeBonus(1)).toBeCloseTo(0.4 * (1 - Math.pow(0.9, 1)), 6);
+        expect(getSkillUpgradeBonus(5)).toBeCloseTo(0.4 * (1 - Math.pow(0.9, 5)), 6);
+        expect(getSkillUpgradeBonus(10)).toBeCloseTo(0.4 * (1 - Math.pow(0.9, 10)), 6);
     });
 
-    it('keeps rising with diminishing returns, approaching the 0.6 asymptote', () => {
-        expect(getSkillUpgradeBonus(15)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 15)), 6);
-        expect(getSkillUpgradeBonus(20)).toBeCloseTo(0.6 * (1 - Math.pow(0.9, 20)), 6);
+    it('keeps rising with diminishing returns, approaching the 0.4 asymptote', () => {
+        expect(getSkillUpgradeBonus(15)).toBeCloseTo(0.4 * (1 - Math.pow(0.9, 15)), 6);
+        expect(getSkillUpgradeBonus(20)).toBeCloseTo(0.4 * (1 - Math.pow(0.9, 20)), 6);
         expect(getSkillUpgradeBonus(20)).toBeGreaterThan(getSkillUpgradeBonus(15));
-        expect(getSkillUpgradeBonus(1000)).toBeCloseTo(0.6, 6);
+        expect(getSkillUpgradeBonus(1000)).toBeCloseTo(0.4, 6);
     });
 });
 
@@ -309,11 +309,11 @@ describe('getCombatSkillUpgradeMultiplier', () => {
     });
 
     it('matches the diminishing-returns sample points', () => {
-        expect(getCombatSkillUpgradeMultiplier(1)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 1)), 6);
-        expect(getCombatSkillUpgradeMultiplier(5)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 5)), 6);
-        expect(getCombatSkillUpgradeMultiplier(10)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 10)), 6);
-        expect(getCombatSkillUpgradeMultiplier(20)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 20)), 6);
-        expect(getCombatSkillUpgradeMultiplier(30)).toBeCloseTo(1 + 0.6 * (1 - Math.pow(0.9, 30)), 6);
+        expect(getCombatSkillUpgradeMultiplier(1)).toBeCloseTo(1 + 0.4 * (1 - Math.pow(0.9, 1)), 6);
+        expect(getCombatSkillUpgradeMultiplier(5)).toBeCloseTo(1 + 0.4 * (1 - Math.pow(0.9, 5)), 6);
+        expect(getCombatSkillUpgradeMultiplier(10)).toBeCloseTo(1 + 0.4 * (1 - Math.pow(0.9, 10)), 6);
+        expect(getCombatSkillUpgradeMultiplier(20)).toBeCloseTo(1 + 0.4 * (1 - Math.pow(0.9, 20)), 6);
+        expect(getCombatSkillUpgradeMultiplier(30)).toBeCloseTo(1 + 0.4 * (1 - Math.pow(0.9, 30)), 6);
     });
 
     it('is monotonically non-decreasing across levels 0..40', () => {

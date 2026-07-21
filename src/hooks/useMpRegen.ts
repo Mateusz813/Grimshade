@@ -7,6 +7,7 @@ import { useAppRouteStore } from '../stores/appRouteStore';
 import { getTrainingBonuses } from '../systems/skillSystem';
 import { getTotalEquipmentStats, flattenItemsData } from '../systems/itemSystem';
 import { getEffectiveChar } from '../systems/combatEngine';
+import { GEAR_HP_SCALE } from '../systems/combat';
 import itemsRaw from '../data/items.json';
 
 const ALL_ITEMS = flattenItemsData(itemsRaw as Parameters<typeof flattenItemsData>[0]);
@@ -33,7 +34,7 @@ export const useMpRegen = (): void => {
         let eqMp = 0;
         try {
             const eqStats = getTotalEquipmentStats(equipment, ALL_ITEMS);
-            eqHp = eqStats.hp ?? 0;
+            eqHp = Math.floor((eqStats.hp ?? 0) * GEAR_HP_SCALE);
             eqMp = eqStats.mp ?? 0;
         } catch {
         }
