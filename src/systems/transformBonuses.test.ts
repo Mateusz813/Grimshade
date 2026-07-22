@@ -255,15 +255,17 @@ describe('getTransformDefPctMultiplier', () => {
 });
 
 describe('getTransformAtkPctMultiplier', () => {
-    it('returns 1.0 for Knight (atkPercent=0)', () => {
+    it('returns 1 + Σ atkPercent / 100 for Knight', () => {
         setCompleted([1, 2, 3]);
-        expect(getTransformAtkPctMultiplier()).toBe(1.0);
+        const sum = [1, 2, 3].reduce((acc, id) => acc + getClassTransformBonuses('Knight', id).atkPercent, 0);
+        expect(getTransformAtkPctMultiplier()).toBeCloseTo(1 + sum / 100, 5);
     });
 
-    it('returns 1 + Σ atkPercent / 100 for Archer (atkPercent=7)', () => {
+    it('returns 1 + Σ atkPercent / 100 for Archer', () => {
         useCharacterStore.setState({ character: makeChar('Archer') });
         setCompleted([1, 2]);
-        expect(getTransformAtkPctMultiplier()).toBeCloseTo(1 + 14 / 100, 5);
+        const sum = [1, 2].reduce((acc, id) => acc + getClassTransformBonuses('Archer', id).atkPercent, 0);
+        expect(getTransformAtkPctMultiplier()).toBeCloseTo(1 + sum / 100, 5);
     });
 });
 
@@ -296,13 +298,13 @@ describe('getLiveTransformBreakdown', () => {
         const b = getLiveTransformBreakdown();
         expect(b.active).toBe(true);
         expect(b.baked).toBe(false);
-        expect(b.dmgPercent).toBe(2);
-        expect(b.hpPercent).toBe(8);
-        expect(b.mpPercent).toBe(2);
-        expect(b.defPercent).toBe(6);
-        expect(b.atkPercent).toBe(0);
         const t1 = getClassTransformBonuses('Knight', 1);
         const t2 = getClassTransformBonuses('Knight', 2);
+        expect(b.dmgPercent).toBe(t1.dmgPercent + t2.dmgPercent);
+        expect(b.hpPercent).toBe(t1.hpPercent + t2.hpPercent);
+        expect(b.mpPercent).toBe(t1.mpPercent + t2.mpPercent);
+        expect(b.defPercent).toBe(t1.defPercent + t2.defPercent);
+        expect(b.atkPercent).toBe(t1.atkPercent + t2.atkPercent);
         expect(b.flatHp).toBe(t1.flatHp + t2.flatHp);
         expect(b.flatMp).toBe(t1.flatMp + t2.flatMp);
         expect(b.flatAttack).toBe(t1.attack + t2.attack);
@@ -311,12 +313,13 @@ describe('getLiveTransformBreakdown', () => {
         expect(b.mpRegenFlat).toBeCloseTo(t1.mpRegenFlat + t2.mpRegenFlat, 5);
     });
 
-    it('reflects class-specific bonus tables (Archer atkPercent=7)', () => {
+    it('reflects class-specific bonus tables (Archer)', () => {
         useCharacterStore.setState({ character: makeChar('Archer') });
         setCompleted([1]);
         const b = getLiveTransformBreakdown();
-        expect(b.atkPercent).toBe(7);
-        expect(b.flatAttack).toBe(0);
+        const t1 = getClassTransformBonuses('Archer', 1);
+        expect(b.atkPercent).toBe(t1.atkPercent);
+        expect(b.flatAttack).toBe(t1.attack);
     });
 });
 

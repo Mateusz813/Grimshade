@@ -311,7 +311,6 @@ describe('getTotalEquipmentStats — additivity invariants', () => {
         expect(stats.defense).toBe(0);
         expect(stats.speed).toBe(0);
         expect(stats.critChance).toBe(0);
-        expect(stats.critDmg).toBe(0);
     });
 
     it('sums hp across all slots (3 helmets-worth of hp adds linearly)', () => {
@@ -366,11 +365,6 @@ describe('getTrainingBonuses — bonus formula per stat', () => {
         expect(tb.crit_chance).toBeCloseTo(0.05, 5);
     });
 
-    it('crit_dmg: skillLevel × 0.02', () => {
-        const tb = getTrainingBonuses({ crit_dmg: 5 });
-        expect(tb.crit_dmg).toBeCloseTo(0.10, 5);
-    });
-
     it('returns 0 for all stats when skillLevels is empty', () => {
         const tb = getTrainingBonuses({});
         expect(tb.max_hp).toBe(0);
@@ -378,7 +372,6 @@ describe('getTrainingBonuses — bonus formula per stat', () => {
         expect(tb.defense).toBe(0);
         expect(tb.attack_speed).toBe(0);
         expect(tb.crit_chance).toBe(0);
-        expect(tb.crit_dmg).toBe(0);
         expect(tb.hp_regen).toBe(0);
         expect(tb.mp_regen).toBe(0);
     });
@@ -456,12 +449,6 @@ describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)',
         expect(Number.isFinite(eff?.crit_chance)).toBe(true);
     });
 
-    it('default crit_damage 2.0 when undefined (defensive fallback)', () => {
-        const ch = makeCharacter({ crit_damage: undefined as unknown as number });
-        const eff = getEffectiveChar(ch);
-        expect(eff?.crit_damage).toBeCloseTo(2.0, 5);
-    });
-
     it('default hp_regen 0 when undefined (no NaN propagation)', () => {
         const ch = makeCharacter({ hp_regen: undefined as unknown as number });
         const eff = getEffectiveChar(ch);
@@ -485,7 +472,6 @@ describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)',
             defense: undefined as unknown as number,
             attack_speed: undefined as unknown as number,
             crit_chance: undefined as unknown as number,
-            crit_damage: undefined as unknown as number,
             hp_regen: undefined as unknown as number,
             mp_regen: undefined as unknown as number,
         });
@@ -493,7 +479,7 @@ describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)',
         expect(eff).not.toBeNull();
         for (const key of [
             'attack', 'defense', 'max_hp', 'max_mp',
-            'attack_speed', 'crit_chance', 'crit_damage',
+            'attack_speed', 'crit_chance',
             'hp_regen', 'mp_regen',
         ] as const) {
             const v = eff?.[key] as number;
@@ -505,7 +491,7 @@ describe('getEffectiveChar — NaN hardening (all numeric fields default to 0)',
     it('cross-permutation: each single undefined field combined with all others present produces no NaN', () => {
         const allFields: Array<keyof ICharacter> = [
             'attack', 'defense', 'max_hp', 'max_mp',
-            'attack_speed', 'crit_chance', 'crit_damage',
+            'attack_speed', 'crit_chance',
             'hp_regen', 'mp_regen',
         ];
         for (const field of allFields) {

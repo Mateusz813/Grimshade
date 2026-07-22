@@ -201,7 +201,6 @@ export interface IItemStats {
     mp: number;
     speed: number;
     critChance: number;
-    critDmg: number;
 }
 
 export type IEquipment = Record<EquipmentSlot, IInventoryItem | null>;
@@ -402,6 +401,8 @@ export const isBaseStatKey = (slot: EquipmentSlot | null, key: string): boolean 
 };
 
 
+export const DISASSEMBLE_STONE_CHANCE = 0.25;
+
 export const STONE_FOR_RARITY: Record<Rarity, string> = {
     common:    'common_stone',
     rare:      'rare_stone',
@@ -493,7 +494,6 @@ export const getItemStats = (item: IInventoryItem, baseData: IBaseItem): IItemSt
         mp:        0,
         speed:     0,
         critChance: 0,
-        critDmg:   0,
     };
     for (const [key, val] of Object.entries(item.bonuses)) {
         if (key in stats) {
@@ -507,7 +507,7 @@ export const getTotalEquipmentStats = (
     equipment: Partial<IEquipment>,
     allItems: IBaseItem[],
 ): IItemStats => {
-    const total: IItemStats = { attack: 0, defense: 0, hp: 0, mp: 0, speed: 0, critChance: 0, critDmg: 0 };
+    const total: IItemStats = { attack: 0, defense: 0, hp: 0, mp: 0, speed: 0, critChance: 0 };
     for (const item of Object.values(equipment)) {
         if (!item) continue;
         const base = findBaseItem(item.itemId, allItems);

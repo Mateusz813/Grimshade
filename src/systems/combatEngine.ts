@@ -24,7 +24,7 @@ import {
     MONSTER_RARITY_TASK_KILLS,
     type TMonsterRarity,
 } from './lootSystem';
-import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, STONE_NAMES, getRequiredStoneType, type IBaseItem } from './itemSystem';
+import { getClassSkillBonus, formatItemName, getTotalEquipmentStats, getEquippedGearLevel, getGearGapMultiplier, flattenItemsData, STONE_ICONS, STONE_NAMES, getRequiredStoneType, DISASSEMBLE_STONE_CHANCE, type IBaseItem } from './itemSystem';
 import { getTrainingBonuses, rollSkillDamageMult, getShieldingDefBonus } from './skillSystem';
 import {
     getAtkDamageMultiplier,
@@ -64,6 +64,7 @@ import { useCombatStore, type IMonster } from '../stores/combatStore';
 import { useCharacterStore } from '../stores/characterStore';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { useSkillStore } from '../stores/skillStore';
+import { useAttributeStore } from '../stores/attributeStore';
 import { useSettingsStore, type CombatSpeed } from '../stores/settingsStore';
 import { useTaskStore } from '../stores/taskStore';
 import { useQuestStore } from '../stores/questStore';
@@ -129,7 +130,7 @@ export const getSkillMpCost = (skillId?: string | null): number => {
         return SKILL_MP_COST_FLOOR;
     }
 };
-const SKILL_COOLDOWN_MS = 8000;
+const SKILL_COOLDOWN_MS = 20000;
 export const REVIVE_PROTECT_MS = 3000;
 
 let huntEffects: ICombatEffectsSession = newCombatEffectsSession();
@@ -599,15 +600,15 @@ export const getEffectiveChar = (
     const rawDefense = baseDefense + eq.defense + tb.defense + getShieldingDefBonus(skillLevels['shielding'] ?? 0) + getElixirDefBonus() + getTransformFlatDefense();
     const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), contentLevel);
     const rawAttack = (baseAttack + eq.attack + getElixirAtkBonus() + getTransformFlatAttack()) * gearGapMult;
+    const attrMult = useAttributeStore.getState().getMultipliers(char.class);
     return {
         ...char,
-        attack: Math.floor(rawAttack * getTransformAtkPctMultiplier()),
-        defense: Math.floor(rawDefense * getTransformDefPctMultiplier()),
-        max_hp: Math.floor(rawMaxHp * getElixirHpPctMultiplier() * getTransformHpPctMultiplier()),
+        attack: Math.floor(rawAttack * getTransformAtkPctMultiplier() * attrMult.attack),
+        defense: Math.floor(rawDefense * getTransformDefPctMultiplier() * attrMult.defense),
+        max_hp: Math.floor(rawMaxHp * getElixirHpPctMultiplier() * getTransformHpPctMultiplier() * attrMult.hp),
         max_mp: Math.floor(rawMaxMp * getElixirMpPctMultiplier() * getTransformMpPctMultiplier()),
         attack_speed: baseAttackSpeed * getElixirAttackSpeedMultiplier(),
         crit_chance: Math.min(0.5, baseCritChance + eq.critChance * 0.01 + tb.crit_chance),
-        crit_damage: (char.crit_damage ?? 2.0) + eq.critDmg * 0.01 + tb.crit_dmg,
         hp_regen: (char.hp_regen ?? 0) + tb.hp_regen + getTransformHpRegenFlat(),
         mp_regen: (char.mp_regen ?? 0) + tb.mp_regen + getTransformMpRegenFlat(),
     };
@@ -652,7 +653,7 @@ export const dropLootToInventory = (monster: IMonster, monsterRarity: TMonsterRa
             drops.push({ icon, name: displayName, rarity: roll.rarity, upgradeLevel: inventoryItem.upgradeLevel, sold: true, soldPrice: sellPrice });
         } else if (shouldAutoDisassemble) {
             let stoneGained: string | undefined;
-            if (Math.random() < 0.20) {
+            if (Math.random() < DISASSEMBLE_STONE_CHANCE) {
                 const stoneType = getRequiredStoneType(roll.rarity);
                 useInventoryStore.getState().addStones(stoneType, 1);
                 stoneGained = STONE_NAMES[stoneType] ?? stoneType;
@@ -1297,7 +1298,7 @@ export const doPlayerAttackTick = (autoSkillOnly = false): void => {
             const skillUpgradeLevel = useSkillStore.getState().skillUpgradeLevels[skillId] ?? 0;
             const sr = calculateDamage({
                 baseAtk: char.attack, weaponAtk: rollWeaponDamage(),
-                skillBonus: Math.floor(char.attack * 0.5),
+                skillBonus: classBonus.skillBonus,
                 classModifier: CLASS_MODIFIER[char.class] ?? 1.0,
                 enemyDefense: autoEffectiveDef,
                 attackerLevel: char.level, playerSource: true,

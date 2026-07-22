@@ -175,13 +175,12 @@ const STAT_LABEL: Record<string, string> = {
     mp: 'MP',
     speed: 'SPD',
     critChance: 'CRIT %',
-    critDmg: 'CRIT DMG',
     dmg_min: 'DMG MIN',
     dmg_max: 'DMG MAX',
 };
 
 const STAT_ORDER = [
-    'dmg_min', 'dmg_max', 'hp', 'attack', 'defense', 'mp', 'speed', 'critChance', 'critDmg',
+    'dmg_min', 'dmg_max', 'hp', 'attack', 'defense', 'mp', 'speed', 'critChance',
 ];
 
 const formatBonusEntries = (

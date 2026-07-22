@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   EMPTY_EQUIPMENT,
   STONE_FOR_RARITY,
+  DISASSEMBLE_STONE_CHANCE,
   STONE_CONVERSION_CHAIN,
   STONE_CONVERSION_COST,
   STONE_CONVERSION_GOLD,
@@ -344,7 +345,7 @@ export const useInventoryStore = create<IInventoryStore>()(
         const stonesEarned: Record<string, number> = {};
 
         for (const item of toDisassemble) {
-          if (Math.random() >= 0.20) continue;
+          if (Math.random() >= DISASSEMBLE_STONE_CHANCE) continue;
           const stoneId = STONE_FOR_RARITY[item.rarity as Rarity] ?? 'common_stone';
           stonesEarned[stoneId] = (stonesEarned[stoneId] ?? 0) + 1;
         }

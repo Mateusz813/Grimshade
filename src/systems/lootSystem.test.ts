@@ -226,12 +226,26 @@ describe('rollStoneDrop', () => {
         }
     });
 
-    it('should return correct stone type for boss rarity', () => {
-        for (let i = 0; i < 100; i++) {
+    it('should drop mythic or (rarely) heroic stones for boss rarity, in stacks', () => {
+        let sawHeroic = false;
+        for (let i = 0; i < 2000; i++) {
             const result = rollStoneDrop(100, 'boss');
-            if (result !== null) {
-                expect(result.type).toBe('mythic_stone');
+            if (result === null) continue;
+            expect(['mythic_stone', 'heroic_stone']).toContain(result.type);
+            expect(result.count).toBeGreaterThanOrEqual(1);
+            expect(result.count).toBeLessThanOrEqual(4);
+            if (result.type === 'heroic_stone') sawHeroic = true;
+        }
+        expect(sawHeroic).toBe(true);
+    });
+
+    it('drops legendary+ stones often enough to fund high-tier upgrades', () => {
+        for (const rarity of ['epic', 'legendary', 'boss'] as const) {
+            let drops = 0;
+            for (let i = 0; i < 10000; i++) {
+                if (rollStoneDrop(100, rarity) !== null) drops++;
             }
+            expect(drops / 10000).toBeGreaterThan(0.10);
         }
     });
 });

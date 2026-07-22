@@ -32,17 +32,30 @@ export interface IDeathPayload {
 const SUPABASE_RETURN_HEADERS = { headers: { 'Prefer': 'return=representation' } };
 
 class DeathsApi extends BaseApi {
+    private insertDeath = async (payload: IDeathPayload): Promise<IDeathRecord | null> => {
+        const data = await this.post<IDeathPayload, IDeathRecord[]>({
+            url: '/rest/v1/character_deaths',
+            data: payload,
+            config: SUPABASE_RETURN_HEADERS,
+        });
+        return data[0] ?? null;
+    };
+
     logDeath = async (payload: IDeathPayload): Promise<IDeathRecord | null> => {
         try {
-            const data = await this.post<IDeathPayload, IDeathRecord[]>({
-                url: '/rest/v1/character_deaths',
-                data: payload,
-                config: SUPABASE_RETURN_HEADERS,
-            });
-            return data[0] ?? null;
+            return await this.insertDeath(payload);
         } catch (err) {
-            console.warn('[deathsApi] Failed to log death:', err);
-            return null;
+            if (payload.result === undefined) {
+                console.warn('[deathsApi] Failed to log death:', err);
+                return null;
+            }
+            try {
+                const { result: _result, ...withoutResult } = payload;
+                return await this.insertDeath(withoutResult);
+            } catch (retryErr) {
+                console.warn('[deathsApi] Failed to log death:', retryErr);
+                return null;
+            }
         }
     };
 

@@ -12,7 +12,11 @@ const HPL={Knight:8,Mage:3,Cleric:5,Archer:4,Rogue:4,Necromancer:3,Bard:4};
 const MILEHP={Knight:30,Mage:10,Cleric:15,Archer:15,Rogue:15,Necromancer:12,Bard:15};
 const MAXCRIT={Knight:0.30,Mage:0.30,Cleric:0.30,Archer:1.0,Rogue:1.0,Necromancer:0.30,Bard:0.30};
 const SKILLCOEF={Knight:0.5,Mage:0.8,Cleric:0.6,Archer:0.4,Rogue:0.3,Necromancer:0.8,Bard:0.5};
-const TDMG={Knight:0.01,Mage:0.03,Cleric:0.02,Archer:0.02,Rogue:0.02,Necromancer:0.02,Bard:0.02};
+const TDMG=0.01, TATK=0.015;
+const TFATK={Knight:9,Mage:13,Cleric:10,Archer:0,Rogue:15,Necromancer:12,Bard:10};
+const tierSum=(n)=>{let s=0;for(let i=1;i<=n;i++)s+=1+(i-1)*0.3;return s;};
+const ATTR_PCT=0.1, ATTR_INTERVAL=10;
+const attrAtkMult=(L)=>1+floor(L/ATTR_INTERVAL)*(ATTR_PCT/100);
 const ARMOR={Knight:'heavy',Mage:'magic',Cleric:'magic',Necromancer:'magic',Archer:'light',Rogue:'light',Bard:'light'};
 const WEAPON={Knight:'sword',Mage:'staff',Cleric:'holy_wand',Archer:'bow',Rogue:'dagger',Necromancer:'dead_staff',Bard:'harp'};
 const OFFH={Knight:'shield',Mage:'spellbook',Cleric:'holy_cross',Archer:'quiver',Rogue:'dagger',Necromancer:'voodoo_doll',Bard:'talisman'};
@@ -39,15 +43,15 @@ function player(cls,L,G,R,U){
   if(neck)gD+=upStat(baseStat(neck.scaling,G,R),U); if(ear)gD+=upStat(baseStat(ear.scaling,G,R),U);
   const oh=itemTemplates.offhands.find(t=>t.type===OFFH[cls]); if(cls!=='Rogue'&&oh){const v=upStat(baseStat(oh.scaling,G,R),U);if(oh.baseStatType==='attack')gA+=v;else gD+=v;}
   const wsc=itemTemplates.weapons.find(t=>t.type===WEAPON[cls]);
-  const pts=2*max(0,L-1), atkPts=round(pts*0.5), hpPts=round(pts*0.3)*5, defPts=round(pts*0.2);
-  const nTf=min(11,round(L/60)), tFlat=round(220*nTf*1.5), tHpPct=1+nTf*0.02, tDmg=1+nTf*(TDMG[cls]||0.02);
-  return{cls,L,attack:atk+gA+atkPts,defense:def+gD+defPts,maxHp:round((hp+round(gH*GEAR_HP_SCALE)+hpPts+tFlat)*tHpPct),wRoll:weaponAvg(wsc.scaling,G,R,U),as:b.as,cm:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),dual:cls==='Rogue',tDmg,U};
+  const nTf=min(11,round(L/60)), tFlat=round(220*nTf*1.5), tHpPct=1+nTf*0.02, tDmg=1+nTf*TDMG;
+  const tAtk=(atk+gA+round(TFATK[cls]*tierSum(nTf)))*(1+nTf*TATK)*attrAtkMult(L);
+  return{cls,L,attack:round(tAtk),defense:def+gD,maxHp:round((hp+round(gH*GEAR_HP_SCALE)+tFlat)*tHpPct*attrAtkMult(L)),wRoll:weaponAvg(wsc.scaling,G,R,U),as:b.as,cm:CLASSMOD[cls],crit:min(MAXCRIT[cls],b.crit),dual:cls==='Rogue',tDmg,U};
 }
 const getAttackMs=(s)=>max(500,floor(3000/max(1,s||1)));
 const DMG_COMPRESS_K=2.3, DMG_COMPRESS_P=0.80, DEF_BASE=25, GEAR_HP_SCALE=0.25;
 const compress=(x)=>DMG_COMPRESS_K*pow(max(0,x),DMG_COMPRESS_P);
 const mitig=(def,lvl)=>def<=0?0:min(0.75,def/(def+max(1,lvl)+DEF_BASE));
-const skillMultOf=(coeff,U)=>coeff<=0?0:min(1.7,max(1.2,1.2+(coeff-5.4)/10*0.9))*(U<=0?1:1+0.4*(1-pow(0.9,U)));
+const skillMultOf=(coeff,U)=>coeff<=0?0:min(1.75,max(0.85,0.85+(coeff-3)/12*1.1))*(U<=0?1:1+0.4*(1-pow(0.9,U)));
 const defPenOf=(sk)=>{const m=((sk&&sk.effect)||'').match(/(?:^|;)def_pen:(\d+)/);return m?min(0.6,+m[1]/100):0;};
 function bestSkill(cls,L){let best=null,bv=-1;for(const sk of(skills.activeSkills[cls.toLowerCase()]||[])){if((sk.damage||0)<=0||((sk.unlockLevel||0)>L))continue;const v=sk.damage*(1+defPenOf(sk));if(v>bv){bv=v;best=sk;}}return best;}
 function bossDPS(p,L,bossDef){
@@ -55,7 +59,7 @@ function bossDPS(p,L,bossDef){
   const basicPerHit=compress((p.attack+p.wRoll)*p.cm*m)*(1+p.crit)*(p.tDmg||1);
   const basicDps=(p.dual?basicPerHit*1.2:basicPerHit)/(getAttackMs(p.as)/1000);
   const sk=bestSkill(p.cls,L); const skMult=sk?skillMultOf(sk.damage,p.U):0;
-  const skillDps=skMult>0?(basicPerHit*skMult)/5:0;
+  const skillDps=skMult>0?(basicPerHit*skMult)/20:0;
   return basicDps+skillDps;
 }
 const BOSS_TTK=100;

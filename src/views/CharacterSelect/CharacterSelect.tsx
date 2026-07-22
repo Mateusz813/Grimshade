@@ -12,6 +12,7 @@ import { getCharacterAvatar } from '../../data/classAvatars';
 import Spinner from '../../components/ui/Spinner/Spinner';
 import GameIcon from '../../components/atoms/Twemoji/GameIcon';
 import { getTransformColor, getClassTransformBonuses, getTransformById } from '../../systems/transformSystem';
+import { scaleGearHp } from '../../systems/combat';
 import pwaIcon from '../../assets/images/pwa.png';
 import './CharacterSelect.scss';
 
@@ -94,7 +95,7 @@ const getEffectiveMaxStats = (charId: string, baseMaxHp: number, baseMaxMp: numb
   let eqMp = 0;
   try {
     const s = getTotalEquipmentStats(equipment, ALL_ITEMS);
-    eqHp = s.hp ?? 0;
+    eqHp = scaleGearHp(s.hp ?? 0);
     eqMp = s.mp ?? 0;
   } catch {
   }

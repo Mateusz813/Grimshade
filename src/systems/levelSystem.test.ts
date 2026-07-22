@@ -68,10 +68,23 @@ describe('processXpGain', () => {
         expect(result.levelsGained).toBe(3);
     });
 
-    it('awards stat points on level-up', () => {
+    it('awards no attribute point for a level-up that crosses no 10-level milestone', () => {
         const result = processXpGain(1, 0, xpToNextLevel(1));
-        expect(result.statPointsGained).toBeGreaterThanOrEqual(1);
-        expect(result.statPointsGained).toBeLessThanOrEqual(3);
+        expect(result.statPointsGained).toBe(0);
+    });
+
+    it('awards exactly one attribute point per 10-level milestone crossed', () => {
+        let xp = 0;
+        for (let l = 9; l < 10; l++) xp += xpToNextLevel(l);
+        const one = processXpGain(9, 0, xp);
+        expect(one.newLevel).toBe(10);
+        expect(one.statPointsGained).toBe(1);
+
+        let farXp = 0;
+        for (let l = 5; l < 25; l++) farXp += xpToNextLevel(l);
+        const many = processXpGain(5, 0, farXp);
+        expect(many.newLevel).toBe(25);
+        expect(many.statPointsGained).toBe(2);
     });
 
     it('carries over excess XP correctly', () => {

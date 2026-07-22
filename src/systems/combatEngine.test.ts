@@ -313,12 +313,6 @@ describe('getEffectiveChar', () => {
         expect(result?.crit_chance).toBeLessThanOrEqual(0.5);
     });
 
-    it('uses default crit_damage 2.0 when undefined', () => {
-        const ch = makeCharacter({ crit_damage: undefined as unknown as number });
-        const result = getEffectiveChar(ch);
-        expect(result?.crit_damage).toBeCloseTo(2.0, 2);
-    });
-
     it('uses 0 for undefined hp_regen', () => {
         const ch = makeCharacter({ hp_regen: undefined as unknown as number });
         const result = getEffectiveChar(ch);

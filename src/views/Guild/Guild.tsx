@@ -4,6 +4,8 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useTransformStore } from '../../stores/transformStore';
 import { useGuildStore } from '../../stores/guildStore';
+import { useCombatStore } from '../../stores/combatStore';
+import { useOfflineHuntStore } from '../../stores/offlineHuntStore';
 import { isBackendMode } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
 import { syncFromBackend } from '../../api/backend/syncState';
@@ -1089,6 +1091,15 @@ const GuildBoss = ({ onBack }: IGuildBossProps) => {
 
     const startEngagement = async () => {
         if (!canAttackToday || busy || !character || !boss) return;
+        if (useOfflineHuntStore.getState().isActive) {
+            setErrorMsg('Nie mozesz walczyc z bossem gildii podczas polowania offline. Odbierz lub zakoncz polowanie.');
+            return;
+        }
+        const cs = useCombatStore.getState();
+        if (cs.phase !== 'idle' || cs.backgroundActive) {
+            setErrorMsg('Nie mozesz walczyc z bossem gildii w trakcie walki. Zakoncz polowanie.');
+            return;
+        }
         if (someoneElseHolds) {
             setErrorMsg('Ktoś inny aktualnie walczy. Poczekaj aż boss straci 10% HP.');
             return;

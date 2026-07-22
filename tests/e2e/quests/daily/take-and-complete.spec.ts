@@ -90,7 +90,7 @@ test.describe('Quests › Daily', { tag: '@progression' }, () => {
             await expect(claimBtn).toBeVisible();
 
             const polowanieCard = page.locator('.quests__daily-quest', {
-                has: page.locator('.quests__daily-quest-name', { hasText: 'Polowanie' }),
+                has: page.locator('.quests__daily-quest-name', { hasText: /^Polowanie$/ }),
             });
             await expect(polowanieCard).toBeVisible();
             await expect(polowanieCard).not.toHaveClass(/quests__daily-quest--completed/);

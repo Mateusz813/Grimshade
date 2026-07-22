@@ -159,12 +159,11 @@ const RARITY_BONUS_RANGES: Record<Rarity, { min: number; max: number }> = {
     heroic:    { min: 50, max: 100 },
 };
 
-const STAT_POOL = ['attack', 'defense', 'hp', 'mp', 'speed', 'critChance', 'critDmg'];
+const STAT_POOL = ['attack', 'defense', 'hp', 'mp', 'speed', 'critChance'];
 
 const LOOT_STAT_MULT: Record<string, number> = {
     hp: 1.0, mp: 1.0, attack: 1.0, defense: 1.0, speed: 1.0,
     critChance: 0.3,
-    critDmg:    1.5,
 };
 
 export const generateBonuses = (rarity: Rarity): Record<string, number> => {
@@ -266,11 +265,21 @@ export const rollDropTable = (
 
 const BASE_STONE_DROP_CHANCE: Record<TMonsterRarity, number> = {
     normal:    0.10,
-    strong:    0.07,
-    epic:      0.04,
-    legendary: 0.02,
-    boss:      0.01,
+    strong:    0.12,
+    epic:      0.15,
+    legendary: 0.18,
+    boss:      0.22,
 };
+
+const STONE_DROP_MAX_COUNT: Record<TMonsterRarity, number> = {
+    normal:    1,
+    strong:    1,
+    epic:      2,
+    legendary: 3,
+    boss:      4,
+};
+
+export const HEROIC_STONE_FROM_BOSS_CHANCE = 0.15;
 
 export const rollStoneDrop = (
     monsterLevel: number,
@@ -280,8 +289,11 @@ export const rollStoneDrop = (
     const chance = BASE_STONE_DROP_CHANCE[monsterRarity];
 
     if (Math.random() < chance) {
-        const stoneType = MONSTER_RARITY_STONE_MAP[monsterRarity];
-        return { type: stoneType, count: 1 };
+        const stoneType = monsterRarity === 'boss' && Math.random() < HEROIC_STONE_FROM_BOSS_CHANCE
+            ? 'heroic_stone'
+            : MONSTER_RARITY_STONE_MAP[monsterRarity];
+        const max = STONE_DROP_MAX_COUNT[monsterRarity];
+        return { type: stoneType, count: 1 + Math.floor(Math.random() * max) };
     }
     return null;
 };

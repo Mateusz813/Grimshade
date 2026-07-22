@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 const backendHoisted = vi.hoisted(() => ({
     claimTaskMock: vi.fn(),
     syncFromBackendMock: vi.fn(),
+    applyStateResponseMock: vi.fn(),
     backendState: { on: false },
 }));
 
@@ -16,6 +17,7 @@ vi.mock('../../api/backend/backendApi', () => ({
 }));
 vi.mock('../../api/backend/syncState', () => ({
     syncFromBackend: backendHoisted.syncFromBackendMock,
+    applyStateResponse: backendHoisted.applyStateResponseMock,
 }));
 
 
@@ -64,6 +66,7 @@ beforeEach(() => {
     backendHoisted.backendState.on = false;
     backendHoisted.claimTaskMock.mockReset();
     backendHoisted.syncFromBackendMock.mockReset();
+    backendHoisted.applyStateResponseMock.mockReset();
     useCharacterStore.setState({ character: makeChar() });
     useTaskStore.setState({
         activeTask: null,
@@ -243,10 +246,10 @@ describe('Tasks — backend mode claim', () => {
         startedAt: '2026-05-22T00:00:00.000Z',
     };
 
-    it('claims through the backend + syncs, skipping the client store, when backend mode is on', async () => {
+    it('applies the claim response inline (no extra state round-trip) when backend mode is on', async () => {
         backendHoisted.backendState.on = true;
-        backendHoisted.claimTaskMock.mockResolvedValue({});
-        backendHoisted.syncFromBackendMock.mockResolvedValue(undefined);
+        backendHoisted.claimTaskMock.mockResolvedValue({ character: {}, state: {} });
+        backendHoisted.applyStateResponseMock.mockReturnValue(true);
         const claimReward = vi.fn();
         useTaskStore.setState({
             activeTasks: [{ ...activeTask, progress: 10 }],
@@ -258,8 +261,25 @@ describe('Tasks — backend mode claim', () => {
         await waitFor(() =>
             expect(backendHoisted.claimTaskMock).toHaveBeenCalledWith('char-1', activeTask.id),
         );
-        expect(backendHoisted.syncFromBackendMock).toHaveBeenCalledWith('char-1');
+        expect(backendHoisted.applyStateResponseMock).toHaveBeenCalledWith({ character: {}, state: {} }, 'char-1');
+        expect(backendHoisted.syncFromBackendMock).not.toHaveBeenCalled();
         expect(claimReward).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a full state sync when the claim response carries no state', async () => {
+        backendHoisted.backendState.on = true;
+        backendHoisted.claimTaskMock.mockResolvedValue({});
+        backendHoisted.applyStateResponseMock.mockReturnValue(false);
+        backendHoisted.syncFromBackendMock.mockResolvedValue(undefined);
+        useTaskStore.setState({
+            activeTasks: [{ ...activeTask, progress: 10 }],
+            claimReward: vi.fn(),
+        } as never);
+        const { container } = renderTasks();
+        fireEvent.click(container.querySelector('.tasks__claim-btn') as HTMLButtonElement);
+        await waitFor(() =>
+            expect(backendHoisted.syncFromBackendMock).toHaveBeenCalledWith('char-1'),
+        );
     });
 
     it('falls back to the client claimReward when backend mode is off', () => {

@@ -6,6 +6,7 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 import { runCombatViaSkip, getCharacterSnapshot } from '../../fixtures/combatSim';
+import { DMG_ELIXIR_TIER_MULT } from '../../fixtures/balance';
 
 test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
     test.describe.configure({ timeout: 90_000 });
@@ -59,7 +60,7 @@ test.describe('Shop › Elixirs', { tag: '@shop' }, () => {
                 const mod = await import('/src/systems/combatElixirs.ts');
                 return (mod as { getAtkDamageMultiplier: () => number }).getAtkDamageMultiplier();
             });
-            expect(multiplier).toBe(1.25);
+            expect(multiplier).toBe(DMG_ELIXIR_TIER_MULT.t25);
 
             const before = await getCharacterSnapshot(page);
             expect(before).not.toBeNull();

@@ -1,3 +1,5 @@
+import { useAttributeStore } from './attributeStore';
+import { ATTRIBUTE_POINT_PCT, ATTRIBUTE_DEF_CAP_PCT, getMaxDefensePoints } from '../systems/attributeSystem';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useCharacterStore, computeBaseStatFloor, type ICharacter } from './characterStore';
 import { useInventoryStore } from './inventoryStore';
@@ -163,7 +165,7 @@ describe('addXp', () => {
         const result = useCharacterStore.getState().addXp(xpToNextLevel(1));
         expect(result.levelsGained).toBe(1);
         expect(result.newLevel).toBe(2);
-        expect(result.statPointsGained).toBeGreaterThanOrEqual(1);
+        expect(result.statPointsGained).toBe(0);
         const c = useCharacterStore.getState().character!;
         expect(c.level).toBe(2);
         expect(c.stat_points).toBe(result.statPointsGained);
@@ -284,7 +286,21 @@ describe('addXp', () => {
         expect(c.max_hp).toBe(100);
     });
 
-    it('does award stat points when crossing past highest_level', () => {
+    it('awards exactly one attribute point per 10-level milestone crossed', () => {
+        useCharacterStore.getState().setCharacter(makeChar({
+            level: 9,
+            xp: 0,
+            highest_level: 9,
+            stat_points: 0,
+        }));
+        useCharacterStore.getState().addXp(xpToNextLevel(9));
+        const c = useCharacterStore.getState().character!;
+        expect(c.level).toBe(10);
+        expect(c.stat_points).toBe(1);
+        expect(c.highest_level).toBe(10);
+    });
+
+    it('awards no attribute point for a level-up that crosses no milestone', () => {
         useCharacterStore.getState().setCharacter(makeChar({
             level: 5,
             xp: 0,
@@ -294,7 +310,7 @@ describe('addXp', () => {
         useCharacterStore.getState().addXp(xpToNextLevel(5));
         const c = useCharacterStore.getState().character!;
         expect(c.level).toBe(6);
-        expect(c.stat_points).toBeGreaterThanOrEqual(1);
+        expect(c.stat_points).toBe(0);
         expect(c.highest_level).toBe(6);
     });
 
@@ -351,75 +367,55 @@ describe('addXp', () => {
 });
 
 
-describe('spendStatPoint', () => {
-    it('spends 1 point on max_hp and bumps current HP by the same amount', () => {
-        useCharacterStore.getState().setCharacter(makeChar({
-            stat_points: 3,
-            max_hp: 100,
-            hp: 80,
-        }));
-        useCharacterStore.getState().spendStatPoint('max_hp');
-        const c = useCharacterStore.getState().character!;
-        expect(c.stat_points).toBe(2);
-        expect(c.max_hp).toBe(105);
-        expect(c.hp).toBe(85);
+describe('spendAttributePoint', () => {
+    beforeEach(() => {
+        useAttributeStore.getState().resetAllocation();
     });
 
-    it('spends a point on attack with no HP/MP side-effect', () => {
-        useCharacterStore.getState().setCharacter(makeChar({
-            stat_points: 1,
-            attack: 10,
-            hp: 50,
-            max_hp: 100,
-        }));
-        useCharacterStore.getState().spendStatPoint('attack');
-        const c = useCharacterStore.getState().character!;
-        expect(c.attack).toBe(11);
-        expect(c.stat_points).toBe(0);
-        expect(c.hp).toBe(50);
+    it('spends 1 point into attack and records it in the attribute store', () => {
+        useCharacterStore.getState().setCharacter(makeChar({ stat_points: 3, class: 'Knight' }));
+        const applied = useCharacterStore.getState().spendAttributePoint('attack');
+        expect(applied).toBe(1);
+        expect(useCharacterStore.getState().character!.stat_points).toBe(2);
+        expect(useAttributeStore.getState().attackPoints).toBe(1);
+        expect(useAttributeStore.getState().getMultipliers('Knight').attack)
+            .toBeCloseTo(1 + ATTRIBUTE_POINT_PCT / 100, 10);
+    });
+
+    it('spends every available point at once when all=true', () => {
+        useCharacterStore.getState().setCharacter(makeChar({ stat_points: 5, class: 'Knight' }));
+        expect(useCharacterStore.getState().spendAttributePoint('hp', true)).toBe(5);
+        expect(useCharacterStore.getState().character!.stat_points).toBe(0);
+        expect(useAttributeStore.getState().hpPoints).toBe(5);
+    });
+
+    it('clamps defense at the per-class cap and refunds the excess points', () => {
+        const cap = getMaxDefensePoints('Mage');
+        useCharacterStore.getState().setCharacter(makeChar({ stat_points: cap + 10, class: 'Mage' }));
+        const applied = useCharacterStore.getState().spendAttributePoint('defense', true);
+        expect(applied).toBe(cap);
+        expect(useAttributeStore.getState().defensePoints).toBe(cap);
+        expect(useCharacterStore.getState().character!.stat_points).toBe(10);
+        expect(useAttributeStore.getState().getMultipliers('Mage').defense)
+            .toBeCloseTo(1 + ATTRIBUTE_DEF_CAP_PCT.Mage / 100, 10);
+    });
+
+    it('gives Knight the highest defense cap of all classes', () => {
+        const caps = Object.entries(ATTRIBUTE_DEF_CAP_PCT);
+        for (const [cls, pct] of caps) {
+            if (cls === 'Knight') continue;
+            expect(ATTRIBUTE_DEF_CAP_PCT.Knight).toBeGreaterThan(pct);
+        }
     });
 
     it('is a no-op when stat_points = 0', () => {
-        useCharacterStore.getState().setCharacter(makeChar({ stat_points: 0, attack: 10 }));
-        useCharacterStore.getState().spendStatPoint('attack');
-        const c = useCharacterStore.getState().character!;
-        expect(c.attack).toBe(10);
-        expect(c.stat_points).toBe(0);
+        useCharacterStore.getState().setCharacter(makeChar({ stat_points: 0, class: 'Knight' }));
+        expect(useCharacterStore.getState().spendAttributePoint('attack')).toBe(0);
+        expect(useAttributeStore.getState().attackPoints).toBe(0);
     });
 
     it('is a no-op when no character is set', () => {
-        useCharacterStore.getState().spendStatPoint('attack');
-        expect(useCharacterStore.getState().character).toBeNull();
-    });
-});
-
-describe('spendAllStatPoints', () => {
-    it('spends every available point on a stat in one go', () => {
-        useCharacterStore.getState().setCharacter(makeChar({
-            stat_points: 5,
-            attack: 10,
-        }));
-        useCharacterStore.getState().spendAllStatPoints('attack');
-        const c = useCharacterStore.getState().character!;
-        expect(c.stat_points).toBe(0);
-        expect(c.attack).toBe(15);
-    });
-
-    it('bulk-bumps max_hp and current hp by total bonus', () => {
-        useCharacterStore.getState().setCharacter(makeChar({
-            stat_points: 4,
-            max_hp: 100,
-            hp: 60,
-        }));
-        useCharacterStore.getState().spendAllStatPoints('max_hp');
-        const c = useCharacterStore.getState().character!;
-        expect(c.max_hp).toBe(120);
-        expect(c.hp).toBe(80);
-        expect(c.stat_points).toBe(0);
-    });
-
-    it('is a no-op when no character is set', () => {
-        useCharacterStore.getState().spendAllStatPoints('attack');
+        expect(useCharacterStore.getState().spendAttributePoint('attack')).toBe(0);
         expect(useCharacterStore.getState().character).toBeNull();
     });
 });

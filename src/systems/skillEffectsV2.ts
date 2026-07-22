@@ -1,3 +1,5 @@
+import { rollCritMultiplier } from './combat';
+
 
 export type EffectKey =
     | 'aoe'
@@ -660,8 +662,8 @@ export const resolveBasicHit = (
     } else if (attackerStatus.critBuffNext > 0) {
         if (Math.random() * 100 < attackerStatus.critBuffNext) {
             out.wasCrit = true;
-            out.critMult = 2;
-            out.damage *= 2;
+            out.critMult = rollCritMultiplier();
+            out.damage *= out.critMult;
         }
         attackerStatus.critBuffNext = 0;
     }

@@ -119,7 +119,6 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     const [magicLvlInput, setMagicLvlInput] = useState('100');
     const [highestLvlInput, setHighestLvlInput] = useState('500');
     const [critChanceInput, setCritChanceInput] = useState('50');
-    const [critDmgInput, setCritDmgInput] = useState('3');
     const [hpRegenInput, setHpRegenInput] = useState('50');
     const [mpRegenInput, setMpRegenInput] = useState('50');
     const [atkSpeedInput, setAtkSpeedInput] = useState('200');
@@ -174,9 +173,8 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
     };
     const setCrit = () => {
         const ch = Math.max(0, Math.min(50, parseFloat(critChanceInput) || 0)) / 100;
-        const cd = Math.max(1, parseFloat(critDmgInput) || 1);
-        updateCharacter({ crit_chance: ch, crit_damage: cd });
-        flash(`Crit ${(ch * 100).toFixed(1)}% / x${cd}`);
+        updateCharacter({ crit_chance: ch });
+        flash(`Crit ${(ch * 100).toFixed(1)}%`);
     };
     const setRegen = () => {
         updateCharacter({
@@ -688,9 +686,8 @@ const AdminPanel = ({ onClose }: IAdminPanelProps) => {
                                 <input type="number" value={magicLvlInput} onChange={(e) => setMagicLvlInput(e.target.value)} min={0} />
                                 <button onClick={setMagicLvl}>Ustaw</button>
                             </FieldRow>
-                            <FieldRow label="Crit % (0-50) / Crit DMG (×)">
+                            <FieldRow label="Crit % (0-50)">
                                 <input type="number" step="0.1" value={critChanceInput} onChange={(e) => setCritChanceInput(e.target.value)} placeholder="%" />
-                                <input type="number" step="0.1" value={critDmgInput} onChange={(e) => setCritDmgInput(e.target.value)} placeholder="×" />
                                 <button onClick={setCrit}>Ustaw</button>
                             </FieldRow>
                             <FieldRow label="HP regen / MP regen (na sek.)">

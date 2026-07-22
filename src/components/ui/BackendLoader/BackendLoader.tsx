@@ -1,24 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApiPendingStore } from '../../../stores/apiPendingStore';
 import { useTransformStore } from '../../../stores/transformStore';
 import pwaIcon from '../../../assets/images/pwa.png';
 import './BackendLoader.scss';
 
-const SHOW_DELAY_MS = 900;
+const SHOW_DELAY_MS = 250;
 const DEFAULT_ACCENT = '#ffcf6b';
 
 const BackendLoader = (): React.ReactElement | null => {
     const pending = useApiPendingStore((s) => s.pending);
     const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
     const [visible, setVisible] = useState(false);
+    const timerRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (pending > 0) {
-            const id = window.setTimeout(() => setVisible(true), SHOW_DELAY_MS);
-            return () => window.clearTimeout(id);
+            if (timerRef.current === null) {
+                timerRef.current = window.setTimeout(() => setVisible(true), SHOW_DELAY_MS);
+            }
+            return;
+        }
+        if (timerRef.current !== null) {
+            window.clearTimeout(timerRef.current);
+            timerRef.current = null;
         }
         setVisible(false);
-        return undefined;
     }, [pending]);
 
     if (!visible) return null;

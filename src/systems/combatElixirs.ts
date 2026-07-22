@@ -72,3 +72,8 @@ export const tickCombatElixirs = (ms: number): void => {
         }
     }
 };
+
+export const CD_REDUCTION_ELIXIR_MS = 2000;
+
+export const getCooldownReductionMs = (): number =>
+    useBuffStore.getState().hasBuff('cooldown_reduction') ? CD_REDUCTION_ELIXIR_MS : 0;

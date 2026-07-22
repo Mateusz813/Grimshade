@@ -20,19 +20,19 @@ import {
 
 
 const DAMAGE_CASES: ICombatParams[] = [
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, attackerLevel: 20, isCrit: false, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 10, classModifier: 1, enemyDefense: 20, attackerLevel: 20, isCrit: true, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 100, attackerLevel: 100, isCrit: false, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 200, attackerLevel: 100, isCrit: false, critDmg: 2 },
-    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 300, attackerLevel: 100, isCrit: true, critDmg: 2.5 },
-    { baseAtk: 10, weaponAtk: 5, skillBonus: 0, classModifier: 1, enemyDefense: 999, attackerLevel: 1, isCrit: false, critDmg: 2 },
-    { baseAtk: 100, weaponAtk: 50, skillBonus: 25, classModifier: 1.3, enemyDefense: 40, attackerLevel: 40, isCrit: true, critDmg: 2, damageMultiplier: 1.5 },
-    { baseAtk: 80, weaponAtk: 40, skillBonus: 0, classModifier: 1, enemyDefense: 10, attackerLevel: 10, isCrit: false, critDmg: 2, damageMultiplier: 0.5 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 20, attackerLevel: 20, isCrit: false, critRoll: 0.5 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 10, classModifier: 1, enemyDefense: 20, attackerLevel: 20, isCrit: true, critRoll: 0.5 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 100, attackerLevel: 100, isCrit: false, critRoll: 0.5 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 200, attackerLevel: 100, isCrit: false, critRoll: 0.5 },
+    { baseAtk: 50, weaponAtk: 30, skillBonus: 0, classModifier: 1, enemyDefense: 300, attackerLevel: 100, isCrit: true, critRoll: 0.75 },
+    { baseAtk: 10, weaponAtk: 5, skillBonus: 0, classModifier: 1, enemyDefense: 999, attackerLevel: 1, isCrit: false, critRoll: 0.5 },
+    { baseAtk: 100, weaponAtk: 50, skillBonus: 25, classModifier: 1.3, enemyDefense: 40, attackerLevel: 40, isCrit: true, critRoll: 0.5, damageMultiplier: 1.5 },
+    { baseAtk: 80, weaponAtk: 40, skillBonus: 0, classModifier: 1, enemyDefense: 10, attackerLevel: 10, isCrit: false, critRoll: 0.5, damageMultiplier: 0.5 },
 ];
 
 const DUAL_CASES: Array<ICombatParams & { offHandAtk: number }> = [
-    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, attackerLevel: 15, isCrit: false, critDmg: 2 },
-    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, attackerLevel: 15, isCrit: true, critDmg: 2 },
+    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, attackerLevel: 15, isCrit: false, critRoll: 0.5 },
+    { baseAtk: 40, weaponAtk: 60, offHandAtk: 50, skillBonus: 0, classModifier: 1, enemyDefense: 15, attackerLevel: 15, isCrit: true, critRoll: 0.5 },
 ];
 
 const MLVL_CASES: Array<[number, number, number, number]> = [[100, 50, 20, 1], [100, 0, 20, 1.3], [50, 25, 200, 1]];

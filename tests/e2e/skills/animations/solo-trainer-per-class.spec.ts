@@ -10,17 +10,16 @@ interface IClassSkillAnimCase {
     cls: CharacterClass;
     skillId: string;
     expectedCategoryClass: string;
-    target: 'enemy' | 'ally';
 }
 
 const CASES: ReadonlyArray<IClassSkillAnimCase> = [
-    { cls: 'Knight',      skillId: 'shield_bash',  expectedCategoryClass: 'skill-anim--physical', target: 'enemy' },
-    { cls: 'Mage',        skillId: 'fireball',     expectedCategoryClass: 'skill-anim--fire',     target: 'enemy' },
-    { cls: 'Cleric',      skillId: 'holy_strike',  expectedCategoryClass: 'skill-anim--holy',     target: 'enemy' },
-    { cls: 'Archer',      skillId: 'precise_shot', expectedCategoryClass: 'skill-anim--arrow',    target: 'enemy' },
-    { cls: 'Rogue',       skillId: 'backstab',     expectedCategoryClass: 'skill-anim--physical', target: 'enemy' },
-    { cls: 'Necromancer', skillId: 'life_drain',   expectedCategoryClass: 'skill-anim--dark',     target: 'enemy' },
-    { cls: 'Bard',        skillId: 'battle_hymn',  expectedCategoryClass: 'skill-anim--music',    target: 'ally'  },
+    { cls: 'Knight',      skillId: 'shield_bash',  expectedCategoryClass: 'skill-anim--physical' },
+    { cls: 'Mage',        skillId: 'fireball',     expectedCategoryClass: 'skill-anim--fire' },
+    { cls: 'Cleric',      skillId: 'holy_strike',  expectedCategoryClass: 'skill-anim--holy' },
+    { cls: 'Archer',      skillId: 'precise_shot', expectedCategoryClass: 'skill-anim--arrow' },
+    { cls: 'Rogue',       skillId: 'backstab',     expectedCategoryClass: 'skill-anim--physical' },
+    { cls: 'Necromancer', skillId: 'life_drain',   expectedCategoryClass: 'skill-anim--dark' },
+    { cls: 'Bard',        skillId: 'battle_hymn',  expectedCategoryClass: 'skill-anim--music' },
 ];
 
 const pickCharacter = async (page: Page, nick: string): Promise<void> => {
@@ -37,8 +36,8 @@ const pickCharacter = async (page: Page, nick: string): Promise<void> => {
 test.describe('Skills › Animations', { tag: '@skills' }, () => {
     test.describe.configure({ timeout: 60_000, mode: 'serial' });
 
-    for (const { cls, skillId, expectedCategoryClass, target } of CASES) {
-        test(`solo: ${cls} -> ${skillId} (${expectedCategoryClass}) animation renders on ${target} card in /trainer`, async ({ page }) => {
+    for (const { cls, skillId, expectedCategoryClass } of CASES) {
+        test(`solo: ${cls} -> ${skillId} (${expectedCategoryClass}) animation renders on the caster ally card in /trainer`, async ({ page }) => {
             const nick = generateTestCharacterName();
             let createdId: string | null = null;
 
@@ -89,7 +88,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
                 await expect(skillBtn).toBeEnabled({ timeout: 20_000 });
                 await expect(skillBtn).not.toHaveClass(/combat-ui__action-btn--disabled/);
 
-                const targetCardsBefore = page.locator(`.combat-ui__${target} .skill-anim-overlay`);
+                const targetCardsBefore = page.locator('.combat-ui__ally .skill-anim-overlay');
                 await expect.poll(
                     async () => await targetCardsBefore.count(),
                     { timeout: 2_500, intervals: [100, 250, 500] },
@@ -97,7 +96,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
 
                 await skillBtn.tap();
 
-                const overlay = page.locator(`.combat-ui__${target} .${expectedCategoryClass}`);
+                const overlay = page.locator(`.combat-ui__ally .${expectedCategoryClass}`);
                 await expect(overlay.first()).toBeVisible({ timeout: 3_000 });
 
                 const overlayEmoji = overlay.first().locator('.skill-anim-emoji');

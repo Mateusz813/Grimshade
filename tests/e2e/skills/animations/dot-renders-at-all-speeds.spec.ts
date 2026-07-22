@@ -82,7 +82,7 @@ test.describe('Skills › Animations', { tag: '@skills' }, () => {
             const skillBtn = actionBar.locator(`button[aria-label="${SKILL_ID}"]`);
             await expect(skillBtn).toBeVisible({ timeout: 10_000 });
 
-            const overlayLocator = page.locator(`.combat-ui__enemy .${EXPECTED_CATEGORY_CLASS}`);
+            const overlayLocator = page.locator(`.combat-ui__ally .${EXPECTED_CATEGORY_CLASS}`);
 
             const SPEEDS_TO_TEST: ReadonlyArray<'X1' | 'X2' | 'X4'> = ['X1', 'X2', 'X4'];
 

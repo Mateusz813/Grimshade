@@ -13,7 +13,7 @@ backendClient.interceptors.request.use(
     async (config) => {
         const method = (config.method ?? 'get').toLowerCase();
         const url = config.url ?? '';
-        const silent = method !== 'get';
+        const silent = url.endsWith('/state');
         (config as { _silent?: boolean })._silent = silent;
         if (!silent) useApiPendingStore.getState().inc();
         config.baseURL = getBackendBaseUrl();

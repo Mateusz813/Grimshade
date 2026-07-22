@@ -77,7 +77,6 @@ type LeaderboardTab =
   | 'mp_regen'
   | 'defense'
   | 'crit_chance'
-  | 'crit_damage'
   | 'boss_score'
   | 'arena_killers'
   | 'arena_victims'
@@ -122,7 +121,6 @@ const TABS: ITabDef[] = [
   { key: 'mp_regen',          label: 'MP Reg',     icon: 'gem-stone', source: 'weapon_skill',   skillName: 'mp_regen',                 valueLabel: 'MP Reg' },
   { key: 'defense',           label: 'DEF',        icon: 'shield', source: 'weapon_skill',   skillName: 'defense',                  valueLabel: 'DEF' },
   { key: 'crit_chance',       label: 'Crit %',     icon: 'bullseye', source: 'weapon_skill',   skillName: 'crit_chance',              valueLabel: 'Crit' },
-  { key: 'crit_damage',       label: 'Crit DMG',   icon: 'collision', source: 'characters',     characterColumn: 'crit_damage',        order: 'desc', valueLabel: 'CritDmg' },
   { key: 'boss_score',        label: 'Boss',       icon: 'ogre', source: 'weapon_skill',   skillName: 'boss_score',               valueLabel: 'Boss' },
   { key: 'arena_killers',     label: 'Zabójcy',    icon: 'dagger', source: 'characters',    characterColumn: 'arena_kills',         order: 'desc', valueLabel: 'Zabicia' },
   { key: 'arena_victims',     label: 'Ofiary',     icon: 'skull', source: 'characters',    characterColumn: 'arena_deaths',        order: 'desc', valueLabel: 'Śmierci' },

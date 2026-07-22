@@ -6,6 +6,7 @@ import { createCharacterViaApi, generateTestCharacterName, type CharacterClass }
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 import { runCombatViaSkip, getCharacterSnapshot } from '../../fixtures/combatSim';
+import { DMG_ELIXIR_TIER_MULT } from '../../fixtures/balance';
 
 interface IElixirVariant {
     buffId: string;
@@ -25,7 +26,7 @@ const VARIANTS: IElixirVariant[] = [
         name: 'ATK DMG +50%',
         icon: 'crossed-swords',
         klass: 'Knight',
-        expectedMultiplier: 1.5,
+        expectedMultiplier: DMG_ELIXIR_TIER_MULT.t50,
         helperImport: { module: '/src/systems/combatElixirs.ts', export: 'getAtkDamageMultiplier' },
         description: '+50% ATK damage tier (Knight)',
     },

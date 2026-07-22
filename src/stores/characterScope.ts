@@ -1,5 +1,6 @@
 
-import { useCharacterStore } from './characterStore';
+import { useCharacterStore, computeBaseStatFloor, computeAttackDefenseFloor } from './characterStore';
+import { getAttributePointsForLevel } from '../systems/attributeSystem';
 import { useInventoryStore } from './inventoryStore';
 import { useSkillStore } from './skillStore';
 import { useTaskStore } from './taskStore';
@@ -9,6 +10,7 @@ import { useDungeonStore } from './dungeonStore';
 import { useSettingsStore } from './settingsStore';
 import { useDailyQuestStore } from './dailyQuestStore';
 import { useMasteryStore } from './masteryStore';
+import { useAttributeStore, ATTRIBUTE_MIGRATION_VERSION } from './attributeStore';
 import { useBossScoreStore } from './bossScoreStore';
 import { useBuffStore } from './buffStore';
 import { SPELL_CHEST_LEVELS } from '../systems/skillSystem';
@@ -17,7 +19,7 @@ import { useCombatStore } from './combatStore';
 import { useOfflineHuntStore } from './offlineHuntStore';
 import { useFriendsStore } from './friendsStore';
 import { useConnectivityStore } from './connectivityStore';
-import { EMPTY_EQUIPMENT } from '../systems/itemSystem';
+import { EMPTY_EQUIPMENT, type IInventoryItem } from '../systems/itemSystem';
 import { saveGame, loadGame, deleteGameSave } from '../storage/gameStorage';
 import { characterApi } from '../api/v1/characterApi';
 import { commitStateToBackend, commitStateViaKeepalive, type ICombatEvent } from '../api/backend/commit';
@@ -295,6 +297,13 @@ const STORE_ENTRIES: IStoreEntry[] = [
     stateKeys: ['lastRefreshDate', 'activeQuests', 'todayQuestDefs'],
   },
   {
+    baseKey: 'attributes',
+    getState: () => useAttributeStore.getState(),
+    setState: (d) => useAttributeStore.setState(d),
+    defaults: () => ({ attackPoints: 0, hpPoints: 0, defensePoints: 0, migrationVersion: 0 }),
+    stateKeys: ['attackPoints', 'hpPoints', 'defensePoints', 'migrationVersion'],
+  },
+  {
     baseKey: 'mastery',
     getState: () => useMasteryStore.getState(),
     setState: (d) => useMasteryStore.setState(d),
@@ -410,6 +419,49 @@ const applyCharacterStatsFromBlob = (blob: Record<string, unknown>, expectedChar
   }
 };
 
+const stripLegacyCritDmgBonuses = (): void => {
+  const inv = useInventoryStore.getState();
+  const strip = (item: IInventoryItem): IInventoryItem => {
+    if (!item?.bonuses || !('critDmg' in item.bonuses)) return item;
+    const { critDmg: _critDmg, ...rest } = item.bonuses as Record<string, number>;
+    return { ...item, bonuses: rest };
+  };
+  useInventoryStore.setState({
+    bag: inv.bag.map(strip),
+    deposit: inv.deposit.map(strip),
+    equipment: Object.fromEntries(
+      Object.entries(inv.equipment).map(([slot, item]) => [slot, item ? strip(item) : item]),
+    ) as typeof inv.equipment,
+  });
+};
+
+const migrateAttributesV1 = (): void => {
+  const char = useCharacterStore.getState().character;
+  if (char) {
+    const highest = char.highest_level ?? char.level;
+    const hpFloor = computeBaseStatFloor(char.class, highest);
+    const adFloor = computeAttackDefenseFloor(char.class, highest);
+    const maxHp = Math.min(char.max_hp ?? hpFloor.max_hp, hpFloor.max_hp);
+    const maxMp = Math.min(char.max_mp ?? hpFloor.max_mp, hpFloor.max_mp);
+    useCharacterStore.getState().updateCharacter({
+      max_hp: maxHp,
+      max_mp: maxMp,
+      hp: Math.min(char.hp ?? maxHp, maxHp),
+      mp: Math.min(char.mp ?? maxMp, maxMp),
+      attack: Math.min(char.attack ?? adFloor.attack, adFloor.attack),
+      defense: Math.min(char.defense ?? adFloor.defense, adFloor.defense),
+      stat_points: getAttributePointsForLevel(highest),
+    });
+  }
+  stripLegacyCritDmgBonuses();
+  useAttributeStore.setState({
+    attackPoints: 0,
+    hpPoints: 0,
+    defensePoints: 0,
+    migrationVersion: ATTRIBUTE_MIGRATION_VERSION,
+  });
+};
+
 export const applyBlobToStores = (
   blob: Record<string, unknown>,
   expectedCharId: string,
@@ -493,6 +545,14 @@ export const applyBlobToStores = (
 
   if (opts?.hydrateCharacterStats) {
     applyCharacterStatsFromBlob(blob, expectedCharId);
+  }
+
+  try {
+    if (useAttributeStore.getState().migrationVersion < ATTRIBUTE_MIGRATION_VERSION) {
+      migrateAttributesV1();
+    }
+  } catch (err) {
+    console.error('[characterScope] attribute migration failed', err);
   }
 
   return true;
@@ -649,6 +709,7 @@ const startAutoSaveSubscriptions = (): void => {
     useTransformStore,
     useOfflineHuntStore,
     useFriendsStore,
+    useAttributeStore,
   ];
 
   for (const store of stores) {

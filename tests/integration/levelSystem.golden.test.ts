@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 import {
     xpToNextLevel,
     totalXpForLevel,
-    statPointsForLevelUp,
+    ATTRIBUTE_POINTS_PER_MILESTONE,
     processXpGain,
     getDeathLossLevels,
     getFleeLossLevels,
@@ -19,7 +19,6 @@ import {
 const LEVELS = [0, 1, 2, 3, 5, 10, 25, 50, 99, 100, 101, 150, 199, 200, 201, 300, 400, 500, 600, 700, 800, 900, 999, 1000, 1001, 1010, 1050, 1100];
 const TOTAL_LEVELS = [1, 2, 10, 100, 101, 200, 500, 1000, 1001];
 const DEATH_LEVELS = [1, 20, 41, 50, 51, 100, 200, 500, 1000, 1100];
-const CLASSES = ['Knight', 'Mage', 'Cleric', 'Archer', 'Rogue', 'Necromancer', 'Bard', 'Unknown', ''];
 
 const XP_GAIN_CASES: Array<[number, number, number]> = [
     [1, 0, 299], [1, 0, 300], [1, 0, 1000], [5, 299, 1], [10, 0, 100000],
@@ -46,7 +45,7 @@ const buildGolden = (): Record<string, unknown> => ({
     note: 'Generowane z src/systems/levelSystem.ts. NIE edytuj ręcznie — regeneruj UPDATE_GOLDEN=1.',
     xpToNextLevel: LEVELS.map((level) => ({ level, value: xpToNextLevel(level) })),
     totalXpForLevel: TOTAL_LEVELS.map((level) => ({ level, value: totalXpForLevel(level) })),
-    statPointsForLevelUp: CLASSES.map((cls) => ({ class: cls, value: statPointsForLevelUp(cls) })),
+    attributePointsPerMilestone: ATTRIBUTE_POINTS_PER_MILESTONE,
     processXpGain: XP_GAIN_CASES.map(([level, xp, gained]) => ({ level, xp, gained, result: processXpGain(level, xp, gained) })),
     getDeathLossLevels: DEATH_LEVELS.map((level) => ({ level, value: getDeathLossLevels(level) })),
     getFleeLossLevels: DEATH_LEVELS.map((level) => ({ level, value: getFleeLossLevels(level) })),

@@ -10,6 +10,15 @@ interface IStateResponse {
     updated_at?: string | null;
 }
 
+export const applyStateResponse = (res: unknown, charId: string): boolean => {
+    const payload = res as Partial<IStateResponse> | null;
+    if (!payload || typeof payload !== 'object') return false;
+    if (!payload.character || !payload.state || typeof payload.state !== 'object') return false;
+    useCharacterStore.getState().setCharacter(payload.character);
+    applyBlobToStores(payload.state, charId);
+    return true;
+};
+
 export const syncFromBackend = async (charId: string): Promise<void> => {
     const res = await backendApi.state(charId) as IStateResponse;
     if (res.character) {

@@ -18,6 +18,9 @@ import {
     DMG_COMPRESS_K,
     DMG_COMPRESS_P,
     DEF_BASE,
+    rollCritMultiplier,
+    CRIT_MULT_MIN,
+    CRIT_MULT_MAX,
 } from './combat';
 import skillsData from '../data/skills.json';
 
@@ -77,14 +80,20 @@ describe('calculateDamage', () => {
         expect(result.finalDamage).toBe(1);
     });
 
-    it('should double damage on crit (default critDmg = 2.0)', () => {
-        const result = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true });
-        expect(result.finalDamage).toBe(100);
+    it('crit multiplies by a random roll inside [CRIT_MULT_MIN, CRIT_MULT_MAX]', () => {
+        const base = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: false });
+        for (const roll of [0, 0.25, 0.5, 0.75, 1]) {
+            const crit = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true, critRoll: roll });
+            expect(crit.finalDamage).toBe(Math.floor(base.finalDamage * rollCritMultiplier(roll)));
+        }
     });
 
-    it('should use custom critDmg multiplier', () => {
-        const result = calculateDamage({ baseAtk: 50, weaponAtk: 0, skillBonus: 0, classModifier: 1, enemyDefense: 0, isCrit: true, critDmg: 3.0 });
-        expect(result.finalDamage).toBe(150);
+    it('rollCritMultiplier spans exactly 1.5x - 2.5x and clamps out-of-range rolls', () => {
+        expect(rollCritMultiplier(0)).toBeCloseTo(CRIT_MULT_MIN, 10);
+        expect(rollCritMultiplier(1)).toBeCloseTo(CRIT_MULT_MAX, 10);
+        expect(rollCritMultiplier(0.5)).toBeCloseTo(2.0, 10);
+        expect(rollCritMultiplier(-5)).toBeCloseTo(CRIT_MULT_MIN, 10);
+        expect(rollCritMultiplier(5)).toBeCloseTo(CRIT_MULT_MAX, 10);
     });
 
     it('mitigates by percentage: def == level + DEF_BASE -> 50% reduction', () => {

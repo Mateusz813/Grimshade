@@ -94,7 +94,7 @@ export const WIKI_SECTIONS: IWikiSection[] = [
     summary: 'Miasto to centrum gry — stąd wchodzisz do wszystkich trybów i tu odpoczywasz.',
     bullets: [
       'Na górze widzisz kartę postaci: awatar, poziom, paski HP/MP/XP.',
-      'Jeśli masz wolne punkty statystyk, pojawi się przycisk „+N statystyk do rozdania" → prowadzi do ekranu Postać.',
+      'Jeśli masz wolne punkty atrybutów, pojawi się przycisk „+N statystyk do rozdania” → prowadzi do ekranu Postać.',
       'Kafelki na dole to skróty: Offline Trening, Depozyt, Market, Potwory, Odpoczynek, Rankingi, Śmierci.',
       'Odpoczynek: kliknij, by w ~10 sekund uleczyć HP i MP do maksimum (za darmo, tylko w mieście).',
       'Odpoczynku nie da się użyć w trakcie walki — najpierw ją zakończ.',
@@ -139,7 +139,7 @@ export const WIKI_SECTIONS: IWikiSection[] = [
     bullets: [
       'Wybierz potwora z listy i kliknij „Walcz!" — walka startuje sama, postać atakuje automatycznie.',
       'Tempo walki: x1 / x2 / x4 (szybsze przewijanie) oraz SKIP (natychmiastowy wynik, tylko solo, bez złota i dropów).',
-      'Skille (zaklęcia) mogą rzucać się same (tryb auto) albo ręcznie (klikasz je sam) — każdy kosztuje MP i ma cooldown.',
+      'Skille (zaklęcia) mogą rzucać się same (tryb auto) albo ręcznie (klikasz je sam) — każdy kosztuje MP i ma cooldown 20 sekund.',
       'Miksturki HP/MP są zawsze widoczne na dole — pij ręcznie lub ustaw auto-miksturki (4 sloty).',
       'Możesz walczyć z falą do 4 potworów naraz (przycisk „Dodaj potwora").',
       'W polowaniu „Wyjdź" kończy walkę bez kary — ale jeśli ZGINIESZ, tracisz część postępu (patrz sekcja o śmierci).',
@@ -246,8 +246,10 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       'Każda klasa nosi tylko swój typ broni i zbroi — niepasujące przedmioty się nie założą.',
       'Jest 6 rzadkości. Im wyższa, tym mocniejszy przedmiot i więcej losowych bonusów.',
       'Plecak mieści 1000 przedmiotów; poziom przedmiotu zwykle ogranicza, kto może go założyć.',
-      'Punkty statystyk (2 za każdy poziom) rozdajesz na: +5 HP, +5 MP, +1 atak lub +1 obrona za punkt.',
-      'Nadmiarowe/słabe przedmioty możesz rozłożyć na kamienie (20% szansy na kamień) — pojedynczo lub masowo.',
+      'Atrybuty: co 10 poziomów dostajesz 1 punkt. Każdy punkt to +0,1% do ataku, HP albo obrony — liczone od pełnej wartości (razem z ekwipunkiem, treningiem, eliksirami i transformem), więc rośnie razem z postacią. Na 1000 poziomie masz 100 punktów, czyli maksymalnie +10% w jedną statystykę.',
+      'Obrona ma limit klasowy: Rycerz do +10%, Kleryk +8%, Łucznik/Łotr/Bard +6%, Nekromanta +4%, Mag +3%. Punkty ponad limit nie przepadają — zostają w puli.',
+      'Trafienie krytyczne mnoży obrażenia losowo ×1,5–2,5 (dotyczy i ataku z broni, i spelli). Przedmioty nie dają już „obrażeń krytycznych" — liczy się sama szansa na krytyka.',
+      'Nadmiarowe/słabe przedmioty możesz rozłożyć na kamienie (25% szansy na kamień) — pojedynczo lub masowo.',
       'Auto-sprzedaż i auto-rozkład: włącz wybrane rzadkości, a loot z walki będzie automatycznie sprzedawany lub rozkładany na kamienie zaraz po wypadnięciu. Możesz ustawić „do lvl" — limit poziomu przedmiotu (0 = bez limitu), więc np. rozkładasz tylko niski loot, a lepszy zostaje w plecaku.',
     ],
     tables: [
@@ -280,6 +282,8 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       'Porażka zabiera złoto i kamienie, ale NIE niszczy przedmiotu ani nie obniża jego poziomu.',
       'Sprzedaż zwraca 100% złota I kamieni włożonych w ulepszenia — udane ulepszanie nigdy nie jest stratą.',
       'Kamienie łączysz w wyższe: 100 niższych + 1000 złota → 1 wyższego tieru.',
+      'Kamienie wypadają z potworów zależnie od ich rzadkości: normal 10% (zwykły), strong 12% (rzadki), epic 15% (epicki, 1–2 szt.), legendary 18% (legendarny, 1–3 szt.), boss 22% (mityczny, 1–4 szt.).',
+      'Potwór typu BOSS ma dodatkowo 15% szans, że zamiast mitycznego wypadnie kamień heroiczny — to jedyne źródło heroicznych kamieni z polowania.',
       'Rzadsze przedmioty (od rzadkiego wzwyż) możesz „przelosować" bonusy za 2 kamienie.',
     ],
     tables: [
@@ -353,6 +357,8 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       'Skrzynie Czarów zdobywasz z łupów, questów i handlu — trzymają się jako osobne stacki w plecaku.',
       'Masz 4 sloty na aktywne czary — wybierasz, których 4 używasz w walce (tego samego nie wstawisz dwa razy).',
       'Czary rzucają się automatycznie (tryb auto) lub ręcznie; każdy kosztuje MP i ma cooldown.',
+      'Każdy czar ma taki sam cooldown: 20 sekund — w polowaniu, na bossie, w lochu, na transformie i w rajdzie. Ulepszanie czaru zwiększa obrażenia, ale NIE skraca cooldownu.',
+      'Eliksir Skupienia skraca cooldown wszystkich czarów o 2 sekundy.',
       'Czary zadają obrażenia w pewnym zakresie (od–do, z losowym rozrzutem), zwykle mocniej niż zwykły atak.',
       'Czary możesz też ULEPSZAĆ (za Skrzynie Czarów + złoto) — wyższy poziom = większe obrażenia czaru, ale każdy kolejny poziom dokłada coraz mniej (malejące przyrosty), a szansa powodzenia spada.',
       'Efekty czarów to m.in. obrażenia obszarowe (AOE), ogłuszenie, przebicie obrony, leczenie drużyny, przywołania, dobicie wroga poniżej progu HP.',
@@ -425,8 +431,8 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       },
     ],
     note:
-      'Oprócz przyrostu HP/MP co poziom, co 10 poziomów dostajesz dodatkowy skok statystyk. Atak i obronę ' +
-      'rozwijasz głównie przez punkty statystyk (2 na poziom) i ekwipunek, więc startowe wartości szybko przestają mieć znaczenie.',
+      'Oprócz przyrostu HP/MP co poziom, co 10 poziomów dostajesz dodatkowy skok statystyk oraz 1 punkt atrybutu. ' +
+      'Atak i obronę rozwijasz głównie przez ekwipunek i procentowe atrybuty, więc startowe wartości szybko przestają mieć znaczenie.',
   },
   {
     id: 'zadania',

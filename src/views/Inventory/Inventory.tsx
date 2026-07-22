@@ -25,6 +25,7 @@ import {
   STONE_ICONS,
   RARITY_ORDER,
   STONE_FOR_RARITY,
+  DISASSEMBLE_STONE_CHANCE,
   STONE_CONVERSION_CHAIN,
   STONE_CONVERSION_COST,
   STONE_CONVERSION_GOLD,
@@ -61,9 +62,11 @@ import { getSkillIcon } from '../../data/skillIcons';
 import { isUpgradeMilestone } from '../../systems/systemChatMessages';
 import skillsRaw from '../../data/skills.json';
 import { getItemFile, getStoneImage, getSpellChestImage, getPotionImage, getElixirImage } from '../../systems/spriteAssets';
-import { resolveSkillRecastMs, compressPlayerDamage } from '../../systems/combat';
+import { resolveSkillRecastMs, compressPlayerDamage, scaleGearHp, CRIT_MULT_MIN, CRIT_MULT_MAX } from '../../systems/combat';
+import { ATTRIBUTE_POINT_PCT, ATTRIBUTE_LEVEL_INTERVAL, ATTRIBUTE_DEF_CAP_PCT, getMaxDefensePoints, getAttributePointsForLevel, getSpentAttributePoints, type TAttributeStat } from '../../systems/attributeSystem';
+import { useAttributeStore } from '../../stores/attributeStore';
 import { getEffectiveChar as engineGetEffectiveChar } from '../../systems/combatEngine';
-import { statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
+import { BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../../systems/levelSystem';
 import type { Rarity } from '../../systems/lootSystem';
 import { getSpellChestIcon, getSpellChestDisplayName } from '../../systems/lootSystem';
 import itemsRaw from '../../data/items.json';
@@ -99,7 +102,6 @@ const STAT_DISPLAY_NAMES: Record<string, string> = {
   defense: 'Obrona',
   speed: 'Szybkosc',
   critChance: 'Szansa Crit',
-  critDmg: 'Obrazenia Crit',
   dmg_min: 'DMG Min',
   dmg_max: 'DMG Max',
 };
@@ -158,8 +160,7 @@ const getUpgradeIndicator = (
       s.hp * 0.25 +
       s.mp * 0.25 +
       s.speed * 10 +
-      s.critChance * 3 +
-      s.critDmg * 1
+      s.critChance * 3
     );
   };
 
@@ -280,12 +281,11 @@ interface IStatValues {
   mp: number;
   speed: number;
   critChance: number;
-  critDmg: number;
   dmgMin: number;
   dmgMax: number;
 }
 
-const EMPTY_STATS: IStatValues = { attack: 0, defense: 0, hp: 0, mp: 0, speed: 0, critChance: 0, critDmg: 0, dmgMin: 0, dmgMax: 0 };
+const EMPTY_STATS: IStatValues = { attack: 0, defense: 0, hp: 0, mp: 0, speed: 0, critChance: 0, dmgMin: 0, dmgMax: 0 };
 
 const getItemStatValues = (item: IInventoryItem): IStatValues => {
   const base = findBaseItem(item.itemId, ALL_ITEMS);
@@ -387,10 +387,12 @@ const STAT_LABELS: Record<keyof IStatValues, string> = {
   mp: 'MP',
   speed: 'Szybkosc',
   critChance: 'Kryty %',
-  critDmg: 'Kryty DMG',
   dmgMin: 'Atak min',
   dmgMax: 'Atak max',
 };
+
+const displayItemStat = (key: keyof IStatValues, value: number): number =>
+  key === 'hp' ? scaleGearHp(value) : value;
 
 const BASE_STAT_BY_SLOT: Partial<Record<EquipmentSlot, keyof IStatValues>> = {
   mainHand: 'attack',
@@ -414,7 +416,6 @@ const BASE_STAT_META: Record<keyof IStatValues, { icon: string; label: string; c
   mp:         { icon: 'droplet', label: 'MP',   color: '#64b5f6' },
   speed:      { icon: 'person-running', label: 'SPD',  color: '#81c784' },
   critChance: { icon: 'bullseye', label: 'CRIT', color: '#ffb74d' },
-  critDmg:    { icon: 'collision', label: 'CDMG', color: '#ff8a65' },
   dmgMin:     { icon: 'crossed-swords', label: 'DMG',  color: '#ffc107' },
   dmgMax:     { icon: 'crossed-swords', label: 'DMG',  color: '#ffc107' },
 };
@@ -449,8 +450,7 @@ const handleStatReset = () => {
 
   const highestLevel = char.highest_level ?? char.level;
   const levelsGained = Math.max(0, highestLevel - 1);
-  const pointsPerLevel = statPointsForLevelUp(char.class);
-  const totalEarned = levelsGained * pointsPerLevel;
+  const totalEarned = getAttributePointsForLevel(highestLevel);
 
   const levelHpGain = levelsGained * hpPerLevel;
   const levelMpGain = levelsGained * mpPerLevel;
@@ -467,6 +467,7 @@ const handleStatReset = () => {
     stat_points: totalEarned,
   });
 
+  useAttributeStore.getState().resetAllocation();
   useInventoryStore.getState().useConsumable('stat_reset');
 };
 
@@ -513,7 +514,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
   const genStats = !base && genInfo ? (() => {
     const upgradeLevel = item.upgradeLevel ?? 0;
     const upgradeMult = getEnhancementMultiplier(upgradeLevel);
-    const s = { attack: 0, defense: 0, hp: 0, mp: 0, speed: 0, critChance: 0, critDmg: 0, dmgMin: 0, dmgMax: 0 };
+    const s = { attack: 0, defense: 0, hp: 0, mp: 0, speed: 0, critChance: 0, dmgMin: 0, dmgMax: 0 };
     for (const [key, val] of Object.entries(item.bonuses)) {
       if (key === 'dmg_min') {
         s.dmgMin = Math.floor(val * upgradeMult);
@@ -689,7 +690,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
     onDisassembleStateChange?.(true);
 
     setTimeout(() => {
-      const gotStone = Math.random() < 0.20;
+      const gotStone = Math.random() < DISASSEMBLE_STONE_CHANCE;
       removeItem(item.uuid);
       if (gotStone) {
         addStones(disassembleStoneType, 1);
@@ -837,7 +838,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
               if (!displayStats || !itemSlot) return null;
               const baseKey = BASE_STAT_BY_SLOT[itemSlot];
               if (!baseKey) return null;
-              const baseVal = (displayStats as Partial<IStatValues>)[baseKey] ?? 0;
+              const baseVal = displayItemStat(baseKey, (displayStats as Partial<IStatValues>)[baseKey] ?? 0);
               if (!baseVal) return null;
               const meta = BASE_STAT_META[baseKey];
               return (
@@ -877,7 +878,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           const rows: Array<{ key: keyof IStatValues; value: number; suffix?: string }> = [];
           const pushRow = (k: keyof IStatValues, suffix?: string) => {
             if (skipKeys.has(k)) return;
-            const v = (displayStats as Partial<IStatValues>)[k] ?? 0;
+            const v = displayItemStat(k, (displayStats as Partial<IStatValues>)[k] ?? 0);
             if (v > 0) rows.push({ key: k, value: v, suffix });
           };
           pushRow('attack');
@@ -886,7 +887,6 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
           pushRow('mp');
           pushRow('speed');
           pushRow('critChance');
-          pushRow('critDmg', '%');
           if (rows.length === 0) return null;
           return (
             <div className="inventory__detail-stats">
@@ -1211,7 +1211,7 @@ const DetailPanel = ({ item, isEquipped, equippedSlot, onClose, onDisassembleSta
                   onClick={handleDisassemble}
                   disabled={actionInProgress || disassembling}
                 >
-                  {disassembling ? <><GameIcon name="hourglass-not-done" /> Rozkladanie...</> : <><GameIcon name="hammer" /> Rozloz (20% na <TinyIcon icon={STONE_ICONS[disassembleStoneType] ?? 'gem-stone'} size="sm" /> {disassembleStoneName})</>}
+                  {disassembling ? <><GameIcon name="hourglass-not-done" /> Rozkladanie...</> : <><GameIcon name="hammer" /> Rozloz (25% na <TinyIcon icon={STONE_ICONS[disassembleStoneType] ?? 'gem-stone'} size="sm" /> {disassembleStoneName})</>}
                 </button>
               )}
             </div>
@@ -1455,7 +1455,7 @@ const EquippedComparisonColumn = ({ newItem, equippedItem }: IEquippedComparison
   const eqStats = buildItemStats(equippedItem);
   const allKeys = Array.from(new Set([...Object.keys(newStats), ...Object.keys(eqStats)]));
 
-  const STAT_ORDER = ['attack', 'defense', 'hp', 'mp', 'speed', 'critChance', 'critDmg', 'dmg_min', 'dmg_max'];
+  const STAT_ORDER = ['attack', 'defense', 'hp', 'mp', 'speed', 'critChance', 'dmg_min', 'dmg_max'];
   const sortedKeys = allKeys.sort((a, b) => {
     const ai = STAT_ORDER.indexOf(a); const bi = STAT_ORDER.indexOf(b);
     if (ai === -1 && bi === -1) return a.localeCompare(b);
@@ -1611,7 +1611,7 @@ const StatsPopupBody = memo(() => {
 
   const rawAtk = character.attack + eqStats.attack + tfFlatAtk;
   const rawDef = character.defense + eqStats.defense + tb.defense + tfFlatDef;
-  const rawHp  = character.max_hp + eqStats.hp + tb.max_hp + getElixirHpBonus() + tfFlatHp;
+  const rawHp  = character.max_hp + scaleGearHp(eqStats.hp) + tb.max_hp + getElixirHpBonus() + tfFlatHp;
   const rawMp  = character.max_mp + eqStats.mp + tb.max_mp + getElixirMpBonus() + tfFlatMp;
   const eff = engineGetEffectiveChar(character);
   const effAtk = eff ? eff.attack : Math.floor(rawAtk * (1 + tfAtkPct / 100));
@@ -1622,7 +1622,6 @@ const StatsPopupBody = memo(() => {
   const effCrit = eff
     ? Math.min(50, Math.round(eff.crit_chance * 100))
     : Math.min(50, Math.round((character.crit_chance ?? 0.05) * 100) + eqStats.critChance + tb.crit_chance * 100);
-  const effCritDmg = eff ? eff.crit_damage : ((character.crit_damage ?? 2.0) + eqStats.critDmg * 0.01 + tb.crit_dmg);
   const effHpRegen = eff ? eff.hp_regen : ((character.hp_regen ?? 0) + tb.hp_regen + tfHpRegen);
   const effMpRegen = eff ? eff.mp_regen : ((character.mp_regen ?? 0) + tb.mp_regen + tfMpRegen);
 
@@ -1641,8 +1640,8 @@ const StatsPopupBody = memo(() => {
   const dual = isRogue ? 0.6 : 1.0;
   const basicMin = Math.max(1, Math.floor((character.attack + wepMin + classBonus.skillBonus) * classMod * dual));
   const basicMax = Math.max(1, Math.floor((character.attack + wepMax + classBonus.skillBonus) * classMod * dual));
-  const critMin = Math.max(1, Math.floor(basicMin * effCritDmg));
-  const critMax = Math.max(1, Math.floor(basicMax * effCritDmg));
+  const critMin = Math.max(1, Math.floor(basicMin * CRIT_MULT_MIN));
+  const critMax = Math.max(1, Math.floor(basicMax * CRIT_MULT_MAX));
   const rogueBasicMinTotal = isRogue ? basicMin * 2 : basicMin;
   const rogueBasicMaxTotal = isRogue ? basicMax * 2 : basicMax;
 
@@ -1700,7 +1699,7 @@ const StatsPopupBody = memo(() => {
           );
           const hpLines = buildLines(
             { label: 'Baza', value: `${character.max_hp}` },
-            line('Eq', eqStats.hp),
+            line('Eq', scaleGearHp(eqStats.hp)),
             line('Trening', tb.max_hp),
             line('Eliksir', elixirHp),
             line('TF flat', tfFlatHp),
@@ -1724,11 +1723,8 @@ const StatsPopupBody = memo(() => {
             eqStats.critChance > 0 ? { label: 'Eq', value: `+${eqStats.critChance}%` } : null,
             tb.crit_chance > 0 ? { label: 'Trening', value: `+${(tb.crit_chance * 100).toFixed(1)}%` } : null,
           );
-          const baseCritDmg = character.crit_damage ?? 2.0;
           const critDmgLines = buildLines(
-            { label: 'Baza', value: `x${baseCritDmg.toFixed(1)}` },
-            eqStats.critDmg > 0 ? { label: 'Eq', value: `+${(eqStats.critDmg * 0.01).toFixed(2)}` } : null,
-            tb.crit_dmg > 0 ? { label: 'Trening', value: `+${tb.crit_dmg.toFixed(2)}` } : null,
+            { label: 'Losowy mnoznik', value: `x${CRIT_MULT_MIN.toFixed(1)}–x${CRIT_MULT_MAX.toFixed(1)}` },
           );
           const hpRegenLines = buildLines(
             { label: 'Baza', value: `${(character.hp_regen ?? 0).toFixed(1)}/s` },
@@ -1750,7 +1746,7 @@ const StatsPopupBody = memo(() => {
               <StatBox label="Max HP"         value={effMaxHp}                   breakdown={hpLines} />
               <StatBox label="Max MP"         value={effMaxMp}                   breakdown={mpLines} />
               <StatBox label="Kryty %"        value={`${effCrit}%`}              breakdown={critLines} />
-              <StatBox label="Kryty DMG"      value={`x${effCritDmg.toFixed(1)}`} breakdown={critDmgLines} />
+              <StatBox label="Kryty DMG"      value={`x${CRIT_MULT_MIN.toFixed(1)}–${CRIT_MULT_MAX.toFixed(1)}`} breakdown={critDmgLines} />
               <StatBox label="HP Regen"       value={`${effHpRegen.toFixed(1)}/s`} breakdown={hpRegenLines} />
               <StatBox label="MP Regen"       value={`${effMpRegen.toFixed(1)}/s`} breakdown={mpRegenLines} />
               {(tfDmgPct > 0 || bfDmgPct > 0) && (
@@ -1849,7 +1845,6 @@ const trainingPerLevelLabel = (skillId: string, currentLevel: number, characterC
     defense: { key: 'defense', suffix: ' DEF', precision: 0 },
     fishing: { key: 'max_hp', suffix: ' HP', precision: 0 },
     crit_chance: { key: 'crit_chance', suffix: '% Crit', precision: 1 },
-    crit_dmg: { key: 'crit_dmg', suffix: '× Crit DMG', precision: 2 },
     hp_regen: { key: 'hp_regen', suffix: ' HP/s', precision: 1 },
     mp_regen: { key: 'mp_regen', suffix: ' MP/s', precision: 1 },
     max_hp: { key: 'max_hp', suffix: ' HP', precision: 0 },
@@ -2275,7 +2270,7 @@ const ActiveSkillsPopupBody = memo(() => {
                   </div>
                   <div className="inventory__skills-card-stats">
                     <span>MP {skill.mpCost}</span>
-                    <span>CD {(resolveSkillRecastMs(skill.id, 8000) / 1000).toFixed(1)}s</span>
+                    <span>CD {(resolveSkillRecastMs(skill.id, 20000) / 1000).toFixed(1)}s</span>
                     {skill.damage > 0 && <span>×{skillMult.toFixed(2)} DMG{upgradeLevel > 0 && <span className="inventory__skills-card-bonus"> +{(currentBonus * 100).toFixed(0)}%</span>}</span>}
                   </div>
                 </div>
@@ -2538,7 +2533,7 @@ const BUFF_CONFIG: Record<string, IBuffConfig> = {
   'skill_xp_boost_1h':                { id: 'skill_xp_boost',        name: 'Skill XP +50%',   icon: 'sparkles',  effect: 'skill_xp_boost',        durationMs: 3600000, pausable: false },
   'skill_xp_boost_100_1h':            { id: 'skill_xp_boost_100',    name: 'Skill XP +100%',  icon: 'bright-button', effect: 'skill_xp_boost_100',    durationMs: 3600000, pausable: false },
   'attack_speed_0.20_15m_pausable':   { id: 'attack_speed',          name: 'AS +20%',         icon: 'high-voltage',  effect: 'attack_speed',          durationMs: 900000,  pausable: true },
-  'cooldown_reduction_0.20_30m':      { id: 'cooldown_reduction',    name: 'CD -20%',         icon: 'cyclone',  effect: 'cooldown_reduction',    durationMs: 1800000 },
+  'cooldown_reduction_0.20_30m':      { id: 'cooldown_reduction',    name: 'CD -2s',         icon: 'cyclone',  effect: 'cooldown_reduction',    durationMs: 1800000 },
   'hp_pct_25_15m':                    { id: 'hp_pct_25',             name: 'Max HP +25%',     icon: 'heart-on-fire', effect: 'hp_pct_25',     durationMs: 900000,  pausable: true },
   'mp_pct_25_15m':                    { id: 'mp_pct_25',             name: 'Max MP +25%',     icon: 'diamond-with-a-dot',  effect: 'mp_pct_25',             durationMs: 900000,  pausable: true },
   'offline_training_boost':           { id: 'offline_training_boost',name: 'Trening x2',      icon: 'person-lifting-weights', effect: 'offline_training_boost',durationMs: 3600000, pausable: true },
@@ -2601,8 +2596,11 @@ const Inventory = () => {
     setAutoPotionPctHpId, setAutoPotionPctMpId,
   } = useSettingsStore(useShallow((s) => ({ autoSellCommon: s.autoSellCommon, autoSellRare: s.autoSellRare, autoSellEpic: s.autoSellEpic, autoSellLegendary: s.autoSellLegendary, autoSellMythic: s.autoSellMythic, setAutoSellCommon: s.setAutoSellCommon, setAutoSellRare: s.setAutoSellRare, setAutoSellEpic: s.setAutoSellEpic, setAutoSellLegendary: s.setAutoSellLegendary, setAutoSellMythic: s.setAutoSellMythic, autoSellMaxLevel: s.autoSellMaxLevel, setAutoSellMaxLevel: s.setAutoSellMaxLevel, autoDisassembleCommon: s.autoDisassembleCommon, autoDisassembleRare: s.autoDisassembleRare, autoDisassembleEpic: s.autoDisassembleEpic, autoDisassembleLegendary: s.autoDisassembleLegendary, autoDisassembleMythic: s.autoDisassembleMythic, setAutoDisassembleCommon: s.setAutoDisassembleCommon, setAutoDisassembleRare: s.setAutoDisassembleRare, setAutoDisassembleEpic: s.setAutoDisassembleEpic, setAutoDisassembleLegendary: s.setAutoDisassembleLegendary, setAutoDisassembleMythic: s.setAutoDisassembleMythic, autoDisassembleMaxLevel: s.autoDisassembleMaxLevel, setAutoDisassembleMaxLevel: s.setAutoDisassembleMaxLevel, autoPotionHpEnabled: s.autoPotionHpEnabled, autoPotionMpEnabled: s.autoPotionMpEnabled, autoPotionHpThreshold: s.autoPotionHpThreshold, autoPotionMpThreshold: s.autoPotionMpThreshold, autoPotionHpId: s.autoPotionHpId, autoPotionMpId: s.autoPotionMpId, setAutoPotionHpEnabled: s.setAutoPotionHpEnabled, setAutoPotionMpEnabled: s.setAutoPotionMpEnabled, setAutoPotionHpThreshold: s.setAutoPotionHpThreshold, setAutoPotionMpThreshold: s.setAutoPotionMpThreshold, setAutoPotionHpId: s.setAutoPotionHpId, setAutoPotionMpId: s.setAutoPotionMpId, autoPotionPctHpEnabled: s.autoPotionPctHpEnabled, autoPotionPctMpEnabled: s.autoPotionPctMpEnabled, autoPotionPctHpThreshold: s.autoPotionPctHpThreshold, autoPotionPctMpThreshold: s.autoPotionPctMpThreshold, autoPotionPctHpId: s.autoPotionPctHpId, autoPotionPctMpId: s.autoPotionPctMpId, setAutoPotionPctHpEnabled: s.setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled: s.setAutoPotionPctMpEnabled, setAutoPotionPctHpThreshold: s.setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold: s.setAutoPotionPctMpThreshold, setAutoPotionPctHpId: s.setAutoPotionPctHpId, setAutoPotionPctMpId: s.setAutoPotionPctMpId })));
   const character = useCharacterStore((s) => s.character);
-  const spendStatPoint = useCharacterStore((s) => s.spendStatPoint);
-  const spendAllStatPoints = useCharacterStore((s) => s.spendAllStatPoints);
+  const spendAttributePoint = useCharacterStore((s) => s.spendAttributePoint);
+  const attrDefensePoints = useAttributeStore((s) => s.defensePoints);
+  const attrAttackPoints = useAttributeStore((s) => s.attackPoints);
+  const attrHpPoints = useAttributeStore((s) => s.hpPoints);
+  const attrAllocation = { attackPoints: attrAttackPoints, hpPoints: attrHpPoints, defensePoints: attrDefensePoints };
   const [statAllocAllAtOnce, setStatAllocAllAtOnce] = useState(false);
   const completedTransforms = useTransformStore((s) => s.completedTransforms);
   const getHighestTransformColor = useTransformStore((s) => s.getHighestTransformColor);
@@ -3070,7 +3068,7 @@ const Inventory = () => {
   };
 
   const [bulkDisassembleResult, setBulkDisassembleResult] = useState<{
-    total: number; stones: Record<string, number>;
+    total: number; stones: Record<string, number>; failed?: boolean;
   } | null>(null);
 
   const handleMassDisassemble = () => {
@@ -3099,7 +3097,8 @@ const Inventory = () => {
         }
         void (async () => {
           let stones: Record<string, number> = {};
-          let disassembled = totalCount;
+          let disassembled = 0;
+          let failed = false;
           try {
             const res = await backendApi.disassembleMass(character.id, uuids);
             await syncFromBackend(character.id);
@@ -3110,15 +3109,17 @@ const Inventory = () => {
             if (typeof r.disassembled === 'number') {
               disassembled = r.disassembled;
             }
+            if (disassembled === 0) failed = true;
           } catch (e) {
             console.warn('[backend] mass disassemble failed', e);
+            failed = true;
             await syncFromBackend(character.id).catch(() => { });
           }
           setDisassembleAnimating(false);
           setDisassembleProgress(0);
           setDisassembleTotalItems(0);
           setDisassembleCurrentItem(null);
-          setBulkDisassembleResult({ total: disassembled, stones });
+          setBulkDisassembleResult({ total: disassembled, stones, failed });
           setSelectedUuids(new Set());
           setBulkMode('none');
         })();
@@ -3175,7 +3176,10 @@ const Inventory = () => {
     const stonesByRarity: Record<string, number> = {};
     for (const item of items) {
       const stoneId = STONE_FOR_RARITY[item.rarity as Rarity] ?? 'common_stone';
-      stonesByRarity[stoneId] = (stonesByRarity[stoneId] ?? 0) + 1;
+      stonesByRarity[stoneId] = (stonesByRarity[stoneId] ?? 0) + DISASSEMBLE_STONE_CHANCE;
+    }
+    for (const k of Object.keys(stonesByRarity)) {
+      stonesByRarity[k] = Math.round(stonesByRarity[k]);
     }
     return { count: items.length, stonesByRarity };
   }, [bag, selectedUuids, bulkMode]);
@@ -3284,70 +3288,67 @@ const Inventory = () => {
 
                   {character && (character.stat_points ?? 0) > 0 && (() => {
                       const pts = character.stat_points ?? 0;
-                      const hpBonus = statAllocAllAtOnce ? pts * 5 : 5;
-                      const mpBonus = statAllocAllAtOnce ? pts * 5 : 5;
-                      const atkBonus = statAllocAllAtOnce ? pts : 1;
-                      const defBonus = statAllocAllAtOnce ? pts : 1;
-                      const tooltip = (statName: string, bonus: number, unit: string) =>
-                          statAllocAllAtOnce
-                              ? `Włóż wszystkie ${pts} pkt w ${statName} (+${bonus} ${unit})`
-                              : `Włóż 1 pkt w ${statName} (+${bonus} ${unit})`;
-                      const handleClick = (stat: 'max_hp' | 'max_mp' | 'attack' | 'defense') =>
-                          statAllocAllAtOnce ? spendAllStatPoints(stat) : spendStatPoint(stat);
+                      const defCap = getMaxDefensePoints(character.class);
+                      const defLeft = Math.max(0, defCap - attrDefensePoints);
+                      const applied = (stat: TAttributeStat) =>
+                          stat === 'defense'
+                              ? Math.min(statAllocAllAtOnce ? pts : 1, defLeft)
+                              : (statAllocAllAtOnce ? pts : 1);
+                      const bonusPct = (stat: TAttributeStat) => (applied(stat) * ATTRIBUTE_POINT_PCT).toFixed(2);
                       return (
                           <div className="inventory__stat-alloc">
                               <div className="inventory__stat-alloc-header">
-                                  <span className="inventory__stat-alloc-title">Punkty do rozdania</span>
+                                  <span className="inventory__stat-alloc-title">Atrybuty do rozdania</span>
                                   <span className="inventory__stat-alloc-count">{pts}</span>
                               </div>
+                              <p className="inventory__stat-alloc-hint">
+                                  1 punkt co {ATTRIBUTE_LEVEL_INTERVAL} poziomow. Kazdy punkt = +{ATTRIBUTE_POINT_PCT}% do wybranej statystyki
+                                  (liczone od pelnej wartosci razem z EQ, treningiem i transformem).
+                                  Obrona ma limit klasowy: {character.class} maks. +{ATTRIBUTE_DEF_CAP_PCT[character.class]}%
+                                  ({attrDefensePoints}/{defCap} pkt). Rozdane do tej pory: {getSpentAttributePoints(attrAllocation)} pkt
+                                  (+{(attrAllocation.attackPoints * ATTRIBUTE_POINT_PCT).toFixed(2)}% atak,
+                                  +{(attrAllocation.hpPoints * ATTRIBUTE_POINT_PCT).toFixed(2)}% HP,
+                                  +{(attrDefensePoints * ATTRIBUTE_POINT_PCT).toFixed(2)}% obrona).
+                              </p>
                               <label className="inventory__stat-alloc-toggle">
                                   <input
                                       type="checkbox"
                                       checked={statAllocAllAtOnce}
                                       onChange={(e) => setStatAllocAllAtOnce(e.target.checked)}
                                   />
-                                  <span>Rozdaj wszystkie naraz jednym kliknięciem</span>
+                                  <span>Rozdaj wszystkie naraz jednym klikni&#281;ciem</span>
                               </label>
                               <div className="inventory__stat-alloc-grid">
                                   <button
                                       type="button"
                                       className="inventory__stat-alloc-tile"
-                                      onClick={() => handleClick('max_hp')}
-                                      title={tooltip('HP', hpBonus, 'HP')}
-                                  >
-                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="red-heart" /></span>
-                                      <span className="inventory__stat-alloc-tile-name">HP</span>
-                                      <span className="inventory__stat-alloc-tile-bonus">+{hpBonus}</span>
-                                  </button>
-                                  <button
-                                      type="button"
-                                      className="inventory__stat-alloc-tile"
-                                      onClick={() => handleClick('max_mp')}
-                                      title={tooltip('MP', mpBonus, 'MP')}
-                                  >
-                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="droplet" /></span>
-                                      <span className="inventory__stat-alloc-tile-name">MP</span>
-                                      <span className="inventory__stat-alloc-tile-bonus">+{mpBonus}</span>
-                                  </button>
-                                  <button
-                                      type="button"
-                                      className="inventory__stat-alloc-tile"
-                                      onClick={() => handleClick('attack')}
-                                      title={tooltip('Atak', atkBonus, 'ATK')}
+                                      onClick={() => spendAttributePoint('attack', statAllocAllAtOnce)}
+                                      title={`+${bonusPct('attack')}% ataku`}
                                   >
                                       <span className="inventory__stat-alloc-tile-icon"><GameIcon name="crossed-swords" /></span>
                                       <span className="inventory__stat-alloc-tile-name">Atak</span>
-                                      <span className="inventory__stat-alloc-tile-bonus">+{atkBonus}</span>
+                                      <span className="inventory__stat-alloc-tile-bonus">+{bonusPct('attack')}%</span>
                                   </button>
                                   <button
                                       type="button"
                                       className="inventory__stat-alloc-tile"
-                                      onClick={() => handleClick('defense')}
-                                      title={tooltip('Obrona', defBonus, 'DEF')}
+                                      onClick={() => spendAttributePoint('hp', statAllocAllAtOnce)}
+                                      title={`+${bonusPct('hp')}% max HP`}
+                                  >
+                                      <span className="inventory__stat-alloc-tile-icon"><GameIcon name="red-heart" /></span>
+                                      <span className="inventory__stat-alloc-tile-name">HP</span>
+                                      <span className="inventory__stat-alloc-tile-bonus">+{bonusPct('hp')}%</span>
+                                  </button>
+                                  <button
+                                      type="button"
+                                      className="inventory__stat-alloc-tile"
+                                      onClick={() => spendAttributePoint('defense', statAllocAllAtOnce)}
+                                      disabled={defLeft <= 0}
+                                      title={defLeft > 0 ? `+${bonusPct('defense')}% obrony` : 'Limit obrony dla tej klasy osiagniety'}
                                   >
                                       <span className="inventory__stat-alloc-tile-icon"><GameIcon name="shield" /></span>
                                       <span className="inventory__stat-alloc-tile-name">Obrona</span>
-                                      <span className="inventory__stat-alloc-tile-bonus">+{defBonus}</span>
+                                      <span className="inventory__stat-alloc-tile-bonus">+{bonusPct('defense')}%</span>
                                   </button>
                               </div>
                           </div>
@@ -4421,9 +4422,10 @@ const Inventory = () => {
       {bulkMode === 'disassemble' && disassembleSummary.count > 0 && !disassembleAnimating && (
         <div className="inventory__multi-footer">
           <div className="inventory__disassemble-preview">
+            <span className="inventory__disassemble-preview-stone">szacowany lup ({Math.round(DISASSEMBLE_STONE_CHANCE * 100)}% na kamien):</span>
             {Object.entries(disassembleSummary.stonesByRarity).map(([stoneId, count]) => (
               <span key={stoneId} className="inventory__disassemble-preview-stone">
-                <TinyIcon icon={STONE_ICONS[stoneId] ?? 'gem-stone'} size="sm" /> {STONE_NAMES[stoneId] ?? stoneId}: <strong>x{count}</strong>
+                <TinyIcon icon={STONE_ICONS[stoneId] ?? 'gem-stone'} size="sm" /> {STONE_NAMES[stoneId] ?? stoneId}: <strong>~{count}</strong>
               </span>
             ))}
           </div>
@@ -4480,9 +4482,15 @@ const Inventory = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
-            <h3 className="inventory__bulk-result-title"><GameIcon name="hammer" /> Rozkladanie zakonczone!</h3>
+            <h3 className="inventory__bulk-result-title">
+              <GameIcon name="hammer" /> {bulkDisassembleResult.failed ? 'Rozkladanie nie powiodlo sie' : 'Rozkladanie zakonczone!'}
+            </h3>
             <div className="inventory__bulk-result-summary">
-              <div>Rozlozono przedmiotow: <strong>{bulkDisassembleResult.total}</strong></div>
+              {bulkDisassembleResult.failed ? (
+                <div>Nie rozlozono zadnego przedmiotu — serwer odrzucil operacje. Przedmioty zostaly w torbie. Sprobuj ponownie za chwile.</div>
+              ) : (
+                <div>Rozlozono przedmiotow: <strong>{bulkDisassembleResult.total}</strong></div>
+              )}
             </div>
             {Object.keys(bulkDisassembleResult.stones).length > 0 && (
               <div className="inventory__bulk-result-stones">

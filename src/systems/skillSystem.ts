@@ -49,7 +49,6 @@ export const OFFLINE_TRAINING_SPEED_MULTIPLIER: Record<string, number> = {
     mp_regen:          0.15,
     hp_regen:          0.15,
     crit_chance:       0.12,
-    crit_dmg:          0.12,
     attack_speed:      0.1,
 };
 
@@ -171,7 +170,6 @@ export const SKILL_NAMES_PL: Record<string, string> = {
     mp_regen:         'Regeneracja MP',
     defense:          'Obrona',
     crit_chance:      'Szansa na Kryt',
-    crit_dmg:         'Obrażenia Krytyczne',
 };
 
 export const ALL_WEAPON_SKILL_IDS: string[] = [
@@ -180,7 +178,7 @@ export const ALL_WEAPON_SKILL_IDS: string[] = [
 
 export const GENERAL_TRAINABLE_STATS: string[] = [
     'attack_speed', 'max_hp', 'max_mp', 'hp_regen', 'mp_regen',
-    'defense', 'crit_chance', 'crit_dmg',
+    'defense', 'crit_chance',
 ];
 
 export const getTrainableStatsForClass = (cls: CharacterClass): string[] => {
@@ -202,7 +200,6 @@ export interface ITrainingBonuses {
     mp_regen: number;
     defense: number;
     crit_chance: number;
-    crit_dmg: number;
 }
 
 const CLASS_HP_REGEN_RATE: Record<string, number> = {
@@ -233,7 +230,6 @@ export const getTrainingBonuses = (skillLevels: Record<string, number>, characte
     mp_regen:     (skillLevels['mp_regen'] ?? 0) * (characterClass ? (CLASS_MP_REGEN_RATE[characterClass] ?? 0.1) : 0.1),
     defense:      (skillLevels['defense'] ?? 0),
     crit_chance:  (skillLevels['crit_chance'] ?? 0) * 0.005,
-    crit_dmg:     (skillLevels['crit_dmg'] ?? 0) * 0.02,
 });
 
 export const skillXpProgress = (currentXp: number, skillLevel: number): number => {
@@ -287,8 +283,14 @@ export const getCombatSkillUpgradeMultiplier = (upgradeLevel: number): number =>
 export const getSkillUpgradeBonus = (upgradeLevel: number): number =>
     getCombatSkillUpgradeMultiplier(upgradeLevel) - 1;
 
+export const SKILL_TIER_MIN = 0.85;
+
+export const SKILL_TIER_MAX = 1.75;
+
 export const skillTierMult = (skillDamageCoeff: number): number =>
-    skillDamageCoeff <= 0 ? 0 : Math.min(1.7, Math.max(1.2, 1.2 + (skillDamageCoeff - 5.4) / 10 * 0.9));
+    skillDamageCoeff <= 0
+        ? 0
+        : Math.min(SKILL_TIER_MAX, Math.max(SKILL_TIER_MIN, SKILL_TIER_MIN + (skillDamageCoeff - 3) / 12 * 1.1));
 
 export const rollSkillDamageMult = (
     skillDamageCoeff: number,

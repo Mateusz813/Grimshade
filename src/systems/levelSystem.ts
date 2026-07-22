@@ -1,3 +1,4 @@
+import { getAttributePointsForLevel } from './attributeSystem';
 
 interface IXpAnchor { level: number; xp: number }
 
@@ -46,18 +47,7 @@ export const totalXpForLevel = (level: number): number => {
   return total;
 };
 
-const STAT_POINTS_PER_CLASS: Record<string, number> = {
-  Knight: 2,
-  Mage: 2,
-  Cleric: 2,
-  Archer: 2,
-  Rogue: 2,
-  Necromancer: 2,
-  Bard: 2,
-};
-
-export const statPointsForLevelUp = (characterClass?: string): number =>
-  STAT_POINTS_PER_CLASS[characterClass ?? ''] ?? 2;
+export const ATTRIBUTE_POINTS_PER_MILESTONE = 1;
 
 export interface ILevelUpResult {
   newLevel: number;
@@ -74,15 +64,16 @@ export const processXpGain = (
   let level = currentLevel;
   let xp = currentXp + xpGained;
   let levelsGained = 0;
-  let statPointsGained = 0;
 
   const HARD_SAFETY_CAP = 10_000;
+  const startLevel = level;
   while (xp >= xpToNextLevel(level) && level < HARD_SAFETY_CAP) {
     xp -= xpToNextLevel(level);
     level++;
     levelsGained++;
-    statPointsGained += statPointsForLevelUp();
   }
+
+  const statPointsGained = getAttributePointsForLevel(level) - getAttributePointsForLevel(startLevel);
 
   return { newLevel: level, remainingXp: xp, levelsGained, statPointsGained };
 };

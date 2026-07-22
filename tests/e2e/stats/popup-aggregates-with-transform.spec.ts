@@ -6,6 +6,16 @@ import { createCharacterViaApi, generateTestCharacterName } from '../fixtures/cr
 import { cleanupCharacterById } from '../fixtures/cleanup';
 import { seedEquippedItem } from '../fixtures/seedInventory';
 import { seedGameSave, findUserIdByEmail } from '../fixtures/seedGameSave';
+import { baseMaxHpFloor, scaleGearHp, TRAIN_HP_PER_LEVEL } from '../fixtures/balance';
+
+const GEAR_HP = 20;
+const TRAIN_LVL = 4;
+const FLAT_ELIXIR_HP = 500;
+const TF_FLAT_HP = 420;
+const TF_HP_PCT = 4;
+const BASE_HP = baseMaxHpFloor('Knight', 5);
+const RAW_MAX_HP = BASE_HP + scaleGearHp(GEAR_HP) + TRAIN_LVL * TRAIN_HP_PER_LEVEL + FLAT_ELIXIR_HP + TF_FLAT_HP;
+const EXPECTED_MAX_HP = Math.floor(RAW_MAX_HP * (1 + TF_HP_PCT / 100));
 
 test.describe('Stats › Popup', { tag: '@stats' }, () => {
     test.describe.configure({ timeout: 90_000 });
@@ -74,20 +84,18 @@ test.describe('Stats › Popup', { tag: '@stats' }, () => {
             const hpBox = statsPopup.locator('.inventory__stats-box', {
                 has: page.locator('.inventory__stats-box-label', { hasText: /^Max HP$/ }),
             });
-            await expect(hpBox.locator('.inventory__stats-box-value')).toHaveText('1239');
+            await expect(hpBox.locator('.inventory__stats-box-value')).toHaveText(String(EXPECTED_MAX_HP));
 
-            await expect(hpBox).toContainText('Baza');
-            await expect(hpBox).toContainText('232');
-            await expect(hpBox).toContainText('Eq');
-            await expect(hpBox).toContainText('+20');
-            await expect(hpBox).toContainText('Trening');
-            await expect(hpBox).toContainText('Eliksir');
-            await expect(hpBox).toContainText('+500');
-            await expect(hpBox).toContainText('TF flat');
-            await expect(hpBox).toContainText('+420');
-            await expect(hpBox).toContainText('TF %');
-            await expect(hpBox).toContainText(/\+4%/);
-            await expect(hpBox).toContainText(/\(47\)/);
+            const breakdownRow = (label: string) => hpBox.locator('.inventory__stats-box-breakdown-row', {
+                has: page.locator('.inventory__stats-box-breakdown-label', { hasText: new RegExp(`^${label}$`) }),
+            }).locator('.inventory__stats-box-breakdown-value');
+
+            await expect(breakdownRow('Baza')).toHaveText(String(BASE_HP));
+            await expect(breakdownRow('Eq')).toHaveText(`+${scaleGearHp(GEAR_HP)}`);
+            await expect(breakdownRow('Trening')).toHaveText(`+${TRAIN_LVL * TRAIN_HP_PER_LEVEL}`);
+            await expect(breakdownRow('Eliksir')).toHaveText(`+${FLAT_ELIXIR_HP}`);
+            await expect(breakdownRow('TF flat')).toHaveText(`+${TF_FLAT_HP}`);
+            await expect(breakdownRow('TF %')).toHaveText(`+${TF_HP_PCT}% (${EXPECTED_MAX_HP - RAW_MAX_HP})`);
         } finally {
             if (createdId) {
                 await cleanupCharacterById(createdId);

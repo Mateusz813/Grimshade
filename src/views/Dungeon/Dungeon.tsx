@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { rollWeaponDamage, formatSkillName } from '../../systems/combatViewHelpers';
+import { rollWeaponDamage, formatSkillName, CLASS_MODIFIER } from '../../systems/combatViewHelpers';
 import { useShallow } from 'zustand/react/shallow';
 import { AnimatePresence, motion } from 'framer-motion';
 import dungeonData from '../../data/dungeons.json';
@@ -28,14 +28,14 @@ import {
     type IDungeonResult,
     type DungeonMonsterType,
 } from '../../systems/dungeonSystem';
-import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs, mitigateDamage } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs, mitigateDamage, scaleGearHp, rollCritMultiplier } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
     getElixirHpBonus,
     getElixirMpBonus,
-    getElixirAtkBonus,
+    getElixirAtkBonus, getCooldownReductionMs,
     getElixirDefBonus,
     getElixirAttackSpeedMultiplier,
     tickCombatElixirs,
@@ -203,7 +203,7 @@ const getDungeonStoneDrops = (dungeonLevel: number) =>
     DUNGEON_STONE_DROPS.filter((s) => dungeonLevel >= s.minLevel);
 
 
-const SKILL_COOLDOWN_MS = 5000;
+const SKILL_COOLDOWN_MS = 20000;
 const SKILL_MP_COST = 15;
 const POTION_COOLDOWN_MS = 1000;
 
@@ -397,10 +397,11 @@ const Dungeon = () => {
     const eqStats   = getTotalEquipmentStats(equipment, allItems);
     const tb        = getTrainingBonuses(skillLevels, character?.class ?? 'Knight');
     const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), activeDungeon?.level ?? 0);
-    const charAtk   = ((character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult;
-    const charDef   = (character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus();
-    const effChar   = character ? getEffectiveChar(character) : null;
-    const baseMaxHp = (character?.max_hp ?? 0) + eqStats.hp + tb.max_hp + getElixirHpBonus();
+    const effChar   = character ? getEffectiveChar(character, activeDungeon?.level ?? 0) : null;
+    const classMod  = CLASS_MODIFIER[character?.class ?? ''] ?? 1;
+    const charAtk   = (effChar?.attack ?? (((character?.attack ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult)) * classMod;
+    const charDef   = effChar?.defense ?? ((character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus());
+    const baseMaxHp = (character?.max_hp ?? 0) + scaleGearHp(eqStats.hp) + tb.max_hp + getElixirHpBonus();
     const baseMaxMp = (character?.max_mp ?? 0) + eqStats.mp + tb.max_mp + getElixirMpBonus();
     const charMaxHp = effChar?.max_hp ?? baseMaxHp;
     const charMaxMp = effChar?.max_mp ?? baseMaxMp;
@@ -1131,7 +1132,7 @@ const Dungeon = () => {
         if (!skillId) return;
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-        if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) return;
+        if (now - lastUsed < getSpeedScaledCooldownMs(Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()), speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
@@ -1206,7 +1207,7 @@ const Dungeon = () => {
         playerMpRef.current = newMp;
         setPlayerMp(newMp);
         skillCooldownRef.current.set(skillId, now);
-        setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
+        setSkillCooldowns((prev) => ({ ...prev, [skillId]: Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) }));
         { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd, speedMult); }
         let totalDmgDealtThisCast = isDamageHit ? skillDmg : 0;
         if (apply.healPartyPctInstant > 0) {
@@ -1376,7 +1377,7 @@ const Dungeon = () => {
             const mods = consumeCasterBasicHitMods(playerStatus);
             syncCasterChargeConsume(mods.consumed);
             const baseCrit = mods.forceCrit ? true : Math.random() < mods.extraCritChance;
-            const critMult = baseCrit ? 2.0 : 1.0;
+            const critMult = baseCrit ? rollCritMultiplier() : 1.0;
             const finalDmg = Math.max(1, Math.floor(rolledDmg * critMult * mods.dmgMult * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
 
             const newMHp = applyDamageToSlot(slot, finalDmg);
@@ -1473,7 +1474,7 @@ const Dungeon = () => {
                 const skillId = slots[i];
                 if (!skillId) continue;
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-                if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) continue;
+                if (now - lastUsed < getSpeedScaledCooldownMs(Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()), speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 const tgt = getFirstAliveSlot();
                 if (tgt < 0) break;
@@ -1540,7 +1541,7 @@ const Dungeon = () => {
                 playerMpRef.current = newMp;
                 setPlayerMp(newMp);
                 skillCooldownRef.current.set(skillId, now);
-                setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
+                setSkillCooldowns((prev) => ({ ...prev, [skillId]: Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) }));
                 { const sd2 = getSkillDef(skillId); if (sd2) applySkillBuff(skillId, sd2, speedMult); }
                 triggerSkillAnim(skillId);
                 if (!targetsEnemyAuto) {
@@ -2302,7 +2303,7 @@ const Dungeon = () => {
                                 icon: getSkillIcon(skillId),
                                 name: skillId,
                                 mpCost: SKILL_MP_COST,
-                                cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
+                                cooldownProgress: cdActive ? 1 - cdRemaining / Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) : 1,
                                 cooldownRemainingMs: cdRemaining,
                                 disabled: skillMode === 'auto' || noMp || cdActive,
                                 onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),

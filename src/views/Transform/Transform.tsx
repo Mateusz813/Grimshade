@@ -64,6 +64,7 @@ import {
   rollMonsterDamage,
   getSpeedScaledCooldownMs,
   resolveSkillRecastMs,
+  scaleGearHp,
 } from '../../systems/combat';
 import {
   getClassSkillBonus,
@@ -81,7 +82,7 @@ import {
   getElixirMpBonus,
   getElixirHpPctMultiplier,
   getElixirMpPctMultiplier,
-  getElixirAtkBonus,
+  getElixirAtkBonus, getCooldownReductionMs,
   getElixirDefBonus,
   getElixirAttackSpeedMultiplier,
   tickCombatElixirs,
@@ -242,7 +243,7 @@ const ATTACK_ANIM_DURATION: Record<string, number> = {
   Knight: 350, Mage: 400, Cleric: 400, Archer: 300, Rogue: 250, Necromancer: 450, Bard: 400,
 };
 
-const SKILL_COOLDOWN_MS = 5000;
+const SKILL_COOLDOWN_MS = 20000;
 const SKILL_MP_COST = 15;
 const POTION_COOLDOWN_MS = 1000;
 const PCT_POTION_CD_MS = 500;
@@ -354,7 +355,7 @@ const getEffectiveChar = (
   const { skillLevels } = useSkillStore.getState();
   const tb = getTrainingBonuses(skillLevels, char.class);
   const baseAttackSpeed = char.attack_speed + eq.speed * 0.01 + tb.attack_speed;
-  const rawMaxHp = char.max_hp + eq.hp + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
+  const rawMaxHp = char.max_hp + scaleGearHp(eq.hp) + tb.max_hp + getElixirHpBonus() + getTransformFlatHp();
   const rawMaxMp = char.max_mp + eq.mp + tb.max_mp + getElixirMpBonus() + getTransformFlatMp();
   const rawDefense = char.defense + eq.defense + tb.defense + getElixirDefBonus() + getTransformFlatDefense();
   const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), contentLevel);
@@ -367,7 +368,6 @@ const getEffectiveChar = (
     max_mp: Math.floor(rawMaxMp * getElixirMpPctMultiplier() * getTransformMpPctMultiplier()),
     attack_speed: baseAttackSpeed * getElixirAttackSpeedMultiplier(),
     crit_chance: Math.min(0.5, char.crit_chance + eq.critChance * 0.01 + tb.crit_chance),
-    crit_damage: (char.crit_damage ?? 2.0) + eq.critDmg * 0.01 + tb.crit_dmg,
     hp_regen: (char.hp_regen ?? 0) + tb.hp_regen + getTransformHpRegenFlat(),
     mp_regen: (char.mp_regen ?? 0) + getTransformMpRegenFlat(),
   };
@@ -1148,7 +1148,6 @@ const Transform = () => {
           enemyDefense: target.monster.defense,
           attackerLevel: latestChar.level, playerSource: true,
           critChance: eff.crit_chance + basicCritBoost,
-          critDmg: eff.crit_damage,
           maxCritChance: classData.maxCritChance ?? 0.5,
           damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier() * basicDmgMult,
         });
@@ -1168,7 +1167,6 @@ const Transform = () => {
           enemyDefense: target.monster.defense,
           attackerLevel: latestChar.level, playerSource: true,
           critChance: eff.crit_chance + basicCritBoost,
-          critDmg: eff.crit_damage,
           maxCritChance: classData.maxCritChance ?? 0.5,
           isCrit: basicForceCrit ? true : undefined,
           damageMultiplier: getAtkDamageMultiplier() * getTransformDmgMultiplier() * basicDmgMult,
@@ -1203,7 +1201,7 @@ const Transform = () => {
           const skillId = slots[i];
           if (!skillId) continue;
           const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-          if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMultRef.current)) continue;
+          if (now - lastUsed < getSpeedScaledCooldownMs(Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()), speedMultRef.current)) continue;
           if (playerMpRef.current < SKILL_MP_COST) continue;
           {
             const tmpDef = getSkillDef(skillId);
@@ -1262,7 +1260,7 @@ const Transform = () => {
           playerMpRef.current = newMp;
           setPlayerMp(newMp);
           skillCooldownRef.current.set(skillId, now);
-          setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
+          setSkillCooldowns((prev) => ({ ...prev, [skillId]: Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) }));
           if (sDef) applySkillBuff(skillId, sDef, speedMult);
           triggerSkillAnim(skillId);
           if (isPureBuff) {
@@ -1902,7 +1900,7 @@ const Transform = () => {
     if (!skillId) return;
     const now = Date.now();
     const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-    if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMultRef.current)) return;
+    if (now - lastUsed < getSpeedScaledCooldownMs(Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()), speedMultRef.current)) return;
     if (playerMpRef.current < SKILL_MP_COST) {
       addLog('Za mało MP!', 'system');
       return;
@@ -2040,7 +2038,7 @@ const Transform = () => {
     playerMpRef.current = newMp;
     setPlayerMp(newMp);
     skillCooldownRef.current.set(skillId, now);
-    setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
+    setSkillCooldowns((prev) => ({ ...prev, [skillId]: Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) }));
     if (sDef) applySkillBuff(skillId, sDef, speedMult);
     triggerSkillAnim(skillId);
     if (isPureBuff) {
@@ -2267,7 +2265,7 @@ const Transform = () => {
           icon: getSkillIcon(skillId),
           name: skillId,
           mpCost: SKILL_MP_COST,
-          cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
+          cooldownProgress: cdActive ? 1 - cdRemaining / Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) : 1,
           cooldownRemainingMs: cdRemaining,
           disabled: skillMode === 'auto' || noMp || cdActive,
           onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),

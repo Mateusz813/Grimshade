@@ -36,6 +36,7 @@ import { usePartyPresenceStore } from '../../stores/partyPresenceStore';
 import { MAX_PARTY_SIZE, canJoinParty, getAggroWeight, type IPartyMember } from '../../systems/partySystem';
 import { MONSTER_RARITY_LABELS } from '../../systems/lootSystem';
 import { stopCombat } from '../../systems/combatEngine';
+import { scaleGearHp } from '../../systems/combat';
 import { MonsterSprite } from '../../components/ui/Sprite/MonsterSprite';
 import './Town.scss';
 
@@ -170,7 +171,7 @@ const Town = () => {
   const engineEff = character ? engineGetEffectiveChar(character) : null;
   const effMaxHp = engineEff
     ? engineEff.max_hp
-    : (character ? character.max_hp + (eqStats.hp ?? 0) + (tb.max_hp ?? 0) + getElixirHpBonus() : 0);
+    : (character ? character.max_hp + scaleGearHp(eqStats.hp ?? 0) + (tb.max_hp ?? 0) + getElixirHpBonus() : 0);
   const effMaxMp = engineEff
     ? engineEff.max_mp
     : (character ? character.max_mp + (eqStats.mp ?? 0) + (tb.max_mp ?? 0) + getElixirMpBonus() : 0);

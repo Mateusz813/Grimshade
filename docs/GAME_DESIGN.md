@@ -1009,6 +1009,84 @@ Efekt (L350 Archer mythic+0, skille+5): atak ~1.5k, skill ~2.8k (skill ~1.9× at
 
 **Znany kompromis (`GEAR_HP_SCALE`):** stored bonus HP itemu jest surowy (np. pancerz „+2718 HP"), a wkład do postaci to ×0.25 (~680) — tooltip pokazuje surową rolkę, realne HP jest skalowane. Wybór świadomy: brak ryzykownej migracji danych (nie da się uszkodzić gearu), Krasek naprawiony natychmiast. Do rozważenia follow-up: skalować wyświetlaną wartość HP itemu albo migracja `ARMOR_HP_MULTIPLIER`.
 
+### 29.4 Atrybuty procentowe, crit losowy, cooldowny 20 s — 2.0.4 (2026-07-21)
+
+Playtest 2.0.3 domknął skalę obrażeń, ale odsłonił cztery problemy: (a) punkty statystyk (2/poziom, +5 HP / +1 ATK) były przy gearze L350+ kompletnie nieodczuwalne, (b) `crit_damage` z przedmiotów istniał w danych, ale **combat go nie czytał** (crit był na sztywno ×2.0) — statystyka-widmo, (c) skille w boss/dungeon/transform miały 5 s cooldown i zamieniały walkę w spam, (d) kamieni legendary+ było tak mało, że ulepszanie wysokiego rarity stało w miejscu.
+
+| Obszar | Było (2.0.3) | Jest (2.0.4) |
+|---|---|---|
+| Atrybuty | `stat_points` 2/poziom → płaskie `+5 max_hp / +5 max_mp / +1 attack / +1 defense` (kolumny DB) | **1 punkt co 10 poziomów** (`ATTRIBUTE_LEVEL_INTERVAL`), każdy = **+0,1 %** do ATK / HP / DEF, liczone **multiplikatywnie na pełnej wartości** (baza + gear + trening + eliksiry + transform). L1000 = 100 pkt = maks. **+10 %** w jedną statystykę |
+| Limit DEF | brak (DEF_CAP 0,75 i tak wysycony gearem) | **cap per klasa**: Knight 10 %, Cleric 8 %, Archer/Rogue/Bard 6 %, Necromancer 4 %, Mage 3 % (`ATTRIBUTE_DEF_CAP_PCT`). Punkty ponad cap **nie są konsumowane** (wracają do puli). Capy są przeskalowane do budżetu 100 pkt tak, żeby **każdy był osiągalny i wiążący**: Mage wysyca swój od L300, Necromancer L400, Archer/Rogue/Bard L600, Cleric L800, Knight dopiero na L1000 — czyli Knight ma najwięcej DEF-a na każdym etapie |
+| Crit | `char.crit_damage` **nieużywany**, crit hardcoded ×2.0 | **losowy ×1,5–2,5** (`rollCritMultiplier`, `CRIT_MULT_MIN/MAX`) w każdej ścieżce (hunt, manual, boss, dungeon, transform, raid, `skillEffectsV2.critBuffNext`). Deterministyczny `critRoll` w parametrach → golden parity TS↔PHP |
+| `crit_damage` / `critDmg` | kolumna + bonus itemu + statystyka treningu offline | **usunięte z rozgrywki**: wypadło z puli bonusów dropu (`itemGenerator`, `lootSystem`), z `IItemStats`, z treningu (`GENERAL_TRAINABLE_STATS`), z UI (Inventory/Shop/Market/AdminPanel) i z rankingu. Istniejące przedmioty są czyszczone przy wczytaniu save'a |
+| Cooldown skilli | 5 s (boss/dungeon/transform), 20 s hunt | **20 s wszędzie** (`SKILL_COOLDOWN_MS`), ulepszanie skilla **nie skraca** CD. Eliksir skupienia daje **−2 s** (`CD_REDUCTION_ELIXIR_MS`) |
+| `skillTierMult` | `clamp(1.0 … 2.1)` (2.0.2) → cap 1.7 (2.0.3) | `SKILL_TIER_MIN 0.85 … SKILL_TIER_MAX 1.75` po coeff 3→15 — **szerszy rozrzut** (słabe skille realnie słabsze, ultimate mocniejsze) przy zachowanym suficie z 2.0.3 |
+| Kamienie legendary+ | epic 4 %, legendary 2 %, boss 1 %, po 1 szt., zero heroic | epic 15 %, legendary 18 %, boss 22 %; **stacki** 1–2 / 1–3 / 1–4 szt.; boss ma **15 % szans na `heroic_stone`** (`HEROIC_STONE_FROM_BOSS_CHANCE`) |
+| HP z gearu w UI | `GEAR_HP_SCALE` tylko w silniku — UI i tooltipy pokazywały surowe HP | `scaleGearHp()` w **każdym** miejscu agregacji (Inventory, Combat, Boss, Dungeon, Transform, Town, CharacterSelect) i w tooltipie itemu → „+2718 HP" na hełmie pokazuje teraz realny wkład. Zamyka kompromis z 29.3 |
+| Odbieranie nagród | `claim` → drugi round-trip `GET /state` | `claim` zwraca od razu `character` + `state`, klient aplikuje je lokalnie (`applyStateResponse`) — jeden request zamiast dwóch; `syncFromBackend` tylko jako fallback |
+
+**Migracja istniejących postaci** (`migrateAttributesV1`, `characterScope.ts`, wersjonowana `attributes.migrationVersion`): stare płaskie punkty są **wycofywane z kolumn** (`attack`/`defense` → baza klasy + milestone'y, `max_hp`/`max_mp` → `computeBaseStatFloor`), postać dostaje świeżą pulę `floor(highest_level / 10)` do rozdania, alokacja zeruje się, a `critDmg` znika z bonusów wszystkich przedmiotów (equipment + plecak + depozyt). Migracja jest idempotentna i nie rusza poziomu, złota ani przedmiotów.
+
+**Kalibracja:** `calibrate.mjs` / `calibrateContent.mjs` modelują teraz **wszystko, co ma gracz** — pulę atrybutów (`attrAtkMult`), transformy (flat ATK per klasa `TFATK` × `tierSum` + `TATK` procentowo), rotację skilli na cooldownie 20 s (`playerDPS = basicHit/interwał + basicRaw × SKILL_MULT / 20`) oraz `GEAR_HP_SCALE`. `monsters.json` i `bosses.json` zregenerowane, `one-shot cells: 0`.
+
+Efekt (patrz tabela w §29.5): L350 mythic+0 → atak 0,9–1,5k, spell 0,9–3,5k, HP 7,5–12,1k, normal mob **7282 HP / cios 434** (≈6 ciosów z ręki jako Archer, ~20 ciosów potwora do śmierci). L1000 heroic+7 skille+15 → atak 3,9–6,9k, spell 5,6–18,1k. Boss solo 2,1–4,1 min.
+
+### 29.5 Tabela referencyjna 2.0.4 (normal mob na swoim poziomie)
+
+| Poziom / gear | Klasa | Atak | Crit | Spell | Spell crit | Max HP | TTK mob |
+|---|---|---|---|---|---|---|---|
+| L350 mythic+0, skille+5 | Knight | 1067 | 2135 | 1588–2148 | 3736 | 12148 | 11,6 s |
+| | Mage | 1517 | 3035 | 2602–3520 | 6122 | 7454 | 6,3 s |
+| | Cleric | 920 | 1839 | 1049–1420 | 2469 | 8495 | 10,8 s |
+| | Archer | 1318 | 2635 | 2170–2936 | 5106 | 8689 | 5,9 s |
+| | Rogue | 901 | 1802 | 1484–2007 | 3491 | 8678 | 7,4 s |
+| | Necromancer | 1418 | 2837 | 2029–2745 | 4774 | 7532 | 7,5 s |
+| | Bard | 922 | 1843 | 942–1275 | 2217 | 8684 | 10,9 s |
+| L350 heroic+7, skille+10 | Knight | 1964 | 3928 | 3164–4281 | 7446 | 18300 | 6,2 s |
+| | Mage | 2779 | 5557 | 5160–6981 | 12141 | 11498 | 3,4 s |
+| | Archer | 2468 | 4935 | 4402–5955 | 10357 | 13453 | 3,1 s |
+| L1000 heroic+7, skille+15 | Knight | 4772 | 9544 | 8056–10899 | 18956 | 57176 | 6,3 s |
+| | Mage | 6884 | 13769 | 13404–18135 | 31540 | 35002 | 3,3 s |
+| | Cleric | 4073 | 8146 | 6217–8411 | 14629 | 38388 | 5,8 s |
+| | Archer | 6073 | 12146 | 11366–15378 | 26744 | 41284 | 3,1 s |
+| | Rogue | 3948 | 7895 | 8667–11727 | 20394 | 41271 | 4,0 s |
+| | Necromancer | 6448 | 12895 | 12637–17098 | 29735 | 35268 | 3,9 s |
+| | Bard | 4092 | 8185 | 5577–7545 | 13121 | 41277 | 5,9 s |
+
+Kolumna „Crit" liczona przy maksymalnym rzucie ×2,0 — realny zakres to ×1,5–2,5, więc pojedyncze trafienia wahają się o ±25 %. Mob normal L350: **7282 HP / cios 434** (mythic+0 przeżyje ~20 ciosów). Mob normal L1000: **17986 HP / cios 1283**.
+
+TTK per rarity potwora (mythic+0, skille+5, sekundy; ostatnia kolumna = BOSS w lochu/rajdzie, minuty):
+
+| Poziom | Klasa | normal | strong | epic | legendary | boss-mob | BOSS (dungeon/raid) |
+|---|---|---|---|---|---|---|---|
+| L350 | Knight | 12 | 18 | 31 | 52 | 108 | 4,1 min |
+| | Mage | 6 | 10 | 17 | 28 | 58 | 2,2 min |
+| | Cleric | 11 | 17 | 29 | 49 | 100 | 3,8 min |
+| | Archer | 6 | 9 | 16 | 27 | 55 | 2,1 min |
+| | Rogue | 7 | 12 | 20 | 33 | 68 | 2,6 min |
+| | Necromancer | 8 | 12 | 20 | 34 | 70 | 2,6 min |
+| | Bard | 11 | 17 | 29 | 49 | 102 | 3,8 min |
+
+
+**Pasmo startowe L1–24 (`STARTER_BAND`, dodane 2.0.4 po E2E):** kalibracja liczy HP potwora jako `basicRaw(referencyjny Archer) × HUNT_HITS`, a atak jako `refMaxHp / SURV_HITS`. Referencją jest **Archer** (classMod 1,2, AS 2,5), więc Knight (classMod 1,0, AS 1,5) potrzebuje ~2× więcej czasu na to samo HP. Na wysokich poziomach gear i pula HP to absorbują, ale na L1–10 (bez gearu, ~110–150 HP) przewracało to walkę w przegraną: kontrolna tabela „L1 RAT, NO GEAR" pokazywała **Bard/Necromancer 2 i Knight/Mage/Cleric 3 zabicia** przy własnym celu 5–7. Dlatego `huntHitsAt(L)` i `survHitsAt(L)` interpolują liniowo: `HUNT_HITS` 2,6→5,5 i `SURV_HITS` 34→20 w przedziale L1→L25 (`bandT(L) = clamp((L-1)/24)`). Efekt: szczur **168→98 HP, atak 6→4**, wszystkie klasy ≥5 zabić bez gearu (Archer 9, Rogue 11 — klasy DPS z założenia wyżej). **Poziomy ≥25 są bit-w-bit niezmienione** (`bandT=1`), więc wszystkie liczby w tabelach wyżej pozostają aktualne.
+
+Skrypt generujący te liczby: `scripts/balance/calibrate.mjs --table` (polowanie) + `calibrateContent.mjs` (bossy). Model referencyjnego gracza **nie zawiera już płaskich punktów statystyk** (zniknęły w 2.0.4) — zamiast nich mnożnik atrybutów `attrAtkMult(L) = 1 + floor(L/10) × 0,001` (czyli +0,1 % na punkt).
+
+### 29.6 Strażnicy balansu (2.1.0) — jak wykryć, że zmiana popsuła balans
+
+Liczby z §29.4/§29.5 nie są już tylko opisem — są **egzekwowane przez testy**. `src/systems/balanceEnvelope.test.ts` (196 testów) liczy obrażenia, HP i TTK **prawdziwym silnikiem** (`getEffectiveChar` na zaseedowanych store'ach, realne generatory gearu, realne `calculateDamage`/`mitigateDamage`) dla 7 klas × 11 poziomów × 6 rarity × ulepszeń +0…+30 × transformów 0–11 × eliksirów, na potworach każdej rzadkości i na bossach. Backendowy odpowiednik: `tests/Unit/Domain/BalanceEnvelopeTest.php` (kontrakty na `CombatMath`, `SkillSystem`, `AttributeSystem`).
+
+Trzy warstwy asercji:
+1. **Pasma od-do** dla konkretnych buildów (basic/spell/HP na L100, L350 mythic+0, L350 heroic+7, L1000 heroic+7) — łapią przesunięcie skali.
+2. **Kontrakty gałek** niezależne od pasm — spell = 1,6–2,6× atak, `skillTierMult ≤ 2,0`, krzywa ulepszeń < 1,5× i malejąca, crit 1,5–2,5×, mitygacja DEF ≤ 75 %, boss solo 1–12 min, 40–200 ciosów do śmierci.
+3. **Monotoniczność** — lepszy gear/rarity/transform nigdy nie obniża obrażeń; drabinka potworów i bossów nie cofa się z poziomem.
+
+Suita przeszła **walidację mutacyjną 12/12**: celowe zepsucie każdej istotnej stałej (`DMG_COMPRESS_K/P`, `GEAR_HP_SCALE`, `DEF_CAP`, `CRIT_MULT_MAX`, `SKILL_TIER_MAX`, asymptota ulepszeń, `ATTRIBUTE_POINT_PCT`, `BOSS_HP_MULTIPLIER`, mnożnik eliksiru, krzywa ulepszania EQ) zapala od 1 do 72 testów. **Zmieniasz balans celowo → zmierz i przesuń pasma. Dodajesz nową gałkę → dopisz jej kontrakt i sprawdź mutacją, że test faktycznie czerwieni się bez niej.**
+
+**Znane, świadome odstępstwo wykryte przez te testy:** kalibracja (`SURV_HITS`) liczy przeżywalność **bez uwzględnienia DEF gracza**, a realnie każda klasa siedzi na sufcie mitygacji 75 % już w mythic+0 (Knight 75 %, Mage 69–75 %). Efekt: potwory zadają ~4× mniej, niż zakłada model — zamiast ~20 ciosów do śmierci realnie jest 51–160. To NIE jest błąd w danych, tylko rozjazd modelu kalibracyjnego z silnikiem; presja na miksturki przy zwykłych potworach jest w praktyce znikoma. Do decyzji przy kolejnym strojeniu (albo uwzględnić DEF w `SURV_HITS`, albo świadomie zostawić trash-moby jako nieszkodliwe).
+
+---
+
 ---
 
 ## 30. Reguła utrzymania (OBOWIĄZKOWE)

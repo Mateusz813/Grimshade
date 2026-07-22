@@ -15,7 +15,7 @@ import Icon from '../../components/atoms/Icon/Icon';
 import EmojiText from '../../components/atoms/Twemoji/EmojiText';
 import { isBackendMode } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
-import { syncFromBackend } from '../../api/backend/syncState';
+import { syncFromBackend, applyStateResponse } from '../../api/backend/syncState';
 import './Tasks.scss';
 
 interface IMonsterMini {
@@ -71,8 +71,8 @@ const Tasks = () => {
   const handleClaimReward = async (taskId: string) => {
     if (isBackendMode() && character) {
       try {
-        await backendApi.claimTask(character.id, taskId);
-        await syncFromBackend(character.id);
+        const res = await backendApi.claimTask(character.id, taskId);
+        if (!applyStateResponse(res, character.id)) await syncFromBackend(character.id);
         return;
       } catch (e) {
         console.warn('[tasks] claimTask failed', e);

@@ -15,6 +15,8 @@ export const DMG_COMPRESS_P = 0.80;
 export const KILL_XP_TTK_MULT = 1.75;
 export const GEAR_HP_SCALE = 0.25;
 
+export const scaleGearHp = (gearHp: number): number => Math.floor(safeN(gearHp) * GEAR_HP_SCALE);
+
 export const compressPlayerDamage = (mitigatedDamage: number): number =>
     DMG_COMPRESS_K * Math.pow(Math.max(0, safeN(mitigatedDamage)), DMG_COMPRESS_P);
 
@@ -40,7 +42,7 @@ export interface ICombatParams {
     attackerLevel?: number;
     isCrit?: boolean;
     critChance?: number;
-    critDmg?: number;
+    critRoll?: number;
     maxCritChance?: number;
     damageMultiplier?: number;
     playerSource?: boolean;
@@ -60,6 +62,14 @@ export interface IDualWieldResult {
 }
 
 
+export const CRIT_MULT_MIN = 1.5;
+
+export const CRIT_MULT_MAX = 2.5;
+
+export const rollCritMultiplier = (roll: number = Math.random()): number =>
+    CRIT_MULT_MIN + Math.min(1, Math.max(0, safeN(roll))) * (CRIT_MULT_MAX - CRIT_MULT_MIN);
+
+
 export const calculateDamage = (params: ICombatParams): ICombatResult => {
     const baseAtk      = safeN(params.baseAtk);
     const weaponAtk    = safeN(params.weaponAtk);
@@ -67,7 +77,6 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     const classMod     = safeN(params.classModifier, 1);
     const enemyDef     = safeN(params.enemyDefense);
     const critChance   = safeN(params.critChance, 0.05);
-    const critDmgMult  = safeN(params.critDmg, 2.0);
     const maxCrit      = safeN(params.maxCritChance, 1.0);
 
     const effectiveCritChance = Math.min(critChance, maxCrit);
@@ -77,7 +86,7 @@ export const calculateDamage = (params: ICombatParams): ICombatResult => {
     let finalDamage  = params.playerSource ? compressPlayerDamage(mitigated) : Math.max(1, mitigated);
 
     const isCrit = params.isCrit ?? Math.random() < effectiveCritChance;
-    if (isCrit) finalDamage *= critDmgMult;
+    if (isCrit) finalDamage *= rollCritMultiplier(params.critRoll ?? Math.random());
 
     const dmgMult = safeN(params.damageMultiplier, 1);
     if (dmgMult !== 1) finalDamage *= dmgMult;

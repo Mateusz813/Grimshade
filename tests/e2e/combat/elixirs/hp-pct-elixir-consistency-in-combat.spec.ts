@@ -6,6 +6,10 @@ import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 import { seedGameSave, findUserIdByEmail } from '../../fixtures/seedGameSave';
 import { runCombatViaSkip } from '../../fixtures/combatSim';
+import { baseMaxHpFloor } from '../../fixtures/balance';
+
+const HP_PCT_MULT = 1.25;
+const EXPECTED_MAX_HP = Math.floor(baseMaxHpFloor('Knight', 5) * HP_PCT_MULT);
 
 test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
     test.describe.configure({ timeout: 90_000 });
@@ -66,7 +70,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
                 .locator('.top-header__pulse-popover-row--hp .top-header__pulse-popover-val')
                 .first()
                 .textContent();
-            expect(popoverHp?.trim()).toBe('40/290');
+            expect(popoverHp?.trim()).toBe(`40/${EXPECTED_MAX_HP}`);
 
             const engineMaxHp = await page.evaluate(async () => {
                 const engineMod = await import('/src/systems/combatEngine.ts');
@@ -80,7 +84,7 @@ test.describe('Combat › Elixirs', { tag: '@combat' }, () => {
                 const eff = engine.getEffectiveChar(ch);
                 return eff?.max_hp ?? null;
             });
-            expect(engineMaxHp).toBe(290);
+            expect(engineMaxHp).toBe(EXPECTED_MAX_HP);
 
             const multiplier = await page.evaluate(async () => {
                 const mod = await import('/src/systems/combatElixirs.ts');

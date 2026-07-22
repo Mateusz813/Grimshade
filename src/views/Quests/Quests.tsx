@@ -40,7 +40,7 @@ import imgTilesDaily from '../../assets/images/quests/quests-daily.png';
 import imgQuestPergamin from '../../assets/images/quests/quests-pergamin.png';
 import { isBackendMode } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
-import { syncFromBackend } from '../../api/backend/syncState';
+import { syncFromBackend, applyStateResponse } from '../../api/backend/syncState';
 import './Quests.scss';
 
 const allQuests = questsRaw as IQuest[];
@@ -413,7 +413,7 @@ const Quests = () => {
     if (isBackendMode()) {
       try {
         const res = await backendApi.claimDailyQuest(character.id, questId);
-        await syncFromBackend(character.id);
+        if (!applyStateResponse(res, character.id)) await syncFromBackend(character.id);
         const def = todayQuestDefs.find((d) => d.id === questId);
         setClaimSummary({
           questName: def?.name_pl ?? 'Quest dzienny',
@@ -465,7 +465,7 @@ const Quests = () => {
     if (isBackendMode()) {
       try {
         const res = await backendApi.claimQuest(character.id, questId);
-        await syncFromBackend(character.id);
+        if (!applyStateResponse(res, character.id)) await syncFromBackend(character.id);
         setClaimSummary({ questName: quest.name_pl, entries: buildBackendClaimEntries(res, { elixirName: getElixirName, elixirIcon: getElixirIcon }) });
         return;
       } catch (e) {

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { CharacterClass, ICharacter as IApiCharacter } from '../api/v1/characterApi';
-import { processXpGain, statPointsForLevelUp, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../systems/levelSystem';
+import { processXpGain, ATTRIBUTE_POINTS_PER_MILESTONE, BASE_HP_PER_LEVEL, BASE_MP_PER_LEVEL } from '../systems/levelSystem';
+import { useAttributeStore } from './attributeStore';
+import { getClassBaseStats, type TAttributeStat } from '../systems/attributeSystem';
 import classesData from '../data/classes.json';
 import { useInventoryStore, registerCharacterLevelGetter } from './inventoryStore';
 import { useSkillStore } from './skillStore';
@@ -68,15 +70,6 @@ export interface IXpGainResult {
   xpApplied: number;
 }
 
-type StatPointStat = 'max_hp' | 'max_mp' | 'attack' | 'defense';
-
-const STAT_POINT_BONUSES: Record<StatPointStat, number> = {
-  max_hp: 5,
-  max_mp: 5,
-  attack: 1,
-  defense: 1,
-};
-
 interface IMilestoneBonus {
     hp: number;
     mp: number;
@@ -99,6 +92,20 @@ const MILESTONE_INTERVAL = 10;
 const countMilestonesCrossed = (prevHighest: number, newHighest: number): number => {
     if (newHighest <= prevHighest) return 0;
     return Math.floor(newHighest / MILESTONE_INTERVAL) - Math.floor(prevHighest / MILESTONE_INTERVAL);
+};
+
+export const computeAttackDefenseFloor = (
+    characterClass: CharacterClass,
+    highestLevel: number,
+): { attack: number; defense: number } => {
+    const level = Math.max(1, Math.floor(highestLevel ?? 1));
+    const base = getClassBaseStats(characterClass);
+    const milestones = Math.floor(level / MILESTONE_INTERVAL);
+    const milestoneBonus = MILESTONE_BONUSES[characterClass] ?? { hp: 0, mp: 0, attack: 0, defense: 0 };
+    return {
+        attack: base.attack + milestones * milestoneBonus.attack,
+        defense: base.defense + milestones * milestoneBonus.defense,
+    };
 };
 
 export const computeBaseStatFloor = (
@@ -144,8 +151,7 @@ interface ICharacterState {
   setLoading: (loading: boolean) => void;
   updateCharacter: (partial: Partial<ICharacter>) => void;
   addXp: (xp: number) => IXpGainResult;
-  spendStatPoint: (stat: StatPointStat) => void;
-  spendAllStatPoints: (stat: StatPointStat) => void;
+  spendAttributePoint: (stat: TAttributeStat, all?: boolean) => number;
   fullHealEffective: () => void;
   healCorruptedBaseStats: () => boolean;
   clearCharacter: () => void;
@@ -182,11 +188,8 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
 
     const hpGain = newLevelsCount * hpPerLevel;
     const mpGain = newLevelsCount * mpPerLevel;
-    const statPointsGained = newLevelsCount > 0
-      ? newLevelsCount * statPointsForLevelUp(char.class)
-      : 0;
-
     const milestonesCrossed = countMilestonesCrossed(highestLevel, newHighest);
+    const statPointsGained = milestonesCrossed * ATTRIBUTE_POINTS_PER_MILESTONE;
     const milestoneBonus = MILESTONE_BONUSES[char.class] ?? { hp: 0, mp: 0, attack: 0, defense: 0 };
     const milestoneHp = milestonesCrossed * milestoneBonus.hp;
     const milestoneMp = milestonesCrossed * milestoneBonus.mp;
@@ -264,40 +267,18 @@ export const useCharacterStore = create<ICharacterState>((set, get) => ({
       xpApplied,
     };
   },
-  spendStatPoint: (stat: StatPointStat) => {
+  spendAttributePoint: (stat: TAttributeStat, all = false) => {
     const char = get().character;
-    if (!char || (char.stat_points ?? 0) <= 0) return;
+    if (!char) return 0;
+    const available = char.stat_points ?? 0;
+    if (available <= 0) return 0;
 
-    const bonus = STAT_POINT_BONUSES[stat];
-    const updates: Partial<ICharacter> = {
-      stat_points: (char.stat_points ?? 0) - 1,
-      [stat]: (char[stat] ?? 0) + bonus,
-    };
+    const requested = all ? available : 1;
+    const applied = useAttributeStore.getState().allocate(stat, requested, char.class);
+    if (applied <= 0) return 0;
 
-    if (stat === 'max_hp') {
-      updates.hp = (char.hp ?? 0) + bonus;
-    } else if (stat === 'max_mp') {
-      updates.mp = (char.mp ?? 0) + bonus;
-    }
-
-    set({ character: { ...char, ...updates } });
-  },
-  spendAllStatPoints: (stat: StatPointStat) => {
-    const char = get().character;
-    if (!char) return;
-    const points = char.stat_points ?? 0;
-    if (points <= 0) return;
-
-    const bonus = STAT_POINT_BONUSES[stat];
-    const total = bonus * points;
-    const updates: Partial<ICharacter> = {
-      stat_points: 0,
-      [stat]: (char[stat] ?? 0) + total,
-    };
-    if (stat === 'max_hp') updates.hp = (char.hp ?? 0) + total;
-    if (stat === 'max_mp') updates.mp = (char.mp ?? 0) + total;
-
-    set({ character: { ...char, ...updates } });
+    set({ character: { ...char, stat_points: available - applied } });
+    return applied;
   },
   fullHealEffective: () => {
     const char = get().character;

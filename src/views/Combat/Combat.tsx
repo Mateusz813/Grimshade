@@ -7,6 +7,7 @@ import {
     getMonsterAttackRange,
     MONSTER_STAT_MULTIPLIERS,
     resolveSkillRecastMs,
+    scaleGearHp,
 } from '../../systems/combat';
 import {
     getEffectiveRarityChances,
@@ -27,6 +28,7 @@ import {
     getElixirMpBonus,
     getElixirDefBonus,
     getElixirAttackSpeedMultiplier,
+  getCooldownReductionMs,
 } from '../../systems/combatElixirs';
 import { getTransformDmgMultiplier } from '../../systems/transformBonuses';
 import itemsData from '../../data/items.json';
@@ -128,7 +130,7 @@ import './Combat.scss';
 
 const HP_POTION_COOLDOWN_MS = 1000;
 const MP_POTION_COOLDOWN_MS = 1000;
-const SKILL_COOLDOWN_MS = 8000;
+const SKILL_COOLDOWN_MS = 20000;
 
 
 const monsters = monstersRaw as unknown as IMonster[];
@@ -298,11 +300,10 @@ const Combat = () => {
             ...character,
             attack: character.attack + eqStats.attack,
             defense: character.defense + eqStats.defense + tb.defense + getElixirDefBonus(),
-            max_hp: character.max_hp + eqStats.hp + tb.max_hp + getElixirHpBonus(),
+            max_hp: character.max_hp + scaleGearHp(eqStats.hp) + tb.max_hp + getElixirHpBonus(),
             max_mp: character.max_mp + eqStats.mp + tb.max_mp + getElixirMpBonus(),
             attack_speed: (character.attack_speed + eqStats.speed * 0.01 + tb.attack_speed) * getElixirAttackSpeedMultiplier(),
             crit_chance: Math.min(0.5, character.crit_chance + eqStats.critChance * 0.01 + tb.crit_chance),
-            crit_damage: (character.crit_damage ?? 2.0) + eqStats.critDmg * 0.01 + tb.crit_dmg,
             hp_regen: (character.hp_regen ?? 0) + tb.hp_regen,
         };
     }, [character, eqStats, skillLevelsForStats, completedTransforms]);
@@ -570,7 +571,7 @@ const Combat = () => {
         useCooldownStore.getState().setPctMpCooldown(cdMs);
     }, []);
     const startSkillCooldown = useCallback((skillId: string) => {
-        useCooldownStore.getState().setSkillCooldown(skillId, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS));
+        useCooldownStore.getState().setSkillCooldown(skillId, Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()));
     }, []);
 
     const ATTACK_ANIM_DURATION: Record<string, number> = {
@@ -2087,7 +2088,7 @@ const Combat = () => {
                             icon: getSkillIcon(skillId),
                             name: skillId,
                             mpCost: slotMpCost,
-                            cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
+                            cooldownProgress: cdActive ? 1 - cdRemaining / Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) : 1,
                             cooldownRemainingMs: cdRemaining,
                             disabled: skillMode === 'auto' || noMp || cdActive,
                             onClick: () => doUseSkill(i as 0 | 1 | 2 | 3),

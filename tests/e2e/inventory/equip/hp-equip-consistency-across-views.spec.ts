@@ -5,6 +5,7 @@ import { loginViaUI } from '../../fixtures/login';
 import { createCharacterViaApi, generateTestCharacterName } from '../../fixtures/createCharacter';
 import { cleanupCharacterById } from '../../fixtures/cleanup';
 import { seedEquippedItem } from '../../fixtures/seedInventory';
+import { effectiveMaxHp } from '../../fixtures/balance';
 
 test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
     test.describe.configure({ timeout: 60_000 });
@@ -12,6 +13,9 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
     test('helmet with +20 HP bonus -> Town, TopHeader popover, CharacterSelect all show effective max HP', async ({ page }) => {
         const nick = generateTestCharacterName();
         let createdId: string | null = null;
+        const BASE_MAX_HP = 232;
+        const GEAR_HP = 20;
+        const expectedHp = `40/${effectiveMaxHp(BASE_MAX_HP, GEAR_HP)}`;
 
         try {
             const created = await createCharacterViaApi({
@@ -47,7 +51,7 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
                 .locator('.town__bar-wrap', { has: page.locator('.town__bar--hp') })
                 .locator('.town__bar-value')
                 .textContent();
-            expect(townHp?.trim()).toBe('40/252');
+            expect(townHp?.trim()).toBe(expectedHp);
 
             const pulseBtn = page.locator('.top-header__pulse').first();
             await expect(pulseBtn).toBeVisible({ timeout: 5_000 });
@@ -56,7 +60,7 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
                 .locator('.top-header__pulse-popover-row--hp .top-header__pulse-popover-val')
                 .first()
                 .textContent();
-            expect(popoverHp?.trim()).toBe('40/252');
+            expect(popoverHp?.trim()).toBe(expectedHp);
 
             await page.goto('/character-select');
             await expect(page.locator('.char-select__card-name', { hasText: nick })).toBeVisible({ timeout: 10_000 });
@@ -67,7 +71,7 @@ test.describe('Inventory › Equip', { tag: '@inventory' }, () => {
                 .locator('.char-select__bar-wrap', { has: page.locator('.char-select__bar--hp') })
                 .locator('.char-select__bar-value')
                 .textContent();
-            expect(selectHpText?.trim()).toBe('40/252');
+            expect(selectHpText?.trim()).toBe(expectedHp);
 
             expect(townHp?.trim()).toBe(popoverHp?.trim());
             expect(popoverHp?.trim()).toBe(selectHpText?.trim());

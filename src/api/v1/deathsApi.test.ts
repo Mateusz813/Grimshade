@@ -35,6 +35,40 @@ const makePayload = (overrides: Partial<IDeathPayload> = {}): IDeathPayload => (
 });
 
 describe('deathsApi.logDeath', () => {
+    it('retries without `result` when the column is missing on the live schema (42703)', async () => {
+        const missingColumn = Object.assign(new Error('column "result" does not exist'), {
+            response: { status: 400, data: { code: '42703' } },
+        });
+        const inserted = { id: 'd1', ...makePayload({ result: undefined }), died_at: '2026-07-22T00:00:00Z' };
+        mockApi.post.mockRejectedValueOnce(missingColumn).mockResolvedValueOnce(mkRes([inserted]));
+
+        const result = await deathsApi.logDeath(makePayload({ result: 'fled' }));
+
+        expect(mockApi.post).toHaveBeenCalledTimes(2);
+        expect(mockApi.post.mock.calls[0][1]).toHaveProperty('result', 'fled');
+        expect(mockApi.post.mock.calls[1][1]).not.toHaveProperty('result');
+        expect(mockApi.post.mock.calls[1][1]).toMatchObject({ character_id: 'c1', source: 'monster' });
+        expect(result).toEqual(inserted);
+    });
+
+    it('does not retry when the payload carries no `result`', async () => {
+        mockApi.post.mockRejectedValueOnce(new Error('boom'));
+
+        const result = await deathsApi.logDeath(makePayload({ result: undefined }));
+
+        expect(mockApi.post).toHaveBeenCalledTimes(1);
+        expect(result).toBeNull();
+    });
+
+    it('returns null when the retry also fails', async () => {
+        mockApi.post.mockRejectedValueOnce(new Error('boom')).mockRejectedValueOnce(new Error('boom again'));
+
+        const result = await deathsApi.logDeath(makePayload({ result: 'killed' }));
+
+        expect(mockApi.post).toHaveBeenCalledTimes(2);
+        expect(result).toBeNull();
+    });
+
     it('posts to /rest/v1/character_deaths with return=representation', async () => {
         const inserted = { id: 'd1', ...makePayload(), died_at: '2026-05-21T00:00:00Z' };
         mockApi.post.mockResolvedValueOnce(mkRes([inserted]));

@@ -16,7 +16,7 @@ vi.mock('../systems/skillSystem', () => ({
 }));
 
 vi.mock('../systems/itemSystem', () => ({
-    getTotalEquipmentStats: vi.fn(() => ({ hp: 0, mp: 0, attack: 0, defense: 0, speed: 0, critChance: 0, critDmg: 0 })),
+    getTotalEquipmentStats: vi.fn(() => ({ hp: 0, mp: 0, attack: 0, defense: 0, speed: 0, critChance: 0 })),
     flattenItemsData: vi.fn(() => []),
     EMPTY_EQUIPMENT: {
         mainHand: null, offHand: null, helmet: null, armor: null,

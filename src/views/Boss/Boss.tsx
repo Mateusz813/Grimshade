@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { rollWeaponDamage, formatSkillName } from '../../systems/combatViewHelpers';
+import { rollWeaponDamage, formatSkillName, CLASS_MODIFIER } from '../../systems/combatViewHelpers';
 import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -78,14 +78,14 @@ import {
     type IBossResult,
     type IBossUniqueItem,
 } from '../../systems/bossSystem';
-import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs, mitigateDamage } from '../../systems/combat';
+import { rollMonsterDamage, getSpeedScaledCooldownMs, resolveSkillRecastMs, mitigateDamage, scaleGearHp, rollCritMultiplier } from '../../systems/combat';
 import { getEffectiveChar, syncCasterChargeConsume } from '../../systems/combatEngine';
 import {
     getAtkDamageMultiplier,
     getSpellDamageMultiplier,
     getElixirHpBonus,
     getElixirMpBonus,
-    getElixirAtkBonus,
+    getElixirAtkBonus, getCooldownReductionMs,
     getElixirDefBonus,
     getElixirAttackSpeedMultiplier,
     tickCombatElixirs,
@@ -246,7 +246,7 @@ const getBossItemDropTiers = (bossLevel: number) => {
 };
 
 
-const SKILL_COOLDOWN_MS = 5000;
+const SKILL_COOLDOWN_MS = 20000;
 const SKILL_MP_COST = 15;
 const POTION_COOLDOWN_MS = 1000;
 
@@ -546,10 +546,11 @@ const Boss = () => {
     const eqStats   = getTotalEquipmentStats(equipment, allItems);
     const tb        = getTrainingBonuses(skillLevels, character?.class ?? 'Knight');
     const gearGapMult = getGearGapMultiplier(getEquippedGearLevel(equipment), activeBoss?.level ?? 0);
-    const charAtk   = ((character?.attack  ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult;
-    const charDef   = (character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus();
-    const effChar   = character ? getEffectiveChar(character) : null;
-    const baseMaxHp = (character?.max_hp ?? 0) + eqStats.hp + tb.max_hp + getElixirHpBonus();
+    const effChar   = character ? getEffectiveChar(character, activeBoss?.level ?? 0) : null;
+    const classMod  = CLASS_MODIFIER[character?.class ?? ''] ?? 1;
+    const charAtk   = (effChar?.attack ?? (((character?.attack ?? 0) + eqStats.attack + getElixirAtkBonus()) * gearGapMult)) * classMod;
+    const charDef   = effChar?.defense ?? ((character?.defense ?? 0) + eqStats.defense + tb.defense + getElixirDefBonus());
+    const baseMaxHp = (character?.max_hp ?? 0) + scaleGearHp(eqStats.hp) + tb.max_hp + getElixirHpBonus();
     const baseMaxMp = (character?.max_mp ?? 0) + eqStats.mp + tb.max_mp + getElixirMpBonus();
     const charMaxHp = effChar?.max_hp ?? baseMaxHp;
     const charMaxMp = effChar?.max_mp ?? baseMaxMp;
@@ -1357,7 +1358,7 @@ const Boss = () => {
         }
         const now = Date.now();
         const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-        if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) return;
+        if (now - lastUsed < getSpeedScaledCooldownMs(Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()), speedMult)) return;
         if (playerMpRef.current < SKILL_MP_COST) {
             addLog('Za mało MP!', 'system');
             return;
@@ -1426,7 +1427,7 @@ const Boss = () => {
         playerMpRef.current = newMp;
         setPlayerMp(newMp);
         skillCooldownRef.current.set(skillId, now);
-        setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
+        setSkillCooldowns((prev) => ({ ...prev, [skillId]: Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) }));
         { const sd = getSkillDef(skillId); if (sd) applySkillBuff(skillId, sd, speedMult); }
         if (apply.healCasterPctOfDmg > 0 && skillDmg > 0) {
             const heal = Math.floor(skillDmg * (apply.healCasterPctOfDmg / 100));
@@ -1610,7 +1611,7 @@ const Boss = () => {
             const baseCrit = mods.forceCrit
                 ? true
                 : Math.random() < mods.extraCritChance;
-            const critMult = baseCrit ? 2.0 : 1.0;
+            const critMult = baseCrit ? rollCritMultiplier() : 1.0;
             let finalDmg = Math.max(1, Math.floor(rolledDmg * critMult * mods.dmgMult * getAtkDamageMultiplier() * getTransformDmgMultiplier()));
             const bossStBasic = ensureStatus(effectsRef.current, BOSS_FX_ID);
             const ampBasic = consumeTargetMarkAmp(bossStBasic);
@@ -1749,7 +1750,7 @@ const Boss = () => {
                 const skillId = slots[i];
                 if (!skillId) continue;
                 const lastUsed = skillCooldownRef.current.get(skillId) ?? 0;
-                if (now - lastUsed < getSpeedScaledCooldownMs(resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS), speedMult)) continue;
+                if (now - lastUsed < getSpeedScaledCooldownMs(Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()), speedMult)) continue;
                 if (playerMpRef.current < SKILL_MP_COST) continue;
                 const liveCh = useCharacterStore.getState().character;
                 const unlockLvl = getSkillDef(skillId)?.unlockLevel ?? 0;
@@ -1805,7 +1806,7 @@ const Boss = () => {
                 playerMpRef.current = newMp;
                 setPlayerMp(newMp);
                 skillCooldownRef.current.set(skillId, now);
-                setSkillCooldowns((prev) => ({ ...prev, [skillId]: resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) }));
+                setSkillCooldowns((prev) => ({ ...prev, [skillId]: Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) }));
                 if (sDef) applySkillBuff(skillId, sDef, speedMult);
                 triggerSkillAnim(skillId);
                 if (isPureBuff) {
@@ -3651,7 +3652,7 @@ const Boss = () => {
                                 icon: getSkillIcon(skillId),
                                 name: skillId,
                                 mpCost: SKILL_MP_COST,
-                                cooldownProgress: cdActive ? 1 - cdRemaining / resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) : 1,
+                                cooldownProgress: cdActive ? 1 - cdRemaining / Math.max(1000, resolveSkillRecastMs(skillId, SKILL_COOLDOWN_MS) - getCooldownReductionMs()) : 1,
                                 cooldownRemainingMs: cdRemaining,
                                 disabled: skillMode === 'auto' || noMp || cdActive,
                                 onClick: () => doManualSkill(i as 0 | 1 | 2 | 3),

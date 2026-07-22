@@ -36,7 +36,7 @@ interface IRarityMultiplier {
 }
 
 
-const BONUS_STAT_POOL = ['hp', 'mp', 'attack', 'defense', 'speed', 'critChance', 'critDmg'];
+const BONUS_STAT_POOL = ['hp', 'mp', 'attack', 'defense', 'speed', 'critChance'];
 
 const BONUS_STAT_RANGES: Record<Rarity, { min: number; max: number }> = {
     common:    { min: 1, max: 5 },
@@ -75,7 +75,6 @@ const STAT_RANGE_MULTIPLIER: Record<string, number> = {
     defense:   1.0,
     speed:     1.0,
     critChance: 0.3,
-    critDmg:   1.5,
 };
 
 const generateBonusStats = (rarity: Rarity, excludeStats: string[] = []): Record<string, number> => {
