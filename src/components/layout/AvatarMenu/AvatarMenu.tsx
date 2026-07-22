@@ -19,9 +19,10 @@ interface IAvatarMenuProps {
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   onChangePassword: () => void;
+  onReportBug: () => void;
 }
 
-const AvatarMenu = ({ anchorRef, onClose, onChangePassword }: IAvatarMenuProps) => {
+const AvatarMenu = ({ anchorRef, onClose, onChangePassword, onReportBug }: IAvatarMenuProps) => {
   const navigate = useNavigate();
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -252,6 +253,16 @@ const AvatarMenu = ({ anchorRef, onClose, onChangePassword }: IAvatarMenuProps) 
         <span className="avatar-menu__item-icon"><GameIcon name="open-book" /></span>
         <span className="avatar-menu__item-label">Wiki</span>
         <span className="avatar-menu__item-meta">nowa karta</span>
+      </button>
+
+      <button
+        type="button"
+        className="avatar-menu__item"
+        onClick={onReportBug}
+        role="menuitem"
+      >
+        <span className="avatar-menu__item-icon"><GameIcon name="bug" /></span>
+        <span className="avatar-menu__item-label">Zgłoś błąd</span>
       </button>
 
       <button

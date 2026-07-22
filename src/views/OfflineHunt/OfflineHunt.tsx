@@ -313,6 +313,17 @@ const OfflineHunt = () => {
         if (!monster) return;
         startHunt(monster, pickedSkillId);
         setClaimResult(null);
+
+        if (isBackendCombatDelegated() && character) {
+            void backendApi
+                .offlineHuntStart(character.id, monster.id, pickedSkillId)
+                .catch((e) => {
+                    console.warn('[OfflineHunt] backend offlineHuntStart failed — zostaje commit stanu', e);
+                    commitCombatEventNow({ type: 'offline-hunt' });
+                });
+            return;
+        }
+
         commitCombatEventNow({ type: 'offline-hunt' });
     };
 

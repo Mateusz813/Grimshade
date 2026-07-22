@@ -51,7 +51,7 @@ describe('commitStateToBackend', () => {
         const state = { inventory: { gold: 363637692 }, _characterStats: { level: 345 } };
         localStorage.setItem(KEY, JSON.stringify({ state, updated_at: '2026-01-01' }));
         await expect(commitStateToBackend(CHAR)).resolves.toBe(true);
-        expect(backendApi.commitState).toHaveBeenCalledWith(CHAR, state, undefined);
+        expect(backendApi.commitState).toHaveBeenCalledWith(CHAR, state, undefined, '2026-01-01');
     });
 
     it('przekazuje kontekst zdarzenia walki do backendu (event)', async () => {
@@ -59,7 +59,7 @@ describe('commitStateToBackend', () => {
         localStorage.setItem(KEY, JSON.stringify({ state, updated_at: '' }));
         const event = { type: 'dungeon' as const, sourceId: 'dungeon_1', outcome: 'won' as const, died: false };
         await commitStateToBackend(CHAR, event);
-        expect(backendApi.commitState).toHaveBeenCalledWith(CHAR, state, event);
+        expect(backendApi.commitState).toHaveBeenCalledWith(CHAR, state, event, null);
     });
 
     it('łyka błąd backendu i zwraca false (localStorage zostaje buforem)', async () => {

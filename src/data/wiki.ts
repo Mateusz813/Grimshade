@@ -590,6 +590,7 @@ export const WIKI_SECTIONS: IWikiSection[] = [
       'Synchronizuj — ręcznie zapisuje postęp do chmury (pokazuje czas ostatniej synchronizacji).',
       'Zmień hasło :key: — podajesz obecne hasło, a potem nowe (dwa razy dla pewności).',
       'Wiki — otwiera tę stronę w nowej karcie w każdej chwili.',
+      'Zgłoś błąd :bug: — wybierasz widok, na którym coś nie działa, opisujesz problem i wysyłasz. Zgłoszenie trafia prosto do twórcy gry.',
       'Wyloguj — zapisuje postęp i wylogowuje z konta.',
     ],
   },

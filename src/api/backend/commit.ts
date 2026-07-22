@@ -39,15 +39,109 @@ export const commitStateToBackend = async (
     if (!state || typeof state !== 'object') return false;
 
     try {
-        await backendApi.commitState(charId, state, event as Record<string, unknown> | undefined);
+        await backendApi.commitState(
+            charId,
+            state,
+            event as Record<string, unknown> | undefined,
+            readBaseUpdatedAt(charId),
+        );
+        clearPendingCommit(charId);
         return true;
     } catch (e) {
         const res = (e as { response?: { status?: number; data?: unknown } }).response;
-        console.warn('[commit] PUT /state ODRZUCONY — stan NIE zostal zapisany na serwerze', {
-            status: res?.status ?? 'brak odpowiedzi (siec/CORS)',
+        const status = res?.status ?? 0;
+
+        if (status === 409) {
+            console.warn('[commit] 409 — serwer ma nowszy stan; NIE nadpisuje, zachowuje lokalna kopie do scalenia', {
+                charId,
+            });
+            retainPendingCommit(charId, state, event, 'stale_base');
+            return false;
+        }
+
+        console.warn('[commit] PUT /state ODRZUCONY — stan zachowany lokalnie do ponowienia', {
+            status: status || 'brak odpowiedzi (siec/CORS)',
             body: res?.data,
             bytes: JSON.stringify(state).length,
         });
+        retainPendingCommit(charId, state, event, status ? `http_${status}` : 'network');
+        return false;
+    }
+};
+
+const pendingKey = (charId: string): string => `dungeon_rpg_pending_commit_${charId}`;
+
+export interface IPendingCommit {
+    state: Record<string, unknown>;
+    event?: ICombatEvent;
+    reason: string;
+    queuedAt: string;
+    attempts: number;
+}
+
+export const readBaseUpdatedAt = (charId: string): string | null => {
+    try {
+        const raw = localStorage.getItem(`dungeon_rpg_save_char_${charId}`);
+        if (!raw) return null;
+        const updatedAt = (JSON.parse(raw) as ILocalSave).updated_at;
+        return updatedAt && updatedAt.trim() !== '' ? updatedAt : null;
+    } catch {
+        return null;
+    }
+};
+
+export const retainPendingCommit = (
+    charId: string,
+    state: Record<string, unknown>,
+    event: ICombatEvent | undefined,
+    reason: string,
+): void => {
+    try {
+        const existing = readPendingCommit(charId);
+        const entry: IPendingCommit = {
+            state,
+            event,
+            reason,
+            queuedAt: existing?.queuedAt ?? new Date().toISOString(),
+            attempts: (existing?.attempts ?? 0) + 1,
+        };
+        localStorage.setItem(pendingKey(charId), JSON.stringify(entry));
+    } catch {
+    }
+};
+
+export const readPendingCommit = (charId: string): IPendingCommit | null => {
+    try {
+        const raw = localStorage.getItem(pendingKey(charId));
+        return raw ? (JSON.parse(raw) as IPendingCommit) : null;
+    } catch {
+        return null;
+    }
+};
+
+export const clearPendingCommit = (charId: string): void => {
+    try {
+        localStorage.removeItem(pendingKey(charId));
+    } catch {
+    }
+};
+
+export const retryPendingCommit = async (charId: string | null | undefined): Promise<boolean> => {
+    if (!charId || !isBackendMode()) return false;
+    const pending = readPendingCommit(charId);
+    if (!pending) return false;
+
+    try {
+        await backendApi.commitState(
+            charId,
+            pending.state,
+            pending.event as Record<string, unknown> | undefined,
+            readBaseUpdatedAt(charId),
+        );
+        clearPendingCommit(charId);
+        console.info('[commit] zaległy zapis dosłany na serwer', { charId, reason: pending.reason });
+        return true;
+    } catch {
         return false;
     }
 };
@@ -77,8 +171,15 @@ export const commitStateViaKeepalive = (charId: string | null | undefined): void
     if (!state || typeof state !== 'object') return;
 
     const requestId = globalThis.crypto?.randomUUID?.() ?? `r_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const body = JSON.stringify({ requestId, state });
+    const baseUpdatedAt = readBaseUpdatedAt(charId);
+    const body = JSON.stringify({
+        requestId,
+        state,
+        ...(baseUpdatedAt ? { base_updated_at: baseUpdatedAt } : {}),
+    });
     const oversized = body.length > KEEPALIVE_BYTE_LIMIT;
+
+    retainPendingCommit(charId, state, undefined, oversized ? 'keepalive_oversized' : 'keepalive');
 
     if (oversized) {
         console.warn('[commit] blob przekracza limit keepalive — wysylam zwyklym requestem (best-effort)', {
@@ -95,7 +196,11 @@ export const commitStateViaKeepalive = (charId: string | null | undefined): void
             body,
         })
             .then((r) => {
-                if (!r.ok) console.warn('[commit] PUT /state na zamknieciu odrzucony', { status: r.status, bytes: body.length });
+                if (r.ok) {
+                    clearPendingCommit(charId);
+                    return;
+                }
+                console.warn('[commit] PUT /state na zamknieciu odrzucony — zostaje w kolejce', { status: r.status, bytes: body.length });
             })
             .catch((err) => {
                 console.warn('[commit] PUT /state na zamknieciu NIE doszedl', { err: String(err), bytes: body.length });

@@ -14,6 +14,7 @@ import { getEffectiveChar } from '../../../systems/combatEngine';
 import { formatGoldShort, getGoldBreakdown } from '../../../systems/goldFormat';
 import AvatarMenu from '../AvatarMenu/AvatarMenu';
 import ChangePasswordModal from '../../ui/ChangePasswordModal/ChangePasswordModal';
+import BugReportModal from '../../ui/BugReportModal/BugReportModal';
 import BuffPopover from '../BuffPopover/BuffPopover';
 import TaskBadge from './TaskBadge';
 import GameIcon from '../../atoms/Twemoji/GameIcon';
@@ -65,6 +66,7 @@ const TopHeader = () => {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [buffsOpen, setBuffsOpen] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
   const [goldOpen, setGoldOpen] = useState(false);
   const [pulseOpen, setPulseOpen] = useState(false);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
@@ -283,10 +285,14 @@ const TopHeader = () => {
           anchorRef={avatarBtnRef}
           onClose={() => setAvatarOpen(false)}
           onChangePassword={() => { setAvatarOpen(false); setChangePwdOpen(true); }}
+          onReportBug={() => { setAvatarOpen(false); setBugReportOpen(true); }}
         />
       )}
       {changePwdOpen && (
         <ChangePasswordModal onClose={() => setChangePwdOpen(false)} />
+      )}
+      {bugReportOpen && (
+        <BugReportModal onClose={() => setBugReportOpen(false)} />
       )}
       {buffsOpen && (
         <BuffPopover

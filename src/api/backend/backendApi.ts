@@ -33,8 +33,13 @@ export const backendApi = {
     state: (charId: string) => get(`${c(charId)}/state`),
     updatePrefs: (charId: string, settings: Record<string, unknown>) =>
         client.put(`${c(charId)}/prefs`, { settings }).then((r) => r.data),
-    commitState: (charId: string, state: Record<string, unknown>, event?: Record<string, unknown>) =>
-        client.put(`${c(charId)}/state`, { requestId: rid(), state, ...(event ? { event } : {}) }).then((r) => r.data),
+    commitState: (charId: string, state: Record<string, unknown>, event?: Record<string, unknown>, baseUpdatedAt?: string | null) =>
+        client.put(`${c(charId)}/state`, {
+            requestId: rid(),
+            state,
+            ...(event ? { event } : {}),
+            ...(baseUpdatedAt ? { base_updated_at: baseUpdatedAt } : {}),
+        }).then((r) => r.data),
 
     combatResolve: (charId: string, monsterId: string) => post(`${c(charId)}/combat/resolve`, { monsterId }),
     bossResolve: (charId: string, bossId: string) => post(`${c(charId)}/boss/${bossId}/resolve`),
@@ -42,6 +47,8 @@ export const backendApi = {
     raidResolve: (charId: string, raidId: string) => post(`${c(charId)}/raid/${raidId}/resolve`),
     transformResolve: (charId: string, transformId: string) => post(`${c(charId)}/transform/${transformId}/resolve`),
     transformClaim: (charId: string, transformId: string) => post(`${c(charId)}/transform/claim`, { transformId }),
+    offlineHuntStart: (charId: string, monsterId: string, skillId: string) =>
+        post(`${c(charId)}/offline-hunt/start`, { monsterId, skillId }),
     offlineHuntSettle: (charId: string) => post(`${c(charId)}/offline-hunt/settle`),
 
     sell: (charId: string, itemUuid: string) => post(`${c(charId)}/items/sell`, { itemUuid }),

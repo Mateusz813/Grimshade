@@ -76,7 +76,8 @@ const makeChar = (): ICharacter => ({
 const Harness = ({
     onClose = () => undefined,
     onChangePassword = () => undefined,
-}: { onClose?: () => void; onChangePassword?: () => void }) => {
+    onReportBug = () => undefined,
+}: { onClose?: () => void; onChangePassword?: () => void; onReportBug?: () => void }) => {
     const ref = useRef<HTMLButtonElement>(null);
     return (
         <MemoryRouter>
@@ -85,6 +86,7 @@ const Harness = ({
                 anchorRef={ref}
                 onClose={onClose}
                 onChangePassword={onChangePassword}
+                onReportBug={onReportBug}
             />
         </MemoryRouter>
     );
@@ -244,13 +246,24 @@ describe('AvatarMenu — wiki', () => {
         openSpy.mockRestore();
     });
 
-    it('renders Wiki immediately before Wyloguj', () => {
+    it('renders Wiki immediately before "Zgłoś błąd", which sits right before Wyloguj', () => {
         render(<Harness />);
         const labels = Array.from(document.querySelectorAll('.avatar-menu__item-label'))
             .map((el) => el.textContent);
         const wiki = labels.indexOf('Wiki');
+        const bug = labels.indexOf('Zgłoś błąd');
         const logout = labels.indexOf('Wyloguj');
         expect(wiki).toBeGreaterThan(-1);
-        expect(logout).toBe(wiki + 1);
+        expect(bug).toBe(wiki + 1);
+        expect(logout).toBe(bug + 1);
+    });
+});
+
+describe('AvatarMenu — report bug', () => {
+    it('calls onReportBug when "Zgłoś błąd" is tapped (parent closes menu + opens modal)', () => {
+        const onReportBug = vi.fn();
+        render(<Harness onReportBug={onReportBug} />);
+        fireEvent.click(screen.getByText('Zgłoś błąd'));
+        expect(onReportBug).toHaveBeenCalled();
     });
 });

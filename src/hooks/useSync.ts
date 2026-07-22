@@ -4,6 +4,7 @@ import { syncToCloud } from '../storage/gameStorage';
 import { useSyncStore } from '../stores/syncStore';
 import { getActiveCharacterId, saveCurrentCharacterStores } from '../stores/characterScope';
 import { SYNC_INTERVAL_MS, shouldSyncOnReconnect } from '../systems/syncSystem';
+import { retryPendingCommit } from '../api/backend/commit';
 
 export const useSync = () => {
   const { isOnline, isSyncing, lastSynced, setSyncing, setLastSynced } = useSyncStore(useShallow((s) => ({ isOnline: s.isOnline, isSyncing: s.isSyncing, lastSynced: s.lastSynced, setSyncing: s.setSyncing, setLastSynced: s.setLastSynced })));
@@ -16,6 +17,7 @@ export const useSync = () => {
 
     setSyncing(true);
     try {
+      await retryPendingCommit(charId);
       await saveCurrentCharacterStores();
       await syncToCloud(charId);
       setLastSynced(new Date().toISOString());
@@ -36,6 +38,11 @@ export const useSync = () => {
     if (isOnline && shouldSyncOnReconnect(lastSynced)) {
       void doSync();
     }
+  }, [isOnline]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    void retryPendingCommit(getActiveCharacterId());
   }, [isOnline]);
 
   return { isOnline, isSyncing, lastSynced, doSync };

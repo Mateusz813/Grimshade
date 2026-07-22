@@ -32,6 +32,7 @@ const CHARACTER_CHILD_TABLES: ReadonlyArray<{ table: string; key: string }> = [
     { table: 'guild_treasury_logs', key: 'character_id' },
     { table: 'market_listings', key: 'seller_id' },
     { table: 'market_sale_notifications', key: 'seller_id' },
+    { table: 'bug_reports', key: 'character_id' },
 ];
 
 export const generateTestEmail = (): string => {
