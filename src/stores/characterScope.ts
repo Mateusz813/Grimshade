@@ -104,8 +104,8 @@ let _unsubscribers: Array<() => void> = [];
 let _backendCommitTimer: ReturnType<typeof setTimeout> | null = null;
 let _backendCommitMaxTimer: ReturnType<typeof setTimeout> | null = null;
 let _dirtySinceCommit = false;
-const BACKEND_COMMIT_DEBOUNCE_MS = 1500;
-const BACKEND_COMMIT_MAX_WAIT_MS = 45000;
+const BACKEND_COMMIT_DEBOUNCE_MS = 300;
+const BACKEND_COMMIT_MAX_WAIT_MS = 5000;
 
 const clearBackendCommitTimers = (): void => {
   if (_backendCommitTimer !== null) {

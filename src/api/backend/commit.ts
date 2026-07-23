@@ -38,12 +38,13 @@ export const commitStateToBackend = async (
     }
     if (!state || typeof state !== 'object') return false;
 
+    const baseUsed = readBaseUpdatedAt(charId);
     try {
         await backendApi.commitState(
             charId,
             state,
             event as Record<string, unknown> | undefined,
-            readBaseUpdatedAt(charId),
+            baseUsed,
         );
         clearPendingCommit(charId);
         return true;
@@ -52,10 +53,11 @@ export const commitStateToBackend = async (
         const status = res?.status ?? 0;
 
         if (status === 409) {
-            console.warn('[commit] 409 — serwer ma nowszy stan; NIE nadpisuje, zachowuje lokalna kopie do scalenia', {
+            console.warn('[commit] 409 — serwer ma nowszy stan; porzucam nieaktualny blob i pobieram stan z serwera', {
                 charId,
             });
-            retainPendingCommit(charId, state, event, 'stale_base');
+            clearPendingCommit(charId);
+            resyncFromServer(charId);
             return false;
         }
 
@@ -64,9 +66,15 @@ export const commitStateToBackend = async (
             body: res?.data,
             bytes: JSON.stringify(state).length,
         });
-        retainPendingCommit(charId, state, event, status ? `http_${status}` : 'network');
+        retainPendingCommit(charId, state, event, status ? `http_${status}` : 'network', baseUsed);
         return false;
     }
+};
+
+const resyncFromServer = (charId: string): void => {
+    void import('./syncState')
+        .then((m) => m.syncFromBackend(charId))
+        .catch((err) => console.warn('[commit] resync po 409 nie powiodl sie', err));
 };
 
 const pendingKey = (charId: string): string => `dungeon_rpg_pending_commit_${charId}`;
@@ -77,6 +85,7 @@ export interface IPendingCommit {
     reason: string;
     queuedAt: string;
     attempts: number;
+    baseUpdatedAt: string | null;
 }
 
 export const readBaseUpdatedAt = (charId: string): string | null => {
@@ -95,6 +104,7 @@ export const retainPendingCommit = (
     state: Record<string, unknown>,
     event: ICombatEvent | undefined,
     reason: string,
+    baseUpdatedAt: string | null,
 ): void => {
     try {
         const existing = readPendingCommit(charId);
@@ -104,8 +114,22 @@ export const retainPendingCommit = (
             reason,
             queuedAt: existing?.queuedAt ?? new Date().toISOString(),
             attempts: (existing?.attempts ?? 0) + 1,
+            baseUpdatedAt,
         };
         localStorage.setItem(pendingKey(charId), JSON.stringify(entry));
+    } catch {
+    }
+};
+
+export const bumpLocalSaveUpdatedAt = (charId: string, updatedAt: string | null | undefined): void => {
+    if (!updatedAt) return;
+    try {
+        const key = `dungeon_rpg_save_char_${charId}`;
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const save = JSON.parse(raw) as ILocalSave;
+        save.updated_at = updatedAt;
+        localStorage.setItem(key, JSON.stringify(save));
     } catch {
     }
 };
@@ -131,17 +155,34 @@ export const retryPendingCommit = async (charId: string | null | undefined): Pro
     const pending = readPendingCommit(charId);
     if (!pending) return false;
 
+    if (!('baseUpdatedAt' in pending)) {
+        console.warn('[commit] porzucam wpis kolejki w starym formacie (bez wersji bazowej) — replay bez sprawdzenia konfliktu mogl nadpisac nowszy stan', { charId });
+        clearPendingCommit(charId);
+        resyncFromServer(charId);
+        return false;
+    }
+
     try {
         await backendApi.commitState(
             charId,
             pending.state,
             pending.event as Record<string, unknown> | undefined,
-            readBaseUpdatedAt(charId),
+            pending.baseUpdatedAt,
         );
         clearPendingCommit(charId);
         console.info('[commit] zaległy zapis dosłany na serwer', { charId, reason: pending.reason });
         return true;
-    } catch {
+    } catch (e) {
+        const status = (e as { response?: { status?: number } }).response?.status ?? 0;
+        if (status === 409) {
+            console.warn('[commit] zaległy zapis jest nieaktualny (serwer ma nowszy stan) — porzucam go zamiast nadpisywac', {
+                charId,
+                reason: pending.reason,
+                queuedAt: pending.queuedAt,
+            });
+            clearPendingCommit(charId);
+            resyncFromServer(charId);
+        }
         return false;
     }
 };
@@ -179,7 +220,7 @@ export const commitStateViaKeepalive = (charId: string | null | undefined): void
     });
     const oversized = body.length > KEEPALIVE_BYTE_LIMIT;
 
-    retainPendingCommit(charId, state, undefined, oversized ? 'keepalive_oversized' : 'keepalive');
+    retainPendingCommit(charId, state, undefined, oversized ? 'keepalive_oversized' : 'keepalive', baseUpdatedAt);
 
     if (oversized) {
         console.warn('[commit] blob przekracza limit keepalive — wysylam zwyklym requestem (best-effort)', {

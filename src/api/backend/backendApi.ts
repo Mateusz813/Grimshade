@@ -47,6 +47,9 @@ export const backendApi = {
     raidResolve: (charId: string, raidId: string) => post(`${c(charId)}/raid/${raidId}/resolve`),
     transformResolve: (charId: string, transformId: string) => post(`${c(charId)}/transform/${transformId}/resolve`),
     transformClaim: (charId: string, transformId: string) => post(`${c(charId)}/transform/claim`, { transformId }),
+    allocateAttribute: (charId: string, stat: 'attack' | 'hp' | 'defense', points: number) =>
+        post(`${c(charId)}/attributes/allocate`, { stat, points }),
+
     offlineHuntStart: (charId: string, monsterId: string, skillId: string) =>
         post(`${c(charId)}/offline-hunt/start`, { monsterId, skillId }),
     offlineHuntSettle: (charId: string) => post(`${c(charId)}/offline-hunt/settle`),

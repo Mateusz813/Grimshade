@@ -90,6 +90,7 @@ import { useTransformStore } from '../../stores/transformStore';
 import { formatGoldShort } from '../../systems/goldFormat';
 import { isBackendMode } from '../../config/backendMode';
 import { backendApi } from '../../api/backend/backendApi';
+import { bumpLocalSaveUpdatedAt } from '../../api/backend/commit';
 import { syncFromBackend } from '../../api/backend/syncState';
 import './Inventory.scss';
 
@@ -2597,6 +2598,16 @@ const Inventory = () => {
   } = useSettingsStore(useShallow((s) => ({ autoSellCommon: s.autoSellCommon, autoSellRare: s.autoSellRare, autoSellEpic: s.autoSellEpic, autoSellLegendary: s.autoSellLegendary, autoSellMythic: s.autoSellMythic, setAutoSellCommon: s.setAutoSellCommon, setAutoSellRare: s.setAutoSellRare, setAutoSellEpic: s.setAutoSellEpic, setAutoSellLegendary: s.setAutoSellLegendary, setAutoSellMythic: s.setAutoSellMythic, autoSellMaxLevel: s.autoSellMaxLevel, setAutoSellMaxLevel: s.setAutoSellMaxLevel, autoDisassembleCommon: s.autoDisassembleCommon, autoDisassembleRare: s.autoDisassembleRare, autoDisassembleEpic: s.autoDisassembleEpic, autoDisassembleLegendary: s.autoDisassembleLegendary, autoDisassembleMythic: s.autoDisassembleMythic, setAutoDisassembleCommon: s.setAutoDisassembleCommon, setAutoDisassembleRare: s.setAutoDisassembleRare, setAutoDisassembleEpic: s.setAutoDisassembleEpic, setAutoDisassembleLegendary: s.setAutoDisassembleLegendary, setAutoDisassembleMythic: s.setAutoDisassembleMythic, autoDisassembleMaxLevel: s.autoDisassembleMaxLevel, setAutoDisassembleMaxLevel: s.setAutoDisassembleMaxLevel, autoPotionHpEnabled: s.autoPotionHpEnabled, autoPotionMpEnabled: s.autoPotionMpEnabled, autoPotionHpThreshold: s.autoPotionHpThreshold, autoPotionMpThreshold: s.autoPotionMpThreshold, autoPotionHpId: s.autoPotionHpId, autoPotionMpId: s.autoPotionMpId, setAutoPotionHpEnabled: s.setAutoPotionHpEnabled, setAutoPotionMpEnabled: s.setAutoPotionMpEnabled, setAutoPotionHpThreshold: s.setAutoPotionHpThreshold, setAutoPotionMpThreshold: s.setAutoPotionMpThreshold, setAutoPotionHpId: s.setAutoPotionHpId, setAutoPotionMpId: s.setAutoPotionMpId, autoPotionPctHpEnabled: s.autoPotionPctHpEnabled, autoPotionPctMpEnabled: s.autoPotionPctMpEnabled, autoPotionPctHpThreshold: s.autoPotionPctHpThreshold, autoPotionPctMpThreshold: s.autoPotionPctMpThreshold, autoPotionPctHpId: s.autoPotionPctHpId, autoPotionPctMpId: s.autoPotionPctMpId, setAutoPotionPctHpEnabled: s.setAutoPotionPctHpEnabled, setAutoPotionPctMpEnabled: s.setAutoPotionPctMpEnabled, setAutoPotionPctHpThreshold: s.setAutoPotionPctHpThreshold, setAutoPotionPctMpThreshold: s.setAutoPotionPctMpThreshold, setAutoPotionPctHpId: s.setAutoPotionPctHpId, setAutoPotionPctMpId: s.setAutoPotionPctMpId })));
   const character = useCharacterStore((s) => s.character);
   const spendAttributePoint = useCharacterStore((s) => s.spendAttributePoint);
+  const allocateAttributePoint = (stat: TAttributeStat, all: boolean): void => {
+      const applied = spendAttributePoint(stat, all);
+      if (applied <= 0) return;
+      const char = useCharacterStore.getState().character;
+      if (!isBackendMode() || !char) return;
+      void backendApi
+          .allocateAttribute(char.id, stat, applied)
+          .then((res) => bumpLocalSaveUpdatedAt(char.id, (res as { updated_at?: string | null })?.updated_at))
+          .catch((e) => console.warn('[inventory] backend allocateAttribute failed — alokacja zostanie doslana pelnym commitem', e));
+  };
   const attrDefensePoints = useAttributeStore((s) => s.defensePoints);
   const attrAttackPoints = useAttributeStore((s) => s.attackPoints);
   const attrHpPoints = useAttributeStore((s) => s.hpPoints);
@@ -3322,7 +3333,7 @@ const Inventory = () => {
                                   <button
                                       type="button"
                                       className="inventory__stat-alloc-tile"
-                                      onClick={() => spendAttributePoint('attack', statAllocAllAtOnce)}
+                                      onClick={() => allocateAttributePoint('attack', statAllocAllAtOnce)}
                                       title={`+${bonusPct('attack')}% ataku`}
                                   >
                                       <span className="inventory__stat-alloc-tile-icon"><GameIcon name="crossed-swords" /></span>
@@ -3332,7 +3343,7 @@ const Inventory = () => {
                                   <button
                                       type="button"
                                       className="inventory__stat-alloc-tile"
-                                      onClick={() => spendAttributePoint('hp', statAllocAllAtOnce)}
+                                      onClick={() => allocateAttributePoint('hp', statAllocAllAtOnce)}
                                       title={`+${bonusPct('hp')}% max HP`}
                                   >
                                       <span className="inventory__stat-alloc-tile-icon"><GameIcon name="red-heart" /></span>
@@ -3342,7 +3353,7 @@ const Inventory = () => {
                                   <button
                                       type="button"
                                       className="inventory__stat-alloc-tile"
-                                      onClick={() => spendAttributePoint('defense', statAllocAllAtOnce)}
+                                      onClick={() => allocateAttributePoint('defense', statAllocAllAtOnce)}
                                       disabled={defLeft <= 0}
                                       title={defLeft > 0 ? `+${bonusPct('defense')}% obrony` : 'Limit obrony dla tej klasy osiagniety'}
                                   >

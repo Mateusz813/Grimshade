@@ -17,6 +17,8 @@ vi.mock('./backendApi', () => ({
     backendApi: { commitState: vi.fn() },
 }));
 vi.mock('./authToken', () => ({ getAuthToken: vi.fn(() => 'jwt') }));
+const syncMock = vi.fn().mockResolvedValue(undefined);
+vi.mock('./syncState', () => ({ syncFromBackend: (...a: unknown[]) => syncMock(...a) }));
 
 const CHAR = 'char-queue-1';
 const SAVE_KEY = `dungeon_rpg_save_char_${CHAR}`;
@@ -48,14 +50,15 @@ describe('pending commit queue — nothing is ever silently dropped', () => {
         expect((pending?.state._characterStats as { level: number }).level).toBe(362);
     });
 
-    it('keeps the state locally on a 409 stale-base conflict and does not overwrite the server', async () => {
+    it('on a 409 stale-base conflict DROPS the stale blob and resyncs from the server (never queues it for replay)', async () => {
         seedLocalSave(362, '2026-07-22T09:00:00Z');
         mockCommit.mockRejectedValueOnce({ response: { status: 409, data: { reason: 'stale_base' } } });
 
         const ok = await commitStateToBackend(CHAR);
 
         expect(ok).toBe(false);
-        expect(readPendingCommit(CHAR)?.reason).toBe('stale_base');
+        expect(readPendingCommit(CHAR)).toBeNull();
+        await vi.waitFor(() => expect(syncMock).toHaveBeenCalledWith(CHAR));
     });
 
     it('resends the queued state on the next retry and clears the queue on success', async () => {
@@ -71,6 +74,32 @@ describe('pending commit queue — nothing is ever silently dropped', () => {
         expect(readPendingCommit(CHAR)).toBeNull();
         const [, sentState] = mockCommit.mock.calls[1];
         expect((sentState as { _characterStats: { level: number } })._characterStats.level).toBe(362);
+    });
+
+    it('replays with the base captured AT QUEUE TIME, never a fresh one — a stale blob cannot impersonate the latest state', async () => {
+        seedLocalSave(362, '2026-07-22T09:00:00Z');
+        mockCommit.mockRejectedValueOnce(new Error('boom'));
+        await commitStateToBackend(CHAR);
+
+        seedLocalSave(370, '2026-07-22T11:00:00Z');
+        mockCommit.mockResolvedValueOnce({});
+        await retryPendingCommit(CHAR);
+
+        expect(mockCommit.mock.calls[1][3]).toBe('2026-07-22T09:00:00Z');
+    });
+
+    it('a queued replay that hits 409 is DROPPED and triggers a server resync — yesterday\'s state can never overwrite today', async () => {
+        seedLocalSave(362, '2026-07-22T09:00:00Z');
+        mockCommit.mockRejectedValueOnce(new Error('boom'));
+        await commitStateToBackend(CHAR);
+        expect(readPendingCommit(CHAR)).not.toBeNull();
+
+        mockCommit.mockRejectedValueOnce({ response: { status: 409 } });
+        const retried = await retryPendingCommit(CHAR);
+
+        expect(retried).toBe(false);
+        expect(readPendingCommit(CHAR)).toBeNull();
+        await vi.waitFor(() => expect(syncMock).toHaveBeenCalledWith(CHAR));
     });
 
     it('keeps the entry queued when the retry also fails, and counts attempts', async () => {
@@ -121,6 +150,7 @@ describe('pending commit queue — nothing is ever silently dropped', () => {
         const pending = readPendingCommit(CHAR);
         expect(pending).not.toBeNull();
         expect((pending?.state._characterStats as { level: number }).level).toBe(362);
+        expect(pending?.baseUpdatedAt).toBe('2026-07-22T09:00:00Z');
         expect(fetchMock).toHaveBeenCalled();
         vi.unstubAllGlobals();
     });
@@ -136,9 +166,22 @@ describe('pending commit queue — nothing is ever silently dropped', () => {
         vi.unstubAllGlobals();
     });
 
+    it('drops a legacy queue entry that has no stored base version instead of replaying it unchecked', async () => {
+        localStorage.setItem(`dungeon_rpg_pending_commit_${CHAR}`, JSON.stringify({
+            state: { _characterStats: { level: 346 } }, reason: 'keepalive', queuedAt: 'old', attempts: 1,
+        }));
+
+        const retried = await retryPendingCommit(CHAR);
+
+        expect(retried).toBe(false);
+        expect(readPendingCommit(CHAR)).toBeNull();
+        expect(mockCommit).not.toHaveBeenCalled();
+        await vi.waitFor(() => expect(syncMock).toHaveBeenCalledWith(CHAR));
+    });
+
     it('clearPendingCommit removes the entry', () => {
         seedLocalSave(1, 'x');
-        localStorage.setItem(`dungeon_rpg_pending_commit_${CHAR}`, JSON.stringify({ state: {}, reason: 'x', queuedAt: 'y', attempts: 1 }));
+        localStorage.setItem(`dungeon_rpg_pending_commit_${CHAR}`, JSON.stringify({ state: {}, reason: 'x', queuedAt: 'y', attempts: 1, baseUpdatedAt: null }));
         clearPendingCommit(CHAR);
         expect(readPendingCommit(CHAR)).toBeNull();
     });
