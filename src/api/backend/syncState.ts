@@ -1,4 +1,5 @@
 import { backendApi } from './backendApi';
+import { bumpServerVersion } from './serverVersion';
 import { isBackendMode } from '../../config/backendMode';
 import { applyBlobToStores } from '../../stores/characterScope';
 import { useCharacterStore } from '../../stores/characterStore';
@@ -21,6 +22,7 @@ export const applyStateResponse = (res: unknown, charId: string): boolean => {
 
 export const syncFromBackend = async (charId: string): Promise<void> => {
     const res = await backendApi.state(charId) as IStateResponse;
+    bumpServerVersion(charId, res.updated_at);
     if (res.character) {
         useCharacterStore.getState().setCharacter(res.character);
     }

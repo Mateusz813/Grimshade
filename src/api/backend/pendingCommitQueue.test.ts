@@ -24,10 +24,11 @@ const CHAR = 'char-queue-1';
 const SAVE_KEY = `dungeon_rpg_save_char_${CHAR}`;
 const mockCommit = backendApi.commitState as unknown as ReturnType<typeof vi.fn>;
 
-const seedLocalSave = (level: number, updatedAt: string): void => {
+const seedLocalSave = (level: number, serverVersion: string): void => {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
         state: { _characterStats: { level, highest_level: level } },
-        updated_at: updatedAt,
+        updated_at: new Date().toISOString(),
+        server_version: serverVersion,
     }));
 };
 
@@ -50,15 +51,51 @@ describe('pending commit queue — nothing is ever silently dropped', () => {
         expect((pending?.state._characterStats as { level: number }).level).toBe(362);
     });
 
-    it('on a 409 stale-base conflict DROPS the stale blob and resyncs from the server (never queues it for replay)', async () => {
+    it('a LIVE 409 rebases onto the server version and resends the same state — local progress is never thrown away', async () => {
         seedLocalSave(362, '2026-07-22T09:00:00Z');
-        mockCommit.mockRejectedValueOnce({ response: { status: 409, data: { reason: 'stale_base' } } });
+        mockCommit
+            .mockRejectedValueOnce({ response: { status: 409, data: { reason: 'stale_base', updated_at: '2026-07-22T09:05:00Z' } } })
+            .mockResolvedValueOnce({ updated_at: '2026-07-22T09:06:00Z' });
+
+        const ok = await commitStateToBackend(CHAR);
+
+        expect(ok).toBe(true);
+        expect(mockCommit).toHaveBeenCalledTimes(2);
+        expect(mockCommit.mock.calls[1][3]).toBe('2026-07-22T09:05:00Z');
+        expect((mockCommit.mock.calls[1][1] as { _characterStats: { level: number } })._characterStats.level).toBe(362);
+        expect(readPendingCommit(CHAR)).toBeNull();
+        expect(syncMock).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a server resync only when the rebase retry is ALSO rejected', async () => {
+        seedLocalSave(362, '2026-07-22T09:00:00Z');
+        mockCommit
+            .mockRejectedValueOnce({ response: { status: 409, data: { updated_at: '2026-07-22T09:05:00Z' } } })
+            .mockRejectedValueOnce({ response: { status: 422, data: {} } });
 
         const ok = await commitStateToBackend(CHAR);
 
         expect(ok).toBe(false);
         expect(readPendingCommit(CHAR)).toBeNull();
         await vi.waitFor(() => expect(syncMock).toHaveBeenCalledWith(CHAR));
+    });
+
+    it('a successful commit stores the returned server version as the next base', async () => {
+        seedLocalSave(362, '2026-07-22T09:00:00Z');
+        mockCommit.mockResolvedValueOnce({ updated_at: '2026-07-22T09:10:00Z' });
+
+        await commitStateToBackend(CHAR);
+
+        expect(readBaseUpdatedAt(CHAR)).toBe('2026-07-22T09:10:00Z');
+    });
+
+    it('the base NEVER comes from the locally generated updated_at timestamp', () => {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+            state: { _characterStats: { level: 362 } },
+            updated_at: '2099-01-01T00:00:00Z',
+        }));
+
+        expect(readBaseUpdatedAt(CHAR)).toBeNull();
     });
 
     it('resends the queued state on the next retry and clears the queue on success', async () => {

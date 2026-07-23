@@ -51,7 +51,7 @@ describe('commitStateToBackend', () => {
         const state = { inventory: { gold: 363637692 }, _characterStats: { level: 345 } };
         localStorage.setItem(KEY, JSON.stringify({ state, updated_at: '2026-01-01' }));
         await expect(commitStateToBackend(CHAR)).resolves.toBe(true);
-        expect(backendApi.commitState).toHaveBeenCalledWith(CHAR, state, undefined, '2026-01-01');
+        expect(backendApi.commitState).toHaveBeenCalledWith(CHAR, state, undefined, null);
     });
 
     it('przekazuje kontekst zdarzenia walki do backendu (event)', async () => {

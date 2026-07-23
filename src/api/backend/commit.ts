@@ -1,6 +1,7 @@
 import { backendApi } from './backendApi';
 import { isBackendMode, getBackendBaseUrl } from '../../config/backendMode';
 import { getAuthToken } from './authToken';
+import { readServerVersion, bumpServerVersion } from './serverVersion';
 
 interface ILocalSave {
     state: Record<string, unknown>;
@@ -40,12 +41,13 @@ export const commitStateToBackend = async (
 
     const baseUsed = readBaseUpdatedAt(charId);
     try {
-        await backendApi.commitState(
+        const res = await backendApi.commitState(
             charId,
             state,
             event as Record<string, unknown> | undefined,
             baseUsed,
-        );
+        ) as { updated_at?: string | null };
+        bumpServerVersion(charId, res?.updated_at);
         clearPendingCommit(charId);
         return true;
     } catch (e) {
@@ -53,9 +55,26 @@ export const commitStateToBackend = async (
         const status = res?.status ?? 0;
 
         if (status === 409) {
-            console.warn('[commit] 409 — serwer ma nowszy stan; porzucam nieaktualny blob i pobieram stan z serwera', {
-                charId,
-            });
+            const serverVersion = (res?.data as { updated_at?: string | null } | undefined)?.updated_at ?? null;
+            if (serverVersion) {
+                try {
+                    const rebased = await backendApi.commitState(
+                        charId,
+                        state,
+                        event as Record<string, unknown> | undefined,
+                        serverVersion,
+                    ) as { updated_at?: string | null };
+                    bumpServerVersion(charId, rebased?.updated_at);
+                    clearPendingCommit(charId);
+                    console.info('[commit] 409 → rebase — biezacy stan doslany na nowej wersji serwera', { charId });
+                    return true;
+                } catch (retryErr) {
+                    console.warn('[commit] rebase po 409 odrzucony — pobieram stan z serwera', {
+                        charId,
+                        status: (retryErr as { response?: { status?: number } }).response?.status ?? 'brak',
+                    });
+                }
+            }
             clearPendingCommit(charId);
             resyncFromServer(charId);
             return false;
@@ -88,16 +107,7 @@ export interface IPendingCommit {
     baseUpdatedAt: string | null;
 }
 
-export const readBaseUpdatedAt = (charId: string): string | null => {
-    try {
-        const raw = localStorage.getItem(`dungeon_rpg_save_char_${charId}`);
-        if (!raw) return null;
-        const updatedAt = (JSON.parse(raw) as ILocalSave).updated_at;
-        return updatedAt && updatedAt.trim() !== '' ? updatedAt : null;
-    } catch {
-        return null;
-    }
-};
+export const readBaseUpdatedAt = (charId: string): string | null => readServerVersion(charId);
 
 export const retainPendingCommit = (
     charId: string,
@@ -121,18 +131,8 @@ export const retainPendingCommit = (
     }
 };
 
-export const bumpLocalSaveUpdatedAt = (charId: string, updatedAt: string | null | undefined): void => {
-    if (!updatedAt) return;
-    try {
-        const key = `dungeon_rpg_save_char_${charId}`;
-        const raw = localStorage.getItem(key);
-        if (!raw) return;
-        const save = JSON.parse(raw) as ILocalSave;
-        save.updated_at = updatedAt;
-        localStorage.setItem(key, JSON.stringify(save));
-    } catch {
-    }
-};
+export const bumpLocalSaveUpdatedAt = (charId: string, updatedAt: string | null | undefined): void =>
+    bumpServerVersion(charId, updatedAt);
 
 export const readPendingCommit = (charId: string): IPendingCommit | null => {
     try {
