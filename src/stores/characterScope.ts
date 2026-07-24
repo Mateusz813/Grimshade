@@ -11,6 +11,7 @@ import { useSettingsStore } from './settingsStore';
 import { useDailyQuestStore } from './dailyQuestStore';
 import { useMasteryStore } from './masteryStore';
 import { useAttributeStore, ATTRIBUTE_MIGRATION_VERSION } from './attributeStore';
+import { isActionGateBusy } from '../api/backend/actionGate';
 import { useBossScoreStore } from './bossScoreStore';
 import { useBuffStore } from './buffStore';
 import { SPELL_CHEST_LEVELS } from '../systems/skillSystem';
@@ -123,6 +124,10 @@ const runBackendCommit = (): void => {
   const charId = _activeCharacterId;
   if (!charId || !isBackendMode()) return;
   if (_switchInProgress) return;
+  if (isActionGateBusy()) {
+    _backendCommitTimer = setTimeout(runBackendCommit, BACKEND_COMMIT_DEBOUNCE_MS);
+    return;
+  }
   flushStoresToLocalStorage();
   void commitStateToBackend(charId).then((ok) => {
     if (ok) _dirtySinceCommit = false;

@@ -67,6 +67,21 @@ describe('pending commit queue — nothing is ever silently dropped', () => {
         expect(syncMock).not.toHaveBeenCalled();
     });
 
+    it('rebases with the FRESH local state, so a rebase can never resurrect an item a server action just removed', async () => {
+        seedLocalSave(362, '2026-07-22T09:00:00Z');
+        mockCommit
+            .mockImplementationOnce(() => {
+                seedLocalSave(361, '2026-07-22T09:00:00Z');
+                return Promise.reject({ response: { status: 409, data: { updated_at: '2026-07-22T09:05:00Z' } } });
+            })
+            .mockResolvedValueOnce({ updated_at: '2026-07-22T09:06:00Z' });
+
+        const ok = await commitStateToBackend(CHAR);
+
+        expect(ok).toBe(true);
+        expect((mockCommit.mock.calls[1][1] as { _characterStats: { level: number } })._characterStats.level).toBe(361);
+    });
+
     it('falls back to a server resync only when the rebase retry is ALSO rejected', async () => {
         seedLocalSave(362, '2026-07-22T09:00:00Z');
         mockCommit

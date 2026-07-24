@@ -77,6 +77,7 @@ export const backendApi = {
     claimTask: (charId: string, taskId: string) => post(`${c(charId)}/tasks/${taskId}/claim`),
     claimQuest: (charId: string, questId: string) => post(`${c(charId)}/quests/${questId}/claim`),
     refreshDailyQuests: (charId: string) => post(`${c(charId)}/daily-quests/refresh`),
+    claimAllDailyQuests: (charId: string) => post(`${c(charId)}/daily-quests/claim-all`),
     claimDailyQuest: (charId: string, questId: string) => post(`${c(charId)}/daily-quests/${questId}/claim`),
     upgradeSkill: (charId: string, skillId: string) => post(`${c(charId)}/skills/${skillId}/upgrade`),
     startTraining: (charId: string, skillId: string) => post(`${c(charId)}/skills/train/start`, { skillId }),

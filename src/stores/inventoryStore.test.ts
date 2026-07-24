@@ -620,3 +620,49 @@ describe('disassembleMultiple', () => {
         expect(useInventoryStore.getState().bag).toHaveLength(0);
     });
 });
+
+
+describe('addOfflineRewardsBatch — one setState for a whole offline haul', () => {
+    it('applies gold, items, consumables and stones in a SINGLE store update', () => {
+        const items = Array.from({ length: 500 }, (_, i) => ({
+            uuid: `batch-${i}`, itemId: `sword_lvl10_common_${i}`, rarity: 'common' as const,
+            bonuses: {}, itemLevel: 10, upgradeLevel: 0,
+        }));
+        let notifications = 0;
+        const unsub = useInventoryStore.subscribe(() => { notifications += 1; });
+
+        useInventoryStore.getState().addOfflineRewardsBatch({
+            gold: 1234,
+            items,
+            consumables: { hp_potion_sm: 7, spell_chest_10: 2 },
+            stones: { common_stone: 5 },
+        });
+        unsub();
+
+        const s = useInventoryStore.getState();
+        expect(notifications).toBe(1);
+        expect(s.bag.length).toBe(500);
+        expect(s.gold).toBe(1234);
+        expect(s.consumables.hp_potion_sm).toBe(7);
+        expect(s.consumables.spell_chest_10).toBe(2);
+        expect(s.stones.common_stone).toBe(5);
+    });
+
+    it('respects the bag cap instead of growing past MAX_BAG_SIZE', () => {
+        const filler = Array.from({ length: 1000 }, (_, i) => ({
+            uuid: `full-${i}`, itemId: `sword_lvl1_common_${i}`, rarity: 'common' as const,
+            bonuses: {}, itemLevel: 1, upgradeLevel: 0,
+        }));
+        useInventoryStore.setState({ ...useInventoryStore.getState(), bag: filler, gold: 0 });
+
+        useInventoryStore.getState().addOfflineRewardsBatch({
+            gold: 0,
+            items: [{ uuid: 'x1', itemId: 'sword_lvl999_heroic', rarity: 'heroic', bonuses: {}, itemLevel: 999, upgradeLevel: 0 }],
+            consumables: {},
+            stones: {},
+        });
+
+        expect(useInventoryStore.getState().bag.length).toBeLessThanOrEqual(1000);
+        expect(useInventoryStore.getState().bag.some((i) => i.uuid === 'x1')).toBe(true);
+    });
+});

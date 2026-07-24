@@ -183,23 +183,29 @@ export const RewardModal = ({ result, onClose }: IRewardModalProps) => {
                     <div className="oh-modal__drops">
                         <div className="oh-modal__drops-title"><GameIcon name="wrapped-gift" /> Drop</div>
                         <div className="oh-modal__drops-grid">
-                            {result.itemDrops.map((drop) => {
-                                const genInfo = getItemDisplayInfo(drop.itemId);
-                                const base = genInfo ? null : findBaseItem(drop.itemId, ALL_ITEMS);
-                                const icon = genInfo?.icon ?? getItemIcon(drop.itemId, base?.slot ?? drop.slot ?? 'mainHand', ALL_ITEMS);
-                                const tooltipName = genInfo?.name_pl ?? base?.name_pl ?? drop.itemId;
-                                return (
-                                    <ItemIcon
-                                        key={`${drop.itemId}_${drop.rarity}_${drop.itemLevel}`}
-                                        icon={icon}
-                                        rarity={drop.rarity}
-                                        itemLevel={drop.itemLevel}
-                                        quantity={drop.count}
-                                        size="sm"
-                                        tooltip={`${tooltipName} (${RARITY_LABELS[drop.rarity]} Lv${drop.itemLevel})`}
-                                    />
-                                );
-                            })}
+                            {(() => {
+                                const byRarity = new Map<string, { rarity: typeof result.itemDrops[number]['rarity']; count: number; sample: typeof result.itemDrops[number] }>();
+                                for (const drop of result.itemDrops) {
+                                    const entry = byRarity.get(drop.rarity);
+                                    if (entry) entry.count += drop.count;
+                                    else byRarity.set(drop.rarity, { rarity: drop.rarity, count: drop.count, sample: drop });
+                                }
+                                return [...byRarity.values()].map(({ rarity, count, sample }) => {
+                                    const genInfo = getItemDisplayInfo(sample.itemId);
+                                    const base = genInfo ? null : findBaseItem(sample.itemId, ALL_ITEMS);
+                                    const icon = genInfo?.icon ?? getItemIcon(sample.itemId, base?.slot ?? sample.slot ?? 'mainHand', ALL_ITEMS);
+                                    return (
+                                        <ItemIcon
+                                            key={`rarity_${rarity}`}
+                                            icon={icon}
+                                            rarity={rarity}
+                                            quantity={count}
+                                            size="sm"
+                                            tooltip={`${formatInt(count)} przedmiotow (${RARITY_LABELS[rarity]})`}
+                                        />
+                                    );
+                                });
+                            })()}
                             {Object.entries(result.potionDrops).map(([potionId, count]) => {
                                 const elixir = ELIXIRS.find((e) => e.id === potionId);
                                 const dropIcon = getConsumableImage(potionId) ?? elixir?.icon ?? 'alembic';
@@ -353,7 +359,7 @@ const OfflineHunt = () => {
                 setPickedSkillId(null);
                 setPickedMonsterId(null);
                 setClaimFxActive(false);
-            }, 1600);
+            }, 400);
         }
     };
 

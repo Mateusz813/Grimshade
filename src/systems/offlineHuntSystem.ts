@@ -240,24 +240,17 @@ export const claimOfflineHunt = (): IOfflineHuntClaimResult | null => {
     const xpNeededAfter = charAfter?.xp_to_next ?? xpToNextLevel(levelAfter);
     const xpPctOfLevel = xpNeededAtStart > 0 ? (xpAppliedTotal / xpNeededAtStart) * 100 : 0;
 
-    useInventoryStore.getState().addGold(totalGold);
-
-    const invStore = useInventoryStore.getState();
-    for (const item of generatedItems) {
-        invStore.addItem(item);
-    }
-
-    for (const [potionId, count] of Object.entries(potionDrops)) {
-        invStore.addConsumable(potionId, count);
-    }
-
+    const batchConsumables: Record<string, number> = { ...potionDrops };
     for (const [levelStr, count] of Object.entries(spellChestDrops)) {
-        invStore.addConsumable(`spell_chest_${levelStr}`, count);
+        const key = `spell_chest_${levelStr}`;
+        batchConsumables[key] = (batchConsumables[key] ?? 0) + count;
     }
-
-    for (const [stoneType, count] of Object.entries(stoneDrops)) {
-        invStore.addStones(stoneType, count);
-    }
+    useInventoryStore.getState().addOfflineRewardsBatch({
+        gold: totalGold,
+        items: generatedItems,
+        consumables: batchConsumables,
+        stones: stoneDrops,
+    });
 
     const skillLevelBefore = useSkillStore.getState().skillLevels[preview.skillId] ?? 0;
     const skillXpBeforeNeeded = skillXpToNextLevel(skillLevelBefore);

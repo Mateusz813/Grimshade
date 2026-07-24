@@ -741,24 +741,19 @@ const Quests = () => {
     const claimable = dailyActiveQuests.filter((a) => a.completed && !a.claimed);
 
     if (isBackendMode()) {
-      const entries: IClaimSummaryEntry[] = [];
-      let claimedCount = 0;
-      for (const aq of claimable) {
-        try {
-          const res = await backendApi.claimDailyQuest(character.id, aq.questId);
-          entries.push(...buildBackendClaimEntries(res, { elixirName: getElixirName, elixirIcon: getElixirIcon }));
-          claimedCount += 1;
-        } catch (e) {
-          console.warn('[quests] backend claimDailyQuest (bulk item) failed', e);
-        }
-      }
       try {
-        await syncFromBackend(character.id);
+        const res = await backendApi.claimAllDailyQuests(character.id) as {
+          claimedCount?: number;
+          claims?: Array<Record<string, unknown>>;
+        };
+        if (!applyStateResponse(res, character.id)) await syncFromBackend(character.id);
+        const entries: IClaimSummaryEntry[] = (res.claims ?? []).flatMap((claim) =>
+          buildBackendClaimEntries(claim, { elixirName: getElixirName, elixirIcon: getElixirIcon }));
+        if (entries.length > 0) {
+          setClaimSummary({ questName: `${res.claimedCount ?? entries.length} questow dziennych`, entries });
+        }
       } catch (e) {
-        console.warn('[quests] backend sync (claim-all-daily) failed', e);
-      }
-      if (entries.length > 0) {
-        setClaimSummary({ questName: `${claimedCount} questow dziennych`, entries });
+        console.warn('[quests] backend claimAllDailyQuests failed', e);
       }
       return;
     }

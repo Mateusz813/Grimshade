@@ -58,9 +58,10 @@ export const commitStateToBackend = async (
             const serverVersion = (res?.data as { updated_at?: string | null } | undefined)?.updated_at ?? null;
             if (serverVersion) {
                 try {
+                    const freshState = readLocalState(charId) ?? state;
                     const rebased = await backendApi.commitState(
                         charId,
-                        state,
+                        freshState,
                         event as Record<string, unknown> | undefined,
                         serverVersion,
                     ) as { updated_at?: string | null };
@@ -87,6 +88,17 @@ export const commitStateToBackend = async (
         });
         retainPendingCommit(charId, state, event, status ? `http_${status}` : 'network', baseUsed);
         return false;
+    }
+};
+
+const readLocalState = (charId: string): Record<string, unknown> | null => {
+    try {
+        const raw = localStorage.getItem(`dungeon_rpg_save_char_${charId}`);
+        if (!raw) return null;
+        const parsed = (JSON.parse(raw) as ILocalSave).state;
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
     }
 };
 

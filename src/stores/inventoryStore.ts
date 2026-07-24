@@ -121,6 +121,12 @@ interface IInventoryStore {
   stones: Record<string, number>;
 
   addItem: (item: IInventoryItem) => boolean;
+  addOfflineRewardsBatch: (rewards: {
+    gold: number;
+    items: IInventoryItem[];
+    consumables: Record<string, number>;
+    stones: Record<string, number>;
+  }) => void;
   restoreItem: (item: IInventoryItem) => boolean;
   removeItem: (uuid: string) => void;
   equipItem: (uuid: string, slot: EquipmentSlot) => void;
@@ -187,6 +193,43 @@ export const useInventoryStore = create<IInventoryStore>()(
           gold: gold + victimPrice,
         });
         return true;
+      },
+
+      addOfflineRewardsBatch: (rewards) => {
+        set((s) => {
+          let gold = s.gold + Math.max(0, rewards.gold);
+          const bag = [...s.bag];
+          for (const item of rewards.items) {
+            if (shouldAutoSellItem(item)) {
+              gold += getSellPrice(item);
+              continue;
+            }
+            if (bag.length < MAX_BAG_SIZE) {
+              bag.push(item);
+              continue;
+            }
+            const victim = pickOverflowVictim(bag);
+            if (!victim) continue;
+            const incomingRank = RARITY_RANK[item.rarity ?? 'common'] ?? 0;
+            const victimRank = RARITY_RANK[victim.rarity ?? 'common'] ?? 0;
+            const isBetter = incomingRank > victimRank
+              || (incomingRank === victimRank && (item.itemLevel ?? 1) > (victim.itemLevel ?? 1));
+            if (!isBetter) continue;
+            gold += OVERFLOW_SELL_PRICE[victim.rarity ?? 'common'] ?? 0;
+            const victimIdx = bag.findIndex((i) => i.uuid === victim.uuid);
+            if (victimIdx >= 0) bag.splice(victimIdx, 1);
+            bag.push(item);
+          }
+          const consumables = { ...s.consumables };
+          for (const [id, count] of Object.entries(rewards.consumables)) {
+            consumables[id] = (consumables[id] ?? 0) + count;
+          }
+          const stones = { ...s.stones };
+          for (const [id, count] of Object.entries(rewards.stones)) {
+            stones[id] = (stones[id] ?? 0) + count;
+          }
+          return { gold, bag, consumables, stones };
+        });
       },
 
       restoreItem: (item) => {
